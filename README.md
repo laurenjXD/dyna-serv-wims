@@ -1,4 +1,4 @@
-# Spec-Driven Development Kickoff — Hyperion 3PL / Dyna-Serv
+# Spec-Driven Development Kickoff — Dyna-Serv
 
 Use this document to set up and run spec-driven development for the rest of this project. It is itself the prompt: hand it to whichever agent or session is doing the spec work, in order, one feature at a time.
 
