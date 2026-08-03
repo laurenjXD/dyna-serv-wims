@@ -16,7 +16,7 @@ Every merge conflict and major revision, dated, with the resolution. This is the
 
 **Services additions: Resend, Upstash, & Sentry** — specified services for email, rate limiting, and error tracking. **Resolved: Resend for transactional & auth emails, Upstash Redis for rate limiting, and Sentry for client/server error monitoring.**
 
-**Glossary & terminology alignment** — standardized terms for receiving (`wrr`, `cipl`, `receiving_bay`), ledger (`inventory_transaction`, `movement_type`), units & measurement (`uom`, `spq`, `volume_cbm`), and auditing (`cycle_count`, `inventory_reconciliation`). **Resolved: added to `structure.md` Glossary.**
+**Glossary & terminology alignment** — standardized terms for receiving (`wrr`, `cipl`, `receiving_bay`), ledger (`inventory_transaction`, `movement_type`), units & measurement (`uom`, `spq`, `volume_cbm`), cross-references & customs (`dsgc_item_number`, `customer_item_code`, `peza_number`, `supplier_invoice_ref`, `ip_number`), valuation (`forex_rate`), and auditing (`cycle_count`, `inventory_reconciliation`). **Resolved: added to `structure.md` Glossary.**
 
 ## Flagged, not yet resolved
 

@@ -1,0 +1,38 @@
+# Walkthrough: Session Summary & Open-Ended Questions for Next Session
+
+All core data model schemas, workflow invariants, and business rules discussed during this session have been captured across:
+- **[requirements.md](file:///d:/School-related%20docus/dyna-serv%20wims/dyna-serv%20wims/specs/01-core-data-model/requirements.md)**
+- **[design.md](file:///d:/School-related%20docus/dyna-serv%20wims/dyna-serv%20wims/specs/01-core-data-model/design.md)**
+- **[tasks.md](file:///d:/School-related%20docus/dyna-serv%20wims/dyna-serv%20wims/specs/01-core-data-model/tasks.md)**
+- **[structure.md](file:///d:/School-related%20docus/dyna-serv%20wims/dyna-serv%20wims/specs/00-steering/structure.md)**
+
+---
+
+## 📌 Open-Ended Questions & Pending User Inputs for Next Session
+
+1. **WRR Document Custom Fields**:
+   - The user will provide the exact detailed form and printed header/line-item fields for the WRR (Warehouse Receiving Receipt) document when resuming.
+2. **Machines Subcategories**:
+   - The user will specify the subcategories under the Top Category `Machines` for Trading and VMI flows.
+
+---
+
+## 💡 Quick Recap of Completed Work
+
+1. **Core Data Model Schemas**:
+   - `parties` & `party_roles` (Vendor, Supplier, Customer, End-Customer, Internal Warehouse)
+   - `items` & `item_categories` (20-field Item Enrollment, VMI & Trading Taxonomies, Length/Width/Height cm, Volume cm³, Box CBM, SPQ, SPQ Meter, Buying Price, Selling Price)
+   - `locations` (`Rack+Level-Position` e.g. `A1-01`, `location_type`: `receiving_bay`, `inspection`, `storage`, `picking`, `dispatch`, `max_cbm_capacity`)
+   - `lots` (Partitioned by `flow_type`: `vmi`, `trading`, `supplies`, Vendor Lot #, FEFO/FIFO dates, PEZA/IP/Invoice refs, USD unit cost)
+   - `wrr_documents`, `wrr_items`, and `wrr_inspection_logs` (Pre-receiving email CIPL attachments, Conformance / Non-Conformance tagging, Reason dropdowns, Photo evidence URLs, Vendor Analytics)
+   - `forex_rates` (Daily USD-to-PHP exchange rates)
+   - `inventory_transactions` (Immutable ledger for receiving, putaway, pick, transfer, reconciliation)
+
+2. **Key Workflows & Business Rules**:
+   - **Unified Item Enrollment**: Single form with conditional flow fields saving to one `items` table.
+   - **Live `Unit (roll)` $\leftrightarrow$ `Unit (meter)` Synchronization**: Typing in meters auto-fills rolls and vice versa.
+   - **Partition Withdrawal SPQ Rules**: VMI & Trading require full SPQ box multiples ($\text{qty} \pmod{\text{spq}} = 0$); Supplies allows piece-level withdrawals ($\text{qty} \ge 1$).
+   - **Master Inventory Drill-Down & Received Date**: Item click opens active lot breakdown in FEFO/FIFO order, displaying physical location tags (`A1-01`), Received Date, Pcs/Boxes/CBM, and full transaction history.
+   - **Smart Dispersed Putaway & Capacity Preview**: Suggests vacant slots, supports multi-location carton splitting, and displays a location preview card with Flow Type, Item Type, Category, Subcategory, Lot #, and CBM utilization.
+   - **Two-Stage Outbound Commitment**: Pick list reserves stock as `committed_qty` (locked against double-picking); physical balance is decremented when floor staff scan barcodes at `dispatch`.
+   - **5-Stage Receiving Lifecycle**: CIPL email ingestion $\rightarrow$ Standby database isolation $\rightarrow$ WRR paper print $\rightarrow$ Floor barcode scanning & on-the-fly item enrollment $\rightarrow$ Final receipt confirmation & inventory write.

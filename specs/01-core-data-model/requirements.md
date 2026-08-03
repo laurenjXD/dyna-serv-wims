@@ -1,0 +1,75 @@
+# Core Data Model — Requirements
+Status: Draft
+Depends on: specs/00-steering/ (product.md, tech.md, structure.md)
+
+## 1. Overview
+The Core Data Model defines the foundational database entities, relationships, constraints, and audit ledgers for Hyperion 3PL / Dyna-Serv. It establishes a single unified schema supporting VMI, Trading, and Supplies inventory partitions out of one physical warehouse.
+
+## 2. User Stories
+
+### Party & Role Management
+- **WHEN** staff enroll a business entity, **THE SYSTEM SHALL** record a single `parties` entity (capturing `code`, `name`, `contact_person`, `email`, `phone`, `tax_id`, `address`, `notes`) and assign one or more `party_roles` (`'vendor'`, `'supplier'`, `'customer'`, `'end_customer'`, `'internal_warehouse'`), **SO THAT** vendor consignment, trading procurement, customer withdrawals, end-customer delivery, and internal warehouse operations are scoped per transaction.
+
+### Item Catalog & Packaging Metrics
+- **WHEN** staff enroll a product or SKU, **THE SYSTEM SHALL** provide a single unified enrollment form that dynamically reveals conditional fields based on the selected inventory flow (`vmi`, `trading`, `supplies`), storing item identifiers (`code` / Dyna-Serv Item Code, `supplier_item_code`, `customer_item_code`, `dsgc_item_number`), metadata (`name`, `description`, `barcode`, `item_type`, `category_id` / subcategory), default supplier (`default_supplier_party_id`), pricing & valuation (`currency`, `buying_price`, `selling_price`), packaging metrics (`uom`, `spq` pcs/roll per box, `spq_meter` length per roll, outer box dimensions `length_cm`, `width_cm`, `height_cm`, gross `volume_cm3`, calculated `volume_cbm`, `boxes_per_pallet`, `weight_kg`), `min_reorder_level`, and `is_perishable` flag, **SO THAT** barcode scanning, supplier/customer cross-referencing, roll/meter conversions, pallet loading, storage capacity limits, weight constraints, reorder alerts, and VMI/Trading billing use standardized enrollment metrics in one schema table.
+
+### Physical Location Management
+- **WHEN** warehouse managers configure storage slots, **THE SYSTEM SHALL** enforce a location label structure formatted as `Rack+Level-Position` (e.g., `A1-01` for Rack `A`, Level `1`, Position `01`) with `max_cbm_capacity` and assign a `location_type` (`'receiving_bay'`, `'inspection'`, `'storage'`, `'picking'`, `'dispatch'`), **SO THAT** physical capacity and putaway algorithms operate on clear location boundaries without `warehouse_id` references, while holding pre-received inspection stock in `'inspection'` prior to inventory balance increment.
+
+### Pre-Receiving Staging (CIPL / WRR)
+- **WHEN** back-office staff encode an incoming Commercial Invoice & Packing List (CIPL), **THE SYSTEM SHALL** create a `wrr_document` in `staged_pending_arrival` status with expected `wrr_items`, optional attached physical CIPL file document (`cipl_file_url`), `peza_number` (PEZA permit reference), `supplier_invoice_ref`, and `ip_number` (Import Permit number), **SO THAT** incoming stock is declared pre-arrival with full regulatory and supplier document references.
+
+### Lot Creation & Business Partitioning
+- **WHEN** floor staff physically receive and confirm a staged WRR, **THE SYSTEM SHALL** create physical `lots` partitioned by `flow_type` (`'vmi'`, `'trading'`, `'supplies'`), inheriting `peza_number`, `supplier_invoice_ref`, and `ip_number` from WRR, and storing `vendor_lot_number`, `manufacture_date`, `expiry_date`, `unit_price` (in USD), and owner `party_id`, **SO THAT** FEFO/FIFO rotation, regulatory compliance, and valuation remain strictly maintained.
+
+### Daily Forex Rates & Inventory Valuation
+- **WHEN** financial reporting or inventory valuation dashboards render master stock balances, **THE SYSTEM SHALL** evaluate pieces on hand, boxes on hand (`pcs / spq`), CBM occupied (`boxes × volume_cbm`), USD inventory value (`pcs × unit_price`), and convert to PHP using the daily exchange rate in `forex_rates`, **SO THAT** inventory balances and monetary valuation are accurately tracked in USD and PHP.
+
+### Item Drill-Down & FEFO/FIFO Location Breakdown
+- **WHEN** a user clicks an item on the Master Inventory dashboard, **THE SYSTEM SHALL** display: (1) active lots ordered by FEFO/FIFO sequence (`expiry_date ASC` then `created_at ASC`) with their stacked location tags (`Rack+Level-Position` e.g. `A1-01`), lot number, vendor lot number, pcs/boxes on hand, and CBM occupied, and (2) the complete chronological movement history of all inbound/outbound transactions for that item, **SO THAT** staff can instantly trace where stock is physically stacked and audit past inventory movements.
+
+## 3. Acceptance Criteria
+
+1. **Warehouse Unification**:
+   - The database schema MUST NOT contain a `warehouse_id` column anywhere.
+
+2. **Entity Terminology**:
+   - Database tables MUST be named `parties`, `party_roles`, `items`, `item_categories`, `locations`, `lots`, `wrr_documents`, `wrr_items`, `forex_rates`, and `inventory_transactions`.
+
+3. **Party Role Set**:
+   - `party_roles` MUST support `'vendor'`, `'supplier'`, `'customer'`, `'end_customer'`, and `'internal_warehouse'`.
+
+4. **Item Identifiers & Packaging**:
+   - `items` MUST store `dsgc_item_number` and `customer_item_code` alongside internal `code` and `barcode`.
+
+5. **Regulatory & Invoice References**:
+   - Both `wrr_documents` and `lots` MUST support `peza_number`, `supplier_invoice_ref`, and `ip_number`.
+
+6. **Partition-Based Withdrawal SPQ Enforcement**:
+   - Validation engines MUST reject withdrawal requests for `vmi` or `trading` lots if the requested piece quantity is not an exact multiple of `items.spq` ($\text{qty} \pmod{\text{spq}} = 0$).
+   - `supplies` partition MUST allow individual piece-level withdrawals ($\text{qty} \ge 1$).
+
+7. **Daily Forex Valuation**:
+   - `forex_rates` MUST store daily exchange rates (`effective_date`, `usd_to_php_rate`) to calculate real-time PHP inventory valuation from USD unit prices.
+
+8. **WRR CIPL Attachments**:
+   - `wrr_documents` MUST support storing a physical file attachment URL (`cipl_file_url`) alongside encoded expected line items.
+
+9. **Location Labeling & Capacity**:
+   - `locations` MUST enforce `max_cbm_capacity` (numeric > 0) and formatted label naming as `Rack+Level-Position` (e.g. `A1-01` for Rack `A`, Level `1`, Position `01`).
+
+10. **FIFO/FEFO Eligibility Gate**:
+    - Lot picking algorithms MUST evaluate `lots.status = 'available'` as the sole eligibility flag.
+
+11. **Ledger Immutability & History**:
+   - `inventory_transactions` records MUST NOT be updated or deleted after insertion. Inbound and outbound movements MUST record full historical logs. Variance adjustments MUST insert a new transaction with `movement_type = 'inventory_reconciliation'`.
+
+## 4. Out of Scope
+- Role-based access control policy enforcement (specified in `02-rbac-roles`).
+- Offline sync queue engine & IndexedDB schema (specified in `03-offline-mode-and-client-storage`).
+- Automated CBM billing rate calculation & period invoicing (specified in `12-vmi-billing`).
+- Withdrawal two-stage commitment & price margin logic (specified in `08` and `13`).
+
+## 5. Open Questions
+1. **WRR Document Custom Fields**: User will provide the exact detailed form and printed header/line-item fields for the WRR (Warehouse Receiving Receipt) document in the next session.
+2. **Machines Subcategories**: User will provide the specific subcategories under the Top Category `Machines` for Trading and VMI flows.
