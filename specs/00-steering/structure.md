@@ -26,11 +26,13 @@ Status: Approved
 | `spq_meter` | Standard Packaging Quantity in meters per roll (for roll/meter UOM items) | roll_length_meter, meters_per_roll |
 | `boxes_per_pallet` | Number of outer cartons/boxes per full pallet layer | cartons_per_pallet, box_pallet_qty |
 | `peza_number` | PEZA (Philippine Economic Zone Authority) permit reference number | peza_permit, peza_code |
-| `supplier_invoice_ref` | Supplier Invoice reference number | vendor_invoice, invoice_no |
+| `invoice_number` | Invoice reference number | vendor_invoice, invoice_no, supplier_invoice_ref |
 | `ip_number` | Import Permit (IP) reference number | import_permit, ip_code |
 | `forex_rate` | Daily USD-to-PHP currency exchange rate for inventory valuation | exchange_rate, conversion_rate |
 | `cycle_count` | Scheduled physical inventory audit of location stock | stocktake, physical_count |
 | `inventory_reconciliation` | Adjustment record resolving variance between physical count and system records | stock_adjustment, stock_writeoff |
+| `vendor_lot_number` | Vendor's assigned lot or batch number | shipping_lot, batch_number |
+| `item_code` | Primary identifier or SKU for an item | sku, part_number |
 
 ## Repo structure (single Next.js app — see kickoff doc §2c)
 ```

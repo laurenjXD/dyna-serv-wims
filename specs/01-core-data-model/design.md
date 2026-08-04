@@ -42,6 +42,12 @@ export const wrrStatusEnum = pgEnum("wrr_status", [
   "cancelled",
 ]);
 
+export const pickListStatusEnum = pgEnum("pick_list_status", [
+  "allocated",
+  "picked",
+  "dispatched",
+]);
+
 export const movementTypeEnum = pgEnum("movement_type", [
   "receiving",
   "putaway",
@@ -176,8 +182,8 @@ export const lots = pgTable("lots", {
   flowType: flowTypeEnum("flow_type").notNull(), // 'vmi' | 'trading' | 'supplies'
   ownerPartyId: uuid("owner_party_id").references(() => parties.id), // Required for VMI, optional for Trading/Supplies
   status: lotStatusEnum("status").default("staged").notNull(), // FIFO/FEFO eligibility gate
-  pezaNumber: varchar("peza_number", { length: 100 }), // PEZA Permit Number (inherited from WRR or manual)
-  supplierInvoiceRef: varchar("supplier_invoice_ref", { length: 100 }), // Supplier Invoice Reference
+  pezaNumber: varchar("peza_number", { length: 100 }), // PEZA Permit Number (manual)
+  invoiceNumber: varchar("invoice_number", { length: 100 }), // Invoice Number
   ipNumber: varchar("ip_number", { length: 100 }), // Import Permit (IP) Number
   manufactureDate: date("manufacture_date"),
   expiryDate: date("expiry_date"),
@@ -199,8 +205,7 @@ export const wrrDocuments = pgTable("wrr_documents", {
   wrrNumber: varchar("wrr_number", { length: 50 }).notNull().unique(), // e.g. 'WRR-2026-00001'
   ciplReference: varchar("cipl_reference", { length: 100 }),
   ciplFileUrl: text("cipl_file_url"), // Attached PDF/Image CIPL document in Supabase Storage
-  pezaNumber: varchar("peza_number", { length: 100 }), // PEZA Permit Number
-  supplierInvoiceRef: varchar("supplier_invoice_ref", { length: 100 }), // Supplier Invoice Reference
+  invoiceNumber: varchar("invoice_number", { length: 100 }), // Invoice Number
   ipNumber: varchar("ip_number", { length: 100 }), // Import Permit (IP) Number
   vendorPartyId: uuid("vendor_party_id").references(() => parties.id).notNull(),
   flowType: flowTypeEnum("flow_type").notNull(),
@@ -216,6 +221,9 @@ export const wrrItems = pgTable("wrr_items", {
   id: uuid("id").primaryKey().defaultRandom(),
   wrrId: uuid("wrr_id").references(() => wrrDocuments.id, { onDelete: "cascade" }).notNull(),
   itemId: uuid("item_id").references(() => items.id).notNull(),
+  itemCode: varchar("item_code", { length: 100 }), // Supplier Part Number from CIPL
+  customerItemCode: varchar("customer_item_code", { length: 100 }), // Customer Part Number from CIPL
+  vendorLotNumber: varchar("vendor_lot_number", { length: 100 }),
   expectedQty: integer("expected_qty").notNull(),
   scannedQty: integer("scanned_qty").default(0).notNull(),
   unitCbm: decimal("unit_cbm", { precision: 10, scale: 4 }).notNull(),
@@ -277,6 +285,44 @@ export const inventoryTransactions = pgTable("inventory_transactions", {
 });
 ```
 
+#### `pick_lists` & `pick_list_items` (`lib/db/schema/pick_lists.ts`)
+```typescript
+import { pgTable, uuid, varchar, text, integer, decimal, timestamp } from "drizzle-orm/pg-core";
+import { flowTypeEnum, pickListStatusEnum } from "./enums";
+import { parties } from "./parties";
+import { items } from "./items";
+import { locations } from "./locations";
+import { lots } from "./lots";
+
+export const pickLists = pgTable("pick_lists", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  pickListNumber: varchar("pick_list_number", { length: 50 }).notNull().unique(),
+  customerPartyId: uuid("customer_party_id").references(() => parties.id).notNull(),
+  flowType: flowTypeEnum("flow_type").notNull(),
+  status: pickListStatusEnum("status").default("allocated").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const pickListItems = pgTable("pick_list_items", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  pickListId: uuid("pick_list_id").references(() => pickLists.id, { onDelete: "cascade" }).notNull(),
+  itemId: uuid("item_id").references(() => items.id).notNull(),
+  itemCode: varchar("item_code", { length: 100 }).notNull(), // Item Code
+  customerItemCode: varchar("customer_item_code", { length: 100 }), // CUST PN
+  itemDescription: text("item_description"), // Item Description
+  lotId: uuid("lot_id").references(() => lots.id).notNull(),
+  lotNumber: varchar("lot_number", { length: 100 }).notNull(), // Lot Number
+  locationId: uuid("location_id").references(() => locations.id).notNull(),
+  locationLabel: varchar("location_label", { length: 100 }).notNull(), // Location
+  qty: integer("qty").notNull(), // Qty
+  spq: integer("spq").notNull(), // SPQ
+  numberOfBoxes: integer("number_of_boxes").notNull(), // No. of Packages/Boxes
+  unitPrice: decimal("unit_price", { precision: 12, scale: 4 }), // Priced on Document
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+```
+
 ## 2. Entity Relationship Diagram
 
 ```mermaid
@@ -284,21 +330,26 @@ erDiagram
     PARTIES ||--o{ PARTY_ROLES : has
     PARTIES ||--o{ LOTS : owns_vmi_stock
     PARTIES ||--o{ WRR_DOCUMENTS : supplies_inbound
+    PARTIES ||--o{ PICK_LISTS : receives
     ITEM_CATEGORIES ||--o{ ITEMS : categorizes
     ITEMS ||--o{ LOTS : instantiates
     ITEMS ||--o{ WRR_ITEMS : lists
     ITEMS ||--o{ INVENTORY_TRANSACTIONS : tracks
+    ITEMS ||--o{ PICK_LIST_ITEMS : listed_in
     LOCATIONS ||--o{ INVENTORY_TRANSACTIONS : moves_from
     LOCATIONS ||--o{ INVENTORY_TRANSACTIONS : moves_to
+    LOCATIONS ||--o{ PICK_LIST_ITEMS : located_at
     WRR_DOCUMENTS ||--o{ WRR_ITEMS : contains
     WRR_DOCUMENTS ||--o{ INVENTORY_TRANSACTIONS : verifies
     LOTS ||--o{ INVENTORY_TRANSACTIONS : ledgered_in
+    LOTS ||--o{ PICK_LIST_ITEMS : picked_from
+    PICK_LISTS ||--o{ PICK_LIST_ITEMS : contains
 ```
 
 ## 3. Key Workflows & Invariants
 
 1. **Email CIPL Ingestion & Pre-Receiving WRR Staging**:
-   - Back-office staff receive Commercial Invoice & Packing List (CIPL) files via email and pre-encode the manifest into `wrr_documents` in `staged_pending_arrival` status with attached `cipl_file_url`, `peza_number`, `supplier_invoice_ref`, and `ip_number`.
+   - Back-office staff receive Commercial Invoice & Packing List (CIPL) files via email and pre-encode the manifest into `wrr_documents` in `staged_pending_arrival` status with attached `cipl_file_url`, `invoice_number`, and `ip_number`.
    - Expected incoming items/cartons sit in a **standby staging table** (`wrr_items`). At this stage, stock is strictly on standby and is **NOT YET incremented** in inventory balance or recorded in the inbound ledger.
 
 2. **WRR Document Print & Barcode Scanning Confirmation Lifecycle**:
@@ -313,11 +364,10 @@ erDiagram
 3. **FEFO / FIFO Rotation**:
    - Allocation engines evaluate `lots.status = 'available'` sorted by `expiry_date` ascending (FEFO for perishable items) then `created_at` ascending (FIFO for non-perishable items).
 
-4. **Master Inventory Item Drill-Down & Received Date History**:
-   - Master Inventory summary table displays item balances along with **Oldest Received Date** (or Latest Received Date) across active stock.
-   - Clicking an item triggers a detailed drill-down querying two datasets:
-     - **Stacked Location & Active Lots Breakdown**: Displays active `lots` (`status = 'available'`) with **Received Date** (`lots.created_at` / WRR confirmation date), Lot #, Vendor Lot #, Partition (`vmi`/`trading`/`supplies`), Stacked Location Tag (e.g. `A1-01`), Expiration Date, Pcs, Boxes, and CBM occupied, ordered by FEFO/FIFO sequence.
-     - **Complete Stock Movement History**: Fetches all `inventory_transactions` for that item/lot sorted by timestamp DESC, displaying exact receiving timestamp, movement type (`receiving`, `putaway`, `pick`, `transfer`, `reconciliation`), IN/OUT quantity, from/to location tags, document references (`wrr`, `pick_list`), and performing user.
+4. **Master Inventory UI & Item Drill-Down**:
+   - **Summary Table**: The Master Inventory summary table MUST prioritize and display the **Item Code** as the first and most prominent column, along with item balances and the **Oldest Received Date** across active stock.
+   - **Drill-Down View**: Clicking an item expands/drills down to show the **Stacked Location & Active Lots Breakdown**, displaying active `lots` (`status = 'available'`) with Received Date, Lot #, Vendor Lot #, Partition (`vmi`/`trading`/`supplies`), Stacked Location Tag (e.g. `A1-01`), Expiration Date, Pcs, Boxes, and CBM occupied, ordered by strict FEFO/FIFO sequence.
+   - **History Modal**: The full stock movement history is NOT shown inline to prevent clutter. Instead, an action button ("View History") opens a modal that fetches `inventory_transactions`. The modal displays the exact date, time, performing user, total quantity received, and total quantity dispatched/withdrawn.
 
 5. **Unified Conditional Item Enrollment Workflow**:
    - Item enrollment operates via a single unified form interface. Selecting the primary `flow_type` (`vmi`, `trading`, or `supplies`) dynamically reveals conditional fields (e.g. default supplier party & SPQ meters for VMI; currency, buying price & selling price for Trading; internal reorder threshold for Supplies), writing cleanly to the single unified `items` table.
@@ -381,13 +431,16 @@ erDiagram
       - **`dispatch`**: Outbound staging area prior to final outgoing barcode scan.
     - Enforces `max_cbm_capacity` and optional `max_weight_kg`.
 
-13. **Two-Stage Outbound Commitment & Dispatch Inventory Decrement**:
-    - **Stage 1 (Pick List Allocation & Floor Pick)**: When a pick list is created and items are picked on the floor, the system logs the allocated quantity as **Committed Quantity** (`committed_qty`). The stock is reserved and locked to prevent double-allocation, but physical inventory balance remains un-decremented.
-    - **Stage 2 (Dispatch Barcode Scan Confirmation)**: Stock physically moves to `dispatch`. Once floor staff scan the barcode at outgoing/dispatch:
-      - Physical inventory balance is officially **decremented** (`lots` balance decreased).
-      - Reserved **committed quantity** is released (`committed_qty` cleared).
-      - Immutable `inventory_transaction` is recorded (`movement_type = 'pick'`).
-      - Priced **`acknowledgement_receipt`** is generated for signature.
+13. **Integrated Inventory Picking & Two-Stage Outbound Commitment**:
+   - **Stage 1 (Inventory Page Picking & Pick List Generation)**: The standalone picking page is removed. Picking is initiated directly from the Master Inventory page.
+     - **Lot Selection & FIFO Enforcement**: When an item is selected for picking, a dropdown of its available lot numbers is displayed, strictly enforcing the FIFO rule even if the lots are dispersed across different physical locations.
+     - **FIFO Override & Approval Queue**: If staff need to bypass the FIFO sequence (e.g., picking a newer lot because the oldest is physically inaccessible), they must submit a **FIFO Override Request**. The system blocks pick list generation until the request is approved by a manager via the Approval Queue.
+     - **Commitment**: Once lots are selected (and approved if overridden), the final `pick_list` is generated. The system logs the allocated quantity as **Committed Quantity** (`committed_qty`), reserving the stock to prevent double-allocation while the physical inventory balance remains un-decremented.
+   - **Stage 2 (Dispatch Barcode Scan Confirmation)**: Stock physically moves to `dispatch`. Once floor staff scan the barcode at outgoing/dispatch:
+     - Physical inventory balance is officially **decremented** (`lots` balance decreased).
+     - Reserved **committed quantity** is released (`committed_qty` cleared).
+     - Immutable `inventory_transaction` is recorded (`movement_type = 'pick'`).
+     - Priced **`acknowledgement_receipt`** is generated for signature.
 
 14. **Inspection Conformance Tagging, Analytics & Feedback Workflow**:
     - **Inspection Tagging**: Items evaluated in `inspection` are tagged with `conformance_status`:
