@@ -185,7 +185,17 @@ The role model is explicitly unstable (`specs/00-steering/revision-log.md`). The
 
 ## Decision record
 
-Before this plan can be approved, copy the selected option letter for every decision ID into the `Selected` column. Any selection that differs from the recommended default must be reflected—with rationale—in `requirements.md` or `design.md`. If a decision is genuinely not applicable, enter `N/A` and explain why in the relevant spec.
+All recommended defaults were accepted for this draft. The authoritative selections are:
+
+- Task 1: `1A=C`, `1B=A`, `1C=C`, `1D=B`, `1E=B`, `1F=B`, `1G=B`, `1H=A`, `1I=C`.
+- Task 2: `2A=B`, `2B=B`, `2C=C`, `2D=B`, `2E=B`, `2F=B`, `2G=B`, `2H=B`.
+- Task 3: `3A=B`, `3B=B`, `3C=B`, `3D=B`, `3E=C`, `3F=B`, `3G=B`, `3H=B`.
+- Task 4: `4A=B`, `4B=B`, `4C=B`, `4D=B`, `4E=B`, `4F=B`, `4G=B`.
+- Task 5: `5A=B`, `5B=B`, `5C=A`, `5D=B`, `5E=A`, `5F=B`, `5G=B`, `5H=C`.
+- Task 6: `6A=B`, `6B=B`, `6C=B`, `6D=B`, `6E=B`, `6F=B`, `6G=B`.
+- Task 7: `7A=B`, `7B=B`, `7C=B`, `7D=B`, `7E=B`, `7F=B`, `7G=B`.
+
+Conditional recommendations were resolved as `1F=B` (party plus optional `flow_type` scope), `2F=B` (RBAC-specific security events because spec `01` does not define a general audit table), and `4F=B` (reviewed SQL policy helper functions). These selections are formalized in `requirements.md` and `design.md`; they do not replace the approval sign-offs below.
 
 ## Testing requirements
 
