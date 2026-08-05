@@ -70,6 +70,15 @@ export const nonConformanceReasonEnum = pgEnum("non_conformance_reason", [
   "missing_paperwork",   // Missing PEZA permit or IP paperwork
   "other",
 ]);
+
+export const commitmentStatusEnum = pgEnum("commitment_status", [
+  "active",             // Stage 1 reservation is live; qty_committed holds the reservation
+  "inspection_pending", // Post-pick disposition sent to further inspection; reservation stays active
+  "executed",           // Stage 2 dispatch completed; qty_committed released, qty_executed set
+  "released",           // Reservation released without executing (e.g. cancelled before dispatch)
+  "expired",            // expires_at passed before execution; reservation released automatically
+  "cancelled",          // Manually cancelled before execution
+]);
 ```
 
 ### 1.2 Table Schemas
@@ -109,34 +118,53 @@ Physical quantity is held in this child table because one lot may be split
 across multiple locations. This is the authoritative placement and quantity
 model; there is no `stock_levels` or other aggregate inventory ledger.
 
-```text
-lot_location_balances
-  id, lot_id, location_id,
-  qty_received, qty_remaining, qty_committed,
-  version, created_at, updated_at
+```typescript
+import { pgTable, uuid, integer, timestamp, unique, check } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { lots } from "./lots";
+import { locations } from "./locations";
 
-Constraints:
-  unique (lot_id, location_id)
-  qty_received >= 0
-  qty_remaining >= 0
-  0 <= qty_committed <= qty_remaining
+export const lotLocationBalances = pgTable("lot_location_balances", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  lotId: uuid("lot_id").references(() => lots.id).notNull(),
+  locationId: uuid("location_id").references(() => locations.id).notNull(),
+  qtyReceived: integer("qty_received").notNull(),
+  qtyRemaining: integer("qty_remaining").notNull(),
+  qtyCommitted: integer("qty_committed").default(0).notNull(),
+  version: integer("version").default(1).notNull(), // optimistic concurrency token, incremented on every update
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  uniqueLotLocation: unique().on(table.lotId, table.locationId),
+  qtyReceivedNonNegative: check("qty_received_non_negative", sql`${table.qtyReceived} >= 0`),
+  qtyRemainingNonNegative: check("qty_remaining_non_negative", sql`${table.qtyRemaining} >= 0`),
+  qtyCommittedWithinRemaining: check(
+    "qty_committed_within_remaining",
+    sql`${table.qtyCommitted} >= 0 AND ${table.qtyCommitted} <= ${table.qtyRemaining}`
+  ),
+}));
 ```
 
 The database exposes an aggregate read model named `lot_inventory_totals`,
-grouped by `lot_id`:
+grouped by `lot_id`, as a plain SQL view (not a Drizzle-managed table):
 
-```text
-qty_received  = SUM(lot_location_balances.qty_received)
-qty_remaining = SUM(lot_location_balances.qty_remaining)
-qty_committed = SUM(lot_location_balances.qty_committed)
-qty_available = qty_remaining - qty_committed
+```sql
+CREATE VIEW lot_inventory_totals AS
+SELECT
+  lot_id,
+  SUM(qty_received)  AS qty_received,
+  SUM(qty_remaining) AS qty_remaining,
+  SUM(qty_committed) AS qty_committed,
+  SUM(qty_remaining) - SUM(qty_committed) AS qty_available
+FROM lot_location_balances
+GROUP BY lot_id;
 ```
 
 `qty_available` is derived and never stored. FIFO/FEFO allocation joins this
 read model to `lots`, uses `lots.status = 'available'` as its sole eligibility
 gate, and allocates against individual `lot_location_balances` rows.
 
-#### `inventory_commitments` & `inventory_commitment_lines`
+#### `inventory_commitments` & `inventory_commitment_lines` (`lib/db/schema/commitments.ts`)
 
 These tables are the durable reservation relation for Stage 1 outbound
 commitment. Quantity fields on `lot_location_balances` are maintained in the
@@ -144,23 +172,50 @@ same transaction as these rows; the commitment lines provide ownership,
 release, execution, expiry, and audit linkage rather than acting as a second
 inventory ledger.
 
-```text
-inventory_commitments
-  id, commitment_number, pick_list_id, status,
-  expires_at, created_by_user_id, released_at, completed_at,
-  created_at, updated_at
+```typescript
+import { pgTable, uuid, varchar, integer, timestamp, check } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { commitmentStatusEnum } from "./enums";
+import { pickLists, pickListItems } from "./pick_lists";
+import { lotLocationBalances } from "./lot_location_balances";
 
-inventory_commitment_lines
-  id, commitment_id, pick_list_item_id,
-  lot_location_balance_id, qty_committed, qty_executed,
-  status, created_at, updated_at
+export const inventoryCommitments = pgTable("inventory_commitments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  commitmentNumber: varchar("commitment_number", { length: 50 }).notNull().unique(),
+  pickListId: uuid("pick_list_id").references(() => pickLists.id).notNull().unique(), // exactly one commitment per pick list
+  status: commitmentStatusEnum("status").default("active").notNull(),
+  expiresAt: timestamp("expires_at"),
+  createdByUserId: uuid("created_by_user_id").notNull(),
+  releasedAt: timestamp("released_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const inventoryCommitmentLines = pgTable("inventory_commitment_lines", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  commitmentId: uuid("commitment_id").references(() => inventoryCommitments.id, { onDelete: "cascade" }).notNull(),
+  pickListItemId: uuid("pick_list_item_id").references(() => pickListItems.id).notNull(),
+  lotLocationBalanceId: uuid("lot_location_balance_id").references(() => lotLocationBalances.id).notNull(),
+  qtyCommitted: integer("qty_committed").notNull(),
+  qtyExecuted: integer("qty_executed").default(0).notNull(),
+  status: commitmentStatusEnum("status").default("active").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  qtyCommittedPositive: check("qty_committed_positive", sql`${table.qtyCommitted} > 0`),
+  qtyExecutedWithinCommitted: check(
+    "qty_executed_within_committed",
+    sql`${table.qtyExecuted} >= 0 AND ${table.qtyExecuted} <= ${table.qtyCommitted}`
+  ),
+}));
 ```
 
-Required constraints include unique `pick_list_id`, positive committed
-quantities, executed quantity not exceeding committed quantity, active
-commitment quantity not exceeding the selected balance's `qty_remaining`, and
-idempotent release/expiry/dispatch transitions. Stage 1 and Stage 2
-operations lock or version-check the affected balance and commitment rows.
+Beyond the declared constraints, the active commitment quantity must not
+exceed the selected balance row's `qty_remaining`; this is a cross-row
+invariant enforced by the Stage 1 commitment transaction (which locks or
+version-checks the affected balance and commitment rows), not a single-table
+CHECK constraint. Release, expiry, and dispatch transitions are idempotent.
 
 The commitment and pick-list snapshot are created atomically. `pick_list_items`
 remains the operational document snapshot, while
@@ -170,6 +225,8 @@ record.
 #### `item_categories` & `items` (`lib/db/schema/items.ts`)
 ```typescript
 import { pgTable, uuid, varchar, text, integer, decimal, boolean, timestamp } from "drizzle-orm/pg-core";
+import { flowTypeEnum } from "./enums";
+import { parties } from "./parties";
 
 export const itemCategories = pgTable("item_categories", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -238,6 +295,7 @@ import { pgTable, uuid, varchar, decimal, date, timestamp } from "drizzle-orm/pg
 import { flowTypeEnum, lotStatusEnum } from "./enums";
 import { items } from "./items";
 import { parties } from "./parties";
+import { wrrItems } from "./wrr";
 
 export const lots = pgTable("lots", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -261,7 +319,7 @@ export const lots = pgTable("lots", {
 #### `wrr_documents` & `wrr_items` (`lib/db/schema/wrr.ts`)
 ```typescript
 import { pgTable, uuid, varchar, text, integer, decimal, timestamp } from "drizzle-orm/pg-core";
-import { flowTypeEnum, wrrStatusEnum } from "./enums";
+import { flowTypeEnum, wrrStatusEnum, conformanceStatusEnum, nonConformanceReasonEnum } from "./enums";
 import { parties } from "./parties";
 import { items } from "./items";
 
@@ -270,6 +328,7 @@ export const wrrDocuments = pgTable("wrr_documents", {
   wrrNumber: varchar("wrr_number", { length: 50 }).notNull().unique(), // e.g. 'WRR-2026-00001'
   commercialInvoiceNo: varchar("commercial_invoice_no", { length: 100 }), // Commercial Invoice / CIPL reference
   ciplFileUrl: text("cipl_file_url"), // Attached PDF/Image CIPL document in Supabase Storage
+  pezaNumber: varchar("peza_number", { length: 100 }), // PEZA Permit Number (manual)
   ipNumber: varchar("ip_number", { length: 100 }), // Import Permit (IP) Number
   vendorPartyId: uuid("vendor_party_id").references(() => parties.id).notNull(),
   flowType: flowTypeEnum("flow_type").notNull(),
@@ -284,7 +343,7 @@ export const wrrDocuments = pgTable("wrr_documents", {
 export const wrrItems = pgTable("wrr_items", {
   id: uuid("id").primaryKey().defaultRandom(),
   wrrId: uuid("wrr_id").references(() => wrrDocuments.id, { onDelete: "cascade" }).notNull(),
-  itemId: uuid("item_id").references(() => items.id).notNull(),
+  itemId: uuid("item_id").references(() => items.id), // Nullable: CIPL may reference an item not yet enrolled; resolved via 06's enrollment flow before receipt confirmation (07 design.md §6, §8 requires resolved item data as a commit prerequisite)
   itemCode: varchar("item_code", { length: 100 }), // Supplier Part Number from CIPL
   customerItemCode: varchar("customer_item_code", { length: 100 }), // Customer Part Number from CIPL
   lotNumber: varchar("lot_number", { length: 100 }).notNull(), // Source business lot number from the WRR
@@ -471,6 +530,7 @@ erDiagram
      - **VMI Flow (`flow_type = 'vmi'`)**: Withdrawal per piece is **strictly forbidden**. Quantities MUST be in full SPQ box multiples ($\text{qty} \pmod{\text{spq}} = 0$).
      - **Trading Flow (`flow_type = 'trading'`)**: Withdrawal per piece is **strictly forbidden**. Quantities MUST be in full SPQ box multiples ($\text{qty} \pmod{\text{spq}} = 0$).
      - **Supplies Flow (`flow_type = 'supplies'`)**: Withdrawal per piece **IS allowed** ($\text{qty} \ge 1$), enabling staff to withdraw exact individual piece counts for internal warehouse operations.
+   - This rule is enforced by the allocation/pick-list validation engine owned by `08-outgoing-withdrawal-and-two-stage-commitment`, not by a database CHECK constraint on `pick_list_items.qty`. `pick_list_items.spq` is a priced-document snapshot field, not itself an enforcement mechanism.
 
 10. **Smart Dispersed Putaway Location Recommendation & Capacity Preview UI**:
     - **Putaway Recommendation Engine**: Upon receiving and scanning items at `receiving_bay`, the system queries available storage slots (`max_cbm_capacity - occupied_cbm`), filtering locations that fit the item's box CBM (`volume_cbm`).
