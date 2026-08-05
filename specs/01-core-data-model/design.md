@@ -497,25 +497,16 @@ erDiagram
       - **`dispatch`**: Outbound staging area prior to final outgoing barcode scan.
     - Enforces `max_cbm_capacity` and optional `max_weight_kg`.
 
-13. **Integrated Inventory Picking & Two-Stage Outbound Commitment**:
-   - **Stage 1 (Inventory Page Picking & Pick List Generation)**: The standalone picking page is removed. Picking is initiated directly from the Master Inventory page.
-     - **Lot Selection & FIFO Enforcement**: When an item is selected for picking, a dropdown of its available lot numbers is displayed, strictly enforcing the FIFO rule even if the lots are dispersed across different physical locations.
-     - **FIFO Override & Approval Queue**: If staff need to bypass the FIFO sequence (e.g., picking a newer lot because the oldest is physically inaccessible), they must submit a **FIFO Override Request**. The system blocks pick list generation until the request is approved by a manager via the Approval Queue.
-     - **Commitment**: Once lots are selected (and approved if overridden), the final `pick_list` and `inventory_commitments` are created atomically. The selected `lot_location_balances.qty_committed` values increase, reserving stock to prevent double-allocation while `qty_remaining` remains unchanged.
-   - **Stage 2 (Dispatch Barcode Scan Confirmation)**: Stock physically moves to `dispatch`. Once floor staff scan the barcode at outgoing/dispatch:
-     - Physical inventory balance is officially **decremented** (`lots` balance decreased).
-     - Reserved **committed quantity** is released from the selected balance rows and the commitment lines are marked executed/released.
-     - Immutable `inventory_transaction` is recorded (`movement_type = 'pick'`).
-     - Priced **`acknowledgement_receipt`** is generated for signature.
+13. **Two-Stage Outbound Commitment — Schema Invariants**:
+    - **Stage 1 (commitment)**: `pick_list` and `inventory_commitments`/`inventory_commitment_lines` are created atomically. The selected `lot_location_balances.qty_committed` values increase, reserving stock to prevent double-allocation, while `qty_remaining` is unchanged.
+    - **Stage 2 (execution)**: On dispatch, the selected `lot_location_balances.qty_remaining` is decremented, `qty_committed` is released, the commitment line is marked executed/released, an immutable `inventory_transaction` (`movement_type = 'pick'`) is recorded, and priced `acknowledgement_receipt` generation is triggered.
+    - FIFO/FEFO enforcement, override request submission, Approval Queue review, and dispatch/further-inspection disposition are workflow behavior owned by `08-outgoing-withdrawal-and-two-stage-commitment` and `09-approval-queue`, which cite these tables by name. This design guarantees only the underlying schema/constraint contract those features build on.
 
-14. **Inspection Conformance Tagging, Analytics & Feedback Workflow**:
-    - **Inspection Tagging**: Items evaluated in `inspection` are tagged with `conformance_status`:
-      - **`conformance`**: 0 defects, paper/barcode match $\rightarrow$ moves to confirmed receiving scan & putaway.
-      - **`non_conformance`**: Requires selecting a `non_conformance_reason` dropdown (`tdc_defect`, `quantity_mismatch`, `damaged_carton`, `wrong_item_code`, `missing_paperwork`, `other`), entering remarks, and attaching evidence photo URL (`evidence_photo_url`), logged into `wrr_inspection_logs`.
-    - **Feedback Flow per Tag**:
-      - **On `conformance` Tag**: Physical `lots` created (`status = 'available'`), stock incremented in inventory balance, putaway location recommended.
-      - **On `non_conformance` Tag**: Stock is **NOT YET incremented** in inventory balance; logged into `wrr_inspection_logs`; triggers automated email alert to Vendor & Procurement via Resend; stock is quarantined or flagged for Return-to-Vendor (`action_taken`).
-    - **Vendor Performance Analytics**: `wrr_inspection_logs` data feeds vendor quality dashboards (Vendor Conformance Rate %, TDC frequency, defect trends per supplier).
+14. **Inspection Conformance — Schema Invariants**:
+    - `wrr_inspection_logs` records `conformance_status`, `non_conformance_reason`, `remarks`, `evidence_photo_url`, and `action_taken` for inbound inspection observations.
+    - On `conformance`: an active `lots` row (`status = 'available'`) and its `lot_location_balances` are created/incremented.
+    - On `non_conformance`: inventory balance is **not** incremented; the observation is logged into `wrr_inspection_logs` and the affected stock is held pending resolution.
+    - Inspection triage screens, vendor email alerts, and vendor-quality analytics/dashboards are workflow behavior owned by `07-incoming-receiving` and `16-reporting-and-analytics`, which cite this table by name. This design guarantees only the underlying schema/constraint contract those features build on.
 
 ## 4. Access Control & RLS
 - Supabase Row-Level Security policies restrict tenant/party visibility while keeping physical locations unified.
