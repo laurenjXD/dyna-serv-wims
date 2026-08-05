@@ -14,7 +14,7 @@ The current Gantt timeline tracks the **Spec Definition Phase** (Drafting Requir
 |---|---|---|---|---|---|---|
 | 1.1 | Project setup & repo config | 7/31 – 8/5 | 70% | Pre-spec scaffolding | **Paused** (Awaiting Spec 01) | Not Started |
 | 1.2 | Database schema for inventory | 7/31 – 8/5 | 80% | `01-core-data-model` | **Spec Approved** | Ready for Dev |
-| 1.3 | User auth & warehouse roles | 7/31 – 8/5 | 30% | `02-rbac-roles` | **Drafting** (Needs revision) | Not Started (Blocked by Spec) |
+| 1.3 | User auth & warehouse roles | 7/31 – 8/5 | 30% | `02-rbac-roles`, `21-user-profile-and-settings` | **Drafting** (Spec 21 Drafted) | Not Started (Blocked by Spec) |
 | 1.4 | Receiving module UI | 7/31 – 8/5 | 0% | `07-incoming-receiving`, `05-ui-shell` | **Pending** (Input notes only) | Not Started (Blocked by Spec) |
 | 1.5 | Receiving transaction logic | 7/31 – 8/5 | 0% | `07-incoming-receiving` | **Pending** (Input notes only) | Not Started (Blocked by Spec) |
 | 1.6 | Product transfer request | 8/6 – 8/11 | 0% | `11-transfer-and-inspection` | **Not Started** | Not Started (Blocked by Spec) |
