@@ -29,8 +29,8 @@ This sits above the spec folders, not inside them. Specs stay feature-level (`re
 | Barcode/QR integration | Cross-cutting: 01 (`items.barcode_value`), 07 (receiving scan), 18 (packing scan) | Depends on 01, 07 |
 | Picking list generation | 10-pick-list-and-acknowledgement-receipt | Not yet drafted |
 | Picking workflow | 08-outgoing-withdrawal-and-two-stage-commitment (execution step) | Not yet drafted |
-| Packing module UI | **18-packing** (new) | Not yet drafted |
-| Packing confirmation workflow | **18-packing** (new) | Not yet drafted |
+| Packing module UI | **18-packing** (new) | Draft (planning aligned; not approved) |
+| Packing confirmation workflow | **18-packing** (new) | Draft (planning aligned; not approved) |
 | Logistics process integration | Cross-cutting, not a separate spec | — |
 | Testing & bug fixes | testing.md | — |
 | Milestone 2 Review & Launch | Sign-off gate | — |
