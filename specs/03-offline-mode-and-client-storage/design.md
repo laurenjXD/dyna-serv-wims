@@ -61,9 +61,9 @@ Browser storage in this system is strictly partitioned by purpose. No feature wr
 | Sidebar collapse state | `localStorage` | Durable across sessions. Cleared on logout. |
 | Table and dashboard UI preferences | `localStorage` | Durable, non-sensitive. Cleared on logout. |
 | In-progress form state | `sessionStorage` | Tab-scoped. Auto-clears on tab close. Not synced between tabs. |
-| Active receiving session buffer | `sessionStorage` | Tab-scoped. Correct for per-session work — a second tab handling a different PO must not share state. |
+| Active receiving session buffer | `sessionStorage` | Tab-scoped. Correct for per-session work — a second tab handling a different WRR must not share state. |
 | Offline action outbox | `IndexedDB` | Structured, survives page refresh, supports ordered processing. |
-| Offline read cache | `IndexedDB` | TTL-gated snapshots of picklists, SKU lookups, active lots. |
+| Offline read cache | `IndexedDB` | TTL-gated snapshots of pick lists, item lookups, active lots. |
 | Sync log | `IndexedDB` | Conflict history for Supervisor review. |
 | Inventory live state, lot status, approvals | ❌ Server only | Must always be authoritative. Never cached for write decisions. |
 
@@ -81,8 +81,8 @@ Keys in `localStorage` are prefixed `wms-` to avoid collisions with any third-pa
 
 | Key | Value | Notes |
 |---|---|---|
-| `wms-withdrawal-draft` | Partial withdrawal request form | Restored on back-navigation within the same tab |
-| `wms-receiving-session` | Active PO id + scanned items buffer | Scoped to the tab running that receiving session |
+| `wms-pick-list-draft` | Partial pick-list generation input (item/quantity selections before commit) | Restored on back-navigation within the same tab; not a persisted withdrawal-request entity — there is none |
+| `wms-receiving-session` | Active WRR id + scanned items buffer | Scoped to the tab running that receiving session |
 | `wms-scan-buffer` | Last N scanned barcodes | Short-lived; consumed on batch confirm |
 
 ### 4.3 Cookies
@@ -121,8 +121,8 @@ Three object stores handle all offline state (implemented via Dexie):
 
 | Field | Type | Notes |
 |---|---|---|
-| id | string (uuid) | Client-generated |
-| action_type | enum | `"scan_confirm"` \| `"lot_create"` \| `"placement_override"` \| `"qi_outcome"` |
+| id | string (uuid) | Client-generated. Doubles as the idempotency key sent to the server (§7) — the server's scan-capture tables use it as a unique constraint/upsert key, so replaying the same outbox entry is a safe no-op rather than requiring a separate idempotency-record lookup. |
+| action_type | enum | `"wrr_scan_capture"` \| `"pick_scan_capture"` — see §5.1. Both are pure observation capture; neither creates a lot, decrements a balance, resolves inspection, or triggers document generation. |
 | payload | object | Full action data — enough for the server to apply it with no additional context |
 | created_at | number (epoch ms) | Client clock — used for ordering only, never trusted as authoritative time |
 | attempts | number | Sync retry count |
@@ -130,11 +130,13 @@ Three object stores handle all offline state (implemented via Dexie):
 
 *Note: The queue also captures local UI state, operation tier, and idempotency keys according to the Command and Policy Contract.*
 
+Lot creation (WRR confirm), putaway/placement confirmation, inspection resolution, and final dispatch are Tier 2 online-only commands the operator submits directly while connected (§5.1). They are never entered into this outbox — only the scan observations that precede them are.
+
 **`offline_cache`** — read-only reference data needed to work offline
 
 | Field | Type | Notes |
 |---|---|---|
-| key | string | e.g. `"picklist:{id}"`, `"sku:{barcode}"`, `"lot:{id}"` |
+| key | string | e.g. `"pick_list:{id}"`, `"item:{barcode}"`, `"lot:{id}"` |
 | value | object | Server snapshot at cache time |
 | cached_at | number (epoch ms) | |
 | ttl_seconds | number | After TTL expires, treat as stale even if still offline — do not make decisions against expired cache |
@@ -153,25 +155,24 @@ Cache is populated proactively when the user loads the Picking or Receiving page
 
 ## 5. Command and policy contract
 
-Offline support is scoped exclusively to the action types that are safe to queue without live server state. Actions that require live `qty_available` checks, approval chain state, or configuration data are disabled offline. The offline capability does not extend to Admin, Supervisor, or Manager roles — their work requires real-time server state and must be done online.
+Offline support is scoped exclusively to pure observation-capture actions that record a physical scan without producing any authoritative inventory outcome themselves. Every action that creates a lot, decrements a balance, resolves inspection, assigns putaway, or triggers document generation is Tier 2 online-only, per `07-incoming-receiving/design.md` §10 (lot creation, putaway confirmation, and inspection resolution are explicitly Tier 2/online-only in v1) and `08-outgoing-withdrawal-and-two-stage-commitment/design.md` §10 (only physical scan *observations* may be Tier 1; final dispatch is Tier 2). The offline capability does not extend to `supervisor`, `administrator`, or `party_user` roles (`02-rbac-roles` §3.1) — only `warehouse_staff` floor scan capture queues offline; everything else requires real-time server state and must be done online.
 
 ### 5.1 Safe vs. unsafe actions offline
 
-**Safe to queue offline (Tier 1):**
+**Safe to queue offline (Tier 1) — capture only, no authoritative outcome:**
 
 | Action | Why it is safe |
 |---|---|
-| Outgoing scan confirmation (Stage 2) | The picklist was already generated and the lot already committed server-side at Stage 1. The offline worker is closing a transaction that is already locked — no live `qty_available` check is needed. |
-| Receiving scan + lot creation | New lots do not conflict with existing ones. The PO reference and SKU exist server-side already. Duplicate scans are detected and flagged on sync, not silently merged. |
-| Placement override during receiving | Non-conflicting write — a location assignment on a lot the current receiving session created. |
-| Quality Inspection outcome | Single-writer per lot in practice. The inspector physically holds the item — no concurrent resolution is possible. |
+| WRR scan capture (`wrr_scan_capture`) | Records that a barcode was scanned against an expected `wrr_item_id` on a WRR already `receiving_in_progress`. It never creates a `lots` row, writes `inventory_transactions`, resolves inspection, or assigns a location — it only increments a locally-cached observation that the server re-validates and applies to `wrr_items.scanned_qty` on sync. The confirm-receipt command that actually creates lots stays the single, online-only, authoritative transaction `07` §8 already defines. |
+| Pick-list scan capture (`pick_scan_capture`) | Records that a lot/location was scanned against an already-committed `pick_list_item_id`. It never decrements `lot_location_balances.qty_remaining`, releases `qty_committed`, or triggers `acknowledgement_receipt` generation — those happen only in the final dispatch command, which stays online-only per `08` §7/§10. |
 
-**Unsafe offline (Tier 2 - disabled offline):**
+**Unsafe offline (Tier 2 — disabled offline):**
 
 | Action | Why it is unsafe |
 |---|---|
-| Withdrawal request submission | The FIFO/FEFO engine runs server-side against live `qty_available`. An offline client cannot know what has been committed since connectivity was lost. |
-| Picklist generation (Stage 1 commitment) | Same reason — commitment requires accurate live `qty_available`. |
+| WRR confirm-receipt (lot creation, inspection resolution, putaway) | Per `07` §8, this is a single locked server transaction that creates `lots`/`lot_location_balances` and posts `inventory_transactions` only after checking current inspection/conformance state. Deferring any part of it risks posting stock that should have been held, or racing a concurrent confirm through the normal online flow. |
+| Pick-list generation (Stage 1 commitment) | The FIFO/FEFO engine and commitment write run server-side against live `qty_available`/`qty_remaining`. An offline client cannot know what has been committed since connectivity was lost. There is no separate withdrawal-request step to distinguish from this — pick-list generation *is* the commitment (`08` §6). |
+| Final dispatch (Stage 2 decrement) | Decrements `lot_location_balances.qty_remaining`, releases `qty_committed`, inserts the immutable `inventory_transaction`, and triggers document generation. Must be an explicit, operator-submitted online action, not something the sync coordinator auto-applies from a queued capture — two devices (or a stale replay after another operator already dispatched through the normal online flow) could otherwise both apply the decrement. |
 | Approval queue actions | Approval decisions must be real-time. A queued approval that syncs hours later against a request that was already rejected is an audit integrity problem. |
 | Any enrollment action | Configuration changes must be deliberate and online. |
 | Analytics and reporting | Data must be current. Stale cached analytics would be actively misleading. |
@@ -225,7 +226,9 @@ Triggered when the connectivity ping succeeds after a period of failure, applica
 2. Lock the outbox (set all "pending" entries to "syncing" atomically)
    — no new entries accepted while sync is in progress
 3. Read all "syncing" entries ordered by created_at ASC
-   — sequence matters: lot_create must sync before scan_confirm on that lot
+   — both Tier 1 action types are independent capture events with no
+     cross-entry ordering dependency of their own; ordering here is for
+     deterministic replay, not to satisfy a dependency between entries
 4. For each entry:
    a. Refresh/validate Auth session
    b. POST to /api/sync with { action_type, payload, client_id, outbox_id, idempotency_key }
@@ -245,14 +248,12 @@ Entries with `attempts >= 3` and `status = "failed"` are not retried automatical
 
 ### 6.4 Server-side sync validation (`/api/sync`)
 
-The sync endpoint applies the same business rules as the live action endpoints. Offline origin does not bypass any validation.
+The sync endpoint applies the same business rules as the live action endpoints. Offline origin does not bypass any validation. Both action types apply only capture-level state (no lot creation, no balance decrement, no document trigger); the corresponding Tier 2 command remains a separate, online-only, operator-submitted step.
 
 | Action type | Server validation on sync |
 |---|---|
-| `scan_confirm` | Verify `withdrawal_line` still exists and `lots.qty_committed >= line.qty`. If yes, apply Stage 2 decrement normally. If the lot was cancelled server-side while the client was offline, return `outcome: "conflict"`. |
-| `lot_create` | Check for duplicate `(po_id, sku_id, location_id)`. If duplicate found, return `outcome: "conflict"` with the existing lot id — do not auto-merge. |
-| `placement_override` | Check that the lot's `status` is still `available`. Apply if so; return `outcome: "conflict"` if status changed. |
-| `qi_outcome` | Check that `lots.status = "under_inspection"`. Apply if so; return `outcome: "conflict"` if status changed. |
+| `wrr_scan_capture` | Verify `wrr_documents.status = 'receiving_in_progress'` (reject with `conflict` if `confirmed`/`cancelled`) and that `wrr_item_id` belongs to that WRR. Re-apply the `07` §6 matcher rules (wrong WRR, wrong item, unknown item, duplicate/over quantity, invalid UOM) against current server state. On accept, increment `wrr_items.scanned_qty` by the captured delta using the outbox entry's `id` as the idempotency/upsert key. On reject, return `outcome: "conflict"` and preserve the scan for supervisor review — the physical scan happened; it is never silently dropped. |
+| `pick_scan_capture` | Verify the target `inventory_commitment_line` is still `active` or `inspection_pending` (per `01`'s `commitmentStatusEnum`) and that the scanned lot/location matches its `lot_location_balance_id`. On accept, record scan evidence only, using the outbox entry's `id` as the idempotency/upsert key — no decrement, no ledger insert, no document trigger. If the commitment was already `released`/`expired`/`cancelled`, or dispatch already completed through another path, return `outcome: "conflict"`, not silent success. |
 
 All sync actions are written to the audit log with `metadata.source = "offline_sync"` and `metadata.client_created_at` from the outbox entry — preserving the original client timestamp alongside the authoritative server timestamp.
 
@@ -274,6 +275,8 @@ Commands sharing an `orderingKey` replay serially. Examples may include a single
 Independent keys may replay concurrently only after the owning feature proves that no cross-command invariant can be violated. The default is conservative serial replay.
 
 The server owns idempotency storage/behavior for business commands. The client key is a deduplication input, not evidence that a command succeeded. Lost responses and repeated submissions must return the original outcome or a safe equivalent.
+
+The mechanism is: the outbox entry's client-generated `id` (§4.5) is the idempotency key, and the server-side scan-capture write uses it directly as a unique constraint/upsert key on the row it writes (e.g. one scan-observation row per outbox `id`), not a separate idempotency-log table consulted before a non-idempotent write. A replayed `wrr_scan_capture`/`pick_scan_capture` with the same `id` therefore resolves to the same row deterministically regardless of how many times it is submitted or how server state changed in between — this must hold even when the underlying WRR/commitment state has since moved to a conflicting status, in which case the write itself (not a separate idempotency check) is what returns `conflict`. `07`'s and `08`'s owning confirm/dispatch commands define their own idempotency mechanism for their own (Tier 2, non-queued) writes; this section governs only the two Tier 1 capture types above.
 
 ## 8. Security, scope, and data lifecycle
 
@@ -301,12 +304,11 @@ The offline package exposes a read-only status model to the shell (e.g., via `Of
 | Page | Online | Offline |
 |---|---|---|
 | Dashboard | ✅ Full | ⚠️ Disabled — shows offline notice |
-| Incoming / Receiving | ✅ Full | ✅ Offline-capable (lot creation + placement queued) |
-| Outgoing / Withdrawal (request form) | ✅ Full | ⚠️ Disabled — requires live qty_available |
-| Outgoing / Withdrawal (scan confirm) | ✅ Full | ✅ Offline-capable (Stage 2 queued) |
+| Incoming / Receiving | ✅ Full | ✅ Scan capture only (`wrr_scan_capture` queued) — lot creation, inspection resolution, and putaway confirmation require connectivity and remain disabled |
+| Outgoing / Master Inventory (pick-list generation) | ✅ Full | ⚠️ Disabled — requires live `qty_available` |
+| Outgoing / Pick execution (dispatch) | ✅ Full | ✅ Scan capture only (`pick_scan_capture` queued) — final dispatch/decrement requires connectivity and remains a separate online step |
 | Inventory | ✅ Full | ⚠️ Read-only from cache (no edits) |
-| Picking | ✅ Full | ✅ Offline-capable (scan confirms queued) |
-| Quality Inspection | ✅ Full | ✅ Offline-capable (outcomes queued) |
+| Quality Inspection | ✅ Full | ⚠️ Disabled — inspection resolution is Tier 2/online-only |
 | Data Analytics | ✅ Full | ⚠️ Disabled — shows offline notice |
 | Chatbot | ✅ Full | ⚠️ Disabled — requires API |
 | Notifications / Alerts | ✅ Full | ⚠️ Read-only from cache |
@@ -314,6 +316,8 @@ The offline package exposes a read-only status model to the shell (e.g., via `Of
 | Enrollment | ✅ Full | ⚠️ Disabled — config changes must be online |
 | Settings | ✅ Full | ⚠️ Disabled — config changes must be online |
 | Sync Conflicts (Alerts feed) | ✅ Full | ⚠️ Read-only from cache |
+
+No page should be described as offline-capable for an action beyond scan capture — a floor worker must never be able to reasonably believe putaway, inspection resolution, or dispatch "worked" while offline when it is, per `07`/`08`, still pending a separate online step.
 
 The shell must never enable Tier 2 actions because `connectivity` is `online`, and must never claim `sync: idle` means all data is current unless the coordinator has authoritative evidence.
 
