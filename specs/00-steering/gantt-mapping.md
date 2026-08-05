@@ -27,37 +27,33 @@ The current Gantt timeline tracks the **Spec Definition Phase** (Drafting Requir
 
 ## Milestone 2 — Classification & Logistics Processing (Weeks 3–4)
 
-| # | Gantt task | Schedule | Overall % | Mapped spec(s) | Spec Status | Implementation Status |
-|---|---|---|---|---|---|---|
-| 2.1 | Product category management | — | 0% | `17-product-categorization...` | **Not Started** | Not Started |
-| 2.2 | Inventory classification logic | — | 0% | `17-product-categorization...` | **Not Started** | Not Started |
-| 2.3 | Barcode/QR integration | — | 0% | Cross-cutting (`01`, `07`, `18`) | **Not Started** | Not Started |
-| 2.4 | Picking list generation | — | 0% | `10-pick-list-and-acknowledgement...`| **Not Started** | Not Started |
-| 2.5 | Picking workflow | — | 0% | `08-outgoing-withdrawal...` | **Not Started** | Not Started |
-| 2.6 | Packing module UI | — | 0% | `18-packing` | **Not Started** | Not Started |
-| 2.7 | Packing confirmation workflow | — | 0% | `18-packing` | **Not Started** | Not Started |
-| 2.8 | Logistics process integration | — | 0% | Cross-cutting | **Not Started** | Not Started |
-| 2.9 | Testing & bug fixes | — | 0% | Governed by `testing.md` | **Process Approved** | Not Started |
-| 2.10 | Milestone 2 Review & Launch | — | 0% | Sign-off gate | **Not Started** | Not Started |
-
----
+| Gantt task | Maps to spec(s) | Status |
+|---|---|---|
+| Product category management | **17-product-categorization-and-classification** (new) | Not yet drafted |
+| Inventory classification logic | **17-product-categorization-and-classification** (new) | Not yet drafted |
+| Barcode/QR integration | Cross-cutting: 01 (`items.barcode_value`), 07 (receiving scan), 18 (packing scan) | Depends on 01, 07 |
+| Picking list generation | 10-pick-list-and-acknowledgement-receipt | Not yet drafted |
+| Picking workflow | 08-outgoing-withdrawal-and-two-stage-commitment (execution step) | Not yet drafted |
+| Packing module UI | **18-packing** (new) | Not yet drafted |
+| Packing confirmation workflow | **18-packing** (new) | Not yet drafted |
+| Logistics process integration | Cross-cutting, not a separate spec | — |
+| Testing & bug fixes | testing.md | — |
+| Milestone 2 Review & Launch | Sign-off gate | — |
 
 ## Milestone 3 — Fulfillment Control & Analytics (Weeks 5–6)
 
-| # | Gantt task | Schedule | Overall % | Mapped spec(s) | Spec Status | Implementation Status |
-|---|---|---|---|---|---|---|
-| 3.1 | Dispatch scheduling module | — | 0% | `19-dispatch-scheduling...` | **Not Started** | Not Started |
-| 3.2 | Dispatch approval workflow | — | 0% | `09-approval-queue`, `19` | **Not Started** | Not Started |
-| 3.3 | Delivery status tracking | — | 0% | `19-dispatch-scheduling...` | **Not Started** | Not Started |
-| 3.4 | Inventory monitoring dashboard | — | 0% | `16-reporting-and-analytics` | **Spec Drafted** | Not Started |
-| 3.5 | Low-stock notifications | — | 0% | `14-notifications-and-alerts` | **Not Started** | Not Started |
-| 3.6 | Inventory movement history | — | 0% | `16-reporting-and-analytics` | **Spec Drafted** | Not Started |
-| 3.7 | Analytics & reporting | — | 0% | `16-reporting-and-analytics` | **Spec Drafted** | Not Started |
-| 3.8 | Dashboard optimization | — | 0% | Cross-cutting (`04`, `05`) | **Not Started** | Not Started |
-| 3.9 | System integration testing | — | 0% | Governed by `testing.md` | **Process Approved** | Not Started |
-| 3.10 | Milestone 3 Review & Launch | — | 0% | Sign-off gate | **Not Started** | Not Started |
-
----
+| Gantt task | Maps to spec(s) | Status |
+|---|---|---|
+| Dispatch scheduling module | **19-dispatch-scheduling-and-delivery-tracking** (new) | Not yet drafted |
+| Dispatch approval workflow | 09-approval-queue + 19 | Not yet drafted |
+| Delivery status tracking | **19-dispatch-scheduling-and-delivery-tracking** (new) | Not yet drafted |
+| Inventory monitoring dashboard | 16-reporting-and-analytics | Not yet drafted |
+| Low-stock notifications | 14-notifications-and-alerts | Not yet drafted |
+| Inventory movement history | 16-reporting-and-analytics (queries the `stock_entries` ledger from 01) | Not yet drafted |
+| Analytics & reporting | 16-reporting-and-analytics | Not yet drafted |
+| Dashboard optimization | Cross-cutting perf, 04/05 | — |
+| System integration testing | testing.md | — |
+| Milestone 3 Review & Launch | Sign-off gate | — |
 
 ## Milestone 4 — Final Handover & Deployment (Weeks 7–8)
 
