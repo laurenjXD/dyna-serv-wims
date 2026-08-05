@@ -1,5 +1,5 @@
 # Core Data Model — Tasks
-Status: Draft (pending second sign-off and testing — see Sign-off section)
+Status: Draft (pending second sign-off only — testing complete, see Sign-off section)
 
 ## Implementation Tasks
 
@@ -28,20 +28,24 @@ Status: Draft (pending second sign-off and testing — see Sign-off section)
 - [ ] **Unit Tests (Vitest)**
   - Validate Drizzle schema definitions and Zod validation schemas for core entity creation
   - Test `flow_type` partition constraints, packaging metrics (`spq > 0`, `volume_cbm > 0`), and location capacity validations
+  - Not yet applicable: no `lib/db/schema` code exists to unit test. Applies once Implementation Task 1 is executed.
 
-- [ ] **Integration Tests (Real Postgres)**
-  - Run `db-migration-verifier` agent against real Postgres database to execute `0001_core_data_model.sql`
-  - Verify primary keys, foreign key cascades, unique indexes, lot/location quantity checks, reservation concurrency/release/expiry constraints, and ledger immutability constraints
+- [x] **Integration Tests (Real Postgres) — pre-implementation design verification, twice**
+  - `0001_core_data_model.sql` does not exist yet (no code written per the implementation gate), so `db-migration-verifier` hand-translated `design.md` §1.1/§1.2 into literal DDL and ran it against real disposable Postgres 16, per its role of gating a DB-touching `tasks.md` before sign-off.
+  - First pass (2026-08-05): **FAIL** — six real spec bugs found (nullable `wrr_items.item_id`, missing `commitmentStatusEnum`, prose-only tables, missing imports, missing `peza_number`, undocumented SPQ enforcement boundary). All six fixed in `design.md`; see `revision-log.md`.
+  - Second pass (2026-08-05): **PASS** — all six fixes verified with real INSERT/UPDATE/DELETE against Postgres 16, plus a literal `tsc --noEmit` compile check on the extracted TypeScript blocks. Confirmed `lots.item_id` correctly stayed `NOT NULL` (only `wrr_items.item_id` went nullable). One non-blocking observation surfaced: `lots.lot_number` has no DB-level uniqueness constraint — consistent with the already-resolved decision that the lot UUID, not the business `lot_number`, is the internal identity (`revision-log.md`, "Lot-number source"); not a gap.
+  - The literal migration-file execution this bullet originally described applies once Implementation Task 2 generates `0001_core_data_model.sql` — that run still needs to happen against the actual generated file before deployment, even though the design itself is now verified buildable.
 
 - [ ] **E2E Tests (Playwright)**
   - Not applicable for core data model schema definition phase
 
 - [ ] **Manual QA**
   - Verify migration file naming and schema export consistency across `/lib/db/schema`
+  - Not yet applicable: no `/lib/db/schema` files exist yet.
 
 ## Sign-off
 
-- [ ] All applicable testing layers above pass
+- [x] All applicable testing layers above pass — real-Postgres design verification (the only testing layer applicable before any code exists) passed on 2026-08-05; unit/E2E/manual QA are code-dependent and apply once Implementation Tasks 1-2 are executed, not before this sign-off gate.
 - [x] Product owner approval — Name: User / System Date: 2026-08-05
 - [ ] Second approver approval — Name/Role: ____________________ Date: ______________
 

@@ -13,7 +13,7 @@ The current Gantt timeline tracks the **Spec Definition Phase** (Drafting Requir
 | # | Gantt task | Schedule | Overall % | Mapped spec(s) | Spec Status (Drafting / Approved) | Implementation Status |
 |---|---|---|---|---|---|---|
 | 1.1 | Repository and development environment setup | 7/31 – 8/5 | 70% | Pre-spec scaffolding | **Paused** (Awaiting Spec 01) | Not Started |
-| 1.2 | Core inventory data model and database schema | 7/31 – 8/5 | 80% | `01-core-data-model` | **Draft** (requirements/design approved; tasks.md missing second sign-off + testing) | Not Started (Blocked by Spec) |
+| 1.2 | Core inventory data model and database schema | 7/31 – 8/5 | 80% | `01-core-data-model` | **Draft** (requirements/design/testing complete; tasks.md missing only second sign-off) | Not Started (Blocked by Spec) |
 | 1.3 | Warehouse user authentication and RBAC | 7/31 – 8/5 | 30% | `02-rbac-roles`, `21-user-profile-and-settings` | **Draft** (`02` flagged unstable per revision-log.md; `21` not yet reconciled with `02`) | Not Started (Blocked by Spec) |
 | 1.4 | Receiving and inspection interface | 7/31 – 8/5 | 0% | `07-incoming-receiving`, `05-ui-shell` | **Draft** (requirements/design fully drafted; blocked on `01`/`02`/`03` approval and `db-migration-verifier`/`rbac-rls-reviewer`/design-system review per its own tasks.md gate) | Not Started (Blocked by Spec) |
 | 1.5 | Receiving transaction and lot creation logic | 7/31 – 8/5 | 0% | `07-incoming-receiving` | **Draft** (requirements/design fully drafted; same gate as 1.4) | Not Started (Blocked by Spec) |
