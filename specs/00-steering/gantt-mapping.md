@@ -55,9 +55,9 @@ This sits above the spec folders, not inside them. Specs stay feature-level (`re
 | Gantt task | Maps to spec(s) | Status |
 |---|---|---|
 | Full system integration, E2E testing, bug fixing | testing.md, cross-cutting | — |
-| User Acceptance Testing (UAT) | **20-documentation-training-and-uat** (new) | Not yet drafted |
-| Documentation prep, user manual | **20-documentation-training-and-uat** (new) | Not yet drafted |
-| Administrator training | **20-documentation-training-and-uat** (new) | Not yet drafted |
+| User Acceptance Testing (UAT) | **20-documentation-training-and-uat** | Drafted |
+| Documentation prep, user manual | **20-documentation-training-and-uat** | Drafted |
+| Administrator training | **20-documentation-training-and-uat** | Drafted |
 | Production deployment | 04-services-and-infrastructure (Option A already locked, see tech.md) | Drafted — provider plans/regions, recovery targets, and operational owners pending approval |
 | Final client validation, handover | Project closure, not a spec | — |
 
