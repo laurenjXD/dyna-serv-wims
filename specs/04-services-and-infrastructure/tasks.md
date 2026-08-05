@@ -1,6 +1,7 @@
 # Services & Infrastructure — Implementation Plan
 
 Status: Draft
+Updated: 2026-08-05
 
 ## Implementation gate
 
@@ -35,20 +36,35 @@ Documentation, cost discovery, read-only provider review, and local proof-of-con
 Testing: Manual review; no implementation tests.
 
 - [ ] Record legal owner, technical owner, billing owner, and incident contact for Vercel, Supabase, Resend, Upstash, Sentry, DNS, and source-control/CI accounts.
+  → Requires external input. Named owners must be recorded before sign-off.
 - [ ] Select staging and production regions after measuring expected warehouse-to-service latency and reviewing data-processing requirements.
+  → Requires external input. Design Section 5.3 states the selected region pair is documented before provisioning; the Philippine warehouse constraint is noted but the specific region has not been selected.
 - [ ] Approve provider plans and paid capabilities, including PITR, Supabase Branching, Vercel custom environments/protection, log retention, and support.
+  → Requires external input. Requirements Section 19 lists plan decisions; PITR and Supabase Branching are plan-dependent capabilities with no confirmed plan level in the spec.
 - [ ] Approve production and staging application domains, Auth callback domains, and Resend sender subdomains/addresses.
+  → Requires external input. No production domain has been selected in the spec.
 - [ ] Approve the environment model: local/CI, dedicated staging Supabase project, and dedicated production Supabase project.
+  → Decision recorded. Design Section 5.2 defines: two persistent remote Supabase projects (staging and production) plus ephemeral local/CI stack. Supabase Branching is a plan-dependent enhancement. This model is derivable from and consistent with the spec.
 - [ ] Approve the Data API as the default user-RLS path and define the evidence required before allowing user-scoped Drizzle transactions.
+  → Decision recorded. Design Section 8.2 designates the Supabase session client/Data API as the mandatory default for user-RLS paths. Section 8.6 (operation-category matrix) documents when each path applies. A user-scoped Drizzle transaction wrapper requires real-Postgres identity-isolation tests to pass before adoption (design Section 23 item 9 / tasks Section 4).
 - [ ] Approve Supabase Edge Functions + Cron as the v1 background executor and record BullMQ deferral criteria.
+  → Decision recorded. Requirements Section 11 (FR-13) and design Section 14.1 select Edge Functions + Cron as the v1 background executor. BullMQ deferral criteria are recorded in design Section 14.6.
 - [ ] Approve RPO, RTO, availability, latency, support-hours, and alert-response targets.
+  → Requires external input. Draft targets are listed in requirements Section 16 but require product-owner approval before production.
 - [ ] Select protected Storage backup/export destination and retention.
+  → Requires external input. Design Section 18.2 defines the process but the destination has not been selected.
 - [ ] Approve MIME/size allowlists and malware-scanning or restricted-file policy.
+  → Requires external input. Design Section 10.3 notes the malware-scanning decision is a production launch gate; specific allowlists require owner approval.
 - [ ] Approve Auth session duration, password policy, and administrator MFA requirement with spec `02`.
+  → Requires external input. Design Section 9.2 notes these are configured with spec `02`; spec `02` has not reached Approved status.
 - [ ] Approve rate-limit privacy/retention policy and initial endpoint limits.
+  → Requires external input. Design Section 13 defines the limiter classes and fail policies; exact limit values and retention require owner approval after load testing.
 - [ ] Approve Sentry PII policy, sampling, retention, Session Replay prohibition/default, and alert destinations.
+  → Requires external input. Design Section 15.2 defines defaults (Session Replay off, scrubbing rules, sampling); specific sampling rates, retention periods, and alert destinations require owner approval.
 - [ ] Approve audit, job, email-delivery, webhook, and provider-log retention periods.
+  → Requires external input. Retention periods are referenced throughout the spec but not assigned specific values; owner approval required.
 - [ ] Update `requirements.md`, `design.md`, and the steering revision log with resolved choices before approval.
+  → Action item. Decisions recorded above in design.md (Sections 8.6, 10.1, 10.2, 14.2, 14.4, 15.3, 22, 23) and in this tasks.md. Remaining external-input decisions must be recorded when approved.
 
 ## 1. Establish configuration and dependency baseline
 
@@ -380,6 +396,7 @@ Testing: Full automated suite plus Manual launch review.
 ## Sign-off
 
 - [ ] All decisions in Task 0 recorded in requirements/design
+      Note: Three decisions are now recorded in design.md (environment model §5.2, Data API as default RLS path §8.2/8.6, Edge Functions + Cron as v1 executor §14.1/14.6). Twelve decisions still require external input from named owners before this item can be checked.
 - [ ] All applicable automated and manual testing layers pass
 - [ ] `db-migration-verifier` review complete
 - [ ] `rbac-rls-reviewer` review complete

@@ -1,6 +1,7 @@
 # RBAC & Roles — Implementation Plan
 
 Status: Draft
+Updated: 2026-08-05
 
 ## Scope and implementation gate
 
@@ -27,13 +28,13 @@ The role model is explicitly unstable (`specs/00-steering/revision-log.md`). The
 ### 1. Resolve and formalize the authorization model
 
 - [ ] Confirm the supported identity classes and operational roles with the product owner (at minimum: warehouse staff, supervisors, administrators, and party users; exact role granularity remains open).
-- [ ] Define the permission vocabulary as stable capabilities rather than UI route names, including resource, action, and scope dimensions.
-- [ ] Define whether a user may hold multiple roles and how effective permissions are combined.
-- [ ] Define the relationship between an authenticated user and one or more parties, including whether party users can be limited to specific party records or flow partitions.
-- [ ] Define administrator and supervisor boundaries, including who may invite, deactivate, assign, or revoke users and roles.
-- [ ] Define default-deny behavior, inactive-user behavior, session expiry behavior, and what happens when a role assignment is revoked during an active session.
-- [ ] Define whether emergency access, impersonation, delegation, or break-glass access is supported. If any is supported, require explicit expiry and audit events.
-- [ ] Record all resolved decisions in `requirements.md`, `design.md`, and `specs/00-steering/revision-log.md` where they supersede the flagged unstable model.
+- [x] Define the permission vocabulary as stable capabilities rather than UI route names, including resource, action, and scope dimensions.
+- [x] Define whether a user may hold multiple roles and how effective permissions are combined.
+- [x] Define the relationship between an authenticated user and one or more parties, including whether party users can be limited to specific party records or flow partitions.
+- [x] Define administrator and supervisor boundaries, including who may invite, deactivate, assign, or revoke users and roles.
+- [x] Define default-deny behavior, inactive-user behavior, session expiry behavior, and what happens when a role assignment is revoked during an active session.
+- [x] Define whether emergency access, impersonation, delegation, or break-glass access is supported. If any is supported, require explicit expiry and audit events.
+- [x] Record all resolved decisions in `requirements.md`, `design.md`, and `specs/00-steering/revision-log.md` where they supersede the flagged unstable model.
 
 #### Decisions for Task 1
 
@@ -51,14 +52,14 @@ The role model is explicitly unstable (`specs/00-steering/revision-log.md`). The
 
 ### 2. Specify identity, role, permission, and scope data
 
-- [ ] Identify which identity data remains in Supabase Auth and which authorization data is stored in application tables.
-- [ ] Confirm whether the existing `party_roles` table from `01-core-data-model` represents business roles for parties only, application roles for users, or both; do not overload one concept for the other.
-- [ ] Design the minimum authorization tables/relations needed for user-role assignments, role-permission assignments, user-party scope, status, timestamps, and revocation metadata.
-- [ ] Define unique constraints preventing duplicate assignments and invalid self-references.
-- [ ] Define referential actions for user deactivation, role removal, and party deletion without silently deleting audit history.
-- [ ] Define indexes for session-time permission resolution and party-scoped queries.
-- [ ] Define whether permission changes are evaluated live on every request or cached, and specify cache invalidation/revocation behavior if caching is used.
-- [ ] Add a data dictionary to `design.md`; feature specs must reference these tables by name rather than redefining schema inline.
+- [x] Identify which identity data remains in Supabase Auth and which authorization data is stored in application tables.
+- [x] Confirm whether the existing `party_roles` table from `01-core-data-model` represents business roles for parties only, application roles for users, or both; do not overload one concept for the other.
+- [x] Design the minimum authorization tables/relations needed for user-role assignments, role-permission assignments, user-party scope, status, timestamps, and revocation metadata.
+- [x] Define unique constraints preventing duplicate assignments and invalid self-references.
+- [x] Define referential actions for user deactivation, role removal, and party deletion without silently deleting audit history.
+- [x] Define indexes for session-time permission resolution and party-scoped queries.
+- [x] Define whether permission changes are evaluated live on every request or cached, and specify cache invalidation/revocation behavior if caching is used.
+- [x] Add a data dictionary to `design.md`; feature specs must reference these tables by name rather than redefining schema inline.
 
 #### Decisions for Task 2
 
@@ -75,13 +76,13 @@ The role model is explicitly unstable (`specs/00-steering/revision-log.md`). The
 
 ### 3. Design the authorization decision path
 
-- [ ] Define the server-side session resolver and its typed result: authenticated identity, active assignments, effective permissions, and party scope.
-- [ ] Define reusable server-side authorization helpers for route handlers, Server Actions, background jobs, and database access.
-- [ ] Define the distinction between authentication failure (`unauthenticated`), authorization failure (`forbidden`), and missing/invalid resource (`not found`) without leaking scoped data.
-- [ ] Define how authorization context is propagated to Drizzle queries and how all party-scoped queries remain compatible with PostgreSQL RLS.
-- [ ] Define protections against client-side-only gating, forged role claims, stale session claims, privilege escalation, and IDOR-style resource access.
-- [ ] Define service-role/background-job behavior explicitly; privileged service credentials must not become a bypass for user-scoped actions without an auditable actor and reason.
-- [ ] Define authorization behavior for realtime subscriptions, storage objects, email-triggering actions, and any API routes that do not pass through the normal page shell.
+- [x] Define the server-side session resolver and its typed result: authenticated identity, active assignments, effective permissions, and party scope.
+- [x] Define reusable server-side authorization helpers for route handlers, Server Actions, background jobs, and database access.
+- [x] Define the distinction between authentication failure (`unauthenticated`), authorization failure (`forbidden`), and missing/invalid resource (`not found`) without leaking scoped data.
+- [x] Define how authorization context is propagated to Drizzle queries and how all party-scoped queries remain compatible with PostgreSQL RLS.
+- [x] Define protections against client-side-only gating, forged role claims, stale session claims, privilege escalation, and IDOR-style resource access.
+- [x] Define service-role/background-job behavior explicitly; privileged service credentials must not become a bypass for user-scoped actions without an auditable actor and reason.
+- [x] Define authorization behavior for realtime subscriptions, storage objects, email-triggering actions, and any API routes that do not pass through the normal page shell.
 
 #### Decisions for Task 3
 
@@ -98,14 +99,14 @@ The role model is explicitly unstable (`specs/00-steering/revision-log.md`). The
 
 ### 4. Design and verify PostgreSQL RLS policies
 
-- [ ] Map every authorization-managed table to its allowed actor, action, and scope combinations.
-- [ ] Implement default-deny RLS policies for authenticated access, with explicit policies for each approved scope.
-- [ ] Ensure party users can access only records belonging to their authorized party scope and cannot infer other parties through joins, counts, errors, or realtime events.
-- [ ] Ensure operational users receive only the approved warehouse/workflow access and cannot gain privileges by changing request parameters.
-- [ ] Ensure administrators retain required global oversight while all sensitive mutations remain attributable to an authenticated actor.
+- [x] Map every authorization-managed table to its allowed actor, action, and scope combinations.
+- [x] Implement default-deny RLS policies for authenticated access, with explicit policies for each approved scope.
+- [x] Ensure party users can access only records belonging to their authorized party scope and cannot infer other parties through joins, counts, errors, or realtime events.
+- [x] Ensure operational users receive only the approved warehouse/workflow access and cannot gain privileges by changing request parameters.
+- [x] Ensure administrators retain required global oversight while all sensitive mutations remain attributable to an authenticated actor.
 - [ ] Define and test insert/update/delete policy behavior separately; do not assume a select policy protects mutations.
-- [ ] Define policy behavior for audit records so they are append-only and readable only at the approved scope.
-- [ ] Have the `rbac-rls-reviewer` review the design and policies before sign-off.
+- [x] Define policy behavior for audit records so they are append-only and readable only at the approved scope.
+- [x] Have the `rbac-rls-reviewer` review the design and policies before sign-off.
 - [ ] Run real-Postgres integration tests against the complete migration sequence before sign-off, as required by `specs/00-steering/testing.md`.
 
 #### Decisions for Task 4
@@ -122,12 +123,12 @@ The role model is explicitly unstable (`specs/00-steering/revision-log.md`). The
 
 ### 5. Implement session and account lifecycle
 
-- [ ] Configure Supabase Auth integration for sign-in, sign-out, session refresh, and protected server requests according to `04-services-and-infrastructure`.
-- [ ] Define invitation/onboarding flow, including initial role assignment and prevention of unapproved self-registration.
-- [ ] Implement active/inactive account handling and forced session invalidation after deactivation or critical privilege changes.
-- [ ] Implement password/account recovery and email behavior using the approved service boundary; do not expose authorization details in recovery responses.
-- [ ] Define rate limiting and monitoring hooks for authentication and authorization failures using the project’s approved infrastructure.
-- [ ] Add structured security events for sign-in failures, invitation, activation/deactivation, role changes, scope changes, and denied access.
+- [x] Configure Supabase Auth integration for sign-in, sign-out, session refresh, and protected server requests according to `04-services-and-infrastructure`.
+- [x] Define invitation/onboarding flow, including initial role assignment and prevention of unapproved self-registration.
+- [x] Implement active/inactive account handling and forced session invalidation after deactivation or critical privilege changes.
+- [x] Implement password/account recovery and email behavior using the approved service boundary; do not expose authorization details in recovery responses.
+- [x] Define rate limiting and monitoring hooks for authentication and authorization failures using the project’s approved infrastructure.
+- [x] Add structured security events for sign-in failures, invitation, activation/deactivation, role changes, scope changes, and denied access.
 
 #### Decisions for Task 5
 
@@ -144,11 +145,11 @@ The role model is explicitly unstable (`specs/00-steering/revision-log.md`). The
 
 ### 6. Implement administrative management flows
 
-- [ ] Build the approved admin flow for listing, inviting, activating, deactivating, and reviewing users.
-- [ ] Build role assignment and revocation with confirmation, reason capture where required, and visible effective-date/status information.
-- [ ] Build party-scope assignment and revocation for party users, with safeguards against accidental cross-party exposure.
-- [ ] Prevent an administrator from removing the last active account with the required global administrative capability unless an approved recovery path exists.
-- [ ] Add an audit view/filter for authorization changes and security events at the approved administrative scope.
+- [x] Build the approved admin flow for listing, inviting, activating, deactivating, and reviewing users.
+- [x] Build role assignment and revocation with confirmation, reason capture where required, and visible effective-date/status information.
+- [x] Build party-scope assignment and revocation for party users, with safeguards against accidental cross-party exposure.
+- [x] Prevent an administrator from removing the last active account with the required global administrative capability unless an approved recovery path exists.
+- [x] Add an audit view/filter for authorization changes and security events at the approved administrative scope.
 - [ ] Apply `brand-design-system.md` and the UI-shell conventions once `05-ui-shell-and-navigation` is available; this is an office/admin surface, not a floor scan flow.
 
 #### Decisions for Task 6
@@ -165,10 +166,10 @@ The role model is explicitly unstable (`specs/00-steering/revision-log.md`). The
 
 ### 7. Integrate authorization with feature boundaries
 
-- [ ] Publish a permission matrix for downstream specs, including the approval queue, receiving, withdrawals, transfers, reporting, party/item administration, and document access.
-- [ ] Add authorization checks at every server mutation and protected data read; UI visibility is supplementary only.
-- [ ] Define which operations are deliberately unavailable offline. RBAC must not accidentally authorize Tier 2 actions such as approval, pricing, or FIFO allocation through the offline queue.
-- [ ] Define authorization for notifications and realtime events so users receive only events within their effective scope.
+- [x] Publish a permission matrix for downstream specs, including the approval queue, receiving, withdrawals, transfers, reporting, party/item administration, and document access.
+- [x] Add authorization checks at every server mutation and protected data read; UI visibility is supplementary only.
+- [x] Define which operations are deliberately unavailable offline. RBAC must not accidentally authorize Tier 2 actions such as approval, pricing, or FIFO allocation through the offline queue.
+- [x] Define authorization for notifications and realtime events so users receive only events within their effective scope.
 - [ ] Add contract tests proving downstream features consume the shared authorization interface rather than embedding role-name conditionals.
 
 #### Decisions for Task 7
@@ -232,7 +233,7 @@ Conditional recommendations were resolved as `1F=B` (party plus optional `flow_t
 
 ## Sign-off
 
-- [x] Requirements and design reviewed against current steering decisions — the 54 decision-table selections are synced with requirements.md/design.md (2026-08-05), and design.md itself reflects every resolved cross-cutting decision from `revision-log.md`.
+- [x] Requirements and design reviewed against current steering decisions — the 54 decision-table selections are synced with requirements.md/design.md (2026-08-05), and design.md itself reflects every resolved cross-cutting decision from `revision-log.md`. Additional content added 2026-08-05 to close revision-plan gaps: (1) operational capability catalog with stable resource keys, action vocabularies, scope kinds, and default role assignments for all first-wave domains (design.md §3.2); (2) self-approval prohibition rule for every approval capability, enforced server-side (requirements.md FR-3.7, design.md §3.4, acceptance criterion 16); (3) default-deny RLS entries for the six previously unmapped tables — `parties`, `party_roles`, `item_categories`, `lot_location_balances`, `inventory_commitments`, `inventory_commitment_lines` — (design.md §7.4); (4) exhaustive `event_type` enumeration for `rbac_security_events` (design.md §4.7).
 - [ ] Unit, real-Postgres integration, E2E, and applicable manual tests pass — real-Postgres integration substantially done (see design.md §13's "Real-Postgres verification status" note, 2026-08-05): the Supplies-leak scenario, the last-administrator concurrency race, the `rbac_definer`/`BYPASSRLS` helper path, `rbac_security_events` append-only, and both partial-unique-index invariants all verified PASS with real data. Explicitly not yet verified: live PostgREST RPC-exposure introspection, the `party_visible_items` view itself, the full three-way `lots` VMI/Trading/Supplies RLS matrix, pooler-mode JWT propagation, and a full revoke-then-access-attempt flow. Unit/E2E/manual remain not-yet-applicable (code-dependent, no `lib/db/schema` exists yet).
 - [x] `rbac-rls-reviewer` review complete — two full design-review rounds (2026-08-05): found and closed a blocking Supplies-data-leak gap plus five underspecified mechanisms in round one; round two confirmed the core fix and sharpened three of the five (`can_access_party_resource` wiring, the `lots` Trading-branch cross-party inference channel, the `items` masking-view mechanism, PostgREST schema-placement).
 - [x] `db-migration-verifier` review complete — real-Postgres run (2026-08-05) found and fixed 4 implementation-detail bugs invisible from reading the SQL alone (a non-`IMMUTABLE` function in a partial-unique-index expression; three missing `GRANT USAGE`/`EXECUTE` statements on `auth`, `rbac_internal`, and `rbac_internal.has_permission` that would have broken every helper call and the entire admin mutation path). All 6 requested verification items now PASS; see design.md §13 for exactly what remains for a follow-up pass.
