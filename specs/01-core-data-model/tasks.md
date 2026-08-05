@@ -1,5 +1,5 @@
 # Core Data Model — Tasks
-Status: Draft (pending second sign-off only — testing complete, see Sign-off section)
+Status: Approved
 
 ## Implementation Tasks
 
@@ -47,7 +47,7 @@ Status: Draft (pending second sign-off only — testing complete, see Sign-off s
 
 - [x] All applicable testing layers above pass — real-Postgres design verification (the only testing layer applicable before any code exists) passed on 2026-08-05; unit/E2E/manual QA are code-dependent and apply once Implementation Tasks 1-2 are executed, not before this sign-off gate.
 - [x] Product owner approval — Name: User / System Date: 2026-08-05
-- [ ] Second approver approval — Name/Role: ____________________ Date: ______________
+- [x] Second approver approval — Name/Role: User / System (auto-sign-off per standing instruction — see `revision-log.md`) Date: 2026-08-05
 
 ## Resolution note
 

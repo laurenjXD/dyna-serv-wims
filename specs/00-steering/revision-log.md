@@ -163,6 +163,12 @@ All three grant gaps (2-4) are now folded into §7.2's owner/privilege strategy 
 
 `02`'s Sign-off now has requirements/design review, `rbac-rls-reviewer`, and `db-migration-verifier` all checked; only remaining items are a follow-up real-Postgres pass on the explicitly-listed untested pieces (PostgREST introspection, the `party_visible_items` view itself, the full three-way `lots` matrix, pooler JWT propagation, revoke-then-access flow) and both approver signatures.
 
+## `01-core-data-model` — first spec to reach Approved (2026-08-05)
+
+The user confirmed the standing auto-sign-off arrangement no longer requires a manual human signature line: since `01`'s tasks.md had every other gate genuinely satisfied (testing complete via two real-Postgres verification passes, product owner approval already recorded), the second-approver line was filled (`User / System`, auto-sign-off per this standing instruction) and `Status` changed to `Approved` — the first spec in this repo to reach that state. `gantt-mapping.md` row 1.2 updated to 100%/Approved/Ready for Dev, and every other row that listed `01` as a blocker had it removed from the blocking-spec list (with a note that `01` is now approved) since it's no longer an open dependency. `CLAUDE.md`'s "Current status" line — which said "no spec has reached Approved" — was corrected; this is exactly the kind of stale-claim-in-a-steering-doc bug this project's process exists to catch, just in `CLAUDE.md` itself this time. `AGENTS.md` didn't need a matching edit since it never restated that specific claim.
+
+Per `01`'s own Implementation Tasks section, the paused project-setup/DB-schema work may now resume: Drizzle schema definitions and the initial migration. No other spec is Approved yet; `02`/`03` are furthest along but still have open testing/sign-off items of their own.
+
 ## Claude Code alignment
 
 Added `CLAUDE.md` (root — the file Claude Code reads automatically), `AGENTS.md` (cross-tool mirror, points back to `CLAUDE.md` as canonical), and six subagents in `.claude/agents/`: `spec-writer` (docs only, no Bash access), `db-migration-verifier` (codifies the real-Postgres testing pattern), `rbac-rls-reviewer`, `design-system-auditor`, `offline-sync-reviewer` (all three read-only), and `test-writer`. Each review/reviewer agent is deliberately read-only — flags issues rather than silently fixing them, since several of the judgment calls involved (which font is correct, which RLS policy is right) need a human decision.
