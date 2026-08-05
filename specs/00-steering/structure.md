@@ -31,7 +31,7 @@ Status: Approved
 | `forex_rate` | Daily USD-to-PHP currency exchange rate for inventory valuation | exchange_rate, conversion_rate |
 | `cycle_count` | Scheduled physical inventory audit of location stock | stocktake, physical_count |
 | `inventory_reconciliation` | Adjustment record resolving variance between physical count and system records | stock_adjustment, stock_writeoff |
-| `vendor_lot_number` | Vendor's assigned lot or batch number | shipping_lot, batch_number |
+| `lot_number` | Business lot number sourced from the WRR and copied to the confirmed lot | vendor_lot_number, shipping_lot, batch_number |
 | `item_code` | Primary identifier or SKU for an item | sku, part_number |
 | `ar_reference_no` | Acknowledgement Receipt reference number (for outbound ledgers) | ar_no, out_ref |
 | `dr_reference` | Delivery Receipt reference number (for dispatch/shipping) | delivery_no, shipment_ref |

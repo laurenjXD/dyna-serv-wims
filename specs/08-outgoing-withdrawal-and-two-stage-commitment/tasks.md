@@ -34,7 +34,7 @@ No withdrawal route, allocation engine integration, reservation/commitment mutat
 Testing: Documentation/schema review; no implementation tests.
 
 - [ ] Reconcile request, pick-list, pick-list-item, reservation/commitment, executed-quantity, and receipt-link fields/statuses with approved `01` and `10`.
-- [ ] Decide whether reservation data belongs on pick-list rows/lots or in a dedicated commitment relation; define uniqueness/concurrency/release constraints.
+- [x] Reservation data belongs in the dedicated core `inventory_commitments` / `inventory_commitment_lines` relation; define and verify uniqueness, concurrency, expiry, release, and execution constraints there.
 - [ ] Define request-to-pick-list ownership and whether a separate request table is required or a feature-level draft structure suffices.
 - [ ] Resolve partial pick, shortage, damage, cancellation, expiry, reversal, and reallocation behavior before implementation.
 - [ ] Confirm whether `transfer` rows belong in this Outgoing Ledger or in `11`/a separate transfer ledger query.

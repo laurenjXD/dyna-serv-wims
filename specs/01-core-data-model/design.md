@@ -102,6 +102,71 @@ export const partyRoles = pgTable("party_roles", {
 });
 ```
 
+#### `lot_location_balances` (`lib/db/schema/lot_location_balances.ts`)
+
+`lots` is the identity and lifecycle record for a received physical lot.
+Physical quantity is held in this child table because one lot may be split
+across multiple locations. This is the authoritative placement and quantity
+model; there is no `stock_levels` or other aggregate inventory ledger.
+
+```text
+lot_location_balances
+  id, lot_id, location_id,
+  qty_received, qty_remaining, qty_committed,
+  version, created_at, updated_at
+
+Constraints:
+  unique (lot_id, location_id)
+  qty_received >= 0
+  qty_remaining >= 0
+  0 <= qty_committed <= qty_remaining
+```
+
+The database exposes an aggregate read model named `lot_inventory_totals`,
+grouped by `lot_id`:
+
+```text
+qty_received  = SUM(lot_location_balances.qty_received)
+qty_remaining = SUM(lot_location_balances.qty_remaining)
+qty_committed = SUM(lot_location_balances.qty_committed)
+qty_available = qty_remaining - qty_committed
+```
+
+`qty_available` is derived and never stored. FIFO/FEFO allocation joins this
+read model to `lots`, uses `lots.status = 'available'` as its sole eligibility
+gate, and allocates against individual `lot_location_balances` rows.
+
+#### `inventory_commitments` & `inventory_commitment_lines`
+
+These tables are the durable reservation relation for Stage 1 outbound
+commitment. Quantity fields on `lot_location_balances` are maintained in the
+same transaction as these rows; the commitment lines provide ownership,
+release, execution, expiry, and audit linkage rather than acting as a second
+inventory ledger.
+
+```text
+inventory_commitments
+  id, commitment_number, pick_list_id, status,
+  expires_at, created_by_user_id, released_at, completed_at,
+  created_at, updated_at
+
+inventory_commitment_lines
+  id, commitment_id, pick_list_item_id,
+  lot_location_balance_id, qty_committed, qty_executed,
+  status, created_at, updated_at
+```
+
+Required constraints include unique `pick_list_id`, positive committed
+quantities, executed quantity not exceeding committed quantity, active
+commitment quantity not exceeding the selected balance's `qty_remaining`, and
+idempotent release/expiry/dispatch transitions. Stage 1 and Stage 2
+operations lock or version-check the affected balance and commitment rows.
+
+The commitment and pick-list snapshot are created atomically. `pick_list_items`
+remains the operational document snapshot, while
+`inventory_commitment_lines` remains the authoritative reservation ownership
+record.
+
 #### `item_categories` & `items` (`lib/db/schema/items.ts`)
 ```typescript
 import { pgTable, uuid, varchar, text, integer, decimal, boolean, timestamp } from "drizzle-orm/pg-core";
@@ -176,8 +241,8 @@ import { parties } from "./parties";
 
 export const lots = pgTable("lots", {
   id: uuid("id").primaryKey().defaultRandom(),
-  lotNumber: varchar("lot_number", { length: 100 }).notNull().unique(), // System-generated lot code
-  vendorLotNumber: varchar("vendor_lot_number", { length: 100 }), // Vendor/Supplier pallet lot code
+  lotNumber: varchar("lot_number", { length: 100 }).notNull(), // Business lot number copied from the WRR item
+  wrrItemId: uuid("wrr_item_id").references(() => wrrItems.id).notNull(), // Source WRR line
   itemId: uuid("item_id").references(() => items.id).notNull(),
   flowType: flowTypeEnum("flow_type").notNull(), // 'vmi' | 'trading' | 'supplies'
   ownerPartyId: uuid("owner_party_id").references(() => parties.id), // Required for VMI, optional for Trading/Supplies
@@ -222,7 +287,7 @@ export const wrrItems = pgTable("wrr_items", {
   itemId: uuid("item_id").references(() => items.id).notNull(),
   itemCode: varchar("item_code", { length: 100 }), // Supplier Part Number from CIPL
   customerItemCode: varchar("customer_item_code", { length: 100 }), // Customer Part Number from CIPL
-  vendorLotNumber: varchar("vendor_lot_number", { length: 100 }),
+  lotNumber: varchar("lot_number", { length: 100 }).notNull(), // Source business lot number from the WRR
   expectedQty: integer("expected_qty").notNull(),
   scannedQty: integer("scanned_qty").default(0).notNull(),
   unitCbm: decimal("unit_cbm", { precision: 10, scale: 4 }).notNull(),
@@ -436,10 +501,10 @@ erDiagram
    - **Stage 1 (Inventory Page Picking & Pick List Generation)**: The standalone picking page is removed. Picking is initiated directly from the Master Inventory page.
      - **Lot Selection & FIFO Enforcement**: When an item is selected for picking, a dropdown of its available lot numbers is displayed, strictly enforcing the FIFO rule even if the lots are dispersed across different physical locations.
      - **FIFO Override & Approval Queue**: If staff need to bypass the FIFO sequence (e.g., picking a newer lot because the oldest is physically inaccessible), they must submit a **FIFO Override Request**. The system blocks pick list generation until the request is approved by a manager via the Approval Queue.
-     - **Commitment**: Once lots are selected (and approved if overridden), the final `pick_list` is generated. The system logs the allocated quantity as **Committed Quantity** (`committed_qty`), reserving the stock to prevent double-allocation while the physical inventory balance remains un-decremented.
+     - **Commitment**: Once lots are selected (and approved if overridden), the final `pick_list` and `inventory_commitments` are created atomically. The selected `lot_location_balances.qty_committed` values increase, reserving stock to prevent double-allocation while `qty_remaining` remains unchanged.
    - **Stage 2 (Dispatch Barcode Scan Confirmation)**: Stock physically moves to `dispatch`. Once floor staff scan the barcode at outgoing/dispatch:
      - Physical inventory balance is officially **decremented** (`lots` balance decreased).
-     - Reserved **committed quantity** is released (`committed_qty` cleared).
+     - Reserved **committed quantity** is released from the selected balance rows and the commitment lines are marked executed/released.
      - Immutable `inventory_transaction` is recorded (`movement_type = 'pick'`).
      - Priced **`acknowledgement_receipt`** is generated for signature.
 

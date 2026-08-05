@@ -41,7 +41,7 @@ The final enum and transition constraints must be reconciled with `01-core-data-
 
 1. An authorized back-office user SHALL be able to create a WRR from an external CIPL/packing-list reference.
 2. The WRR SHALL capture the approved header references, including WRR number, CIPL reference/attachment where provided, invoice reference, import/PEZA references where applicable, source party, and `flow_type`.
-3. Each expected line SHALL identify an approved `item`, expected quantity, UOM, unit CBM/reference packaging data, and any vendor lot/item cross-reference required for reconciliation.
+3. Each expected line SHALL identify an approved `item`, required WRR `lot_number`, expected quantity, UOM, and unit CBM/reference packaging data required for reconciliation.
 4. A staged WRR SHALL not increment active inventory, create available lots, or write a `receiving` inventory transaction.
 5. The system SHALL validate that referenced parties/items are active and authorized for the operation, while unknown items follow the exception path in R4.
 6. The system SHALL support editing staged lines before physical receiving begins, subject to audit/version rules.
@@ -105,7 +105,7 @@ The final enum and transition constraints must be reconciled with `01-core-data-
 ### R8. Incoming ledger and review
 
 1. The Incoming Ledger SHALL be a filtered view of the authoritative `inventory_transactions` ledger, not a duplicate receipt ledger.
-2. It SHALL support receiving and putaway movements and show date/time, item code, description, lot/vendor lot where authorized, quantity/UOM, WRR reference, source party, flow type, and performing user.
+2. It SHALL support receiving and putaway movements and show date/time, item code, description, canonical `lot_number` where authorized, quantity/UOM, WRR reference, source party, flow type, and performing user.
 3. It SHALL support date range, party, flow, item/code, and WRR/CIPL reference filters according to the caller's capability/scope.
 4. A row/detail view MAY show locations, conformance, discrepancies, and related WRR references only when the caller is authorized to see them.
 5. The ledger SHALL be read-only; corrections create approved new records/transactions and do not edit or delete immutable history.

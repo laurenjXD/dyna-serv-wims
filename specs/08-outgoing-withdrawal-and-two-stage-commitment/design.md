@@ -29,12 +29,18 @@ Depends on:
 | `parties` | Resolve destination/customer/requesting party. | Master data owned by `06`; scope enforced by RBAC/RLS. |
 | `items` | Resolve item, barcode, UOM, SPQ, roll/meter, and packaging data. | Master data owned by `06`. |
 | `locations` | Resolve source/pick/dispatch locations. | Location master owned by its owning feature/core design. |
-| `lots` | Read available lot state/order; update authoritative quantity/reservation fields through domain transaction. | Core inventory boundary owns invariants. |
+| `lots` | Read lot identity/status/order. | Core inventory boundary owns lifecycle invariants. |
+| `lot_location_balances` | Allocate and update the exact lot/location quantity and commitment row. | Core inventory boundary owns quantity/concurrency invariants. |
+| `inventory_commitments` / `inventory_commitment_lines` | Store durable Stage 1 reservation ownership and Stage 2 execution/release state. | Core inventory boundary owns lifecycle and idempotency invariants. |
 | `pick_lists` | Store committed operational outbound document/status. | Final schema/status and commitment linkage must be reconciled with `01`. |
 | `pick_list_items` | Store item/lot/location/quantity/SPQ/box/price snapshot for the pick list. | Must distinguish requested, committed, and executed quantities if required. |
 | `inventory_transactions` | Insert immutable `pick` movement at final dispatch; read outgoing ledger. | No updates/deletes. |
 
-The current core draft describes `committed_qty` but does not yet show its final column/table representation. Before implementation, `01` must choose a durable reservation model (for example, fields or a dedicated commitment relation) with concurrency constraints, release semantics, and RLS. This feature must not silently invent a second reservation ledger.
+The core contract is now resolved: distributed quantity lives in
+`lot_location_balances`; `qty_available` is derived through
+`lot_inventory_totals`; and durable reservation ownership lives in
+`inventory_commitments` / `inventory_commitment_lines`. This feature must not
+add fields to `lots` or create a second reservation ledger.
 
 ## 3. Route and shell integration
 
@@ -103,9 +109,10 @@ The online commit command receives a request ID, expected version, allocation pl
 Within one authoritative transaction it:
 
 1. authenticates and authorizes the current actor and destination/flow scope;
-2. locks or safely version-checks request, lots, and reservation state;
+2. locks or safely version-checks request, `lot_location_balances`, and reservation state;
 3. revalidates status, availability, SPQ/UOM, FEFO/FIFO, and approval;
-4. writes the durable reservation/commitment representation;
+4. writes `inventory_commitments` / `inventory_commitment_lines` and increments
+   the selected balance rows' `qty_committed` values;
 5. creates the `pick_list` and `pick_list_items` snapshot;
 6. records commitment/audit data and returns the authoritative pick-list reference.
 
@@ -121,10 +128,16 @@ The final dispatch command receives the pick-list ID, expected version, accepted
 - pick-list status and commitment ownership;
 - item/barcode/lot/location identity;
 - quantities and any approved partial/exception rule;
-- current lot/reservation state;
+- current lot status, selected lot/location balance, and reservation state;
 - required pricing/document snapshot availability.
 
-On success, one transaction decrements authoritative inventory, releases the reservation, inserts immutable `inventory_transactions` with `movement_type = 'pick'`, transitions the pick list, and emits the document-generation event/command for `10`. Email or PDF generation failure cannot roll back the committed stock movement; the document remains in an observable retry/attention state.
+On success, one transaction decrements the selected
+`lot_location_balances.qty_remaining`, decrements its `qty_committed`, marks
+the commitment line executed/released, inserts immutable
+`inventory_transactions` with `movement_type = 'pick'`, transitions the pick
+list, and emits the document-generation event/command for `10`. Email or PDF
+generation failure cannot roll back the committed stock movement; the document
+remains in an observable retry/attention state.
 
 ## 8. Pricing and document boundary
 
@@ -152,7 +165,7 @@ Item code is the prominent first field in office review. Floor screens do not us
 
 ## 11. Design verification before approval
 
-- [ ] Reconcile pick-list status, reservation/commitment representation, executed quantities, and any acknowledgement-receipt linkage with approved `01` and `10` designs.
+- [x] Reconcile pick-list status, reservation/commitment representation, executed quantities, and any acknowledgement-receipt linkage with the resolved `01` balance/commitment contract and `10` design.
 - [ ] Confirm exact FIFO/FEFO and SPQ/UOM validation with core inventory rules.
 - [ ] Confirm override request/approval contract with `09` and RBAC capability catalog.
 - [ ] Confirm Tier 1 physical-observation command and rejection UX with `03`.

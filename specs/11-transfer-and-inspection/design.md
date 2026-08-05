@@ -31,7 +31,8 @@ Depends on:
 | `parties` | Resolve party/flow context where the lot or request is party-scoped. | Master data owned by `06`; scope enforced by RBAC/RLS. |
 | `items` | Resolve item/barcode/UOM/packaging identity. | Master data owned by `06`. |
 | `locations` | Validate source/destination, type, active state, and capacity. | Location master owns definitions; transfer owns use. |
-| `lots` | Validate item/flow/status and update location/quantity state through commit. | Inventory core owns invariants. |
+| `lots` | Validate item/flow/status and lot identity through commit. | Inventory core owns lifecycle invariants. |
+| `lot_location_balances` | Validate source/destination quantities and update the authoritative placement rows. | Inventory core owns quantity/concurrency invariants. |
 | `inventory_transactions` | Insert immutable `transfer` movement with from/to location references. | No updates/deletes. |
 
 ### Transfer-owned persistence
@@ -131,7 +132,8 @@ The authoritative completion transaction:
 
 1. locks/version-checks the transfer and relevant lot/location state;
 2. revalidates current authorization/scope, approval, inspection, quantity, capacity, and scan evidence;
-3. updates the approved lot/location assignment or quantity representation;
+3. moves or updates the approved `lot_location_balances` rows, preserving
+   non-negative quantities and commitment constraints;
 4. inserts one immutable `inventory_transaction` with `movement_type = 'transfer'`, `from_location_id`, and `to_location_id`;
 5. marks the transfer completed and records audit/correlation data.
 
