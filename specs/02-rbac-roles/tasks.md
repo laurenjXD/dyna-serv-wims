@@ -232,9 +232,9 @@ Conditional recommendations were resolved as `1F=B` (party plus optional `flow_t
 
 ## Sign-off
 
-- [ ] Requirements and design reviewed against current steering decisions
-- [ ] Unit, real-Postgres integration, E2E, and applicable manual tests pass
-- [ ] `rbac-rls-reviewer` review complete
-- [ ] `db-migration-verifier` review complete
+- [x] Requirements and design reviewed against current steering decisions — the 54 decision-table selections are synced with requirements.md/design.md (2026-08-05), and design.md itself reflects every resolved cross-cutting decision from `revision-log.md`.
+- [ ] Unit, real-Postgres integration, E2E, and applicable manual tests pass — real-Postgres integration substantially done (see design.md §13's "Real-Postgres verification status" note, 2026-08-05): the Supplies-leak scenario, the last-administrator concurrency race, the `rbac_definer`/`BYPASSRLS` helper path, `rbac_security_events` append-only, and both partial-unique-index invariants all verified PASS with real data. Explicitly not yet verified: live PostgREST RPC-exposure introspection, the `party_visible_items` view itself, the full three-way `lots` VMI/Trading/Supplies RLS matrix, pooler-mode JWT propagation, and a full revoke-then-access-attempt flow. Unit/E2E/manual remain not-yet-applicable (code-dependent, no `lib/db/schema` exists yet).
+- [x] `rbac-rls-reviewer` review complete — two full design-review rounds (2026-08-05): found and closed a blocking Supplies-data-leak gap plus five underspecified mechanisms in round one; round two confirmed the core fix and sharpened three of the five (`can_access_party_resource` wiring, the `lots` Trading-branch cross-party inference channel, the `items` masking-view mechanism, PostgREST schema-placement).
+- [x] `db-migration-verifier` review complete — real-Postgres run (2026-08-05) found and fixed 4 implementation-detail bugs invisible from reading the SQL alone (a non-`IMMUTABLE` function in a partial-unique-index expression; three missing `GRANT USAGE`/`EXECUTE` statements on `auth`, `rbac_internal`, and `rbac_internal.has_permission` that would have broken every helper call and the entire admin mutation path). All 6 requested verification items now PASS; see design.md §13 for exactly what remains for a follow-up pass.
 - [ ] Product owner approval — Name: ____________________ Date: ______________
 - [ ] Second approver approval — Name/Role: ____________________ Date: ______________
