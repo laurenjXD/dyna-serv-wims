@@ -54,7 +54,7 @@ AuthenticatedLayout
 ├── DesktopSidebar (office enhancement)
 ├── MobileFloorNavigation (floor/portrait mode)
 ├── AppHeader
-│   ├── Brand/Logo
+│   ├── Brand/Logo (real letter-mark logo, never an icon-font ligature rendered as text; diagonal-cut motif per brand-design-system.md §7 in office contexts)
 │   ├── PageHeader slot
 │   ├── ConnectivityIndicator (optional, read-only)
 │   └── AccountControl
@@ -114,7 +114,7 @@ Registry rules:
 
 - `md`/`lg` may introduce sidebar, wider content, multi-column page framing, and office hover affordances.
 - The office container follows the approved 1280px maximum width, 32px page margin, and 24px gutter.
-- The sidebar uses the approved brand-navy background, brand-red active state, logo treatment, and Epilogue labels.
+- The sidebar uses the approved `brand-navy` background, `brand-red` active-item background, white/70%-opacity inactive labels, Epilogue **SemiBold** 14px labels (never Regular weight), and the real letter-mark logo — never an icon-font ligature rendered as text.
 - Narrow office view remains operable; it must not assume a desktop-only viewport.
 
 ## 7. Authentication and authorization boundary
