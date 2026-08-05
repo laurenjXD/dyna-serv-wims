@@ -31,7 +31,7 @@ The current Gantt timeline tracks the **Spec Definition Phase** (Drafting Requir
 |---|---|---|---|---|
 | 2.1 | Item category and subcategory management | `17-product-categorization-and-classification` | **Not Started** | Not Started |
 | 2.2 | Item classification and flow validation | `17-product-categorization-and-classification` | **Not Started** | Not Started |
-| 2.3 | Barcode and QR item identification | Cross-cutting (`01`, `07`) | **Depends on 01, 07** | Not Started |
+| 2.3 | Barcode and QR item identification | `18-barcode-integration` | **Spec Drafted** | Not Started |
 | 2.4 | FIFO/FEFO pick-list generation | `10-pick-list-and-acknowledgement-receipt` | **Not Started** | Not Started |
 | 2.5 | Inventory picking and quantity verification | `08-outgoing-withdrawal-and-two-stage-commitment` | **Not Started** | Not Started |
 | 2.6 | Receiving-to-picking inventory process integration | Cross-cutting | **Not Started** | Not Started |
