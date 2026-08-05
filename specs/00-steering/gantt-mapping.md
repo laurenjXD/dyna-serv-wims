@@ -39,9 +39,9 @@ This sits above the spec folders, not inside them. Specs stay feature-level (`re
 
 | Gantt task | Maps to spec(s) | Status |
 |---|---|---|
-| Dispatch scheduling module | **19-dispatch-scheduling-and-delivery-tracking** (new) | Not yet drafted |
-| Dispatch approval workflow | 09-approval-queue + 19 | Not yet drafted |
-| Delivery status tracking | **19-dispatch-scheduling-and-delivery-tracking** (new) | Not yet drafted |
+| Dispatch scheduling module | **19-dispatch-scheduling-and-delivery-tracking** (new) | Draft (planning aligned; not approved) |
+| Dispatch approval workflow | 09-approval-queue + 19 | Draft (planning aligned; not approved) |
+| Delivery status tracking | **19-dispatch-scheduling-and-delivery-tracking** (new) | Draft (planning aligned; not approved) |
 | Inventory monitoring dashboard | 16-reporting-and-analytics | Draft (planning aligned; not approved) |
 | Low-stock notifications | 14-notifications-and-alerts | Not yet drafted |
 | Inventory movement history | 16-reporting-and-analytics (queries the `inventory_transactions` ledger from 01) | Draft (planning aligned; not approved) |
