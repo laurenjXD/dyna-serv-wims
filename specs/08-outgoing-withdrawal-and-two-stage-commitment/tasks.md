@@ -104,7 +104,7 @@ Testing: Contract/integration tests with pricing and document services; Playwrig
 Testing: Unit policy tests; Playwright offline/reconnect/IndexedDB; integration replay authorization/idempotency.
 
 - [ ] Define the exact Tier 1 scan-observation policy with `03`, including payload, resource refs, ordering key, conflict/rejection classes, and retention.
-- [ ] Block request creation, allocation, FIFO override, commitment, release, pricing, and final dispatch from the offline queue.
+- [ ] Block pick-list generation, allocation, FIFO override, commitment, release, pricing, and final dispatch from the offline queue.
 - [ ] Preserve local scan state honestly and distinguish captured/queued from committed/dispatched.
 - [ ] Replay through the authoritative server command with current Auth/capability/scope/commitment/lot checks and idempotency.
 - [ ] Reject revoked/deactivated actors and stale/mismatched pick lists without reassignment.

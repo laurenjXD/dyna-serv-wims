@@ -4,7 +4,7 @@ Status: Draft
 
 ## 1. Design intent
 
-Outbound withdrawal is an authoritative reservation-and-execution workflow, not a single “click to subtract stock” action. It separates office request/allocation from floor physical execution and keeps the final inventory decrement at a server transaction boundary.
+Outbound withdrawal is an authoritative pick-list-generation-and-execution workflow, not a single “click to subtract stock” action. It starts from the Master Inventory surface and keeps the final inventory decrement at a server transaction boundary. There is no separate withdrawal-request entity.
 
 The design follows the settled document model: an operational `pick_list` is generated at commitment/pick confirmation, and a priced `acknowledgement_receipt` is generated for handoff. Neither is replaced by a `withdrawal_slip`, and the signed paper receipt is not scanned back as a required state transition.
 
@@ -48,13 +48,12 @@ The target route shape is provisional:
 
 ```text
 app/(authenticated)/
-  withdrawal/
-    page.tsx                    # request/list/review surface
-    new/page.tsx                # office request builder
-    [requestId]/page.tsx        # request/allocation detail
-    [requestId]/commit/page.tsx # online Stage 1 commitment
+  inventory/
+    page.tsx                    # item selection and pick-list generation
+  pick-lists/
+    [pickListId]/page.tsx       # committed pick-list detail
     [pickListId]/pick/page.tsx  # floor pick execution
-    [pickListId]/dispatch/page.tsx # floor final dispatch confirmation
+    [pickListId]/dispatch/page.tsx # floor dispatch/inspection disposition
   outgoing-ledger/page.tsx      # office/review read-only ledger
 ```
 
@@ -63,11 +62,11 @@ The final route naming must align with `05` and `10`. The earlier desktop three-
 ## 4. State and ownership model
 
 ```text
-Draft request
+Pick-list generation input from Master Inventory
     │ authoritative allocation
     ▼
 Available lots + current FEFO/FIFO plan
-    │ optional FIFO override approval
+    │ standard FIFO/FEFO, or FIFO override approval
     ▼
 Committed reservation + pick_list(allocated)
     │ physical pick/dispatch scans
@@ -82,7 +81,7 @@ Authoritative dispatch commit
 
 Ownership boundaries:
 
-- `08` owns request/commit/physical execution state and domain commands.
+- `08` owns pick-list generation/commit/physical execution state and domain commands.
 - `09` owns the approval decision for FIFO override.
 - `10` owns document templates, generated artifacts, printing, and document-specific presentation.
 - `13` supplies Trading document pricing; `12` owns the authoritative VMI period bill.
@@ -100,29 +99,29 @@ The allocation command queries current authoritative state and applies:
 
 The output is a deterministic allocation plan containing item, lot, location, requested/allocated quantity, SPQ/box conversion, and ordering explanation. Client-supplied lot selection is treated as a request and is revalidated server-side.
 
-If the requested plan is out of sequence, the server creates an explicit FIFO override request for `09`. Commitment cannot proceed on a pending, rejected, expired, or mismatched approval. The final commit rechecks the plan because available stock and approvals can change between screens.
+If the selected plan is out of sequence, the server creates an explicit FIFO override approval request for `09`. Standard FIFO/FEFO plans proceed directly to pick-list generation. A pending, rejected, expired, or mismatched override approval blocks generation. The final command rechecks the plan because available stock and approvals can change between screens.
 
 ## 6. Stage 1 commitment transaction
 
-The online commit command receives a request ID, expected version, allocation plan, optional override reference, pricing-reference context as allowed by the owning pricing spec, and an idempotency key.
+The online pick-list generation command receives the selected destination/flow/item quantities, expected inventory version, allocation plan, optional FIFO override reference, pricing-reference context as allowed by the owning pricing spec, and an idempotency key.
 
 Within one authoritative transaction it:
 
 1. authenticates and authorizes the current actor and destination/flow scope;
-2. locks or safely version-checks request, `lot_location_balances`, and reservation state;
+2. locks or safely version-checks the selected item/lot/location state and reservation state;
 3. revalidates status, availability, SPQ/UOM, FEFO/FIFO, and approval;
 4. writes `inventory_commitments` / `inventory_commitment_lines` and increments
    the selected balance rows' `qty_committed` values;
 5. creates the `pick_list` and `pick_list_items` snapshot;
 6. records commitment/audit data and returns the authoritative pick-list reference.
 
-It does not decrement on-hand inventory or insert the final `pick` transaction. A duplicate idempotency key returns the existing committed result. A stale request/plan returns a conflict requiring fresh allocation.
+It does not decrement on-hand inventory or insert the final `pick` transaction. A duplicate idempotency key returns the existing committed result. A stale selection/plan returns a conflict requiring fresh allocation.
 
 ## 7. Stage 2 physical execution and dispatch transaction
 
 The floor flow reads the committed pick list and presents one expected scan task at a time. Each accepted scan is associated with the committed item/lot/location and quantity. Local scan observations may be stored as Tier 1 only after `03` approval; they are not final inventory outcomes.
 
-The final dispatch command receives the pick-list ID, expected version, accepted scan/quantity evidence, and idempotency key. It rechecks:
+After each pick-list scan, the operator chooses `dispatch` or `further inspection`. The final dispatch command receives the pick-list ID, expected version, accepted scan/quantity evidence, and idempotency key. It rechecks:
 
 - current actor/capability/scope;
 - pick-list status and commitment ownership;
@@ -131,7 +130,13 @@ The final dispatch command receives the pick-list ID, expected version, accepted
 - current lot status, selected lot/location balance, and reservation state;
 - required pricing/document snapshot availability.
 
-On success, one transaction decrements the selected
+If the disposition is `further inspection`, the system moves the committed
+quantity to inspection, keeps the commitment active in `inspection_pending`,
+and does not insert the final `pick` transaction. If inspection passes, the
+pick-list returns to dispatch-ready. If it fails, the system follows an
+approved return, hold, or reconciliation path.
+
+On successful dispatch, one transaction decrements the selected
 `lot_location_balances.qty_remaining`, decrements its `qty_committed`, marks
 the commitment line executed/released, inserts immutable
 `inventory_transactions` with `movement_type = 'pick'`, transitions the pick
