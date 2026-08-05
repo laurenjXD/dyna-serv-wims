@@ -114,6 +114,12 @@ Real-Postgres/live-introspection tests for all four were added to §13.
 
 `03`'s Sign-off/testing status was already fully open; this closes the design-level gap ahead of any implementation, before the wrong boundary could get built.
 
+## `03` re-verification — PASS (2026-08-05)
+
+Re-ran `offline-sync-reviewer` against the rewrite. Result: **PASS** on all four points — the `wrr_scan_capture`/`pick_scan_capture` split genuinely stays capture-only with no path to an authoritative outcome without a separate online step; every field/enum reference in §6.4 was checked line-by-line against `01`'s actual schema and matched exactly (`wrrStatusEnum`, `commitmentStatusEnum`, `lotLocationBalanceId`, `pickListItemId`); the idempotency mechanism closes the original ambiguity without introducing a new gap; a fresh terminology sweep found zero remaining stale terms. Two non-blocking nits fixed: §6.4's matcher-rule parenthetical was missing "unresolved lot context" from `07`'s actual rejection list (added); and §11 gained an explicit open-decision bullet for whether a not-yet-synced outbox entry can be corrected/cancelled before sync (currently undefined — safe either way since it never leaves capture-only territory, but the UX/API surface needs a decision before implementation).
+
+## Claude Code alignment
+
 Added `CLAUDE.md` (root — the file Claude Code reads automatically), `AGENTS.md` (cross-tool mirror, points back to `CLAUDE.md` as canonical), and six subagents in `.claude/agents/`: `spec-writer` (docs only, no Bash access), `db-migration-verifier` (codifies the real-Postgres testing pattern), `rbac-rls-reviewer`, `design-system-auditor`, `offline-sync-reviewer` (all three read-only), and `test-writer`. Each review/reviewer agent is deliberately read-only — flags issues rather than silently fixing them, since several of the judgment calls involved (which font is correct, which RLS policy is right) need a human decision.
 
 **Explicit limitation, not glossed over**: subagent tool restrictions in Claude Code are per-tool (Read/Write/Bash/etc.), not per-file-path. The `spec-writer` agent's lack of Bash access is a real technical restriction; its instruction to only write inside `specs/` is a followed convention, not a hard technical boundary. Same class of limitation as the "no code before approved tasks.md" rule itself — enforced by an agent choosing to follow it, not by the tooling refusing otherwise.
