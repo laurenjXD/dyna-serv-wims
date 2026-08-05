@@ -58,7 +58,7 @@ This sits above the spec folders, not inside them. Specs stay feature-level (`re
 | User Acceptance Testing (UAT) | **20-documentation-training-and-uat** (new) | Not yet drafted |
 | Documentation prep, user manual | **20-documentation-training-and-uat** (new) | Not yet drafted |
 | Administrator training | **20-documentation-training-and-uat** (new) | Not yet drafted |
-| Production deployment | 04-services-and-infrastructure (Option A already locked, see tech.md) | Not yet drafted |
+| Production deployment | 04-services-and-infrastructure (Option A already locked, see tech.md) | Drafted — provider plans/regions, recovery targets, and operational owners pending approval |
 | Final client validation, handover | Project closure, not a spec | — |
 
 ## Standing rule
