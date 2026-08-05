@@ -1,6 +1,7 @@
 # Offline Mode & Client Storage — Design
 
 Status: Draft
+Updated: 2026-08-05
 
 ## 1. Design intent
 
@@ -81,7 +82,7 @@ Keys in `localStorage` are prefixed `wms-` to avoid collisions with any third-pa
 
 | Key | Value | Notes |
 |---|---|---|
-| `wms-pick-list-draft` | Partial pick-list generation input (item/quantity selections before commit) | Restored on back-navigation within the same tab; not a persisted withdrawal-request entity — there is none |
+| `wms-pick-list-draft` | Partial pick-list generation input (item/quantity selections before commit) | Restored on back-navigation within the same tab; pick-list generation is the commitment step — there is no separate pre-commit pick-list document |
 | `wms-receiving-session` | Active WRR id + scanned items buffer | Scoped to the tab running that receiving session |
 | `wms-scan-buffer` | Last N scanned barcodes | Short-lived; consumed on batch confirm |
 
@@ -123,7 +124,7 @@ Three object stores handle all offline state (implemented via Dexie):
 |---|---|---|
 | id | string (uuid) | Client-generated. Doubles as the idempotency key sent to the server (§7) — the server's scan-capture tables use it as a unique constraint/upsert key, so replaying the same outbox entry is a safe no-op rather than requiring a separate idempotency-record lookup. |
 | captured_by_user_id | string (uuid) | The authenticated Supabase user ID active on this device at capture time (§6.2). Not authorization evidence — the server independently re-authorizes the current session on every sync (§6.4) — but the durable link that lets both the client and server refuse to sync an entry under a session that didn't capture it (§6.3, §6.4). |
-| action_type | enum | `"wrr_scan_capture"` \| `"pick_scan_capture"` — see §5.1. Both are pure observation capture; neither creates a lot, decrements a balance, resolves inspection, or triggers document generation. |
+| action_type | enum | `"receiving_scan_observation"` \| `"pick_list_scan_observation"` \| `"inspection_observation"` — see §5.1 and §5.3. All three are pure observation capture; none creates a lot, decrements a balance, resolves inspection, or triggers document generation. |
 | payload | object | Full action data — enough for the server to apply it with no additional context |
 | created_at | number (epoch ms) | Client clock — used for ordering only, never trusted as authoritative time |
 | attempts | number | Sync retry count |
@@ -164,7 +165,7 @@ Cache is populated proactively when the user loads the Picking or Receiving page
 
 ## 5. Command and policy contract
 
-Offline support is scoped exclusively to pure observation-capture actions that record a physical scan without producing any authoritative inventory outcome themselves. Every action that creates a lot, decrements a balance, resolves inspection, assigns putaway, or triggers document generation is Tier 2 online-only, per `07-incoming-receiving/design.md` §10 (lot creation, putaway confirmation, and inspection resolution are explicitly Tier 2/online-only in v1) and `08-outgoing-withdrawal-and-two-stage-commitment/design.md` §10 (only physical scan *observations* may be Tier 1; final dispatch is Tier 2). The offline capability does not extend to `supervisor`, `administrator`, or `party_user` roles (`02-rbac-roles` §3.1) — only `warehouse_staff` floor scan capture queues offline; everything else requires real-time server state and must be done online.
+Offline support is scoped exclusively to pure observation-capture actions that record a physical scan or evidence item without producing any authoritative inventory outcome themselves. Every action that creates a lot, decrements a balance, resolves inspection, assigns putaway, or triggers document generation is Tier 2 online-only, per `07-incoming-receiving/design.md` §10 (lot creation, putaway confirmation, and inspection resolution are explicitly Tier 2/online-only in v1) and `08-outgoing-withdrawal-and-two-stage-commitment/design.md` §10 (only physical scan *observations* may be Tier 1; final dispatch is Tier 2). The offline capability does not extend to `supervisor`, `administrator`, or `party_user` roles (`02-rbac-roles` §3.1) — only `warehouse_staff` floor observation capture queues offline; everything else requires real-time server state and must be done online.
 
 ### 5.1 Safe vs. unsafe actions offline
 
@@ -172,15 +173,16 @@ Offline support is scoped exclusively to pure observation-capture actions that r
 
 | Action | Why it is safe |
 |---|---|
-| WRR scan capture (`wrr_scan_capture`) | Records that a barcode was scanned against an expected `wrr_item_id` on a WRR already `receiving_in_progress`. It never creates a `lots` row, writes `inventory_transactions`, resolves inspection, or assigns a location — it only increments a locally-cached observation that the server re-validates and applies to `wrr_items.scanned_qty` on sync. The confirm-receipt command that actually creates lots stays the single, online-only, authoritative transaction `07` §8 already defines. |
-| Pick-list scan capture (`pick_scan_capture`) | Records that a lot/location was scanned against an already-committed `pick_list_item_id`. It never decrements `lot_location_balances.qty_remaining`, releases `qty_committed`, or triggers `acknowledgement_receipt` generation — those happen only in the final dispatch command, which stays online-only per `08` §7/§10. |
+| Receiving scan observation (`receiving_scan_observation`) | Records that a barcode was scanned against an expected `wrr_item_id` on a WRR already `receiving_in_progress`. It never creates a `lots` row, writes `inventory_transactions`, resolves inspection, or assigns a location — it only records a locally-cached observation that the server re-validates and applies to `wrr_items.scanned_qty` on sync. The confirm-receipt command that actually creates lots stays the single, online-only, authoritative transaction `07` §8 already defines. |
+| Pick-list scan observation (`pick_list_scan_observation`) | Records that a lot/location was scanned against an already-committed `pick_list_item_id`. It never decrements `lot_location_balances.qty_remaining`, releases `qty_committed`, or triggers `acknowledgement_receipt` generation — those happen only in the final dispatch command, which stays online-only per `08` §7/§10. |
+| Inspection observation (`inspection_observation`) | Records photo, note, or measurement evidence against an active `inspection_case_id`. It never resolves the inspection case, changes lot status, affects `lot_location_balances`, or transitions any workflow state. Resolution (accept, quarantine, return) remains Tier 2/online-only per `07` §10, requiring `inspection.resolve` capability and supervisor authority. |
 
 **Unsafe offline (Tier 2 — disabled offline):**
 
 | Action | Why it is unsafe |
 |---|---|
 | WRR confirm-receipt (lot creation, inspection resolution, putaway) | Per `07` §8, this is a single locked server transaction that creates `lots`/`lot_location_balances` and posts `inventory_transactions` only after checking current inspection/conformance state. Deferring any part of it risks posting stock that should have been held, or racing a concurrent confirm through the normal online flow. |
-| Pick-list generation (Stage 1 commitment) | The FIFO/FEFO engine and commitment write run server-side against live `qty_available`/`qty_remaining`. An offline client cannot know what has been committed since connectivity was lost. There is no separate withdrawal-request step to distinguish from this — pick-list generation *is* the commitment (`08` §6). |
+| Pick-list generation (Stage 1 commitment) | The FIFO/FEFO engine and commitment write run server-side against live `qty_available`/`qty_remaining`. An offline client cannot know what has been committed since connectivity was lost. Pick-list generation is the commitment step (`08` §6); there is no prior reservation document a client could stage. |
 | Final dispatch (Stage 2 decrement) | Decrements `lot_location_balances.qty_remaining`, releases `qty_committed`, inserts the immutable `inventory_transaction`, and triggers document generation. Must be an explicit, operator-submitted online action, not something the sync coordinator auto-applies from a queued capture — two devices (or a stale replay after another operator already dispatched through the normal online flow) could otherwise both apply the decrement. |
 | Approval queue actions | Approval decisions must be real-time. A queued approval that syncs hours later against a request that was already rejected is an audit integrity problem. |
 | Any enrollment action | Configuration changes must be deliberate and online. |
@@ -196,7 +198,7 @@ type OfflineOperationPolicy = {
   version: number;
   tier: 1;
   maxPayloadBytes: number;
-  requiredCapability: string;
+  requiredCapability: string;  // must match 02-rbac-roles capability catalog exactly
   validatePayload(payload: unknown): Result;
   resourceRefs(payload: unknown): string[];
   orderingKey(payload: unknown): string;
@@ -204,9 +206,64 @@ type OfflineOperationPolicy = {
 };
 ```
 
-This contract is provisional until the RBAC capability type and feature command interfaces are approved. A policy registry must fail closed: unknown operations, missing versions, invalid payloads, and any tier other than explicitly approved Tier 1 are rejected locally.
+The `requiredCapability` values for the three approved Tier 1 operation types are fixed to the `02-rbac-roles` §3.2 operational capability catalog. The server re-checks each on every replay attempt — not only at capture time:
+
+| Operation type | `requiredCapability` | `02` catalog entry |
+|---|---|---|
+| `receiving_scan_observation` | `receiving.scan` | `receiving` resource, `scan` action, `global` scope |
+| `pick_list_scan_observation` | `pick_list.execute` | `pick_list` resource, `execute` action, `global` scope |
+| `inspection_observation` | `inspection.perform` | `inspection` resource, `perform` action, `global` scope |
+
+A policy registry must fail closed: unknown operations, missing versions, invalid payloads, and any tier other than explicitly approved Tier 1 are rejected locally.
 
 The policy registry must not contain approval, pricing, FIFO override/allocation, RBAC management, billing close, write-off, or other Tier 2 operations.
+
+### 5.3 Tier 1 observation payload definitions
+
+Each Tier 1 operation type has a concrete, versioned payload that the owning feature supplies to the outbox and that the server validates verbatim on replay. Payloads must not include auth tokens, session credentials, or any field that could substitute for a server authorization check.
+
+**Receiving scan observation (`receiving_scan_observation`)**
+
+| Field | Type | Notes |
+|---|---|---|
+| `operation_type` | string literal | `"receiving_scan_observation"` |
+| `wrr_id` | uuid | The `wrr_documents` record being received against. Must be `receiving_in_progress` at replay time. |
+| `wrr_item_id` | uuid | The specific `wrr_items` row this scan belongs to. Must belong to `wrr_id`. |
+| `scanned_barcode` | string | Raw barcode value as read by the scanner. |
+| `scanned_qty` | integer | Quantity captured in this observation; positive, non-zero. |
+| `location_id` | uuid | The `locations` record where the item was scanned. |
+| `captured_by_user_id` | uuid | Supabase user ID of the session active at capture time. Matched against `auth.uid()` on replay. |
+| `captured_at` | string | ISO 8601 timestamp. Client clock; recorded as metadata, never trusted as authoritative server time. |
+| `idempotency_key` | string | Format: `receiving_scan:{wrr_item_id}:{client_sequence_id}`. Used as the unique constraint on the server-side scan observation row. |
+| `client_sequence_id` | integer | Monotonically increasing within the session. Combined with `wrr_item_id` in the idempotency key to guarantee uniqueness. |
+
+**Pick-list scan observation (`pick_list_scan_observation`)**
+
+| Field | Type | Notes |
+|---|---|---|
+| `operation_type` | string literal | `"pick_list_scan_observation"` |
+| `pick_list_id` | uuid | The `pick_lists` record this scan belongs to. Must be `allocated` at replay time. |
+| `pick_list_item_id` | uuid | The specific `pick_list_items` row. Must belong to `pick_list_id`. |
+| `scanned_barcode` | string | Raw barcode value as read by the scanner. |
+| `scanned_qty` | integer | Quantity captured in this observation; positive, non-zero. |
+| `location_id` | uuid | The `locations` record where the item was picked from. |
+| `captured_by_user_id` | uuid | Supabase user ID of the session active at capture time. Matched against `auth.uid()` on replay. |
+| `captured_at` | string | ISO 8601 timestamp. Client clock; recorded as metadata only. |
+| `idempotency_key` | string | Format: `pick_scan:{pick_list_item_id}:{client_sequence_id}`. Used as the unique constraint on the server-side scan observation row. |
+| `client_sequence_id` | integer | Monotonically increasing within the session. |
+
+**Inspection observation (`inspection_observation`)**
+
+| Field | Type | Notes |
+|---|---|---|
+| `operation_type` | string literal | `"inspection_observation"` |
+| `inspection_case_id` | uuid | The active inspection case this evidence belongs to. Must be open (not resolved) at replay time. |
+| `evidence_type` | enum | `"photo"` \| `"note"` \| `"measurement"` |
+| `evidence_payload` | string | For `"note"` and `"measurement"`: sanitized text content, max 2048 characters. For `"photo"`: the storage path of the uploaded image (upload must complete before the observation is queued). |
+| `captured_by_user_id` | uuid | Supabase user ID of the session active at capture time. Matched against `auth.uid()` on replay. |
+| `captured_at` | string | ISO 8601 timestamp. Client clock; recorded as metadata only. |
+| `idempotency_key` | string | Format: `inspection_obs:{inspection_case_id}:{client_sequence_id}`. Used as the unique constraint on the server-side observation row. |
+| `client_sequence_id` | integer | Monotonically increasing within the session. |
 
 ## 6. Synchronization lifecycle
 
@@ -259,12 +316,26 @@ Entries with `attempts >= 3` and `status = "failed"` are not retried automatical
 
 ### 6.4 Server-side sync validation (`/api/sync`)
 
-The sync endpoint applies the same business rules as the live action endpoints. Offline origin does not bypass any validation. Before either row below runs, the endpoint first verifies `auth.uid() == captured_by_user_id` (§4.5, §6.3 step 4c) — a mismatch is rejected as `actor_mismatch` before any business-state check, so a revoked or logged-out user's captured work can never be applied under a different, later session. Both action types apply only capture-level state (no lot creation, no balance decrement, no document trigger); the corresponding Tier 2 command remains a separate, online-only, operator-submitted step.
+The sync endpoint applies the same business rules as the live action endpoints. Offline origin does not bypass any validation. The replay authorization sequence is fixed and cannot be short-circuited:
 
-| Action type | Server validation on sync |
+1. **Actor match** — verify `auth.uid() == captured_by_user_id`. Mismatch → `actor_mismatch` rejection before any business-state check (§4.5, §6.3 step 4c).
+2. **Session liveness** — verify the authenticated user profile is `active` (`user_profiles.status`). Deactivated users → `authorization_failure`.
+3. **Capability re-check** — verify the current session holds the capability recorded in the operation's policy (`requiredCapability` per §5.2). Capability may have been revoked since capture. Missing capability → `authorization_failure`. This check uses live role/capability resolution, not cached state.
+4. **Party/flow scope** — verify the operation's resource references are within the user's current authorized scope. Out-of-scope → `authorization_failure`.
+5. **RLS** — all writes are executed within the authenticated session's RLS context. Policy denial → `authorization_failure`.
+6. **Business state** — validate domain invariants as specified per operation type below.
+
+Each action type's business-state validation:
+
+| Operation type | Server validation on sync |
 |---|---|
-| `wrr_scan_capture` | Verify `wrr_documents.status = 'receiving_in_progress'` (reject with `conflict` if `confirmed`/`cancelled`) and that `wrr_item_id` belongs to that WRR. Re-apply the `07` §6 matcher rules (wrong WRR, wrong item, unknown item, duplicate/over quantity, invalid UOM, unresolved lot context) against current server state. On accept, increment `wrr_items.scanned_qty` by the captured delta using the outbox entry's `id` as the idempotency/upsert key. On reject, return `outcome: "conflict"` and preserve the scan for supervisor review — the physical scan happened; it is never silently dropped. |
-| `pick_scan_capture` | Verify the target `inventory_commitment_line` is still `active` or `inspection_pending` (per `01`'s `commitmentStatusEnum`) and that the scanned lot/location matches its `lot_location_balance_id`. On accept, record scan evidence only, using the outbox entry's `id` as the idempotency/upsert key — no decrement, no ledger insert, no document trigger. If the commitment was already `released`/`expired`/`cancelled`, or dispatch already completed through another path, return `outcome: "conflict"`, not silent success. |
+| `receiving_scan_observation` | Verify `wrr_documents.status = 'receiving_in_progress'` (reject with `stale_business_state` if `confirmed` or `cancelled` — wrr_item is already fully received and the scan window has closed). Verify `wrr_item_id` belongs to that `wrr_id`. Re-apply the `07` §6 matcher rules (wrong item, unknown item, over-quantity, invalid UOM) against current server state. If the `wrr_item.scanned_qty` has already reached `expected_qty` at replay time (fully received by another session), return `stale_business_state` with the accepted total; the client shows "quantity already recorded by another session — accepted total: {n}". Never auto-merge quantities. On valid accept, increment `wrr_items.scanned_qty` by the captured delta using the outbox entry's `id` as the idempotency/upsert key. On any reject, return `outcome: "conflict"` and preserve the scan for supervisor review — the physical scan happened and is never silently dropped. |
+| `pick_list_scan_observation` | Verify the target `inventory_commitment_lines` row is still `active` or `inspection_pending` (per `01`'s `commitmentStatusEnum`) and that the scanned lot/location matches its `lot_location_balance_id`. If `inventory_commitment_lines.qty` has already been decremented past the scanned qty through another session or online path, return `outcome: "conflict"` with the current server-side committed/executed state; the client surfaces the conflict for supervisor resolution — never auto-merge inventory quantities. If the commitment was already `released`, `expired`, or `cancelled`, or if dispatch already completed through another path, return `outcome: "conflict"`. On valid accept, record scan evidence only, using the outbox entry's `id` as the idempotency/upsert key — no decrement, no ledger insert, no document trigger. |
+| `inspection_observation` | Verify the `inspection_case_id` references an open (not resolved) inspection case. If the case was already resolved or closed, return `outcome: "stale_business_state"`. Verify evidence sanitization: `note`/`measurement` payloads are re-validated server-side for max length and permitted characters; `photo` payloads must reference an already-uploaded storage path that exists and is accessible. On valid accept, record the evidence row using the outbox entry's `id` as the idempotency/upsert key — no case resolution, no lot status change. |
+
+**Idempotency**: The server uses `idempotency_key` + `captured_by_user_id` together as the uniqueness key for each observation row. A duplicate replay with an identical `idempotency_key` and `captured_by_user_id` returns the original outcome without re-applying side effects. This holds even when the underlying WRR/commitment/inspection state has since moved to a conflicting status — the idempotency write (the same observation row) resolves to the same row deterministically; the conflict is returned only for new, non-idempotent submissions.
+
+**Ordering**: Operations sharing a `wrr_id` or `pick_list_id` are replayed in `client_sequence_id` ascending order. Operations with different `wrr_id` and `pick_list_id` values may be replayed concurrently. `inspection_observation` operations sharing an `inspection_case_id` are replayed in `client_sequence_id` order.
 
 All sync actions are written to the audit log with `metadata.source = "offline_sync"`, `metadata.client_created_at`, and `metadata.captured_by_user_id` from the outbox entry — preserving the original client timestamp and the original capturing actor alongside the authoritative server timestamp and the (necessarily identical, per the actor-match gate above) syncing session's identity, satisfying requirements.md R8.4's requirement to preserve original actor and client operation identity in the recorded outcome.
 
@@ -279,6 +350,18 @@ All sync actions are written to the audit log with `metadata.source = "offline_s
 | Invalid/permanent failure | `failed` or `rejected` | Stop automatic retry and show safe actionable feedback. |
 | Transient server/network failure | `queued` | Back off with bounded retries and retry on a future trigger. |
 
+### 6.6 Supervisor resolution for conflict and stale-business-state outcomes
+
+A `conflict` or `stale_business_state` sync outcome is never silently discarded and never auto-merged. The resolution path is:
+
+1. The outbox entry transitions to `status: "failed"` locally and a `sync_log` record is written with the full server response.
+2. The entry surfaces in the supervisor attention queue (§6.3 step 5b) via the Alerts notification feed. Floor staff do not receive the conflict directly — conflicts surface to their supervisor.
+3. The supervisor sees both the queued observation (what the floor worker captured) and the server-side current state (what the server accepted). The supervisor may:
+   - **Accept the server-side winner** — acknowledge that the server state is correct; the queued observation is recorded as superseded in the `sync_log` and dismissed from the attention queue.
+   - **Escalate to administrator** — flag the conflict for administrative review when the physical scan evidence and the server state cannot be reconciled at supervisor level.
+4. No auto-merge of inventory quantities, locations, prices, or approvals is permitted under any conflict class. The rule "never auto-merge" applies unconditionally; there is no "safe to merge" exception.
+5. The physical observation is always preserved in the `sync_log` regardless of outcome, satisfying the audit requirement that a physical scan is never silently dropped.
+
 ## 7. Ordering, concurrency, and idempotency
 
 Commands sharing an `orderingKey` replay serially. Examples may include a single workflow session, document, item/lot/location operation, or scan sequence, but the owning feature must define the actual key.
@@ -287,7 +370,7 @@ Independent keys may replay concurrently only after the owning feature proves th
 
 The server owns idempotency storage/behavior for business commands. The client key is a deduplication input, not evidence that a command succeeded. Lost responses and repeated submissions must return the original outcome or a safe equivalent.
 
-The mechanism is: the outbox entry's client-generated `id` (§4.5) is the idempotency key, and the server-side scan-capture write uses it directly as a unique constraint/upsert key on the row it writes (e.g. one scan-observation row per outbox `id`), not a separate idempotency-log table consulted before a non-idempotent write. A replayed `wrr_scan_capture`/`pick_scan_capture` with the same `id` therefore resolves to the same row deterministically regardless of how many times it is submitted or how server state changed in between — this must hold even when the underlying WRR/commitment state has since moved to a conflicting status, in which case the write itself (not a separate idempotency check) is what returns `conflict`. `07`'s and `08`'s owning confirm/dispatch commands define their own idempotency mechanism for their own (Tier 2, non-queued) writes; this section governs only the two Tier 1 capture types above.
+The mechanism is: the outbox entry's client-generated `id` (§4.5) is the idempotency key, and the server-side observation write uses it directly as a unique constraint/upsert key on the row it writes (e.g. one scan-observation row per outbox `id`), not a separate idempotency-log table consulted before a non-idempotent write. A replayed `receiving_scan_observation`, `pick_list_scan_observation`, or `inspection_observation` with the same `id` therefore resolves to the same row deterministically regardless of how many times it is submitted or how server state changed in between — this must hold even when the underlying WRR/commitment/inspection state has since moved to a conflicting status, in which case the write itself (not a separate idempotency check) is what returns `conflict`. `07`'s and `08`'s owning confirm/dispatch commands define their own idempotency mechanism for their own (Tier 2, non-queued) writes; this section governs only the three Tier 1 observation types above.
 
 ## 8. Security, scope, and data lifecycle
 
@@ -301,7 +384,30 @@ The mechanism is: the outbox entry's client-generated `id` (§4.5) is the idempo
 
 ## 9. Shell and feature integration
 
-The offline package exposes a read-only status model to the shell (e.g., via `OfflineContext`).
+The offline package exports a read-only typed status contract from `@/lib/offline`. The shell (`05-ui-shell-and-navigation`) and floor feature surfaces import from this module only — they must not import queue internals, outbox schemas, or sync-coordinator implementation.
+
+### 9.0 Exported status contract
+
+```typescript
+// @/lib/offline — public contract for 05-ui-shell-and-navigation and floor features
+// Do not import queue internals directly.
+
+export type ConnectivityStatus = "online" | "offline" | "checking";
+
+export type SyncStatus = "idle" | "syncing" | "attention";
+
+export interface OfflineStatus {
+  connectivity: ConnectivityStatus;    // network + ping-verified server reachability
+  sync: SyncStatus;                    // queue processing state for the current session user
+  pendingCount: number;                // queued entries owned by the current session user
+  attentionCount: number;              // failed/conflict entries needing supervisor resolution
+  lastSyncedAt: number | null;         // epoch ms; null if never synced in this browser session
+}
+```
+
+`ConnectivityStatus` and `SyncStatus` are intentionally separate: a device can be `online` (ping succeeds) while `sync` is `attention` (unresolved conflicts exist), and can be `offline` while `sync` is `idle` (nothing pending). The shell must never conflate the two or label data as current solely because `connectivity === "online"`.
+
+`SyncStatus.idle` does not mean all cached data is current — it only means no queue processing is in progress and no entries require attention for the current session user.
 
 ### 9.1 UI indicators
 
@@ -315,11 +421,11 @@ The offline package exposes a read-only status model to the shell (e.g., via `Of
 | Page | Online | Offline |
 |---|---|---|
 | Dashboard | ✅ Full | ⚠️ Disabled — shows offline notice |
-| Incoming / Receiving | ✅ Full | ✅ Scan capture only (`wrr_scan_capture` queued) — lot creation, inspection resolution, and putaway confirmation require connectivity and remain disabled |
+| Incoming / Receiving | ✅ Full | ✅ Scan capture only (`receiving_scan_observation` queued) — lot creation, inspection resolution, and putaway confirmation require connectivity and remain disabled |
 | Outgoing / Master Inventory (pick-list generation) | ✅ Full | ⚠️ Disabled — requires live `qty_available` |
-| Outgoing / Pick execution (dispatch) | ✅ Full | ✅ Scan capture only (`pick_scan_capture` queued) — final dispatch/decrement requires connectivity and remains a separate online step |
+| Outgoing / Pick execution (dispatch) | ✅ Full | ✅ Scan capture only (`pick_list_scan_observation` queued) — final dispatch/decrement requires connectivity and remains a separate online step |
 | Inventory | ✅ Full | ⚠️ Read-only from cache (no edits) |
-| Quality Inspection | ✅ Full | ⚠️ Disabled — inspection resolution is Tier 2/online-only |
+| Quality Inspection | ✅ Full | ✅ Evidence capture only (`inspection_observation` queued — photo, note, measurement) — inspection resolution (`inspect.resolve`) is Tier 2/online-only and remains disabled offline |
 | Data Analytics | ✅ Full | ⚠️ Disabled — shows offline notice |
 | Chatbot | ✅ Full | ⚠️ Disabled — requires API |
 | Notifications / Alerts | ✅ Full | ⚠️ Read-only from cache |
@@ -344,10 +450,10 @@ Feature endpoints should use the owning domain transaction and idempotency mecha
 - [x] Device-sharing threat model resolved **for the honest/buggy-client case**: `captured_by_user_id` on every outbox entry (§4.5) plus the two-gate client/server actor-match check (§6.3 step 2 and 4c, §6.4) prevents an honest client — including one with a missing or buggy gate 1 — from ever syncing a queued entry under a different user's session.
 - [ ] **Accepted residual risk, not fully closed**: a maliciously modified client with physical access to the shared device's browser storage and separately-valid credentials as a different user could forge `captured_by_user_id` to bypass gate 2 (§4.5's "Explicit residual risk" note). Closing this fully would require either an online round-trip at capture time or storing a durable signed credential client-side, and the latter is forbidden by R2.4. Accepted given the bounded blast radius (Tier 1 capture-only, never a privileged action) with a detective audit-trail control in place instead of a preventive one. Revisit only if a concrete incident or a stronger requirement makes this cost worth paying.
 - [ ] Approve the local data retention and browser-storage threat model (quota/eviction handling, retention duration per cache/queue class) beyond the device-sharing mechanism resolved above.
-- [ ] Confirm the capability/session context and replay rejection contract with `02-rbac-roles`.
+- [x] Confirm the capability/session context and replay rejection contract with `02-rbac-roles` — resolved 2026-08-05: capability keys documented in §5.2 (`receiving.scan`, `pick_list.execute`, `inspection.perform`) matching the `02` §3.2 operational capability catalog; replay re-check sequence documented in §6.4.
 - [ ] Confirm Auth, endpoint, monitoring, and service-worker boundaries with `04-services-and-infrastructure`.
-- [ ] Reconcile `OfflineStatus` with `05-ui-shell-and-navigation` before either spec is approved.
+- [x] Reconcile `OfflineStatus` with `05-ui-shell-and-navigation` before either spec is approved — resolved 2026-08-05: typed `OfflineStatus` contract (`ConnectivityStatus`, `SyncStatus`) defined in §9.0 and exported from `@/lib/offline`; `05` consumes the interface without importing queue internals.
 - [ ] Decide whether background sync is required for v1 or whether foreground/reconnect sync is sufficient.
 - [ ] Decide whether queue review belongs in a shared office surface or in each owning feature.
 - [ ] Have `offline-sync-reviewer` review the final design for Tier 2 leakage, replay authorization, and conflict handling.
-- [ ] Decide whether a `pending` (not-yet-synced) outbox entry can be corrected or cancelled by the operator before sync. §4.4's `storage.idb` interface currently has no `removeFromOutbox`/`editOutboxEntry` method, and §6.4 applies each accepted `wrr_scan_capture` as a delta on `wrr_items.scanned_qty` — so an uncorrected wrong-quantity entry queued before a needed correction would surface as a duplicate/over-quantity `conflict` for supervisor review rather than being silently correctable. This is safe (no Tier 2 leakage; the entry never leaves capture-only territory) but the UX and API surface for it are currently undefined.
+- [ ] Decide whether a `pending` (not-yet-synced) outbox entry can be corrected or cancelled by the operator before sync. §4.4's `storage.idb` interface currently has no `removeFromOutbox`/`editOutboxEntry` method, and §6.4 applies each accepted `receiving_scan_observation` as a delta on `wrr_items.scanned_qty` — so an uncorrected wrong-quantity entry queued before a needed correction would surface as a duplicate/over-quantity `conflict` for supervisor review rather than being silently correctable. This is safe (no Tier 2 leakage; the entry never leaves capture-only territory) but the UX and API surface for it are currently undefined.

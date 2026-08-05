@@ -1,6 +1,7 @@
 # Notifications & Alerts — Requirements
 
 Status: Draft
+Updated: 2026-08-05
 
 ## 1. Purpose and scope
 
@@ -25,11 +26,12 @@ The feature covers notification records, alert severity and lifecycle, recipient
 
 - **Floor operator** — receives actionable receiving, transfer, pick, and exception notices within granted scope.
 - **Approver/reviewer** — receives pending-approval notices only for requests they are currently authorized to review.
+- **Supervisor/reviewer** — receives inventory threshold alerts and stock-level attention notices (low stock, expiry approaching, lot depleted, receiving discrepancy, inspection failure requiring disposition, pick-list commitment overdue) within their operational scope, determined by party/flow scope and the specific capability required for each alert type (e.g. `inventory.read`, `receiving.view`, `inspection.resolve`, `pick_list.generate`).
 - **Trading/VMI/party user** — receives only notices for their permitted party and flow; internal cost, margin, or unrelated party data is excluded.
 - **Administrator/operations user** — manages approved preferences/rules and reviews delivery failures according to capability.
 - **System job** — creates notifications from durable domain events with the original actor preserved and the system executor audited.
 
-Notification categories SHALL be explicit and extensible, including approval attention, receiving/inspection exception, transfer attention, pick-list/document readiness, Trading order/pricing attention, service/job failure, and approved inventory/operational threshold alerts. The owning feature must define the event and recipient capability before adding a category.
+Notification categories SHALL be explicit and extensible, including approval attention, receiving/inspection exception, transfer attention, pick-list/document readiness, Trading order/pricing attention, service/job failure, and **inventory threshold alerts** (low stock, expiry approaching, lot depleted, discrepancy, commitment overdue). The owning feature must define the event and recipient capability before adding a category.
 
 ## 4. Functional requirements
 
@@ -40,6 +42,24 @@ Notification categories SHALL be explicit and extensible, including approval att
 3. Records SHALL be created idempotently for the same source event, recipient, channel, and template version.
 4. Expiry and retention SHALL be explicit; historical records SHALL not be silently rewritten when source business state changes.
 5. The record SHALL contain only the minimum display data needed. The detail page SHALL refetch the authoritative source record and reauthorize access.
+
+### R1-A. Inventory and operational threshold alerts
+
+`14` routes approved events and metrics from owning features; it never recalculates inventory state. Each alert below names its source metric, the threshold/event condition, the owning feature, and the scoped recipient.
+
+1. **Low stock** — `qty_available` (from `lot_inventory_totals`) falls below an item's `reorder_level`. Source: computed by `01`/`16` derived view; `14` consumes the approved view/event, never queries `lot_location_balances` directly. Recipient: supervisors with `inventory.read` capability in scope. Severity: warning. Cooldown: one alert per item per configurable period (default 24 h) to prevent flooding.
+
+2. **Lot expiry approaching** — a perishable lot's `expiry_date` is within a configurable advance-notice window (defaults: 30 days and 7 days). Source: scheduled evaluation against the `lots` table by `14`'s evaluation job using approved read access. Recipient: supervisors with `inventory.read`. Severity: warning (30-day window), critical (7-day window).
+
+3. **Lot fully depleted** — `qty_remaining` reaches zero and the lot transitions to `depleted` status. Source: `inventory_transactions` domain event from `08`/`07`. Recipient: supervisors with `inventory.read`. Severity: info.
+
+4. **Receiving discrepancy** — WRR scanned quantity does not match expected quantity on confirmation. Source: `07-incoming-receiving` domain event. Recipient: supervisors with `receiving.view` capability. Severity: warning.
+
+5. **Inspection failure requiring disposition** — an inspection case reaches a `failed` outcome and has no disposition yet. Source: `11-transfer-and-inspection` domain event. Recipient: supervisors with `inspection.resolve`. Severity: critical.
+
+6. **Pick-list commitment overdue** — an `inventory_commitment` has been in `committed` state beyond a configurable window without dispatch. Source: scheduled evaluation by `14`'s evaluation job. Recipient: supervisors with `pick_list.generate` capability. Severity: warning.
+
+7. **Document generation failure** — PDF rendering for a WRR, pick list, or acknowledgement receipt has failed after retries. Source: `04-services-and-infrastructure` artifact job dead-letter. Recipient: supervisors and administrators. Severity: critical.
 
 ### R2. Event intake and routing
 
@@ -96,3 +116,4 @@ Notification categories SHALL be explicit and extensible, including approval att
 - Whether acknowledgement is needed for any category beyond read/dismiss.
 - Initial email templates, sender identities, rate limits, escalation windows, and Asia/Manila display policy with UTC storage.
 - Initial alert metrics/events and owning feature for each threshold.
+- Initial inventory alert thresholds (reorder-level source, expiry windows, commitment-overdue window, cooldown periods) and confirmation that `14` routes these events from `01`/`07`/`08`/`11`/`16` rather than recalculating inventory state.

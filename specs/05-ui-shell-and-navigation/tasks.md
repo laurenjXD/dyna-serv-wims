@@ -1,6 +1,7 @@
 # UI Shell & Navigation — Implementation Plan
 
 Status: Draft
+Updated: 2026-08-05
 
 ## Implementation gate
 
@@ -37,16 +38,16 @@ It does not define feature workflows, database tables, business permissions, off
 
 These decisions must be resolved in `requirements.md`/`design.md`; the recommended defaults are planning guidance, not approved behavior.
 
-| ID | Decision | Recommended default |
-|---|---|---|
-| 0A | Route organization | App Router route groups by authenticated area/role, with shared authenticated layout and feature-owned child layouts only where needed. |
-| 0B | Unauthenticated entry | A single sign-in/recovery boundary supplied by `04-services-and-infrastructure`; protected routes redirect without leaking the requested resource. |
-| 0C | Navigation source | Typed central navigation registry containing route, label, icon, surface (`floor`/`office`), order, and required capability; feature specs reference entries rather than editing the shell ad hoc. |
-| 0D | Unauthorized route behavior | Server-side authorization remains authoritative; return the approved forbidden/not-found experience, with client visibility only as usability support. |
-| 0E | Floor navigation | Hide or collapse persistent navigation during active scan flows; use a bottom tab bar or feature-owned flow navigation when the approved floor design calls for it. |
-| 0F | Session presentation | Show the resolved current account and safe status information from the server session; never trust client-supplied role or party values. |
-| 0G | Offline indicator | Display connectivity state only through the shared offline contract; do not expose a misleading “synced” state without authoritative status. |
-| 0H | Error reporting | Show safe user-facing error states and send diagnostic context through the approved Sentry boundary without secrets, tokens, or protected record contents. |
+| ID | Decision | Recommended default | Selected |
+| --- | --- | --- | --- |
+| 0A | Route organization | App Router route groups by authenticated area/role, with shared authenticated layout and feature-owned child layouts only where needed. | **Confirmed: App Router route groups.** This is the most efficient structure for Next.js 15: the `(authenticated)` route group owns session resolution once at the layout level, eliminating per-route guard duplication. Feature-owned child layouts are permitted only when a feature genuinely needs a divergent shell surface (e.g. a full-screen scan flow). No alternatives offer better render performance or simpler maintainability for this pattern. |
+| 0B | Unauthenticated entry | A single sign-in/recovery boundary supplied by `04-services-and-infrastructure`; protected routes redirect without leaking the requested resource. | **Confirmed: single sign-in boundary from `04`.** A single entry point minimizes the attack surface for auth bypass and simplifies deep-link preservation. Splitting auth across multiple entry points would add complexity with no performance benefit. Deep-link destination is preserved per the state catalog in `design.md` §3.4. |
+| 0C | Navigation source | Typed central navigation registry containing route, label, icon, surface (`floor`/`office`), order, and required capability; feature specs reference entries rather than editing the shell ad hoc. | **Confirmed: typed central registry.** A single typed source is faster to render (one server-side filter pass over a small static array), eliminates nav drift between surfaces, and makes capability-key refactors a single-file change. Capability field is bound to the stable `02` resource keys per `design.md` §5. |
+| 0D | Unauthorized route behavior | Server-side authorization remains authoritative; return the approved forbidden/not-found experience, with client visibility only as usability support. | **Confirmed: server-authoritative with hidden-not-disabled nav.** Unauthorized entries are hidden from navigation entirely rather than rendered in a disabled state — hiding is faster to render, avoids leaking route existence to users without access, and removes the temptation to click a grey link. The server independently enforces authorization on every request regardless of navigation state. |
+| 0E | Floor navigation | Hide or collapse persistent navigation during active scan flows; use a bottom tab bar or feature-owned flow navigation when the approved floor design calls for it. | **Confirmed: hidden nav during scan flows, bottom tab bar between steps.** Full hiding (not collapse) during active scan loops is the most efficient floor pattern: it removes all competing tap targets, maximizes the scan result area, and eliminates accidental mid-scan navigation. Bottom tab bar is used only between scan steps. The scan-flow flag is owned by the feature route layout per `design.md` §3.3. |
+| 0F | Session presentation | Show the resolved current account and safe status information from the server session; never trust client-supplied role or party values. | **Confirmed: server-resolved display only.** Displaying only what the server session provides is both the most secure and simplest approach: no client-side identity assembly, no reconciliation between client claims and server state. The `ShellSessionContext` shape in `design.md` §7 defines exactly which fields are safe to surface. |
+| 0G | Offline indicator | Display connectivity state only through the shared offline contract; do not expose a misleading “synced” state without authoritative status. | **Confirmed: consume `03` read-only contract; hidden when contract absent.** This is strictly more efficient than independent polling: one source of truth for connectivity state, zero risk of the shell contradicting the offline engine, and no wasted network checks. If the `03` contract is absent or uninitialized the indicator is hidden — not assumed online — per `design.md` §3.4. |
+| 0H | Error reporting | Show safe user-facing error states and send diagnostic context through the approved Sentry boundary without secrets, tokens, or protected record contents. | **Confirmed: safe generic copy + Sentry correlation ID.** Generic user-facing copy prevents information disclosure; a correlation ID in Sentry lets engineers trace the exact request without the error page leaking anything. Stack traces, SQL, provider hostnames, and access tokens are never included per `design.md` §3.4 and `requirements.md` R6.4. |
 
 ## Implementation tasks
 
@@ -54,13 +55,13 @@ These decisions must be resolved in `requirements.md`/`design.md`; the recommend
 
 Testing: Documentation review; no implementation tests.
 
-- [ ] Convert the shell scope into requirements with acceptance criteria for protected entry, navigation, responsive behavior, session controls, loading/error/not-found states, accessibility, and deep links.
-- [ ] Inventory all initial routes from the current feature map and mark each as floor, office, or shared; identify routes that must remain placeholders until their feature spec is approved.
-- [ ] Define the route-group/layout tree in `design.md`, including which layout owns Auth/session checks and which feature owns page content.
-- [ ] Define typed contracts for navigation entries, page headers, breadcrumbs/back behavior, global feedback, account controls, and connectivity status.
-- [ ] Define the capability interface consumed by the shell without embedding role names or duplicating the RBAC permission matrix.
-- [ ] Define whether feature routes render a shell-level loading/error boundary, a feature boundary, or both.
-- [ ] Record unresolved choices and their owners; update `specs/00-steering/revision-log.md` for any cross-feature decision that changes a steering rule.
+- [x] Convert the shell scope into requirements with acceptance criteria for protected entry, navigation, responsive behavior, session controls, loading/error/not-found states, accessibility, and deep links.
+- [x] Inventory all initial routes from the current feature map and mark each as floor, office, or shared; identify routes that must remain placeholders until their feature spec is approved.
+- [x] Define the route-group/layout tree in `design.md`, including which layout owns Auth/session checks and which feature owns page content.
+- [x] Define typed contracts for navigation entries, page headers, breadcrumbs/back behavior, global feedback, account controls, and connectivity status.
+- [x] Define the capability interface consumed by the shell without embedding role names or duplicating the RBAC permission matrix.
+- [x] Define whether feature routes render a shell-level loading/error boundary, a feature boundary, or both.
+- [x] Record unresolved choices and their owners; update `specs/00-steering/revision-log.md` for any cross-feature decision that changes a steering rule.
 
 ### 2. Establish the visual and responsive foundation
 
@@ -115,9 +116,9 @@ Testing: Unit tests for state/formatting helpers; E2E tests for keyboard and tou
 
 Testing: Type-check/build contract; E2E smoke coverage for representative floor and office routes.
 
-- [ ] Document how a feature registers a route, chooses its shell surface, supplies page metadata, and declares required capabilities.
-- [ ] Document how feature layouts opt into floor mode and how active scan flows suppress or replace persistent navigation.
-- [ ] Document the boundary between shell-owned and feature-owned loading, error, empty, confirmation, and scan-result states.
+- [x] Document how a feature registers a route, chooses its shell surface, supplies page metadata, and declares required capabilities.
+- [x] Document how feature layouts opt into floor mode and how active scan flows suppress or replace persistent navigation.
+- [x] Document the boundary between shell-owned and feature-owned loading, error, empty, confirmation, and scan-result states.
 - [ ] Add representative integration examples for one floor route and one office route without implementing those feature workflows.
 - [ ] Add a contract check preventing feature code from defining duplicate global nav, shell tokens, or client-only authorization gates.
 - [ ] Update `specs/00-steering/gantt-mapping.md` after this spec's status changes; the receiving UI row should reference the approved shell contract rather than implying that the shell itself implements receiving.

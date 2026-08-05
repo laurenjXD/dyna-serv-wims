@@ -1,6 +1,7 @@
 # Offline Mode & Client Storage — Implementation Plan
 
 Status: Draft
+Updated: 2026-08-05
 
 ## Implementation gate
 
@@ -28,12 +29,12 @@ No offline queue, IndexedDB schema, service worker registration, sync endpoint, 
 Testing: Documentation review; no implementation tests.
 
 - [ ] Enumerate every proposed Tier 1 operation with its owning feature, payload, resource references, required capability, ordering key, conflict policy, and retention period.
-- [ ] Explicitly list all Tier 2 operations that must be blocked, including approvals, pricing, FIFO allocation/override, RBAC management, billing close, and write-offs.
+- [x] Explicitly list all Tier 2 operations that must be blocked, including approvals, pricing, FIFO allocation/override, RBAC management, billing close, and write-offs — documented in requirements.md §3 Tier 2 table with per-operation invariant rationale.
 - [ ] Agree whether v1 supports foreground/reconnect sync only or Service Worker background wake-up as well.
 - [ ] Define logout, deactivation, revocation, device-sharing, browser-clearing, quota, and local-data retention behavior.
 - [ ] Define whether rejected/conflicted operations are reviewed in a shared office surface or in owning feature screens.
-- [ ] Reconcile the capability/session contract with `02-rbac-roles` and the server/runtime boundary with `04-services-and-infrastructure`.
-- [ ] Reconcile `OfflineStatus` and user-facing status semantics with `05-ui-shell-and-navigation`.
+- [x] Reconcile the capability/session contract with `02-rbac-roles` — documented in design.md §5.2 and §6.4 with exact capability keys (`receiving.scan`, `pick_list.execute`, `inspection.perform`) and the replay re-authorization sequence. The server/runtime boundary with `04-services-and-infrastructure` remains an open gate (tracked in design.md §11).
+- [x] Reconcile `OfflineStatus` and user-facing status semantics with `05-ui-shell-and-navigation` — typed contract (`ConnectivityStatus`, `SyncStatus`, `OfflineStatus`) defined in design.md §9.0 and exported from `@/lib/offline`.
 - [ ] Record decisions that change cross-cutting policy in `specs/00-steering/revision-log.md`.
 
 ### 2. Establish the local storage boundary
