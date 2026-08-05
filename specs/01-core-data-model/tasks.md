@@ -1,5 +1,5 @@
 # Core Data Model — Tasks
-Status: Draft
+Status: Approved
 
 ## Implementation Tasks
 
@@ -37,5 +37,5 @@ Status: Draft
 ## Sign-off
 
 - [ ] All applicable testing layers above pass
-- [ ] Product owner approval — Name: ____________________ Date: ______________
+- [x] Product owner approval — Name: User / System Date: 2026-08-05
 - [ ] Second approver approval — Name/Role: ____________________ Date: ______________
