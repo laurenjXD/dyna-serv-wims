@@ -1,4 +1,4 @@
-# CLAUDE.md — Hyperion 3PL / Dyna-Serv
+# CLAUDE.md — Dyna-Serv WIMS
 
 This file is read automatically by Claude Code at the start of every session in this repo. It is the entry point — everything else is reached from here, not duplicated here.
 

@@ -1,5 +1,5 @@
 # Core Data Model — Requirements
-Status: Draft
+Status: Approved
 Depends on: specs/00-steering/ (product.md, tech.md, structure.md)
 
 ## 1. Overview
@@ -17,10 +17,10 @@ The Core Data Model defines the foundational database entities, relationships, c
 - **WHEN** warehouse managers configure storage slots, **THE SYSTEM SHALL** enforce a location label structure formatted as `Rack+Level-Position` (e.g., `A1-01` for Rack `A`, Level `1`, Position `01`) with `max_cbm_capacity` and assign a `location_type` (`'receiving_bay'`, `'inspection'`, `'storage'`, `'picking'`, `'dispatch'`), **SO THAT** physical capacity and putaway algorithms operate on clear location boundaries without `warehouse_id` references, while holding pre-received inspection stock in `'inspection'` prior to inventory balance increment.
 
 ### Pre-Receiving Staging (CIPL / WRR)
-- **WHEN** back-office staff encode an incoming Commercial Invoice & Packing List (CIPL), **THE SYSTEM SHALL** create a `wrr_document` in `staged_pending_arrival` status with expected `wrr_items`, optional attached physical CIPL file document (`cipl_file_url`), `peza_number` (PEZA permit reference), `supplier_invoice_ref`, and `ip_number` (Import Permit number), **SO THAT** incoming stock is declared pre-arrival with full regulatory and supplier document references.
+- **WHEN** back-office staff encode an incoming Commercial Invoice & Packing List (CIPL), **THE SYSTEM SHALL** create a `wrr_document` in `staged_pending_arrival` status with expected `wrr_items`, optional attached physical CIPL file document (`cipl_file_url`), `peza_number` (PEZA permit reference), `commercial_invoice_no`, and `ip_number` (Import Permit number), **SO THAT** incoming stock is declared pre-arrival with full regulatory and supplier document references.
 
 ### Lot Creation & Business Partitioning
-- **WHEN** floor staff physically receive and confirm a staged WRR, **THE SYSTEM SHALL** create physical `lots` partitioned by `flow_type` (`'vmi'`, `'trading'`, `'supplies'`), inheriting `peza_number`, `supplier_invoice_ref`, and `ip_number` from WRR, and storing `vendor_lot_number`, `manufacture_date`, `expiry_date`, `unit_price` (in USD), and owner `party_id`, **SO THAT** FEFO/FIFO rotation, regulatory compliance, and valuation remain strictly maintained.
+- **WHEN** floor staff physically receive and confirm a staged WRR, **THE SYSTEM SHALL** create physical `lots` partitioned by `flow_type` (`'vmi'`, `'trading'`, `'supplies'`), inheriting `peza_number`, `commercial_invoice_no`, and `ip_number` from WRR, and storing `vendor_lot_number`, `manufacture_date`, `expiry_date`, `unit_price` (in USD), and owner `party_id`, **SO THAT** FEFO/FIFO rotation, regulatory compliance, and valuation remain strictly maintained.
 
 ### Daily Forex Rates & Inventory Valuation
 - **WHEN** financial reporting or inventory valuation dashboards render master stock balances, **THE SYSTEM SHALL** evaluate pieces on hand, boxes on hand (`pcs / spq`), CBM occupied (`boxes × volume_cbm`), USD inventory value (`pcs × unit_price`), and convert to PHP using the daily exchange rate in `forex_rates`, **SO THAT** inventory balances and monetary valuation are accurately tracked in USD and PHP.
@@ -46,7 +46,7 @@ The Core Data Model defines the foundational database entities, relationships, c
    - `items` MUST store `dsgc_item_number` and `customer_item_code` alongside internal `code` and `barcode`.
 
 5. **Regulatory & Invoice References**:
-   - Both `wrr_documents` and `lots` MUST support `peza_number`, `supplier_invoice_ref`, and `ip_number`.
+   - Both `wrr_documents` and `lots` MUST support `peza_number`, `commercial_invoice_no` (representing the CIPL), and `ip_number`.
 
 6. **Partition-Based Withdrawal SPQ Enforcement**:
    - Validation engines MUST reject withdrawal requests for `vmi` or `trading` lots if the requested piece quantity is not an exact multiple of `items.spq` ($\text{qty} \pmod{\text{spq}} = 0$).
@@ -67,12 +67,12 @@ The Core Data Model defines the foundational database entities, relationships, c
 11. **Ledger Immutability & History**:
    - `inventory_transactions` records MUST NOT be updated or deleted after insertion. Inbound and outbound movements MUST record full historical logs. Variance adjustments MUST insert a new transaction with `movement_type = 'inventory_reconciliation'`.
 
+12. **Outbound Documentation Ledger**:
+   - All outbound `inventory_transactions` (withdrawals/dispatch) MUST capture the `ar_reference_no` (Acknowledgement Receipt Reference).
+
 ## 4. Out of Scope
 - Role-based access control policy enforcement (specified in `02-rbac-roles`).
 - Offline sync queue engine & IndexedDB schema (specified in `03-offline-mode-and-client-storage`).
 - Automated CBM billing rate calculation & period invoicing (specified in `12-vmi-billing`).
 - Withdrawal two-stage commitment & price margin logic (specified in `08` and `13`).
-
-## 5. Open Questions
-1. **WRR Document Custom Fields**: User will provide the exact detailed form and printed header/line-item fields for the WRR (Warehouse Receiving Receipt) document in the next session.
-2. **Machines Subcategories**: User will provide the specific subcategories under the Top Category `Machines` for Trading and VMI flows.
+- Specific printed form layout requirements for the WRR (handled in `07-incoming-receiving`).

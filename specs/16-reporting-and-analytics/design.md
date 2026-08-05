@@ -2,118 +2,108 @@
 
 Status: Draft
 
-## 1. Design intent
+Cites foundational specs:
+- `specs/00-steering/product.md`
+- `specs/00-steering/tech.md`
+- `specs/00-steering/structure.md`
+- `specs/00-steering/brand-design-system.md`
+- `specs/01-core-data-model/`
+- `specs/02-rbac-roles/`
+- `specs/05-ui-shell-and-navigation/`
 
-`16` is a governed read layer over canonical warehouse records. It combines curated SQL queries and, where scale requires it, versioned read models/materialized projections. It never becomes a parallel inventory ledger or workflow state machine.
+---
 
-The design favors understandable, reproducible metrics over an unrestricted analytics warehouse in v1. Every result identifies its definition version, scope, source watermark, freshness, and as-of time.
+## 1. Overview & Architecture
 
-## 2. Dependencies and ownership
+Spec 16 defines the UI layout, component structure, and database query architecture for the Office Administration Dashboard and Reporting views. 
 
-Depends on `00-steering` for product, technology, structure, testing, and brand rules; `01` for `parties`, `items`, `locations`, `lots`, `forex_rates`, `wrr_documents`, `wrr_items`, `wrr_inspection_logs`, `inventory_transactions`, and canonical documents; `02` for capability/party/flow scope, RLS, and audit; `03` for stale/offline behavior; `04` for jobs, private Storage, telemetry, retention, and runtime; and `05` for authenticated responsive routes.
+The design relies heavily on the **`stock_entries`** ledger (from `01-core-data-model`) as the single source of truth for all aggregations and recent activity views.
 
-Source owners remain `06` party/item data, `07` receiving, `08` outbound commitment/pick/dispatch, `09` approvals, `10` priced documents, `11` transfers/inspection, `12` VMI billing, `13` Trading pricing/orders, `17` categorization, `18` packing, and `19` dispatch/delivery. `14` owns alert delivery. `15` consumes narrow approved projections and does not receive raw SQL access.
+---
 
-## 3. Reporting architecture
+## 2. Dashboard UI Layout Architecture
 
-```text
-canonical source tables + immutable ledger + approved domain events
-  -> scoped metric/query layer
-  -> optional versioned read models with source watermark
-  -> report definition + authorization intersection
-  -> dashboard query / export snapshot / scheduled job
-  -> UI or private artifact
+The dashboard acts as the primary layout inside the desktop UI shell.
+
+### 2.1 Visual Hierarchy & Component Map
+```
+[ Top Header Bar (User Profile, Notifications, Export CSV) ]
+------------------------------------------------------------
+[ Left Sidebar    ] | [ Main Content Area                  ]
+[ (Nav Shell)     ] | 
+[ - Dashboard     ] |  1. Metrics Cards (`<KpiCardGroup>`)
+[ - Inventory     ] |     - Total Received (MTD)
+[ - Reports       ] |     - Total Picked (MTD)
+[                 ] | 
+[                 ] |  2. Heatmap Component (`<ActivityHeatmap>`)
+[                 ] |     - 12-Month GitHub-style activity grid
+[                 ] |     - Day blocks mapped to activity volume
+[                 ] | 
+[                 ] |  3. Recent Transactions (`<RecentTransactionsTable>`)
+[                 ] |     - Date | Party | Item | Qty | Type
 ```
 
-The query layer is the only place where report formulas live. A report definition has a stable key, version, owner, allowed dimensions/measures, source contract, freshness target, and visibility policy. The server resolves the caller's capability and scope before applying filters and selecting fields.
+### 2.2 The GitHub-Style Activity Heatmap
+To match the requested visual design:
+- **Grid Layout:** Standard 52-week columns $\times$ 7-day rows CSS Grid.
+- **Color Scale (Thresholds):**
+  - `Level 0` (0 transactions): Neutral / Gray (e.g., `bg-slate-100`)
+  - `Level 1` (1-10 transactions): Light Primary (e.g., `bg-blue-200`)
+  - `Level 2` (11-50 transactions): Medium Primary (e.g., `bg-blue-400`)
+  - `Level 3` (51-100 transactions): Dark Primary (e.g., `bg-blue-600`)
+  - `Level 4` (100+ transactions): Heaviest Primary (e.g., `bg-blue-800`)
+- **Interactivity:** Tooltip appears on hover: `[Count] Transactions on [Date]`.
 
-## 4. Canonical source and read-model boundaries
+---
 
-The initial source map is:
+## 3. Data & Query Architecture
 
-| Reporting subject | Authoritative source | Notes |
-|---|---|---|
-| Item/lot/location inventory | `lots`, canonical location assignment/quantity model from `01`, `items` | Must include `flow_type`; available status remains source truth. |
-| Movement history | `inventory_transactions` | Immutable; preserve `movement_type`, actor, locations, and source reference. |
-| Receiving/quality | `wrr_documents`, `wrr_items`, `wrr_inspection_logs` | Standby expected stock is not available stock. |
-| Valuation | lot/item unit-cost fields + `forex_rates` | Show currency, rate date, and rounding policy. |
-| Fulfillment/documents | `08`, `10`, `18`, `19` contracts | Do not invent document states or recalculate prices. |
-| VMI commercial measures | approved `12` period/CBM projection | Document price is only a per-release reference. |
-| Trading commercial measures | approved `13` frozen price snapshot | Final Trading document price; margin visibility is scoped. |
-| Alerts | metric output owned by `16`, routing owned by `14` | No duplicate alert state machine in `16`. |
+### 3.1 Heatmap Aggregation Query
+To power the heatmap efficiently without pulling thousands of raw rows into the browser, Drizzle/Postgres will execute an aggregate group-by query.
 
-The exact tables for reserved quantities, location balances, outbound states, price snapshots, and billing periods are unresolved upstream. `16` must consume their approved interfaces rather than hard-code provisional schema names.
+**Example SQL logic:**
+```sql
+SELECT 
+  DATE(created_at) as activity_date,
+  COUNT(*) as transaction_count
+FROM stock_entries
+WHERE created_at >= (CURRENT_DATE - INTERVAL '1 year')
+GROUP BY DATE(created_at)
+ORDER BY activity_date ASC;
+```
+*Note: If the `stock_entries` table grows beyond 1M+ rows, this view should be cached via a materialized view (`daily_transaction_volume`) refreshed asynchronously.*
 
-## 5. Metric contracts
+### 3.2 Recent Transactions Query
+To power the data table, the query must join `stock_entries` to the `parties` and `items` tables.
 
-Each metric contract records:
-
-```text
-metric_key, definition_version, owner_feature, source_contract,
-dimensions, filters, formula, unit/currency, timezone,
-freshness_target, null/missing-data behavior, visibility policy
+**Drizzle ORM Logic Concept:**
+```typescript
+const recentTransactions = await db.select({
+  date: stockEntries.createdAt,
+  partyName: parties.name,
+  itemName: items.name,
+  quantity: stockEntries.quantity,
+  type: stockEntries.entryType, // 'receipt' | 'withdrawal'
+  operator: users.displayName
+})
+.from(stockEntries)
+.innerJoin(parties, eq(stockEntries.partyId, parties.id))
+.innerJoin(items, eq(stockEntries.itemId, items.id))
+.innerJoin(users, eq(stockEntries.createdBy, users.id))
+.orderBy(desc(stockEntries.createdAt))
+.limit(10);
 ```
 
-Initial contract families:
+---
 
-- inventory: pieces, boxes, CBM, available/reserved, ageing, expiry, reorder indicator;
-- movement: received, putaway, picked, transferred, reconciled quantities and counts;
-- receiving quality: expected/scanned variance, conformance rate, non-conformance reasons and trends;
-- capacity: occupied CBM, capacity, utilization, missing packaging data;
-- fulfillment: request-to-commit, pick, pack, dispatch, delivery milestones and exceptions;
-- valuation: USD/PHP inventory value using the approved daily forex rate;
-- VMI: period occupancy/CBM and approved billing inputs from `12`;
-- Trading: approved sales/cost/margin measures from frozen `13` snapshots.
+## 4. Reporting & Export Design
 
-Metrics with unresolved business definitions remain marked `provisional` and cannot be used for billing, approval, automated workflow decisions, or external party reporting.
+### 4.1 CSV Export Format
+When an admin clicks **Export CSV** on the transactions list, a Route Handler (`/api/export/transactions`) generates a flattened CSV.
 
-## 6. Scope and authorization
+**CSV Columns:**
+`Transaction_ID, Date, Time, Party_Name, Item_Name, Item_Barcode, Type, Quantity, UOM, Location_Zone, Processed_By, Reference_No (CIPL/AR)`
 
-The effective query scope is the intersection of:
-
-```text
-current session capability
-  + allowed resource/action
-  + party scope
-  + optional flow_type scope
-  + report/field visibility policy
-  + RLS enforcement
-```
-
-The browser may request a report key, permitted dimensions, date range, and filters, but the server owns the report definition, joins, selected columns, scope, and aggregate behavior. Counts and aggregates use the same scope predicate as detail rows so totals cannot disclose hidden records. Export and scheduled-job execution re-resolve this scope at execution time.
-
-Party-safe projections must omit internal Trading cost/margin, restricted VMI billing details, internal Supplies data, inspection evidence, security data, and unnecessary personal data. A combined internal dashboard must label VMI, Trading, and Supplies separately even when showing a total.
-
-## 7. Freshness, snapshots, and failure behavior
-
-For a direct query, the response includes query time, source as-of time, and definition version. For a read model, it also includes the last source event/transaction watermark, refresh completion time, and freshness state (`current`, `stale`, `partial`, `rebuilding`, or `failed`).
-
-Exports use an immutable report snapshot containing the definition version, resolved scope, filter parameters, source watermark, generated time, and artifact hash. The file is stored privately and accessed through current authorization plus a short-lived/session-authorized link.
-
-If a source or projection is unavailable, the system returns an explicit error or stale/partial result according to the metric contract. It does not silently substitute zeros, cached authorization, or an unrelated source. Realtime is only an invalidation hint; reconnect/manual refresh performs a full authorized refetch.
-
-## 8. Client surfaces
-
-Analytics is an office/supervisor surface: desktop-first for dense tables and comparisons, but responsive down to mobile. It follows the approved design system and uses readable data displays, clear scope/filter summaries, accessible charts/tables, and explicit status text. It does not use floor workflow patterns as its primary layout, but any mobile view must remain usable and must not hide the as-of/freshness state.
-
-The master inventory view keeps `item_code` prominent and supports item → lot → location → movement history drill-down. Charts are supplementary; every important visualization has an equivalent table or text summary. Filters show the effective party/flow scope and do not imply permission changes.
-
-## 9. Jobs, exports, and retention
-
-Small dashboard queries are synchronous with bounded limits. Large exports, scheduled reports, projection refreshes, and retention work use `04`'s job contract with correlation IDs, idempotency, retries, and dead-letter handling. A job failure does not change source business state.
-
-Report definitions, execution metadata, export artifacts, and schedules follow the approved retention policy. Telemetry stores counts, latency, outcome, definition, scope category, and correlation data—not full sensitive rows or file contents by default.
-
-## 10. AI and alert integration
-
-`15` receives only typed, approved, read-only projections with source labels and as-of metadata. It cannot submit SQL, broaden scope, or treat a cached result as current.
-
-`14` may subscribe to approved metric/event contracts for low-stock or operational alerts. `16` supplies the metric and owner-defined threshold input; `14` owns recipient routing, preferences, delivery, deduplication, and acknowledgement. An alert does not mutate the metric source or workflow.
-
-## 11. Testing strategy
-
-- **Vitest:** metric formulas, partition separation, definition versioning, scope predicates, field redaction, null/forex behavior, freshness states, export limits, and snapshot reproducibility.
-- **Real Postgres:** migrations/read-model queries, RLS, party/flow isolation, aggregate-versus-detail consistency, immutable ledger reads, concurrent refresh/export claims, retention, and revoked-access behavior.
-- **Integration/jobs:** source watermarking, projection refresh, private Storage artifacts, retries/dead letters, schedule-time reauthorization, and sanitized telemetry.
-- **Playwright:** dashboard filters/drill-down, mobile responsiveness, accessible tables/charts, stale/offline/partial/error states, export/download authorization, and no cross-party discovery through totals or URLs.
-- **Manual QA:** metric reconciliation against source records, warehouse operator review, printed/exported report readability, Asia/Manila presentation, and commercial visibility review with owners of `12` and `13`.
+### 4.2 Party Scope (RLS Enforcement)
+- **SysAdmin / OfficeAdmin:** Views aggregations across all parties. Query executes without `party_id` filters.
+- **PartyClient:** If a vendor logs in to the portal, the Supabase RLS policy automatically filters `stock_entries` to their specific `party_id`. The dashboard logic remains identical; the database natively enforces the scope constraint.

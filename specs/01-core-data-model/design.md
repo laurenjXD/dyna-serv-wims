@@ -1,5 +1,5 @@
 # Core Data Model — Design
-Status: Draft
+Status: Approved
 Depends on: specs/00-steering/ (tech.md, structure.md), specs/01-core-data-model/requirements.md
 
 ## 1. Data Model & Schema Definitions
@@ -183,7 +183,7 @@ export const lots = pgTable("lots", {
   ownerPartyId: uuid("owner_party_id").references(() => parties.id), // Required for VMI, optional for Trading/Supplies
   status: lotStatusEnum("status").default("staged").notNull(), // FIFO/FEFO eligibility gate
   pezaNumber: varchar("peza_number", { length: 100 }), // PEZA Permit Number (manual)
-  invoiceNumber: varchar("invoice_number", { length: 100 }), // Invoice Number
+  commercialInvoiceNo: varchar("commercial_invoice_no", { length: 100 }), // Commercial Invoice (CIPL)
   ipNumber: varchar("ip_number", { length: 100 }), // Import Permit (IP) Number
   manufactureDate: date("manufacture_date"),
   expiryDate: date("expiry_date"),
@@ -203,9 +203,8 @@ import { items } from "./items";
 export const wrrDocuments = pgTable("wrr_documents", {
   id: uuid("id").primaryKey().defaultRandom(),
   wrrNumber: varchar("wrr_number", { length: 50 }).notNull().unique(), // e.g. 'WRR-2026-00001'
-  ciplReference: varchar("cipl_reference", { length: 100 }),
+  commercialInvoiceNo: varchar("commercial_invoice_no", { length: 100 }), // Commercial Invoice / CIPL reference
   ciplFileUrl: text("cipl_file_url"), // Attached PDF/Image CIPL document in Supabase Storage
-  invoiceNumber: varchar("invoice_number", { length: 100 }), // Invoice Number
   ipNumber: varchar("ip_number", { length: 100 }), // Import Permit (IP) Number
   vendorPartyId: uuid("vendor_party_id").references(() => parties.id).notNull(),
   flowType: flowTypeEnum("flow_type").notNull(),
@@ -279,6 +278,8 @@ export const inventoryTransactions = pgTable("inventory_transactions", {
   toLocationId: uuid("to_location_id").references(() => locations.id),
   qty: integer("qty").notNull(),
   flowType: flowTypeEnum("flow_type").notNull(),
+  commercialInvoiceNo: varchar("commercial_invoice_no", { length: 100 }), // Associated with incoming WRR receipts
+  arReferenceNo: varchar("ar_reference_no", { length: 100 }), // Associated with outgoing Dispatch/Withdrawal
   wrrId: uuid("wrr_id").references(() => wrrDocuments.id),
   performedByUserId: uuid("performed_by_user_id").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),

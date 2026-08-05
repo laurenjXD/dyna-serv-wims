@@ -1,65 +1,77 @@
 # Gantt-to-Spec Mapping — Delivery Tracking Layer
-Status: Draft
+Status: Active
+Last Updated: 2026-08-05
 
-This sits above the spec folders, not inside them. Specs stay feature-level (`requirements.md`/`design.md`/`tasks.md`); this doc is where Gantt line items get traced to the spec(s) that produce them, so "is Milestone 1 on track" can be answered against real spec status instead of guessed at. Update this whenever a spec's status changes or the Gantt itself changes — it's the join table between the two, not a copy of either.
+This sits above the spec folders, not inside them. Because we follow **Spec-Driven Development** (no implementation code is written until `tasks.md` is Approved), the traditional Gantt chart tasks are split to reflect our actual flow. 
 
-## Milestone 1 — Receiving & Core Transfers (Weeks 1-2)
+The current Gantt timeline tracks the **Spec Definition Phase** (Drafting Requirements $\rightarrow$ Design $\rightarrow$ Tasks $\rightarrow$ Approval) before unlocking the **Implementation Phase**. The progress percentages below currently reflect progress in *Spec Drafting*, not coding.
 
-| Gantt task | Maps to spec(s) | Spec status | Risk |
-|---|---|---|---|
-| Project setup & repo config | Pre-spec scaffolding | **Paused** — resumes once 01 is approved | Currently blocking, by decision |
-| Database schema for inventory & warehouses | 01-core-data-model | Not yet drafted | **Critical path — nothing else in this milestone can proceed until this is approved** |
-| User authentication & warehouse roles | 02-rbac-roles | Draft-only (flagged for major revision) | **High** — see below |
-| Receiving module UI | 07-incoming-receiving (+ 00-brand-design-system, 05-ui-shell) | Input notes captured (CIPL/WRR), not formalized | Depends on 01 |
-| Receiving transaction logic | 07-incomipng-receiving, 01-core-data-model | Same as above | Depends on 01 |
-| Product transfer request module | 11-transfer-and-inspection (needs scope check — "transfer request" may be broader than inspection-triggered transfer) | Not yet drafted | Depends on 01 |
-| Transfer approval workflow | 09-approval-queue | Not yet drafted | **High** — depends on 02, which is unstable |
-| Receiving & transfer validation | Part of 07/11 design.md, not a separate spec | — | Depends on 07, 11 |
-| Unit & integration testing | Governed by 00-steering/testing.md | Approved (process), not yet executed | Depends on everything above existing first |
-| Milestone 1 Review & Launch | Sign-off gate, not a spec | — | Depends on all above |
+---
 
-**Named risk**: Transfer approval workflow sits on this milestone's critical path and depends on RBAC (02), which is explicitly flagged as expected to change significantly. This is a real scheduling collision, not a hypothetical one — worth resolving RBAC's direction before Milestone 1's approval-workflow work starts, or accepting that piece may slip.
+## Milestone 1 — Receiving & Core Inventory Transfers
 
-## Milestone 2 — Classification & Logistics Processing (Weeks 3-4)
+| # | Gantt task | Schedule | Overall % | Mapped spec(s) | Spec Status (Drafting / Approved) | Implementation Status |
+|---|---|---|---|---|---|---|
+| 1.1 | Repository and development environment setup | 7/31 – 8/5 | 70% | Pre-spec scaffolding | **Paused** (Awaiting Spec 01) | Not Started |
+| 1.2 | Core inventory data model and database schema | 7/31 – 8/5 | 80% | `01-core-data-model` | **Spec Approved** | Ready for Dev |
+| 1.3 | Warehouse user authentication and RBAC | 7/31 – 8/5 | 30% | `02-rbac-roles`, `21-user-profile-and-settings` | **Spec Approved** | Ready for Dev |
+| 1.4 | Receiving and inspection interface | 7/31 – 8/5 | 0% | `07-incoming-receiving`, `05-ui-shell` | **Pending** (Input notes only) | Not Started (Blocked by Spec) |
+| 1.5 | Receiving transaction and lot creation logic | 7/31 – 8/5 | 0% | `07-incoming-receiving` | **Pending** (Input notes only) | Not Started (Blocked by Spec) |
+| 1.6 | Internal inventory transfer requests | 8/6 – 8/11 | 0% | `11-transfer-and-inspection` | **Not Started** | Not Started (Blocked by Spec) |
+| 1.7 | Transfer approval and authorization workflow | 8/6 – 8/11 | 0% | `09-approval-queue` | **Not Started** | Not Started (Blocked by Spec) |
+| 1.8 | Receiving, transfer, quantity, and location validation | 8/6 – 8/11 | 0% | Part of `07` & `11` | **Not Started** | Not Started (Blocked by Spec) |
+| 1.9 | Receiving and transfer unit/integration testing | 8/6 – 8/11 | 0% | `testing.md` | **Process Approved** | Not Started (Awaiting code) |
+| 1.10 | Milestone 1 inventory review and launch | — | 0% | Sign-off gate | **Not Started** | Not Started |
 
-| Gantt task | Maps to spec(s) | Status |
-|---|---|---|
-| Product category management | **17-product-categorization-and-classification** (new) | Draft (planning aligned; not approved) |
-| Inventory classification logic | **17-product-categorization-and-classification** (new) | Draft (planning aligned; not approved) |
-| Barcode/QR integration | Cross-cutting: 01 (`items.barcode_value`), 07 (receiving scan), 18 (packing scan) | Depends on 01, 07 |
-| Picking list generation | 10-pick-list-and-acknowledgement-receipt | Not yet drafted |
-| Picking workflow | 08-outgoing-withdrawal-and-two-stage-commitment (execution step) | Not yet drafted |
-| Packing module UI | **18-packing** (new) | Draft (planning aligned; not approved) |
-| Packing confirmation workflow | **18-packing** (new) | Draft (planning aligned; not approved) |
-| Logistics process integration | Cross-cutting, not a separate spec | — |
-| Testing & bug fixes | testing.md | — |
-| Milestone 2 Review & Launch | Sign-off gate | — |
+---
 
-## Milestone 3 — Fulfillment Control & Analytics (Weeks 5-6)
+## Milestone 2 — Classification & Inventory Processing
 
-| Gantt task | Maps to spec(s) | Status |
-|---|---|---|
-| Dispatch scheduling module | **19-dispatch-scheduling-and-delivery-tracking** (new) | Draft (planning aligned; not approved) |
-| Dispatch approval workflow | 09-approval-queue + 19 | Draft (planning aligned; not approved) |
-| Delivery status tracking | **19-dispatch-scheduling-and-delivery-tracking** (new) | Draft (planning aligned; not approved) |
-| Inventory monitoring dashboard | 16-reporting-and-analytics | Draft (planning aligned; not approved) |
-| Low-stock notifications | 14-notifications-and-alerts | Not yet drafted |
-| Inventory movement history | 16-reporting-and-analytics (queries the `inventory_transactions` ledger from 01) | Draft (planning aligned; not approved) |
-| Analytics & reporting | 16-reporting-and-analytics | Draft (planning aligned; not approved) |
-| Dashboard optimization | Cross-cutting perf, 04/05 | — |
-| System integration testing | testing.md | — |
-| Milestone 3 Review & Launch | Sign-off gate | — |
+| # | Gantt task | Mapped spec(s) | Spec Status | Implementation Status |
+|---|---|---|---|---|
+| 2.1 | Item category and subcategory management | `17-product-categorization-and-classification` | **Not Started** | Not Started |
+| 2.2 | Item classification and flow validation | `17-product-categorization-and-classification` | **Not Started** | Not Started |
+| 2.3 | Barcode and QR item identification | Cross-cutting (`01`, `07`) | **Depends on 01, 07** | Not Started |
+| 2.4 | FIFO/FEFO pick-list generation | `10-pick-list-and-acknowledgement-receipt` | **Not Started** | Not Started |
+| 2.5 | Inventory picking and quantity verification | `08-outgoing-withdrawal-and-two-stage-commitment` | **Not Started** | Not Started |
+| 2.6 | Receiving-to-picking inventory process integration | Cross-cutting | **Not Started** | Not Started |
+| 2.7 | Classification and picking testing/fixes | `testing.md` | **Process Approved** | Not Started |
+| 2.8 | Milestone 2 inventory processing review and launch | Sign-off gate | **Not Started** | Not Started |
 
-## Milestone 4 — Final Handover & Deployment (Weeks 7-8)
+---
 
-| Gantt task | Maps to spec(s) | Status |
-|---|---|---|
-| Full system integration, E2E testing, bug fixing | testing.md, cross-cutting | — |
-| User Acceptance Testing (UAT) | **20-documentation-training-and-uat** | Drafted |
-| Documentation prep, user manual | **20-documentation-training-and-uat** | Drafted |
-| Administrator training | **20-documentation-training-and-uat** | Drafted |
-| Production deployment | 04-services-and-infrastructure (Option A already locked, see tech.md) | Drafted — provider plans/regions, recovery targets, and operational owners pending approval |
-| Final client validation, handover | Project closure, not a spec | — |
+## Milestone 3 — Inventory Control & Analytics
 
-## Standing rule
-Every time a new spec is drafted or changes status, check this table for rows that reference it and update the status column. This table is only useful if it stays current — treat a stale row here as a bug the same way an undocumented design token is a bug (per brand-design-system.md §13's governance principle).
+| # | Gantt task | Mapped spec(s) | Spec Status | Implementation Status |
+|---|---|---|---|---|
+| 3.1 | Master inventory monitoring dashboard | `16-reporting-and-analytics` | **Spec Drafted** | Not Started |
+| 3.2 | Reorder-level and low-stock alerts | `14-notifications-and-alerts` | **Not Started** | Not Started |
+| 3.3 | Immutable inventory movement history | `16-reporting-and-analytics` | **Spec Drafted** | Not Started |
+| 3.4 | Inventory valuation and stock reports | `16-reporting-and-analytics` | **Spec Drafted** | Not Started |
+| 3.5 | Inventory analytics and trend dashboard | `16-reporting-and-analytics` | **Spec Drafted** | Not Started |
+| 3.6 | VMI CBM storage billing calculations | `12-vmi-billing` | **Spec Drafted** | Not Started |
+| 3.7 | Inventory dashboard performance optimization | Cross-cutting perf, `04/05` | **Not Started** | Not Started |
+| 3.8 | Cross-module inventory integration testing | `testing.md` | **Process Approved** | Not Started |
+| 3.9 | Milestone 3 inventory control review and launch | Sign-off gate | **Not Started** | Not Started |
+
+---
+
+## Milestone 4 — Final Handover & Deployment
+
+| # | Gantt task | Mapped spec(s) | Spec Status | Implementation Status |
+|---|---|---|---|---|
+| 4.1 | Final inventory system integration | Cross-cutting | **Not Started** | Not Started |
+| 4.2 | End-to-end inventory workflow testing | `testing.md` | **Process Approved** | Not Started |
+| 4.3 | Inventory system bug fixing and optimization | Cross-cutting | **Not Started** | Not Started |
+| 4.4 | Inventory workflow user acceptance testing | `20-documentation-training-and-uat` | **Spec Drafted** | Not Started |
+| 4.5 | Technical inventory system documentation | `20-documentation-training-and-uat` | **Spec Drafted** | Not Started |
+| 4.6 | Inventory user manual completion | `20-documentation-training-and-uat` | **Spec Drafted** | Not Started |
+| 4.7 | Administrator inventory system training | `20-documentation-training-and-uat` | **Spec Drafted** | Not Started |
+| 4.8 | Production deployment of the inventory system | `04-services-and-infrastructure` | **Spec Drafted** | Not Started |
+| 4.9 | Final client inventory validation | Project closure | **Not Started** | Not Started |
+| 4.10 | Final inventory system handover and acceptance | Sign-off gate | **Not Started** | Not Started |
+
+---
+
+## Standing Rule
+Every time a new spec is drafted or changes status, check this table for rows that reference it and update the status column. This table is only useful if it stays current — treat a stale row here as a bug the same way an undocumented design token is a bug (per `brand-design-system.md` §13's governance principle).
