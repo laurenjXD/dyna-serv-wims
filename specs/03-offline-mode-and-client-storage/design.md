@@ -122,13 +122,20 @@ Three object stores handle all offline state (implemented via Dexie):
 | Field | Type | Notes |
 |---|---|---|
 | id | string (uuid) | Client-generated. Doubles as the idempotency key sent to the server (§7) — the server's scan-capture tables use it as a unique constraint/upsert key, so replaying the same outbox entry is a safe no-op rather than requiring a separate idempotency-record lookup. |
+| captured_by_user_id | string (uuid) | The authenticated Supabase user ID active on this device at capture time (§6.2). Not authorization evidence — the server independently re-authorizes the current session on every sync (§6.4) — but the durable link that lets both the client and server refuse to sync an entry under a session that didn't capture it (§6.3, §6.4). |
 | action_type | enum | `"wrr_scan_capture"` \| `"pick_scan_capture"` — see §5.1. Both are pure observation capture; neither creates a lot, decrements a balance, resolves inspection, or triggers document generation. |
 | payload | object | Full action data — enough for the server to apply it with no additional context |
 | created_at | number (epoch ms) | Client clock — used for ordering only, never trusted as authoritative time |
 | attempts | number | Sync retry count |
-| status | enum | `"pending"` \| `"syncing"` \| `"failed"` |
+| status | enum | `"pending"` \| `"syncing"` \| `"failed"` \| `"quarantined_actor_mismatch"` |
 
 *Note: The queue also captures local UI state, operation tier, and idempotency keys according to the Command and Policy Contract.*
+
+**Cross-session/device-sharing protection**: shared floor tablets are the explicit primary hardware for this system (§1), so a different `warehouse_staff` user signing into the same device with entries still queued from a prior user is a realistic scenario, not an edge case. Two independent, redundant gates close it — deliberately redundant so one implementation slip doesn't reopen the gap:
+
+1. **Client-side scope filter**: the sync coordinator (§6.3 step 3) only ever selects outbox entries where `captured_by_user_id` equals the *current* authenticated session's user ID. Entries captured by a different, now-inactive-on-this-device user are never included in a sync run and are never presented to the current user as "their" pending work.
+2. **Server-side actor-match check**: `/api/sync` (§6.4) rejects any submitted entry where the request's authenticated `auth.uid()` does not match the entry's `captured_by_user_id`, *before* any business-state validation runs — independent of gate 1, so a client bug or a modified client cannot bypass it. A mismatch returns `outcome: "conflict"` with reason `actor_mismatch` and the entry transitions to local status `quarantined_actor_mismatch`; it is never silently dropped, silently applied under the new session, or silently reassigned to the new user.
+3. On sign-out or forced deactivation on a device with pending entries still owned by that user, the client attempts one final sync while the session is still valid (best-effort); any entries that don't complete are left `pending` under their original `captured_by_user_id` and simply become invisible to whichever user signs in next (gate 1), surfacing later only if the original user (or an authorized supervisor review surface, §11) returns to that device while still active. This satisfies R5.2 ("rejected and logged; SHALL not be replayed under another user") and R2.7's logout/deactivation cleanup requirement without needing to guess at a device-level wipe policy that could destroy a legitimate not-yet-synced physical scan.
 
 Lot creation (WRR confirm), putaway/placement confirmation, inspection resolution, and final dispatch are Tier 2 online-only commands the operator submits directly while connected (§5.1). They are never entered into this outbox — only the scan observations that precede them are.
 
@@ -214,7 +221,7 @@ Connectivity state is held in a React context (`OfflineContext`) available to al
 
 1. The feature validates the input and asks the offline policy whether the command is queueable.
 2. The client creates a cryptographically strong client operation ID and idempotency key.
-3. The command is persisted atomically into the `outbox` with the local UI state needed to continue.
+3. The command is persisted atomically into the `outbox` with the local UI state needed to continue, tagging `captured_by_user_id` from the current authenticated session (§4.5).
 4. The feature receives an explicit `saved locally` or `sent to server` result; it never assumes success from a click.
 
 ### 6.3 Sync flow on reconnect (Trigger & Replay)
@@ -223,20 +230,22 @@ Triggered when the connectivity ping succeeds after a period of failure, applica
 
 ```
 1. Set connectivity state → online
-2. Lock the outbox (set all "pending" entries to "syncing" atomically)
+2. Lock the outbox (set all "pending" entries **whose `captured_by_user_id` matches the current authenticated session's user ID** to "syncing" atomically)
    — no new entries accepted while sync is in progress
+   — entries captured by a different user are left untouched: not locked, not synced, not surfaced as this session's pending work (§4.5's cross-session protection, gate 1)
 3. Read all "syncing" entries ordered by created_at ASC
    — both Tier 1 action types are independent capture events with no
      cross-entry ordering dependency of their own; ordering here is for
      deterministic replay, not to satisfy a dependency between entries
 4. For each entry:
    a. Refresh/validate Auth session
-   b. POST to /api/sync with { action_type, payload, client_id, outbox_id, idempotency_key }
-   c. Server validates against current scope/RLS/business logic, applies if valid, returns { outcome, detail }
-   d. outcome = "applied"   → write to sync_log, delete from outbox
-   e. outcome = "conflict"  → write to sync_log (with server_response), mark outbox entry "failed"
-   f. outcome = "rejected"  → write to sync_log (with server_response), mark outbox entry "failed"
-   g. On network error mid-sync → increment attempts, set back to "pending", abort and retry later
+   b. POST to /api/sync with { action_type, payload, client_id, outbox_id, idempotency_key, captured_by_user_id }
+   c. Server independently verifies `auth.uid() == captured_by_user_id` before any business-state check (§4.5's gate 2); on mismatch, `outcome: "conflict"` with `reason: "actor_mismatch"`, entry → `quarantined_actor_mismatch`, skip to next entry
+   d. Server validates against current scope/RLS/business logic, applies if valid, returns { outcome, detail }
+   e. outcome = "applied"   → write to sync_log, delete from outbox
+   f. outcome = "conflict"  → write to sync_log (with server_response), mark outbox entry "failed" (or `quarantined_actor_mismatch` per step c)
+   g. outcome = "rejected"  → write to sync_log (with server_response), mark outbox entry "failed"
+   h. On network error mid-sync → increment attempts, set back to "pending", abort and retry later
 5. After all entries processed:
    a. Refresh offline_cache from server
    b. Surface any "failed" outbox entries to Supervisor via the Alerts notification feed
@@ -248,14 +257,14 @@ Entries with `attempts >= 3` and `status = "failed"` are not retried automatical
 
 ### 6.4 Server-side sync validation (`/api/sync`)
 
-The sync endpoint applies the same business rules as the live action endpoints. Offline origin does not bypass any validation. Both action types apply only capture-level state (no lot creation, no balance decrement, no document trigger); the corresponding Tier 2 command remains a separate, online-only, operator-submitted step.
+The sync endpoint applies the same business rules as the live action endpoints. Offline origin does not bypass any validation. Before either row below runs, the endpoint first verifies `auth.uid() == captured_by_user_id` (§4.5, §6.3 step 4c) — a mismatch is rejected as `actor_mismatch` before any business-state check, so a revoked or logged-out user's captured work can never be applied under a different, later session. Both action types apply only capture-level state (no lot creation, no balance decrement, no document trigger); the corresponding Tier 2 command remains a separate, online-only, operator-submitted step.
 
 | Action type | Server validation on sync |
 |---|---|
 | `wrr_scan_capture` | Verify `wrr_documents.status = 'receiving_in_progress'` (reject with `conflict` if `confirmed`/`cancelled`) and that `wrr_item_id` belongs to that WRR. Re-apply the `07` §6 matcher rules (wrong WRR, wrong item, unknown item, duplicate/over quantity, invalid UOM, unresolved lot context) against current server state. On accept, increment `wrr_items.scanned_qty` by the captured delta using the outbox entry's `id` as the idempotency/upsert key. On reject, return `outcome: "conflict"` and preserve the scan for supervisor review — the physical scan happened; it is never silently dropped. |
 | `pick_scan_capture` | Verify the target `inventory_commitment_line` is still `active` or `inspection_pending` (per `01`'s `commitmentStatusEnum`) and that the scanned lot/location matches its `lot_location_balance_id`. On accept, record scan evidence only, using the outbox entry's `id` as the idempotency/upsert key — no decrement, no ledger insert, no document trigger. If the commitment was already `released`/`expired`/`cancelled`, or dispatch already completed through another path, return `outcome: "conflict"`, not silent success. |
 
-All sync actions are written to the audit log with `metadata.source = "offline_sync"` and `metadata.client_created_at` from the outbox entry — preserving the original client timestamp alongside the authoritative server timestamp.
+All sync actions are written to the audit log with `metadata.source = "offline_sync"`, `metadata.client_created_at`, and `metadata.captured_by_user_id` from the outbox entry — preserving the original client timestamp and the original capturing actor alongside the authoritative server timestamp and the (necessarily identical, per the actor-match gate above) syncing session's identity, satisfying requirements.md R8.4's requirement to preserve original actor and client operation identity in the recorded outcome.
 
 ### 6.5 Outcome classes
 
@@ -282,8 +291,8 @@ The mechanism is: the outbox entry's client-generated `id` (§4.5) is the idempo
 
 - Cached capability data may hide/show controls but never authorizes a replay.
 - The server compares the current actor and scope to the command's resource references; a stale capture scope is explanatory metadata only.
-- A deactivated/revoked actor's commands are rejected, not reassigned.
-- Logout/deactivation handling clears or quarantines user-scoped queue/cache data according to the approved threat model; it does not silently delete unsynchronized work.
+- A deactivated/revoked actor's commands are rejected, not reassigned — concretely enforced by §4.5/§6.3/§6.4's `captured_by_user_id` mechanism: the client never includes another user's entries in its own sync run (gate 1), and the server independently rejects any entry whose captured actor doesn't match the current session (gate 2), so a revoked actor's queued work cannot be silently picked up and applied by whichever user is currently signed in on that device.
+- Logout/deactivation handling on a shared device leaves that user's still-`pending` entries in place, invisible to a subsequently-signed-in different user (gate 1 above) rather than reassigning or destroying them; it does not silently delete unsynchronized work.
 - Storage retention is bounded by workflow need and documented per cache/queue class.
 - Browser storage errors are surfaced as persistence failure, never as successful local save.
 - Payloads are minimized and redacted in monitoring. Secrets and session tokens never enter local stores.
@@ -330,7 +339,8 @@ Feature endpoints should use the owning domain transaction and idempotency mecha
 ## 11. Verification and open decisions
 
 - [ ] Approve the exact Tier 1 operation allowlist with each owning feature.
-- [ ] Approve the local data retention, logout/deactivation cleanup, device-sharing, and browser-storage threat model.
+- [x] Device-sharing threat model resolved: `captured_by_user_id` on every outbox entry (§4.5) plus the two-gate client/server actor-match check (§6.3 step 2 and 4c, §6.4) prevents a queued entry from ever syncing under a different user's session. Local data retention and browser-storage cleanup details beyond this remain open below.
+- [ ] Approve the local data retention and browser-storage threat model (quota/eviction handling, retention duration per cache/queue class) beyond the device-sharing mechanism resolved above.
 - [ ] Confirm the capability/session context and replay rejection contract with `02-rbac-roles`.
 - [ ] Confirm Auth, endpoint, monitoring, and service-worker boundaries with `04-services-and-infrastructure`.
 - [ ] Reconcile `OfflineStatus` with `05-ui-shell-and-navigation` before either spec is approved.
