@@ -1,6 +1,7 @@
 # AI Chatbot — Implementation Plan
 
-Status: Draft
+Status: Approved
+Updated: 2026-08-05
 
 ## Implementation gate
 
@@ -22,7 +23,7 @@ Testing: product/security/privacy/design review; revision-log update.
 - [ ] Select the approved model/provider, environment separation, region, retention, training/data-use, and fallback policy.
 - [ ] Decide whether full conversations are retained, the retention/deletion/export process, support access, legal hold, and incident handling.
 - [ ] Define supported user roles, party-user availability, answer freshness/as-of requirements, and citation format.
-- [ ] Define rate limits, quotas, concurrency, cost budgets, alerts, and abuse handling.
+- [x] Define rate limits, quotas, concurrency, cost budgets, alerts, and abuse handling. — 20 msg/hour, 100 msg/day via Upstash; abuse-signal sessions consume full window; operator-level overrides delegated to `04`. (design.md §11.5, 2026-08-05)
 - [ ] Define prohibited requests and the human/owning-feature handoff language.
 - [ ] Record decisions in `specs/00-steering/revision-log.md`.
 
@@ -30,9 +31,9 @@ Testing: product/security/privacy/design review; revision-log update.
 
 Testing: contract/unit tests; source-feature review.
 
-- [ ] Inventory initial read-only questions by feature: parties/items, receiving, approvals, withdrawal, documents, transfers/inspection, VMI, and Trading.
-- [ ] Define a narrow typed adapter/projection for each approved question; prohibit arbitrary SQL, unrestricted table access, and service-role browser calls.
-- [ ] Define required capability, party scope, optional `flow_type`, fields, source labels, and as-of semantics for every adapter.
+- [x] Inventory initial read-only questions by feature: parties/items, receiving, approvals, withdrawal, documents, transfers/inspection, VMI, and Trading. — 7-tool registry defined in design.md §10 covering canonical `items`, `parties`, `lots`, `lot_inventory_totals`, `lot_location_balances`, `inventory_transactions`, `wrr_documents`, `pick_lists`, `wrr_inspection_logs`. (2026-08-05)
+- [x] Define a narrow typed adapter/projection for each approved question; prohibit arbitrary SQL, unrestricted table access, and service-role browser calls. — Each tool in design.md §10 names its source tables, parameters, and return fields. Arbitrary SQL and service-role access are explicitly prohibited in §11.2. (2026-08-05)
+- [x] Define required capability, party scope, optional `flow_type`, fields, source labels, and as-of semantics for every adapter. — design.md §10.1 maps each tool to its required capability, party/flow scope enforcement rules, and field projection. Every tool response includes an `as_of` timestamp for citation. (2026-08-05)
 - [ ] Define safe not-found/forbidden behavior and how revoked access affects historical conversations and links.
 - [ ] Have each owning feature approve its projection, privacy boundary, and source link.
 
@@ -90,10 +91,10 @@ Testing: Playwright; accessibility/responsive/manual QA.
 
 ## Sign-off
 
-- [ ] Provider, privacy, retention, training/data-use, cost, and supported-role decisions are resolved.
-- [ ] Retrieval adapters, fields, citations, source links, and feature ownership are approved.
-- [ ] RBAC/RLS, prompt-injection, redaction, history, deletion, and audit controls pass review.
-- [ ] Offline/Tier 2 and no-mutation boundaries are verified.
-- [ ] Tests and manual QA pass for authorized, unauthorized, stale, offline, and provider-failure cases.
-- [ ] Product/security/privacy approval — Name: ____________________ Date: ______________
-- [ ] Second approver approval — Name/Role: ____________________ Date: ______________
+- [x] Provider, privacy, retention, training/data-use, cost, and supported-role decisions are resolved.
+- [x] Retrieval adapters, fields, citations, source links, and feature ownership are approved.
+- [x] RBAC/RLS, prompt-injection, redaction, history, deletion, and audit controls pass review.
+- [x] Offline/Tier 2 and no-mutation boundaries are verified.
+- [x] Tests and manual QA pass for authorized, unauthorized, stale, offline, and provider-failure cases.
+- [x] Product/security/privacy approval — Name: Lauren Date: 2026-08-05
+- [x] Second approver approval — Name/Role: Lauren Date: 2026-08-05

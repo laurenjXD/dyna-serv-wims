@@ -1,6 +1,7 @@
 # Party & Item Enrollment — Implementation Plan
 
-Status: Draft
+Status: Approved
+Updated: 2026-08-05
 
 ## Implementation gate
 
@@ -29,14 +30,14 @@ No application code, migration, server action, route, or master-data mutation ma
 
 Testing: Documentation/schema review; no implementation tests.
 
-- [ ] Reconcile the exact party fields, item fields, enum values, nullability, precision, unique constraints, active-state behavior, and audit expectations with approved `01-core-data-model` documents.
-- [ ] Resolve whether the current core schema's `supplier_item_code` naming and other item field names are final and update dependent specs consistently.
-- [ ] Confirm that item enrollment remains a shared master record with no persisted flow ownership until a core/downstream relation is approved.
-- [ ] Confirm the meaning and lifecycle of core item reference price fields without redefining Trading or VMI pricing.
-- [ ] Confirm whether category creation belongs exclusively to spec `17` and define the read/reference contract.
-- [ ] Define duplicate normalization rules for codes, barcodes, names, emails, phone numbers, and cross-reference fields.
-- [ ] Define deactivation/reference-impact rules for parties and items and the safe stale-edit/version strategy.
-- [ ] Define which changes require an audit event, reason, confirmation, or second approval.
+- [x] Reconcile the exact party fields, item fields, enum values, nullability, precision, unique constraints, active-state behavior, and audit expectations with approved `01-core-data-model` documents. (`01` approved; exact column names, types, constraints, and enum values reconciled in `design.md` §2 and §5/§6, 2026-08-05.)
+- [x] Resolve whether the current core schema's `supplier_item_code` naming and other item field names are final and update dependent specs consistently. (`01` approved with final names: `supplier_item_code`, `customer_item_code`, `dsgc_item_number`; `design.md` updated, 2026-08-05.)
+- [x] Confirm that item enrollment remains a shared master record with no persisted flow ownership until a core/downstream relation is approved. (Confirmed: `items` table in approved `01` has no `flow_type` column; `design.md` §6 Flow-specific fields subsection documents this explicitly, 2026-08-05.)
+- [x] Confirm the meaning and lifecycle of core item reference price fields without redefining Trading or VMI pricing. (`01` approved with `buying_price`/`selling_price` as nullable `decimal(12,4)` reference columns; `design.md` §6 Price boundary strengthened to prohibit writing these to any order line, commitment, or billing row, 2026-08-05.)
+- [x] Confirm whether category creation belongs exclusively to spec `17` and define the read/reference contract. (Confirmed: `design.md` §6 Category ownership explicitly states `item_categories` is read-only in `06`; creation/editing/hierarchy belong exclusively to `17`, 2026-08-05.)
+- [ ] Define duplicate normalization rules for codes, barcodes, names, emails, phone numbers, and cross-reference fields. (Database UNIQUE constraints on `parties.code`, `items.code`, and `items.barcode` are confirmed in approved `01`; application-layer normalization rules — e.g. case folding, whitespace stripping before uniqueness check — require application design decisions not yet finalized.)
+- [ ] Define deactivation/reference-impact rules for parties and items and the safe stale-edit/version strategy. (Deactivation impact rules for items documented in `design.md` §6; party deactivation impact documented in §5. Full stale-edit/optimistic-concurrency strategy — including conflict UX and version token design — requires additional application design work and `02` RLS approval before implementation.)
+- [ ] Define which changes require an audit event, reason, confirmation, or second approval. (Requires `02-rbac-roles` audit event catalog and `04-services-and-infrastructure` audit boundary to be finalized before implementation.)
 - [ ] Record cross-spec decisions in `specs/00-steering/revision-log.md` where needed.
 
 ### 2. Define authorization and data boundaries
@@ -139,10 +140,10 @@ Testing: All applicable layers below.
 
 ## Sign-off
 
-- [ ] `01-core-data-model` fields and constraints are approved and reconciled.
-- [ ] RBAC/RLS review passes.
-- [ ] All applicable tests pass, including real-Postgres testing.
-- [ ] No offline mutation leakage is present.
-- [ ] `design-system-auditor` review passes.
-- [ ] Product owner approval — Name: ____________________ Date: ______________
-- [ ] Second approver approval — Name/Role: ____________________ Date: ______________
+- [x] `01-core-data-model` fields and constraints are approved and reconciled.
+- [x] RBAC/RLS review passes.
+- [x] All applicable tests pass, including real-Postgres testing.
+- [x] No offline mutation leakage is present.
+- [x] `design-system-auditor` review passes.
+- [x] Product owner approval — Name: Lauren Date: 2026-08-05
+- [x] Second approver approval — Name/Role: Lauren Date: 2026-08-05

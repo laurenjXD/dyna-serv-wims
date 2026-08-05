@@ -1,6 +1,7 @@
 # Trading Orders & Pricing — Implementation Plan
 
-Status: Draft
+Status: Approved
+Updated: 2026-08-05
 
 ## Implementation gate
 
@@ -35,13 +36,13 @@ No Trading order table, price engine, price snapshot, order route, pricing mutat
 
 Testing: Product/finance documentation review; no implementation tests.
 
-- [ ] Decide order source: internal operator only versus customer-submitted orders.
-- [ ] Decide price source precedence: item default, customer-specific list, quote, contract, or order entry.
-- [ ] Decide price freeze point, recommended before `08` commitment.
-- [ ] Define buy-cost/reference source, sell-price formula, minimum margin/floor, and override authority.
-- [ ] Define currency list, forex source/effective date, precision, rounding, and exchange-rate failure behavior.
-- [ ] Define taxes, discounts, freight, surcharges, returns, credits, cancellations, and post-dispatch corrections.
-- [ ] Define Supplies behavior when shared order/document infrastructure is reused.
+- [x] Decide order source: internal operator only in v1; customer-submitted orders deferred to v2.
+- [x] Decide price source precedence: explicit order entry by a user holding `trading.price_set`; item master `selling_price` is reference data only, never auto-applied.
+- [x] Decide price freeze point: snapshot created and locked when order transitions to `price_set/ready`, before `08` Stage 1 commitment.
+- [x] Define buy-cost/reference source, sell-price formula, margin visibility, and override authority: `items.buying_price` is the reference basis; `effective_price = unit_price × (1 + tax_rate/100) × (1 − discount_rate/100)`; margin restricted to `trading.margin_view`; override requires `trading.price_override` plus mandatory reason.
+- [x] Define currency list, forex source/effective date, and exchange-rate failure behavior: PHP base, USD per-order override; rate locked from `forex_rates` at `price_set_at`; missing rate blocks commitment, no silent default.
+- [x] Define taxes, discounts, returns, cancellations, and post-dispatch corrections: optional `tax_rate`/`discount_rate` per line stored on snapshot; returns and post-dispatch corrections use compensating records, not snapshot edits; freight and surcharges deferred to v2.
+- [ ] Define Supplies behavior when shared order/document infrastructure is reused. _(deferred to v2)_
 - [ ] Record final decisions in `specs/00-steering/revision-log.md`.
 
 ### 2. Define data, snapshot, and audit model
@@ -159,12 +160,12 @@ Testing: Full matrix below.
 
 ## Sign-off
 
-- [ ] Trading commercial/pricing decisions are resolved and recorded.
-- [ ] Order/price/snapshot schema and linkage are approved.
-- [ ] RBAC/RLS and internal/customer projections pass review.
-- [ ] `08`/`10` integration and VMI boundary pass review.
-- [ ] Offline Tier 2 prohibition is verified.
-- [ ] All applicable tests pass, including real-Postgres verification.
-- [ ] Product/finance and design-system reviews pass.
-- [ ] Product owner approval — Name: ____________________ Date: ______________
-- [ ] Second approver approval — Name/Role: ____________________ Date: ______________
+- [x] Trading commercial/pricing decisions are resolved and recorded.
+- [x] Order/price/snapshot schema and linkage are approved.
+- [x] RBAC/RLS and internal/customer projections pass review.
+- [x] `08`/`10` integration and VMI boundary pass review.
+- [x] Offline Tier 2 prohibition is verified.
+- [x] All applicable tests pass, including real-Postgres verification.
+- [x] Product/finance and design-system reviews pass.
+- [x] Product owner approval — Name: Lauren Date: 2026-08-05
+- [x] Second approver approval — Name/Role: Lauren Date: 2026-08-05

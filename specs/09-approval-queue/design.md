@@ -1,6 +1,7 @@
 # Approval Queue — Design
 
 Status: Draft
+Updated: 2026-08-05
 
 ## 1. Design intent
 
@@ -33,13 +34,38 @@ Stores one durable request:
 |---|---|
 | identity | Request UUID, public/reference number, idempotency key |
 | classification | Approval type, owning workflow, requested action |
-| target | Resource type, resource ID, target version/snapshot reference |
+| target | Resource type, resource ID, and a typed snapshot specific to the registered approval type — see `FifoOverrideSnapshot` below for the v1 shape |
 | scope | Party/flow scope reference evaluated by RBAC/RLS |
 | requester | Auth user ID, created timestamp, reason |
 | lifecycle | Pending/approved/rejected/cancelled/expired/superseded, expiry, consumed state |
 | tracing | Correlation ID, source command/reference |
 
 The target snapshot must be bounded and redacted. It is review evidence, not a duplicate authoritative target record.
+
+#### `FifoOverrideSnapshot` — v1 target payload
+
+The snapshot stored for `fifo_override` requests uses the following shape. Field names align with canonical `01-core-data-model` column names.
+
+```ts
+// FifoOverrideSnapshot — stored as JSONB in approval_requests.target_snapshot
+type FifoOverrideSnapshot = {
+  item_id:                   string;         // uuid — items.id
+  item_code:                 string;         // items.code
+  lot_id:                    string;         // uuid — lots.id
+  lot_number:                string;         // lots.lot_number
+  location_id:               string;         // uuid — locations.id
+  location_code:             string;         // locations.label
+  requested_qty:             string;         // decimal as string to preserve precision
+  available_qty_at_request:  string;         // qty_available from lot_inventory_totals at submission time
+  flow_type:                 'vmi' | 'trading' | 'supplies';
+  actor_user_id:             string;         // uuid — the warehouse_staff or supervisor submitting the override
+  reason:                    string;         // min 10 chars
+  allocation_version:        number;         // lot_location_balances.version at submission time
+  requested_at:              string;         // timestamptz ISO string
+};
+```
+
+`allocation_version` is the optimistic-lock value copied from `lot_location_balances.version` at the moment the override request is created. It is what makes an approval stale: if the lot was committed by another request between the override submission and the approval decision, `lot_location_balances.version` will have advanced past the stored value and the approved decision cannot be safely consumed.
 
 ### `approval_decisions`
 
@@ -56,7 +82,7 @@ Stores append-only decisions:
 
 No update/delete path is available to ordinary users or administrators for historical decisions. If a correction is required, a new compensating/audit event is recorded.
 
-Whether `consumed_at` belongs on the request, decision, or a separate consumption relation is an open schema decision. The invariant is that a decision cannot be consumed twice.
+`consumed_at` belongs on the `approval_decisions` row. The pick-list generation command sets it atomically in the same transaction that begins the Stage 1 commitment — a second generation attempt against the same decision row checks `consumed_at IS NOT NULL` before proceeding and fails with a consumption-conflict error without touching the decision record. The invariant that a decision cannot be consumed twice is enforced at the database level, not only by application logic.
 
 ## 4. Approval policy registry
 
@@ -82,10 +108,10 @@ The final capability/context types come from `02`. Unknown policies fail closed.
 
 The initial `fifo_override` policy:
 
-- is submitted by the withdrawal/allocation workflow in `08`;
-- identifies the pick/request, item, lot/location plan, quantity, reason, and target version;
-- is reviewed by a capability specific to FIFO override approval;
-- is consumed only by the current `08` commitment command after rechecking current availability/order/commitment state.
+- is submitted by an actor holding `fifo_override.request` (`global`, granted to `warehouse_staff` and `supervisor` per `02` §3.2);
+- identifies the pick/request, item, lot/location plan, quantity, reason, and target version — see `FifoOverrideSnapshot` in §3;
+- is reviewed and decided by an actor holding `fifo_override.approve` (`global`, granted to `supervisor` only per `02` §3.2); the actor who submitted the request cannot be the reviewer regardless of their capabilities (`02` §3.4);
+- is consumed only by the `08` commitment command after rechecking current availability, `allocation_version`, and the actor's current authorization state.
 
 ## 5. State machine and concurrency
 
@@ -98,9 +124,19 @@ pending
   └── supersede → superseded
 ```
 
-The queue command uses a server transaction with a current-state/version predicate. Concurrent reviewers race on the same pending version; one valid terminal decision succeeds and the other receives a stale/already-decided result.
+The queue command uses a server transaction with a `SELECT ... FOR UPDATE` lock on the `approval_requests` row. The behaviors below are mandatory for any command that transitions request or decision state.
 
-Approval and consumption are separate because approval delivery/realtime may be delayed and the target may change. The consumer rechecks the decision and target in the same transaction that performs the owning business mutation when feasible.
+**Expiry.** Requests expire 30 minutes after `created_at` (configurable per policy; the `fifo_override` policy uses 30 minutes). An expired request cannot be approved, rejected, or consumed — the reviewer's action is rejected with an expiry error. The requester must submit a fresh request. Expiry evaluation happens at decision time; a background job may also sweep and mark requests `expired` for queue display purposes, but the decision command re-checks expiry independently and does not trust the `expired` status column alone.
+
+**One-time consumption.** An approved decision has a `consumed_at` timestamp on the `approval_decisions` row (see §3). The pick-list generation command sets `consumed_at` atomically in the same transaction that creates the Stage 1 commitment. A second generation attempt against the same decision row reads `consumed_at IS NOT NULL` before doing any work and fails with a consumption-conflict error. The `consumed_at` check must run inside the `FOR UPDATE` lock on the decision row to prevent two concurrent consumers from both reading `NULL` before either has written.
+
+**Stale-target check.** Before the pick-list generation command uses an approved decision, it re-reads `lot_location_balances.version` for the affected row and compares it against `FifoOverrideSnapshot.allocation_version`. If the version has advanced — meaning another commitment or release modified the lot between the override submission and the current moment — the decision is stale. The command fails with a stale-approval error; it does not attempt to re-allocate or re-approve automatically. The requester must submit a new override request against the current lot state.
+
+**Concurrent reviewers.** If two supervisors simultaneously attempt to approve or reject the same pending request, the command acquires a `SELECT ... FOR UPDATE` lock on the `approval_requests` row. The first reviewer's transaction commits the terminal decision and releases the lock. The second reviewer's transaction re-reads the row after acquiring the lock, sees the request is no longer `pending`, and returns an "already decided" error without writing a new decision row. Only one valid terminal decision can exist per request.
+
+**Self-approval.** The server command that records a decision checks that the invoking user's `auth.uid()` does not match the `requester_user_id` on the approval request before allowing the operation. This is a server-side authorization requirement, not a UI constraint. The rule is owned by `02` §3.4 and is enforced here as the `fifo_override.approve` capability constraint for v1. A user may hold `fifo_override.approve` and still be blocked from approving their own request.
+
+Approval and consumption are separate operations because approval delivery and realtime signals may be delayed and the target state may change in the interim. The consumer rechecks the decision, `allocation_version`, expiry, and actor authorization in the same transaction that performs the owning business mutation.
 
 ## 6. Authorization and RLS design
 

@@ -1,6 +1,7 @@
 # Documentation, Training, and UAT — Requirements
 
 Status: Draft
+Updated: 2026-08-05
 
 Depends on:
 
@@ -59,9 +60,9 @@ The primary target users for training and documentation are:
 
 ### FR-2: UAT Test Case Coverage
 1. The UAT suite SHALL include explicit test scenarios for every primary workflow:
-   - **Receiving & Inspection (Spec 07 & 11):** CIPL intake, WRR generation, damage flagging, quarantine location assignment.
-   - **Two-Stage Outgoing Withdrawal (Spec 08 & 10):** `pick_list` generation, item picking on handheld scanner, packing, and `acknowledgement_receipt` sign-off.
-   - **Approval Queue (Spec 09):** Tier 2 approval workflows for pricing, high-value withdrawals, and stock adjustments.
+   - **Receiving & WRR Disposition (Spec 07 & 11):** CIPL intake, WRR generation, WRR disposition decision (`store` direct to putaway or `inspect/on_hold` for inbound inspection), conformance/non-conformance outcome, damage flagging, and quarantine or available-balance creation.
+   - **Outbound Pick-List Generation and Dispatch (Spec 08, 09, 10):** direct pick-list generation from Master Inventory using FIFO/FEFO allocation; FIFO override request (routes to `09-approval-queue`) when a non-standard allocation is required; item picking on handheld scanner; post-pick disposition decision (`dispatch` or `further_inspection`); and `acknowledgement_receipt` sign-off on dispatch.
+   - **FIFO Override Approval Queue (Spec 09):** supervisor approval or denial of override requests submitted during pick-list generation; override expiry handling when the request is not acted on within the configured window.
    - **VMI Billing (Spec 12):** Daily CBM space snapshot aggregation, period average calculation, and statement generation.
    - **Trading Orders & Pricing (Spec 13):** Buy/sell pricing enforcement, document pricing finality on `pick_list` and `acknowledgement_receipt`.
    - **Offline Sync Resilience (Spec 03):** Tier 1 offline queue action recording on floor scanner during Wi-Fi dropouts and background synchronization upon reconnect.
@@ -125,7 +126,48 @@ The primary target users for training and documentation are:
 
 ---
 
-## 6. Out of Scope
+## 6. UAT Execution Criteria and Operational Readiness
+
+### FR-9: Defect Severity, Evidence, and Sign-Off
+
+**Defect severity levels (UAT priority scheme):**
+
+| Level | Label | Definition | Launch gate |
+|---|---|---|---|
+| P1 | Blocking | Data corruption, incorrect inventory calculation, security bypass, or workflow failure with no workaround. Equivalent to Severity 1 in §3 FR-3. | Go/no-go: no P1 defects open at launch. |
+| P2 | Major | Core workflow failure with an awkward workaround, or significant UI regression on handheld scanners. Equivalent to Severity 2. | Must fix before launch; maximum 3 open P2 defects acceptable with PM sign-off. |
+| P3 | Minor | Non-critical UI misalignment, confusing error message, non-blocking performance lag, or cosmetic issue. Equivalent to Severity 3/4. | Acceptable with documented workaround; tracked for post-launch remediation. |
+
+**Evidence requirements:** Each UAT scenario SHALL produce a screen recording or a complete screenshot set showing the full flow from precondition through pass/fail outcome. Evidence is attached to the defect or sign-off record before the sign-off document is executed.
+
+**UAT sign-off criteria:** UAT is formally complete when:
+- All P1 scenarios pass with zero open P1 defects.
+- No more than 3 open P2 defects remain, each with an accepted documented workaround.
+- The formal UAT Sign-Off document (`uat_signoff_template.md`) is executed by all three required signatories.
+
+### FR-10: Training Roles
+
+The three training tracks map to the following operational roles:
+
+| Track | Role | Primary surfaces covered |
+|---|---|---|
+| Track A | Warehouseman (floor) | Handheld scan flows: receiving, disposition, picking, packing, offline queue. |
+| Track B | Supervisor / Office Admin | Approval queue, inspection resolution, VMI billing, Trading pricing, stock audit, reports. |
+| Track C | Administrator | RBAC management (`02`), user invitation/suspension, billing configuration, system settings (`21`). |
+
+### FR-11: Operational Readiness Criteria
+
+Production promotion SHALL be gated on all of the following being met in addition to UAT sign-off:
+
+1. All P1 UAT scenarios pass with zero open P1 defects.
+2. Operational runbooks reviewed and signed off by the Lead Technical Architect.
+3. Database backup and point-in-time recovery (PITR) tested end-to-end in the staging environment.
+4. Alert thresholds (low-stock, failed offline sync, billing sweep failure, Sentry error rate) configured and verified in the production environment.
+5. All floor warehousemen and office administrative staff complete Track A and Track B training respectively and pass their practical competency evaluations.
+
+---
+
+## 7. Out of Scope
 
 - Multi-warehouse training or documentation (system remains strictly single-warehouse).
 - Video production or interactive e-learning software platform development in v1.

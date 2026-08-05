@@ -1,6 +1,7 @@
 # Trading Orders & Pricing — Requirements
 
 Status: Draft
+Updated: 2026-08-05
 
 ## 1. Purpose and scope
 
@@ -97,17 +98,53 @@ Order/pricing work is office-first but must remain usable on mobile. It is not a
 4. `10` owns document templates/artifacts/printing; `13` supplies the final typed price snapshot.
 5. A generated document failure SHALL not alter the order price or reverse inventory; the approved document retry/attention path applies.
 
-## 5. Open pricing decisions required before approval
+## 5. Trading order lifecycle
 
-- [ ] Price source: item default, customer-specific price list, quote, contract, or explicit order entry.
-- [ ] Price freeze point: recommended default is before `08` Stage 1 commitment.
-- [ ] Currency/forex source, effective timestamp, rounding, and whether historical rates are needed.
-- [ ] Tax, discounts, freight, surcharges, minimum margin, price floors, and authorization for overrides.
-- [ ] Whether customers can submit orders directly or only authorized internal users can create them.
-- [ ] Returns, cancellations after commitment, credits, and post-dispatch price corrections.
-- [ ] Supplies order/price behavior where shared document infrastructure is reused.
+A Trading order exists and is priced independently from pick-list generation. The pick-list generation command in `08` references an already-priced Trading order — it does not create the pricing.
 
-## 6. Acceptance criteria
+```text
+price_quote_requested → price_set/ready → committed (when 08 generates pick list) → dispatched → settled
+                                                        └── cancelled
+```
+
+### State definitions
+
+- **price_quote_requested** — The Trading order has been created and line-validated (party, item, quantity, UOM). No price is set. The order is not eligible for `08` commitment.
+- **price_set/ready** — An authorized user holding `trading.price_set` has confirmed the unit selling price. An immutable `trading_price_snapshots` record exists for each order line. The forex rate (if USD) has been locked from `forex_rates`. The order is now eligible for `08` to generate a pick list.
+- **committed** — `08` has successfully generated a pick list against this Trading order. Inventory is reserved via `inventory_commitments`. The price snapshot is bound; `lot_id` is resolved at pick-list generation.
+- **dispatched** — `08` Stage 2 dispatch is complete. Inventory decrement and `movement_type = 'pick'` transaction are recorded. `10` generates the priced pick list and acknowledgement receipt from the frozen snapshot.
+- **settled** — `10` has finalized the acknowledgement receipt. A settled Trading order and its linked documents are immutable. No field, price, or document may be altered.
+- **cancelled** — Explicitly cancelled. Rules:
+  - A `price_quote_requested` or `price_set/ready` order may be cancelled by a user holding `trading.orders.cancel`.
+  - A `committed` order requires its linked pick list to be cancelled first through `08`'s reservation-release workflow. The Trading order is updated to `cancelled` only after the pick list confirms cancellation.
+  - `dispatched` and `settled` orders cannot be cancelled; only the returns/corrections workflow applies.
+
+### Key rules
+
+1. A Trading order must reach `price_set/ready` before `08` can generate a pick list against it.
+2. Cancelling a committed Trading order requires the associated pick list to be cancelled first.
+3. A settled Trading order is immutable — no mutation to the order, its lines, its snapshot, or its documents is permitted.
+4. Order state is never inferred from document generation, email delivery, or notification receipt; the server is always authoritative.
+
+## 6. Resolved pricing decisions
+
+All seven pricing decisions are resolved. These decisions govern R2, R3, R4, and the snapshot schema in `design.md`.
+
+- [x] **Price authority**: Unit selling price is set by an authorized office user (supervisor or admin) holding the `trading.price_set` capability. Item master `selling_price` from `items` is reference data only and is never auto-applied without explicit confirmation by an authorized user. No client-supplied price is treated as authoritative.
+
+- [x] **Price snapshots**: An immutable `trading_price_snapshots` record is created when the Trading order transitions to `price_set/ready`. It captures: `item_id`, `unit_price`, `currency`, `tax_rate`, `discount_rate`, `effective_price` (after tax and discount), `snapshot_hash` (SHA-256 of the line data), and `locked_at`. The snapshot cannot be altered after creation; a price correction requires an approved superseding revision and creates a new record.
+
+- [x] **Margins**: `items.buying_price` and `items.selling_price` are the reference margin basis. Actual margin = `(effective_price − buying_price) / effective_price`. Margin data and buying-cost fields are restricted to users holding `trading.margin_view` (admin/supervisor only). Party and customer users never see margin, buying cost, or other parties' pricing.
+
+- [x] **Overrides**: A price override requires the `trading.price_override` capability and a mandatory written reason. All overrides are appended to an immutable audit log recording actor, timestamp, prior value, new value, reason, and correlation ID. Override capability is separate from `trading.price_set` and must be explicitly granted; it is not implied by a supervisor role.
+
+- [x] **Currencies**: PHP is the base currency. USD override is allowed per Trading order. The applicable forex rate is sourced from `forex_rates` and locked at the moment the order transitions to `price_set/ready`. No client-supplied exchange rate is accepted. A missing `forex_rates` record for a USD order blocks commitment rather than defaulting silently. Trading orders may only be created by authorized internal users in v1; customer-submitted orders are deferred.
+
+- [x] **Tax/discount**: Optional `tax_rate` (%) and `discount_rate` (%) per order line. Applied as: `effective_price = unit_price × (1 + tax_rate/100) × (1 − discount_rate/100)`. Both rates are stored on the price snapshot. Returns, cancellations after commitment, and post-dispatch corrections use explicit approved workflows and compensating records; they do not mutate the original snapshot or issued document. Freight, surcharges, and minimum margin floors are deferred to v2. Supplies order/price behavior via shared document infrastructure is deferred to v2.
+
+- [x] **Effective dates**: Prices are effective from `price_set_at` (the timestamp the order reaches `price_set/ready`) until the order is cancelled or settled. No future-dated price schedules are supported in v1.
+
+## 7. Acceptance criteria
 
 - [ ] A Trading order cannot mix VMI/Supplies flow or bypass party/flow scope.
 - [ ] A valid price snapshot is required before final commitment and is frozen for the pick list/acknowledgement receipt.
@@ -118,7 +155,7 @@ Order/pricing work is office-first but must remain usable on mobile. It is not a
 - [ ] Duplicate, stale, unauthorized, invalid-currency, invalid-margin, and concurrent updates fail safely.
 - [ ] Real-Postgres, pricing, RLS, E2E, and document contract tests pass before approval.
 
-## 7. Dependencies and exclusions
+## 8. Dependencies and exclusions
 
 - Depends on `01-core-data-model` for `parties`, `items`, `lots`, `pick_lists`, `pick_list_items`, currency/price fields, and flow partitioning; price/order persistence gaps must be reconciled.
 - Depends on `02-rbac-roles` for order/price capabilities, party/flow scope, RLS, audit, and any override authority.

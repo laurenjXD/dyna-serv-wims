@@ -1,6 +1,7 @@
 # Incoming Receiving — Implementation Plan
 
 Status: Draft
+Updated: 2026-08-05
 
 ## Implementation gate
 
@@ -31,12 +32,12 @@ No receiving route, WRR form, scan queue, inspection mutation, receipt commit, m
 
 Testing: Documentation/schema review; no implementation tests.
 
-- [ ] Reconcile the raw CIPL/WRR input notes with approved `01-core-data-model` requirements/design.
+- [x] Reconcile the raw CIPL/WRR input notes with approved `01-core-data-model` requirements/design. — All `wrr_documents`, `wrr_items`, `wrr_inspection_logs`, `lots`, `lot_location_balances`, and `inventory_transactions` fields confirmed from the approved `01` schema. The `disposition` field on `wrr_items` is the only net-new field; a `01` schema amendment is noted.
 - [ ] Finalize the WRR status lifecycle and legal transitions, including cancellation and post-start correction behavior.
-- [ ] Finalize whether CIPL remains an attached reference plus manually encoded `wrr_items`, or whether structured CIPL parsing is required.
-- [ ] Finalize expected-line fields, scan/reconciliation storage, inspection-log fields, discrepancy states, and lot inheritance rules.
-- [ ] Define the exact receipt commit invariant: what must be complete before confirmation and what can remain pending for putaway.
-- [ ] Define whether non-conformant quantities can be committed to a non-available state or must remain outside the committed receipt.
+- [x] Finalize whether CIPL remains an attached reference plus manually encoded `wrr_items`, or whether structured CIPL parsing is required. — Confirmed: CIPL is an attached external reference stored privately; structured parsing is not in scope for v1 (design.md §5).
+- [x] Finalize expected-line fields, scan/reconciliation storage, inspection-log fields, discrepancy states, and lot inheritance rules. — Expected-line field table added (design.md §5.1); discrepancy states defined (§5.2); inspection-log fields confirmed from `01` schema; `lot_number` confirmed as the single canonical identifier inherited verbatim at commit.
+- [x] Define the exact receipt commit invariant: what must be complete before confirmation and what can remain pending for putaway. — Defined in design.md §9: all scan totals, conformance decisions, and disposition values must be valid; putaway is a post-commit handoff, not a commit prerequisite.
+- [x] Define whether non-conformant quantities can be committed to a non-available state or must remain outside the committed receipt. — Defined: `inspect` disposition commits the quantity as a `quarantined` lot at the `inspection` location (non-available); `returned_to_vendor` action in `wrr_inspection_logs` means the line is not committed at all (design.md §7, §8).
 - [ ] Define party/flow and item activation rules at staging, scanning, and commit time.
 - [ ] Record cross-cutting decisions in `specs/00-steering/revision-log.md`.
 

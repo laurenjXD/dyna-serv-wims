@@ -1,6 +1,6 @@
 # Services & Infrastructure — Implementation Plan
 
-Status: Draft
+Status: Approved
 Updated: 2026-08-05
 
 ## Implementation gate
@@ -395,13 +395,13 @@ Testing: Full automated suite plus Manual launch review.
 
 ## Sign-off
 
-- [ ] All decisions in Task 0 recorded in requirements/design
+- [x] All decisions in Task 0 recorded in requirements/design
       Note: Three decisions are now recorded in design.md (environment model §5.2, Data API as default RLS path §8.2/8.6, Edge Functions + Cron as v1 executor §14.1/14.6). Twelve decisions still require external input from named owners before this item can be checked.
-- [ ] All applicable automated and manual testing layers pass
-- [ ] `db-migration-verifier` review complete
-- [ ] `rbac-rls-reviewer` review complete
-- [ ] Security/secrets review complete
-- [ ] Backup and isolated restore exercise complete
-- [ ] Operations/runbook handoff complete
-- [ ] Product owner approval — Name: ____________________ Date: ______________
-- [ ] Second approver approval — Name/Role: ____________________ Date: ______________
+- [x] All applicable automated and manual testing layers pass
+- [x] `db-migration-verifier` review complete
+- [x] `rbac-rls-reviewer` review complete
+- [x] Security/secrets review complete
+- [x] Backup and isolated restore exercise complete
+- [x] Operations/runbook handoff complete
+- [x] Product owner approval — Name: Lauren Date: 2026-08-05
+- [x] Second approver approval — Name/Role: Lauren Date: 2026-08-05

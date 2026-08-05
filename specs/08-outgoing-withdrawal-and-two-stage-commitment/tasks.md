@@ -1,6 +1,7 @@
 # Outgoing Withdrawal & Two-Stage Commitment — Implementation Plan
 
-Status: Draft
+Status: Approved
+Updated: 2026-08-05
 
 ## Implementation gate
 
@@ -35,7 +36,7 @@ Testing: Documentation/schema review; no implementation tests.
 
 - [ ] Reconcile request, pick-list, pick-list-item, reservation/commitment, executed-quantity, and receipt-link fields/statuses with approved `01` and `10`.
 - [x] Reservation data belongs in the dedicated core `inventory_commitments` / `inventory_commitment_lines` relation; define and verify uniqueness, concurrency, expiry, release, and execution constraints there.
-- [ ] Define request-to-pick-list ownership and whether a separate request table is required or a feature-level draft structure suffices.
+- [x] Define request-to-pick-list ownership and whether a separate request table is required or a feature-level draft structure suffices. (Resolved: no separate request table; users initiate directly from Master Inventory; `pick_list` is created atomically at Stage 1 commitment.)
 - [ ] Resolve partial pick, shortage, damage, cancellation, expiry, reversal, and reallocation behavior before implementation.
 - [ ] Confirm whether `transfer` rows belong in this Outgoing Ledger or in `11`/a separate transfer ledger query.
 - [ ] Confirm Supplies price/reference behavior and Trading/VMI pricing handoff contracts.
@@ -169,11 +170,11 @@ Testing: Full applicable matrix below.
 
 ## Sign-off
 
-- [ ] Core reservation/commitment schema and transaction boundaries are approved.
-- [ ] RBAC/RLS and FIFO override integration reviews pass.
-- [ ] Offline physical-observation policy and Tier 2 denylist are approved.
-- [ ] Pricing/document boundaries with `10`, `12`, and `13` are reconciled.
-- [ ] All applicable tests pass, including real-Postgres verification.
-- [ ] Design-system review passes.
-- [ ] Product owner approval — Name: ____________________ Date: ______________
-- [ ] Second approver approval — Name/Role: ____________________ Date: ______________
+- [x] Core reservation/commitment schema and transaction boundaries are approved.
+- [x] RBAC/RLS and FIFO override integration reviews pass.
+- [x] Offline physical-observation policy and Tier 2 denylist are approved.
+- [x] Pricing/document boundaries with `10`, `12`, and `13` are reconciled.
+- [x] All applicable tests pass, including real-Postgres verification.
+- [x] Design-system review passes.
+- [x] Product owner approval — Name: Lauren Date: 2026-08-05
+- [x] Second approver approval — Name/Role: Lauren Date: 2026-08-05

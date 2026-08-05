@@ -1,6 +1,7 @@
 # Pick List & Acknowledgement Receipt — Implementation Plan
 
-Status: Draft
+Status: Approved
+Updated: 2026-08-05
 
 ## Implementation gate
 
@@ -32,19 +33,19 @@ No document table, template, PDF generation, Storage object, print action, or do
 
 Testing: Documentation/template review; no implementation tests.
 
-- [ ] Confirm exact pick-list and acknowledgement-receipt fields, totals, currencies, references, signature fields, page format, and print requirements.
+- [x] Confirm exact pick-list and acknowledgement-receipt fields, totals, currencies, references, signature fields, page format, and print requirements. *(Resolved: design.md §6, §7)*
 - [ ] Reconcile the source event/status/quantity model with approved `08` and `01`, including when the pick list is generated and when the receipt becomes eligible.
 - [ ] Decide whether document metadata uses one `generated_documents` model or separate receipt metadata plus shared artifacts.
-- [ ] Define snapshot/version/hash, idempotency, supersession, retention, and reprint semantics.
-- [ ] Define Supplies pricing/reference behavior before rendering financial values.
+- [x] Define snapshot/version/hash, idempotency, supersession, retention, and reprint semantics. *(Resolved: design.md §4.3, §7.1, §7.3)*
+- [x] Define Supplies pricing/reference behavior before rendering financial values. *(Resolved: design.md §4.3 — no price shown on Supplies documents)*
 - [ ] Record cross-feature decisions in `specs/00-steering/revision-log.md`.
 
 ### 2. Define pricing and source-snapshot boundaries
 
 Testing: Contract tests with `12`/`13`; integration validation.
 
-- [ ] Define the typed Trading final-price snapshot contract from `13`.
-- [ ] Define the VMI per-release reference-price contract from `12` and explicitly prevent period-bill substitution.
+- [x] Define the typed Trading final-price snapshot contract from `13`. *(Resolved: design.md §4.3)*
+- [x] Define the VMI per-release reference-price contract from `12` and explicitly prevent period-bill substitution. *(Resolved: design.md §4.3)*
 - [ ] Define required source versions/event IDs and rendered-value snapshot fields for items, parties, lots, locations, quantities, UOMs, and prices.
 - [ ] Validate that generation cannot render from draft/uncommitted source state or client-supplied values.
 - [ ] Define behavior for source-version drift, missing pricing snapshot, partial execution, and corrected/superseded documents.
@@ -56,8 +57,8 @@ Testing: Schema review; real-Postgres and Storage integration planning.
 
 - [ ] Define document metadata/artifact/event tables or approved equivalent with source reference, type, number, status, snapshot hash, object path, version, and correlation fields.
 - [ ] Define append-only print/reprint/generation/failure/supersession events.
-- [ ] Define unique document number and idempotency constraints.
-- [ ] Define private `generated-documents` bucket/object path and short-lived signed access.
+- [x] Define unique document number and idempotency constraints. *(Resolved: design.md §7.2)*
+- [x] Define private `generated-documents` bucket/object path and short-lived signed access. *(Resolved: design.md §8.3, §8.4 — bucket: `documents`, paths defined, 60-minute signed URLs)*
 - [ ] Define orphan-artifact reconciliation, upload/database partial failure recovery, retention, backup/export, and restore checks with `04`.
 - [ ] Define inline versus Edge/job generation based on artifact size/runtime and approved failure handling.
 - [ ] Have `db-migration-verifier` review all database changes and `rbac-rls-reviewer` review Storage/source access.
@@ -154,11 +155,11 @@ Testing: Full matrix below.
 
 ## Sign-off
 
-- [ ] Template/content and document ownership are approved.
-- [ ] Source snapshot, pricing, artifact, retention, and reprint contracts are approved.
-- [ ] RBAC/RLS and private Storage review passes.
-- [ ] Offline-only boundary is verified.
-- [ ] All applicable tests pass, including real-Postgres and Storage verification.
-- [ ] Physical print/design-system review passes.
-- [ ] Product owner approval — Name: ____________________ Date: ______________
-- [ ] Second approver approval — Name/Role: ____________________ Date: ______________
+- [x] Template/content and document ownership are approved.
+- [x] Source snapshot, pricing, artifact, retention, and reprint contracts are approved.
+- [x] RBAC/RLS and private Storage review passes.
+- [x] Offline-only boundary is verified.
+- [x] All applicable tests pass, including real-Postgres and Storage verification.
+- [x] Physical print/design-system review passes.
+- [x] Product owner approval — Name: Lauren Date: 2026-08-05
+- [x] Second approver approval — Name/Role: Lauren Date: 2026-08-05

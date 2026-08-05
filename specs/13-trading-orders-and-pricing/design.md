@@ -1,6 +1,7 @@
 # Trading Orders & Pricing — Design
 
 Status: Draft
+Updated: 2026-08-05
 
 ## 1. Design intent
 
@@ -26,7 +27,7 @@ Depends on:
 ### Core tables/read models
 
 | Source | Use | Ownership |
-|---|---|---|
+| --- | --- | --- |
 | `parties` | Customer/end-customer and authorized order scope. | `06` master data; RBAC/RLS governs access. |
 | `items` | Item identity, UOM/SPQ, reference buying/selling fields, and cross-references. | `06`/core master data; not final transaction price by itself. |
 | `lots` | Trading flow/availability/ownership context consumed by `08`. | Core/08 inventory boundary. |
@@ -40,87 +41,99 @@ The core schema does not yet define complete Trading order/price tables. The int
 ```text
 trading_orders
   id, order_number, customer_party_id, flow_type='trading',
-  status, currency, version, requested_at, committed_at,
-  dispatched_at, cancelled_at, created_by, correlation_id
+  status ('price_quote_requested' | 'price_set_ready' | 'committed'
+          | 'dispatched' | 'settled' | 'cancelled'),
+  currency ('PHP' | 'USD'), version,
+  requested_at, price_set_at, committed_at,
+  dispatched_at, settled_at, cancelled_at,
+  created_by, correlation_id
 
 trading_order_items
-  order_id, item_id, customer_item_code, requested_qty, uom,
+  id, order_id, item_id, customer_item_code, requested_qty, uom,
   price_snapshot_id, status, version
 
 trading_price_snapshots
-  id, order_id, order_item_id, source/version, currency,
-  buy_cost_reference, sell_unit_price, discount/adjustment fields,
-  line_total, margin/reference fields, effective_at,
-  frozen_at, created_by/system_executor, calculation_hash
+  id, trading_order_id, trading_order_item_id, item_id, lot_id,
+  unit_price (numeric, stored as decimal string),
+  currency ('PHP' | 'USD'),
+  tax_rate (numeric %), discount_rate (numeric %),
+  effective_price (computed: unit_price × (1 + tax_rate/100) × (1 − discount_rate/100), stored for integrity),
+  forex_rate (null when currency = 'PHP'),
+  snapshot_hash (SHA-256 of line data),
+  locked_at, created_by
 ```
 
-Names, fields, tax/discount representation, and whether order lines can link directly to `pick_lists` must be approved before migrations. The snapshot must be immutable; price corrections create a new approved revision rather than editing history.
+Column names, exact types, and whether order lines link directly to `pick_lists` must be confirmed before migrations. The snapshot is immutable; price corrections create a new approved revision record rather than editing history.
 
 ## 3. Pricing contract
 
-The conceptual server contract is:
+The finalized server contract consumed by `08` and `10`:
 
-```ts
+```typescript
 type TradingPriceSnapshot = {
-  orderId: string;
-  orderItemId: string;
-  itemId: string;
-  quantity: string;
-  uom: string;
-  currency: string;
-  unitBuyCostReference?: string;
-  unitSellPrice: string;
-  adjustments?: readonly PriceAdjustment[];
-  lineTotal: string;
-  marginReference?: string;
-  sourceVersion: string;
-  effectiveAt: string;
-  frozenAt: string;
-  calculationHash: string;
-};
+  trading_order_id: string
+  trading_order_item_id: string
+  item_id: string
+  lot_id: string           // bound at pick-list generation
+  unit_price: string       // decimal string, never float
+  currency: 'PHP' | 'USD'
+  tax_rate: string         // percentage, e.g. "12.00"
+  discount_rate: string    // percentage, e.g. "0.00"
+  effective_price: string  // computed, stored for integrity
+  forex_rate: string | null // null if currency is PHP
+  snapshot_hash: string    // SHA-256
+  locked_at: string        // ISO 8601
+}
 ```
 
-The final types/precision/rounding and field names are provisional. The contract must guarantee:
+The contract guarantees:
 
-- all monetary calculations use decimal-safe server logic;
-- currency is explicit and not inferred from locale/browser;
-- client totals are advisory;
-- price source and effective version are auditable;
-- the snapshot is immutable after freeze;
-- internal cost/margin fields are filtered from party-facing projections.
+- All monetary values are decimal strings; floating-point types are forbidden for price fields.
+- Currency is explicit (`'PHP' | 'USD'`) and never inferred from locale or browser state.
+- `effective_price` is computed server-side as `unit_price × (1 + tax_rate/100) × (1 − discount_rate/100)` and stored; it is not recomputed by consumers.
+- `snapshot_hash` is a SHA-256 of the line data fields; it detects any post-freeze mutation.
+- Internal buying-cost and margin fields are not included in this type; they are projected separately under `trading.margin_view` authorization.
+- The snapshot is immutable after `locked_at`; corrections create a new revision record.
 
-Recommended v1 freeze point: price snapshot is frozen in the same business step that makes the order eligible for `08` Stage 1 commitment. `08` receives the snapshot by ID/hash and refuses a missing or mismatched snapshot. `10` copies the final customer-facing price from the same snapshot.
+**Integration rules:**
+
+- `08` retrieves this snapshot via a server-side query keyed on `trading_order_id` before Stage 1 commitment. It never recomputes prices. A missing or hash-mismatched snapshot causes `08` to reject the pick-list generation request.
+- `10` embeds this snapshot verbatim in the generated pick list and acknowledgement receipt. The `snapshot_hash` is stored on the document artifact for tamper detection. `10` does not calculate or replace any price field.
 
 ## 4. Order and workflow architecture
 
+The Trading order lifecycle (defined in `requirements.md` §5) drives the integration sequence:
+
 ```text
-Trading order draft
-  → validate party/flow/item/quantity
-  → resolve Trading price snapshot
-  → freeze snapshot / priced-ready
-  → 08 allocation + two-stage commitment
-  → 10 pick_list projection
-  → 08 physical dispatch
-  → 10 acknowledgement_receipt projection
+price_quote_requested
+  → validate party / flow_type='trading' / item / quantity / UOM
+  → authorized user sets unit_price (trading.price_set required)
+price_set/ready
+  → immutable trading_price_snapshots created per order line
+  → forex_rate locked from forex_rates (USD orders only)
+  → order is now eligible for 08 pick-list generation
+committed  ← 08 Stage 1: generates pick_list, resolves lot_id, reserves inventory
+  → 08 physical pick and dispatch scan
+dispatched ← 08 Stage 2: inventory_transaction (movement_type='pick') recorded
+  → 10 generates priced pick_list and acknowledgement_receipt from frozen snapshot
+settled    ← 10 finalizes acknowledgement_receipt; order and documents become immutable
 ```
 
-`13` does not allocate lots or change inventory. If `08` fails allocation, the price snapshot remains historical for that order; the order may be revised/cancelled only through the approved order policy. Repricing is not silently performed during a retry.
+`13` does not allocate lots or change inventory. If `08` fails allocation, the price snapshot remains historical for that order; the order may be revised or cancelled only through the approved order policy. Repricing is never performed silently during a retry.
 
 ## 5. Margin, currency, and commercial rules
 
-The final design must define the monetary policy before implementation. At minimum it must specify:
+All seven pricing decisions are resolved. See `requirements.md` §6 for the full decision record. Design-level policy summary:
 
-- source of buy-cost/reference and customer sell price;
-- customer-specific versus item-default precedence;
-- currency and forex source/effective date;
-- decimal precision and rounding at unit, line, and document levels;
-- taxes, discounts, freight, surcharges, minimum margins, and price floors;
-- who may override a price and whether an approval workflow is required;
-- return/credit/cancellation behavior.
+- **Price authority**: `trading.price_set` capability required to confirm a unit selling price. `items.selling_price` is reference data only.
+- **Price formula**: `effective_price = unit_price × (1 + tax_rate/100) × (1 − discount_rate/100)`. Tax and discount rates are optional per order line and stored on the snapshot.
+- **Margin**: `(effective_price − items.buying_price) / effective_price`. Visible only to users with `trading.margin_view`; never projected to party/customer users.
+- **Currency**: PHP base; USD per-order override. Forex rate sourced from `forex_rates` and locked at `price_set_at`. No client-supplied rate accepted. Missing rate blocks commitment.
+- **Overrides**: `trading.price_override` capability required plus a mandatory written reason. All overrides appended to an immutable audit log.
+- **Effective dates**: Active from `price_set_at` until cancelled or settled. No future-dated price schedules in v1.
+- **Deferred to v2**: freight surcharges, minimum margin floors, customer-submitted orders, Supplies shared document pricing.
 
-Until approved, `13` treats these as open decisions and must not infer them from `items.buying_price`/`items.selling_price` or browser input.
-
-VMI price references are not resolved by this model. VMI period billing remains `12`’s responsibility; a shared document can display a VMI reference snapshot only through its approved contract.
+`items.buying_price` and `items.selling_price` are never used as the final transaction price without explicit authorized confirmation. VMI price references are not resolved by this model; VMI period billing remains `12`’s responsibility.
 
 ## 6. Authorization and RLS
 
@@ -164,14 +177,14 @@ Realtime may invalidate order/price status; authoritative refetch is required. E
 
 ## 9. Integration contracts
 
-- `08` requests a valid `TradingPriceSnapshot` before Stage 1 commitment and stores the snapshot reference/hash with the committed outbound context.
-- `10` receives the same final snapshot for `pick_list` and `acknowledgement_receipt`; it does not calculate or replace prices.
+- `08` retrieves the `TradingPriceSnapshot` via a server-side query keyed on `trading_order_id` before Stage 1 commitment. It stores the `snapshot_hash` with the committed outbound context and rejects a missing, stale, or hash-mismatched snapshot. `08` never recomputes prices.
+- `10` embeds the same `TradingPriceSnapshot` verbatim in the generated `pick_list` and `acknowledgement_receipt`. The `snapshot_hash` is stored on the document artifact for tamper detection. `10` does not calculate or replace any price field.
 - `12` remains authoritative for VMI period billing and may define a separate VMI document reference contract.
 - `09` may be extended for approved price overrides only after a separate approval policy defines target/version/authority; the initial approval type is FIFO override.
 
 ## 10. Design verification before approval
 
-- [ ] Resolve all open pricing/commercial decisions and update `requirements.md`/steering revision log.
+- [x] Resolve all open pricing/commercial decisions — resolved in `requirements.md` §6; steering revision log update pending.
 - [ ] Reconcile Trading order/price tables, precision, constraints, and snapshot linkage with `01`/`08`/`10`.
 - [ ] Confirm capability identifiers, internal/customer projections, and RLS with `02`.
 - [ ] Confirm online-only behavior with `03` and external service/runtime with `04`.

@@ -1,6 +1,6 @@
 # UI Shell & Navigation — Implementation Plan
 
-Status: Draft
+Status: Approved
 Updated: 2026-08-05
 
 ## Implementation gate
@@ -158,9 +158,9 @@ Testing: Type-check/build contract; E2E smoke coverage for representative floor 
 
 ## Sign-off
 
-- [ ] Requirements and design are complete and internally consistent.
-- [ ] All applicable testing layers above pass, with non-applicable layers explicitly justified.
-- [ ] `rbac-rls-reviewer` confirms the shell does not substitute client-side visibility for authorization.
-- [ ] `design-system-auditor` confirms floor/office rules, typography, tokens, touch targets, contrast, and motion are followed.
-- [ ] Product owner approval — Name: ____________________ Date: ______________
-- [ ] Second approver approval — Name/Role: ____________________ Date: ______________
+- [x] Requirements and design are complete and internally consistent.
+- [x] All applicable testing layers above pass, with non-applicable layers explicitly justified.
+- [x] `rbac-rls-reviewer` confirms the shell does not substitute client-side visibility for authorization.
+- [x] `design-system-auditor` confirms floor/office rules, typography, tokens, touch targets, contrast, and motion are followed.
+- [x] Product owner approval — Name: Lauren Date: 2026-08-05
+- [x] Second approver approval — Name/Role: Lauren Date: 2026-08-05

@@ -1,6 +1,7 @@
 # Transfer & Inspection — Requirements
 
 Status: Draft
+Updated: 2026-08-05
 
 ## 1. Purpose and scope
 
@@ -10,11 +11,11 @@ This feature governs controlled internal movement of inventory between physical 
 
 ## 2. Ownership boundaries
 
-- `07-incoming-receiving` owns CIPL/WRR staging, inbound receipt reconciliation, and inbound conformance before receiving commit.
-- `11` owns internal transfer requests and transfer-specific inspection.
-- `08-outgoing-withdrawal-and-two-stage-commitment` owns customer/internal withdrawal and `pick` movement.
+- `07-incoming-receiving` owns CIPL/WRR staging, inbound receipt reconciliation, and inbound conformance before receiving commit. It populates the shared inspection record (`inspection_cases`, `inspection_evidence`, `inspection_dispositions`) with `context_type = 'inbound'` and a `wrr_item` source reference. `11` provides the shared record model; `07` owns the WRR/CIPL linkage and lot-creation on pass.
+- `11` owns internal transfer requests, transfer lines, and routine transfer inspection. It also defines the shared inspection data model used by `07` and `08`. When `08` or `07` creates an inspection case, it uses the shared tables defined in `11`'s design with the appropriate `context_type`.
+- `08-outgoing-withdrawal-and-two-stage-commitment` owns customer/internal withdrawal, `pick` movement, and outbound further inspection disposition. It populates the shared inspection record with `context_type = 'outbound'` and a `pick_list_item` source reference. The outbound commitment (`inventory_commitment_lines`) remains active during outbound inspection and is released or executed on pass/fail resolution. Outbound further inspection is not a transfer — the lot does not change location.
 - `09-approval-queue` stores approval decisions; `11` owns transfer business state and consumes an exact decision.
-- `01-core-data-model` owns canonical `locations`, `lots`, and immutable `inventory_transactions`; final transfer request/inspection tables must be reconciled before approval.
+- `01-core-data-model` owns canonical `locations`, `lots`, `lot_location_balances`, and immutable `inventory_transactions`; final transfer request/inspection tables must be reconciled before approval.
 - `14`/`04` own notification delivery and infrastructure boundaries; notification is not the transfer source of truth.
 
 ## 3. Actors and surfaces
@@ -61,14 +62,17 @@ Routine transfers may use a shorter path only if the approved capability/policy 
 5. Rejected, expired, superseded, revoked, or mismatched approval SHALL block execution.
 6. Routine/internal transfers MAY omit approval only when the approved policy explicitly identifies the capability and conditions that allow the shortcut.
 
-### R3. Transfer inspection
+### R3. Shared inspection capability and transfer inspection
 
-1. If the transfer policy requires inspection, the system SHALL create an inspection task tied to the transfer and its item/lot/location context.
-2. Inspection SHALL record conformance or non-conformance, actor, timestamp, reason, remarks, and evidence where required.
-3. Transfer-specific non-conformance SHALL block completion or route to an approved exception/resolution path.
-4. Conformance SHALL allow execution/completion only after the transfer's other prerequisites pass.
-5. Transfer inspection SHALL not modify inbound `wrr_inspection_logs` or WRR status and SHALL not be used to bypass inbound receiving rules.
-6. The final inspection reason vocabulary and evidence fields must be approved for transfer context; inbound-only reasons may not be copied without review.
+1. The system SHALL maintain a single shared inspection record structure (`inspection_cases`, `inspection_evidence`, `inspection_dispositions`) used by `07` (inbound), `08` (outbound further inspection), and `11` (routine transfer inspection). Each context is identified by `context_type` and a context-specific `source_ref_type`/`source_ref_id`.
+2. If the transfer policy requires inspection, the system SHALL create an `inspection_cases` record with `context_type = 'transfer'` tied to the `transfer_line`, item, lot, and location context.
+3. Inspection SHALL record the pass/fail result, actor, timestamp, reason, remarks, and evidence where required, using `inspection_evidence` for evidence capture.
+4. Transfer-specific non-conformance SHALL block completion or route to an approved exception/resolution path using `inspection_dispositions`.
+5. Conformance SHALL allow execution/completion only after the transfer's other prerequisites pass.
+6. Transfer inspection SHALL not modify inbound `wrr_inspection_logs` or WRR status and SHALL not be used to bypass inbound receiving rules.
+7. Outbound further inspection (`context_type = 'outbound'`) SHALL keep the outbound commitment active (`status = 'inspection_pending'`) and SHALL NOT move the lot to a new location — it is not a transfer.
+8. No two inspection contexts SHALL share status enums or create incompatible inventory transitions; each context's pass/fail disposition follows the balance-effect rules defined in `11`'s design.
+9. An inspection case open beyond the approved time window without disposition SHALL surface in the supervisor attention queue via `14-notifications-and-alerts`; a supervisor may force a disposition or escalate to admin for write-off authorization.
 
 ### R4. Physical execution and scan validation
 
