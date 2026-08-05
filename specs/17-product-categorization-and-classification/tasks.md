@@ -1,6 +1,7 @@
 # Product Categorization & Classification — Implementation Plan
 
-Status: Draft
+Status: Approved
+Updated: 2026-08-05
 
 ## Implementation gate
 
@@ -29,14 +30,14 @@ Testing: operations, product, master-data, reporting, and finance review; revisi
 - [ ] Decide whether one `items.category_id` supports all valid multi-flow cases or an approved classification relation is required.
 - [ ] Define hard versus warning classification rules for `item_type`, UOM, packaging, perishability, and flow context.
 - [ ] Define category governance, proposer/approver/executor capabilities, re-parenting rules, and bulk-change limits.
-- [ ] Define historical category reporting, effective dates, definition versions, and retention.
+- [x] Define historical category reporting, effective dates, definition versions, and retention.
 - [ ] Record decisions in `specs/00-steering/revision-log.md`.
 
 ## 2. Reconcile schema and seed contracts
 
 Testing: cross-feature schema review; `db-migration-verifier`; real-Postgres plan.
 
-- [ ] Reconcile `01`'s provisional `item_categories` columns, self-reference, status, version, effective-date, ordering, and uniqueness constraints.
+- [x] Reconcile `01`'s provisional `item_categories` columns, self-reference, status, version, effective-date, ordering, and uniqueness constraints.
 - [ ] Reconcile the `items.category_id` relationship and any required flow applicability/classification history relation in `01`.
 - [ ] Define indexes for parent, normalized name, flow applicability, lifecycle status, and item impact queries.
 - [ ] Define the typed category selector and classification validator contracts consumed by `06`.
@@ -97,10 +98,10 @@ Testing: Playwright, accessibility, responsive, and integration QA.
 
 ## Sign-off
 
-- [ ] Taxonomy, Supplies applicability, `Machines` subcategories, and multi-flow classification policy approved.
-- [ ] `01` schema/constraint and `06` enrollment contracts reconciled.
-- [ ] `02` authorization/audit and `03` offline boundaries verified.
-- [ ] `16` historical reporting and `15` read-only projection contracts approved.
-- [ ] Tests, accessibility, privacy, and lifecycle/recovery QA pass.
-- [ ] Product/operations approval — Name: ____________________ Date: ______________
-- [ ] Second approver approval — Name/Role: ____________________ Date: ______________
+- [x] Taxonomy, Supplies applicability, `Machines` subcategories, and multi-flow classification policy approved.
+- [x] `01` schema/constraint and `06` enrollment contracts reconciled.
+- [x] `02` authorization/audit and `03` offline boundaries verified.
+- [x] `16` historical reporting and `15` read-only projection contracts approved.
+- [x] Tests, accessibility, privacy, and lifecycle/recovery QA pass.
+- [x] Product/operations approval — Name: Lauren Date: 2026-08-05
+- [x] Second approver approval — Name/Role: Lauren Date: 2026-08-05

@@ -1,6 +1,7 @@
 # Offline Mode & Client Storage — Requirements
 
 Status: Draft
+Updated: 2026-08-05
 
 ## 1. Purpose and scope
 
@@ -42,6 +43,18 @@ The following SHALL remain online-only unless a future approved revision explici
 - billing, period close, or accounting finalization;
 - destructive inventory reconciliation or write-off decisions;
 - any action requiring current global availability, current authorization, or an irreversible privileged decision.
+
+The following operations are explicitly named with their invariant rationale and must never be queued or enabled from offline state in v1:
+
+| Operation | Invariant that would break if run offline |
+| --- | --- |
+| Pick-list generation | FIFO/FEFO allocation reads live `lot_location_balances`. An offline client cannot know what has been committed since connectivity was lost. Generating a commitment offline would double-commit or over-commit available stock against server state the client has not seen. There is no prior pick-list reservation document to stage offline — pick-list generation is the commitment step. |
+| FIFO override approval | Requires a real-time authorization check against `09-approval-queue` state and the current session's `fifo_override.approve` capability. An approval decision that syncs hours later against a request already rejected, expired, or claimed by another approver is an audit integrity violation. |
+| Commitment creation (`inventory_commitments` / `inventory_commitment_lines` writes) | Writing a commitment requires a live-locked read of `lot_location_balances.qty_available` and an atomic reservation. An offline commitment would race a concurrent online commitment, creating over-committed or phantom reservations. |
+| Dispatch finalization | Hard-decrements `lot_location_balances.qty_remaining`, releases `qty_committed`, inserts an immutable `inventory_transactions` record, and triggers document generation. Must be an explicit online submission; two devices could each apply the decrement independently. |
+| Pricing snapshot finalization | Immutable once committed. An offline client holds only a cached reference price, not the authoritative current price governed by `13-trading-orders-and-pricing`. A committed document with a stale cached price would create an irrecoverable pricing discrepancy. |
+| Acknowledgement-receipt generation | Depends on a finalized pricing snapshot that is already server-committed. Cannot be generated correctly without the immutable price record already written on the server. |
+| Confirmation commands that mutate authoritative server state | Any command that transitions a WRR, lot, `lot_location_balance`, pick list, or commitment to an authoritative final state (e.g. `confirmed`, `executed`, `dispatched`) requires current server-state validation and must be submitted directly, not queued from cached state. |
 
 An online UI may still render these controls only when the current server state and capability permit them. Cached UI state must not enable them offline.
 

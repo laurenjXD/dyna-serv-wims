@@ -1,6 +1,7 @@
 # Product Categorization & Classification — Design
 
 Status: Draft
+Updated: 2026-08-05
 
 ## 1. Design intent
 
@@ -31,17 +32,35 @@ Depends on:
 
 No `lots`, `locations`, `inventory_transactions`, `wrr_documents`, `pick_list`, `acknowledgement_receipt`, pricing, billing, RBAC assignment, or offline queue tables are owned by `17`.
 
+### 2.1 Taxonomy ownership, hierarchy, ordering, active status, versioning, and effective dates
+
+**Ownership.** The `item_categories` table is owned by `17` for all business rules and lifecycle operations. `06-party-and-item-enrollment` reads `item_categories` as reference data only — it never creates, updates, or deactivates categories through enrollment flows. `01-core-data-model` owns the final schema and constraints; `17` owns the meaning and governance of each field.
+
+**Hierarchy.** `parent_id` is a self-referential FK on `item_categories` (nullable = root/top category). The maximum supported depth is **3 levels** (top → sub → leaf). This limit is enforced by the server command on create and re-parent operations; no migration-time constraint is required, but the depth check is mandatory before any category insert or re-parent.
+
+**Ordering.** A `display_order` integer column governs sort position within the same parent level. Categories at the same level are sorted ascending by `display_order`; ties fall back to `name`. Administration surfaces expose drag-to-reorder or explicit `display_order` input. The field has no global uniqueness constraint — only relative ordering within a sibling set is meaningful.
+
+**Active status.** `is_active` boolean. Setting a parent category inactive cascades to **UI presentation only**: child categories and any items referencing them are hidden from enrollment selectors and active-category views. Child records are **not deleted and not themselves set inactive** by a parent deactivation. Reactivating the parent restores full visibility. This preserves referential integrity and avoids a cascading deactivation that would require a coordinated bulk re-activation undo path.
+
+**Versioning.** `updated_at` (auto-managed timestamp) and `updated_by` (UUID FK to the acting user) are required audit fields on `item_categories`. These fields provide sufficient change attribution for v1. Full event-sourced version history is not required in v1; the append-only `rbac_security_events` audit log (owned by `02`) carries the change trail.
+
+**Effective dates.** Not required in v1. Categories become effective immediately on creation or reactivation. There is no scheduled future activation or future deactivation. This simplification is intentional; scheduled activation would require a background job and coordination overhead not justified by the v1 scope.
+
 ## 3. Provisional logical model
 
 ```text
 item_categories
   id
   name
-  parent_id -> item_categories.id (nullable for top category)
-  flow_type (nullable only if approved as broadly applicable)
+  parent_id      -> item_categories.id (nullable = root/top category; max depth 3, server-enforced)
+  flow_type      (nullable only if approved as broadly applicable)
   description
-  lifecycle status / effective dates / definition version (to reconcile with 01)
-  created/updated/audit metadata
+  display_order  integer; sort position within the same parent (ascending; ties fall back to name)
+  is_active      boolean; parent deactivation hides children from selectors without cascading is_active to child records
+  updated_at     auto-managed timestamp (audit)
+  updated_by     uuid FK to acting user (audit)
+  created_at
+  created_by
 ```
 
 The minimum invariants are:
@@ -115,6 +134,10 @@ Create and rename operations use normalized values and optimistic concurrency. D
 When an item classification changes, the system must preserve the prior classification/version for historical reporting if the approved `01` model requires it. `16` consumes an effective-dated or snapshot-capable projection; it must not infer past category membership from the current name.
 
 Category changes do not rewrite `inventory_transactions`, lot flow, WRR history, pick/receipt content, Trading price snapshots, or VMI billing-period records. A later report may show the current category and the as-of historical category according to the approved history contract.
+
+**Item classification history rule.** Changing an item's category assignment updates `items.category_id`. This affects future reporting and enrollment UI grouping only. Existing lots, WRR records, inventory transactions, and pick list items retain their item reference without change — they are not re-classified. Historical records always display the category that was current at the time of the operation (via item snapshot or join at query time).
+
+**Category metadata boundary.** Category is display/organizational metadata. A category change MUST NOT trigger re-pricing of Trading orders, re-calculation of VMI billing, or any inventory transaction. Any feature that uses category as a billing or pricing input (there are none in v1) would require explicit cross-spec approval.
 
 ## 7. Authorization, RLS, privacy, and offline behavior
 

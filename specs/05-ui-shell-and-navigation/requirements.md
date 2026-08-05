@@ -1,6 +1,7 @@
 # UI Shell & Navigation — Requirements
 
 Status: Draft
+Updated: 2026-08-05
 
 ## 1. Purpose and scope
 

@@ -1,6 +1,7 @@
 # AI Chatbot — Requirements
 
 Status: Draft
+Updated: 2026-08-05
 
 ## 1. Purpose and scope
 
@@ -89,7 +90,17 @@ The v1 scope is text chat with bounded, read-only retrieval from approved applic
 - No chat request is queued for offline replay, and stale/offline states are visible.
 - Retention, provider handling, redaction, audit, rate limits, and cost controls are approved before launch.
 
-## 6. Decisions required before approval
+## 6. Quantity accuracy and action prohibition
+
+These requirements close the gap between the chatbot's retrieval model and the three-quantity inventory contract defined in `01-core-data-model`.
+
+1. The chatbot MUST correctly distinguish and clearly label three quantity concepts in every response that mentions stock levels: `qty_remaining` (physical on-hand, the sum of `lot_location_balances.qty_remaining` across all locations for a lot), `qty_committed` (reserved for active pick lists, the sum of `lot_location_balances.qty_committed`), and `qty_available` (= `qty_remaining` − `qty_committed`, available for new allocation, as derived by the `lot_inventory_totals` view). These definitions are canonical and come from `01-core-data-model`; the chatbot MUST NOT use its own arithmetic or derived quantities.
+2. The chatbot MUST NOT use ambiguous terms like "stock", "inventory", or "available" without specifying which quantity is meant. Responses referencing stock levels MUST include the labeled quantity type (`qty_remaining`, `qty_committed`, or `qty_available`) alongside any displayed number.
+3. The chatbot MUST NOT authorize, initiate, suggest, or simulate a pick-list generation, inventory commitment, dispatch, or approval action. These are consequential write operations owned by `08-outgoing-withdrawal-and-two-stage-commitment` and `09-approval-queue`; the chatbot can describe that a user must go to those features but cannot act on their behalf.
+4. A response that reports a quantity MUST identify the as-of timestamp of the retrieved data so the user understands they are seeing a point-in-time snapshot, not necessarily the current warehouse state at the instant of reading.
+5. If the retrieved data shows `qty_available = 0` but `qty_remaining > 0`, the chatbot MUST explain that the remaining quantity is fully committed to active pick lists, not that the item is "out of stock".
+
+## 7. Decisions required before approval
 
 - Approved model/provider, regions, retention, training/data-use settings, and fallback policy.
 - Initial read-only tools/query functions and fields allowed for each role/party/flow scope.

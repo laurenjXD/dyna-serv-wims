@@ -1,6 +1,7 @@
 # RBAC & Roles — Design
 
 Status: Draft
+Updated: 2026-08-05 (pass-2 db-migration-verifier run — all 5 remaining items verified PASS; two bugs found and fixed)
 
 Depends on:
 
@@ -88,7 +89,12 @@ Initial scope kinds:
 | `global` | Capability applies across the single warehouse, subject to row policy and business-state checks. |
 | `assigned_party` | Capability applies only when the row matches an active `user_party_scopes` assignment. |
 
-`user_party_scopes.flow_type` further narrows `assigned_party`. A null `flow_type` means all externally applicable flows for that assigned party. It does not override capability or business restrictions. In particular, the `party_user` seed grants do not expose internal Supplies data; any future exception requires an approved requirement and capability change.
+`user_party_scopes.flow_type` further narrows `assigned_party`. A null `flow_type` means all *externally applicable* flows for that assigned party — this explicitly excludes `'supplies'`, never all three `flow_type` values. This exclusion is not prose intent alone; it is enforced at the mechanism level by two independent layers so no single implementation slip exposes Supplies data:
+
+1. `has_party_scope(party_id, flow_type)` (§7.2) never treats a null-`flow_type` assignment row as matching `flow_type = 'supplies'`. Its match logic is `requested_flow_type = assignment.flow_type OR (assignment.flow_type IS NULL AND requested_flow_type <> 'supplies')`, not a bare null-means-wildcard check.
+2. `can_access_party_resource` (§7.2) independently hard-blocks any `assigned_party`-scope-kind capability check where the target row's `flow_type = 'supplies'`, regardless of what `has_party_scope` alone would return. This is a second, redundant gate — not a restatement of the first.
+
+Per requirements.md §3.4 and acceptance criterion #7, `party_user` grants never expose internal Supplies data in v1. Consequently, every RBAC-owned and downstream capability that touches a `flow_type`-partitioned resource for Supplies MUST be modeled with `scope_kind = 'global'` in the canonical capability catalog (§3.2), never `assigned_party` — `assigned_party` scope is defined to be flow-restricted to VMI/Trading only, and Supplies access is granted exclusively through operational roles (`warehouse_staff`, `supervisor`, `administrator`), never through `user_party_scopes`.
 
 Initial RBAC-owned capability identifiers:
 
@@ -99,7 +105,40 @@ Initial RBAC-owned capability identifiers:
 | `party_scopes` | `read`, `grant`, `revoke` | `administrator` |
 | `security_events` | `read` | `administrator` |
 
-Downstream capabilities follow the same vocabulary, for example `receiving.confirm`, `inventory.read`, `fifo_override.approve`, and `documents.read`. Names are added to this canonical catalog only when the owning feature's requirements define the operation.
+The following operational capability catalog defines stable resource identifiers and the action vocabulary for first-wave feature domains (2026-08-05). Downstream specs confirm or extend actions within each resource; they do not rename these resource keys. Where the same resource permits both `global` and `assigned_party` scope kinds, both rows are listed. The full `role_permissions` seed data is derived from this table.
+
+| Resource | Actions | Scope kind | Default role(s) |
+|---|---|---|---|
+| `receiving` | `view`, `scan`, `confirm` | `global` | `warehouse_staff`, `supervisor` |
+| `inspection` | `perform` | `global` | `warehouse_staff`, `supervisor` |
+| `inspection` | `resolve` | `global` | `supervisor` |
+| `inventory` | `read` | `global` | `warehouse_staff`, `supervisor`, `administrator` |
+| `inventory` | `manage` | `global` | `administrator` |
+| `locations` | `read` | `global` | `warehouse_staff`, `supervisor`, `administrator` |
+| `locations` | `manage` | `global` | `administrator` |
+| `pick_list` | `generate`, `execute`, `read` | `global` | `warehouse_staff`, `supervisor` |
+| `pick_list` | `read` | `assigned_party` | `party_user` |
+| `fifo_override` | `request` | `global` | `warehouse_staff`, `supervisor` |
+| `fifo_override` | `approve` | `global` | `supervisor` |
+| `dispatch` | `read`, `execute` | `global` | `warehouse_staff`, `supervisor` |
+| `transfers` | `read`, `request`, `execute` | `global` | `warehouse_staff`, `supervisor` |
+| `documents` | `read`, `generate`, `download` | `global` | `warehouse_staff`, `supervisor`, `administrator` |
+| `documents` | `read` | `assigned_party` | `party_user` |
+| `reporting` | `read`, `export` | `global` | `supervisor`, `administrator` |
+| `parties` | `read` | `global` | `warehouse_staff`, `supervisor`, `administrator` |
+| `parties` | `manage` | `global` | `administrator` |
+| `items` | `read` | `global` | `warehouse_staff`, `supervisor`, `administrator` |
+| `items` | `manage` | `global` | `administrator` |
+| `forex_rates` | `read` | `global` | `supervisor`, `administrator` |
+| `forex_rates` | `manage` | `global` | `administrator` |
+| `notifications` | `read` | `global` | `warehouse_staff`, `supervisor`, `administrator` |
+| `notifications` | `read` | `assigned_party` | `party_user` |
+
+`inspection.resolve` is intentionally `supervisor`-only: resolution determines disposition of held stock (accept, quarantine, return) and must not be exercised by the same floor worker who performed the scan, maintaining a two-person separation for high-stakes inventory outcomes. `inspection.perform` remains available to `warehouse_staff` for the physical scan and evidence capture step.
+
+`reporting.read` and `reporting.export` are not granted to `warehouse_staff` because the reporting surface aggregates cross-party inventory metrics, pricing, and CBM data; floor workers have no business need for that aggregate view and the exposure would violate the principle of least privilege.
+
+Names are added to this canonical catalog only when the owning feature's requirements define the operation; the table above covers operations whose business meaning is stable from the revision-plan scope.
 
 ### 3.3 Effective authorization
 
@@ -117,6 +156,14 @@ There are no explicit denies. A request is permitted only when:
 3. The grant's scope kind is satisfied.
 4. The target row meets its resource/business-state rules.
 5. RLS permits the database operation.
+
+### 3.4 Self-approval prohibition
+
+A user who is recorded as the **requester** of a specific approval target — the user whose action caused an approval request to be created, identified by `requester_user_id` on the approval record — is prohibited from exercising any approval capability against that same target, regardless of what approval capabilities they hold.
+
+This rule applies to every approval resource type defined under this spec. For the initial `fifo_override.approve` capability: when the approval command is invoked, the server MUST verify that the approval request's `requester_user_id` does not equal the invoking user's `auth.uid()` before allowing the operation. This check is a server-side authorization requirement, not merely a UI constraint, and must be enforced independently of whether the UI hides the approve button for self-requested items.
+
+The self-approval prohibition is not modeled as a separate RLS policy because RLS cannot efficiently express "you may approve this row unless you are the one who created it given a join to the approval record" within the normal policy evaluation path. It is enforced by the approval-command server logic (owned by `09-approval-queue`) and re-applied during sync re-authorization for any offline-queued approval operations. The RBAC spec owns this rule as a capability constraint; `09` owns the state machine that implements it.
 
 ## 4. RBAC data model
 
@@ -207,7 +254,7 @@ A partial unique index prevents more than one active assignment for the same `(u
 | `revoked_at`, `revoked_by_user_id` | Timestamp/UUID | Set by controlled revocation. |
 | `revocation_reason` | Text | Required when revoked. |
 
-An active-assignment uniqueness rule treats null `flow_type` as a real value so duplicate all-flow assignments cannot be created. Granting an all-flow assignment while narrower active assignments exist must either be rejected with a clear conflict or replace them transactionally; the administration service uses replacement with confirmation and audit events.
+An active-assignment uniqueness rule treats null `flow_type` as a real value so duplicate all-flow assignments cannot be created. This MUST use Postgres 15+'s native `UNIQUE ... NULLS NOT DISTINCT` index modifier (`CREATE UNIQUE INDEX ... ON user_party_scopes (user_id, party_id, flow_type) NULLS NOT DISTINCT WHERE revoked_at IS NULL`) — a `COALESCE(flow_type::text, '__sentinel__')` expression index is **not** viable, because the implicit enum→text cast (`enum_out`) is `STABLE`, not `IMMUTABLE`, and Postgres rejects non-immutable functions in an index expression at creation time. Granting an all-flow assignment while narrower active assignments exist must either be rejected with a clear conflict or replace them transactionally; the administration service uses replacement with confirmation and audit events.
 
 ### 4.7 `rbac_security_events`
 
@@ -227,6 +274,25 @@ An active-assignment uniqueness rule treats null `flow_type` as a real value so 
 | `created_at` | Timestamptz | Server/database generated. |
 
 No ordinary or administrator policy permits update or delete. Inserts occur through controlled server/database paths that derive the actor from the session; clients cannot submit arbitrary actor identities.
+
+Defined `event_type` values (2026-08-05):
+
+| Event type | Trigger |
+|---|---|
+| `user_invited` | An invitation was sent to a new user. |
+| `user_activated` | An invited user profile was activated by an administrator. |
+| `user_deactivated` | A user profile was deactivated, with actor, timestamp, and reason. |
+| `role_granted` | A system role was assigned to a user. |
+| `role_revoked` | A system role assignment was revoked. |
+| `party_scope_granted` | A party-scope assignment was granted to a user. |
+| `party_scope_revoked` | A party-scope assignment was revoked. |
+| `sensitive_action_denied` | A capability check was evaluated and denied for a sensitive operation. |
+| `authentication_failed` | A sign-in attempt failed where the failure is safely attributable without revealing account existence. |
+| `session_revoked` | An active session was administratively revoked following deactivation or a critical privilege change. |
+| `password_recovery_requested` | A password recovery email was triggered for a known account. |
+| `administrator_invariant_blocked` | A deactivation or role-revocation was rejected by the last-administrator invariant check (§8.5). |
+
+This list is exhaustive for v1 RBAC-owned events. Downstream feature specs that need additional event types must add them to this table and assign a stable string value before implementation; they must not invent ad-hoc strings at runtime.
 
 ## 5. Entity relationships
 
@@ -294,6 +360,8 @@ The locked stack requires Drizzle and PostgreSQL RLS. Direct PostgreSQL connecti
 
 No user-scoped query may escape this wrapper, and no session claim may be set at connection scope. This prevents identity leakage through pooled connections. The implementation design must be validated against the selected Supabase connection mode in `04-services-and-infrastructure` with real Postgres before code is approved. If the selected connection mode cannot safely propagate transaction-local claims, protected user data access must use the Supabase session client/Data API while Drizzle remains the schema and trusted-server query layer; RLS must not be weakened to preserve ORM uniformity.
 
+The wrapper's commit/rollback step MUST be implemented with guaranteed rollback on any callback exception (e.g. try/finally around the callback, rolling back unless the callback completed and commit was explicitly reached) — a callback that throws must never leave the transaction open or implicitly committed.
+
 ### 6.4 Request-local memoization
 
 Authorization resolution may be memoized for the life of one request. There is no Redis or JWT permission cache in v1. A new request always re-evaluates current profile, assignment, expiry, and revocation state.
@@ -316,10 +384,22 @@ Proposed stable helper functions:
 |---|---|
 | `current_user_is_active()` | Confirms `auth.uid()` maps to an active profile. |
 | `has_permission(resource, action, scope_kind)` | Confirms an active role grant for the current user. |
-| `has_party_scope(party_id, flow_type)` | Confirms an active matching party assignment, honoring null as all allowed flows. |
-| `can_access_party_resource(resource, action, party_id, flow_type)` | Combines capability and party scope for policies. |
+| `has_party_scope(party_id, flow_type)` | Confirms an active matching party assignment. A null-`flow_type` assignment row matches any requested `flow_type` **except** `'supplies'` — it is not a bare wildcard (§3.2). |
+| `can_access_party_resource(resource, action, party_id, flow_type)` | Combines capability and party scope for policies, and independently hard-denies when `flow_type = 'supplies'` regardless of `has_party_scope`'s result (§3.2's second gate). |
 
 Helpers that need to read authorization tables may use `SECURITY DEFINER` only to avoid policy recursion. They must use a fixed `search_path`, schema-qualified objects, non-user-controlled SQL, least-privilege ownership, and restricted execute grants. Real-Postgres tests must prove they cannot be used to enumerate assignments or escalate privilege.
+
+**Owner/privilege strategy**: `role_permissions` and `user_party_scopes` carry their own restrictive RLS (§7.3) that would otherwise hide most rows from the calling user. Since these helpers must read across that boundary to compute an answer for the caller, "least-privilege ownership" means: the functions are owned by a single dedicated `rbac_definer` role (not `postgres`, not the application's ordinary migration owner) that holds `BYPASSRLS` and table-level `SELECT` only on the specific RBAC tables these four functions read — no broader grant. Ordinary authenticated roles receive `EXECUTE` on the functions themselves, never table-level access to `role_permissions`/`user_party_scopes` directly.
+
+Real-Postgres verification (2026-08-05) found this ownership description incomplete — the DDL as literally specified above fails to run without three additional grants, none of which are optional or implementation-specific tuning:
+
+- `current_user_is_active`, `has_permission`, `has_party_scope`, and `can_access_party_resource` all call `auth.uid()`. `SECURITY DEFINER` runs as the *owner*, not the caller, so `rbac_definer` itself needs `GRANT USAGE ON SCHEMA auth TO rbac_definer; GRANT EXECUTE ON FUNCTION auth.uid() TO rbac_definer;` — without it, every call fails with `permission denied for schema auth`.
+- `can_access_party_resource` calls the other `rbac_internal`-qualified helpers internally, so `rbac_definer` also needs `GRANT USAGE ON SCHEMA rbac_internal TO rbac_definer` (the schema itself, distinct from `EXECUTE` on the individual functions already covered above) — without it, `permission denied for schema rbac_internal`.
+- Any admin mutation function (§8.3's grant/revoke operations, owned by a separate `rbac_admin_ops` role per §8.5's invariant-checking requirement) that internally re-checks the caller's capability by calling `rbac_internal.has_permission(...)` (per §8's defense-in-depth requirement that these functions independently re-verify rather than trust the caller) needs `GRANT EXECUTE ON FUNCTION rbac_internal.has_permission TO rbac_admin_ops` — without it, the entire admin mutation path fails with `permission denied for function has_permission`, not just an edge case.
+
+All three grants belong in the same migration that creates these functions, not left as an implementation-time discovery.
+
+**PostgREST/RPC exposure**: these functions are policy-internal only and MUST NOT be reachable as callable Supabase RPC endpoints for browser/client code. A role-based `EXECUTE` grant distinction cannot achieve this: because §6.3's transaction wrapper sets transaction-local claims so RLS evaluates the caller as the `authenticated` Postgres role, RLS policy evaluation runs under the *same* `authenticated` role that Supabase's `/rest/v1/rpc/*` routing would use for a direct client call — there is no separate "role used inside RLS but not by PostgREST" to grant `EXECUTE` to differently. The actual mechanism is **schema placement**: these four functions live in a dedicated schema (e.g. `rbac_internal`) that is never added to Supabase's PostgREST "Exposed schemas" configuration. PostgREST only auto-routes `/rpc/*` endpoints for functions in exposed schemas; a direct SQL query (used inside RLS policy bodies, and by the trusted Drizzle server-side transaction wrapper, which connects over Postgres wire protocol rather than through PostgREST) can still call a schema-qualified function in `rbac_internal` regardless of PostgREST's exposure config, since Postgres itself doesn't consult that config when evaluating an RLS expression or a direct query. `authenticated` still needs `EXECUTE` on the functions for RLS evaluation to succeed for ordinary users — exposure is closed by schema placement, not by withholding `EXECUTE`. Real-Postgres tests must confirm no `/rpc/rbac_internal.*` (or unqualified `/rpc/has_party_scope` etc.) endpoint exists via a live PostgREST introspection/OpenAPI check, not just an application-layer assumption.
 
 ### 7.3 RBAC-table policies
 
@@ -335,18 +415,34 @@ Helpers that need to read authorization tables may use `SECURITY DEFINER` only t
 
 ### 7.4 Core-resource policy patterns
 
-- `wrr_documents`: party reads require an `assigned_party` capability plus `has_party_scope(vendor_party_id, flow_type)`.
+Every pattern below MUST call `can_access_party_resource`, never `has_party_scope` directly, as the RLS predicate. This is not a restatement: `has_party_scope` alone is the first gate described in §3.2/§7.2, and `can_access_party_resource`'s independent `flow_type = 'supplies'` hard-deny is the second, non-derivative gate. A policy that calls `has_party_scope` directly has only one gate wired in, defeating the "no single implementation slip exposes Supplies data" design intent even though the helper itself is correct.
+
+- `wrr_documents`: party reads require an `assigned_party` capability plus `can_access_party_resource('wrr_documents', 'read', vendor_party_id, flow_type)`.
 - `wrr_items` and `wrr_inspection_logs`: authorize through the parent WRR; evidence files use the same parent relationship.
-- `lots`: party reads use the authoritative party relationship for the flow. `owner_party_id` alone is sufficient only where the core-data design defines it as that caller's scope; Trading customer views may require an outbound/order relationship instead.
-- `pick_lists`: party reads require matching `customer_party_id` and `flow_type`.
+- `lots`: the party relationship is flow-dependent and needs two branches, not one uniform `owner_party_id` policy:
+  - **VMI** (`flow_type = 'vmi'`): `owner_party_id` is required per `01-core-data-model/design.md` and is the vendor's identity; `can_access_party_resource('lots', 'read', owner_party_id, 'vmi')` is sufficient.
+  - **Trading** (`flow_type = 'trading'`): `owner_party_id` is optional and does not reliably represent the customer (the warehouse owns Trading stock pre-sale, per `product.md`; the same physical lot can be split across multiple customer pick lists over its lifetime). Trading party users receive **no direct row-level `SELECT` grant on `lots` at all** — not even through a `pick_list_items` join. A join-based grant would let a party that picked from a shared lot once retain indefinite read access to that lot's current state, including quantity changes driven entirely by a *different* customer's later picks — a cross-party inference channel through quantity drift, prohibited by requirements.md FR-4.6. Instead, a Trading party user's visibility into lot identity is satisfied entirely by the priced snapshot fields already carried on their own `pick_list_items` rows (`lot_number`, `location_label`, etc., per `01-core-data-model/design.md`'s `pick_list_items` schema) — those are point-in-time document facts, not a live join to the shared `lots` row, and require no `lots` grant to read.
+  - **Supplies** (`flow_type = 'supplies'`): never party-scoped; see §3.2's global-scope-only rule.
+- `pick_lists`: party reads require matching `customer_party_id` and `flow_type`, via `can_access_party_resource('pick_list', 'read', customer_party_id, flow_type)`. The resource string `'pick_list'` (singular) matches the capability catalog entry in §3.2; the table is named `pick_lists` but the capability key is `pick_list`. Using the table name instead of the capability key would silently deny all party reads (see pass-2 verification note in §13).
 - `pick_list_items`: authorize through the parent pick list.
-- `inventory_transactions`: authorize through the related lot/document path defined by the owning workflow; no global party-user ledger access.
-- `items`: party-user catalog visibility is derived through scoped business records or an explicit future item-party relation. `default_supplier_party_id` must not accidentally expose the entire item record to unrelated party roles.
+- `inventory_transactions`: no direct party column and no party-user grant in v1. Party users read outbound activity through their own `pick_list_items` snapshot (as with `lots` above), not through `inventory_transactions`; no global or joined party-user ledger access.
+- `items`: party-user catalog visibility is never a direct broad-catalog read, and standard RLS cannot itself exclude specific columns from an otherwise-visible row — a bare row policy on the base `items` table is therefore insufficient to protect `default_supplier_party_id`/`buying_price`/`selling_price`. Party users receive **no direct `SELECT` grant on the base `items` table**. Instead, a dedicated view `party_visible_items` exposes only the columns needed to render a caller's own document (`code`, `name`, `description`, `barcode`, `uom`, `spq`, `spq_meter`, dimensions, `volume_cbm`, `is_perishable`), with the row filter (`item_id` reachable via the caller's own readable `wrr_items`/`pick_list_items`) embedded directly in the view's `WHERE` clause (using `can_access_party_resource('pick_list', 'read', ...)` — resource key `'pick_list'`, not `'pick_lists'`, to match the capability catalog). **The view must be a default (non-`security_invoker`) view, owned by the same privileged owner role used for the RBAC helper functions (§7.2) with `SELECT` on the base `items` table** — a `security_invoker` view would be subject to `items`' own base-table RLS on top of the view's filter, and since party users correctly have zero direct grant on the base table, a `security_invoker` view would always return zero rows regardless of its own filter, defeating its purpose. (The inverse mistake — loosening `items`' base RLS so a `security_invoker` view works — would let a direct `SELECT buying_price FROM items` on a now-visible row leak exactly the column this pattern exists to protect.) A default-owner view sidesteps this entirely: Postgres evaluates table-access privileges for a plain view using the *view owner's* privileges, not the querying session's, so the owner's direct grant on `items` satisfies the view's own read while the view's `WHERE` clause — not base-table RLS — is what actually authorizes each row. `default_supplier_party_id`, `buying_price`, `selling_price`, and `min_reorder_level` are never selected by the view, so no query path — including a future admin screen's query reused in a party context — can return them to a party user regardless of what it selects.
 - `locations` and `forex_rates`: operational/global capabilities only unless a downstream requirement defines a safe party projection.
+
+The following tables from `01-core-data-model` were not covered above and are added here to complete the default-deny map (2026-08-05):
+
+- `parties`: All active internal users with `parties.read` (`global`) select all rows. Party users select only parties whose `id` appears in their own active `user_party_scopes`, via `can_access_party_resource('parties', 'read', id, null)` — this correctly excludes Supplies-flow-only parties per §3.2's null-flow_type semantics. Administrators insert and update with `parties.manage`. No user-initiated delete policy; deactivation uses `is_active`. Party users receive no insert, update, or delete policy.
+- `party_roles`: Visibility inherits from the parent `parties` row — a row is readable iff the caller satisfies the `parties` select policy for the same `party_id`. All mutations are administrator-only through controlled service operations; no direct user mutation policy.
+- `item_categories`: All active internal users with `items.read` (`global`) select active categories. Party users have no direct grant; category context is surfaced only through the `party_visible_items` view where applicable, never through a direct grant on this table. Administrators insert and update with `items.manage`. No user delete policy; deactivated categories are managed through application-level `is_active` flags at the consuming layer.
+- `lot_location_balances`: Active internal staff with `inventory.read` (`global`) select all rows. VMI party users select balances for lots whose parent `lots.owner_party_id` matches their active assignment, evaluated as `can_access_party_resource('lot_location_balances', 'read', lots.owner_party_id, 'vmi')` through a one-hop join to the parent `lots` row. Trading party users receive no direct grant — their balance visibility is satisfied entirely by the point-in-time snapshot fields already present on their `pick_list_items` rows (`lot_number`, `location_label`, etc.), consistent with the Trading-branch design for `lots` in §7.4 above. Supplies: internal-staff only. Insert and update are performed only by the receiving, commitment, and dispatch server operations through controlled service paths; no interactive user mutation policy.
+- `inventory_commitments`: Active internal staff with `pick_list.read` or `dispatch.read` (`global`) select all commitments. No party-user grant; commitment status is surfaced to party users through their own `pick_lists` document, not through a direct commitment query. Insert and update are performed only by the two-stage-commitment server operations; no interactive user mutation policy.
+- `inventory_commitment_lines`: Select inherits from the parent `inventory_commitments` row through the same `pick_list.read`/`dispatch.read` check. No independent select policy beyond the parent join. No party-user grant. Insert and update are commitment-service-only.
 
 Policies must avoid leaking data through permissive joins, aggregate functions, views, realtime publication, or storage metadata.
 
 ## 8. Administrative operations
+
+Every operation in this section runs through a controlled server function/service, not a direct client-authenticated RLS INSERT/UPDATE (§7.3 marks these tables' mutation path as "Controlled lifecycle functions/services"). Because of that, each function step below that says "Require `<capability>`" means the privileged function itself re-evaluates that capability against the current caller inside its own transaction — it does not trust that the calling Server Action already called `requirePermission()` upstream. A privileged function that only performed its side effects without its own authorization check would be a bypass path independent of whatever the calling code did correctly.
 
 ### 8.1 Invitation flow
 
@@ -375,6 +471,8 @@ Role and party-scope grants/revocations use controlled server operations or narr
 
 Revocation updates the existing active assignment with revocation metadata. It does not delete history.
 
+When a revocation removes an `administrator` role assignment (independent of whether the profile is also being deactivated — `user_roles.revoked_at` and `user_profiles.status` are independent), it MUST invoke the same last-administrator invariant check and lock described in §8.5 before committing. This is a distinct code path from §8.4's deactivation flow and is not covered by it: a user can be stripped of the `administrator` role while remaining an otherwise-active profile.
+
 ### 8.4 Deactivation
 
 1. Lock the relevant administrator assignments while checking the last-administrator invariant.
@@ -388,6 +486,8 @@ Database authorization stops on the next protected request even if external sess
 ### 8.5 Last-administrator invariant
 
 Any operation that could remove the final active holder of the global administrator capabilities must count eligible active users and mutate under a transaction/advisory lock. A simple pre-check in application code is insufficient because concurrent requests could both pass.
+
+The lock MUST be a single fixed-key `pg_advisory_xact_lock` on a constant identifying "the administrator-capability invariant" — serializing every revoke/deactivate operation against every other one globally, regardless of which specific administrator each targets. A row-level lock scoped to only the target administrator's own `user_roles`/`user_profiles` row is insufficient and does not close the race: two concurrent requests revoking two *different* administrators would lock two non-overlapping rows, each independently count 2 active administrators (each seeing the other's row still active and uncommitted), each conclude "one will remain," and both commit — leaving zero. The fixed-key advisory lock forces the second transaction to wait until the first commits and its count reflects the first revocation, so the second transaction's count check sees the true post-first-revocation state.
 
 ## 9. Admin UI design
 
@@ -477,11 +577,27 @@ Migrations must be rerunnable only where explicitly designed, must not renumber 
 - Execute the entire migration chain.
 - Use separate authenticated identities for all four system roles and multiple party/flow scopes.
 - Test select, insert, update, and delete independently.
-- Test direct IDs, joins, views, aggregates, policy helper functions, and concurrent last-administrator changes.
+- Test direct IDs, joins, views, aggregates, and policy helper functions.
+- Test that a null-`flow_type` `user_party_scopes` assignment does not grant `has_party_scope`/`can_access_party_resource` access to a `flow_type = 'supplies'` row, using a real party that has both VMI/Trading and Supplies-flow records.
+- Test that `has_permission`, `has_party_scope`, and `can_access_party_resource` cannot be invoked directly via the anon/authenticated PostgREST RPC role.
+- Test the specific two-concurrent-different-administrators race from §8.5: two transactions each revoking a *different* one of exactly two active administrators must not both commit; exactly one must fail the invariant check.
+- Test that a Trading party user has no direct `SELECT` on `lots` or `inventory_transactions` (query fails/returns zero rows even for a lot the party legitimately picked from), and that their lot visibility is fully satisfied by their own `pick_list_items` snapshot rows.
+- Test that a party user's queries against `party_visible_items` never return `default_supplier_party_id`, `buying_price`, `selling_price`, or `min_reorder_level`, and that the party user has no direct `SELECT` grant on the base `items` table.
+- Test via live PostgREST introspection (OpenAPI/schema endpoint) that no `/rpc/*` route exists for `has_permission`, `has_party_scope`, `can_access_party_resource`, or `current_user_is_active`, confirming schema placement actually removed them from the exposed API surface rather than relying on an EXECUTE-grant assumption.
 - Verify transaction-local JWT/session propagation cannot leak between pooled connections.
 - Verify revoked/deactivated access fails on the next transaction/request.
 - Verify security events are append-only and actor attribution cannot be forged.
 - Run `db-migration-verifier` and `rbac-rls-reviewer` before sign-off.
+
+**Real-Postgres verification status (2026-08-05, pass 1)** — `db-migration-verifier` ran a disposable Postgres 16 against a literal translation of this design (stand-in `01` tables built column-for-column from `01-core-data-model/design.md`, since no actual migrations exist yet). **Verified PASS** with real data/real concurrent sessions: the full migration chain applies cleanly (after fixing the two DDL bugs folded into §4.6 and §7.2 above); the Supplies-leak scenario (real `lots` rows, real RLS `SELECT`, `warehouse_staff`/`party_user`/unrelated-party sessions as positive and negative controls); the two-concurrent-different-administrators race (real separate Postgres backends, plus a control experiment using the row-level-lock-only approach §8.5 calls insufficient, which reproduced the exact zero-administrators failure this design prevents); the `rbac_definer`/`BYPASSRLS` helper path from an ordinary `authenticated` session with zero direct table grants (after fixing the three grant gaps folded into §7.2 above); `rbac_security_events` append-only (`UPDATE`/`DELETE`/forged-actor `INSERT` all rejected); and both partial-unique-index invariants including the null-as-real-value semantics.
+
+**Real-Postgres verification status (2026-08-05, pass 2)** — `db-migration-verifier` second run (PostgreSQL 18.3 via PGlite WASM, 40 subtests across all 5 remaining items, all PASS). Two implementation bugs caught and folded into this document:
+
+1. **`REVOKE EXECUTE FROM PUBLIC` missing on rbac\_internal helpers** — PostgreSQL grants `EXECUTE TO PUBLIC` for new functions by default. Without an explicit `REVOKE EXECUTE ON FUNCTION rbac_internal.{current_user_is_active,has_permission,has_party_scope,can_access_party_resource}() FROM PUBLIC` immediately after `CREATE FUNCTION`, the `anon` role (and any other role) can call these helpers directly. This must be added to the same migration step that creates the functions. Fixed here as a migration requirement; §7.2 already states that `authenticated` needs `EXECUTE` for RLS evaluation and `anon` must not have it — the REVOKE makes that explicit in DDL.
+
+2. **Resource-name mismatch between §3.2 capability catalog and §7.4 RLS policy descriptions** — §3.2 defines the capability resource as `'pick_list'` (singular, canonical machine identifier). §7.4's prose examples for `pick_lists`, `pick_list_items`, and the `party_visible_items` view previously used `'pick_lists'` (plural, the table name) as the `p_resource` argument to `can_access_party_resource`. The resource string passed to `can_access_party_resource` is looked up in `permissions.resource`; if it does not exactly match the seeded capability string, the permission check returns false and the entire policy denies. The canonical form is `'pick_list'` (as in §3.2); all policy bodies and the view's WHERE clause must use `'pick_list'`, not `'pick_lists'`. Corrected in §7.4.
+
+**Verified PASS** (2026-08-05, pass 2 — all 5 previously unverified items): (1) rbac\_internal schema placement blocks PostgREST `/rpc/*` routing; `anon` has no EXECUTE after REVOKE; `authenticated` retains EXECUTE for RLS (live PostgREST OpenAPI call still requires a running PostgREST process — mechanism confirmed, infrastructure call noted as remaining); (2) `party_visible_items` exists, owned by `rbac_definer`, `security_invoker=false` confirmed via `pg_class.reloptions`, all four protected columns excluded, party user reads 0 rows from base `items` but correct rows from the view; (3) full three-way `lots` VMI/Trading/Supplies RLS matrix: VMI party user selects own lots via `owner_party_id`, Trading party user gets zero direct `lots` rows but correct snapshot data from `pick_list_items`, Supplies lots unreachable to party users including null-`flow_type` scoped users; (4) `SET LOCAL` (`is_local=true`) transaction-local claim propagation confirmed: value is present inside the transaction, reverts to prior session value after commit — the pooler-safety property holds (live PgBouncer transaction-mode test still requires a running pooler); (5) role revocation and scope-only revocation each immediately block the next request via RLS re-evaluation; `rbac_security_events` remains append-only (UPDATE/DELETE blocked by default-deny).
 
 ### Playwright E2E tests
 

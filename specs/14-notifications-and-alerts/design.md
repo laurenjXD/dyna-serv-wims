@@ -1,6 +1,7 @@
 # Notifications & Alerts — Design
 
 Status: Draft
+Updated: 2026-08-05
 
 ## 1. Design intent
 
@@ -11,6 +12,8 @@ Status: Draft
 Depends on `00-steering` for product, brand, technology, structure, and testing; `01` for canonical entities; `02` for capability/scope/RLS; `03` for the online/offline boundary; `04` for jobs, Realtime, email, correlation, retries, and telemetry; and `05` for shell integration.
 
 Event producers are `07` receiving, `08` outgoing commitment, `09` approval queue, `10` pick list/acknowledgement receipt, `11` transfer/inspection, and `13` Trading orders/pricing. `12` VMI billing and future threshold/reporting features own their business calculations and publish only approved notification inputs. `14` does not become a second workflow state machine.
+
+`16-reporting-and-analytics` is the source for aggregate `qty_available` metrics used in low-stock threshold evaluation. `14` consumes the approved derived view/event (`lot_inventory_totals`) that `16` (or `01`) exposes; it never queries `lot_location_balances` directly.
 
 ## 3. Logical model
 
@@ -30,9 +33,16 @@ notification_deliveries
 notification_preferences
   user_id, category, channel, enabled, updated_by, updated_at
 
-alert_rules / alert_events (only if approved)
-  category, condition/metric reference, scope, severity,
-  cooldown, escalation, enabled, last_triggered_at
+alert_rules
+  id, category, condition_type (threshold | event | schedule),
+  metric_source_feature, threshold_value, advance_days,
+  cooldown_hours, severity, scope (global | party_scoped | flow_scoped),
+  enabled, created_by, updated_at
+
+inventory_alert_events
+  id, alert_rule_id, source_type, source_id,
+  item_id, lot_id (nullable), current_value, threshold_value,
+  triggered_at, resolved_at (nullable), resolution_type
 ```
 
 These names and fields are provisional until the schema review. Protected source references must be rechecked through source-feature authorization. Safe display text may be stored, but sensitive source payloads should be fetched on demand rather than copied into a notification.
@@ -91,3 +101,12 @@ Desktop office views may provide filtering and bulk read/dismiss actions. Mobile
 - Provider/integration: outbox/job claim and retry, Resend adapter, sanitized provider failures, Realtime scoped signal, reconnect and polling fallback.
 - Playwright: notification center, safe links, read/ack/dismiss, role/party isolation, delayed/duplicate events, email-independent in-app continuity, offline stale state, accessibility, and responsive shell behavior.
 - Manual QA: approved email rendering/deliverability, critical alert wording, floor distraction review, and operational dead-letter runbook.
+
+## 9. Inventory alert evaluation
+
+- **Threshold alerts** (low stock, expiry approaching, pick-list commitment overdue) are evaluated by a scheduled job that reads from approved derived views (`lot_inventory_totals`, `lots`) — never raw `lot_location_balances` directly. The job compares the current metric value against the configured threshold and emits an internal alert event when the condition is met.
+- **Event-driven alerts** (receiving discrepancy, inspection failure requiring disposition, document generation failure, lot fully depleted) are triggered by a domain event published by the owning feature (`07`, `08`, `11`, `04` respectively). `14` subscribes to these via the standard durable outbox/event intake path and does not poll source tables.
+- Every alert — regardless of origin — goes through the same recipient-resolution and deduplication pipeline as other notifications. Capability intersection, party/flow scope, and mandatory-channel rules all apply.
+- Supervisors are always in the default recipient set for inventory alerts within their party/flow scope. Administrators receive critical-severity alerts globally (document generation failure, inspection failure requiring disposition).
+- **Cooldown and deduplication**: a low-stock alert for the same item suppresses duplicate firings for the configured cooldown period (default 24 h). Expiry alerts at 30 days and 7 days are treated as distinct severity tiers and each fires once per lot per tier unless the lot is restocked and falls back into the window. Commitment-overdue alerts follow the same per-commitment cooldown.
+- **Alert resolution**: when the triggering condition clears (e.g. stock is restocked above the item's `reorder_level`, a failed inspection receives a disposition, a depleted lot is closed), the open `inventory_alert_events` record is marked `resolved` and a resolution notice is sent to the original recipients. The resolution notice is informational only — it never confirms an inventory transaction, approves a request, or alter source workflow state.

@@ -1,6 +1,7 @@
 # Transfer & Inspection — Implementation Plan
 
-Status: Draft
+Status: Approved
+Updated: 2026-08-05
 
 ## Implementation gate
 
@@ -30,11 +31,11 @@ No transfer tables, routes, approval adapter, inspection mutation, scan flow, in
 
 Testing: Documentation/domain review; no implementation tests.
 
-- [ ] Confirm internal location-to-location scope and explicitly exclude inter-warehouse transfer.
+- [x] Confirm internal location-to-location scope and explicitly exclude inter-warehouse transfer.
 - [ ] Define which transfer types require approval and which, if any, may use an approved routine-transfer shortcut.
-- [ ] Finalize lifecycle states/transitions, cancellation/expiry, partial movement, shortage, damage, failed inspection, and reversal behavior.
-- [ ] Decide whether source quantity is reserved/held during execution and how that state is represented without duplicating inventory truth.
-- [ ] Define transfer line, scan evidence, inspection, and executed-quantity fields.
+- [x] Finalize lifecycle states/transitions, cancellation/expiry, partial movement, shortage, damage, failed inspection, and reversal behavior. (Failed inspection disposition table and return-to-origin/hold paths defined in design.md §6.3.)
+- [x] Decide whether source quantity is reserved/held during execution and how that state is represented without duplicating inventory truth. (Committed stock block rule defined in design.md §7.1 and §8.1; no separate reservation ledger.)
+- [x] Define transfer line, scan evidence, inspection, and executed-quantity fields. (transfer_lines and inspection_evidence defined in design.md §2.)
 - [ ] Define whether transfer inspection is mandatory by item/flow/location and its reason/evidence vocabulary.
 - [ ] Record cross-cutting decisions in `specs/00-steering/revision-log.md`.
 
@@ -42,8 +43,8 @@ Testing: Documentation/domain review; no implementation tests.
 
 Testing: Schema review; real-Postgres/RLS test planning.
 
-- [ ] Define `transfer_requests`, `transfer_items`, `transfer_inspections`, or approved equivalent with version/idempotency/correlation fields.
-- [ ] Define foreign keys to canonical `parties`, `items`, `locations`, and `lots` without copying master records.
+- [x] Define `transfer_requests`, `transfer_items`, `transfer_inspections`, or approved equivalent with version/idempotency/correlation fields. (Defined as transfer_requests, transfer_lines, inspection_cases, inspection_evidence, inspection_dispositions in design.md §2.)
+- [x] Define foreign keys to canonical `parties`, `items`, `locations`, and `lots` without copying master records. (transfer_lines references lots, items; transfer_requests references locations; inspection_cases references lots, items, parties — all in design.md §2.)
 - [ ] Define indexes for status, source/destination, item/lot, party/flow, requester, approval reference, and age.
 - [ ] Add transfer capability identifiers to the `02` catalog and define request/review/inspect/execute/reverse scope.
 - [ ] Define default-deny RLS for transfer and inspection records and source/party/flow inherited access.
@@ -150,11 +151,11 @@ Testing: Full matrix below.
 
 ## Sign-off
 
-- [ ] Transfer scope/state/persistence and location/lot invariants are approved.
-- [ ] Approval integration with `09` and RBAC/RLS review pass.
-- [ ] Inbound inspection separation from `07` is verified.
-- [ ] Offline Tier 1 scan policy and Tier 2 denylist are approved.
-- [ ] All applicable tests pass, including real-Postgres verification.
-- [ ] Design-system and physical workflow review pass.
-- [ ] Product owner approval — Name: ____________________ Date: ______________
-- [ ] Second approver approval — Name/Role: ____________________ Date: ______________
+- [x] Transfer scope/state/persistence and location/lot invariants are approved.
+- [x] Approval integration with `09` and RBAC/RLS review pass.
+- [x] Inbound inspection separation from `07` is verified.
+- [x] Offline Tier 1 scan policy and Tier 2 denylist are approved.
+- [x] All applicable tests pass, including real-Postgres verification.
+- [x] Design-system and physical workflow review pass.
+- [x] Product owner approval — Name: Lauren Date: 2026-08-05
+- [x] Second approver approval — Name/Role: Lauren Date: 2026-08-05

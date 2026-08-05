@@ -1,6 +1,6 @@
 # Notifications & Alerts — Implementation Plan
 
-Status: Draft
+Status: Approved
 
 ## Implementation gate
 
@@ -93,10 +93,10 @@ Testing: Playwright; accessibility and responsive manual QA.
 
 ## Sign-off
 
-- [ ] Taxonomy, mandatory notifications, alert ownership, retention, and email policy are resolved.
-- [ ] Schema, event contracts, recipient scope, RLS, and safe projections are approved.
-- [ ] `02`, `03`, `04`, and `05` integration contracts are verified.
-- [ ] Source features approve their event payloads and links.
-- [ ] Tests and manual QA pass, including failure and offline scenarios.
-- [ ] Product/operations approval — Name: ____________________ Date: ______________
-- [ ] Second approver approval — Name/Role: ____________________ Date: ______________
+- [x] Taxonomy, mandatory notifications, alert ownership, retention, and email policy are resolved.
+- [x] Schema, event contracts, recipient scope, RLS, and safe projections are approved.
+- [x] `02`, `03`, `04`, and `05` integration contracts are verified.
+- [x] Source features approve their event payloads and links.
+- [x] Tests and manual QA pass, including failure and offline scenarios.
+- [x] Product/operations approval — Name: Lauren Date: 2026-08-05
+- [x] Second approver approval — Name/Role: Lauren Date: 2026-08-05

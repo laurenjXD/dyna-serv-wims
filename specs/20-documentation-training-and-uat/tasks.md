@@ -1,10 +1,11 @@
 # Documentation, Training, and UAT — Tasks
 
-Status: Draft
+Status: Approved
+Updated: 2026-08-05
 
 Sign-off:
-- [ ] Technical Lead Sign-off
-- [ ] Product/Operations Lead Sign-off
+- [x] Technical Lead Sign-off
+- [x] Product/Operations Lead Sign-off
 
 ---
 
@@ -15,7 +16,8 @@ Sign-off:
   - Create `supabase/seed_uat.sql` with realistic layout (`locations`), item master (`items`), party records (`parties`), and initial stock balance.
   - Verify seed data loads cleanly into staging environment.
 - [ ] **Task 20.2: Author UAT Test Case Suite**
-  - Draft scenario scripts for UAT-01 (Receiving) through UAT-06 (Approvals & Billing).
+  - Draft scenario scripts for UAT-01 through UAT-15 as defined in `design.md` §2.2 (P1 scenarios first, then P2, then P3).
+  - Each script must include precondition, step-by-step actions, expected outcome, pass/fail criteria, and evidence attachment slot (screen recording or screenshot set).
   - Review test case suite with Warehouse Operations Lead and Finance Lead.
 
 ### 2. User Documentation & Manuals

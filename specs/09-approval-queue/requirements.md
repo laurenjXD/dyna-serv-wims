@@ -1,6 +1,7 @@
 # Approval Queue — Requirements
 
 Status: Draft
+Updated: 2026-08-05
 
 ## 1. Purpose and scope
 
@@ -18,15 +19,25 @@ The queue stores the request and decision history; it does not own the business 
 - One warehouse only; no `warehouse_id` or tenant simulation is introduced.
 - No approval decision changes inventory, pricing, billing, RBAC, or documents directly. The owning feature consumes the decision.
 
-## 3. Initial and future approval types
+## 3. Approval type scope — v1
 
-### Initial approval type
+**v1 supports exactly one approval type: `fifo_override`.** All other approval types — including quality hold, write-off authorization, billing correction, dispatch approval, reconciliation approval, pricing exception, and transfer approval — are deferred to the owning feature spec's approval phase. A future spec must define its own approval adapter before a new type can be added to the registry. The queue server SHALL reject any approval type that is not explicitly registered in the server-side policy registry; the existence of a generic request row does not constitute registration or authorization.
+
+### v1 registered type
 
 - `fifo_override` — permits `08` to revalidate and commit an out-of-order FIFO/FEFO allocation when an authorized reviewer approves the specific request.
 
-### Future approval types
+### Adding a new approval type in a future spec
 
-Additional types such as transfer approval, dispatch approval, reconciliation approval, or pricing exception may be added only when their owning feature defines the target, capability, current-state checks, effect, expiry, and audit requirements. They must not be accepted merely because a generic request row exists.
+A future spec that requires an approval type must resolve all of the following before the type can be registered:
+
+1. The target payload type and all snapshot fields, including the version/optimistic-lock field that makes an approval stale.
+2. The `requesterCapability` and `reviewerCapability` identifiers, added to the `02` capability catalog with their scope kind and default roles.
+3. Current-state checks required before a decision may be consumed by the owning workflow.
+4. Expiry duration, self-approval behavior, and reason requirements specific to that type.
+5. The consumption marker location and the exact conditions under which a decision is considered stale, expired, or already consumed.
+
+No type may be registered until all five items are resolved and the owning spec is approved. The generic approval infrastructure does not pre-authorize any future type.
 
 ## 4. Actors and surfaces
 

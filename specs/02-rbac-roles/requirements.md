@@ -1,6 +1,7 @@
 # RBAC & Roles — Requirements
 
 Status: Draft
+Updated: 2026-08-05
 
 Depends on:
 
@@ -82,6 +83,7 @@ Party users receive read or action capabilities only for one or more explicitly 
 4. Effective capabilities SHALL be the union of all active role assignments for an active user.
 5. Expired, revoked, future-dated, or inactive assignments SHALL contribute no capabilities.
 6. Server Actions, route handlers, background jobs acting for a user, and protected server-rendered reads SHALL use the shared authorization contract.
+7. For any approval capability, a user who is recorded as the requester of a specific approval target SHALL NOT exercise that approval capability against that same target, regardless of the approval capability they hold. This self-approval prohibition SHALL be enforced by the approval-command server logic and re-applied during sync re-authorization; UI suppression of the approve action is supplementary only.
 
 ### FR-4: Party and flow scope
 
@@ -175,7 +177,7 @@ The exact downstream matrix is completed as each dependent feature is approved. 
 - Party/item administration: view and manage.
 - Documents, reports, notifications, and files: view or manage at effective scope.
 
-The RBAC design owns canonical capability identifiers. Downstream specs reference those identifiers and may propose additions; they do not create role-name checks.
+The RBAC design owns canonical capability identifiers. The operational capability catalog — covering `receiving`, `inspection`, `inventory`, `locations`, `pick_list`, `fifo_override`, `dispatch`, `transfers`, `documents`, `reporting`, `parties`, `items`, `forex_rates`, and `notifications` — is enumerated in `design.md` §3.2 with stable resource keys, action vocabularies, scope kinds, and default role assignments. Downstream specs reference those identifiers and may propose additions within established resource keys; they do not create role-name checks and do not rename resource identifiers.
 
 ## 6. Non-functional requirements
 
@@ -220,6 +222,7 @@ The RBAC design owns canonical capability identifiers. Downstream specs referenc
 13. Offline operations are re-authorized during sync; Tier 2 actions are never accepted from cached client authorization alone.
 14. Real-Postgres integration tests prove RLS separately for select, insert, update, and delete paths.
 15. Direct URL, API, join, aggregate, and identifier-manipulation tests do not bypass authorization.
+16. A supervisor holding `fifo_override.approve` cannot approve an override request they originally submitted; the server rejects the attempt even when the UI approval button is bypassed via direct API call.
 
 ## 8. Out of scope
 

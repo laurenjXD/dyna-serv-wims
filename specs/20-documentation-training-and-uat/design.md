@@ -1,6 +1,7 @@
 # Documentation, Training, and UAT — Design
 
 Status: Draft
+Updated: 2026-08-05
 
 Cites foundational specs:
 
@@ -49,14 +50,25 @@ The UAT environment mirrors production configurations but uses isolated database
 
 ### 2.2 UAT Test Scenario Matrix
 
-| Scenario ID | Primary Workflow | Target Role | Key Validation Points | Pass Criteria |
-|---|---|---|---|---|
-| `UAT-01` | VMI Receiving & Inspection | Warehouseman | Scan CIPL barcode -> Verify WRR -> Flag damaged items -> Assign bin location | WRR generated, stock added with VMI party ownership, location ledger updated |
-| `UAT-02` | Two-Stage Outgoing Withdrawal | Warehouseman & Office Admin | Office generates `pick_list` -> Floor scans items -> Pack -> Generate `acknowledgement_receipt` | Final priced `pick_list` and `acknowledgement_receipt` created; inventory deducted |
-| `UAT-03` | Offline Sync Recovery | Warehouseman | Switch handheld to offline mode -> Scan 5 receiving items -> Reconnect Wi-Fi | Tier 1 offline queue flushes automatically; no duplicate entries created |
-| `UAT-04` | VMI Period Billing Calculation | Office Admin | Run end-of-period VMI billing sweep for Client A | Period CBM space average calculated correctly; statement generated |
-| `UAT-05` | Trading Order Pricing & Fulfillment | Office Admin | Create Trading order -> Lock unit price -> Execute pick list | Document price locked on `pick_list`; no unpriced status allowed |
-| `UAT-06` | Approval Queue Escalation | Office Admin / Manager | Submit stock adjustment > 100 units -> Review in Approval Queue -> Approve | Stock update executed only after formal sign-off in queue |
+The table below supersedes the earlier six-scenario draft. Scenarios are grouped by flow and assigned a UAT priority (P1 = blocking/go-no-go; P2 = major/must-fix; P3 = minor/acceptable-with-workaround). Each scenario requires a screen recording or complete screenshot set as evidence before sign-off.
+
+| Scenario ID | Scenario | Flow | Target Role | Key Validation Points | Priority | Pass Criteria |
+|---|---|---|---|---|---|---|
+| `UAT-01` | Standard receiving: store disposition | Receiving | Warehouseman | Scan CIPL barcode → WRR confirmation → `store` disposition → putaway to bin | P1 | WRR confirmed; lot created with `available` status; `lot_location_balances` row inserted; `inventory_transaction` (`receiving`) recorded |
+| `UAT-02` | Receiving with inbound inspection: pass → available | Receiving | Warehouseman, Supervisor | `inspect/on_hold` disposition → conformance outcome → available | P1 | Conformance recorded in `wrr_inspection_logs`; lot transitions to `available`; `lot_location_balances` created |
+| `UAT-03` | Receiving with inbound inspection: fail → hold | Receiving | Warehouseman, Supervisor | `inspect/on_hold` disposition → non-conformance outcome → quarantine | P1 | Non-conformance logged with reason and evidence; inventory balance NOT incremented; lot held |
+| `UAT-04` | Standard FIFO pick-list generation and dispatch | Outbound | Warehouseman, Supervisor | Generate pick list from Master Inventory → FIFO/FEFO allocation → floor scan → `dispatch` disposition | P1 | Pick list generated with FIFO-ordered lots; commitment created; dispatch completes with `inventory_transaction` (`pick`) and `acknowledgement_receipt` generated |
+| `UAT-05` | FIFO override request and approval | Outbound | Warehouseman, Supervisor | Non-standard allocation request → override submitted to `09` → supervisor approves → pick list generated | P1 | Override request logged; supervisor approves (self-approval blocked); pick list uses approved non-FIFO allocation |
+| `UAT-06` | FIFO override denied/expired | Outbound | Warehouseman, Supervisor | Override submitted → supervisor denies or request window expires | P1 | Pick list not generated; commitment not created; denial/expiry recorded in approval queue |
+| `UAT-07` | Outbound further inspection: pass → dispatch | Outbound | Warehouseman, Supervisor | Post-pick `further_inspection` disposition → inspection pass → dispatch | P1 | Commitment stays `inspection_pending` during inspection; transitions to `executed` on dispatch; `acknowledgement_receipt` generated |
+| `UAT-08` | Outbound further inspection: fail → commitment cancelled | Outbound | Warehouseman, Supervisor | Post-pick `further_inspection` disposition → inspection fail → commitment cancelled | P1 | Commitment cancelled; `qty_committed` released back to `qty_remaining`; failed inspection logged with evidence |
+| `UAT-09` | Offline scan capture and sync | Offline | Warehouseman | Switch handheld to offline mode → scan 5 receiving items → reconnect Wi-Fi | P2 | Tier 1 offline queue flushes automatically on reconnect; no duplicate entries; server re-validates each queued operation |
+| `UAT-10` | Document reprint (pick list and acknowledgement receipt) | Documents | Warehouseman, Supervisor | Reprint a previously generated pick list and acknowledgement receipt | P2 | Correct version reprinted; no pricing or content mutation on reprint |
+| `UAT-11` | Unknown item during receiving → enrollment → resume | Receiving | Warehouseman, Supervisor | Unknown SKU scanned on floor → enrollment form triggered via `06` → item enrolled → receiving resumes | P2 | New item enrolled; `wrr_items.item_id` resolved; receiving confirmation completes successfully |
+| `UAT-12` | Concurrent commitment attempt (two users, same lot) | Outbound | Warehouseman (×2) | Two users simultaneously attempt to commit the same lot/location quantity | P2 | Exactly one commitment succeeds; the second receives a safe conflict response; no double-allocation |
+| `UAT-13` | Low stock alert triggered and acknowledged | Notifications | Supervisor, Warehouseman | Stock falls below `min_reorder_level` → alert appears in notification feed → acknowledged | P2 | Low-stock notification delivered via `14`; acknowledged state recorded; no workflow mutation triggered |
+| `UAT-14` | VMI billing statement generated and exported | Billing | Office Admin | Run end-of-period VMI billing sweep → statement generated → exported | P3 | Period CBM space average calculated correctly; statement generated and downloadable |
+| `UAT-15` | Trading order priced, dispatched, receipt generated | Trading | Office Admin, Warehouseman | Create Trading order → lock unit price → execute pick list → generate receipt | P3 | Document price locked on `pick_list`; `acknowledgement_receipt` generated with correct priced snapshot |
 
 ---
 

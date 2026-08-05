@@ -1,10 +1,11 @@
 # User Profile & Settings — Tasks
 
-Status: Draft
+Status: Approved
+Updated: 2026-08-05
 
 Sign-off:
-- [ ] Technical Lead Sign-off
-- [ ] Product/Operations Lead Sign-off
+- [x] Technical Lead Sign-off
+- [x] Product/Operations Lead Sign-off
 
 ---
 
@@ -39,3 +40,26 @@ Sign-off:
 - [ ] **Task 21.9: RBAC Integration Testing**
   - Verify that a newly invited `party_user` can log in and successfully triggers the RLS filters defined in Spec 02.
   - Verify that non-admins are blocked from `/settings`.
+
+### 4. Identity, authorization, and session flows (design.md §4)
+- [ ] **Task 21.10: Invitation acceptance UI**
+  - Build the landing page an invited user reaches after clicking the email invite link.
+  - Allow the user to set initial display name and preferences; do not expose role or party-scope fields.
+  - Wire to `02`'s profile activation flow on submission.
+- [ ] **Task 21.11: MFA UI entry point (Security tab)**
+  - Add the MFA enrollment entry point to the Security tab that routes into `supabase.auth.mfa.*` setup flow.
+  - Hide or disable the MFA disable control when admin-required MFA policy is active.
+- [ ] **Task 21.12: Session info display (Security tab)**
+  - Display read-only last-sign-in time and active-sessions list sourced from Supabase Auth metadata.
+  - Do not expose any session-extension or token-mint controls from this surface.
+
+### 5. Settings scope enforcement (design.md §5)
+- [ ] **Task 21.13: Settings scope audit**
+  - Verify that the `/profile` route does not surface any admin-only settings (party/flow scope assignments, role assignments, account activation/suspension) even as read-only fields.
+  - Verify admin-only settings are accessible only through the `02`-backed `/settings/team` route.
+
+### 6. Privilege-change notifications (design.md §6)
+- [ ] **Task 21.14: Privilege-change notification display**
+  - Wire the `14-notifications-and-alerts` in-app feed to surface privilege-change notifications (role change, party-scope change, activation/suspension) to the affected user.
+  - Verify notification text does not reveal the administrator's identity or other users' data.
+  - Depends on `14-notifications-and-alerts` implementation being available.

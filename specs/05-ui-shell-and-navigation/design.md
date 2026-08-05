@@ -1,6 +1,7 @@
 # UI Shell & Navigation — Design
 
 Status: Draft
+Updated: 2026-08-05
 
 ## 1. Design intent
 
@@ -45,6 +46,76 @@ The authenticated layout resolves the server session and passes a typed, minimal
 
 Middleware may handle only approved lightweight concerns such as session refresh or coarse public/protected routing. It must not perform Drizzle/TCP database work or replace server-side resource authorization.
 
+### 3.2 Route inventory
+
+The table below lists every authenticated route planned at launch. Each route names the presentation surface, the required capability key from the `02-rbac-roles` stable catalog, the owning feature spec, and whether it ships at launch or is planned for a later delivery. Capability keys use the format `resource.action` exactly as defined in `02` §3.2; no provisional or invented keys appear here.
+
+| Path | Surface | Required capability | Feature spec | Launch status |
+| --- | --- | --- | --- | --- |
+| `/receiving` | floor | `receiving.view` | `07-incoming-receiving` | Launch |
+| `/receiving/[wrr_id]` | floor | `receiving.view` | `07-incoming-receiving` | Launch |
+| `/inventory` | office | `inventory.read` | `08-outgoing-withdrawal-and-two-stage-commitment` | Launch |
+| `/inventory/pick-list/new` | office | `pick_list.generate` | `08-outgoing-withdrawal-and-two-stage-commitment` | Launch |
+| `/inventory/pick-list/[pick_list_id]` | floor | `pick_list.execute` | `08-outgoing-withdrawal-and-two-stage-commitment` | Launch |
+| `/inspection` | shared | `inspection.perform` | `07-incoming-receiving`, `08-outgoing-withdrawal-and-two-stage-commitment`, `11-transfer-and-inspection` | Launch |
+| `/inspection/[inspection_id]` | floor | `inspection.perform` | `07-incoming-receiving`, `08-outgoing-withdrawal-and-two-stage-commitment`, `11-transfer-and-inspection` | Launch |
+| `/dispatch/[pick_list_id]` | floor | `dispatch.execute` | `08-outgoing-withdrawal-and-two-stage-commitment` | Launch |
+| `/documents` | office | `documents.read` | `10-pick-list-and-acknowledgement-receipt` | Launch |
+| `/approvals` | office | `fifo_override.approve` | `09-approval-queue` | Launch |
+| `/sync` | floor | none | `03-offline-mode-and-client-storage` | Launch (when offline feature enabled) |
+| `/transfers` | shared | `transfers.read` | `11-transfer-and-inspection` | Launch |
+| `/parties` | office | `parties.manage` | `06-party-and-item-enrollment` | Launch |
+| `/items` | office | `items.manage` | `06-party-and-item-enrollment` | Launch |
+| `/reports` | office | `reporting.read` | `16-reporting-and-analytics` | Planned |
+
+Rules:
+
+- A route with `featureStatus: "planned"` in the navigation registry renders no live link until its owning spec is Approved. The shell supports this without dead routes appearing in production navigation.
+- Surface assignments are binding: a floor route cannot adopt office layout behavior without an explicit spec amendment.
+- The `/sync` route carries no required capability because it is a connectivity-attention surface, not a data-access gate. Its visibility is controlled by whether the offline feature is enabled at the application level, not by the user's capability set.
+- Capability keys will not change once `02-rbac-roles` is Approved; this table must be updated in lockstep with any `02` catalog amendment.
+
+### 3.3 Floor versus office shell behavior and outbound flow model
+
+**Outbound flow — no withdrawal request.** The outbound workflow in this system does not use a withdrawal-request document that later becomes a pick list. An office user selects items directly from Master Inventory (`/inventory`), the system performs FIFO/FEFO allocation, and a committed pick list is generated directly (`/inventory/pick-list/new` → `pick_list.generate`). If the FIFO/FEFO allocation requires a non-standard lot, a FIFO override request is raised and must be approved through `/approvals` before the pick list is generated. The floor user then executes the committed pick list at `/inventory/pick-list/[pick_list_id]` (`pick_list.execute`). There is no intermediate "withdrawal request" state, no route for it, and no navigation entry for it. The shell must never introduce a route or navigation label that implies a withdrawal-request model.
+
+**Surface routing rules:**
+
+| Route | Floor-only | Office-only | Shared |
+| --- | --- | --- | --- |
+| `/receiving`, `/receiving/[wrr_id]` | ✓ | | |
+| `/inventory`, `/inventory/pick-list/new` | | ✓ | |
+| `/inventory/pick-list/[pick_list_id]` | ✓ | | |
+| `/inspection`, `/inspection/[inspection_id]` | | | ✓ (floor-first layout) |
+| `/dispatch/[pick_list_id]` | ✓ | | |
+| `/documents` | | ✓ | |
+| `/approvals` | | ✓ | |
+| `/sync` | ✓ | | |
+| `/transfers` | | | ✓ (floor-first layout) |
+| `/parties`, `/items` | | ✓ | |
+| `/reports` | | ✓ | |
+
+**Shell adaptation by surface:**
+
+- **Floor routes** use the mobile-first single-column layout at 375–430px. The persistent desktop sidebar is not rendered. During an active scan flow (e.g. a WRR scan loop, a pick-list scan loop), the navigation is fully hidden and replaced by a feature-owned flow header with only an exit/cancel affordance. Bottom tab navigation appears only when the user is between scan steps, not during an active scan. Floor primary actions are 64px minimum height, full-width, positioned in the bottom third of the viewport per `brand-design-system.md` §3.
+- **Office routes** use the sidebar on `md`/`lg` breakpoints. The sidebar shows `brand-navy` background, `brand-red` active item, Epilogue SemiBold 14px labels. At narrow mobile widths the sidebar collapses to a hamburger/drawer; the route must remain fully operable without the persistent sidebar.
+- **Shared routes** use floor-first layout and touch targets as the default. They may use the sidebar enhancement on `lg` viewports only if the feature spec explicitly declares it. When in doubt, a shared route uses floor defaults — it is always safer to over-target the floor user than to assume office context.
+- **Navigation hidden during scan flows:** when a floor feature activates a scan flow, it sets a shell flag that hides the bottom tab bar and replaces it with a minimal flow-control strip. The flag is owned by the feature's route layout, not by individual components, so navigation cannot accidentally reappear mid-scan.
+
+### 3.4 Application state catalog
+
+The shell is responsible for handling the following seven cross-cutting states. States that require feature-specific behavior are noted; the shell provides only the container and safe recovery surface.
+
+| State | Trigger / condition | Shell behavior | Key constraints |
+| --- | --- | --- | --- |
+| **Revoked session** | Server detects expired, revoked, or deactivated session on any protected request | Immediately redirect to the sign-in boundary; no protected content is rendered after the server detects revocation; session tokens cleared from server-side storage; client receives only the redirect response | The shell must not render a single byte of protected content after revocation; a brief flash of protected UI while the redirect fires is a failure; server must invalidate before the client can observe the session as active |
+| **Deep link** | User follows an inbound link to a protected route while unauthenticated or while their session has lapsed | Preserve the destination path in a server-validated, signed or server-session-stored parameter across the auth redirect; after successful sign-in, return to the preserved destination only if it is an internal route and the user currently holds the required capability; reject external URLs, open-redirect patterns, and routes to which the re-authenticated user lacks access | Deep-link preservation is a usability feature, not a security feature; the destination must be re-authorized on arrival, not trusted because it was set before sign-in |
+| **Loading** | Authenticated route is resolving session, capabilities, or initial data | Render a skeleton that preserves the expected layout geometry (sidebar width, header height, page region shapes); do not show stale cached content as if it were current; do not delay floor scanner readiness with full-screen blocking spinners | Loading skeletons are layout placeholders only; they must not contain real data from a previous render; the shell loading state (for the layout itself) is distinct from a feature's data-loading state — features own the latter |
+| **Error** | Unhandled exception in the authenticated shell layout or a route boundary | Render a safe recovery surface with one of: retry the current route, return to the home landing, or sign out; no stack traces, SQL, access tokens, connection strings, provider hostnames, or protected record data may appear in the user-facing error; send redacted diagnostic context with a correlation ID to the approved Sentry boundary | Error surfaces must work without JavaScript (the shell error page is a server component); the recovery action must be meaningful — "something went wrong" with no action is not recoverable |
+| **Empty** | Authenticated user whose server-resolved capability set is empty — no accessible route or capability is available | Render a safe landing that confirms their identity, states that no access is currently configured for their account, and provides a support contact or administrator contact path; do not render the full navigation shell with every item disabled or hidden | An empty-capability user must not see the navigation chrome populated with locked items; the shell's empty-access state is distinct from a feature's empty-data state (e.g. no pick lists yet) |
+| **Stale** | Cached navigation context, session claims, or capability data may not reflect current server state — e.g. after a capability has been revoked between page loads but before the next server-resolved request | Display an explicit indicator in the shell status region that the displayed navigation may not reflect current access; do not silently show stale navigation as if it were current; prompt the user to reload or wait for the next server request to refresh capability context | Stale state is detected only by the server — the client cannot reliably know its own staleness; when in doubt, the shell must re-resolve on the next navigation rather than trusting a client-side capability cache beyond the current server request |
+| **Connectivity** | The approved `03-offline-mode-and-client-storage` contract supplies an online/offline status signal | Display an informational indicator in the `ConnectivityIndicator` shell region; distinguish between "online," "offline," and "syncing" — never display "synced" without authoritative confirmation from the server that a sync cycle completed successfully; the indicator is read-only and carries no action affordance; it does not change what routes or actions are available | The shell must consume the `03` read-only status contract; it must not independently poll for connectivity, queue actions, or make any determination about data freshness without the `03` contract's signal; an absent or uninitialized `03` contract means the indicator is hidden, not assumed online |
+
 ## 4. Shell composition
 
 ```text
@@ -54,7 +125,7 @@ AuthenticatedLayout
 ├── DesktopSidebar (office enhancement)
 ├── MobileFloorNavigation (floor/portrait mode)
 ├── AppHeader
-│   ├── Brand/Logo
+│   ├── Brand/Logo (real letter-mark logo, never an icon-font ligature rendered as text; diagonal-cut motif per brand-design-system.md §7 in office contexts)
 │   ├── PageHeader slot
 │   ├── ConnectivityIndicator (optional, read-only)
 │   └── AccountControl
@@ -89,13 +160,34 @@ type NavigationEntry = {
 
 This is a design contract, not an instruction to implement the type before approval. The final capability field and effective-context type must be adopted from `02-rbac-roles` rather than invented here.
 
+The `capability` field uses stable resource keys from the `02-rbac-roles` §3.2 operational catalog in the format `resource.action`. The following resource keys are canonical and must not be renamed or replaced with provisional strings:
+
+| Resource key | Permitted actions in this field |
+| --- | --- |
+| `receiving` | `view`, `scan`, `confirm` |
+| `inspection` | `perform`, `resolve` |
+| `inventory` | `read`, `manage` |
+| `locations` | `read`, `manage` |
+| `pick_list` | `generate`, `execute`, `read` |
+| `fifo_override` | `request`, `approve` |
+| `dispatch` | `read`, `execute` |
+| `transfers` | `read`, `request`, `execute` |
+| `documents` | `read`, `generate`, `download` |
+| `reporting` | `read`, `export` |
+| `parties` | `read`, `manage` |
+| `items` | `read`, `manage` |
+| `forex_rates` | `read`, `manage` |
+| `notifications` | `read` |
+
+A `NavigationEntry` with no `capability` field is unconditionally visible to all authenticated users (used only for the `/sync` route and any future shell-global utilities). An entry whose capability the user does not hold is hidden from navigation presentation — it is not disabled or greyed; hiding avoids surfacing routes the user cannot use while preserving the fact that the route exists for authorized users.
+
 Registry rules:
 
 - `id` is stable and is used for analytics/tests; it is not a permission.
 - `href` is an internal route and is validated before use in redirects.
 - `featureStatus: "planned"` supports documenting future routes without rendering a dead link.
 - `surface` determines which navigation presentation may show the entry; it does not grant access.
-- `capability` is an optional reference to the shared RBAC capability contract, never a role name.
+- `capability` references exactly one `resource.action` pair from the `02` catalog above, never a role name.
 - The server computes presentation context; the client may render from that context but cannot elevate it.
 - Active matching uses normalized path segments and explicit dynamic-segment rules, not naive string prefixes.
 
@@ -114,7 +206,7 @@ Registry rules:
 
 - `md`/`lg` may introduce sidebar, wider content, multi-column page framing, and office hover affordances.
 - The office container follows the approved 1280px maximum width, 32px page margin, and 24px gutter.
-- The sidebar uses the approved brand-navy background, brand-red active state, logo treatment, and Epilogue labels.
+- The sidebar uses the approved `brand-navy` background, `brand-red` active-item background, white/70%-opacity inactive labels, Epilogue **SemiBold** 14px labels (never Regular weight), and the real letter-mark logo — never an icon-font ligature rendered as text.
 - Narrow office view remains operable; it must not assume a desktop-only viewport.
 
 ## 7. Authentication and authorization boundary
@@ -147,7 +239,7 @@ Navigation omission is not security. The shell must never accept `role`, `party_
 ## 8. Shared state boundaries
 
 | State | Owner | Shell responsibility |
-|---|---|---|
+| --- | --- | --- |
 | Authenticated session | Auth/infrastructure + RBAC | Resolve, protect, display safe identity, sign out |
 | Capability authorization | RBAC + server data boundary | Consume typed context; never redefine policy |
 | Online/offline signal | Offline spec | Display optional informational status only |

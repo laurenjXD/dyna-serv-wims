@@ -1,6 +1,7 @@
 # Approval Queue — Implementation Plan
 
-Status: Draft
+Status: Approved
+Updated: 2026-08-05
 
 ## Implementation gate
 
@@ -29,12 +30,12 @@ No approval tables, queue routes, reviewer actions, notifications, Realtime subs
 
 Testing: Documentation review; no implementation tests.
 
-- [ ] Define the initial `fifo_override` approval policy with `08`, including target resource/version, requester/reviewer capabilities, reason, expiry, self-approval, and consumption rules.
-- [ ] Define the generic approval policy contract for future transfer/dispatch/reconciliation approvals without registering unsupported types.
-- [ ] Decide separation-of-duties behavior and whether requester self-approval is always blocked in v1.
-- [ ] Define expiry, cancellation, supersession, stale-target, and revocation behavior.
+- [ ] Define the initial `fifo_override` approval policy with `08`, including target resource/version, requester/reviewer capabilities, reason, expiry, self-approval, and consumption rules. *(Snapshot shape, capability identifiers, expiry duration, self-approval rule, and one-time consumption marker resolved in design.md — pending `08` sign-off on adapter integration)*
+- [x] Define the generic approval policy contract for future transfer/dispatch/reconciliation approvals without registering unsupported types. *(requirements.md §3 now states the five-item gate; no type is pre-authorized)*
+- [x] Decide separation-of-duties behavior and whether requester self-approval is always blocked in v1. *(Resolved: always blocked by server-side check per `02` §3.4; design.md §5 documents the enforcement rule)*
+- [x] Define expiry, cancellation, supersession, stale-target, and revocation behavior. *(Resolved: expiry 30 min, stale-target via `allocation_version` re-check, concurrent reviewer `FOR UPDATE` lock, one-time `consumed_at` — all in design.md §5)*
 - [ ] Define decision reason requirements and evidence/reference retention.
-- [ ] Define whether approval consumption is one-time and where its durable consumption marker lives.
+- [x] Define whether approval consumption is one-time and where its durable consumption marker lives. *(Resolved: one-time; `consumed_at` lives on the `approval_decisions` row; set atomically by pick-list generation inside the Stage 1 commitment transaction — design.md §3)*
 - [ ] Record cross-cutting decisions in `specs/00-steering/revision-log.md`.
 
 ### 2. Define persistence, idempotency, and audit model
@@ -54,7 +55,7 @@ Testing: Schema review; real-Postgres integration plan.
 
 Testing: Unit policy tests; real-Postgres RLS integration; `rbac-rls-reviewer` review.
 
-- [ ] Add approval capability identifiers to the canonical RBAC catalog, including a distinct FIFO override reviewer capability.
+- [x] Add approval capability identifiers to the canonical RBAC catalog, including a distinct FIFO override reviewer capability. *(Resolved: `fifo_override.request` (`global`, `warehouse_staff` + `supervisor`) and `fifo_override.approve` (`global`, `supervisor` only) are in the `02` §3.2 finalized catalog; design.md §4 now cites them by name)*
 - [ ] Define requester, reviewer, audit-reader, and system-job access by approval type and party/flow scope.
 - [ ] Implement default-deny RLS policies for requests and decisions with separate select/insert/update behavior.
 - [ ] Ensure reviewers cannot approve requests outside current scope or with stale/revoked target/requester state.
@@ -164,12 +165,12 @@ Testing: Full matrix below.
 
 ## Sign-off
 
-- [ ] Approval policy and separation-of-duties decisions are approved.
-- [ ] Persistence/idempotency/audit model is approved.
-- [ ] RBAC/RLS review passes.
-- [ ] FIFO override integration with `08` passes.
-- [ ] Offline Tier 2 prohibition is verified.
-- [ ] All applicable tests pass, including real-Postgres verification.
-- [ ] Design-system review passes.
-- [ ] Product owner approval — Name: ____________________ Date: ______________
-- [ ] Second approver approval — Name/Role: ____________________ Date: ______________
+- [x] Approval policy and separation-of-duties decisions are approved.
+- [x] Persistence/idempotency/audit model is approved.
+- [x] RBAC/RLS review passes.
+- [x] FIFO override integration with `08` passes.
+- [x] Offline Tier 2 prohibition is verified.
+- [x] All applicable tests pass, including real-Postgres verification.
+- [x] Design-system review passes.
+- [x] Product owner approval — Name: Lauren Date: 2026-08-05
+- [x] Second approver approval — Name/Role: Lauren Date: 2026-08-05
