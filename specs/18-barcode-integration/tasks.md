@@ -10,27 +10,22 @@ Sign-off:
 
 ## Task Checklist
 
-### 1. Global Scan Interception
-- [ ] **Task 18.1: Build `useScanner` Hook**
-  - Implement the keyboard wedge event listener.
-  - Tune the timing threshold (e.g., `< 50ms` between keystrokes) to accurately differentiate between human typing and hardware scanners.
-  - Ensure it ignores keystrokes if the active DOM element is an `INPUT` or `TEXTAREA`.
+### 1. Mobile Camera Scanner
+- [ ] **Task 18.1: Build `<MobileQRScanner>` Component**
+  - Install and configure `html5-qrcode`.
+  - Configure the library to strictly parse 2D QR Codes to improve processing speed.
+  - Render the video feed component and handle browser camera permission requests gracefully.
 - [ ] **Task 18.2: Implement `ScanFeedbackProvider`**
   - Build the React Context provider that wraps the application layout.
   - Implement the full-screen color flash (Green/Red) using standard Tailwind classes (`bg-status-available`, `bg-status-held`) in a fixed overlay.
+  - Implement the Web Audio API synthesizer to emit a short 100ms beep on success.
 
-### 2. Software Camera Scanner
-- [ ] **Task 18.3: Build `<CameraScannerModal>`**
-  - Install and configure `html5-qrcode`.
-  - Build the UI modal with a large 64x64px close button optimized for gloved hands.
-  - Route the camera's `onScanSuccess` output into the same callback chain used by `useScanner`.
-
-### 3. QR Code Generation
-- [ ] **Task 18.4: Build `<LabelPrinter>` Component**
+### 2. QR Code Generation
+- [ ] **Task 18.3: Build `<LabelPrinter>` Component**
   - Install `react-qr-code`.
   - Implement the generator that accepts a `dsw_id` UUID payload and renders a scannable 2D matrix.
   - Provide a hook to trigger the browser's native `window.print()` targeting just the label component.
 
-### 4. Integration & Testing
-- [ ] **Task 18.5: Write Playwright Hardware Scanner Simulation**
-  - Because Playwright runs in a CI environment without a physical scanner, write a custom E2E utility `simulateHardwareScan(page, barcode)` that fires rapid keyboard events (`page.keyboard.press()`) followed by `Enter` to guarantee the `useScanner` hook functions correctly in automated tests.
+### 3. Integration & Testing
+- [ ] **Task 18.4: Write Playwright Scanner Simulation**
+  - Because Playwright runs in a CI environment without a physical camera, write a custom E2E utility that mocks the `html5-qrcode` callback, allowing automated tests to artificially "scan" a string and trigger the downstream business logic.
