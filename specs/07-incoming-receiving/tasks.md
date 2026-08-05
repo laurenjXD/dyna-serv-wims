@@ -58,7 +58,7 @@ Testing: Unit validation; Playwright office flows; real-Postgres integration for
 
 - [ ] Build WRR create/edit form for CIPL reference, attachment, party, flow, regulatory references, and expected lines.
 - [ ] Resolve party/item/category references from authorized server queries; reject stale/inactive/unauthorized references.
-- [ ] Validate quantities, UOM, packaging/CBM references, vendor lot data, and required line fields on client and server.
+- [ ] Validate quantities, UOM, packaging/CBM references, WRR `lot_number`, and required line fields on client and server.
 - [ ] Persist staged WRRs and lines without creating lots or receiving ledger transactions.
 - [ ] Implement staged-list/detail/search/filter views with capability/scope-safe results.
 - [ ] Implement version/stale-edit protection and prevent silent expected-line changes after receiving starts.

@@ -4,7 +4,7 @@ Status: Draft
 
 ## 1. Design intent
 
-Outbound withdrawal is an authoritative reservation-and-execution workflow, not a single “click to subtract stock” action. It separates office request/allocation from floor physical execution and keeps the final inventory decrement at a server transaction boundary.
+Outbound withdrawal is an authoritative pick-list-generation-and-execution workflow, not a single “click to subtract stock” action. It starts from the Master Inventory surface and keeps the final inventory decrement at a server transaction boundary. There is no separate withdrawal-request entity.
 
 The design follows the settled document model: an operational `pick_list` is generated at commitment/pick confirmation, and a priced `acknowledgement_receipt` is generated for handoff. Neither is replaced by a `withdrawal_slip`, and the signed paper receipt is not scanned back as a required state transition.
 
@@ -29,12 +29,18 @@ Depends on:
 | `parties` | Resolve destination/customer/requesting party. | Master data owned by `06`; scope enforced by RBAC/RLS. |
 | `items` | Resolve item, barcode, UOM, SPQ, roll/meter, and packaging data. | Master data owned by `06`. |
 | `locations` | Resolve source/pick/dispatch locations. | Location master owned by its owning feature/core design. |
-| `lots` | Read available lot state/order; update authoritative quantity/reservation fields through domain transaction. | Core inventory boundary owns invariants. |
+| `lots` | Read lot identity/status/order. | Core inventory boundary owns lifecycle invariants. |
+| `lot_location_balances` | Allocate and update the exact lot/location quantity and commitment row. | Core inventory boundary owns quantity/concurrency invariants. |
+| `inventory_commitments` / `inventory_commitment_lines` | Store durable Stage 1 reservation ownership and Stage 2 execution/release state. | Core inventory boundary owns lifecycle and idempotency invariants. |
 | `pick_lists` | Store committed operational outbound document/status. | Final schema/status and commitment linkage must be reconciled with `01`. |
 | `pick_list_items` | Store item/lot/location/quantity/SPQ/box/price snapshot for the pick list. | Must distinguish requested, committed, and executed quantities if required. |
 | `inventory_transactions` | Insert immutable `pick` movement at final dispatch; read outgoing ledger. | No updates/deletes. |
 
-The current core draft describes `committed_qty` but does not yet show its final column/table representation. Before implementation, `01` must choose a durable reservation model (for example, fields or a dedicated commitment relation) with concurrency constraints, release semantics, and RLS. This feature must not silently invent a second reservation ledger.
+The core contract is now resolved: distributed quantity lives in
+`lot_location_balances`; `qty_available` is derived through
+`lot_inventory_totals`; and durable reservation ownership lives in
+`inventory_commitments` / `inventory_commitment_lines`. This feature must not
+add fields to `lots` or create a second reservation ledger.
 
 ## 3. Route and shell integration
 
@@ -42,13 +48,12 @@ The target route shape is provisional:
 
 ```text
 app/(authenticated)/
-  withdrawal/
-    page.tsx                    # request/list/review surface
-    new/page.tsx                # office request builder
-    [requestId]/page.tsx        # request/allocation detail
-    [requestId]/commit/page.tsx # online Stage 1 commitment
+  inventory/
+    page.tsx                    # item selection and pick-list generation
+  pick-lists/
+    [pickListId]/page.tsx       # committed pick-list detail
     [pickListId]/pick/page.tsx  # floor pick execution
-    [pickListId]/dispatch/page.tsx # floor final dispatch confirmation
+    [pickListId]/dispatch/page.tsx # floor dispatch/inspection disposition
   outgoing-ledger/page.tsx      # office/review read-only ledger
 ```
 
@@ -57,11 +62,11 @@ The final route naming must align with `05` and `10`. The earlier desktop three-
 ## 4. State and ownership model
 
 ```text
-Draft request
+Pick-list generation input from Master Inventory
     │ authoritative allocation
     ▼
 Available lots + current FEFO/FIFO plan
-    │ optional FIFO override approval
+    │ standard FIFO/FEFO, or FIFO override approval
     ▼
 Committed reservation + pick_list(allocated)
     │ physical pick/dispatch scans
@@ -76,7 +81,7 @@ Authoritative dispatch commit
 
 Ownership boundaries:
 
-- `08` owns request/commit/physical execution state and domain commands.
+- `08` owns pick-list generation/commit/physical execution state and domain commands.
 - `09` owns the approval decision for FIFO override.
 - `10` owns document templates, generated artifacts, printing, and document-specific presentation.
 - `13` supplies Trading document pricing; `12` owns the authoritative VMI period bill.
@@ -94,37 +99,50 @@ The allocation command queries current authoritative state and applies:
 
 The output is a deterministic allocation plan containing item, lot, location, requested/allocated quantity, SPQ/box conversion, and ordering explanation. Client-supplied lot selection is treated as a request and is revalidated server-side.
 
-If the requested plan is out of sequence, the server creates an explicit FIFO override request for `09`. Commitment cannot proceed on a pending, rejected, expired, or mismatched approval. The final commit rechecks the plan because available stock and approvals can change between screens.
+If the selected plan is out of sequence, the server creates an explicit FIFO override approval request for `09`. Standard FIFO/FEFO plans proceed directly to pick-list generation. A pending, rejected, expired, or mismatched override approval blocks generation. The final command rechecks the plan because available stock and approvals can change between screens.
 
 ## 6. Stage 1 commitment transaction
 
-The online commit command receives a request ID, expected version, allocation plan, optional override reference, pricing-reference context as allowed by the owning pricing spec, and an idempotency key.
+The online pick-list generation command receives the selected destination/flow/item quantities, expected inventory version, allocation plan, optional FIFO override reference, pricing-reference context as allowed by the owning pricing spec, and an idempotency key.
 
 Within one authoritative transaction it:
 
 1. authenticates and authorizes the current actor and destination/flow scope;
-2. locks or safely version-checks request, lots, and reservation state;
+2. locks or safely version-checks the selected item/lot/location state and reservation state;
 3. revalidates status, availability, SPQ/UOM, FEFO/FIFO, and approval;
-4. writes the durable reservation/commitment representation;
+4. writes `inventory_commitments` / `inventory_commitment_lines` and increments
+   the selected balance rows' `qty_committed` values;
 5. creates the `pick_list` and `pick_list_items` snapshot;
 6. records commitment/audit data and returns the authoritative pick-list reference.
 
-It does not decrement on-hand inventory or insert the final `pick` transaction. A duplicate idempotency key returns the existing committed result. A stale request/plan returns a conflict requiring fresh allocation.
+It does not decrement on-hand inventory or insert the final `pick` transaction. A duplicate idempotency key returns the existing committed result. A stale selection/plan returns a conflict requiring fresh allocation.
 
 ## 7. Stage 2 physical execution and dispatch transaction
 
 The floor flow reads the committed pick list and presents one expected scan task at a time. Each accepted scan is associated with the committed item/lot/location and quantity. Local scan observations may be stored as Tier 1 only after `03` approval; they are not final inventory outcomes.
 
-The final dispatch command receives the pick-list ID, expected version, accepted scan/quantity evidence, and idempotency key. It rechecks:
+After each pick-list scan, the operator chooses `dispatch` or `further inspection`. The final dispatch command receives the pick-list ID, expected version, accepted scan/quantity evidence, and idempotency key. It rechecks:
 
 - current actor/capability/scope;
 - pick-list status and commitment ownership;
 - item/barcode/lot/location identity;
 - quantities and any approved partial/exception rule;
-- current lot/reservation state;
+- current lot status, selected lot/location balance, and reservation state;
 - required pricing/document snapshot availability.
 
-On success, one transaction decrements authoritative inventory, releases the reservation, inserts immutable `inventory_transactions` with `movement_type = 'pick'`, transitions the pick list, and emits the document-generation event/command for `10`. Email or PDF generation failure cannot roll back the committed stock movement; the document remains in an observable retry/attention state.
+If the disposition is `further inspection`, the system moves the committed
+quantity to inspection, keeps the commitment active in `inspection_pending`,
+and does not insert the final `pick` transaction. If inspection passes, the
+pick-list returns to dispatch-ready. If it fails, the system follows an
+approved return, hold, or reconciliation path.
+
+On successful dispatch, one transaction decrements the selected
+`lot_location_balances.qty_remaining`, decrements its `qty_committed`, marks
+the commitment line executed/released, inserts immutable
+`inventory_transactions` with `movement_type = 'pick'`, transitions the pick
+list, and emits the document-generation event/command for `10`. Email or PDF
+generation failure cannot roll back the committed stock movement; the document
+remains in an observable retry/attention state.
 
 ## 8. Pricing and document boundary
 
@@ -152,7 +170,7 @@ Item code is the prominent first field in office review. Floor screens do not us
 
 ## 11. Design verification before approval
 
-- [ ] Reconcile pick-list status, reservation/commitment representation, executed quantities, and any acknowledgement-receipt linkage with approved `01` and `10` designs.
+- [x] Reconcile pick-list status, reservation/commitment representation, executed quantities, and any acknowledgement-receipt linkage with the resolved `01` balance/commitment contract and `10` design.
 - [ ] Confirm exact FIFO/FEFO and SPQ/UOM validation with core inventory rules.
 - [ ] Confirm override request/approval contract with `09` and RBAC capability catalog.
 - [ ] Confirm Tier 1 physical-observation command and rejection UX with `03`.

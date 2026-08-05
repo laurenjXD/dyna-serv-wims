@@ -20,7 +20,7 @@ The Core Data Model defines the foundational database entities, relationships, c
 - **WHEN** back-office staff encode an incoming Commercial Invoice & Packing List (CIPL), **THE SYSTEM SHALL** create a `wrr_document` in `staged_pending_arrival` status with expected `wrr_items`, optional attached physical CIPL file document (`cipl_file_url`), `peza_number` (PEZA permit reference), `commercial_invoice_no`, and `ip_number` (Import Permit number), **SO THAT** incoming stock is declared pre-arrival with full regulatory and supplier document references.
 
 ### Lot Creation & Business Partitioning
-- **WHEN** floor staff physically receive and confirm a staged WRR, **THE SYSTEM SHALL** create physical `lots` partitioned by `flow_type` (`'vmi'`, `'trading'`, `'supplies'`), inheriting `peza_number`, `commercial_invoice_no`, and `ip_number` from WRR, and storing `vendor_lot_number`, `manufacture_date`, `expiry_date`, `unit_price` (in USD), and owner `party_id`, **SO THAT** FEFO/FIFO rotation, regulatory compliance, and valuation remain strictly maintained.
+- **WHEN** floor staff physically receive and confirm a staged WRR, **THE SYSTEM SHALL** create physical `lots` partitioned by `flow_type` (`'vmi'`, `'trading'`, `'supplies'`), copying the single canonical `lot_number` and its source `wrr_item_id` from the WRR, inheriting `peza_number`, `commercial_invoice_no`, and `ip_number`, and storing `manufacture_date`, `expiry_date`, `unit_price` (in USD), and owner `party_id`, **SO THAT** FEFO/FIFO rotation, regulatory compliance, and valuation remain strictly maintained.
 
 ### Daily Forex Rates & Inventory Valuation
 - **WHEN** financial reporting or inventory valuation dashboards render master stock balances, **THE SYSTEM SHALL** evaluate pieces on hand, boxes on hand (`pcs / spq`), CBM occupied (`boxes × volume_cbm`), USD inventory value (`pcs × unit_price`), and convert to PHP using the daily exchange rate in `forex_rates`, **SO THAT** inventory balances and monetary valuation are accurately tracked in USD and PHP.
@@ -48,27 +48,41 @@ The Core Data Model defines the foundational database entities, relationships, c
 5. **Regulatory & Invoice References**:
    - Both `wrr_documents` and `lots` MUST support `peza_number`, `commercial_invoice_no` (representing the CIPL), and `ip_number`.
 
-6. **Partition-Based Withdrawal SPQ Enforcement**:
+6. **WRR-Sourced Lot Number**:
+   - `wrr_items.lot_number` MUST be the source business lot number from the WRR and MUST be required for receipt confirmation.
+   - `lots.lot_number` MUST be copied from the confirmed WRR item and linked by `lots.wrr_item_id`; it MUST NOT be system-generated.
+   - The internal UUID remains the database identity. `lot_number` MUST NOT be globally unique because the same business lot number may recur across distinct WRR receipts or items; uniqueness MUST be scoped to the relevant WRR item/lot context. No second vendor-lot field is permitted.
+
+7. **Partition-Based Withdrawal SPQ Enforcement**:
    - Validation engines MUST reject withdrawal requests for `vmi` or `trading` lots if the requested piece quantity is not an exact multiple of `items.spq` ($\text{qty} \pmod{\text{spq}} = 0$).
    - `supplies` partition MUST allow individual piece-level withdrawals ($\text{qty} \ge 1$).
 
-7. **Daily Forex Valuation**:
+8. **Daily Forex Valuation**:
    - `forex_rates` MUST store daily exchange rates (`effective_date`, `usd_to_php_rate`) to calculate real-time PHP inventory valuation from USD unit prices.
 
-8. **WRR CIPL Attachments**:
+9. **WRR CIPL Attachments**:
    - `wrr_documents` MUST support storing a physical file attachment URL (`cipl_file_url`) alongside encoded expected line items.
 
-9. **Location Labeling & Capacity**:
+10. **Location Labeling & Capacity**:
    - `locations` MUST enforce `max_cbm_capacity` (numeric > 0) and formatted label naming as `Rack+Level-Position` (e.g. `A1-01` for Rack `A`, Level `1`, Position `01`).
 
-10. **FIFO/FEFO Eligibility Gate**:
+11. **FIFO/FEFO Eligibility Gate**:
     - Lot picking algorithms MUST evaluate `lots.status = 'available'` as the sole eligibility flag.
 
-11. **Ledger Immutability & History**:
+12. **Ledger Immutability & History**:
    - `inventory_transactions` records MUST NOT be updated or deleted after insertion. Inbound and outbound movements MUST record full historical logs. Variance adjustments MUST insert a new transaction with `movement_type = 'inventory_reconciliation'`.
 
-12. **Outbound Documentation Ledger**:
+13. **Outbound Documentation Ledger**:
    - All outbound `inventory_transactions` (withdrawals/dispatch) MUST capture the `ar_reference_no` (Acknowledgement Receipt Reference).
+
+14. **Distributed Lot Quantity and Placement**:
+   - The schema MUST represent one lot across multiple `locations` through `lot_location_balances`; it MUST NOT introduce `warehouse_id` or a duplicate `stock_levels` ledger.
+   - Each balance row MUST store `qty_received`, `qty_remaining`, and `qty_committed`, enforce non-negative quantities, and enforce `qty_committed <= qty_remaining`.
+   - `qty_available` MUST be derived as `qty_remaining - qty_committed` and MUST NOT be stored.
+
+15. **Durable Outbound Reservation**:
+   - Stage 1 commitment MUST create `inventory_commitments` and `inventory_commitment_lines` linked to the committed `pick_list` and exact lot/location balance rows.
+   - Stage 2 dispatch, cancellation/release, and expiry MUST update the reservation and affected balance rows atomically and idempotently.
 
 ## 4. Out of Scope
 - Role-based access control policy enforcement (specified in `02-rbac-roles`).

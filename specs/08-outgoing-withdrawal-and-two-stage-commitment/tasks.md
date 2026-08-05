@@ -34,7 +34,7 @@ No withdrawal route, allocation engine integration, reservation/commitment mutat
 Testing: Documentation/schema review; no implementation tests.
 
 - [ ] Reconcile request, pick-list, pick-list-item, reservation/commitment, executed-quantity, and receipt-link fields/statuses with approved `01` and `10`.
-- [ ] Decide whether reservation data belongs on pick-list rows/lots or in a dedicated commitment relation; define uniqueness/concurrency/release constraints.
+- [x] Reservation data belongs in the dedicated core `inventory_commitments` / `inventory_commitment_lines` relation; define and verify uniqueness, concurrency, expiry, release, and execution constraints there.
 - [ ] Define request-to-pick-list ownership and whether a separate request table is required or a feature-level draft structure suffices.
 - [ ] Resolve partial pick, shortage, damage, cancellation, expiry, reversal, and reallocation behavior before implementation.
 - [ ] Confirm whether `transfer` rows belong in this Outgoing Ledger or in `11`/a separate transfer ledger query.
@@ -104,7 +104,7 @@ Testing: Contract/integration tests with pricing and document services; Playwrig
 Testing: Unit policy tests; Playwright offline/reconnect/IndexedDB; integration replay authorization/idempotency.
 
 - [ ] Define the exact Tier 1 scan-observation policy with `03`, including payload, resource refs, ordering key, conflict/rejection classes, and retention.
-- [ ] Block request creation, allocation, FIFO override, commitment, release, pricing, and final dispatch from the offline queue.
+- [ ] Block pick-list generation, allocation, FIFO override, commitment, release, pricing, and final dispatch from the offline queue.
 - [ ] Preserve local scan state honestly and distinguish captured/queued from committed/dispatched.
 - [ ] Replay through the authoritative server command with current Auth/capability/scope/commitment/lot checks and idempotency.
 - [ ] Reject revoked/deactivated actors and stale/mismatched pick lists without reassignment.

@@ -36,7 +36,7 @@ Depends on:
 | `wrr_inspection_logs` | Store inbound conformance/non-conformance observations. | Use only if retained by approved core schema; transfer inspection remains separate. |
 | `inventory_transactions` | Read incoming ledger; insert immutable receiving/putaway movements through server transactions. | No updates/deletes; inventory transaction boundary is authoritative. |
 
-The exact final table columns, including whether scan counters and inspection data live directly on WRR lines or in child records, must be reconciled with the approved `01` migration before implementation. This design does not invent `stock_levels` or another duplicate ledger table.
+The exact final table columns, including whether scan counters and inspection data live directly on WRR lines or in child records, must be reconciled with the approved `01` migration before implementation. Receipt confirmation creates `lots` plus one or more authoritative `lot_location_balances` rows; this design does not invent `stock_levels` or another duplicate ledger table.
 
 ## 3. Route and shell integration
 
@@ -101,7 +101,7 @@ Expected line fields include, subject to core approval:
 - resolved `item_id` plus CIPL/vendor/customer item references;
 - expected quantity and UOM;
 - unit/reference CBM and packaging information;
-- vendor lot number where known;
+- WRR business `lot_number` (required for receipt confirmation); this is the only lot-number field;
 - line notes and discrepancy context where permitted.
 
 The form supports draft validation before save, server uniqueness/relationship checks, and an explicit transition to staged status. Editing is allowed while staged; once receiving starts, the scan baseline is immutable or changes through a visible versioned correction flow.
@@ -142,7 +142,9 @@ Within one transaction it:
 
 1. locks or otherwise protects the WRR from concurrent confirmation;
 2. verifies all required quantities and decisions;
-3. creates the approved lot records/available state for conformant received stock;
+3. creates the approved lot records/available state, copying the WRR item's
+   `lot_number` and `wrr_item_id`, plus initial
+   `lot_location_balances` rows for conformant received stock;
 4. inserts immutable `inventory_transactions` with `movement_type = 'receiving'`;
 5. updates WRR status to `confirmed`;
 6. records audit/correlation data according to the approved cross-cutting design.

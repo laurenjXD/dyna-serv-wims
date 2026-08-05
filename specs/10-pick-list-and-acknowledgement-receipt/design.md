@@ -70,7 +70,7 @@ Generation validates the event and reloads authoritative source data. A repeated
 
 ### Pick list snapshot
 
-The pick list snapshot includes operational identity and instructions required by the floor: item code/description, barcode where approved, customer item code, lot/vendor lot, source location, quantity/UOM, SPQ/boxes, flow, references, and price fields required by the settled document model.
+The pick list snapshot includes operational identity and instructions required by the floor: item code/description, barcode where approved, customer item code, canonical `lot_number`, source location, quantity/UOM, SPQ/boxes, flow, references, and price fields required by the settled document model.
 
 ### Acknowledgement receipt snapshot
 
