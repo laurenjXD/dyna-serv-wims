@@ -22,12 +22,12 @@ Every merge conflict and major revision, dated, with the resolution. This is the
 
 The following are confirmed as **expected to change significantly** — specs touching them stay `Draft`:
 
-- **RBAC / role model** (spec 02)
+- **RBAC / role model** (spec 02) — draft direction recorded 2026-08-04: four fixed system roles backed by capabilities, additive multi-role grants, explicit party/optional-flow scope, live database resolution, default-deny RLS, invitation-only activation, and append-only RBAC security events. Requirements/design are drafted but remain unapproved; downstream capability mappings and infrastructure-dependent session/RLS details still require reconciliation.
 - **Offline mode / sync approach** (spec 03)
 - **VMI billing model** (spec 12)
 - **Trading pricing model** (spec 13)
 
-No specifics recorded yet on *what* will change about each — to be filled in as those specs are actually drafted and the revision surfaces.
+No specifics are recorded yet for the remaining flagged areas; fill them in as those specs are drafted and their revisions surface.
 
 ## Input captured, not yet formalized
 

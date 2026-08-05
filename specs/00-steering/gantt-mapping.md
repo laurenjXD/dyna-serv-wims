@@ -11,7 +11,7 @@ This sits above the spec folders, not inside them. Specs stay feature-level (`re
 | Database schema for inventory & warehouses | 01-core-data-model | Not yet drafted | **Critical path — nothing else in this milestone can proceed until this is approved** |
 | User authentication & warehouse roles | 02-rbac-roles | Draft-only (flagged for major revision) | **High** — see below |
 | Receiving module UI | 07-incoming-receiving (+ 00-brand-design-system, 05-ui-shell) | Input notes captured (CIPL/WRR), not formalized | Depends on 01 |
-| Receiving transaction logic | 07-incoming-receiving, 01-core-data-model | Same as above | Depends on 01 |
+| Receiving transaction logic | 07-incomipng-receiving, 01-core-data-model | Same as above | Depends on 01 |
 | Product transfer request module | 11-transfer-and-inspection (needs scope check — "transfer request" may be broader than inspection-triggered transfer) | Not yet drafted | Depends on 01 |
 | Transfer approval workflow | 09-approval-queue | Not yet drafted | **High** — depends on 02, which is unstable |
 | Receiving & transfer validation | Part of 07/11 design.md, not a separate spec | — | Depends on 07, 11 |
@@ -58,7 +58,7 @@ This sits above the spec folders, not inside them. Specs stay feature-level (`re
 | User Acceptance Testing (UAT) | **20-documentation-training-and-uat** (new) | Not yet drafted |
 | Documentation prep, user manual | **20-documentation-training-and-uat** (new) | Not yet drafted |
 | Administrator training | **20-documentation-training-and-uat** (new) | Not yet drafted |
-| Production deployment | 04-services-and-infrastructure (Option A already locked, see tech.md) | Not yet drafted |
+| Production deployment | 04-services-and-infrastructure (Option A already locked, see tech.md) | Drafted — provider plans/regions, recovery targets, and operational owners pending approval |
 | Final client validation, handover | Project closure, not a spec | — |
 
 ## Standing rule
