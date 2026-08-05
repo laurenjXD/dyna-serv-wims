@@ -24,8 +24,8 @@ This sits above the spec folders, not inside them. Specs stay feature-level (`re
 
 | Gantt task | Maps to spec(s) | Status |
 |---|---|---|
-| Product category management | **17-product-categorization-and-classification** (new) | Not yet drafted |
-| Inventory classification logic | **17-product-categorization-and-classification** (new) | Not yet drafted |
+| Product category management | **17-product-categorization-and-classification** (new) | Draft (planning aligned; not approved) |
+| Inventory classification logic | **17-product-categorization-and-classification** (new) | Draft (planning aligned; not approved) |
 | Barcode/QR integration | Cross-cutting: 01 (`items.barcode_value`), 07 (receiving scan), 18 (packing scan) | Depends on 01, 07 |
 | Picking list generation | 10-pick-list-and-acknowledgement-receipt | Not yet drafted |
 | Picking workflow | 08-outgoing-withdrawal-and-two-stage-commitment (execution step) | Not yet drafted |
@@ -42,10 +42,10 @@ This sits above the spec folders, not inside them. Specs stay feature-level (`re
 | Dispatch scheduling module | **19-dispatch-scheduling-and-delivery-tracking** (new) | Not yet drafted |
 | Dispatch approval workflow | 09-approval-queue + 19 | Not yet drafted |
 | Delivery status tracking | **19-dispatch-scheduling-and-delivery-tracking** (new) | Not yet drafted |
-| Inventory monitoring dashboard | 16-reporting-and-analytics | Not yet drafted |
+| Inventory monitoring dashboard | 16-reporting-and-analytics | Draft (planning aligned; not approved) |
 | Low-stock notifications | 14-notifications-and-alerts | Not yet drafted |
-| Inventory movement history | 16-reporting-and-analytics (queries the `stock_entries` ledger from 01) | Not yet drafted |
-| Analytics & reporting | 16-reporting-and-analytics | Not yet drafted |
+| Inventory movement history | 16-reporting-and-analytics (queries the `inventory_transactions` ledger from 01) | Draft (planning aligned; not approved) |
+| Analytics & reporting | 16-reporting-and-analytics | Draft (planning aligned; not approved) |
 | Dashboard optimization | Cross-cutting perf, 04/05 | — |
 | System integration testing | testing.md | — |
 | Milestone 3 Review & Launch | Sign-off gate | — |
