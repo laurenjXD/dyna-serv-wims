@@ -31,11 +31,9 @@ The current Gantt timeline tracks the **Spec Definition Phase** (Drafting Requir
 |---|---|---|
 | Product category management | **17-product-categorization-and-classification** (new) | Not yet drafted |
 | Inventory classification logic | **17-product-categorization-and-classification** (new) | Not yet drafted |
-| Barcode/QR integration | Cross-cutting: 01 (`items.barcode_value`), 07 (receiving scan), 18 (packing scan) | Depends on 01, 07 |
+| Barcode/QR integration | Cross-cutting: 01 (`items.barcode_value`), 07 (receiving scan) | Depends on 01, 07 |
 | Picking list generation | 10-pick-list-and-acknowledgement-receipt | Not yet drafted |
 | Picking workflow | 08-outgoing-withdrawal-and-two-stage-commitment (execution step) | Not yet drafted |
-| Packing module UI | **18-packing** (new) | Not yet drafted |
-| Packing confirmation workflow | **18-packing** (new) | Not yet drafted |
 | Logistics process integration | Cross-cutting, not a separate spec | — |
 | Testing & bug fixes | testing.md | — |
 | Milestone 2 Review & Launch | Sign-off gate | — |
@@ -44,14 +42,13 @@ The current Gantt timeline tracks the **Spec Definition Phase** (Drafting Requir
 
 | Gantt task | Maps to spec(s) | Status |
 |---|---|---|
-| Dispatch scheduling module | **19-dispatch-scheduling-and-delivery-tracking** (new) | Not yet drafted |
-| Dispatch approval workflow | 09-approval-queue + 19 | Not yet drafted |
-| Delivery status tracking | **19-dispatch-scheduling-and-delivery-tracking** (new) | Not yet drafted |
+| Dispatch approval workflow | 09-approval-queue | Not yet drafted |
 | Inventory monitoring dashboard | 16-reporting-and-analytics | Not yet drafted |
 | Low-stock notifications | 14-notifications-and-alerts | Not yet drafted |
 | Inventory movement history | 16-reporting-and-analytics (queries the `stock_entries` ledger from 01) | Not yet drafted |
 | Analytics & reporting | 16-reporting-and-analytics | Not yet drafted |
 | Dashboard optimization | Cross-cutting perf, 04/05 | — |
+| VMI Automated Storage Billing | **12-vmi-billing** | Spec Drafted |
 | System integration testing | testing.md | — |
 | Milestone 3 Review & Launch | Sign-off gate | — |
 
