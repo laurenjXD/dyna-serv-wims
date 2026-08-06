@@ -370,3 +370,17 @@ new RBAC catalog row is introduced; the function independently re-checks
 With this decision, `07`'s three documents and `22`'s three documents were
 approved using the standing auto-sign-off arrangement. Runtime implementation
 and test checklists remain pending work and do not imply code was written.
+
+## `04` — yearly archival backup added alongside operational RPO (2026-08-06)
+
+Product owner decision: add a yearly full logical backup for long-term
+archival/retention, in addition to (not instead of) the existing daily
+managed backup + PITR operational cadence. `design.md` §18.1 was amended to
+state this explicitly as additive, sharing Storage's secondary-destination
+handling (§18.2) and the same recurring restore-test discipline as the
+operational backup. `requirements.md`'s locked RPO table (15-minute target
+with PITR, never more than 24 hours; L285-287) is unchanged — the archival
+snapshot does not relax or replace that operational recovery target. No
+status change was needed since this is additive content within an already
+`Approved` design; flagged here in case a future reviewer wonders why an
+Approved doc changed after the fact.

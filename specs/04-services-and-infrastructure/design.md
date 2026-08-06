@@ -623,6 +623,14 @@ No PR pipeline receives production secrets. Migration tests include RLS and SQL 
 - Monitor backup/PITR status.
 - Take an approved logical backup before high-risk migrations when useful.
 - Test restore into an isolated project on a recurring schedule and before launch.
+- In addition to the daily/PITR operational backup above, take one long-term
+  yearly archival backup (a full logical snapshot, retained separately from
+  the rolling daily/PITR window) for retention and compliance purposes. The
+  archival cadence is additive, not a substitute — it does not change the
+  15-minute/24-hour operational RPO target in `requirements.md`. Archival
+  snapshots follow the same restore-test discipline as operational backups
+  (recurring test restore into an isolated project) and the same secondary-
+  destination handling as Storage exports (Section 18.2).
 
 ### 18.2 Storage
 
