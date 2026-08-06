@@ -115,7 +115,11 @@ Supabase Branching is a plan-dependent enhancement. When available, each relevan
 
 ### 5.3 Region selection
 
-Vercel Functions, Supabase, Upstash, and Sentry/Resend processing should be placed/configured as close as practical to the Philippine warehouse while satisfying vendor availability and legal requirements. The selected region pair is documented before provisioning and load-tested from the warehouse network. Cross-region calls are measured rather than assumed acceptable.
+Vercel Functions, Supabase, Upstash, and Sentry/Resend processing shall use the nearest supported provider region to the Philippine warehouse, subject to vendor availability and legal requirements. The selected region pair is documented before provisioning and load-tested from the warehouse network; cross-region calls are measured rather than assumed acceptable. If providers offer different nearby regions, the pair with the lowest measured end-to-end latency for floor scan and Auth/RLS requests wins, while data-processing constraints remain authoritative.
+
+### 5.4 Pre-launch domain policy
+
+Until production launch, local, preview, staging, Auth callbacks, and Resend sender identities may use provider-assigned or temporary restricted domains. Production remains blocked until a dedicated custom HTTPS application domain, approved Auth redirect allowlist, and verified Resend sender domain are configured; temporary provider domains must never be promoted as the production identity.
 
 ## 6. Repository and configuration layout
 
@@ -296,8 +300,8 @@ The server validates the user through Supabase Auth before constructing the RBAC
 - Allowlist local and approved preview/staging callback URLs; avoid broad wildcard callbacks where possible.
 - Configure invitation, recovery, and email-change templates.
 - Use Resend custom SMTP for production.
-- Set session duration/refresh and security-notification options with spec `02`.
-- Enable leaked-password protection/MFA according to approved plan and policy before launch.
+- Set a 24-hour session duration with refresh enabled; revoke sessions on deactivation. MFA is optional in v1, while administrators are encouraged to enroll where the provider supports it.
+- Enable leaked-password protection and document the optional-MFA enrollment/recovery path before launch.
 
 ### 9.3 Admin operations
 
@@ -545,6 +549,12 @@ Session Replay is off by default. Tracing sample rates are environment-specific 
 The canonical request-level correlation ID header is `X-Correlation-Id`. Inbound values from approved internal callers (e.g., Supabase Cron invoking an Edge Function) are accepted after format validation (UUID v4, ≤ 64 characters). All other requests — including all browser-originated requests — receive a server-generated UUID v4 regardless of any client-supplied value. The header name is normalized to lowercase internally; the outbound response repeats it as `x-correlation-id` for diagnostic use.
 
 The correlation ID is propagated to: database audit and security event rows, `service_jobs.correlation_id`, `email_deliveries.correlation_id`, Resend API request metadata/tag fields, `webhook_receipts.correlation_id`, Sentry event/span context, and Edge Function invocation headers. Never trust an arbitrary long client value as a log field; log only the server-generated or validated value.
+
+### 15.3.1 Offline sync boundary
+
+`03-offline-mode-and-client-storage` uses the same server boundary as online workflows. `/api/sync` resolves the current Supabase Auth session, accepts only the approved Tier 1 observation types, and delegates each accepted observation to the owning domain command with current capability, scope, business-state, idempotency, and RLS checks. The endpoint propagates the validated correlation ID and redacted monitoring context; it never accepts cached permissions, client-supplied actor authority, or a client-created infrastructure job as proof of authorization.
+
+Foreground/reconnect synchronization is the v1 contract. A service worker may wake the client and request synchronization, but it is not an independent executor and cannot bypass the authenticated server path. User-scoped reads and writes use the Supabase session client/Data API by default; any Drizzle user-identity wrapper remains gated on the real-Postgres isolation verification in §23 item 9.
 
 ### 15.4 Alert matrix
 
@@ -827,11 +837,11 @@ Each external provider has an explicit policy. "Fail closed" means the operation
 
 ## 23. Decisions and validation still required
 
-1. Provider plans, regions, production domain, and account owners.
+1. Provider plans, final measured region identity, and account owners.
 2. PITR, Supabase Branching, Vercel custom environments, and deployment-protection plan capabilities.
-3. Final RPO/RTO/SLO and support-hours commitment.
+3. Operational verification of the approved RPO/RTO/SLO and support-hours targets.
 4. Storage secondary-backup destination and malware/restricted-upload strategy.
-5. Auth session, password, administrator MFA, and redirect policy with spec `02`.
+5. Operationalize the approved 24-hour Auth session/refresh/revocation policy, optional v1 MFA, and narrow redirect allowlist.
 6. Exact rate limits after realistic load/abuse testing.
 7. Sentry sampling, retention, alert destinations, and privacy approval.
 8. Audit/business/provider log retention periods.

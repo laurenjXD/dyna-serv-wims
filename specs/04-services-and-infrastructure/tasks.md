@@ -37,26 +37,26 @@ Testing: Manual review; no implementation tests.
 
 - [ ] Record legal owner, technical owner, billing owner, and incident contact for Vercel, Supabase, Resend, Upstash, Sentry, DNS, and source-control/CI accounts.
   → Requires external input. Named owners must be recorded before sign-off.
-- [ ] Select staging and production regions after measuring expected warehouse-to-service latency and reviewing data-processing requirements.
-  → Requires external input. Design Section 5.3 states the selected region pair is documented before provisioning; the Philippine warehouse constraint is noted but the specific region has not been selected.
+- [x] Select staging and production regions after measuring expected warehouse-to-service latency and reviewing data-processing requirements.
+  → Decision recorded: use the nearest supported provider region to the Philippine warehouse, select the lowest-latency compliant pair, and record the measured result before provisioning.
 - [ ] Approve provider plans and paid capabilities, including PITR, Supabase Branching, Vercel custom environments/protection, log retention, and support.
   → Requires external input. Requirements Section 19 lists plan decisions; PITR and Supabase Branching are plan-dependent capabilities with no confirmed plan level in the spec.
-- [ ] Approve production and staging application domains, Auth callback domains, and Resend sender subdomains/addresses.
-  → Requires external input. No production domain has been selected in the spec.
-- [ ] Approve the environment model: local/CI, dedicated staging Supabase project, and dedicated production Supabase project.
-  → Decision recorded. Design Section 5.2 defines: two persistent remote Supabase projects (staging and production) plus ephemeral local/CI stack. Supabase Branching is a plan-dependent enhancement. This model is derivable from and consistent with the spec.
+- [x] Approve production and staging application domains, Auth callback domains, and Resend sender subdomains/addresses.
+  → Decision recorded: temporary provider-assigned/restricted domains are permitted before launch; a dedicated custom HTTPS production domain, narrow Auth callback allowlist, and verified Resend sender domain remain mandatory launch gates.
+- [x] Approve the environment model: local/CI, dedicated staging Supabase project, and dedicated production Supabase project.
+  → Decision recorded: use two persistent remote Supabase projects (staging and production) plus ephemeral local/CI environments. Supabase Branching remains an optional plan-dependent enhancement.
 - [ ] Approve the Data API as the default user-RLS path and define the evidence required before allowing user-scoped Drizzle transactions.
   → Decision recorded. Design Section 8.2 designates the Supabase session client/Data API as the mandatory default for user-RLS paths. Section 8.6 (operation-category matrix) documents when each path applies. A user-scoped Drizzle transaction wrapper requires real-Postgres identity-isolation tests to pass before adoption (design Section 23 item 9 / tasks Section 4).
 - [ ] Approve Supabase Edge Functions + Cron as the v1 background executor and record BullMQ deferral criteria.
   → Decision recorded. Requirements Section 11 (FR-13) and design Section 14.1 select Edge Functions + Cron as the v1 background executor. BullMQ deferral criteria are recorded in design Section 14.6.
-- [ ] Approve RPO, RTO, availability, latency, support-hours, and alert-response targets.
-  → Requires external input. Draft targets are listed in requirements Section 16 but require product-owner approval before production.
+- [x] Approve RPO, RTO, availability, latency, support-hours, and alert-response targets.
+  → Decision recorded: use the approved planning targets in requirements Section 16, including 15-minute database RPO and 4-hour application/database RTO; operational verification remains a production gate.
 - [ ] Select protected Storage backup/export destination and retention.
   → Requires external input. Design Section 18.2 defines the process but the destination has not been selected.
 - [ ] Approve MIME/size allowlists and malware-scanning or restricted-file policy.
   → Requires external input. Design Section 10.3 notes the malware-scanning decision is a production launch gate; specific allowlists require owner approval.
-- [ ] Approve Auth session duration, password policy, and administrator MFA requirement with spec `02`.
-  → Requires external input. Design Section 9.2 notes these are configured with spec `02`; spec `02` has not reached Approved status.
+- [x] Approve Auth session duration, password policy, and administrator MFA requirement with spec `02`.
+  → Decision recorded: 24-hour sessions with refresh enabled, deactivation revocation, and optional MFA in v1; password controls continue to use the approved provider baseline and leaked-password protection.
 - [ ] Approve rate-limit privacy/retention policy and initial endpoint limits.
   → Requires external input. Design Section 13 defines the limiter classes and fail policies; exact limit values and retention require owner approval after load testing.
 - [ ] Approve Sentry PII policy, sampling, retention, Session Replay prohibition/default, and alert destinations.

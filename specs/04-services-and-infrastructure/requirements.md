@@ -122,7 +122,7 @@ Redis plus BullMQ is not part of the v1 runtime. It may be reconsidered if appro
 3. Authorization roles and party scope SHALL remain in application tables as defined by spec `02`, not in client-controlled metadata.
 4. Public self-registration SHALL remain disabled unless spec `02` is revised and approved.
 5. Admin Auth APIs and service-role credentials SHALL run only in trusted server code.
-6. Session duration, refresh behavior, revocation, password policy, and optional MFA policy SHALL be documented before production.
+6. Session duration SHALL be 24 hours with refresh enabled and revocation on deactivation; MFA SHALL be optional in v1, with enrollment and recovery behavior documented before production.
 7. Auth event URLs and email redirects SHALL not accept arbitrary redirect targets.
 8. Auth logs SHALL be included in authentication incident diagnosis.
 
@@ -275,7 +275,7 @@ Redis plus BullMQ is not part of the v1 runtime. It may be reconsidered if appro
 
 ## 16. Service-level objectives and launch gates
 
-The following are draft minimum targets and require product-owner approval before production:
+The following are approved minimum targets for planning and require operational verification before production:
 
 | Measure | Draft target |
 |---|---|
@@ -333,10 +333,10 @@ Production launch is blocked until:
 ## 19. Decisions required before approval
 
 1. Confirm production Supabase/Vercel plan levels and whether Supabase Branching, PITR, and Vercel custom environments are purchased.
-2. Approve RPO/RTO, availability, latency, and support-hours targets.
-3. Select the production/staging regions based on Philippine warehouse latency and data-processing requirements.
-4. Approve the production domain, Auth redirect domains, and Resend sender subdomains/addresses.
-5. Approve session duration, password, and administrator MFA policy with spec `02`.
+2. **Resolved 2026-08-06:** use the approved RPO/RTO, availability, latency, and support-hours targets in §16; operational verification remains a launch gate.
+3. **Resolved 2026-08-06:** select the nearest supported provider region to the Philippine warehouse using measured latency and data-processing constraints.
+4. **Resolved 2026-08-06:** use temporary provider-assigned/restricted domains before launch; require a dedicated custom HTTPS production domain, narrow Auth redirects, and verified Resend sender DNS before production.
+5. **Resolved 2026-08-06:** use 24-hour sessions with refresh and deactivation revocation; MFA is optional in v1.
 6. Select Storage backup/export destination and malware/restricted-file handling.
 7. Approve service owners, incident contacts, billing thresholds, and log/audit retention periods.
 8. Validate the Drizzle/RLS identity path against the selected Supabase connection mode.

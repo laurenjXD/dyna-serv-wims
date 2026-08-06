@@ -380,3 +380,17 @@ The approved documentation pass added a concrete `audit_log` table to `01-core-d
 `05-ui-shell-and-navigation` now owns the **Shared Table-Action and Filter/Search Contract**: capability/row-state-gated `view`/`edit`/`deactivate` affordances, one primary action per row, floor touch targets and no hover-only behavior, the exact `16` FR-8.1 date-range/party/flow-type/item-entity filters, global cross-entity search, and server/RLS-preserving query rules. The design-system audit found no token, typography, contrast, touch-target, or circular/hover-only drift. `06`, `11`, `13`, and `14` cite the contract by name without restating it. All touched documents returned to `Approved`; `19` remains deferred.
 
 **Decision resolved (product owner, 2026-08-06):** audit-log retention is three years. The broader `04 §23.8` retention question remains open only for business/provider logs not covered by this audit-log decision.
+
+## Offline and infrastructure dependency closure (2026-08-06)
+
+The remaining `03`/`04` dependency wording was reconciled. `03-offline-mode-and-client-storage` now consumes the approved `02` capability/session model and `04` server boundary, with only three explicit v1 observation commands admitted to the queue. Foreground/reconnect synchronization is the v1 decision; service-worker wake is optional. Sync conflicts are reviewed through the shared office Notifications/Sync Conflicts surface, and pending entries cannot be edited or cancelled before sync; invalid observations become supervisor-visible conflicts.
+
+`04-services-and-infrastructure` now documents the offline sync boundary in §15.3.1: `/api/sync` uses the current Auth session, owning domain command, capability/scope/business-state/idempotency/RLS checks, canonical correlation ID, and redacted monitoring. It cannot accept cached authority or act as an independent service-worker executor. `05-ui-shell-and-navigation`'s Auth and OfflineStatus verification items are now closed against these approved contracts.
+
+Remaining external-input decisions are not interface blockers: provider plans, account ownership, final measured region identity, and provider-specific retention/alert settings still require their named owners in `03`/`04` before production provisioning.
+
+## Infrastructure decision selections (2026-08-06)
+
+Product-owner selections were recorded for the remaining dependency defaults: separate staging/production projects plus ephemeral local/CI environments; nearest supported provider region to the Philippine warehouse selected by measured latency; 15-minute database RPO and 4-hour application/database RTO; offline cache TTL of 24 hours with 7-day cache/pending retention, 30-day failed/quarantined/attention retention, and 24-hour completed-entry retention; 24-hour Auth sessions with refresh and revocation on deactivation, with MFA optional in v1; and temporary provider-assigned/restricted domains before launch. Production remains gated on a dedicated custom HTTPS domain, narrow Auth redirects, and verified Resend sender DNS.
+
+Provider plan selection, account ownership, final measured region identity, and operational verification remain provisioning tasks rather than unresolved interface contracts.

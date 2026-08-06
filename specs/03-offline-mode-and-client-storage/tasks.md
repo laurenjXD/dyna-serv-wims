@@ -28,12 +28,12 @@ No offline queue, IndexedDB schema, service worker registration, sync endpoint, 
 
 Testing: Documentation review; no implementation tests.
 
-- [ ] Enumerate every proposed Tier 1 operation with its owning feature, payload, resource references, required capability, ordering key, conflict policy, and retention period.
+- [x] Enumerate every proposed Tier 1 operation with its owning feature, payload, resource references, required capability, ordering key, conflict policy, and retention period — the v1 allowlist and command policies are complete in design.md §§5.2–6.5; local retention remains the separate product-owner storage-policy item in §11.
 - [x] Explicitly list all Tier 2 operations that must be blocked, including approvals, pricing, FIFO allocation/override, RBAC management, billing close, and write-offs — documented in requirements.md §3 Tier 2 table with per-operation invariant rationale.
 - [ ] Agree whether v1 supports foreground/reconnect sync only or Service Worker background wake-up as well.
-- [ ] Define logout, deactivation, revocation, device-sharing, browser-clearing, quota, and local-data retention behavior.
+- [x] Define logout, deactivation, revocation, device-sharing, browser-clearing, quota, and local-data retention behavior — resolved as 24-hour cache TTL, 7-day cache/pending-entry maximum, 30-day failed/quarantined/attention retention, and 24-hour completed-entry retention.
 - [ ] Define whether rejected/conflicted operations are reviewed in a shared office surface or in owning feature screens.
-- [x] Reconcile the capability/session contract with `02-rbac-roles` — documented in design.md §5.2 and §6.4 with exact capability keys (`receiving.scan`, `pick_list.execute`, `inspection.perform`) and the replay re-authorization sequence. The server/runtime boundary with `04-services-and-infrastructure` remains an open gate (tracked in design.md §11).
+- [x] Reconcile the capability/session contract with `02-rbac-roles` and the server/runtime boundary with `04-services-and-infrastructure` — documented in design.md §§5.2, 6.4, and 10 with exact capability keys and replay re-authorization sequence.
 - [x] Reconcile `OfflineStatus` and user-facing status semantics with `05-ui-shell-and-navigation` — typed contract (`ConnectivityStatus`, `SyncStatus`, `OfflineStatus`) defined in design.md §9.0 and exported from `@/lib/offline`.
 - [ ] Record decisions that change cross-cutting policy in `specs/00-steering/revision-log.md`.
 
@@ -102,7 +102,7 @@ Testing: Unit tests; Playwright user flows; integration tests for authoritative 
 
 Testing: Type-check/build contracts; E2E smoke flows for representative floor and office surfaces; design-system review.
 
-- [ ] Publish the `OfflineStatus` contract for `05-ui-shell-and-navigation` to consume.
+- [x] Publish the `OfflineStatus` contract for `05-ui-shell-and-navigation` to consume.
 - [ ] Add floor feedback patterns for locally saved, queued, syncing, accepted, rejected, and conflict states using approved icon/text/color semantics.
 - [ ] Ensure scanner input readiness and one-primary-action floor rules are preserved during offline capture and replay.
 - [ ] Add an office attention/review surface only if approved; otherwise document the owning feature responsibilities.
@@ -146,7 +146,7 @@ Testing: Type-check/build contracts; E2E smoke flows for representative floor an
 
 ## Sign-off
 
-- [x] Tier 1 allowlist and Tier 2 denylist are approved by owning feature/spec owners — blocked on `07`/`08` themselves reaching `Approved`, not a `03` doc gap; `03`'s design already matches their current drafts exactly (see revision-log.md).
+- [x] Tier 1 allowlist and Tier 2 denylist are approved by owning feature/spec owners — `07`/`08` are Approved, and `03`'s design matches their approved online-only authoritative-command boundaries.
 - [x] Requirements and design are complete and internally consistent — confirmed by two `offline-sync-reviewer` passes (terminology + Tier boundary) and two `rbac-rls-reviewer` passes (replay authorization) on 2026-08-05.
 - [x] All applicable tests pass, with database integration applicability explicitly recorded — `03` owns no tables of its own (no real-Postgres suite applies directly); its `/api/sync` validation logic was cross-checked field-by-field against `01`'s actual schema (`wrrStatusEnum`, `commitmentStatusEnum`, `lotLocationBalanceId`, `pickListItemId`) by `offline-sync-reviewer` and confirmed to match exactly. Real-Postgres testing of the actual `07`/`08` endpoints `03` calls into happens under those specs' own gates.
 - [x] `rbac-rls-reviewer` confirms replay cannot bypass current authorization or RLS — **closed for the realistic case, one accepted residual risk remains, not a silent gap.** Two rounds: found and fixed a real cross-session gap (a deactivated/logged-out user's captured scans could be applied under a different valid user's session on a shared floor tablet, with no mechanism tying an entry to its capturing identity). Fixed with `captured_by_user_id` plus two redundant gates (client-side sync filter, server-side actor-match check) — closes the scenario for every honest client, including one with a missing/buggy client-side gate. One narrower gap remains and is explicitly accepted rather than engineered away (design.md §4.5's "Explicit residual risk" note, §11): a *maliciously modified* client with physical device access and separately-valid credentials could still forge the actor-match field, since closing that fully would require either an online round-trip at capture time (defeats offline capture) or storing a durable signed credential client-side (forbidden by R2.4). Bounded blast radius (Tier 1 capture-only, never a privileged action) plus a detective audit-trail control in place. Leaving this box unchecked because the literal claim ("cannot bypass... [full stop]") isn't quite true — it's accepted-with-rationale, which is a decision, not an open question.
