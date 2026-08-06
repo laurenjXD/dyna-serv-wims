@@ -1,7 +1,7 @@
 # Incoming Receiving — Design
 
 Status: Approved
-Updated: 2026-08-05
+Updated: 2026-08-06
 
 ## 1. Design intent
 
@@ -132,6 +132,10 @@ Each `wrr_items` row tracks `scanned_qty` against `expected_qty`. Discrepancy st
 | Exception/unresolved | Rejected scan, unknown item, or pending inspection decision | No |
 
 `wrr_inspection_logs` records physical conformance observations per line during the scan phase. Its `action_taken` field (`'accepted_with_variance'`, `'quarantined'`, `'returned_to_vendor'`) captures the immediate physical resolution outcome. This is distinct from the `disposition` field, which is set before confirmation and determines where the committed lot is posted.
+
+### 5.2a Visual receiving inspection
+
+Visual inspection is an explicit floor step after scan reconciliation and before confirmation. A WRR line may split into conformant, `on_hold`, and `reject` quantities. `on_hold` records a controlled reason, mandatory remarks, exact quantity, actor, timestamps, and holding `location`; `reject` records the same evidence, routes to an enrolled rejects `location`, and creates the linked RTV workflow. No rejected or held quantity is eligible available stock.
 
 ### 5.3 WRR printed fields
 

@@ -1,7 +1,7 @@
 # Transfer & Inspection — Requirements
 
 Status: Approved
-Updated: 2026-08-05
+Updated: 2026-08-06
 
 ## 1. Purpose and scope
 
@@ -13,7 +13,7 @@ This feature governs controlled internal movement of inventory between physical 
 
 - `07-incoming-receiving` owns CIPL/WRR staging, inbound receipt reconciliation, and inbound conformance before receiving commit. It populates the shared inspection record (`inspection_cases`, `inspection_evidence`, `inspection_dispositions`) with `context_type = 'inbound'` and a `wrr_item` source reference. `11` provides the shared record model; `07` owns the WRR/CIPL linkage and lot-creation on pass.
 - `11` owns internal transfer requests, transfer lines, and routine transfer inspection. It also defines the shared inspection data model used by `07` and `08`. When `08` or `07` creates an inspection case, it uses the shared tables defined in `11`'s design with the appropriate `context_type`.
-- `08-outgoing-withdrawal-and-two-stage-commitment` owns customer/internal withdrawal, `pick` movement, and outbound further inspection disposition. It populates the shared inspection record with `context_type = 'outbound'` and a `pick_list_item` source reference. The outbound commitment (`inventory_commitment_lines`) remains active during outbound inspection and is released or executed on pass/fail resolution. Outbound further inspection is not a transfer — the lot does not change location.
+- `08-outgoing-withdrawal-and-two-stage-commitment` owns customer/internal withdrawal and `pick` movement. Outbound dispatch is direct after picking; this feature does not own pre-dispatch inspection.
 - `09-approval-queue` stores approval decisions; `11` owns transfer business state and consumes an exact decision.
 - `01-core-data-model` owns canonical `locations`, `lots`, `lot_location_balances`, and immutable `inventory_transactions`; final transfer request/inspection tables must be reconciled before approval.
 - `14`/`04` own notification delivery and infrastructure boundaries; notification is not the transfer source of truth.
@@ -64,15 +64,22 @@ Routine transfers may use a shorter path only if the approved capability/policy 
 
 ### R3. Shared inspection capability and transfer inspection
 
-1. The system SHALL maintain a single shared inspection record structure (`inspection_cases`, `inspection_evidence`, `inspection_dispositions`) used by `07` (inbound), `08` (outbound further inspection), and `11` (routine transfer inspection). Each context is identified by `context_type` and a context-specific `source_ref_type`/`source_ref_id`.
+1. The system SHALL maintain a single shared inspection record structure used by `07` (inbound) and `11` (transfer). Each context is identified by `context_type` and a context-specific source reference.
 2. If the transfer policy requires inspection, the system SHALL create an `inspection_cases` record with `context_type = 'transfer'` tied to the `transfer_line`, item, lot, and location context.
 3. Inspection SHALL record the pass/fail result, actor, timestamp, reason, remarks, and evidence where required, using `inspection_evidence` for evidence capture.
 4. Transfer-specific non-conformance SHALL block completion or route to an approved exception/resolution path using `inspection_dispositions`.
 5. Conformance SHALL allow execution/completion only after the transfer's other prerequisites pass.
 6. Transfer inspection SHALL not modify inbound `wrr_inspection_logs` or WRR status and SHALL not be used to bypass inbound receiving rules.
-7. Outbound further inspection (`context_type = 'outbound'`) SHALL keep the outbound commitment active (`status = 'inspection_pending'`) and SHALL NOT move the lot to a new location — it is not a transfer.
-8. No two inspection contexts SHALL share status enums or create incompatible inventory transitions; each context's pass/fail disposition follows the balance-effect rules defined in `11`'s design.
-9. An inspection case open beyond the approved time window without disposition SHALL surface in the supervisor attention queue via `14-notifications-and-alerts`; a supervisor may force a disposition or escalate to admin for write-off authorization.
+7. No two inspection contexts SHALL create incompatible inventory transitions; each context follows the balance-effect rules in `11`'s design.
+8. An inspection case open beyond the approved time window without disposition SHALL surface in the supervisor attention queue via `14-notifications-and-alerts`.
+
+### R3a. Daily Inspection of aging inventory
+
+1. Daily Inspection SHALL select long-stored inventory by canonical `lot_number` and connected confirmed receiving history; `lots.created_at` alone is not an aging basis.
+2. The system SHALL create an inspection transfer for exact `lot_number`, item, source `location`, quantity, and timestamps. The Daily Aging Inspection transfer SHALL be initiated from the Master Inventory dashboard by selecting an aging candidate; no separate initiation surface is required.
+3. The record SHALL capture mandatory remarks, a controlled reason/dropdown, inspection start/end timestamps, and the inspection date range.
+4. Split disposition SHALL be supported: for 10 inspected items, 3 may be `reject` routed to a designated rejects `location` and 7 may be `return_to_stock` returned to a system-suggested storage `location`.
+5. Resolution SHALL require returned quantity plus rejected quantity to equal inspected quantity, retaining exact quantities, reasons, remarks, locations, actors, and timestamps.
 
 ### R4. Physical execution and scan validation
 
@@ -115,6 +122,7 @@ Routine transfers may use a shorter path only if the approved capability/policy 
 3. Request, approval submission, inspection, execution, completion, cancellation, failure, and reversal SHALL be attributable and auditable.
 4. Evidence files SHALL use private Storage and source-record authorization.
 5. Monitoring and error responses SHALL not expose tokens, SQL, protected records outside scope, or unnecessary personal data.
+6. RLS SHALL enforce party/flow scope for `inspection_cases`, `inspection_evidence`, `inspection_dispositions`, `transfer_requests`, and `transfer_lines`; client filters and caller-supplied party values are never the sole boundary.
 
 ### R9. Offline and realtime behavior
 
@@ -129,6 +137,7 @@ Routine transfers may use a shorter path only if the approved capability/policy 
 - [ ] A valid internal location transfer can be requested with exact item/lot/quantity/source/destination context.
 - [ ] Approval-required transfers cannot execute until a current, exact approval is consumed.
 - [ ] Transfer inspection is distinct from inbound WRR inspection and blocks unsafe completion.
+- [ ] Daily aging inspection is initiated from the Master Inventory dashboard and preserves lot-number aging, inspection duration, mandatory reasons/remarks, and exact split `return_to_stock`/`reject` quantities.
 - [ ] Source/destination scans reject mismatches and support safe recovery.
 - [ ] Completion moves stock exactly once and writes one immutable `transfer` inventory transaction with both locations.
 - [ ] Completed records cannot be edited/deleted; corrections use explicit compensating actions.
@@ -143,4 +152,4 @@ Routine transfers may use a shorter path only if the approved capability/policy 
 - Depends on `04-services-and-infrastructure` for Auth, Storage, transactions/idempotency, Realtime, notifications, and monitoring.
 - Depends on `05-ui-shell-and-navigation` for office/floor routes, responsive patterns, and feedback states.
 - Depends on `09-approval-queue` for transfer approval decisions.
-- `07` owns inbound WRR inspection; `08` owns withdrawal/pick execution; `16` owns reporting over resulting transactions.
+- `07` owns inbound WRR inspection; `08` owns direct post-picking dispatch; `16` owns reporting. Pre-dispatch inspection is excluded.

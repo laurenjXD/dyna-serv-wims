@@ -108,6 +108,7 @@ A feature declares its surface when registering a route. The shell must not infe
 2. Row actions SHALL be derived from the caller's effective capability and the row's current state; unauthorized actions SHALL be omitted rather than rendered as disabled-only controls.
 3. The standard filter bar SHALL support the exact `16-reporting-and-analytics` FR-8.1 vocabulary: date range, party, flow type, and item/entity. A global cross-entity search control SHALL preserve the same authorization boundary.
 4. Filtered and searched results SHALL be produced by an authorized server query and remain subject to PostgreSQL RLS; client-side filtering SHALL not broaden or substitute for the canonical access predicate.
+5. Shared item lists, Master Inventory tables, analytics views, and exports SHALL display `supplier_item_code` for `vmi` and `dsgc_item_number` for `trading` or `supplies`; `dsgc part number` SHALL not be used.
 
 ## 4. Acceptance criteria
 

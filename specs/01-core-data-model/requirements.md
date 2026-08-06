@@ -1,5 +1,6 @@
 # Core Data Model — Requirements
 Status: Approved
+Updated: 2026-08-06
 Depends on: specs/00-steering/ (product.md, tech.md, structure.md)
 
 ## 1. Overview
@@ -27,6 +28,15 @@ The Core Data Model defines the foundational database entities, relationships, c
 
 ### Item Drill-Down & FEFO/FIFO Location Breakdown
 - **WHEN** a user views the Master Inventory dashboard, **THE SYSTEM SHALL** prioritize and display the Item Code first in the view, and **WHEN** a user clicks an item, **THE SYSTEM SHALL** display the active lots ordered by FEFO/FIFO sequence with their stacked location tags, lot numbers, and available quantities, and provide an action button to open a **History Modal** showing chronological movement history (date, time, user, total quantity received, dispatched/withdrawn), **SO THAT** the primary view remains focused on immediate fulfillment needs while full audit history remains easily accessible.
+
+### Master Inventory Tracking & Analytics Read Models
+- **WHEN** the Master Inventory or Analytics surface calculates inventory age, **THE SYSTEM SHALL** use `lot_number` as the absolute business identity and derive the age start from the earliest confirmed receiving `inventory_transaction` connected to that `lot_number`; `lots.created_at` alone SHALL not be the aging basis.
+- **WHEN** a user filters or groups Master Inventory, **THE SYSTEM SHALL** support category, item code, `flow_type`, party, `lot_number`, `locations`, status, and date range, while preserving a detail result keyed by `lot_number`.
+- **WHEN** an Excel report is exported, **THE SYSTEM SHALL** expose a connected lot-history read model with one detail row per receiving, putaway, transfer, inspection/disposition, pick, and current-balance event. Grouped summaries SHALL never replace or merge the connected detail history.
+- **WHEN** a row displays an item code, **THE SYSTEM SHALL** display `supplier_item_code` for `flow_type = 'vmi'` and `dsgc_item_number` for `flow_type = 'trading'` or `'supplies'`. The synonym `dsgc part number` is prohibited.
+  - **WHEN** financial metrics are requested, the canonical read model MAY expose approved revenue, cost, profit, margin, and price references only through a projection whose access is enforced by the RBAC/RLS owner; floor staff and party users SHALL receive no financial columns.
+
+The `01` canonical `lot_history_export` read-model contract refreshes daily, retains three years of history, and is generated and served by `16-reporting-and-analytics`. `01` owns the canonical model and source identity; `16` owns the reporting projection/export job and delivery surface.
 
 ### Integrated Inventory Picking & FIFO Override
 - **WHEN** staff prepare an outbound withdrawal, **THE SYSTEM SHALL** allow them to initiate picking directly from the Master Inventory page (removing the standalone picking page), displaying a dropdown of available lot numbers that enforces strict FIFO/FEFO sequence across dispersed locations, and **WHEN** staff attempt to override the FIFO sequence (e.g., picking a newer lot out-of-order), **THE SYSTEM SHALL** require a manager's approval via the Approval Queue before generating the final pick list, **SO THAT** picking operations are seamlessly integrated with inventory visibility while strictly enforcing rotation compliance.
@@ -83,6 +93,11 @@ The Core Data Model defines the foundational database entities, relationships, c
 15. **Durable Outbound Reservation**:
    - Stage 1 commitment MUST create `inventory_commitments` and `inventory_commitment_lines` linked to the committed `pick_list` and exact lot/location balance rows.
    - Stage 2 dispatch, cancellation/release, and expiry MUST update the reservation and affected balance rows atomically and idempotently.
+
+16. **Master Inventory Traceability Contract**:
+   - A canonical read model MUST retain `lot_number`, `flow_type`, item/category identity, location, quantities, and the source record reference for every connected history event.
+   - The read model MUST distinguish operational fields from financial projections so RLS/RBAC can deny financial columns at the data layer.
+   - Aging MUST use confirmed receiving history keyed by `lot_number`, never an arbitrary client date or `lots.created_at` alone.
 
 ## 4. Out of Scope
 - Role-based access control policy enforcement (specified in `02-rbac-roles`).

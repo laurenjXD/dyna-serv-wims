@@ -287,6 +287,7 @@ All feature-owned tables and lists consume this contract by name: **Shared Table
 - A global cross-entity search accepts a query plus an optional entity type and returns only entities the current session may read. It must use the same server authorization/RLS path as the corresponding list query; a client-side merge of separately visible and hidden records is prohibited.
 - Filter and search parameters are validated server-side, debounced for usability, represented in the URL when the route is shareable, and provide loading, empty, invalid, retry, and unauthorized/no-disclosure states through the feature's list-state contract.
 - Filters are constraints on an already authorized query, not a replacement for RLS. Export and bulk actions re-run capability and row-state checks against the canonical filtered result set.
+- Flow-based item-code display is shared: `vmi` → `supplier_item_code`; `trading`/`supplies` → `dsgc_item_number`. Alternate codes may be filter fields only; the prohibited synonym `dsgc part number` is never the displayed label.
 
 ## 9. Shared state boundaries
 

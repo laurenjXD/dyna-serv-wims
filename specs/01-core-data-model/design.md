@@ -1,5 +1,6 @@
 # Core Data Model — Design
 Status: Approved
+Updated: 2026-08-06
 Depends on: specs/00-steering/ (tech.md, structure.md), specs/01-core-data-model/requirements.md
 
 ## 1. Data Model & Schema Definitions
@@ -527,6 +528,13 @@ erDiagram
    - **Summary Table**: The Master Inventory summary table MUST prioritize and display the **Item Code** as the first and most prominent column, along with item balances and the **Oldest Received Date** across active stock.
    - **Drill-Down View**: Clicking an item expands/drills down to show the **Stacked Location & Active Lots Breakdown**, displaying active `lots` (`status = 'available'`) with Received Date, Lot #, Vendor Lot #, Partition (`vmi`/`trading`/`supplies`), Stacked Location Tag (e.g. `A1-01`), Expiration Date, Pcs, Boxes, and CBM occupied, ordered by strict FEFO/FIFO sequence.
    - **History Modal**: The full stock movement history is NOT shown inline to prevent clutter. Instead, an action button ("View History") opens a modal that fetches `inventory_transactions`. The modal displays the exact date, time, performing user, total quantity received, and total quantity dispatched/withdrawn.
+
+   - **Canonical Master Inventory read models**: The Master Inventory and reporting surfaces consume two read-model contracts owned by `01`: `master_inventory_tracking` for current lot/location balances and `lot_history_export` for connected history. These are derived read models, not duplicate ledgers.
+     - `master_inventory_tracking` is keyed by `lot_number`, item/category, `flow_type`, and `location`; it exposes derived quantities from `lot_inventory_totals`/`lot_location_balances`, FEFO/FIFO ordering metadata, and the flow-based displayed code (`supplier_item_code` for VMI; `dsgc_item_number` for Trading/Supplies).
+     - `lot_history_export` emits one detail row per connected `inventory_transaction`, inspection/disposition record, and current-balance reference, retaining `lot_number` and source-record identity. A grouped summary is an additional projection and never substitutes for detail rows.
+     - Aging is calculated as report `as_of` minus the earliest confirmed receiving transaction connected to the same `lot_number`; `lots.created_at` is metadata only and is not the aging basis.
+     - Financial fields (revenue, cost, profit, margin, and price references) are a separate projection. `02-rbac-roles` owns the capability and RLS enforcement; a user without the approved financial grant receives no financial columns, not merely null values.
+     - This canonical read-model approach is preferred over browser-side joins across independently filtered endpoints because it preserves lot traceability, makes export grouping deterministic, and gives RLS one server-side query boundary. `lot_history_export` refreshes daily, retains three years, and is generated/served by `16-reporting-and-analytics`; `01` owns the canonical read-model contract and connected source identity.
 
 5. **Unified Conditional Item Enrollment Workflow**:
    - Item enrollment operates via a single unified form interface. Selecting the primary `flow_type` (`vmi`, `trading`, or `supplies`) dynamically reveals conditional fields (e.g. default supplier party & SPQ meters for VMI; currency, buying price & selling price for Trading; internal reorder threshold for Supplies), writing cleanly to the single unified `items` table.

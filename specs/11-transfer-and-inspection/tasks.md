@@ -1,7 +1,7 @@
 # Transfer & Inspection — Implementation Plan
 
 Status: Approved
-Updated: 2026-08-05
+Updated: 2026-08-06
 
 ## Implementation gate
 
@@ -140,6 +140,7 @@ Testing: Full matrix below.
 - [ ] Execute source/destination scans and verify mismatch feedback.
 - [ ] Complete a conformant transfer and verify transaction/history state.
 - [ ] Verify failed inspection blocks completion and resolution unblocks only when authorized.
+- [ ] Verify Daily Inspection lot-number aging initiated from the Master Inventory dashboard, duration/reasons/remarks, and exact split return/reject accounting.
 - [ ] Verify offline scan observation, reconnect replay, rejection/conflict, and online-only completion.
 - [ ] Verify office mobile/desktop and floor 375/430px layouts, focus, contrast, touch targets, no-hover feedback, and reduced motion.
 

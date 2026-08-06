@@ -1,7 +1,7 @@
 # Transfer & Inspection — Design
 
 Status: Approved
-Updated: 2026-08-05
+Updated: 2026-08-06
 
 ## 1. Design intent
 
@@ -15,11 +15,10 @@ The design intentionally separates three concerns:
 - transfer approval decisions in `09`;
 - transfer business mutation and inspection in this feature.
 
-`11` additionally owns the shared inspection capability used across three operational contexts:
+`11` additionally owns the shared inspection capability used across inbound and transfer contexts:
 
 - **Inbound inspection** — context linkage owned by `07`; `11` provides `inspection_cases`, `inspection_evidence`, and `inspection_dispositions` as the shared record structure that `07` populates with a `wrr_item` source reference.
-- **Outbound further inspection** — context linkage owned by `08`; `11` provides the shared record structure that `08` populates with a `pick_list_item` source reference while keeping the outbound commitment active until pass/fail resolution.
-- **Routine transfer inspection** — owned entirely by `11`; the shared record structure is populated with a `transfer_line` source reference.
+- **Routine and aging transfer inspection** — owned entirely by `11`; the shared record structure is populated with a `transfer_line` source reference.
 
 No context reuses another's status enums or creates incompatible inventory transitions.
 
@@ -73,9 +72,9 @@ transfer_lines
 ```text
 inspection_cases
   id,
-  context_type      (inbound | outbound | transfer),
-  source_ref_type   (wrr_item | pick_list_item | transfer_line),
-  source_ref_id     UUID -- points to wrr_items.id, pick_list_items.id, or transfer_lines.id
+  context_type      (inbound | transfer),
+  source_ref_type   (wrr_item | transfer_line),
+  source_ref_id     UUID -- points to wrr_items.id or transfer_lines.id
                          -- validated at application layer; no cross-table DB FK
   lot_id, item_id, party_id, flow_type,
   status            (open | passed | failed | cancelled),
@@ -90,7 +89,7 @@ inspection_evidence
 inspection_dispositions
   id, inspection_case_id,
   disposition_type  (store | quarantine | return_to_party | hold | write_off
-                     | dispatch | replace | return_to_shelf | return_to_origin),
+                     | return_to_stock | reject | return_to_origin),
   quantity_affected, lot_location_balance_id, notes, applied_by, applied_at
 ```
 
@@ -167,31 +166,19 @@ All three contexts use the same `inspection_cases`, `inspection_evidence`, and `
 - Balance effect on fail: see §6.3 disposition table.
 - `11` provides the shared record model. `07` owns the WRR/CIPL linkage and does not route through transfer inspection. The shared `inspection_cases` table supplements but does not replace `wrr_inspection_logs`.
 
-**Outbound further inspection (context owned by `08`)**
-
-- Created when a picked `pick_list_item` is routed to further inspection instead of dispatch.
-- `context_type = 'outbound'`, `source_ref_type = 'pick_list_item'`.
-- `08` owns the commitment linkage (`inventory_commitment_lines`) and keeps the commitment `status = 'inspection_pending'` until resolution.
-- The lot does **not** change location during outbound further inspection — physical movement is not a transfer.
-- Available dispositions: `dispatch` (pass — completes commitment execution), `replace` (fail — new pick), `return_to_shelf` (fail — commitment released).
-- Balance effect on pass (`dispatch`): commitment executed normally; `qty_committed` released and `qty_remaining` decremented; `inventory_transaction` with `movement_type = 'pick'` inserted.
-- Balance effect on fail: see §6.3 disposition table.
-- `11` provides the shared record model. `08` owns the commitment lifecycle. No transfer line is created for an outbound inspection case.
-
-**Routine transfer inspection (context owned by `11`)**
+**Routine and aging transfer inspection (context owned by `11`)**
 
 - Created when a `transfer_line` is flagged for inspection during an internal location movement.
 - `context_type = 'transfer'`, `source_ref_type = 'transfer_line'`.
-- The lot may be physically present at an intermediate inspection location or still at the source location, depending on the approved transfer policy for when physical movement precedes the inspection pass.
-- Available dispositions: `store` (pass — destination balance updated), `return_to_origin` (fail — source balance restored), `hold` (fail — lot quarantined at current location).
-- Balance effect: see §6.3 disposition table.
+- Daily Aging Inspection is initiated from the Master Inventory dashboard: the user selects an aging candidate from `master_inventory_tracking`, then starts the inspection transfer from that selected lot/location row. No dedicated Quality Control/Aging page is introduced by this spec.
+- Daily Inspection captures start/end/date range, mandatory reason/remarks, and exact split dispositions. `return_to_stock` uses a system-suggested destination `location`; `reject` requires the designated rejects `location`.
+- Returned quantity plus rejected quantity must equal inspected quantity before the transfer can complete.
 
 ### 6.2 Context isolation invariants
 
 - An inbound inspection case never writes or modifies `wrr_inspection_logs` except through the `07`-owned conformance path; the shared `inspection_cases` table is additive and does not replace `wrr_inspection_logs`.
-- An outbound inspection case never advances the transfer lifecycle and never moves the lot's `lot_location_balances` row to a new location.
-- A transfer inspection case never modifies `inventory_commitments` or `inventory_commitment_lines` and is not a substitute for outbound inspection.
-- `inspection_cases.status` uses a single four-value enum (`open | passed | failed | cancelled`) shared across all contexts. Context-specific intermediate states (e.g. `inspection_pending` for outbound commitments) remain in the owning feature's tables, not in `inspection_cases`.
+- A transfer inspection case never modifies outbound commitments; `08` dispatches directly after picking.
+- `inspection_cases.status` uses a single four-value enum (`open | passed | failed | cancelled`) for inbound and transfer contexts. Transfer `inspection_pending` belongs to the transfer lifecycle, not to outbound commitments.
 
 ### 6.3 Failed inspection disposition table
 
@@ -200,8 +187,8 @@ All three contexts use the same `inspection_cases`, `inspection_evidence`, and `
 | Inbound | Return to party: lot held at inspection location, party notified, WRR line flagged | `return_to_party` | `qty_remaining` decremented when physically returned; lot transitions to `quarantined` or `depleted` |
 | Inbound | Hold: lot remains at inspection location in quarantined state | `hold` | No balance change until explicit resolution |
 | Inbound | Write off: lot written off | `write_off` | `qty_remaining` → 0; `inventory_transaction` with `movement_type = 'inventory_reconciliation'` inserted |
-| Outbound | Replace: commitment cancelled, new pick from available stock | `replace` | `qty_committed` released; new pick-list generated by `08` |
-| Outbound | Return to shelf: commitment cancelled, lot returns to available | `return_to_shelf` | `qty_committed` released; lot status unchanged; stock available for future allocation |
+| Transfer/aging | Return to stock: quantity returned to the suggested/confirmed storage `location` | `return_to_stock` | Destination balance updated and the transfer is recorded |
+| Transfer/aging | Reject: quantity routed to the designated rejects `location` | `reject` | Rejected quantity is excluded from available stock and the disposition retains reason/destination |
 | Transfer | Return to origin: qty returned to source location balance | `return_to_origin` | Source `lot_location_balances.qty_remaining` restored by the reversed qty; destination balance not created; `inventory_transaction` with `movement_type = 'transfer'` inserted for the reversal movement |
 | Transfer | Hold: lot remains at current location in quarantined state | `hold` | No balance change until explicit resolution; lot may be quarantined |
 
@@ -268,7 +255,7 @@ The `lot_location_balances` row for `(lot_id, from_location_id)` has `qty_remain
 - `lot_id`, `item_id`, `flow_type`, `qty`, `performed_by_user_id`, `created_at`
 - Source `transfer_lines.id` referenced via the correlation/reference field
 
-## 8. Committed quantities and outbound inspection rules
+## 8. Committed quantities and outbound boundary
 
 ### 8.1 Committed stock cannot be transferred
 
@@ -276,16 +263,9 @@ A transfer line for a lot-location pair where `lot_location_balances.qty_committ
 
 The server command must re-evaluate this constraint at execution time with an appropriate lock, not only at request creation time.
 
-### 8.2 Outbound further inspection differs from transfer inspection
+### 8.2 Transfer inspection boundary
 
-Outbound further inspection (`context_type = 'outbound'`) is not a transfer:
-
-- The lot does **not** move to a new `location_id` during outbound inspection. The `lot_location_balances` row remains at the pick location.
-- The `inventory_commitment_lines` reservation stays `status = 'inspection_pending'` and `qty_committed` is not released until pass/fail resolution.
-- No `inspection_case_id` is set on any `transfer_lines` row, because no transfer line exists for an outbound inspection case.
-- The outbound inspection case is linked to a `pick_list_item`, not a `transfer_line`.
-
-Transfer inspection (`context_type = 'transfer'`) involves physical location movement. The lot's authoritative location changes on a passed transfer. A failed transfer inspection with `return_to_origin` disposition reverses the source balance decrement and does not create a destination balance row.
+Transfer inspection involves physical location movement. The lot's authoritative location changes on a passed transfer. A failed transfer inspection with `return_to_origin` disposition reverses the source balance decrement and does not create a destination balance row. It does not modify outbound commitments; `08` dispatches directly after picking.
 
 ## 9. Offline and infrastructure integration
 
@@ -300,12 +280,12 @@ The transfer history reads transfer-owned request/inspection state plus the auth
 ## 11. Design verification before approval
 
 - [x] Internal location-to-location scope defined; inter-warehouse transfer explicitly excluded.
-- [x] Shared inspection data model (`inspection_cases`, `inspection_evidence`, `inspection_dispositions`) defined with three context types and context isolation invariants.
+- [x] Shared inspection data model (`inspection_cases`, `inspection_evidence`, `inspection_dispositions`) defined with inbound and transfer context isolation invariants.
 - [x] Transfer request/line persistence defined (`transfer_requests`, `transfer_lines`).
 - [x] Source/destination balance movement using `lot_location_balances` defined with atomic transaction invariants.
 - [x] Committed stock transfer block rule defined.
-- [x] Outbound inspection distinction from transfer inspection defined.
-- [x] Failed inspection disposition table with balance effects defined for all three contexts.
+- [x] Outbound pre-dispatch inspection is excluded; `08` dispatches directly after picking.
+- [x] Failed inspection disposition table with balance effects defined for inbound and transfer contexts.
 - [x] Reconciliation and supervisor escalation path defined.
 - [ ] Confirm which transfer types require approval and which may use an approved routine-transfer shortcut.
 - [ ] Reconcile `inspection_cases` table names and polymorphic `source_ref` pattern with `01-core-data-model` migration ownership.

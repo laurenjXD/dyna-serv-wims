@@ -1,7 +1,7 @@
 # Outgoing Withdrawal & Two-Stage Commitment — Implementation Plan
 
 Status: Approved
-Updated: 2026-08-05
+Updated: 2026-08-06
 
 ## Implementation gate
 
@@ -157,6 +157,7 @@ Testing: Full applicable matrix below.
 - [ ] Verify FIFO override routes to approval and blocks commitment until approved.
 - [ ] Verify Stage 1 pick list/reservation without on-hand decrement.
 - [ ] Simulate floor pick/dispatch scans and verify wrong/duplicate/over/under/stale handling.
+- [ ] Verify the post-pick flow proceeds directly to dispatch with no pre-dispatch inspection route, state, or block.
 - [ ] Verify final dispatch produces one decrement, one pick transaction, released reservation, and acknowledgement-receipt availability.
 - [ ] Verify document failure/retry does not reverse inventory.
 - [ ] Verify offline observations, reconnect replay, rejection/conflict, and Tier 2 blocking.

@@ -1,7 +1,7 @@
 # Reporting & Analytics — Design
 
 Status: Approved
-Updated: 2026-08-05
+Updated: 2026-08-06
 
 Cites foundational specs:
 
@@ -447,6 +447,10 @@ HAVING SUM(lit.qty_available) < i.min_reorder_level;
 
 Direct aggregate queries against `lot_location_balances` (e.g., `SELECT SUM(qty_remaining) FROM lot_location_balances`) are prohibited at the analytics layer. Use `lot_inventory_totals`.
 
+### 5.2a Master Inventory aging and display
+
+The canonical query consumes `01-core-data-model`'s `master_inventory_tracking` read model. Age is `as_of - earliest confirmed receiving timestamp` for the same `lot_number`; `lots.created_at` is metadata only. Displayed item code is `supplier_item_code` for VMI and `dsgc_item_number` for Trading/Supplies.
+
 ### 5.3 Heatmap Query
 
 Primary path (uses materialized view when available):
@@ -526,11 +530,13 @@ WHERE pl.created_at >= $start_date AND pl.created_at <= $end_date;
 
 ### 5.6 Export Query Pagination
 
-CSV exports paginate in 1000-row chunks using keyset pagination (not OFFSET) to avoid performance degradation on large datasets:
+Excel-compatible exports paginate in 1000-row chunks using keyset pagination (not OFFSET). The Connected Lot History workbook uses the canonical `lot_history_export` read model: summary grouping is separate from a detail sheet with one row per connected event. The read model refreshes daily and retains three years; `16` owns generation, serving, and Excel delivery while `01` owns the canonical model and source identity.
 
 ```sql
 -- Transaction Ledger export, page N
-SELECT it.*, i.code AS item_code, l.lot_number, p.name AS party_name
+SELECT it.*, l.lot_number,
+       CASE WHEN it.flow_type = 'vmi' THEN i.supplier_item_code ELSE i.dsgc_item_number END AS displayed_item_code,
+       p.name AS party_name
 FROM inventory_transactions it
 JOIN items i ON i.id = it.item_id
 JOIN lots l ON l.id = it.lot_id
@@ -553,8 +559,9 @@ LIMIT 1000;
 | `reporting.read` | `global` | `supervisor`, `administrator` | Full access to all analytics views and tabular drill-downs across all parties. |
 | `reporting.export` | `global` | `administrator` (supervisor by explicit grant) | Access to CSV export endpoints. |
 | `reporting.party_read` | `assigned_party` | `party_user` | Scoped analytics access — own party's data only. VMI/Trading flows only; Supplies never exposed to party users per `02` §3.2. |
+| `reporting.financial_read` | `global` | `supervisor`, `administrator` | Trading revenue, cost, profit, margin, and price references; never floor staff or party users. |
 
-`reporting.party_read` is a new capability identifier introduced by this spec. It must be added to the canonical capability catalog in `02-rbac-roles/design.md` §3.2 before implementation. The `role_permissions` seed data maps `party_user` → `reporting.party_read` / `assigned_party`.
+`reporting.party_read` and `reporting.financial_read` are defined in the canonical `02-rbac-roles` capability catalog. Financial absence must remove the columns at the projection/RLS boundary, not return nulls.
 
 ### 6.2 RLS Behavior
 

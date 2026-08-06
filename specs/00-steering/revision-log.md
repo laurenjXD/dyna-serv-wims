@@ -4,6 +4,27 @@ Every merge conflict and major revision, dated, with the resolution. This is the
 
 ## Resolved
 
+## Product Owner decisions closing the Master Inventory/inspection amendment (2026-08-06)
+
+The Product Owner resolved the three named blockers: Daily Aging Inspection transfers are initiated from the Master Inventory dashboard; `reporting.financial_read` is granted to Supervisor and Administrator for operational margin oversight; and `lot_history_export` refreshes daily, retains three years, and is generated/served by `16-reporting-and-analytics`, while `01-core-data-model` owns the canonical read model and connected source identity. `02-rbac-roles` now defines the capability with server/RLS column exclusion for floor and party users. `01`, `11`, and `16` applied the decisions and returned to Approved; Gantt rows 1.2, 1.6, and 3.1 and the root status mirrors were updated. The `rbac-rls-reviewer` and `design-system-auditor` passes found no remaining blockers; no application code or migrations were written.
+
+## Master Inventory, inspection, and direct-dispatch revision (2026-08-06)
+
+Read-only pre-edit review found six gaps: `01` described a Master Inventory UI but had no canonical read-model contract for lot aging, connected history, dynamic item-code display, or financial projection separation; `16` used `lots.created_at`, had CSV-only export language, and lacked the requested financial and bulk-history contract; `05` lacked the shared item-code display rule; `07` lacked explicit visual receiving dispositions; and `08`/`11` retained outbound pre-dispatch inspection logic.
+
+Resolved in the documentation amendment:
+
+1. `01` now owns `master_inventory_tracking` and `lot_history_export` derived read-model contracts. Aging is based on the earliest confirmed receiving history for canonical `lot_number`; grouped exports preserve one detail row per connected event. The read-model approach is preferred over browser-side joins and may later be materialized only after refresh/retention ownership is resolved.
+2. `16` consumes those read models, adds bulk filters/grouping, Excel-compatible Connected Lot History exports, flow-based code display, and financial metrics gated by `reporting.financial_read`.
+3. `05` propagates `vmi` → `supplier_item_code` and `trading`/`supplies` → `dsgc_item_number`; `dsgc part number` is explicitly prohibited.
+4. `07` now requires explicit visual Receiving inspection, quantity-splittable `on_hold`/`reject`, mandatory hold remarks/reason, rejects `location`, and RTV traceability.
+5. `11` now defines Daily Inspection for aging inventory, exact split `return_to_stock`/`reject` accounting, duration/date range, mandatory reasons/remarks, and the unresolved Product Owner question: **"Which page/UI surface should these aging inspection transfers be initiated from?"**
+6. `08` and `11` remove the outbound pre-dispatch inspection branch; outbound dispatch is direct after accepted picking.
+
+The `rbac-rls-reviewer` pass found that `reporting.financial_read` must be added to `02-rbac-roles`, and that receiving/inspection/history projections require concrete RLS/view reconciliation at the data layer. The `design-system-auditor` pass found no new token, font, color, touch-target, contrast, motion, or icon drift. `01`, `11`, and `16` remain Under Revision pending these named blockers; `05`, `07`, and `08` return to Approved after documentation review. No application code or migration was written.
+
+Product-owner calls required: the Daily Inspection initiation surface; whether supervisors receive `reporting.financial_read` or financial metrics remain administrator-only; and approval of `lot_history_export` refresh/retention ownership.
+
 **Warehouse count** — uploaded system_design.md specified two warehouses; prior work had settled on one. **Resolved: one warehouse.** No `warehouse_id` anywhere in the schema.
 
 **Naming: parties/items/locations vs suppliers/SKU/bins** — uploaded doc reverted to supplier/SKU/bin terminology. **Resolved: parties/items/locations stands.** See `structure.md` glossary.

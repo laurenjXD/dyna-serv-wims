@@ -1,7 +1,7 @@
 # Outgoing Withdrawal & Two-Stage Commitment — Design
 
 Status: Approved
-Updated: 2026-08-05
+Updated: 2026-08-06
 
 ## 1. Design intent
 
@@ -54,7 +54,7 @@ app/(authenticated)/
   pick-lists/
     [pickListId]/page.tsx       # committed pick-list detail
     [pickListId]/pick/page.tsx  # floor pick execution
-    [pickListId]/dispatch/page.tsx # floor dispatch/inspection disposition
+    [pickListId]/dispatch/page.tsx # floor direct dispatch confirmation
   outgoing-ledger/page.tsx      # office/review read-only ledger
 ```
 
@@ -87,27 +87,7 @@ picked / dispatch_ready
     │       ├── pick_list → dispatched
     │       └── acknowledgement_receipt generation request → 10
     │
-    └── further_inspection disposition
-            ▼
-        inspection_pending
-        inventory_commitments.status = 'inspection_pending'
-        lot_location_balances.qty_committed preserved (NOT released)
-        inventory_commitment_lines remain active
-            │
-            ├── inspection_pass
-            │       ▼
-            │  picked / dispatch_ready → dispatch disposition (see above)
-            │
-            └── inspection_fail
-                    ├── (a) replace with compliant stock
-                    │         original commitment lines released
-                    │         new pick cycle from available inventory
-                    └── (b) cancel commitment
-                              qty_committed decremented on lot_location_balances
-                              inventory_commitment_lines → cancelled
-                              inventory_commitments → cancelled
-                              pick_list → cancelled
-                              NO inventory_transaction(pick) inserted
+    └── direct dispatch after all accepted pick scans
 ```
 
 Ownership boundaries:
@@ -153,7 +133,7 @@ It does not decrement on-hand inventory or insert the final `pick` transaction. 
 
 The floor flow reads the committed pick list and presents one expected scan task at a time. Each accepted scan is associated with the committed item/lot/location and quantity. Local scan observations may be stored as Tier 1 only after `03` approval; they are not final inventory outcomes.
 
-After all pick/scan lines on a pick list are accepted, the floor user or supervisor chooses a post-pick disposition before Stage 2 commit. The disposition command receives the pick-list ID, expected version, accepted scan/quantity evidence, chosen disposition (`dispatch` or `further_inspection`), and idempotency key.
+After all pick/scan lines on a pick list are accepted, the floor user or supervisor proceeds directly to Stage 2 dispatch. The dispatch command receives the pick-list ID, expected version, accepted scan/quantity evidence, and idempotency key.
 
 **`dispatch` disposition.** The final dispatch command rechecks:
 
@@ -176,28 +156,7 @@ On successful dispatch, one atomic transaction:
 
 Email or PDF generation failure cannot roll back the committed stock movement; the document remains in an observable retry/attention state.
 
-**`further_inspection` disposition.** When the floor user or supervisor chooses `further_inspection` after all scan lines are accepted, the system:
-
-1. transitions `inventory_commitments.status` to `inspection_pending`;
-2. does NOT release `lot_location_balances.qty_committed` — reserved quantities remain held;
-3. does NOT insert an `inventory_transactions` row;
-4. creates an outbound inspection case linked to the `pick_list_id` and the specific `pick_list_items` under review.
-
-The inspection work is executed through the shared inspection capability defined in `11`. While `inspection_pending`:
-
-- `inventory_commitment_lines` remain `active`;
-- `lot_location_balances.qty_committed` is preserved on every affected balance row;
-- dispatch is blocked; the pick list cannot be moved to `dispatched` without an inspection resolution.
-
-**Inspection pass.** The pick list returns to `picked / dispatch_ready`. The floor user selects the `dispatch` disposition, and the dispatch commit proceeds as described above.
-
-**Inspection fail.** Two and only two resolution paths exist:
-
-(a) **Replace with compliant stock.** The held stock is moved to a hold or quarantine location (a transfer/hold command outside this feature). The original `inventory_commitment_lines` are released (`qty_committed` decremented on each affected `lot_location_balances` row; lines transition to `released`). A new pick cycle begins against currently available inventory, producing a new commitment and pick list.
-
-(b) **Cancel the commitment.** Each affected `lot_location_balances.qty_committed` is decremented back to zero for those lines, returning reserved stock to `qty_available`. Each `inventory_commitment_line` transitions to `cancelled`. The `inventory_commitments` header transitions to `cancelled` and stamps `released_at`. The `pick_list` transitions to `cancelled`.
-
-In both fail paths, no `inventory_transactions` row with `movement_type = 'pick'` is inserted. `qty_remaining` is never decremented by a failed inspection outcome. A failed inspection never silently completes a dispatch.
+There is intentionally no outbound inspection disposition. If stock requires aging or internal inspection, it must be resolved by `11` before it is selected and committed for picking. Once scans are accepted, dispatch is direct.
 
 ## 8. Pricing and document boundary
 

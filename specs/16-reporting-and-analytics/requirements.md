@@ -1,7 +1,7 @@
 # Reporting & Analytics — Requirements
 
 Status: Approved
-Updated: 2026-08-05
+Updated: 2026-08-06
 
 Depends on:
 - `specs/00-steering/product.md`
@@ -14,6 +14,8 @@ Depends on:
 - `specs/09-approval-queue/` (read-only reference for FIFO override counts)
 - `specs/12-vmi-billing/` (informational reference only — no recalculation)
 - `specs/13-trading-orders-and-pricing/` (informational reference only — no recalculation)
+
+The approved `lot_history_export` operating contract is a daily refresh with three-year retention. `01-core-data-model` owns the canonical read model and connected source identity; `16-reporting-and-analytics` owns generation, serving, and Excel delivery.
 
 ---
 
@@ -72,7 +74,7 @@ Office-first (desktop-priority). The analytics surface is an office/supervisor p
 
 **FR-2.1 Stock Level Summary:** Display a tabular summary of qty_available, qty_committed, and qty_remaining per item and lot, sourced from `lot_inventory_totals` (for aggregated quantities) joined to `lots` and `items`. Per-location detail SHALL be sourced from `lot_location_balances` only when drilling into a specific lot.
 
-**FR-2.2 Stock Aging Report:** Display a sortable table of active lots ordered by `lots.created_at` ascending (oldest first). Each row SHALL show: lot number, item code, item name, flow type, owner party (VMI only), days since receipt, expiry date (if applicable), and current qty_available. Lots where `expiry_date` is within 30 days SHALL be flagged with a visual indicator.
+**FR-2.2 Stock Aging Report:** Display active inventory grouped by canonical `lot_number`. Aging SHALL use the earliest confirmed receiving event connected to that `lot_number`; `lots.created_at` alone is not an aging basis. Each row SHALL show lot number, flow-appropriate item code, item name, flow type, party where authorized, age, expiry date, and current `qty_available`.
 
 **FR-2.3 Lot Status Distribution:** Display a donut chart showing the count of `lots` grouped by `lots.status`. The canonical status values from `01-core-data-model` are: `staged`, `available`, `quarantined`, `depleted`, `expired`. Each segment SHALL be labeled with the status name and count — color alone is not sufficient.
 
@@ -134,7 +136,9 @@ Office-first (desktop-priority). The analytics surface is an office/supervisor p
 
 **FR-6.2 Item Movement Velocity:** Display a ranked table of Trading items by total units inbound (received via `inventory_transactions.movement_type = 'receiving'`) and outbound (via `movement_type = 'pick'`) in the selected period.
 
-**FR-6.3 Margin Reference Display:** If the invoking user holds `reporting.read` (global) AND the Trading pricing contract from spec `13` is available, display the item's `selling_price` and `buying_price` from the `items` master record as reference values. These fields are display-only — no recalculation is performed. Party users never see pricing fields.
+**FR-6.3 Margin Reference Display:** Users with the approved financial-report capability may see approved Trading revenue, cost, profit, margin, and price references from source pricing/document snapshots. These are display-only; no recalculation is performed. Floor staff and party users receive no financial columns.
+
+**FR-6.4 Financial boundary:** Financial metrics require data-layer RLS/RBAC and a separate projection; hiding a UI field is insufficient.
 
 ---
 
@@ -152,16 +156,21 @@ Office-first (desktop-priority). The analytics surface is an office/supervisor p
 
 **FR-8.1** A dedicated Reports view at `/reports` SHALL provide configurable date range, party, flow type, and item filters that apply to all report types.
 
+**FR-8.1a** Master Inventory and Reports SHALL support bulk filters/grouping by category, item code, `flow_type`, party, `lot_number`, `locations`, status, and date range. Grouped summaries SHALL preserve a detail result keyed by `lot_number`.
+
 **FR-8.2** Each analytics domain (Inventory, Receiving, Outbound, VMI, Trading, Operational) SHALL have a tabular drill-down view showing the full underlying dataset for the selected filters.
 
-**FR-8.3** The following CSV exports SHALL be supported (each scoped to the invoking user's authorization):
+**FR-8.3** The following Excel-compatible exports SHALL be supported (each scoped to the invoking user's authorization):
 
 - **Inventory Snapshot:** current qty_available, qty_committed, qty_remaining per lot, item, and location.
 - **Transaction Ledger:** full `inventory_transactions` export with lot, item, movement type, flow, qty, and timestamps.
 - **Receiving History:** `wrr_documents` with `wrr_items` line detail and inspection outcomes.
 - **Dispatch History:** `pick_lists` with `pick_list_items` line detail.
+- **Connected Lot History:** a workbook with grouped summary and one detail row per connected receiving, putaway, transfer, inspection/disposition, pick, and balance event, retaining `lot_number` and source identity.
 
 **FR-8.4** Export files SHALL be generated server-side, paginated in 1000-row chunks, sanitized, and scoped to the caller's authorization. No data outside the caller's RLS-visible rows SHALL appear in any export.
+
+**FR-8.4a** Exports SHALL reuse the canonical server-side read model from `01-core-data-model`; browser-side joins or supplemental filtering are prohibited. Financial columns require the financial capability.
 
 **FR-8.5** Scheduled report generation (PDF export to Storage, with artifact retention) is deferred to a future iteration and SHALL reference spec `04`'s artifact pipeline when ready.
 
@@ -198,7 +207,7 @@ The following components SHALL be defined as named, reusable UI components. They
 
 **NFR-5 Accessibility:** All charts SHALL meet WCAG AA contrast requirements. Color SHALL never be the sole data-encoding signal — every chart segment, status badge, and trend indicator pairs color with a label, icon, or pattern. Heatmap cells SHALL be keyboard navigable with tooltip exposure on focus.
 
-**NFR-6 Sensitive Field Protection:** `items.buying_price`, `items.selling_price`, and `items.default_supplier_party_id` SHALL never appear in party-user projections or exports. These fields are excluded at the RLS/view layer, not by application-level column filtering.
+**NFR-6 Sensitive Field Protection:** Pricing, revenue, cost, profit, and margin fields SHALL never appear in floor-staff or party-user projections/exports. Exclusion is enforced at the RLS/view layer, not by application column filtering.
 
 **NFR-7 Export Safety:** Export route handlers SHALL re-verify the caller's `reporting.export` capability and party scope on every request. The scoped result set is the canonical output — no supplemental filtering replaces the RLS-enforced boundary.
 
@@ -231,7 +240,7 @@ The following components SHALL be defined as named, reusable UI components. They
 
 **AC-6** The low stock report uses `items.min_reorder_level` as the threshold value; the field name `reorder_level` does not appear in any query or component.
 
-**AC-7** CSV export for the Transaction Ledger is scoped to the caller's RLS-visible rows. A party user's export contains only their own party's rows; an admin export contains all rows. Exports include no `buying_price`, `selling_price`, or `default_supplier_party_id` columns for party-user callers.
+**AC-7** Excel-compatible exports are RLS-scoped and Connected Lot History preserves every connected event for each filtered `lot_number`; floor and party users receive no financial columns.
 
 **AC-8** No chart uses color as the sole encoding mechanism. Every trend arrow, status badge, and donut segment is accompanied by a text label or icon readable without color perception.
 

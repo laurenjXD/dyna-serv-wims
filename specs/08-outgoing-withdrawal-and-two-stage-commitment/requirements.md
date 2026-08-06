@@ -1,7 +1,7 @@
 # Outgoing Withdrawal & Two-Stage Commitment — Requirements
 
 Status: Approved
-Updated: 2026-08-05
+Updated: 2026-08-06
 
 ## 1. Purpose and scope
 
@@ -35,21 +35,15 @@ pick-list generation input → FIFO/FEFO allocation
                               physical_picking
                                       ▼
                          picked / dispatch_ready
-                                      ├── dispatch → dispatched
-                                      └── further_inspection (inspection_pending)
-                                               ├── inspection_pass → dispatch → dispatched
-                                               └── inspection_fail
-                                                         ├── (a) replace with compliant stock → new pick cycle
-                                                         └── (b) cancel commitment → stock returned to available
+                                      └── dispatch → dispatched
 ```
 
 - Before successful pick-list generation, no quantity is reserved and no pick list exists.
 - `committed` reserves selected lot/location quantities and prevents double allocation without decrementing on-hand inventory.
 - A FIFO override approval blocks pick-list generation and commitment until the approved decision is available. Standard FIFO/FEFO does not require approval.
-- Physical picking proceeds on the committed pick list; when all lines are accepted, the floor user or supervisor chooses a post-pick disposition: `dispatch` or `further_inspection`.
-- `further_inspection` holds the commitment active (`inspection_pending`) with `qty_committed` preserved until the inspection resolves via pass or fail.
+- Physical picking proceeds on the committed pick list; when all lines are accepted, the floor user or supervisor proceeds directly to `dispatch`.
 - `dispatched` is the authoritative outbound completion state and is paired with the immutable `pick` transaction and priced acknowledgement receipt.
-- Failed inspection never silently completes a dispatch; the commitment is either replaced with compliant stock or cancelled entirely.
+- Aging or internal inspection is resolved by `11` before stock is selected for picking; outbound dispatch has no inspection branch.
 
 ## 4. Functional requirements
 
@@ -115,15 +109,8 @@ pick-list generation input → FIFO/FEFO allocation
 5. Final dispatch confirmation SHALL atomically verify the commitment and scans, decrement authoritative inventory, release the committed quantity, transition the pick list, and insert an immutable `inventory_transaction` with `movement_type = 'pick'`.
 6. Duplicate confirmation or a lost response SHALL return the original authoritative outcome and SHALL not decrement inventory twice.
 7. Partial fulfillment, shortage, damaged stock, and scan mismatch behavior SHALL be explicitly resolved before approval; the client SHALL not silently complete a partial pick as full dispatch.
-8. After all pick/scan lines on a pick list are accepted, the floor user or supervisor SHALL choose a post-pick disposition before Stage 2 commit:
-   - **`dispatch`**: goods are physically handed over to the party or carrier. This triggers the Stage 2 final commit (decrements inventory, releases reservation, writes the immutable pick transaction, and makes the priced acknowledgement receipt available).
-   - **`further_inspection`**: goods require an outbound quality check before handoff. The `inventory_commitments` record transitions to `inspection_pending`; the commitment remains ACTIVE; `lot_location_balances.qty_committed` is preserved and is not released; dispatch is blocked until the inspection resolves.
-9. While in `inspection_pending`, the `inventory_commitment_lines` SHALL remain active and reserved quantities SHALL NOT be returned to general availability. An outbound inspection case SHALL be created, linked to the `pick_list_id` and the specific `pick_list_items` under review; the inspection work is handled by the shared inspection capability defined in `11`.
-10. If the outbound inspection **passes**, the system SHALL return the pick list to `picked / dispatch_ready` and allow the floor user to choose the `dispatch` disposition, completing Stage 2 normally.
-11. If the outbound inspection **fails**, the system SHALL present two and only two resolution paths:
-    a. **Replace with compliant stock**: the held stock is returned to a hold or quarantine location; a new pick cycle begins against currently available inventory; the original commitment lines are released and superseded.
-    b. **Cancel the commitment**: `qty_committed` on each affected `lot_location_balances` row is decremented (reservation released); each `inventory_commitment_line` transitions to `cancelled`; the `inventory_commitments` header transitions to `cancelled`; the pick list is cancelled.
-    A failed inspection SHALL never silently complete a dispatch. A failed-inspection outcome SHALL NOT decrement `qty_remaining` or insert an `inventory_transaction` with `movement_type = 'pick'`.
+8. After all pick/scan lines on a pick list are accepted, the floor user or supervisor SHALL proceed directly to `dispatch`; Stage 2 verifies scans, decrements inventory, releases reservations, writes the immutable `pick` transaction, and makes the priced `acknowledgement_receipt` available.
+9. Stage 2 SHALL have no quality-check branch that blocks or reroutes dispatch.
 
 ### R8. Priced documents and handoff
 
@@ -163,9 +150,7 @@ pick-list generation input → FIFO/FEFO allocation
 - [ ] Stage 1 commitment reserves stock without decrementing inventory and creates exactly one operational `pick_list`.
 - [ ] Stage 2 confirmation decrements `qty_remaining`, releases `qty_committed`, writes exactly one immutable pick transaction, and exposes the priced acknowledgement receipt.
 - [ ] Stage 1 increments `qty_committed` without touching `qty_remaining`; `qty_available` is always derived and never stored.
-- [ ] Post-pick disposition routes to `dispatch` or `further_inspection`; `further_inspection` preserves `qty_committed` and blocks dispatch until inspection resolves.
-- [ ] A passing outbound inspection completes Stage 2 normally; a failing outbound inspection never silently completes a dispatch.
-- [ ] Failed inspection results in either compliant stock replacement or full commitment cancellation with `qty_committed` released.
+- [ ] After all pick scans are accepted, dispatch is direct and has no pre-dispatch inspection route or state.
 - [ ] Duplicate/lost-response/concurrent operations do not double-reserve or double-decrement.
 - [ ] Trading/VMI pricing boundaries and `10` document ownership are respected.
 - [ ] Offline observations cannot authorize allocation, commitment, approval, pricing, or final dispatch.

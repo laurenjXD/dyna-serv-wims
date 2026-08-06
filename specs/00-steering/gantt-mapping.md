@@ -13,11 +13,11 @@ The current Gantt timeline tracks the **Spec Definition Phase** (Drafting Requir
 | # | Gantt task | Schedule | Overall % | Mapped spec(s) | Spec Status (Drafting / Approved) | Implementation Status |
 |---|---|---|---|---|---|---|
 | 1.1 | Repository and development environment setup | 7/31 – 8/5 | 70% | Pre-spec scaffolding | **Paused** (Awaiting Spec 01) | Not Started |
-| 1.2 | Core inventory data model and database schema | 7/31 – 8/5 | 100% | `01-core-data-model` | **Approved** (audit-log design amendment and both sign-offs complete 2026-08-06; audit-log retention resolved at three years) | Ready for Dev |
+| 1.2 | Core inventory data model and database schema | 7/31 – 8/5 | 100% | `01-core-data-model` | **Approved** (2026-08-06 Master Inventory read-model/aging/export amendment; PO decisions resolved) | Ready for Dev |
 | 1.3 | Warehouse user authentication and RBAC | 7/31 – 8/5 | 100% | `02-rbac-roles`, `21-user-profile-and-settings` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
-| 1.4 | Receiving and inspection interface | 7/31 – 8/5 | 0% | `07-incoming-receiving`, `05-ui-shell` | **Approved** (`07` approved; `05` shell contract approved for consumption while final implementation QA remains) | Ready for Dev |
+| 1.4 | Receiving and inspection interface | 7/31 – 8/5 | 0% | `07-incoming-receiving`, `05-ui-shell` | **Approved** (2026-08-06 visual receiving inspection and dynamic item-code contract) | Ready for Dev |
 | 1.5 | Receiving transaction and lot creation logic | 7/31 – 8/5 | 0% | `07-incoming-receiving` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
-| 1.6 | Internal inventory transfer requests | 8/6 – 8/11 | 100% | `11-transfer-and-inspection` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
+| 1.6 | Internal inventory transfer requests | 8/6 – 8/11 | 100% | `11-transfer-and-inspection` | **Approved** (2026-08-06 Daily Inspection/split-disposition amendment; Master Inventory initiation decision resolved) | Ready for Dev |
 | 1.7 | Transfer approval and authorization workflow | 8/6 – 8/11 | 100% | `09-approval-queue` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
 | 1.8 | Receiving, transfer, quantity, and location validation | 8/6 – 8/11 | 0% | Part of `07` & `11` | **Not Started** | Not Started (Blocked by Spec) |
 | 1.9 | Receiving and transfer unit/integration testing | 8/6 – 8/11 | 0% | `testing.md` | **Process Approved** | Not Started (Awaiting code) |
@@ -33,7 +33,7 @@ The current Gantt timeline tracks the **Spec Definition Phase** (Drafting Requir
 | 2.2 | Item classification and flow validation | `17-product-categorization-and-classification` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
 | 2.3 | Barcode and QR item identification | `18-barcode-integration` | **Approved** (all three documents and both sign-offs complete 2026-08-06; FR-2.3 scoped 1D exception reconciled) | Ready for Dev |
 | 2.4 | FIFO/FEFO pick-list generation | `10-pick-list-and-acknowledgement-receipt` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
-| 2.5 | Inventory picking and quantity verification | `08-outgoing-withdrawal-and-two-stage-commitment` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
+| 2.5 | Inventory picking and quantity verification | `08-outgoing-withdrawal-and-two-stage-commitment` | **Approved** (2026-08-06 direct post-picking dispatch amendment; pre-dispatch inspection removed) | Ready for Dev |
 | 2.6 | Receiving-to-picking inventory process integration | Cross-cutting | **Not Started** | Not Started |
 | 2.7 | Classification and picking testing/fixes | `testing.md` | **Process Approved** | Not Started |
 | 2.8 | Milestone 2 inventory processing review and launch | Sign-off gate | **Not Started** | Not Started |
@@ -44,7 +44,7 @@ The current Gantt timeline tracks the **Spec Definition Phase** (Drafting Requir
 
 | # | Gantt task | Mapped spec(s) | Spec Status | Implementation Status |
 |---|---|---|---|---|
-| 3.1 | Master inventory monitoring dashboard | `16-reporting-and-analytics` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
+| 3.1 | Master inventory monitoring dashboard | `16-reporting-and-analytics` | **Approved** (2026-08-06 lot-aging, financial-gate, bulk grouping, and connected-history export amendment; PO decisions resolved) | Ready for Dev |
 | 3.2 | Reorder-level and low-stock alerts | `14-notifications-and-alerts` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
 | 3.3 | Immutable inventory movement history | `16-reporting-and-analytics` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
 | 3.4 | Inventory valuation and stock reports | `16-reporting-and-analytics` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |

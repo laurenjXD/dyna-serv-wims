@@ -1,5 +1,6 @@
 # Core Data Model — Tasks
 Status: Approved
+Updated: 2026-08-06
 
 ## Implementation Tasks
 
@@ -11,6 +12,7 @@ Status: Approved
   - [ ] Define `lots` table in `lib/db/schema/lots.ts` with WRR-sourced `lot_number`, `wrr_item_id`, `flow_type`, `peza_number`, `commercial_invoice_no`, `ip_number`, `unit_cost`, `manufacture_date`, `expiry_date`, and `status` (Req 2.5/6, Design 1.2)
   - [ ] Define `lot_location_balances` with unique lot/location placement rows, `qty_received`, `qty_remaining`, `qty_committed`, versioning, and non-negative/committed-within-remaining constraints (Req 13, Design 1.2)
   - [ ] Define the `lot_inventory_totals` aggregate read model and document `qty_available = qty_remaining - qty_committed` as derived-only (Req 13, Design 1.2)
+  - [ ] Define the `master_inventory_tracking` and `lot_history_export` derived read-model contracts, including `lot_number` aging, flow-based item-code display, connected event identity, and financial projection separation (Req 16, Design 3.4)
   - [ ] Define `inventory_commitments` and `inventory_commitment_lines` as the durable Stage 1 reservation relation, including uniqueness, lifecycle, expiry, release, execution, and concurrency constraints (Req 14, Design 1.2)
   - [ ] Define `wrr_documents` and `wrr_items` tables in `lib/db/schema/wrr.ts` with `cipl_file_url`, `peza_number`, `supplier_invoice_ref`, `ip_number` (Req 2.4, Design 1.2)
   - [ ] Define `wrr_inspection_logs` table in `lib/db/schema/wrr.ts` with `conformance_status`, `non_conformance_reason`, `remarks`, `evidence_photo_url`, and `action_taken` (Req 9, Design 1.2, Design 3.14)
@@ -18,6 +20,8 @@ Status: Approved
   - [ ] Define `inventory_transactions` immutable ledger table in `lib/db/schema/transactions.ts` (Req 2.6, Design 1.2)
   - [ ] Define `pick_lists` and `pick_list_items` tables in `lib/db/schema/pick_lists.ts`, including the priced-snapshot fields (`item_code`, `customer_item_code`, `lot_number`, `location_label`, `unit_price`) that make the document self-contained (Req 15, Design 1.2, Design 3.13)
   - [ ] Re-export all schema tables and inferred TypeScript types in `lib/db/schema/index.ts` and `lib/db/types.ts`
+
+The approved amendment decision is: `lot_history_export` refreshes daily, retains three years, and is generated/served by `16-reporting-and-analytics`; `01` owns its canonical read-model contract and source identity.
 
 - [ ] **2. Database Migration Scripts**
   - [ ] Generate initial SQL migration `0001_core_data_model.sql` using Drizzle Kit (`npx drizzle-kit generate`)
@@ -44,6 +48,8 @@ Status: Approved
   - Not yet applicable: no `/lib/db/schema` files exist yet.
 
 ## Sign-off
+
+The 2026-08-06 Master Inventory read-model amendment is documented but requires the named `02` financial capability/RLS reconciliation and final read-model refresh/ownership decision before this document returns to Approved.
 
 - [x] All applicable testing layers above pass — real-Postgres design verification (the only testing layer applicable before any code exists) passed on 2026-08-05; unit/E2E/manual QA are code-dependent and apply once Implementation Tasks 1-2 are executed, not before this sign-off gate.
 - [x] Product owner approval — Name: User / System Date: 2026-08-05

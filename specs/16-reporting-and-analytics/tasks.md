@@ -1,7 +1,7 @@
 # Reporting & Analytics — Tasks
 
 Status: Approved
-Updated: 2026-08-05
+Updated: 2026-08-06
 
 Sign-off:
 
@@ -14,10 +14,11 @@ Sign-off:
 
 **This feature may not enter implementation until:**
 
-1. `01-core-data-model` tasks.md is `Status: Approved` with both sign-offs — the `lot_inventory_totals` view, `inventory_transactions` ledger, `lots`, `items`, `pick_lists`, `wrr_documents`, and `wrr_inspection_logs` schemas must be final.
+1. `01-core-data-model` tasks.md is `Status: Approved` with both sign-offs — the `lot_inventory_totals` view, `inventory_transactions` ledger, `lots`, `items`, `pick_lists`, `wrr_documents`, and `wrr_inspection_logs` schemas must be final. Its canonical `lot_history_export` read model refreshes daily and retains three years; `16` owns generation and serving.
 2. `02-rbac-roles` tasks.md is `Status: Approved` — the `reporting.read`, `reporting.export`, and `reporting.party_read` capabilities must be seeded, the `party_visible_items` view must exist, and RLS helpers must be verified.
 3. `05-ui-shell-and-navigation` tasks.md is `Status: Approved` — the authenticated shell, sidebar navigation, and protected route groups must exist before dashboard pages can be mounted.
 4. This tasks.md has both required sign-offs filled in.
+5. `01`'s `master_inventory_tracking`/`lot_history_export` contracts and `02`'s `reporting.financial_read` capability must be approved before implementation.
 
 Dependency on spec `09` (approval_requests table) is partial: the FIFO override count metric (FR-4.3) is gated on `09`'s approval. All other analytics work is independent. The UI displays a "pending spec 09 approval" placeholder for that metric until `09` is approved.
 
@@ -153,6 +154,7 @@ Dependency on spec `04` (scheduled infrastructure) is partial: the `daily_transa
 5. All four route handlers: verify the caller's capability on every request (do not rely on middleware alone); scope the result set via the RLS transaction wrapper; validate and sanitize all query parameters; set `Content-Type: text/csv; charset=utf-8`.
 6. Add "Export CSV" buttons to each tabular drill-down view in Task 16.4's pages. Buttons are hidden for users without `reporting.export`.
 7. Wire the `/reports` filter bar (date range, party, flow type, item) to the tabular drill-down pages. Filter state is managed in URL search params so pages are shareable and bookmarkable.
+8. Add Master Inventory bulk grouping/filtering and Connected Lot History Excel export using the canonical lot-history read model.
 
 **Completion criteria:** All four export endpoints return correctly scoped, correctly formatted CSV for both admin and party-user sessions; sensitive columns are absent from party-user exports; a 403 is returned when a user without `reporting.export` calls an export endpoint directly; pagination handles datasets larger than 1000 rows without loading all rows into memory.
 
@@ -231,7 +233,7 @@ Dependency on spec `04` (scheduled infrastructure) is partial: the `daily_transa
 Before setting `Status: Approved`, both signatories must confirm all items below:
 
 - [x] `01-core-data-model` is `Status: Approved` with both sign-offs.
-- [x] `02-rbac-roles` is `Status: Approved` with both sign-offs; `reporting.party_read` is in the canonical capability catalog.
+- [x] `02-rbac-roles` is `Status: Approved` with both sign-offs; `reporting.party_read` and `reporting.financial_read` are in the canonical capability catalog, with financial access granted to Supervisor and Administrator.
 - [x] `05-ui-shell-and-navigation` is `Status: Approved` with both sign-offs.
 - [x] All ten reusable components are implemented, exported, and pass component tests.
 - [x] No analytics query performs a raw aggregate against `lot_location_balances` — confirmed by query plan review.

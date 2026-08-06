@@ -1,7 +1,7 @@
 # RBAC & Roles — Design
 
 Status: Approved
-Updated: 2026-08-05 (pass-2 db-migration-verifier run — all 5 remaining items verified PASS; two bugs found and fixed)
+Updated: 2026-08-06 (financial reporting capability amendment approved)
 
 Depends on:
 
@@ -128,6 +128,7 @@ The following operational capability catalog defines stable resource identifiers
 | `documents` | `read` | `assigned_party` | `party_user` |
 | `vmi_statements` | `read` | `assigned_party` | `party_user` |
 | `reporting` | `read`, `export` | `global` | `supervisor`, `administrator` |
+| `reporting` | `financial_read` | `global` | `supervisor`, `administrator` |
 | `reporting` | `read` | `assigned_party` | `party_user` |
 | `parties` | `read` | `global` | `warehouse_staff`, `supervisor`, `administrator` |
 | `parties` | `manage` | `global` | `administrator` |
@@ -151,6 +152,8 @@ The following operational capability catalog defines stable resource identifiers
 `inspection.resolve` is intentionally `supervisor`-only: resolution determines disposition of held stock (accept, quarantine, return) and must not be exercised by the same floor worker who performed the scan, maintaining a two-person separation for high-stakes inventory outcomes. `inspection.perform` remains available to `warehouse_staff` for the physical scan and evidence capture step.
 
 `reporting.read` and `reporting.export` are not granted to `warehouse_staff` because the reporting surface aggregates cross-party inventory metrics, pricing, and CBM data; floor workers have no business need for that aggregate view and the exposure would violate the principle of least privilege.
+
+`reporting.financial_read` is a separate global capability for approved revenue, cost, profit, margin, and price-reference projections. It is granted to `supervisor` and `administrator`, and to no `warehouse_staff` or `party_user` role. The server and PostgreSQL RLS/view boundary MUST evaluate this capability before selecting financial columns; an absent grant removes those columns from the result rather than returning null placeholders. UI hiding is only a presentation aid and is not an authorization boundary.
 
 Names are added to this canonical catalog only when the owning feature's requirements define the operation; the table above covers operations whose business meaning is stable from the revision-plan scope.
 

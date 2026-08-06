@@ -1,7 +1,7 @@
 # Incoming Receiving — Requirements
 
 Status: Approved
-Updated: 2026-08-05
+Updated: 2026-08-06
 
 ## 1. Purpose and scope
 
@@ -111,6 +111,14 @@ The final enum and transition constraints must be reconciled with `01-core-data-
 
 8. A receipt with lines of mixed dispositions MAY be confirmed as a single commit provided all mandatory scan prerequisites are met for each line individually.
 
+### R5a. Visual receiving inspection and immediate dispositions
+
+1. During physical Receiving, staff SHALL visually inspect every scanned line for visible damage, wrong item/code, quantity or packaging mismatch, labeling mismatch, and other observable non-conformance; barcode success alone is not visual inspection.
+2. A conformant quantity continues through `store` or `inspect`. A non-conformant quantity SHALL receive exactly one immediate disposition: `on_hold` or `reject`.
+3. `on_hold` SHALL remain non-available pending final disposition and SHALL require a controlled reason and mandatory remarks before save.
+4. `reject` SHALL route the exact quantity to a designated rejects `location`, then create an auditable Return to Vendor (RTV) workflow linked to the WRR line, `lot_number`, quantity, reason, remarks, actor, and timestamps. Rejected quantity SHALL not become available.
+5. Visual results and dispositions SHALL be quantity-splittable and retained in the receiving inspection record. RLS must inherit the WRR party/flow scope; UI hiding is not the security boundary.
+
 ### R6. Inbound inspection and conformance
 
 1. The system SHALL support inspection of inbound goods at the `inspection` location/context before active inventory is posted where the approved flow requires it.
@@ -156,9 +164,10 @@ The final enum and transition constraints must be reconciled with `01-core-data-
 1. All staging, scanning, inspection, confirmation, cancellation, attachment, and ledger reads SHALL use the shared capability/scope contract from `02-rbac-roles`.
 2. Party/flow scope SHALL be checked against the current WRR and related records; client-supplied party or flow values SHALL not establish authorization.
 3. The UI MAY hide unavailable actions, but server and RLS enforcement remain authoritative.
-4. Receipt lifecycle changes, exception decisions, confirmations, and non-conformance resolutions SHALL be attributable to an actor, timestamp, and correlation ID through the approved audit path.
-5. CIPL/evidence files SHALL use private Storage and authorized access from `04-services-and-infrastructure`.
-6. Errors and monitoring data SHALL not expose tokens, SQL, protected records outside scope, or unnecessary personal data.
+4. RLS policies for `wrr_inspection_logs`, RTV references, and related receiving rows SHALL inherit the WRR's party/flow scope and deny unauthorized reads/writes at the database layer; client filtering is not sufficient.
+5. Receipt lifecycle changes, exception decisions, confirmations, and non-conformance resolutions SHALL be attributable to an actor, timestamp, and correlation ID through the approved audit path.
+6. CIPL/evidence files SHALL use private Storage and authorized access from `04-services-and-infrastructure`.
+7. Errors and monitoring data SHALL not expose tokens, SQL, protected records outside scope, or unnecessary personal data.
 
 ### R11. Offline and resilience behavior
 
@@ -181,6 +190,7 @@ The final enum and transition constraints must be reconciled with `01-core-data-
 - [ ] Party/flow scope, RLS, stale state, revoked access, and direct-identifier manipulation are tested.
 - [ ] Offline scan behavior is simulated and enrollment/confirmation remain blocked offline.
 - [ ] A back-office user can confirm a `pending_review` `wrr_advance_notices` row into a staged `wrr_items` line (adjusting the non-authoritative declared quantity as needed) or reject it; a physical scan of its `WAN:<uuid>` barcode at receiving matches the confirmed line via `matched_wrr_item_id`, and an unconfirmed advance notice's scan falls through to the existing R3.3 unknown/unmatched exception path.
+- [ ] Visual receiving inspection records exact conformant/`on_hold`/`reject` quantities; `on_hold` has mandatory remarks/reason, and `reject` routes to a designated rejects `location` and RTV workflow.
 
 ## 6. Dependencies and exclusions
 
