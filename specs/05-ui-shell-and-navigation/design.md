@@ -67,14 +67,20 @@ The table below lists every authenticated route planned at launch. Each route na
 | `/parties` | office | `parties.manage` | `06-party-and-item-enrollment` | Launch |
 | `/items` | office | `items.manage` | `06-party-and-item-enrollment` | Launch |
 | `/reports` | office | `reporting.read` | `16-reporting-and-analytics` | Planned |
-| `/portal` | party | none (context-resolved landing; aggregates reads individually gated below, per `22` design.md §4) | `22-parties-portal` | Planned |
-| `/portal/inventory` | party | `reporting.read` (VMI position + embedded party analytics; the `lot_location_balances` read itself has no separately catalogued resource key — it is gated by `02` §7.4's RLS pattern directly, per `22` design.md §4) | `22-parties-portal` | Planned |
+| `/portal` | party | none | `22-parties-portal` | Planned |
+| `/portal/inventory` | party | `reporting.read` | `22-parties-portal` | Planned |
 | `/portal/orders` | party | `pick_list.read` | `22-parties-portal` | Planned |
-| `/portal/documents` | party | `documents.read`, `vmi_statements.read` | `22-parties-portal` | Planned |
+| `/portal/documents` | party | `documents.read` | `22-parties-portal` | Planned |
 | `/portal/notifications` | party | `notifications.read` | `22-parties-portal` | Planned |
-| `/portal/labels` | party | `shipment_labels.generate` | `22-parties-portal` | Planned (blocked pending `22` R11.11's four dependent specs' approval processes) |
+| `/portal/labels` | party | `shipment_labels.generate` | `22-parties-portal` | Planned |
 
-**Added 2026-08-06**, resolving `22-parties-portal`'s open shell-architecture item: these six rows are `22`'s routes, rendered on the `"party"` surface (§5). All are `Planned` rather than `Launch` because `22-parties-portal` itself remains `Draft`; `vmi_statements.read`, `reporting.read`, and `shipment_labels.generate` are catalog additions in `02` design.md §3.2/§7.4, themselves pending `02`'s own approval/sign-off process — the same "written, not yet verified" distinction already applied elsewhere in this table's capability-key sourcing.
+**Added 2026-08-06**, resolving `22-parties-portal`'s open shell-architecture item: these six rows are `22`'s routes, rendered on the `"party"` surface (§5). All are `Planned` rather than `Launch` because `22-parties-portal` itself remains `Draft`. Notes on individual rows, kept out of the table cells to match this table's existing one-bare-key-per-row format:
+
+- `/portal`: `none` because it is a context-resolved landing page — it aggregates several reads (each individually gated by its own capability below) rather than being gated by one capability itself, the same reasoning already applied to `/sync`'s `none` entry above.
+- `/portal/inventory`: gated by `reporting.read` for the embedded party analytics; the underlying VMI `lot_location_balances` read itself has no separately catalogued resource key of its own — it is authorized directly by `02` §7.4's RLS pattern, not a second capability check, per `22` design.md §4.
+- `/portal/documents`: gated by `documents.read` for pick-list/acknowledgement-receipt access; VMI billing statement access on the same route additionally requires `vmi_statements.read` — two capabilities on one route, the same pattern `/inspection` uses for multi-spec ownership, expressed here as a second required check rather than a second table row since both live under one path.
+- `/portal/labels`: `Planned` status is additionally blocked pending `22` R11.11's four dependent specs' approval processes (`02`'s capability approval, `01`/`07`'s schema-amendment process, `07`'s formal flow adoption, `18`'s 1D-decode amendment) — a stronger block than the ordinary `Planned` (= "spec not yet Approved") meaning used elsewhere in this column.
+- `vmi_statements.read`, `reporting.read` (`assigned_party` row), and `shipment_labels.generate` are catalog additions in `02` design.md §3.2/§7.4, themselves pending `02`'s own approval/sign-off process — the same "written, not yet verified" distinction already applied elsewhere in this table's capability-key sourcing. §5's canonical resource-key table below has been extended to include all three, marked with the same pending status.
 
 Rules:
 
@@ -89,19 +95,20 @@ Rules:
 
 **Surface routing rules:**
 
-| Route | Floor-only | Office-only | Shared |
-| --- | --- | --- | --- |
-| `/receiving`, `/receiving/[wrr_id]` | ✓ | | |
-| `/inventory`, `/inventory/pick-list/new` | | ✓ | |
-| `/inventory/pick-list/[pick_list_id]` | ✓ | | |
-| `/inspection`, `/inspection/[inspection_id]` | | | ✓ (floor-first layout) |
-| `/dispatch/[pick_list_id]` | ✓ | | |
-| `/documents` | | ✓ | |
-| `/approvals` | | ✓ | |
-| `/sync` | ✓ | | |
-| `/transfers` | | | ✓ (floor-first layout) |
-| `/parties`, `/items` | | ✓ | |
-| `/reports` | | ✓ | |
+| Route | Floor-only | Office-only | Shared | Party |
+| --- | --- | --- | --- | --- |
+| `/receiving`, `/receiving/[wrr_id]` | ✓ | | | |
+| `/inventory`, `/inventory/pick-list/new` | | ✓ | | |
+| `/inventory/pick-list/[pick_list_id]` | ✓ | | | |
+| `/inspection`, `/inspection/[inspection_id]` | | | ✓ (floor-first layout) | |
+| `/dispatch/[pick_list_id]` | ✓ | | | |
+| `/documents` | | ✓ | | |
+| `/approvals` | | ✓ | | |
+| `/sync` | ✓ | | | |
+| `/transfers` | | | ✓ (floor-first layout) | |
+| `/parties`, `/items` | | ✓ | | |
+| `/reports` | | ✓ | | |
+| `/portal`, `/portal/inventory`, `/portal/orders`, `/portal/documents`, `/portal/notifications`, `/portal/labels` | | | | ✓ (added 2026-08-06 — office-tier composition per the "party" bullet below, distinct column since `"party"` is its own `ShellSurface` value, not a relabeled `"office"`) |
 
 **Shell adaptation by surface:**
 
@@ -189,6 +196,8 @@ The `capability` field uses stable resource keys from the `02-rbac-roles` §3.2 
 | `items` | `read`, `manage` |
 | `forex_rates` | `read`, `manage` |
 | `notifications` | `read` |
+| `vmi_statements` | `read` (**pending**, added 2026-08-06 — written in `02` design.md §3.2/§7.4, not yet through `02`'s own approval/sign-off process; used by `/portal/documents`) |
+| `shipment_labels` | `generate` (**pending**, added 2026-08-06 — written in `02` design.md §3.2/§7.4/§7.4a, not yet through `02`'s own approval/sign-off process; used by `/portal/labels`) |
 
 A `NavigationEntry` with no `capability` field is unconditionally visible to all authenticated users (used only for the `/sync` route and any future shell-global utilities). An entry whose capability the user does not hold is hidden from navigation presentation — it is not disabled or greyed; hiding avoids surfacing routes the user cannot use while preserving the fact that the route exists for authorized users.
 
@@ -222,7 +231,7 @@ Registry rules:
 
 ## 7. Authentication and authorization boundary
 
-The shell consumes a server-resolved context conceptually shaped as:
+The shell consumes a server-resolved context shaped as:
 
 ```ts
 type ShellSessionContext = {
@@ -235,7 +244,7 @@ type ShellSessionContext = {
 };
 ```
 
-The final fields and capability representation are owned by `02-rbac-roles` and `04-services-and-infrastructure`. This design intentionally does not define user, role, party-scope, or authorization tables.
+**Grounded in `02-rbac-roles`'s approved model (2026-08-06)**: this is no longer a forward-looking placeholder — `capabilities` is `02`'s resolved effective-capability set (`02` §1, §3.3: `effective grants = union(active role assignments -> active role capability grants)`), and `userId`/`status` correspond to `02`'s `user_profiles` row and `current_user_is_active()` check. The exact server-side resolution mechanics (session resolver, request-local memoization, party-scope propagation for a `party_user` session) remain owned by `02` and `04-services-and-infrastructure`; this shell design still intentionally defines no user, role, party-scope, or authorization table of its own — it only consumes the typed result.
 
 The enforcement sequence is:
 
@@ -285,9 +294,10 @@ They should not copy the sidebar, bottom navigation, Auth guard, global tokens, 
 ## 11. Design verification before approval
 
 - [ ] Reconcile the route inventory with the approved feature specs and the Gantt mapping. **Partially addressed 2026-08-06**: `22-parties-portal`'s six routes and the `"party"` `ShellSurface` value are now added (§3.2, §5) — the remaining work for this checklist item is reconciling every *other* feature spec's route inventory, and re-confirming `22`'s rows once `22` itself progresses past `Draft`.
-- [ ] Replace provisional RBAC references with the approved capability/session contract.
-- [ ] Confirm the Auth/session integration against `04-services-and-infrastructure`.
-- [ ] Confirm offline indicator semantics against `03-offline-mode-and-client-storage`.
-- [ ] Have `design-system-auditor` review floor/office behavior, tokens, contrast, typography, touch targets, and motion.
-- [ ] Confirm no `01-core-data-model` table is touched; if that changes, name the tables and update the design dependencies.
+- [x] Replace provisional RBAC references with the approved capability/session contract. **Resolved 2026-08-06**: `02-rbac-roles` reached `Status: Approved` on 2026-08-05 — §7's `ShellSessionContext` is no longer a forward-looking placeholder; it is grounded in `02`'s actual approved model (`02` §1's effective-grants summary, §3.3's `effective grants = union(active role assignments -> active role capability grants)`, and §6's session resolver). `capabilities: ReadonlySet<string>` correctly represents `02`'s resolved effective-capability set; `userId`/`status` correctly represent `02`'s `user_profiles`/`current_user_is_active()` model. §7's wording updated to state this directly rather than "conceptually shaped."
+- [ ] Confirm the Auth/session integration against `04-services-and-infrastructure`. **Still open** — `04` remains `Draft`, unreviewed this session.
+- [ ] Confirm offline indicator semantics against `03-offline-mode-and-client-storage`. **Still open** — `03` remains `Draft`, unreviewed this session.
+- [x] Have `design-system-auditor` review floor/office behavior, tokens, contrast, typography, touch targets, and motion. **Resolved** — already run 2026-08-05 per `revision-log.md`'s "`04`–`21` sweep and `05` design-system audit" entry: no drift found, two precision gaps fixed (Epilogue SemiBold weight, real-logo-not-ligature rule). This checkbox was stale (audit complete, box never checked) — corrected here. **Note**: that audit predates this session's `"party"` `ShellSurface`/route-table addition; those specific additions have not themselves been independently audited (see below).
+- [x] Confirm no `01-core-data-model` table is touched; if that changes, name the tables and update the design dependencies. **Confirmed still accurate** — the `22-parties-portal` party-surface addition is route/navigation metadata only; it adds no query against any `01` table to this shell design.
 - [ ] Reconcile this design with the final `tasks.md` before changing the feature status to `Approved`.
+- [x] **Added 2026-08-06, resolved 2026-08-06**: `design-system-auditor` re-checked the new `"party"` `ShellSurface` value (§5) and the six new `22-parties-portal` route-table rows (§3.2) — not covered by the 2026-08-05 audit above, since neither existed yet. Result: 2 of 4 items PASS (the surface's touch-target/contrast inheritance claim; no locally-redefined tokens), 2 real gaps found and fixed directly: (1) §3.2's capability-column cells had drifted from the table's one-bare-key-per-row convention with embedded prose/citations — reworded to bare keys with explanatory notes moved below the table, matching the existing format; (2) §3.3's "Surface routing rules" table was not extended for the six new routes or a `Party` column — added. Also closed a related gap the audit surfaced: `vmi_statements`/`shipment_labels` were used as capability keys in §3.2 but absent from §5's canonical resource-key table — added both, marked pending `02`'s own approval per the same "written, not verified" convention used throughout this document.
