@@ -1,6 +1,6 @@
 # Barcode & QR Integration — Requirements
 
-Status: Draft
+Status: Approved
 
 Depends on:
 - `specs/00-steering/tech.md`
@@ -9,12 +9,12 @@ Depends on:
 
 ## 1. Overview
 
-This module defines the architecture for 2D barcode (QR code) scanning and generation. 
+This module defines the architecture for 2D barcode (QR code) scanning and generation, with one narrowly-scoped 1D/Code 128 decoding exception owned by `22-parties-portal` R11.
 The warehouse floor operations are executed strictly on **mobile devices** using their native cameras. We do not use rugged hardware laser scanners or "keyboard wedges". All scanning is performed via a software-based camera interface.
 
 ## 2. Goals
 - Provide a robust software-based camera scanner optimized for mobile devices.
-- Support strictly 2D barcodes (QR Codes) for high-density data payloads.
+- Support 2D barcodes (QR Codes/Data Matrix) for all ordinary warehouse payloads, plus the flat `WAN:<uuid>` Code 128 exception defined in FR-2.3.
 - Define a standard QR code payload structure for internally generated labels.
 - Supply a centralized scanning component that Specs 07 (Receiving) and 08 (Picking) can inherit.
 
@@ -27,7 +27,7 @@ The warehouse floor operations are executed strictly on **mobile devices** using
 
 ### FR-2: Supported Formats (2D Only, with one scoped exception)
 1. The system SHALL strictly support parsing **2D Barcodes** (QR Codes, Data Matrix) for every scanning context except the FR-2.3 exception below.
-2. 1D barcodes (e.g., Code 128, UPC) are deprecated in every other workflow as they cannot hold the complex JSON payloads required for VMI/Trading lot identification.
+2. 1D barcodes (e.g., Code 128, UPC) are deprecated in every other workflow as they cannot hold the complex JSON payloads required for VMI/Trading lot identification. This restriction does not apply to the flat `WAN:<uuid>` payload in FR-2.3.
 
 ### FR-2.3: 1D/Linear Barcode Exception — Supplier-Initiated Inbound Pre-Label Flow
 

@@ -1,6 +1,6 @@
 # Incoming Receiving — Design
 
-Status: Draft
+Status: Approved
 Updated: 2026-08-05
 
 ## 1. Design intent
@@ -178,17 +178,17 @@ The form supports draft validation before save, server uniqueness/relationship c
 **Flow:**
 
 1. The party submits the thin form (item, non-authoritative `declared_qty`, optional `supplier_lot_number`), creating a `wrr_advance_notices` row with `status = 'pending_review'`.
-2. A back-office user holding `receiving.view` (per `02-rbac-roles` design.md §7.4's `wrr_advance_notices` pattern — the same capability §5.4 already uses to gate WRR reprints), in a new review surface on this feature's WRR work queue, sees pending advance notices and reviews each against the actual CIPL they have separately received. They either:
+2. A back-office user holding `receiving.view` (review/read) and `receiving.confirm` (confirm/reject/match), using the existing global capabilities from `02-rbac-roles` design.md §3.2, in a new review surface on this feature's WRR work queue, sees pending advance notices and reviews each against the actual CIPL they have separately received. They either:
    - **Confirm**: create a new staged `wrr_items` line (or match to one they are already staging) — carrying over `item_id` and `party_id`/`vendor_party_id` reference, and starting `expected_qty` from the advance notice's `declared_qty` as an editable, non-authoritative default the back-office user adjusts against the actual CIPL. This sets `wrr_advance_notices.matched_wrr_item_id`, `status = 'confirmed'`, `confirmed_at`, `confirmed_by_user_id`.
    - **Reject/flag**: set `status = 'rejected'`, `confirmed_at`, `confirmed_by_user_id`, with no `wrr_items` line created or matched. The discrepancy is handled through the same manual-follow-up path this spec already uses for other pre-receiving discrepancies.
 
-   Both the confirm and reject write are performed through `02-rbac-roles` design.md §7.4a's controlled `SECURITY DEFINER` function, not an ordinary Server Action with only an app-layer role check — the function independently re-verifies the caller's capability inside its own transaction, the same defense-in-depth requirement `02` §8 applies to every other privileged function in that spec. This is stated here explicitly (rather than left to be inferred from `02` alone) so an implementation built from this document's own text doesn't default to a weaker app-layer-only check.
+   Both the confirm and reject write are performed through `02-rbac-roles` design.md §7.4a's controlled `SECURITY DEFINER` function, not an ordinary Server Action with only an app-layer role check — the function independently re-verifies `receiving.confirm` inside its own transaction, the same defense-in-depth requirement `02` §8 applies to every other privileged function in that spec. This is stated here explicitly (rather than left to be inferred from `02` alone) so an implementation built from this document's own text doesn't default to a weaker app-layer-only check.
 
    **Self-review prohibition (added 2026-08-06, `rbac-rls-reviewer` finding)**: the confirming/rejecting function additionally verifies the caller is not the same identity as the `party_user` who submitted the advance notice being acted on. Nothing in `02`'s role model makes `party_user` and internal-staff role grants mutually exclusive on a single account, so this cannot be assumed from role separation alone — it requires the same explicit, named check `02` §3.4 already applies to FIFO-override self-approval (comparing the acting user against the submitting identity, not just checking that the acting user holds the confirm/reject capability). The exact field/mechanism is `02`'s to define alongside the confirm/reject capability name itself (§7.4a); this paragraph states the requirement so it isn't silently dropped when that capability is named.
 3. At the receiving bay, `18-barcode-integration` requirements.md FR-2.3's 1D/Code 128 decode resolves a `WAN:<uuid>` payload to its `wrr_advance_notices` row. §6's matcher below resolves the linked `wrr_items` line via `matched_wrr_item_id` and proceeds through the existing scan-reconciliation path (scanned-vs-expected tracking, over/duplicate rejection) exactly as it would for any other WRR line.
 4. **If the advance notice was never confirmed before the scan occurs** (still `pending_review`, or `rejected`), the scan resolves no `wrr_items` line and falls through to §6's existing unknown/unmatched exception path (requirements.md R3.3) unchanged — no new bespoke error state is introduced for this case.
 
-This is a pure intake/matching addition to the existing pre-receiving/receiving-bay design; it introduces no new commit-transaction behavior in §9 and no new lot-posting path in §7 — a confirmed advance notice only ever results in an ordinary staged `wrr_items` line, which then goes through this spec's existing commit path exactly like a line created without an advance notice.
+This is a pure intake/matching addition to the existing pre-receiving/receiving-bay design; it introduces no new commit-transaction behavior in §9 and no new lot-posting path in §7 — a confirmed advance notice only ever results in an ordinary staged `wrr_items` line, which then goes through this spec's existing commit path exactly like a line created without an advance notice. The confirm/reject/match capability decision is resolved by reusing the existing global `receiving.confirm` capability; the controlled function must independently re-check it.
 
 ## 6. Floor scan and reconciliation design
 

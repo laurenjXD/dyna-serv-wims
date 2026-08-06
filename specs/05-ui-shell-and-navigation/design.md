@@ -1,6 +1,6 @@
 # UI Shell & Navigation — Design
 
-Status: Under Revision
+Status: Approved
 Updated: 2026-08-06
 
 ## 1. Design intent

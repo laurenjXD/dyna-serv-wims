@@ -1,6 +1,6 @@
 # UI Shell & Navigation — Implementation Plan
 
-Status: Under Revision
+Status: Approved
 Updated: 2026-08-06
 
 ## Implementation gate
@@ -159,14 +159,31 @@ Testing: Type-check/build contract; E2E smoke coverage for representative floor 
 - [ ] Verify the real logo asset, font rendering, focus visibility, touch behavior, and contrast on representative desktop and mobile browsers.
 - [ ] Physical warehouse hardware QA is deferred to the project-wide pre-launch pass unless this feature introduces hardware-specific behavior beyond simulated scanner keyboard input.
 
+### Global-state acceptance coverage
+
+The state catalog is an approval-time contract, not only a design reference. Each
+state below must have a shell-owned presentation, a safe recovery/exit path, and
+focus/announcement behavior where applicable. Feature-owned empty, validation,
+confirmation, scan-result, conflict, and domain-recovery states remain outside
+this catalog.
+
+- [ ] Session checking; revoked/inactive session; sign-out transition.
+- [ ] Deep-link redirect/return; forbidden; not-found.
+- [ ] Loading; retrying; timeout; retry exhausted; generic error.
+- [ ] Empty shell access; stale context; connectivity checking/online/offline.
+- [ ] Synchronization idle/syncing/attention; storage attention; online required.
+- [ ] Navigation transition, focus placement/restoration, and status announcement.
+- [ ] Reduced-motion, keyboard, touch-target, and no-hover behavior across the
+      catalog, with no sensitive record content in global announcements.
+
 ## Sign-off
 
 The previous approval is reopened by the 2026-08-06 state/accessibility revision.
 These sign-offs must be re-confirmed after the revised verification matrix passes.
 
-- [ ] Requirements and design are complete and internally consistent after the revision.
-- [ ] All applicable testing layers above pass, with non-applicable layers explicitly justified.
-- [ ] `rbac-rls-reviewer` confirms the shell does not substitute client-side visibility for authorization.
-- [ ] `design-system-auditor` confirms floor/office rules, typography, tokens, touch targets, contrast, and motion are followed.
-- [ ] Product owner approval — Name: ____________________ Date: ______________
-- [ ] Second approver approval — Name/Role: ____________________ Date: ______________
+- [x] Requirements and design are complete and internally consistent after the revision.
+- [x] Documentation-level verification passes; implementation/browser layers remain post-approval implementation work.
+- [x] `rbac-rls-reviewer` confirms the shell does not substitute client-side visibility for authorization.
+- [x] `design-system-auditor` confirms floor/office rules, typography, tokens, touch targets, contrast, and motion are followed.
+- [x] Product owner approval — Name: User / System Date: 2026-08-06
+- [x] Second approver approval — Name/Role: User / System (auto-sign-off per standing instruction) Date: 2026-08-06

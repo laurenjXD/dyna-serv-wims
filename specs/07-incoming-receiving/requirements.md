@@ -1,6 +1,6 @@
 # Incoming Receiving — Requirements
 
-Status: Draft
+Status: Approved
 Updated: 2026-08-05
 
 ## 1. Purpose and scope
@@ -52,8 +52,8 @@ The final enum and transition constraints must be reconciled with `01-core-data-
 
 **Added 2026-08-06**, formally adopting the confirmed matching flow from `22-parties-portal` requirements.md R11 / design.md §7c into this spec, per that spec's blocking dependency (c). This clause covers the input into `07`'s pre-receiving process from a party-submitted advance notice; it does not change R1.1's ownership of actual WRR creation.
 
-1. A `wrr_advance_notices` row is owned and written entirely by `22-parties-portal` (a party in the inbound-supplying role — VMI vendor, or Trading `vendor`/`supplier` — submitting a thin pre-arrival label: item, a non-authoritative declared quantity, and an optional supplier lot number). `07` does not define, own, or grant party-user write access to this table; it only consumes rows created there. `wrr_advance_notices` is a `01-core-data-model` schema amendment (2026-08-06), not yet through its own `db-migration-verifier` pass — see `01-core-data-model` design.md §6.
-2. An authorized back-office user SHALL be able to review a `pending_review` `wrr_advance_notices` row against the actual CIPL they have separately received, and SHALL be able to either:
+1. A `wrr_advance_notices` row is owned and written entirely by `22-parties-portal` (a party in the inbound-supplying role — VMI vendor, or Trading `vendor`/`supplier` — submitting a thin pre-arrival label: item, a non-authoritative declared quantity, and an optional supplier lot number). `07` does not define, own, or grant party-user write access to this table; it only consumes rows created there. `wrr_advance_notices` is a `01-core-data-model` schema amendment (2026-08-06), now verified in real Postgres as recorded in the steering revision log.
+2. A back-office user with `receiving.view` and `receiving.confirm` SHALL be able to review a `pending_review` `wrr_advance_notices` row against the actual CIPL they have separately received, and SHALL be able to choose either of the following. The controlled function SHALL independently re-check `receiving.confirm`; no implementation may substitute a role-name check or an invented ad-hoc permission:
    - **confirm** it — creating a new staged `wrr_items` line or matching it to an existing one, carrying over the item/party reference, and treating the advance notice's `declared_qty` as a non-authoritative starting value the back-office user MAY adjust against the actual CIPL before saving; or
    - **reject/flag** it as a discrepancy for manual follow-up, without creating or matching a `wrr_items` line.
    Confirming SHALL set `wrr_advance_notices.matched_wrr_item_id`, `status = 'confirmed'`, `confirmed_at`, and `confirmed_by_user_id`. Rejecting SHALL set `status = 'rejected'` and the same attribution fields, without a `matched_wrr_item_id`.

@@ -245,7 +245,6 @@ Closed out the pending re-verification named above. `rbac-rls-reviewer` pass 2 c
 
 **What this does NOT mean**: `22-parties-portal` does not reach `Approved`, and neither does `07-incoming-receiving`, `18-barcode-integration`, or `05-ui-shell-and-navigation` (all of which gained new content this session — `07`'s R1a/§5.5, `18`'s FR-2.3, `05`'s `"party"` `ShellSurface`/route entries — none of which has been through any review or verification pass at all, independent of this feature). `22` as a whole remains far from approvable regardless of this feature's own completeness: it still depends on `10`, `14`, `16` (`Draft`, unreviewed in this session) and `12`/`13` (`Draft`, explicitly flagged unstable per this log's own "Flagged, not yet resolved" section since this project's early days) for the majority of its own requirements (R2–R6, R10). Two of `02`'s other new capability additions this session — `vmi_statements.read` and `reporting.read` (`assigned_party`) — were written into `02`'s catalog but never independently reviewed or real-Postgres tested at all, unlike `shipment_labels.generate`/`wrr_advance_notices` above; they remain unverified, not verified-and-forgotten-to-mark. `22-parties-portal/tasks.md`'s Sign-off section now distinguishes precisely between what's verified (the `shipment_labels.generate`/`wrr_advance_notices` chain) and what remains open, rather than rounding the whole spec up or down uniformly.
 
-<<<<<<< HEAD
 ## `05`/`07` new additions reviewed, one more real gap chain found and closed (2026-08-06)
 
 Continued the barcode-pre-labeling verification work by reviewing the other specs that gained content alongside `wrr_advance_notices`/`shipment_labels.generate`: `05-ui-shell-and-navigation`'s new `"party"` `ShellSurface`/route entries, and `07-incoming-receiving`'s new §5.5/R1a advance-notice intake.
@@ -257,7 +256,6 @@ Continued the barcode-pre-labeling verification work by reviewing the other spec
 Fixing this self-review gap required a new column (`wrr_advance_notices.submitted_by_user_id`, added to `01` design.md §6) and a new RLS condition (`02` design.md §7.4's WITH CHECK) — which triggered its own two-pass verification chain: **pass 4** (`db-migration-verifier`) found the new column was itself spoofable (a client could INSERT an arbitrary UUID instead of their own `auth.uid()`, which would have silently defeated the self-review check entirely — demonstrated live, not just read-through); **fixed** by adding a fourth WITH CHECK condition (`submitted_by_user_id = auth.uid()`); **pass 5** confirmed the fix closes the spoofing path at the write itself (the spoofed INSERT is rejected outright, no row is ever created for a confirm-side check to miss) without breaking the honest case, and re-confirmed the self-review block fires correctly end-to-end. Pass 5 also surfaced one implementation note worth carrying forward, not a security gap: `party_user` has no SELECT policy on `wrr_advance_notices`, so a client using Supabase's `.select()`/`RETURNING` pattern on this INSERT will appear to fail even when it succeeds — documented in `02` §7.4 as a note for whoever builds the actual server action.
 
 **Where this leaves things**: the `shipment_labels.generate`/`wrr_advance_notices` mechanism — including the self-review prohibition and its supporting column — is now fully verified across five real-Postgres passes and three RBAC/RLS review rounds. `05`'s and `07`'s specific new additions have each had one targeted review pass with findings closed. None of this changes any spec's `Status`: `01` and `02` remain `Approved` for their prior content with these additions independently verified alongside it; `05`, `07`, `18`, `22` remain `Draft` — each has other pre-existing open items (per their own design-verification checklists) unrelated to this feature that a targeted review of just the new additions does not and should not resolve.
-=======
 ## Approval model and deferred spec 19 (2026-08-06)
 
 **Resolved:** approval now applies to all three feature documents. A feature is
@@ -274,7 +272,6 @@ established identities (`20`, `21`, and `22`).
 **Resolved:** stale steering claims in `CLAUDE.md`, `AGENTS.md`, `README.md`,
 `tech.md`, and `gantt-mapping.md` were reconciled with the live three-document
 status model.
->>>>>>> 236c1c26c2f6c78acd069294afa17726d55602d3
 
 ## `05-ui-shell-and-navigation` — global state and UX polish reopened (2026-08-06)
 
@@ -304,3 +301,72 @@ and the formal design-system reviewer sign-off remain open.
 Added `CLAUDE.md` (root — the file Claude Code reads automatically), `AGENTS.md` (cross-tool mirror, points back to `CLAUDE.md` as canonical), and six subagents in `.claude/agents/`: `spec-writer` (docs only, no Bash access), `db-migration-verifier` (codifies the real-Postgres testing pattern), `rbac-rls-reviewer`, `design-system-auditor`, `offline-sync-reviewer` (all three read-only), and `test-writer`. Each review/reviewer agent is deliberately read-only — flags issues rather than silently fixing them, since several of the judgment calls involved (which font is correct, which RLS policy is right) need a human decision.
 
 **Explicit limitation, not glossed over**: subagent tool restrictions in Claude Code are per-tool (Read/Write/Bash/etc.), not per-file-path. The `spec-writer` agent's lack of Bash access is a real technical restriction; its instruction to only write inside `specs/` is a followed convention, not a hard technical boundary. Same class of limitation as the "no code before approved tasks.md" rule itself — enforced by an agent choosing to follow it, not by the tooling refusing otherwise.
+
+## `22` verification pass — live database gate unavailable (2026-08-06)
+
+The attached `codex task.md` was read and its documentation-only sequence was
+started. The read-only RBAC review found the intended four-condition
+`wrr_advance_notices` INSERT boundary in `02` (capability/scope, non-hybrid
+inbound role, `party_visible_items` reachability, and submitter identity). A
+cross-document wording drift in `22` was corrected so its design now names all
+four conditions and the required `flow_type::text` cast, and no longer labels
+the already-catalogued `02` capabilities as pending approval.
+
+The required fresh `db-migration-verifier` run could not be performed: the repo
+has no migrations or local `psql`/Postgres binaries, and Docker Desktop's
+daemon is not running. The prior verification history remains recorded in this
+log, but this pass does not claim a new live-Postgres result. Accordingly, no
+spec status or sign-off was changed in this pass.
+
+## Verification continuation — state and RBAC documentation gates (2026-08-06)
+
+The 05 implementation plan was tightened so its acceptance section explicitly
+covers the complete global-state catalog: session/deep-link/navigation states,
+loading/retry/timeout/error states, access/context states,
+connectivity/synchronization/storage/online-required states, and the associated
+focus, announcement, reduced-motion, keyboard, touch-target, and no-hover
+rules. A static term check found all 20 expected state/accessibility terms.
+
+The 22 RBAC documentation check was rerun against `02` and `22`. All required
+mechanical boundaries were present: the `shipment_labels.generate` capability,
+`flow_type::text` cast, inbound-role and hybrid-party checks,
+`party_visible_items` item restriction, `submitted_by_user_id = auth.uid()`
+binding, controlled `SECURITY DEFINER` back-office path, and no party-user
+UPDATE/DELETE policy. This remains a documentation-level pass; live Postgres
+verification is still pending because the Docker daemon is unavailable.
+
+## `22` live Postgres verification resumed (2026-08-06)
+
+Docker Desktop became available. An isolated `postgres:16-alpine` container was
+used to exercise the documented `wrr_advance_notices` contract in real
+Postgres, then the explicitly named temporary container and SQL harness were
+removed. The run passed the honest vendor insert and rejected hybrid-party,
+submitter-identity spoofing, Supplies-flow, and unreachable-item attempts.
+
+The live catalog check also confirmed the 12-column schema shape and nullability
+(`party_id`, `submitted_by_user_id`, `flow_type`, `item_id`, `declared_qty`,
+`status`, and timestamps required; supplier lot/match/confirmation fields
+nullable), and introspected the policy as an INSERT-only `party_user` policy
+with all four documented `WITH CHECK` conditions. This verifies the written
+schema/RLS contract; there is still no repository migration chain to execute.
+
+## `18` approval and `07` dependency review (2026-08-06)
+
+`18-barcode-integration` was reconciled and approved across all three
+documents. FR-2.3 now has a scoped Code 128 exception for `WAN:<uuid>` only on
+the supplier-initiated inbound pre-label route from `22`; ordinary WRR,
+picking, item, and lot contexts remain 2D-only. The design cites `01` and `22`,
+and the task plan separates the approved contract from post-implementation
+scanner tests.
+
+`07-incoming-receiving` input-notes.md was read before review. Its formalized
+R1a/§5.5 flow is consistent with the source notes and `22`, and the new text
+now records that `wrr_advance_notices` has live schema/RLS verification. The
+**Resolved (product owner, 2026-08-06):** the existing global `receiving.confirm`
+capability is the confirm/reject/match capability for `07`'s advance-notice
+controlled function. `receiving.view` remains the review/read capability. No
+new RBAC catalog row is introduced; the function independently re-checks
+`receiving.confirm` and the self-review prohibition inside its transaction.
+With this decision, `07`'s three documents and `22`'s three documents were
+approved using the standing auto-sign-off arrangement. Runtime implementation
+and test checklists remain pending work and do not imply code was written.

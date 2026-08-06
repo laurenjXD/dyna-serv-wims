@@ -10,7 +10,7 @@ A hybrid warehouse inventory system: VMI (vendor-owned stock, CBM-based billing)
 
 **No implementation code is written until a feature's `specs/NN-*/tasks.md` has `Status: Approved` with both sign-offs filled in.** This is not a suggestion. If you (Claude Code, or a subagent) are asked to write code for a feature whose `tasks.md` isn't `Approved`, stop and say so instead of proceeding. Writing requirements/design/tasks docs is always fine. Writing application code against an unapproved spec is not.
 
-**Current status** (updated 2026-08-06): Approval applies to all three feature documents. `01`, `02`, `03`, `04`, `06`, and `08`–`17`, `20`, and `21` have `requirements.md`, `design.md`, and `tasks.md` marked `Approved` with both sign-offs recorded. `05` is `Under Revision` while its expanded global-state and accessibility contract is re-verified. `07`, `18`, and `22` remain Draft and are not implementation-ready. `19-dispatch-scheduling-and-delivery-tracking` is explicitly deferred; its number is reserved because other specs reference it as the future owner of delivery scheduling/tracking. Check `specs/00-steering/gantt-mapping.md` for the live status of every spec against the delivery timeline.
+**Current status** (updated 2026-08-06): Approval applies to all three feature documents. `01`–`18`, `20`, `21`, and `22` have `requirements.md`, `design.md`, and `tasks.md` marked `Approved` with both sign-offs recorded. `19-dispatch-scheduling-and-delivery-tracking` is explicitly deferred; its number is reserved because other specs reference it as the future owner of delivery scheduling/tracking. Check `specs/00-steering/gantt-mapping.md` for the live status of every spec against the delivery timeline.
 
 ## Read these before writing anything
 
@@ -30,7 +30,7 @@ A hybrid warehouse inventory system: VMI (vendor-owned stock, CBM-based billing)
 - **`parties` / `items` / `locations`** — not `suppliers` / `SKU` / `bins`.
 - **`pick_list` + `acknowledgement_receipt`**, both priced. No `withdrawal_slip`, no `awaiting_pricing` status. Trading's price on a document is final; VMI's is a per-release reference only — the real VMI bill is always the period average, never a single document's total.
 - **Mobile-first, floor-priority.** The warehouseman on a handheld scanner is the primary user. Office/desktop screens are the secondary case. See `brand-design-system.md` §3 for what this means concretely (touch targets, no glassmorphism on floor screens, hover vs. press, single-primary-action-per-screen).
-- **Deferred or Draft areas:** incoming receiving (`07`), barcode integration (`18`), and parties portal (`22`) remain Draft; dispatch scheduling/delivery tracking (`19`) is deferred. Do not build against any of these until all three documents are Approved.
+- **Deferred or Draft areas:** parties portal (`22`) is Approved for its documented contract, with downstream runtime work gated by its named dependencies; barcode integration (`18`) is Approved for its documented contract, with runtime scanner tests remaining implementation work; dispatch scheduling/delivery tracking (`19`) is deferred.
 
 ## Working in this repo
 

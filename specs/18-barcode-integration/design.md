@@ -1,11 +1,12 @@
 # Barcode & QR Integration — Design
 
-Status: Draft
+Status: Approved
 
 Cites foundational specs:
 - `specs/00-steering/tech.md`
 - `specs/00-steering/brand-design-system.md`
 - `specs/01-core-data-model/requirements.md`
+- `specs/22-parties-portal/requirements.md` R11 and `design.md` §7c for the scoped `WAN:<uuid>` exception
 
 ## 1. Frontend Architecture: Mobile Camera Scanner
 
@@ -23,11 +24,14 @@ export function MobileQRScanner({ onScanSuccess, onScanError }) {
   const scannerRef = useRef(null);
 
   useEffect(() => {
-    // Configure scanner to prefer rear camera and restrict to 2D formats
+    // Configure scanner to prefer rear camera. Ordinary contexts remain 2D-only;
+    // the R11 route adds Code 128 and accepts only the WAN:<uuid> prefix.
     const config = {
       fps: 10,
       qrbox: { width: 250, height: 250 },
-      formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ]
+      formatsToSupport: isInboundAdvanceNotice
+        ? [Html5QrcodeSupportedFormats.QR_CODE, Html5QrcodeSupportedFormats.CODE_128]
+        : [Html5QrcodeSupportedFormats.QR_CODE, Html5QrcodeSupportedFormats.DATA_MATRIX]
     };
 
     const scanner = new Html5QrcodeScanner("reader", config, false);
@@ -71,6 +75,12 @@ When Dyna-Serv needs to generate its own labels for unknown/unbarcoded items arr
 ```
 
 *Note on performance:* Keeping the payload small (a single UUID rather than a massive JSON string) ensures the QR code matrix is physically less dense. A low-density 2D matrix dramatically increases the mobile camera's read-speed and reliability under poor warehouse lighting.
+
+**Scoped R11 exception:** `22-parties-portal` uses the flat `WAN:<uuid>` payload
+for a supplier-initiated inbound advance notice. The scanner must accept
+Code 128 on that route only, validate the `WAN:` prefix and UUID shape, and
+resolve the UUID to `wrr_advance_notices.id`; it must not reinterpret ordinary
+Code 128/UPC values as lot or item payloads in any other workflow.
 
 ### 2.1 QR Generation Component
 - **Library:** `react-qr-code` or `qrcode.react`.

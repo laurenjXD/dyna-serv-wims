@@ -31,11 +31,11 @@ Everything else in the uploaded doc — the two-stage inventory commitment model
 
 ## 2. Current approval and deferral status
 
-Approval applies to all three documents in a feature folder: `requirements.md`, `design.md`, and `tasks.md`. `05-ui-shell-and-navigation` is Under Revision pending its final state/accessibility verification. The remaining Draft specs are `07-incoming-receiving`, `18-barcode-integration`, and `22-parties-portal`. Spec `19-dispatch-scheduling-and-delivery-tracking` is deferred and has a reserved number; it must not be implemented or treated as an active dependency.
+Approval applies to all three documents in a feature folder: `requirements.md`, `design.md`, and `tasks.md`. `05-ui-shell-and-navigation`, `07-incoming-receiving`, `18-barcode-integration`, and `22-parties-portal` are Approved across all three documents; implementation work remains subject to their documented runtime/dependency gates. Spec `19-dispatch-scheduling-and-delivery-tracking` is deferred and has a reserved number; it must not be implemented or treated as an active dependency.
 
-- **07-incoming-receiving** — receiving workflow remains Draft
-- **18-barcode-integration** — barcode contract remains Draft
-- **22-parties-portal** — portal scope remains Draft
+- **07-incoming-receiving** — receiving workflow is Approved; runtime workflow tests remain implementation work
+- **18-barcode-integration** — barcode contract is Approved; runtime scanner tests remain implementation work
+- **22-parties-portal** — portal scope is Approved; downstream runtime work remains dependency-gated
 
 Everything else currently in scope is Approved across all three documents, except Under Revision `05` and deferred `19`.
 
