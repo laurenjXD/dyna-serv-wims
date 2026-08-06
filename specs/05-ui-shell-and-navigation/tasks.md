@@ -1,7 +1,7 @@
 # UI Shell & Navigation — Implementation Plan
 
-Status: Approved
-Updated: 2026-08-05
+Status: Under Revision
+Updated: 2026-08-06
 
 ## Implementation gate
 
@@ -9,7 +9,7 @@ This document is an implementation plan only. No application code, route structu
 
 - `requirements.md` defines the approved shell, navigation, responsive, accessibility, and failure-state requirements.
 - `design.md` cites the foundational dependencies and records the route/layout architecture, session boundary, navigation model, and data contracts.
-- `02-rbac-roles` has a stable capability interface for visibility and authorization decisions; this feature must not hard-code the currently flagged role model.
+- `02-rbac-roles` has an approved capability interface for visibility and authorization decisions; this feature must not hard-code role names.
 - `04-services-and-infrastructure` has approved the Auth/session and environment boundaries consumed by the shell.
 - The tasks below are reconciled against the approved requirements and design.
 - Both sign-offs at the end of this file are completed and `Status` is changed to `Approved`.
@@ -18,7 +18,7 @@ Writing or revising this plan and its requirements/design documents is allowed b
 
 ## Scope
 
-The shell is the shared application frame around feature screens: authenticated route protection, responsive layout, brand treatment, global navigation, page header, session/account controls, loading/error/not-found states, and the contracts that downstream feature specs use to mount their screens.
+The shell is the shared application frame around feature screens: authenticated route protection, responsive layout, brand treatment, global navigation, page header, session/account controls, the complete global state catalog, and the contracts that downstream feature specs use to mount their screens.
 
 It does not define feature workflows, database tables, business permissions, offline queue behavior, billing, or pricing. Feature specs own their screen content and workflow rules; this spec owns the surrounding frame and navigation contract.
 
@@ -26,7 +26,7 @@ It does not define feature workflows, database tables, business permissions, off
 
 - `specs/00-steering/brand-design-system.md` is the visual source of truth and is Approved. Do not define duplicate colors, typography, spacing, motion, or breakpoint tokens here.
 - Depends on `01-core-data-model` only for any identity/display references explicitly required by the approved design; do not duplicate its tables or schema definitions.
-- Depends on `02-rbac-roles` for the capability-checking interface and effective session context. Since RBAC is flagged for revision, route visibility and active-navigation decisions remain provisional until that contract is approved.
+- Depends on the approved `02-rbac-roles` capability-checking interface and effective session context.
 - Depends on `03-offline-mode-and-client-storage` only for the approved online/offline indicator contract; the shell must not enqueue workflow actions or make Tier 2 decisions.
 - Depends on `04-services-and-infrastructure` for Supabase Auth SSR/session handling, environment configuration, error monitoring, security headers, and runtime boundaries.
 - Downstream specs `06`–`22` consume the shell's route, layout, navigation-item, page-header, feedback, and authorization interfaces rather than reimplementing them; deferred `19` is excluded until reactivated.
@@ -108,8 +108,11 @@ Testing: Unit tests for state/formatting helpers; E2E tests for keyboard and tou
 - [ ] Implement account/session controls with safe identity display, sign-out, and approved recovery/settings links.
 - [ ] Implement shell-level loading states that preserve layout stability and do not delay floor scanner readiness.
 - [ ] Implement safe `error` and `not-found` boundaries with recovery actions appropriate to the route context.
+- [ ] Implement distinct forbidden, timeout, retrying, retry-exhausted, session-checking, sign-out-transition, storage-attention, synchronization-attention, and online-required states with correct ownership and recovery behavior.
 - [ ] Implement global success/error/scan-feedback presentation only where it does not duplicate feature-owned floor flash behavior.
 - [ ] Implement the shared connectivity indicator only after the offline contract is approved; it must be informational and must not make offline Tier 2 actions appear available.
+- [ ] Map `03`'s connectivity (`online`/`offline`/`checking`) and synchronization (`idle`/`syncing`/`attention`) states without conflating them.
+- [ ] Implement status-announcement and focus-management rules for route transitions, drawers, errors, sign-out, and blocking recovery states.
 - [ ] Ensure all controls meet the approved 44px office and 56px/64px floor touch-target requirements.
 
 ### 6. Publish downstream integration guidance
@@ -152,15 +155,18 @@ Testing: Type-check/build contract; E2E smoke coverage for representative floor 
 
 ### Manual QA
 
-- [ ] Run the design-system audit against `brand-design-system.md`.
+- [ ] Run the implementation-level design-system audit against `brand-design-system.md`; documentation-level audit completed 2026-08-06 in `design.md` §11.
 - [ ] Verify the real logo asset, font rendering, focus visibility, touch behavior, and contrast on representative desktop and mobile browsers.
 - [ ] Physical warehouse hardware QA is deferred to the project-wide pre-launch pass unless this feature introduces hardware-specific behavior beyond simulated scanner keyboard input.
 
 ## Sign-off
 
-- [x] Requirements and design are complete and internally consistent.
-- [x] All applicable testing layers above pass, with non-applicable layers explicitly justified.
-- [x] `rbac-rls-reviewer` confirms the shell does not substitute client-side visibility for authorization.
-- [x] `design-system-auditor` confirms floor/office rules, typography, tokens, touch targets, contrast, and motion are followed.
-- [x] Product owner approval — Name: Lauren Date: 2026-08-05
-- [x] Second approver approval — Name/Role: Lauren Date: 2026-08-05
+The previous approval is reopened by the 2026-08-06 state/accessibility revision.
+These sign-offs must be re-confirmed after the revised verification matrix passes.
+
+- [ ] Requirements and design are complete and internally consistent after the revision.
+- [ ] All applicable testing layers above pass, with non-applicable layers explicitly justified.
+- [ ] `rbac-rls-reviewer` confirms the shell does not substitute client-side visibility for authorization.
+- [ ] `design-system-auditor` confirms floor/office rules, typography, tokens, touch targets, contrast, and motion are followed.
+- [ ] Product owner approval — Name: ____________________ Date: ______________
+- [ ] Second approver approval — Name/Role: ____________________ Date: ______________

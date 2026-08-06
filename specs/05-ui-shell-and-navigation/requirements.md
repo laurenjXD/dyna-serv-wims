@@ -1,7 +1,7 @@
 # UI Shell & Navigation — Requirements
 
-Status: Approved
-Updated: 2026-08-05
+Status: Under Revision
+Updated: 2026-08-06
 
 ## 1. Purpose and scope
 
@@ -69,6 +69,9 @@ A feature declares its surface when registering a route. The shell must not infe
 3. Unknown or unauthorized routes SHALL use the approved not-found/forbidden behavior and SHALL not disclose protected resource existence.
 4. Error messages SHALL not expose secrets, access tokens, SQL, stack traces, provider topology, or protected record data.
 5. Shell errors SHALL be connected to the approved monitoring boundary with safe diagnostic context.
+6. The shell SHALL distinguish initial session checking, route loading, retrying, timeout, retry-exhausted, not-found, forbidden, and unexpected-error states; each SHALL provide an appropriate safe recovery action or redirect.
+7. A not-found response SHALL not reveal whether a protected resource exists when the caller lacks authorization; a forbidden response MAY be used only where the route/resource existence is safe to disclose.
+8. Error recovery SHALL distinguish retryable failures from failures requiring sign-in, an online connection, administrator assistance, or navigation away.
 
 ### R7. Floor interaction and accessibility
 
@@ -87,6 +90,9 @@ A feature declares its surface when registering a route. The shell must not infe
 1. If the approved offline contract supplies connectivity state, the shell MAY display an informational online/offline indicator.
 2. The indicator SHALL distinguish connectivity from synchronization and SHALL not claim that data is synchronized without authoritative evidence.
 3. The shell SHALL not queue actions, approve work, assign FIFO stock, or make pricing/billing decisions because a user is offline.
+4. When supplied by `03`, the shell SHALL represent `online`, `offline`, and `checking` connectivity separately from `idle`, `syncing`, and `attention` synchronization states.
+5. The shell SHALL represent unavailable, corrupted, quota-exceeded, or cleared browser storage as an explicit attention state and SHALL never imply that offline work is safely persisted in those conditions.
+6. An online-required action SHALL provide a clear explanation and recovery path without pretending that the action was queued or completed.
 
 ### R9. Downstream feature contract
 
@@ -94,6 +100,7 @@ A feature declares its surface when registering a route. The shell must not infe
 2. Features SHALL own their workflow-specific loading, empty, confirmation, scan-result, and validation states unless explicitly designated shell-global.
 3. Features SHALL not define duplicate global navigation, global design tokens, or client-only authorization gates.
 4. The shell contract SHALL remain usable by feature specs `06` through `22` (excluding deferred `19`) without requiring feature-specific role-name conditionals.
+5. The shell contract SHALL define ownership for global states versus feature-owned states so that features can provide empty-data, validation, confirmation, scan-result, conflict, and domain-specific recovery states without duplicating global shell behavior.
 
 ## 4. Acceptance criteria
 
@@ -104,6 +111,7 @@ A feature declares its surface when registering a route. The shell must not infe
 - [ ] Floor shell controls satisfy touch-target, contrast, font-size, focus, portrait, and no-hover rules.
 - [ ] Expired/revoked/inactive sessions cannot continue viewing protected content.
 - [ ] Loading, error, not-found, sign-out, and connectivity states are safe and recoverable.
+- [ ] Initial session checking, retry/timeout, forbidden, storage-attention, online-required, synchronization-attention, and sign-out transition states are safe and recoverable.
 - [ ] A representative floor feature and office feature can mount through the shared shell contract without duplicating shell behavior.
 - [ ] Unit, integration, E2E, and manual checks required by `tasks.md` pass or are explicitly marked not applicable.
 
@@ -111,6 +119,6 @@ A feature declares its surface when registering a route. The shell must not infe
 
 - Visual requirements are governed by `specs/00-steering/brand-design-system.md`.
 - Auth/session and runtime requirements depend on `04-services-and-infrastructure`.
-- Capability and effective-access requirements depend on the approved interface from `02-rbac-roles`; the current RBAC model is not final.
+- Capability and effective-access requirements depend on the approved interface from `02-rbac-roles`; this spec does not redefine the RBAC model.
 - Connectivity presentation depends on `03-offline-mode-and-client-storage`; this spec does not define offline synchronization.
 - This spec touches no `01-core-data-model` tables. If the approved design later requires direct profile/party data reads, those table dependencies must be named explicitly in `design.md` before approval.

@@ -8,7 +8,7 @@ This mockup translates the approved brand system and the current UI Shell & Navi
 
 - **Primary surface:** floor/mobile, portrait, 375–430px wide, 16px page padding.
 - **Office enhancement:** 1024px+, 32px page margin, 24px gutter, max-width 1280px.
-- **Primary brand:** `brand-navy` `#002060`; active navigation and primary structural emphasis.
+- **Primary structure:** `brand-navy` `#002060`; sidebar/background and heavy structural emphasis. Active navigation uses `brand-red` per the approved brand system.
 - **Action accent:** `brand-red` `#E30613`; actions only, never semantic status.
 - **Floor text:** `on-surface` `#1A1B20`; minimum 16px, AAA for time-critical actions.
 - **Floor surfaces:** opaque white cards with Level 2 elevation; no blur or glassmorphism.
@@ -160,12 +160,17 @@ The base layout remains complete and usable; larger widths add space and office 
 
 | State | Composition | Signal rules |
 |---|---|---|
+| Session checking | Minimal boundary or non-sensitive shell placeholder | Never flash protected content or claim authenticated identity before server resolution |
+| Sign-out transition | Account control shows pending, then returns to sign-in or shows safe retry | Disable duplicate submission; never claim sign-out completed after failure |
 | Loading | Preserve header/landmarks; show solid placeholder blocks | Never show stale protected data as current; scanner readiness is not blocked |
+| Retrying / timeout | Stable shell with bounded retry status and Retry / Back / Home | Never spin indefinitely or convert timeout into empty/success |
 | Offline | Header indicator: `Offline` with connectivity icon | Informational only; never imply sync or authorize restricted actions |
+| Checking / syncing / attention | Status region distinguishes connectivity from synchronization | `Checking` is not online; `idle` is not “synced”; attention links to owning feature when applicable |
+| Storage attention / online required | Explicit warning card with owning feature recovery path | Never claim offline work was saved, queued, authorized, or completed |
 | Error | Solid white recovery card: “We couldn’t load this page.” + Retry / Back | No stack traces, tokens, SQL, or protected record data |
 | Not found / forbidden | Same safe recovery pattern with Home / Back | Do not disclose whether a scoped record exists |
 | Empty access | Centered safe message + Sign out | Do not render an unbounded shell |
-| Active route | Text, icon, and selected-state semantics | Never rely on color alone |
+| Navigation transition / active route | Text, icon, selected-state, drawer focus, and route-pending semantics | Never rely on color alone; restore focus after drawer closure |
 
 ## Review checklist
 
