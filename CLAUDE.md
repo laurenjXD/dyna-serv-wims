@@ -45,13 +45,23 @@ Use these for their specific jobs instead of doing everything in the main thread
 | Agent | Use for |
 |---|---|
 | `spec-writer` | Drafting/revising requirements.md, design.md, tasks.md. No Bash access — docs only, never writes code. |
+| `project-scaffolder` | One-time only, at the start of implementation: bootstraps the Next.js + Supabase + Drizzle + Tailwind skeleton per `tech.md`/`structure.md`. Not for feature code. |
+| `database-builder` | Writing Supabase/Postgres migration files (tables, RLS policies, SQL functions) for an approved feature spec. Never self-verifies — always hands off to `db-migration-verifier`. |
 | `db-migration-verifier` | Before signing off any DB-touching tasks.md. Runs real Postgres, not mocked tests — this exact pattern already caught two real bugs earlier in this project. |
+| `backend-builder` | Implementing Next.js API routes, Server Actions, and business logic (FIFO/FEFO, pricing, approval workflow) against an approved, already-verified schema. |
+| `frontend-builder` | Implementing Next.js pages/components against a working backend. Always hands off to `design-system-auditor` before considering a component done. |
 | `rbac-rls-reviewer` | Reviewing anything touching party/role-scoped data. Flags application-layer-only access control that isn't actually enforced by RLS. Read-only. |
 | `design-system-auditor` | Reviewing new UI work against `brand-design-system.md`. Read-only. |
 | `offline-sync-reviewer` | Reviewing offline-queue code. Catches Tier 2 actions (approval, pricing, FIFO allocation) accidentally wired into the Tier 1 offline queue. Read-only. |
+| `integration-reviewer` | Reviewing the seam between two already-built features (e.g. receiving → picking, approval queue → withdrawal) — checks shared tables/state/assumptions match on both sides. Read-only. |
 | `test-writer` | Writing actual test code per `testing.md`'s strategy once a tasks.md's testing requirements are known. |
+| `build-doctor` | After a batch of changes, or before marking implementation complete: runs typecheck/lint/unit tests/build and fixes mechanical failures. Not a business-logic or design reviewer. |
+| `ai-agent-builder` | Implementing the in-app AI chatbot (`15-ai-chatbot`) — the three-persona assistant backed by scoped tool calls. |
+| `documentation-writer` | User-facing docs, admin/training material, API reference, code comments — once a feature is implemented and approved. |
 
 Note the pattern: verification/review agents are read-only on purpose (`Read, Grep, Glob` only) — they flag, they don't silently fix, because several of these judgment calls (which font is "correct," which RLS policy is "right") need a human or the main thread to decide, not a subagent acting unsupervised.
+
+For the full build → review → verify sequence per feature, use the `/implement-feature` skill (`.claude/skills/implement-feature/`) rather than improvising the agent order each time. For what to build first, see `specs/00-steering/implementation-kickoff.md`.
 
 ## Cross-tool compatibility
 

@@ -18,11 +18,11 @@ against the spec files first (list findings before fixing).
 
 GOAL — Revise Inspection Workflows, Inventory Reporting, and Item Code Display:
 
-1. INVENTORY REPORTING & DISPLAY (touches 16-reporting-and-analytics, 05-ui-shell-and-navigation)
-   - Establish `lot_number` as the absolute basis for inventory aging calculations.
-   - Inject pricing metrics (profit, revenue, etc.) into the reporting views where applicable (ensuring RLS/RBAC gates via persona `rbac-rls-reviewer`, as floor staff shouldn't see financials).
-   - Define a bulk filtering/grouping contract (by category, item code, etc.) that supports Excel report exports containing full connected lot history. (Evaluate if this export/grouping approach is optimal or suggest a more efficient data-model alternative in your review).
-   - Display Rule: Enforce item code display switching based on `flow_type`. If `vmi`, show `supplier_item_code`. If `trading`, show `dsgc_item_number` (Note: strictly use `dsgc_item_number`, reject the synonym "dsgc part number").
+1. MASTER INVENTORY TRACKING & ANALYTICS (touches 01-core-data-model, 16-reporting-and-analytics, 05-ui-shell-and-navigation)
+   - Establish `lot_number` as the absolute basis for inventory aging calculations within the Master Inventory tracking views.
+   - Introduce pricing metrics (profit, revenue, etc.) into the Master Inventory tracking views and Analytics/Reporting dashboards where applicable. Ensure strict RLS/RBAC gates via persona `rbac-rls-reviewer`, as floor staff must not see financials.
+   - Define a bulk filtering/grouping contract (by category, item code, flow type, etc.) for the Master Inventory surface that supports Excel report exports containing full connected lot history. (Evaluate if this export/grouping approach is optimal or suggest a more efficient data-model alternative).
+   - Dynamic Item Code Display: Across Master Inventory and Analytics views, enforce item code display switching based on `flow_type`. If `vmi`, show `supplier_item_code`. If `trading`, show `dsgc_item_number` (Note: strictly use `dsgc_item_number`, reject the synonym "dsgc part number").
 
 2. RECEIVING INSPECTION FLOW (touches 07-incoming-receiving)
    - Explicitly define visual inspection during Receiving.
