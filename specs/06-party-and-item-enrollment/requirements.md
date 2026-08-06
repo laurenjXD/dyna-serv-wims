@@ -1,6 +1,6 @@
 # Party & Item Enrollment — Requirements
 
-Status: Draft
+Status: Approved
 
 ## 1. Purpose and scope
 

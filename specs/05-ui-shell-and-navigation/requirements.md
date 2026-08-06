@@ -1,6 +1,6 @@
 # UI Shell & Navigation — Requirements
 
-Status: Draft
+Status: Approved
 Updated: 2026-08-05
 
 ## 1. Purpose and scope
@@ -93,7 +93,7 @@ A feature declares its surface when registering a route. The shell must not infe
 1. A feature SHALL be able to register its route metadata, shell surface, page metadata, and required capability references through the documented shell contract.
 2. Features SHALL own their workflow-specific loading, empty, confirmation, scan-result, and validation states unless explicitly designated shell-global.
 3. Features SHALL not define duplicate global navigation, global design tokens, or client-only authorization gates.
-4. The shell contract SHALL remain usable by feature specs `06` through `20` without requiring feature-specific role-name conditionals.
+4. The shell contract SHALL remain usable by feature specs `06` through `22` (excluding deferred `19`) without requiring feature-specific role-name conditionals.
 
 ## 4. Acceptance criteria
 

@@ -1,13 +1,14 @@
 # Task Revision & Implementation Plan
 
 Status: Working plan
-Updated: 2026-08-05
+Updated: 2026-08-06
 
-This plan covers every existing feature whose `tasks.md` is Draft or whose
-approval gate is incomplete. It is a planning document only. It does not
-authorize application code, migrations, or infrastructure changes. A feature
-may enter implementation only after its requirements, design, and tasks are
-reconciled and its `tasks.md` has both required sign-offs.
+This is the retained revision history and implementation handoff plan. It is
+not itself an approval record and does not authorize application code,
+migrations, or infrastructure changes. A feature may enter implementation only
+after its `requirements.md`, `design.md`, and `tasks.md` are all `Approved` and
+the tasks sign-off block is complete. At the current checkpoint, the active
+Draft gates are `07`, `18`, and `22`; `19` is deferred.
 
 ## 1. Cross-cutting decisions to lock first
 

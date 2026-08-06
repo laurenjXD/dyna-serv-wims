@@ -12,7 +12,7 @@ No implementation code is written until a feature's `specs/NN-*/tasks.md` has `S
 - `parties` / `items` / `locations` naming — never `suppliers` / `SKU` / `bins`.
 - `pick_list` + `acknowledgement_receipt`, both priced. No `withdrawal_slip`. Trading price on a document is final; VMI price on a document is a per-release reference only.
 - Mobile-first, floor-priority design — see `specs/00-steering/brand-design-system.md`.
-- RBAC, offline sync, VMI billing, and Trading pricing are explicitly unstable — check spec status before building against them.
+- Approval applies to `requirements.md`, `design.md`, and `tasks.md` together. Current Draft specs are `07-incoming-receiving`, `18-barcode-integration`, and `22-parties-portal`; `19-dispatch-scheduling-and-delivery-tracking` is explicitly deferred.
 
 ## Where everything actually lives
 

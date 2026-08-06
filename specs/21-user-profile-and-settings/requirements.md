@@ -1,6 +1,6 @@
 # User Profile & Settings — Requirements
 
-Status: Draft
+Status: Approved
 
 Depends on:
 - `specs/00-steering/product.md`

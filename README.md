@@ -29,16 +29,15 @@ The base document is the uploaded `system_design.md`, **merged** with prior deci
 
 Everything else in the uploaded doc — the two-stage inventory commitment model, the five-role RBAC matrix, the offline-mode spec, the client storage strategy, the UI shell patterns, and the services/infrastructure layer (caching, jobs, email, realtime, storage, rate limiting, monitoring) — carries forward as-is into the merge, alongside the VMI/Trading dual-flow architecture, the `parties`/`party_transaction_roles` model, and the pricing-everywhere decision from earlier work.
 
-## 2. Known areas flagged for major revision
+## 2. Current approval and deferral status
 
-These four specs stay `Draft`-only until explicitly reconciled — do not let them block approval of unrelated specs, and do not let their instability leak into specs that depend on them (reference them loosely, e.g. "RBAC will gate this action" rather than hardcoding a specific role name that's likely to change):
+Approval applies to all three documents in a feature folder: `requirements.md`, `design.md`, and `tasks.md`. The remaining Draft specs are `07-incoming-receiving`, `18-barcode-integration`, and `22-parties-portal`. Spec `19-dispatch-scheduling-and-delivery-tracking` is deferred and has a reserved number; it must not be implemented or treated as an active dependency.
 
-- **02-rbac-roles** — role model expected to change
-- **03-offline-mode-and-client-storage** — sync approach expected to change
-- **12-vmi-billing** — billing model expected to change
-- **13-trading-orders-and-pricing** — pricing model expected to change
+- **07-incoming-receiving** — receiving workflow remains Draft
+- **18-barcode-integration** — barcode contract remains Draft
+- **22-parties-portal** — portal scope remains Draft
 
-Everything else (01, 04–11, 14–16) is not flagged and can proceed to `Approved` on its normal track.
+Everything else currently in scope is Approved across all three documents, except deferred `19`.
 
 ## 2a. Approval process
 
@@ -93,9 +92,11 @@ Next.js 15 (App Router) + Supabase (Postgres, Auth, Realtime, Storage) + Vercel,
   /15-ai-chatbot
   /16-reporting-and-analytics
   /17-product-categorization-and-classification
-  /18-packing
-  /19-dispatch-scheduling-and-delivery-tracking
+  /18-barcode-integration
+  /19-dispatch-scheduling-and-delivery-tracking  # reserved; deferred
   /20-documentation-training-and-uat
+  /21-user-profile-and-settings
+  /22-parties-portal
     requirements.md
     design.md
     tasks.md
@@ -117,7 +118,7 @@ Next.js 15 (App Router) + Supabase (Postgres, Auth, Realtime, Storage) + Vercel,
   /migrations
 ```
 
-Each of the 16 numbered spec folders (01–16) contains exactly three files: `requirements.md`, `design.md`, `tasks.md`. No code folders under `/specs` — that directory is documentation only.
+Each active feature spec contains `requirements.md`, `design.md`, and `tasks.md`. Deferred `19` contains only its deferral marker until reactivated. No code folders under `/specs` — that directory is documentation only.
 
 ## 5. Doc templates
 

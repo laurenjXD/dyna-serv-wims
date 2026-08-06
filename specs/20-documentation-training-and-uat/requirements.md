@@ -1,6 +1,6 @@
 # Documentation, Training, and UAT — Requirements
 
-Status: Draft
+Status: Approved
 Updated: 2026-08-05
 
 Depends on:

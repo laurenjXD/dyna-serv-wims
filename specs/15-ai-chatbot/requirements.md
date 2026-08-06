@@ -1,6 +1,6 @@
 # AI Chatbot — Requirements
 
-Status: Draft
+Status: Approved
 Updated: 2026-08-05
 
 ## 1. Purpose and scope
