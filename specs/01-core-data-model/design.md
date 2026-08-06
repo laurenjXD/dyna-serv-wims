@@ -574,3 +574,51 @@ erDiagram
 ## 5. Offline Behavior
 - Tier 1: Hardware scanner barcode matching & offline receiving scan queue.
 - Tier 2: Pre-receiving CIPL file uploads and master item catalog encoding.
+
+## 6. Schema amendment (2026-08-06): `wrr_advance_notices`
+
+**Status of this section**: `01-core-data-model` reached `Status: Approved` on 2026-08-05, with both sign-offs recorded and two real-Postgres `db-migration-verifier` passes against the schema documented in §1–§5 above. This §6 addition has **NOT** been through `db-migration-verifier` and has **NOT** been through any sign-off — it does not inherit the verification already completed for the rest of this document, and it does not reopen or change the `Status` header or the existing Sign-off record in `tasks.md`. It requires its own dedicated `db-migration-verifier` pass, exactly like every other table in §1.2 did, before it may be treated as implementation-ready. This section exists so the table shape is written down precisely (per this repo's own established bug history — `01`'s earlier real-Postgres pass specifically caught tables left as prose instead of literal code, and code blocks with missing imports) rather than left as an unresolved prose description in a downstream spec.
+
+**Origin**: `22-parties-portal` requirements.md R11 / design.md §7c (supplier-initiated barcode pre-labeling of inbound dispatches) and `07-incoming-receiving`'s confirmed advance-notice matching flow (see `07` requirements.md's new "Supplier advance-notice intake" clause). A party in the inbound-supplying role (VMI vendor, or Trading `vendor`/`supplier`) submits a thin pre-arrival label form; this table stores that submission. It is never written to directly by `07`'s WRR-creation path, and it is never treated as authoritative for receiving — see `declared_qty` below.
+
+```typescript
+import { pgTable, uuid, varchar, integer, timestamp, check } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { wrrAdvanceNoticeStatusEnum, flowTypeEnum } from "./enums";
+import { parties } from "./parties";
+import { items } from "./items";
+import { wrrItems } from "./wrr";
+
+export const wrrAdvanceNotices = pgTable("wrr_advance_notices", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  partyId: uuid("party_id").references(() => parties.id).notNull(), // inbound-supplying party (vendor/supplier); RLS also requires a party_roles row per 02 design.md §7.4
+  flowType: flowTypeEnum("flow_type").notNull(), // 'vmi' | 'trading' ONLY — never 'supplies'. Mirrors the same Supplies-exclusion rule already enforced everywhere else in this repo (02 design.md §3.2's has_party_scope/can_access_party_resource two-gate mechanism; every other assigned_party-scoped table in this schema). Required so 02 §7.4's can_access_party_resource(resource, action, party_id, flow_type) RLS predicate has a real column to evaluate against — no such column existed when 02's RLS pattern was first drafted against this table (rbac-rls-reviewer finding A, 2026-08-06).
+  itemId: uuid("item_id").references(() => items.id).notNull(),
+  declaredQty: integer("declared_qty").notNull(), // Label-only declared value for this specific label (per carton/pallet). NOT authoritative — a receiving commitment is never derived from this field alone; 07's scanned-vs-expected discrepancy handling (R3.2, R3.3) runs unchanged at physical receipt regardless of what this value says.
+  supplierLotNumber: varchar("supplier_lot_number", { length: 100 }), // Nullable. The supplier's own business lot number, collected pre-shipment. Distinct from the canonical wrr_items.lot_number, which remains the sole authoritative lot identifier copied to lots at confirmation (structure.md glossary; 01 §3 workflow 2).
+  status: wrrAdvanceNoticeStatusEnum("status").default("pending_review").notNull(),
+  matchedWrrItemId: uuid("matched_wrr_item_id").references(() => wrrItems.id), // Nullable. Set when back office confirms/converts this advance notice into a staged wrr_items line.
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  confirmedAt: timestamp("confirmed_at"), // Nullable until back-office confirmation/rejection.
+  confirmedByUserId: uuid("confirmed_by_user_id"), // Nullable. The back-office actor who confirmed or rejected this advance notice.
+}, (table) => ({
+  flowTypeNotSupplies: check("wrr_advance_notices_flow_type_not_supplies", sql`${table.flowType} <> 'supplies'`),
+}));
+```
+
+Add to `enums.ts` (also part of this same unverified amendment):
+
+```typescript
+export const wrrAdvanceNoticeStatusEnum = pgEnum("wrr_advance_notice_status", [
+  "pending_review",
+  "confirmed",
+  "rejected",
+]);
+```
+
+**Invariants (proposed, pending `db-migration-verifier`)**:
+- `flow_type` is `NOT NULL` and CHECK-constrained to exclude `'supplies'` at the database level — a `wrr_advance_notice` can only ever be `'vmi'` or `'trading'`. This is the same Supplies-exclusion invariant already enforced everywhere else in this repo's schema (mirroring `02` design.md §3.2's two-gate `has_party_scope`/`can_access_party_resource` mechanism, which itself exists to guarantee no `assigned_party`-scoped resource ever exposes Supplies data). **Added 2026-08-06 in response to `rbac-rls-reviewer` finding A**: `02` design.md §7.4's RLS predicate for this table calls `can_access_party_resource(..., party_id, flow_type)`, which requires a real `flow_type` column to evaluate against — this column did not exist in the original 2026-08-06 amendment draft.
+- `declared_qty` is explicitly non-authoritative labeling input, never a receiving commitment — this is a documentation/comment-level distinction here, not enforceable by a CHECK constraint, matching how `01`'s existing §3 item 9 (SPQ enforcement) already documents an application-layer-only rule where a DB constraint isn't the right mechanism.
+- `matched_wrr_item_id` is set only by the controlled back-office confirmation service (owned by `07`), never directly by the submitting `party_user` — RLS enforcement of this is `02-rbac-roles`'s responsibility (see `02` design.md §7.4's `wrr_advance_notices` pattern and new §7.4a controlled-function section), not this table's own constraint layer.
+- **`db-migration-verifier` pass 1 (2026-08-06)**: real-Postgres run against this literal DDL — every FK (`party_id`, `item_id`, `matched_wrr_item_id`), the `status` enum, required-field NOT NULL constraints, `supplier_lot_number` nullability, and the documented no-uniqueness-on-`(party_id, item_id)` behavior all PASS. RESTRICT-by-default delete behavior on all three FK columns confirmed (no silent orphaning of `matched_wrr_item_id`). One real bug found and fixed: the code block's import line included an unused `text` import (no column uses `text`; `supplier_lot_number` is `varchar`), which fails a literal `tsc --noEmit` compile under `noUnusedLocals` — removed. RLS enforcement itself remains untested here (correctly out of scope for `01`, owned by `02`); a second `db-migration-verifier` pass is still needed once `02`'s corrected RLS pattern (the `rbac-rls-reviewer` fixes below) can be exercised together with this table.
+- No uniqueness constraint is proposed on `(party_id, item_id)` — a party may submit multiple advance notices for the same item across different shipments.

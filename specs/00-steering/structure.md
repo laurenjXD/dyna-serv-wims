@@ -1,4 +1,4 @@
-# Structure & Naming — Hyperion 3PL / Dyna-Serv
+# Structure & Naming — Dyna-Serv
 Status: Approved
 
 ## Glossary (use these terms exactly — no synonyms across specs)

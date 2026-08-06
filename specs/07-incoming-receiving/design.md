@@ -24,6 +24,8 @@ Depends on:
 - `05-ui-shell-and-navigation` for authenticated route/layout, floor/office surfaces, page headers, and shared status/error regions.
 - `06-party-and-item-enrollment` for online unknown-item resolution.
 - `11-transfer-and-inspection` as the shared inspection handler for quarantined-lot resolution and evidence after the commit emits an inspection case event.
+- `22-parties-portal` (**added 2026-08-06**) requirements.md R11 / design.md §7c, as the originating requirement for §5.5's supplier advance-notice intake — `22` owns the party-facing submission surface and the `wrr_advance_notices` write; `07` owns confirmation/rejection and the physical-scan match.
+- `18-barcode-integration` (**added 2026-08-06**) requirements.md FR-2.3, for the 1D/Code 128 decode of the `WAN:<uuid>` advance-notice payload at the receiving bay, consumed by this spec's existing R3/§6 barcode-reconciliation flow.
 
 ### Tables touched by this feature
 
@@ -38,6 +40,7 @@ Depends on:
 | `wrr_items` | Store expected lines, scan reconciliation state, and per-line disposition. | Core schema owns fields; receiving owns matching behavior. The `disposition` field (`store`/`inspect`) is a new field to be added to `01` via schema amendment. |
 | `wrr_inspection_logs` | Store inbound physical conformance/non-conformance observations during arrival. Distinct from post-commit quarantine resolution owned by `11`. | Retained by approved core schema; receiving owns the write path during the scan/conformance phase. |
 | `inventory_transactions` | Insert immutable receiving movements through server transactions. Both `store` and `inspect` dispositions insert a `movement_type = 'receiving'` record at commit. | No updates/deletes; inventory transaction boundary is authoritative. |
+| `wrr_advance_notices` (**added 2026-08-06, schema amendment not yet through `db-migration-verifier`** — see `01-core-data-model` design.md §6) | Confirm (creating/matching a staged `wrr_items` line) or reject a party-submitted pre-arrival label; resolve its `matched_wrr_item_id` at a physical scan of its `WAN:<uuid>` barcode. | Written by `22-parties-portal`'s party-facing surface only. `07` owns the confirm/reject transition and the scan-match consumption; `07` never writes an initial `wrr_advance_notices` row. |
 
 Receipt confirmation creates `lots` plus one `lot_location_balances` row per committed line. This design does not invent `stock_levels` or another duplicate ledger table.
 
@@ -166,6 +169,23 @@ Printing is generated from the staged server record and does not create a receip
 
 The form supports draft validation before save, server uniqueness/relationship checks, and an explicit transition to staged status. Editing is allowed while staged; once receiving starts, the scan baseline is immutable or changes through a visible versioned correction flow.
 
+### 5.5 Supplier advance-notice intake
+
+**Added 2026-08-06**, formally adopting `22-parties-portal` design.md §7c's confirmed matching flow into `07`, per that spec's blocking dependency (c). This covers requirements.md R1a.
+
+`wrr_advance_notices` is written exclusively by `22-parties-portal`'s party-facing portal, under its proposed `shipment_labels.generate` (`assigned_party`) capability, restricted to a caller whose party holds an inbound-supplying `party_roles` value (`vendor`/`supplier`). `07` never grants a party user any write path into this table or into `wrr_items`/WRR creation — R1.1's reservation of WRR creation to an authorized back-office user is unchanged.
+
+**Flow:**
+
+1. The party submits the thin form (item, non-authoritative `declared_qty`, optional `supplier_lot_number`), creating a `wrr_advance_notices` row with `status = 'pending_review'`.
+2. A back-office user, in a new review surface on this feature's WRR work queue, sees pending advance notices and reviews each against the actual CIPL they have separately received. They either:
+   - **Confirm**: create a new staged `wrr_items` line (or match to one they are already staging) — carrying over `item_id` and `party_id`/`vendor_party_id` reference, and starting `expected_qty` from the advance notice's `declared_qty` as an editable, non-authoritative default the back-office user adjusts against the actual CIPL. This sets `wrr_advance_notices.matched_wrr_item_id`, `status = 'confirmed'`, `confirmed_at`, `confirmed_by_user_id`.
+   - **Reject/flag**: set `status = 'rejected'`, `confirmed_at`, `confirmed_by_user_id`, with no `wrr_items` line created or matched. The discrepancy is handled through the same manual-follow-up path this spec already uses for other pre-receiving discrepancies.
+3. At the receiving bay, `18-barcode-integration` requirements.md FR-2.3's 1D/Code 128 decode resolves a `WAN:<uuid>` payload to its `wrr_advance_notices` row. §6's matcher below resolves the linked `wrr_items` line via `matched_wrr_item_id` and proceeds through the existing scan-reconciliation path (scanned-vs-expected tracking, over/duplicate rejection) exactly as it would for any other WRR line.
+4. **If the advance notice was never confirmed before the scan occurs** (still `pending_review`, or `rejected`), the scan resolves no `wrr_items` line and falls through to §6's existing unknown/unmatched exception path (requirements.md R3.3) unchanged — no new bespoke error state is introduced for this case.
+
+This is a pure intake/matching addition to the existing pre-receiving/receiving-bay design; it introduces no new commit-transaction behavior in §9 and no new lot-posting path in §7 — a confirmed advance notice only ever results in an ordinary staged `wrr_items` line, which then goes through this spec's existing commit path exactly like a line created without an advance notice.
+
 ## 6. Floor scan and reconciliation design
 
 The scan screen is a card/list workflow, not a dense table. It shows one current line/next action, total expected, scanned, remaining, and a clear exception state. Scanner input is treated as keyboard-like input per `testing.md`; the feature may provide a manual recovery input with the same validation path.
@@ -178,6 +198,8 @@ scanned barcode → active item identity → current WRR line(s)
 ```
 
 It rejects wrong WRR, wrong item, unknown item, duplicate/over quantity, invalid UOM, and unresolved lot context. A rejected scan does not increment the accepted line count.
+
+**Added 2026-08-06**: a `WAN:<uuid>` payload (per `18-barcode-integration` requirements.md FR-2.3) resolves through a distinct lookup path — `wrr_advance_notices.id` → `matched_wrr_item_id` → the linked `wrr_items` line — before the same scanned-vs-expected reconciliation applies. If the advance notice has no `matched_wrr_item_id` (never confirmed), this falls through to the unknown/unmatched exception path below, per §5.5.
 
 If the item is unknown, the screen routes to the online `06` enrollment flow or records an exception. After enrollment, the scan is repeated and revalidated; the original rejected event is not retroactively accepted.
 
@@ -358,3 +380,4 @@ The Incoming Ledger is a server-side query/view over `inventory_transactions` fi
 - [ ] Confirm unknown item recovery with `06-party-and-item-enrollment`.
 - [ ] Confirm inspection case event contract and resolution state transitions with `11-transfer-and-inspection`.
 - [ ] Have `offline-sync-reviewer`, `rbac-rls-reviewer`, and `design-system-auditor` review before approval.
+- [ ] **Added 2026-08-06**: Confirm `01-core-data-model`'s `wrr_advance_notices` schema amendment (design.md §6) has passed its own `db-migration-verifier` pass, and `02-rbac-roles`'s `shipment_labels.generate`/`wrr_advance_notices` RLS pattern (design.md §3.2/§7.4) is approved, before implementing §5.5.

@@ -23,11 +23,15 @@ The warehouse floor operations are executed strictly on **mobile devices** using
 ### FR-1: Mobile Camera Scanning
 1. Every scan-enabled floor screen SHALL provide a distinct UI button (e.g., a massive 64x64px camera icon) to activate the mobile camera scanner.
 2. The scanner SHALL request necessary browser video permissions and render a live feed from the device's rear-facing camera.
-3. The scanner SHALL process the video feed in real-time to detect and decode 2D barcodes.
+3. The scanner SHALL process the video feed in real-time to detect and decode 2D barcodes. Where FR-2.3 applies, the same scan component SHALL also be capable of decoding a 1D/linear (Code 128) barcode — standard camera-decode libraries typically support both formats natively, so this is a scanning-library capability question, not a new hardware requirement.
 
-### FR-2: Supported Formats (2D Only)
-1. The system SHALL strictly support parsing **2D Barcodes** (QR Codes, Data Matrix).
-2. 1D barcodes (e.g., Code 128, UPC) are deprecated in this workflow as they cannot hold the complex JSON payloads required for VMI/Trading lot identification.
+### FR-2: Supported Formats (2D Only, with one scoped exception)
+1. The system SHALL strictly support parsing **2D Barcodes** (QR Codes, Data Matrix) for every scanning context except the FR-2.3 exception below.
+2. 1D barcodes (e.g., Code 128, UPC) are deprecated in every other workflow as they cannot hold the complex JSON payloads required for VMI/Trading lot identification.
+
+### FR-2.3: 1D/Linear Barcode Exception — Supplier-Initiated Inbound Pre-Label Flow
+
+1D/linear barcode (Code 128) decoding SHALL be supported specifically for the supplier-initiated inbound pre-label flow defined in `22-parties-portal` requirements.md R11, where the payload is a flat string identifier (`WAN:<uuid>`, referencing a `wrr_advance_notices` row — not a `lots` UUID) rather than a JSON blob. This is exactly the data-capacity reason FR-2.2 excludes 1D elsewhere — since this payload was never JSON, that reason does not apply here. This is the sole exception to FR-2.1/FR-2.2. Every other scanning context in this system — WRR barcode reconciliation for internally-generated labels (FR-3), pick-list scanning, and item/lot identification — remains 2D/QR-only exactly as FR-2.1/FR-2.2 already specify.
 
 ### FR-3: Label Generation (QR)
 1. The system SHALL provide functionality to generate and print 2D QR Code labels for items that arrive without scannable QR codes.
@@ -41,9 +45,10 @@ The warehouse floor operations are executed strictly on **mobile devices** using
 ## 5. Out of Scope
 - Integration with external Bluetooth/Serial hardware scanners.
 - "Keyboard wedge" input interception.
-- 1D barcode parsing.
+- 1D barcode parsing outside the FR-2.3 exception for `22` R11.
 
 ## 6. Acceptance Criteria
 1. A user on a mobile device can tap the "Scan" button, grant camera permissions, and the live camera feed appears.
 2. The camera successfully decodes a 2D QR code, plays an audio beep, flashes the screen green, and passes the payload to the active workflow.
 3. The system successfully generates a downloadable/printable 2D QR code payload for an unknown item during the Receiving flow.
+4. The system decodes a 1D/Code 128 barcode specifically for the `22` R11 supplier-initiated inbound pre-label flow (resolving a `WAN:<uuid>` payload), and continues rejecting/ignoring 1D barcodes in every other scanning context.

@@ -67,6 +67,14 @@ The table below lists every authenticated route planned at launch. Each route na
 | `/parties` | office | `parties.manage` | `06-party-and-item-enrollment` | Launch |
 | `/items` | office | `items.manage` | `06-party-and-item-enrollment` | Launch |
 | `/reports` | office | `reporting.read` | `16-reporting-and-analytics` | Planned |
+| `/portal` | party | none (context-resolved landing; aggregates reads individually gated below, per `22` design.md §4) | `22-parties-portal` | Planned |
+| `/portal/inventory` | party | `reporting.read` (VMI position + embedded party analytics; the `lot_location_balances` read itself has no separately catalogued resource key — it is gated by `02` §7.4's RLS pattern directly, per `22` design.md §4) | `22-parties-portal` | Planned |
+| `/portal/orders` | party | `pick_list.read` | `22-parties-portal` | Planned |
+| `/portal/documents` | party | `documents.read`, `vmi_statements.read` | `22-parties-portal` | Planned |
+| `/portal/notifications` | party | `notifications.read` | `22-parties-portal` | Planned |
+| `/portal/labels` | party | `shipment_labels.generate` | `22-parties-portal` | Planned (blocked pending `22` R11.11's four dependent specs' approval processes) |
+
+**Added 2026-08-06**, resolving `22-parties-portal`'s open shell-architecture item: these six rows are `22`'s routes, rendered on the `"party"` surface (§5). All are `Planned` rather than `Launch` because `22-parties-portal` itself remains `Draft`; `vmi_statements.read`, `reporting.read`, and `shipment_labels.generate` are catalog additions in `02` design.md §3.2/§7.4, themselves pending `02`'s own approval/sign-off process — the same "written, not yet verified" distinction already applied elsewhere in this table's capability-key sourcing.
 
 Rules:
 
@@ -101,6 +109,7 @@ Rules:
 - **Office routes** use the sidebar on `md`/`lg` breakpoints. The sidebar shows `brand-navy` background, `brand-red` active item, Epilogue SemiBold 14px labels. At narrow mobile widths the sidebar collapses to a hamburger/drawer; the route must remain fully operable without the persistent sidebar.
 - **Shared routes** use floor-first layout and touch targets as the default. They may use the sidebar enhancement on `lg` viewports only if the feature spec explicitly declares it. When in doubt, a shared route uses floor defaults — it is always safer to over-target the floor user than to assume office context.
 - **Navigation hidden during scan flows:** when a floor feature activates a scan flow, it sets a shell flag that hides the bottom tab bar and replaces it with a minimal flow-control strip. The flag is owned by the feature's route layout, not by individual components, so navigation cannot accidentally reappear mid-scan.
+- **`"party"` routes (added 2026-08-06):** use the identical shell composition as `"office"` routes — same `AuthenticatedLayout` tree (§4), same `DesktopSidebar`/mobile-drawer behavior, same office-tier contrast/touch-target rules (per `22-parties-portal` requirements.md R9, this is explicitly not a floor/scan surface). No new shell component is introduced for `"party"`; only the `NavigationEntry` set resolved for a `party_user` session differs, per the existing capability-filtering rule above.
 
 ### 3.4 Application state catalog
 
@@ -142,7 +151,7 @@ AuthenticatedLayout
 The design calls for one typed registry consumed by both office and floor navigation. Its conceptual shape is:
 
 ```ts
-type ShellSurface = "floor" | "office" | "shared";
+type ShellSurface = "floor" | "office" | "shared" | "party";
 
 type NavigationEntry = {
   id: string;
@@ -157,6 +166,8 @@ type NavigationEntry = {
   featureStatus: "available" | "planned" | "disabled";
 };
 ```
+
+**`"party"` surface (added 2026-08-06, resolving `22-parties-portal`'s open shell-architecture question)**: `party_user` sessions (`22-parties-portal`) render through the same shell composition as `"office"` sessions — the identical `AuthenticatedLayout` tree (§4: `DesktopSidebar`, `AppHeader`, `AccountControl`, `StatusRegion`) — filtered by this section's existing capability-based `NavigationEntry` mechanism to only the entries a `party_user`'s granted capabilities resolve to. `"party"` is kept distinct from `"office"` (internal office users), even though both render identical shell components, solely so floor/office-specific styling rules that would be meaningless or misleading in a party session (e.g. any future office-only operational chrome) can be explicitly excluded from `"party"` without conflating the two audiences. This reuses `05`'s existing components entirely unchanged — no new shell codebase, no separately-maintained party-facing layout to drift from the brand system — and the existing "hidden, not disabled" capability-filtering rule (§5 below) is sufficient on its own to hide every internal-only nav group from a `party_user` session; no new mechanism beyond this one `ShellSurface` value was needed.
 
 This is a design contract, not an instruction to implement the type before approval. The final capability field and effective-context type must be adopted from `02-rbac-roles` rather than invented here.
 
@@ -273,7 +284,7 @@ They should not copy the sidebar, bottom navigation, Auth guard, global tokens, 
 
 ## 11. Design verification before approval
 
-- [ ] Reconcile the route inventory with the approved feature specs and the Gantt mapping.
+- [ ] Reconcile the route inventory with the approved feature specs and the Gantt mapping. **Partially addressed 2026-08-06**: `22-parties-portal`'s six routes and the `"party"` `ShellSurface` value are now added (§3.2, §5) — the remaining work for this checklist item is reconciling every *other* feature spec's route inventory, and re-confirming `22`'s rows once `22` itself progresses past `Draft`.
 - [ ] Replace provisional RBAC references with the approved capability/session contract.
 - [ ] Confirm the Auth/session integration against `04-services-and-infrastructure`.
 - [ ] Confirm offline indicator semantics against `03-offline-mode-and-client-storage`.

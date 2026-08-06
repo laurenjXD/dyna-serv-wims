@@ -37,7 +37,7 @@ The Core Data Model defines the foundational database entities, relationships, c
    - The database schema MUST NOT contain a `warehouse_id` column anywhere.
 
 2. **Entity Terminology**:
-   - Database tables MUST be named `parties`, `party_roles`, `items`, `item_categories`, `locations`, `lots`, `lot_location_balances`, `inventory_commitments`, `inventory_commitment_lines`, `wrr_documents`, `wrr_items`, `wrr_inspection_logs`, `forex_rates`, `inventory_transactions`, `pick_lists`, and `pick_list_items`. `lot_inventory_totals` is a derived read model, not a stored table.
+   - Database tables MUST be named `parties`, `party_roles`, `items`, `item_categories`, `locations`, `lots`, `lot_location_balances`, `inventory_commitments`, `inventory_commitment_lines`, `wrr_documents`, `wrr_items`, `wrr_inspection_logs`, `forex_rates`, `inventory_transactions`, `pick_lists`, and `pick_list_items`. `lot_inventory_totals` is a derived read model, not a stored table. **Schema amendment (2026-08-06, not yet verified — see design.md §6)**: `wrr_advance_notices` is a new table added after this spec's original approval, originating from `22-parties-portal` R11's supplier-initiated barcode pre-labeling flow; it requires its own `db-migration-verifier` pass before implementation and does not inherit this spec's existing sign-off.
 
 3. **Party Role Set**:
    - `party_roles` MUST support `'vendor'`, `'supplier'`, `'customer'`, `'end_customer'`, and `'internal_warehouse'`.

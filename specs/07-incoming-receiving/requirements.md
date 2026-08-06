@@ -48,6 +48,19 @@ The final enum and transition constraints must be reconciled with `01-core-data-
 6. The system SHALL support editing staged lines before physical receiving begins, subject to audit/version rules.
 7. Once physical receiving begins, changes to expected lines SHALL be restricted or explicitly versioned; silent changes to the scan baseline are prohibited.
 
+### R1a. Supplier advance-notice intake
+
+**Added 2026-08-06**, formally adopting the confirmed matching flow from `22-parties-portal` requirements.md R11 / design.md §7c into this spec, per that spec's blocking dependency (c). This clause covers the input into `07`'s pre-receiving process from a party-submitted advance notice; it does not change R1.1's ownership of actual WRR creation.
+
+1. A `wrr_advance_notices` row is owned and written entirely by `22-parties-portal` (a party in the inbound-supplying role — VMI vendor, or Trading `vendor`/`supplier` — submitting a thin pre-arrival label: item, a non-authoritative declared quantity, and an optional supplier lot number). `07` does not define, own, or grant party-user write access to this table; it only consumes rows created there. `wrr_advance_notices` is a `01-core-data-model` schema amendment (2026-08-06), not yet through its own `db-migration-verifier` pass — see `01-core-data-model` design.md §6.
+2. An authorized back-office user SHALL be able to review a `pending_review` `wrr_advance_notices` row against the actual CIPL they have separately received, and SHALL be able to either:
+   - **confirm** it — creating a new staged `wrr_items` line or matching it to an existing one, carrying over the item/party reference, and treating the advance notice's `declared_qty` as a non-authoritative starting value the back-office user MAY adjust against the actual CIPL before saving; or
+   - **reject/flag** it as a discrepancy for manual follow-up, without creating or matching a `wrr_items` line.
+   Confirming SHALL set `wrr_advance_notices.matched_wrr_item_id`, `status = 'confirmed'`, `confirmed_at`, and `confirmed_by_user_id`. Rejecting SHALL set `status = 'rejected'` and the same attribution fields, without a `matched_wrr_item_id`.
+3. A physical barcode scan at the `receiving_bay`, using this spec's existing R3 barcode-reconciliation flow, that resolves a `WAN:<uuid>` payload (per `18-barcode-integration` requirements.md FR-2.3) SHALL match to the linked `wrr_items` line via `wrr_advance_notices.matched_wrr_item_id`, and reconciliation then proceeds exactly as R3 already defines for any other scanned line.
+4. If the advance notice was never confirmed by back office before the shipment physically arrives and is scanned, the scan SHALL fall through to this spec's existing R3.3 unknown/unmatched exception path. No new bespoke error state is introduced for this case.
+5. This clause never bypasses R1.1: `07` retains sole ownership of actual WRR/`wrr_items` creation. A `wrr_advance_notices` row is advisory pre-staging input into that process, never a substitute for it, and never a party-user write path into `wrr_items`.
+
 ### R2. WRR printing and arrival
 
 1. The system SHALL generate a printable WRR containing a stable WRR reference, expected lines, quantities/UOMs, party and regulatory references, and the fields required by the approved paper workflow.
@@ -167,10 +180,12 @@ The final enum and transition constraints must be reconciled with `01-core-data-
 - [ ] Putaway is a handoff/recommendation until physically confirmed, and incoming ledger views authoritative transactions only.
 - [ ] Party/flow scope, RLS, stale state, revoked access, and direct-identifier manipulation are tested.
 - [ ] Offline scan behavior is simulated and enrollment/confirmation remain blocked offline.
+- [ ] A back-office user can confirm a `pending_review` `wrr_advance_notices` row into a staged `wrr_items` line (adjusting the non-authoritative declared quantity as needed) or reject it; a physical scan of its `WAN:<uuid>` barcode at receiving matches the confirmed line via `matched_wrr_item_id`, and an unconfirmed advance notice's scan falls through to the existing R3.3 unknown/unmatched exception path.
 
 ## 6. Dependencies and exclusions
 
-- Depends on approved `01-core-data-model` tables and transitions: `parties`, `items`, `locations`, `lots`, `lot_location_balances`, `wrr_documents`, `wrr_items`, `wrr_inspection_logs`, and `inventory_transactions`. The `disposition` field on `wrr_items` is a new field required by this spec and will be added to `01` via a schema amendment before implementation.
+- Depends on approved `01-core-data-model` tables and transitions: `parties`, `items`, `locations`, `lots`, `lot_location_balances`, `wrr_documents`, `wrr_items`, `wrr_inspection_logs`, and `inventory_transactions`. The `disposition` field on `wrr_items` is a new field required by this spec and will be added to `01` via a schema amendment before implementation. **Added 2026-08-06**: also depends on `01`'s new `wrr_advance_notices` table (schema amendment, not yet through `db-migration-verifier`, see `01` design.md §6) for R1a; this table is written by `22-parties-portal`, consumed and confirmed/rejected by `07`.
+- **Added 2026-08-06**: depends on `22-parties-portal` requirements.md R11 / design.md §7c as the originating requirement for R1a (supplier advance-notice intake) — `22` owns the party-facing submission surface; `07` owns confirmation/rejection and the physical-scan match.
 - Depends on `02-rbac-roles` for capabilities, party/flow scope, RLS, and audit attribution.
 - Depends on `03-offline-mode-and-client-storage` for the Tier 1 scan allowlist and replay contract.
 - Depends on `04-services-and-infrastructure` for Auth, private Storage, email/monitoring, server transactions, and idempotency.

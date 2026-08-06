@@ -1,4 +1,4 @@
-# AGENTS.md — Hyperion 3PL / Dyna-Serv
+# AGENTS.md — Dyna-Serv WIMS
 
 **Canonical source is `CLAUDE.md` at this repo's root.** This file exists for agentic tools that read the `AGENTS.md` convention instead of Claude Code's `CLAUDE.md`. If you're Claude Code, read `CLAUDE.md` — it's the maintained version. If you're a different agent, everything below is a mirror; check `CLAUDE.md` and `specs/00-steering/revision-log.md` for anything more recent than what's written here, since this copy can lag.
 
