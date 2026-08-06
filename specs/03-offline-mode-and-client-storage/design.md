@@ -17,7 +17,7 @@ This design depends on:
 - `specs/00-steering/structure.md` for `/lib/offline`, canonical naming, and the single-warehouse constraint.
 - `specs/00-steering/testing.md` for Dexie/fake-indexeddb, browser IndexedDB, online/offline event simulation, and deferred physical QA.
 - `specs/00-steering/brand-design-system.md` for floor-first feedback and touch/contrast/motion rules.
-- `02-rbac-roles` for live session/capability/scope checks during replay. Its requirement that queued Tier 1 work be re-authorized is binding; its final role model remains unstable.
+- `02-rbac-roles` for live session/capability/scope checks during replay. Its requirement that queued Tier 1 work be re-authorized is binding, and its approved role/capability model is consumed without duplication.
 - `04-services-and-infrastructure` for Auth/session, server execution, observability, and outage/runbook boundaries.
 - `05-ui-shell-and-navigation` for the shell's read-only connectivity indicator and the boundary between shell feedback and feature feedback.
 
@@ -152,6 +152,8 @@ Lot creation (WRR confirm), putaway/placement confirmation, inspection resolutio
 | ttl_seconds | number | After TTL expires, treat as stale even if still offline — do not make decisions against expired cache |
 
 Cache is populated proactively when the user loads the Picking or Receiving pages while online. It is refreshed after every successful sync. Stale cache (past TTL) is surfaced to the user with a warning banner — the system does not silently serve expired data for operational decisions.
+
+**Resolved local-retention policy (2026-08-06):** cache entries have a 24-hour operational TTL and are hard-deleted after 7 days even if they were not opened again; pending outbox entries are retained for 7 days; failed, quarantined, and supervisor-attention entries are retained for 30 days after their terminal outcome. Completed outbox entries and their local sync responses are removed after 24 hours. Logout clears session-local UI state but does not destroy another user's pending work; cleanup applies these class-specific limits.
 
 **`sync_log`** — outcome record of every sync attempt
 
@@ -440,20 +442,25 @@ The shell must never enable Tier 2 actions because `connectivity` is `online`, a
 
 ## 10. Server and infrastructure boundary
 
-The sync coordinator uses the approved Auth/session and server-command path from `04-services-and-infrastructure`. It does not create a new background worker or Redis queue by default. Service-worker background sync may wake the app or request a sync, but domain authorization and business transactions remain server-side.
+The sync coordinator uses the approved Auth/session and server-command path from `04-services-and-infrastructure`:
+
+- `/api/sync` resolves the current Supabase Auth session on the server and re-checks the actor, effective capability, party/flow scope, business state, idempotency key, and RLS-backed domain command before applying any observation.
+- User-scoped reads and writes use the Supabase session client/Data API by default. Offline replay must not depend on a user-scoped Drizzle transaction wrapper; that wrapper remains prohibited until `04`'s real-Postgres identity-isolation gate passes.
+- Every sync request receives/propagates the canonical `X-Correlation-Id` from `04` §15.3. Rejections and accepted observations emit redacted monitoring context and the required audit/security event without payload secrets or tokens.
+- v1 uses foreground/reconnect sync. A service worker may wake the app or request a sync, but it is not a required executor, and it never performs domain authorization or business transactions independently.
 
 Feature endpoints should use the owning domain transaction and idempotency mechanism. If an offline operation creates an outbox/job follow-up, that follows the infrastructure spec's transactional enqueue rules; the client must not enqueue infrastructure jobs directly.
 
 ## 11. Verification and open decisions
 
-- [ ] Approve the exact Tier 1 operation allowlist with each owning feature.
+- [x] Approve the exact Tier 1 operation allowlist with each owning feature — `receiving_scan_observation`, `pick_list_scan_observation`, and `inspection_observation` are the only v1 queued commands; authoritative receiving confirmation, putaway, dispatch, inspection resolution, approvals, pricing, billing, FIFO allocation, and RBAC changes remain online-only.
 - [x] Device-sharing threat model resolved **for the honest/buggy-client case**: `captured_by_user_id` on every outbox entry (§4.5) plus the two-gate client/server actor-match check (§6.3 step 2 and 4c, §6.4) prevents an honest client — including one with a missing or buggy gate 1 — from ever syncing a queued entry under a different user's session.
 - [ ] **Accepted residual risk, not fully closed**: a maliciously modified client with physical access to the shared device's browser storage and separately-valid credentials as a different user could forge `captured_by_user_id` to bypass gate 2 (§4.5's "Explicit residual risk" note). Closing this fully would require either an online round-trip at capture time or storing a durable signed credential client-side, and the latter is forbidden by R2.4. Accepted given the bounded blast radius (Tier 1 capture-only, never a privileged action) with a detective audit-trail control in place instead of a preventive one. Revisit only if a concrete incident or a stronger requirement makes this cost worth paying.
-- [ ] Approve the local data retention and browser-storage threat model (quota/eviction handling, retention duration per cache/queue class) beyond the device-sharing mechanism resolved above.
+- [x] Approve the local data retention and browser-storage threat model (quota/eviction handling, retention duration per cache/queue class) — resolved 2026-08-06 as 24-hour cache TTL, 7-day cache/pending-entry maximum, 30-day failed/quarantined/attention retention, and 24-hour completed-entry retention.
 - [x] Confirm the capability/session context and replay rejection contract with `02-rbac-roles` — resolved 2026-08-05: capability keys documented in §5.2 (`receiving.scan`, `pick_list.execute`, `inspection.perform`) matching the `02` §3.2 operational capability catalog; replay re-check sequence documented in §6.4.
-- [ ] Confirm Auth, endpoint, monitoring, and service-worker boundaries with `04-services-and-infrastructure`.
-- [x] Reconcile `OfflineStatus` with `05-ui-shell-and-navigation` before either spec is approved — resolved 2026-08-05: typed `OfflineStatus` contract (`ConnectivityStatus`, `SyncStatus`) defined in §9.0 and exported from `@/lib/offline`; `05` consumes the interface without importing queue internals.
-- [ ] Decide whether background sync is required for v1 or whether foreground/reconnect sync is sufficient.
-- [ ] Decide whether queue review belongs in a shared office surface or in each owning feature.
-- [ ] Have `offline-sync-reviewer` review the final design for Tier 2 leakage, replay authorization, and conflict handling.
-- [ ] Decide whether a `pending` (not-yet-synced) outbox entry can be corrected or cancelled by the operator before sync. §4.4's `storage.idb` interface currently has no `removeFromOutbox`/`editOutboxEntry` method, and §6.4 applies each accepted `receiving_scan_observation` as a delta on `wrr_items.scanned_qty` — so an uncorrected wrong-quantity entry queued before a needed correction would surface as a duplicate/over-quantity `conflict` for supervisor review rather than being silently correctable. This is safe (no Tier 2 leakage; the entry never leaves capture-only territory) but the UX and API surface for it are currently undefined.
+- [x] Confirm Auth, endpoint, monitoring, and service-worker boundaries with `04-services-and-infrastructure` — resolved in §10 against `04` §§8, 9, 15, and 17.
+- [x] Reconcile `OfflineStatus` with `05-ui-shell-and-navigation` — resolved 2026-08-05: typed `OfflineStatus` contract (`ConnectivityStatus`, `SyncStatus`) defined in §9.0 and exported from `@/lib/offline`; `05` consumes the interface without importing queue internals.
+- [x] Decide whether background sync is required for v1 or whether foreground/reconnect sync is sufficient — foreground/reconnect sync is the v1 contract; service-worker wake is optional.
+- [x] Decide whether queue review belongs in a shared office surface or in each owning feature — unresolved entries appear in the shared Notifications/Sync Conflicts office surface, while owning features provide domain-specific resolution detail.
+- [x] Have `offline-sync-reviewer` review the final design for Tier 2 leakage, replay authorization, and conflict handling — completed and recorded in `revision-log.md`; the malicious-client actor-forgery scenario remains an explicitly accepted residual risk.
+- [x] Decide whether a `pending` (not-yet-synced) outbox entry can be corrected or cancelled by the operator before sync — no edit/cancel is permitted in v1; malformed or wrong-quantity observations become a supervisor-visible conflict and are never silently rewritten.
