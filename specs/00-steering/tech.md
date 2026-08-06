@@ -23,7 +23,7 @@ Status: Approved (stack) / Draft (principles below still being finalized alongsi
 - Pricing is visible everywhere (dashboards, documents, accounting handoff) — Trading price is final, VMI price on a document is a per-release reference only, never the authoritative bill
 
 ## Explicitly not yet locked
-RBAC role model, offline sync approach, VMI billing model, and Trading pricing model are flagged for major revision (see `revision-log.md`) — specs touching these stay in `Draft` until reconciled.
+RBAC, offline sync, VMI billing, and Trading pricing are now reconciled and approved through all three feature documents. Draft work remains gated in `07-incoming-receiving`, `18-barcode-integration`, and `22-parties-portal`; dispatch scheduling/delivery tracking (`19`) is deferred. See `revision-log.md` and `gantt-mapping.md` for the live status.
 
 ## Testing
 See `testing.md` for the full strategy (Vitest + Playwright, two-stage DB testing, floor/hardware simulation approach). Every `tasks.md` must specify applicable testing layers per task — this is structural, not optional.

@@ -21,7 +21,7 @@ Documentation, cost discovery, read-only provider review, and local proof-of-con
 - `02-rbac-roles` determines Auth administration, session, service-role, and RLS boundaries.
 - `03-offline-mode-and-client-storage` determines continuity behavior during service outages.
 - `05-ui-shell-and-navigation` consumes Auth/session/configuration and protected routes.
-- Feature specs `06` through `20` add service jobs, files, emails, realtime subscriptions, alerts, and capacity assumptions through the shared interfaces defined here.
+- Feature specs `06` through `22` add service jobs, files, emails, realtime subscriptions, alerts, and capacity assumptions through the shared interfaces defined here; deferred `19` is excluded until reactivated.
 
 ## Test-layer legend
 

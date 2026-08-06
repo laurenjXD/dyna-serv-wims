@@ -10,7 +10,7 @@ A hybrid warehouse inventory system: VMI (vendor-owned stock, CBM-based billing)
 
 **No implementation code is written until a feature's `specs/NN-*/tasks.md` has `Status: Approved` with both sign-offs filled in.** This is not a suggestion. If you (Claude Code, or a subagent) are asked to write code for a feature whose `tasks.md` isn't `Approved`, stop and say so instead of proceeding. Writing requirements/design/tasks docs is always fine. Writing application code against an unapproved spec is not.
 
-**Current status** (updated 2026-08-05): `01-core-data-model` reached `Status: Approved` — real-Postgres verification (`db-migration-verifier`) passed twice against its full schema, both sign-offs are filled in, and the project-setup/DB-schema work that was paused pending this spec may now resume (Drizzle schema definitions and the initial migration, per `01`'s own `tasks.md` Implementation Tasks). Every other spec remains `Draft`. `02-rbac-roles` and `03-offline-mode-and-client-storage` are furthest along behind `01` — both have been through multiple real-Postgres/RLS/offline-boundary review rounds with real bugs found and fixed, but neither has completed sign-off yet. Check `specs/00-steering/gantt-mapping.md` for the live status of every spec against the delivery timeline before assuming anything is further along than it is.
+**Current status** (updated 2026-08-06): Approval applies to all three feature documents. `01`, `02`, `03`, `04`, `05`, `06`, and `08`–`17`, `20`, and `21` have `requirements.md`, `design.md`, and `tasks.md` marked `Approved` with both sign-offs recorded. `07`, `18`, and `22` remain Draft and are not implementation-ready. `19-dispatch-scheduling-and-delivery-tracking` is explicitly deferred; its number is reserved because other specs reference it as the future owner of delivery scheduling/tracking. Check `specs/00-steering/gantt-mapping.md` for the live status of every spec against the delivery timeline.
 
 ## Read these before writing anything
 
@@ -30,7 +30,7 @@ A hybrid warehouse inventory system: VMI (vendor-owned stock, CBM-based billing)
 - **`parties` / `items` / `locations`** — not `suppliers` / `SKU` / `bins`.
 - **`pick_list` + `acknowledgement_receipt`**, both priced. No `withdrawal_slip`, no `awaiting_pricing` status. Trading's price on a document is final; VMI's is a per-release reference only — the real VMI bill is always the period average, never a single document's total.
 - **Mobile-first, floor-priority.** The warehouseman on a handheld scanner is the primary user. Office/desktop screens are the secondary case. See `brand-design-system.md` §3 for what this means concretely (touch targets, no glassmorphism on floor screens, hover vs. press, single-primary-action-per-screen).
-- **Four areas are explicitly unstable**: RBAC (`02`), offline sync (`03`), VMI billing (`12`), Trading pricing (`13`). Don't build against these as if they're settled — check their spec status first.
+- **Deferred or Draft areas:** incoming receiving (`07`), barcode integration (`18`), and parties portal (`22`) remain Draft; dispatch scheduling/delivery tracking (`19`) is deferred. Do not build against any of these until all three documents are Approved.
 
 ## Working in this repo
 

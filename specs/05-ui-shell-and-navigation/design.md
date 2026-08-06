@@ -1,6 +1,6 @@
 # UI Shell & Navigation — Design
 
-Status: Draft
+Status: Approved
 Updated: 2026-08-05
 
 ## 1. Design intent
@@ -271,7 +271,7 @@ Navigation omission is not security. The shell must never accept `role`, `party_
 
 ## 10. Integration with downstream specs
 
-Feature specs `06`–`20` should reference this design for:
+Feature specs `06`–`22` should reference this design for (excluding deferred `19`):
 
 - route registration and shell surface selection;
 - page title/context/back behavior;

@@ -1,6 +1,6 @@
 # Product Categorization & Classification — Requirements
 
-Status: Draft
+Status: Approved
 
 ## 1. Purpose and scope
 

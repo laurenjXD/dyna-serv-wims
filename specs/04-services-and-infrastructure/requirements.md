@@ -1,6 +1,6 @@
 # Services & Infrastructure — Requirements
 
-Status: Draft
+Status: Approved
 Updated: 2026-08-05
 
 Depends on:
@@ -328,7 +328,7 @@ Production launch is blocked until:
 - Marketing email and customer-engagement campaigns.
 - A general analytics warehouse or long-term log lake.
 - Vendor-neutral cloud abstraction that hides Supabase or Vercel capabilities.
-- Workflow-specific business requirements owned by feature specs `06` through `20`.
+- Workflow-specific business requirements owned by feature specs `06` through `22`, excluding deferred `19`.
 
 ## 19. Decisions required before approval
 

@@ -1,6 +1,6 @@
 # RBAC & Roles — Design
 
-Status: Draft
+Status: Approved
 Updated: 2026-08-05 (pass-2 db-migration-verifier run — all 5 remaining items verified PASS; two bugs found and fixed)
 
 Depends on:

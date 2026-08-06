@@ -20,8 +20,8 @@ Depends on:
 - `04-services-and-infrastructure` (Draft) for Auth, server runtime, the private Storage bucket/signed-URL mechanism, Resend, and monitoring.
 - `05-ui-shell-and-navigation` (Draft) for authenticated layout, responsive behavior, and feedback regions — shell-architecture direction resolved 2026-08-06 (shared filtered shell, `"party"` `ShellSurface`), see §3.
 - `10-pick-list-and-acknowledgement-receipt` (Draft) for document generation, artifact access, and the VMI disclaimer.
-- `12-vmi-billing` (Draft, flagged unstable) for `vmi_contracts`, `vmi_cbm_ledger`, `vmi_billing_statement`, `vmi_credit_notes`.
-- `13-trading-orders-and-pricing` (Draft, flagged unstable) for the final Trading document price and margin exclusion.
+- `12-vmi-billing` (Approved) for `vmi_contracts`, `vmi_cbm_ledger`, `vmi_billing_statement`, `vmi_credit_notes`.
+- `13-trading-orders-and-pricing` (Approved) for the final Trading document price and margin exclusion.
 - `14-notifications-and-alerts` (Draft) for the in-app notification center contract.
 - `16-reporting-and-analytics` (Draft) for the party-scoped VMI/Trading analytics views (FR-5, FR-6) and the reusable component library (FR-9) §7a embeds — this design defines no new chart component or aggregation query.
 - `06-party-and-item-enrollment` (Draft) — current dependency for §7c: administrator-only internal item enrollment, which R11's scope boundary (items reachable through `party_visible_items` only) relies on as the gate for a genuinely brand-new item; `06` design.md §8/§7.4's rule that `default_supplier_party_id` must never be used to expose item records to a party user.

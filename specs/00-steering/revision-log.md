@@ -22,16 +22,13 @@ Every merge conflict and major revision, dated, with the resolution. This is the
 
 **Glossary & terminology alignment** — standardized terms for receiving (`wrr`, `cipl`, `receiving_bay`), ledger (`inventory_transaction`, `movement_type`), units & measurement (`uom`, `spq`, `volume_cbm`), cross-references & customs (`dsgc_item_number`, `customer_item_code`, `peza_number`, `supplier_invoice_ref`, `ip_number`), valuation (`forex_rate`), and auditing (`cycle_count`, `inventory_reconciliation`). **Resolved: added to `structure.md` Glossary.**
 
-## Flagged, not yet resolved
+## Previously flagged areas — resolved
 
-The following are confirmed as **expected to change significantly** — specs touching them stay `Draft`:
-
-- **RBAC / role model** (spec 02) — draft direction recorded 2026-08-04: four fixed system roles backed by capabilities, additive multi-role grants, explicit party/optional-flow scope, live database resolution, default-deny RLS, invitation-only activation, and append-only RBAC security events. Requirements/design are drafted but remain unapproved; downstream capability mappings and infrastructure-dependent session/RLS details still require reconciliation.
-- **Offline mode / sync approach** (spec 03)
-- **VMI billing model** (spec 12)
-- **Trading pricing model** (spec 13)
-
-No specifics are recorded yet for the remaining flagged areas; fill them in as those specs are drafted and their revisions surface.
+The earlier unstable areas have now been reconciled and approved across all
+three feature documents: RBAC (`02`), offline sync (`03`), VMI billing (`12`),
+and Trading pricing (`13`). The currently active Draft specs are `07`, `18`,
+and `22`; `19` is explicitly deferred. Historical entries below retain the
+original wording that was true when each review occurred.
 
 ## Input captured, not yet formalized
 
@@ -43,9 +40,11 @@ Three decisions made when reconciling the project Gantt chart against this spec 
 
 1. **Already-in-progress setup/schema work (Gantt tasks 1-2, at 50%/20% complete) is paused.** It resumes once `01-core-data-model` is drafted and approved — this directly enforces the "no code before approved tasks.md" ground rule against real work that had started outside the process. `01` is now the critical path for everything, including resuming already-started work, not just for new specs.
 2. **`tasks.md` stays feature-level.** The Gantt is a separate tracking layer above the specs, not a rewrite of task granularity inside them. See `gantt-mapping.md` for the join between the two.
-3. **Missing Gantt scope added as new specs**: `17-product-categorization-and-classification`, `18-packing`, `19-dispatch-scheduling-and-delivery-tracking`, `20-documentation-training-and-uat`. Added now, ahead of when Milestone 2 needs them, rather than discovered mid-milestone.
+3. **Missing Gantt scope added as new specs**: `17-product-categorization-and-classification`, `18-barcode-integration`, `19-dispatch-scheduling-and-delivery-tracking`, `20-documentation-training-and-uat`. Spec `19` is now explicitly deferred; later folders retain their established identities.
 
-**Named schedule risk, not yet resolved**: Milestone 1's "Transfer approval workflow" depends on RBAC (`02-rbac-roles`), which is flagged for major revision. See `gantt-mapping.md`'s Milestone 1 table for the full trace.
+**Resolved:** the former schedule risk around Milestone 1's transfer approval
+workflow is closed because `02`, `08`, and `09` are now approved across all
+three documents. See `gantt-mapping.md` for the remaining Draft/deferred work.
 
 ## Approval-status correction (2026-08-05)
 
@@ -244,6 +243,23 @@ Closed out the pending re-verification named above. `rbac-rls-reviewer` pass 2 c
 **All seven `wrr_advance_notices` test bullets in `02` design.md §13 are now checked PASS.** This is a genuinely complete verification chain for this one feature slice — two RBAC/RLS review rounds, three real-Postgres passes, nine original findings plus two second-round findings, all fixed and confirmed, matching this repo's own established bar (the `01`/`02` real-Postgres history this project already holds itself to). `02`'s base content remains `Approved` and unaffected; this addition sits alongside it, independently verified, without reopening or inheriting the original approval. `01`'s `flow_type` amendment is likewise independently verified via its own three-pass history, not reopening `01`'s existing `Approved` status or Sign-off record.
 
 **What this does NOT mean**: `22-parties-portal` does not reach `Approved`, and neither does `07-incoming-receiving`, `18-barcode-integration`, or `05-ui-shell-and-navigation` (all of which gained new content this session — `07`'s R1a/§5.5, `18`'s FR-2.3, `05`'s `"party"` `ShellSurface`/route entries — none of which has been through any review or verification pass at all, independent of this feature). `22` as a whole remains far from approvable regardless of this feature's own completeness: it still depends on `10`, `14`, `16` (`Draft`, unreviewed in this session) and `12`/`13` (`Draft`, explicitly flagged unstable per this log's own "Flagged, not yet resolved" section since this project's early days) for the majority of its own requirements (R2–R6, R10). Two of `02`'s other new capability additions this session — `vmi_statements.read` and `reporting.read` (`assigned_party`) — were written into `02`'s catalog but never independently reviewed or real-Postgres tested at all, unlike `shipment_labels.generate`/`wrr_advance_notices` above; they remain unverified, not verified-and-forgotten-to-mark. `22-parties-portal/tasks.md`'s Sign-off section now distinguishes precisely between what's verified (the `shipment_labels.generate`/`wrr_advance_notices` chain) and what remains open, rather than rounding the whole spec up or down uniformly.
+
+## Approval model and deferred spec 19 (2026-08-06)
+
+**Resolved:** approval now applies to all three feature documents. A feature is
+`Approved` only when its `requirements.md`, `design.md`, and `tasks.md` each
+declare `Status: Approved` and the tasks sign-off block is complete. The status
+headers were synchronized accordingly; `07`, `18`, and `22` remain Draft.
+
+**Resolved:** `19-dispatch-scheduling-and-delivery-tracking` is explicitly
+deferred. Its number is reserved because `08`, `10`, and `12` reference it as
+the future owner of delivery scheduling/tracking. A deferral marker was added;
+no implementation or active approval is implied. Later folders retain their
+established identities (`20`, `21`, and `22`).
+
+**Resolved:** stale steering claims in `CLAUDE.md`, `AGENTS.md`, `README.md`,
+`tech.md`, and `gantt-mapping.md` were reconciled with the live three-document
+status model.
 
 ## Claude Code alignment
 

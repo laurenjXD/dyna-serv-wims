@@ -29,7 +29,7 @@ It does not define feature workflows, database tables, business permissions, off
 - Depends on `02-rbac-roles` for the capability-checking interface and effective session context. Since RBAC is flagged for revision, route visibility and active-navigation decisions remain provisional until that contract is approved.
 - Depends on `03-offline-mode-and-client-storage` only for the approved online/offline indicator contract; the shell must not enqueue workflow actions or make Tier 2 decisions.
 - Depends on `04-services-and-infrastructure` for Supabase Auth SSR/session handling, environment configuration, error monitoring, security headers, and runtime boundaries.
-- Downstream specs `06`–`20` consume the shell's route, layout, navigation-item, page-header, feedback, and authorization interfaces rather than reimplementing them.
+- Downstream specs `06`–`22` consume the shell's route, layout, navigation-item, page-header, feedback, and authorization interfaces rather than reimplementing them; deferred `19` is excluded until reactivated.
 - Use canonical terms `parties`, `items`, and `locations`; do not introduce `suppliers`, `SKU`, or `bins` as entity or route names.
 - There is one warehouse; no `warehouse_id` is added to route parameters, navigation state, or shell APIs.
 - Floor-first screens target 375–430px portrait viewports. Office/supervisor screens may enhance at `md`/`lg`, but must remain usable on mobile.
