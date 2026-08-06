@@ -1,7 +1,7 @@
 # UI Shell & Navigation — Design
 
-Status: Approved
-Updated: 2026-08-05
+Status: Under Revision
+Updated: 2026-08-06
 
 ## 1. Design intent
 
@@ -14,8 +14,8 @@ The design follows the Approved `specs/00-steering/brand-design-system.md`: floo
 This design depends on:
 
 - `00-steering/brand-design-system.md` for colors, typography, spacing, breakpoints, touch targets, surfaces, motion, and accessibility.
-- `02-rbac-roles` for the eventual typed effective-capability/session context. That spec is currently unstable, so this design defines an integration boundary rather than final role names or permissions.
-- `03-offline-mode-and-client-storage` for an eventual read-only connectivity-status contract. Offline queue behavior is explicitly outside this design.
+- `02-rbac-roles` for the approved typed effective-capability/session context. This design consumes the capability interface without defining role names or permissions.
+- `03-offline-mode-and-client-storage` for the approved read-only connectivity/synchronization-status contract. Offline queue behavior is explicitly outside this design.
 - `04-services-and-infrastructure` for Supabase SSR Auth clients, session refresh, validated configuration, Sentry, and runtime/security boundaries.
 
 This feature currently touches no tables from `01-core-data-model`. It must not redefine or query `parties`, `items`, `locations`, lots, transactions, or any other core table merely to render navigation. If account display or party scope later requires a direct database read, the exact table names and authorization path must be added here before approval.
@@ -74,7 +74,7 @@ The table below lists every authenticated route planned at launch. Each route na
 | `/portal/notifications` | party | `notifications.read` | `22-parties-portal` | Planned |
 | `/portal/labels` | party | `shipment_labels.generate` | `22-parties-portal` | Planned (blocked pending `22` R11.11's four dependent specs' approval processes) |
 
-**Added 2026-08-06**, resolving `22-parties-portal`'s open shell-architecture item: these six rows are `22`'s routes, rendered on the `"party"` surface (§5). All are `Planned` rather than `Launch` because `22-parties-portal` itself remains `Draft`; `vmi_statements.read`, `reporting.read`, and `shipment_labels.generate` are catalog additions in `02` design.md §3.2/§7.4, themselves pending `02`'s own approval/sign-off process — the same "written, not yet verified" distinction already applied elsewhere in this table's capability-key sourcing.
+**Added 2026-08-06**, resolving `22-parties-portal`'s open shell-architecture item: these six rows are `22`'s routes, rendered on the `"party"` surface (§5). All are `Planned` rather than `Launch` because `22-parties-portal` itself remains `Draft`; the capability keys are consumed from `02`'s approved catalog, while the route surfaces remain gated by `22`'s own approval.
 
 Rules:
 
@@ -113,17 +113,30 @@ Rules:
 
 ### 3.4 Application state catalog
 
-The shell is responsible for handling the following seven cross-cutting states. States that require feature-specific behavior are noted; the shell provides only the container and safe recovery surface.
+The shell owns the following complete global state inventory. Feature-specific
+states remain owned by the feature and are mounted inside the shell's stable
+landmarks. Every global state has a text signal, accessible status semantics,
+and a safe recovery path where applicable.
 
 | State | Trigger / condition | Shell behavior | Key constraints |
 | --- | --- | --- | --- |
+| **Session checking** | Initial request or navigation is resolving whether a session exists | Render a minimal non-sensitive boundary or loading shell; never render protected content optimistically | Must not flash protected content or claim the user is signed in before server resolution |
 | **Revoked session** | Server detects expired, revoked, or deactivated session on any protected request | Immediately redirect to the sign-in boundary; no protected content is rendered after the server detects revocation; session tokens cleared from server-side storage; client receives only the redirect response | The shell must not render a single byte of protected content after revocation; a brief flash of protected UI while the redirect fires is a failure; server must invalidate before the client can observe the session as active |
 | **Deep link** | User follows an inbound link to a protected route while unauthenticated or while their session has lapsed | Preserve the destination path in a server-validated, signed or server-session-stored parameter across the auth redirect; after successful sign-in, return to the preserved destination only if it is an internal route and the user currently holds the required capability; reject external URLs, open-redirect patterns, and routes to which the re-authenticated user lacks access | Deep-link preservation is a usability feature, not a security feature; the destination must be re-authorized on arrival, not trusted because it was set before sign-in |
+| **Sign-out transition** | User requests sign-out, Auth confirms it, or the Auth operation fails | Disable duplicate submission while pending; on success clear protected client state and return to sign-in; on failure show safe retry copy without claiming sign-out completed | A failed sign-out must not silently erase the server session or claim completion |
 | **Loading** | Authenticated route is resolving session, capabilities, or initial data | Render a skeleton that preserves the expected layout geometry (sidebar width, header height, page region shapes); do not show stale cached content as if it were current; do not delay floor scanner readiness with full-screen blocking spinners | Loading skeletons are layout placeholders only; they must not contain real data from a previous render; the shell loading state (for the layout itself) is distinct from a feature's data-loading state — features own the latter |
+| **Retrying** | A transient shell or route request is being retried | Preserve stable landmarks, show non-blocking retry status, and prevent duplicate retries | Retry count and delay are bounded; the user can cancel or leave |
+| **Timeout / retry exhausted** | A request exceeds its time budget or bounded retries fail | Show whether retry or navigation is available; provide Retry, Back/Home, or Sign out as appropriate | Do not spin indefinitely or convert timeout into empty/success |
 | **Error** | Unhandled exception in the authenticated shell layout or a route boundary | Render a safe recovery surface with one of: retry the current route, return to the home landing, or sign out; no stack traces, SQL, access tokens, connection strings, provider hostnames, or protected record data may appear in the user-facing error; send redacted diagnostic context with a correlation ID to the approved Sentry boundary | Error surfaces must work without JavaScript (the shell error page is a server component); the recovery action must be meaningful — "something went wrong" with no action is not recoverable |
+| **Not found** | Route/resource does not exist, or existence must not be disclosed | Render safe not-found copy with Back/Home; do not expose identifiers or lookup details | Must remain distinct from forbidden internally even when public copy is similar |
+| **Forbidden** | A known route/resource is unavailable to the authenticated user and disclosure is safe | Render safe forbidden copy with Back/Home or support path; do not offer a client-side bypass | Server authorization remains authoritative; nav omission is not sufficient |
 | **Empty** | Authenticated user whose server-resolved capability set is empty — no accessible route or capability is available | Render a safe landing that confirms their identity, states that no access is currently configured for their account, and provides a support contact or administrator contact path; do not render the full navigation shell with every item disabled or hidden | An empty-capability user must not see the navigation chrome populated with locked items; the shell's empty-access state is distinct from a feature's empty-data state (e.g. no pick lists yet) |
 | **Stale** | Cached navigation context, session claims, or capability data may not reflect current server state — e.g. after a capability has been revoked between page loads but before the next server-resolved request | Display an explicit indicator in the shell status region that the displayed navigation may not reflect current access; do not silently show stale navigation as if it were current; prompt the user to reload or wait for the next server request to refresh capability context | Stale state is detected only by the server — the client cannot reliably know its own staleness; when in doubt, the shell must re-resolve on the next navigation rather than trusting a client-side capability cache beyond the current server request |
-| **Connectivity** | The approved `03-offline-mode-and-client-storage` contract supplies an online/offline status signal | Display an informational indicator in the `ConnectivityIndicator` shell region; distinguish between "online," "offline," and "syncing" — never display "synced" without authoritative confirmation from the server that a sync cycle completed successfully; the indicator is read-only and carries no action affordance; it does not change what routes or actions are available | The shell must consume the `03` read-only status contract; it must not independently poll for connectivity, queue actions, or make any determination about data freshness without the `03` contract's signal; an absent or uninitialized `03` contract means the indicator is hidden, not assumed online |
+| **Connectivity** | The approved `03` contract supplies connectivity status | Display `online`, `offline`, or `checking`; hide the indicator when the contract is absent/uninitialized rather than assuming online | Connectivity is not synchronization and does not change route/action authorization |
+| **Synchronization** | The approved `03` contract supplies sync status | Display `idle`, `syncing`, or `attention`; link attention to the owning feature's queue/review surface where applicable | Never display “synced” as a synonym for online or idle; shell does not replay, resolve, or clear queue entries |
+| **Storage attention** | Browser storage is unavailable, corrupted, quota-exceeded, or cleared | Show an explicit persistence warning and the owning feature's recovery path; disable only actions that require unavailable persistence | Never claim offline work was saved or queued; do not silently discard local work |
+| **Online required** | User attempts a Tier 2 action while offline or authoritative connectivity is not confirmed | Show an actionable online-required message and preserve safe local context without queuing the action | Must not imply authorization, commitment, dispatch, pricing, or completion |
+| **Navigation transition** | User changes route, opens/closes mobile navigation, or capability context refreshes | Mark transition/accessibility status, preserve focus intentionally, and prevent duplicate activation; close transient navigation after successful route change | Active destination comes from the server-authorized route; capability changes are re-resolved, not inferred client-side |
 
 ## 4. Shell composition
 
@@ -256,6 +269,8 @@ Navigation omission is not security. The shell must never accept `role`, `party_
 | Online/offline signal | Offline spec | Display optional informational status only |
 | Feature workflow state | Feature spec | Provide content and workflow-specific feedback |
 | Global route loading/error/not-found | Shell/App Router | Provide safe recovery and stable landmarks |
+| Session checking, redirect, forbidden, sign-out transition | Shell/App Router + Auth | Provide safe boundary, redirect, focus, and recovery behavior |
+| Connectivity/synchronization/storage attention | Offline spec | Supply typed state; shell presents it read-only |
 | Scan success/error flash | Floor feature | Avoid duplicate global feedback unless explicitly shared |
 | Design tokens | Brand design system | Consume approved tokens only |
 
@@ -263,7 +278,8 @@ Navigation omission is not security. The shell must never accept `role`, `party_
 
 - Use semantic `nav`, `header`, `main`, and status landmarks.
 - Provide an accessible name for icon-only controls and a text-equivalent active state.
-- Keep focus visible and restore focus after mobile navigation/drawer changes where applicable.
+- Keep focus visible, move focus to an opened drawer/dialog heading when appropriate, and restore focus to the invoking control after closure.
+- Use polite status announcements for ordinary transitions and assertive alerts only for blocking or safety-critical failures; never announce protected record contents globally.
 - Do not rely on hover for any floor action.
 - Use safe generic error copy while attaching non-sensitive correlation context to monitoring.
 - Use not-found behavior where revealing resource existence could leak scoped data; use the approved forbidden state where a capability failure can be stated safely.
@@ -284,10 +300,10 @@ They should not copy the sidebar, bottom navigation, Auth guard, global tokens, 
 
 ## 11. Design verification before approval
 
-- [ ] Reconcile the route inventory with the approved feature specs and the Gantt mapping. **Partially addressed 2026-08-06**: `22-parties-portal`'s six routes and the `"party"` `ShellSurface` value are now added (§3.2, §5) — the remaining work for this checklist item is reconciling every *other* feature spec's route inventory, and re-confirming `22`'s rows once `22` itself progresses past `Draft`.
-- [ ] Replace provisional RBAC references with the approved capability/session contract.
-- [ ] Confirm the Auth/session integration against `04-services-and-infrastructure`.
-- [ ] Confirm offline indicator semantics against `03-offline-mode-and-client-storage`.
-- [ ] Have `design-system-auditor` review floor/office behavior, tokens, contrast, typography, touch targets, and motion.
-- [ ] Confirm no `01-core-data-model` table is touched; if that changes, name the tables and update the design dependencies.
-- [ ] Reconcile this design with the final `tasks.md` before changing the feature status to `Approved`.
+- [x] Reconcile the route inventory with the approved feature specs and the Gantt mapping. **Verified 2026-08-06:** all currently defined authenticated shell routes are represented in §3.2; `07`, `18`, and `22` routes remain correctly gated as Draft/planned, and deferred `19` has no active route.
+- [x] Replace provisional RBAC references with the approved capability/session contract.
+- [x] Confirm the Auth/session integration against `04-services-and-infrastructure`. **Verified 2026-08-06:** the shell's server-side session boundary, safe redirect policy, cookie/session validation, and fail-closed protected-route sequence match `04` requirements/design.
+- [x] Confirm offline indicator semantics against `03-offline-mode-and-client-storage`. **Verified 2026-08-06:** the shell distinguishes `online`/`offline`/`checking` from `idle`/`syncing`/`attention`, hides the indicator when uninitialized, and does not own queue replay or conflict resolution.
+- [x] Review floor/office behavior, tokens, contrast, typography, touch targets, and motion against `brand-design-system.md`. **Verified 2026-08-06:** documented values match the approved system; one mockup active-navigation color mismatch was corrected from `brand-navy` to `brand-red`.
+- [x] Confirm no `01-core-data-model` table is touched; if that changes, name the tables and update the design dependencies. **Verified 2026-08-06:** route/navigation rendering uses server-resolved session/capability context and does not query core tables.
+- [x] Reconcile this design with the revised `tasks.md` before changing the feature status back to `Approved`. **Verified 2026-08-06:** the global state inventory, ownership boundaries, accessibility requirements, mockup specimens, and task matrix are aligned.

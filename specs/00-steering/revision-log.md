@@ -26,8 +26,9 @@ Every merge conflict and major revision, dated, with the resolution. This is the
 
 The earlier unstable areas have now been reconciled and approved across all
 three feature documents: RBAC (`02`), offline sync (`03`), VMI billing (`12`),
-and Trading pricing (`13`). The currently active Draft specs are `07`, `18`,
-and `22`; `19` is explicitly deferred. Historical entries below retain the
+and Trading pricing (`13`). `05` is now Under Revision for a final global-state
+and accessibility pass. The currently active Draft specs are `07`, `18`, and
+`22`; `19` is explicitly deferred. Historical entries below retain the
 original wording that was true when each review occurred.
 
 ## Input captured, not yet formalized
@@ -260,6 +261,29 @@ established identities (`20`, `21`, and `22`).
 **Resolved:** stale steering claims in `CLAUDE.md`, `AGENTS.md`, `README.md`,
 `tech.md`, and `gantt-mapping.md` were reconciled with the live three-document
 status model.
+
+## `05-ui-shell-and-navigation` — global state and UX polish reopened (2026-08-06)
+
+The shell's original state catalog covered session revocation, deep links,
+loading, errors, empty access, stale context, and connectivity, but did not
+explicitly enumerate forbidden/not-found, session checking, sign-out
+transitions, retry/timeout exhaustion, storage-attention, online-required,
+separate synchronization states, or navigation focus/transition behavior.
+These were added to `requirements.md`, `design.md`, `tasks.md`, and the review
+mockup. The shell now distinguishes its global states from feature-owned
+empty-data, validation, confirmation, scan-result, and conflict states, and
+maps the connectivity/synchronization contract from `03` without conflating
+`online` with `synced`. The three `05` documents are intentionally marked
+`Under Revision` until the expanded verification checklist and accessibility
+review are complete.
+
+The follow-up verification reconciled all currently defined routes against the
+shell inventory and Gantt mapping, checked the `02`/`03`/`04` integration claims,
+and reviewed `05`'s documented typography, color, breakpoint, touch-target,
+surface, motion, and focus rules against the brand system. One mockup conflict
+was found and fixed: active navigation now uses `brand-red`, while
+`brand-navy` remains the structural/sidebar color. Implementation/browser QA
+and the formal design-system reviewer sign-off remain open.
 
 ## Claude Code alignment
 

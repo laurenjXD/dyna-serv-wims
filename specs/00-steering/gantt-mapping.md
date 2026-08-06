@@ -15,7 +15,7 @@ The current Gantt timeline tracks the **Spec Definition Phase** (Drafting Requir
 | 1.1 | Repository and development environment setup | 7/31 – 8/5 | 70% | Pre-spec scaffolding | **Paused** (Awaiting Spec 01) | Not Started |
 | 1.2 | Core inventory data model and database schema | 7/31 – 8/5 | 100% | `01-core-data-model` | **Approved** (both sign-offs complete 2026-08-05) | Ready for Dev |
 | 1.3 | Warehouse user authentication and RBAC | 7/31 – 8/5 | 100% | `02-rbac-roles`, `21-user-profile-and-settings` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
-| 1.4 | Receiving and inspection interface | 7/31 – 8/5 | 0% | `07-incoming-receiving`, `05-ui-shell` | **Draft** (`05` approved; `07` remains Draft) | Not Started (Blocked by Spec 07) |
+| 1.4 | Receiving and inspection interface | 7/31 – 8/5 | 0% | `07-incoming-receiving`, `05-ui-shell` | **Under Revision** (`05` state/accessibility contract being re-verified; `07` remains Draft) | Not Started (Blocked by Specs 05/07) |
 | 1.5 | Receiving transaction and lot creation logic | 7/31 – 8/5 | 0% | `07-incoming-receiving` | **Draft** (all three documents remain Draft) | Not Started (Blocked by Spec) |
 | 1.6 | Internal inventory transfer requests | 8/6 – 8/11 | 100% | `11-transfer-and-inspection` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
 | 1.7 | Transfer approval and authorization workflow | 8/6 – 8/11 | 100% | `09-approval-queue` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
