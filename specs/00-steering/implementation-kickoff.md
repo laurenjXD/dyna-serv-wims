@@ -1,42 +1,61 @@
-# Implementation Kickoff — Where We Start Building
+# Implementation Kickoff — Day 1, End to End, Test-Driven
 
 Status: Active
-Last Updated: 2026-08-06
+Last Updated: 2026-08-07
 
-This is the concrete "start here" companion to `gantt-mapping.md`. That file tracks status across every milestone; this one exists to answer one question at a time: *what's the actual next task, and which agent(s) build it.* Use `/implement-feature` (the skill at `.claude/skills/implement-feature/`) to run each task's build → review → verify chain once you start it.
+Every spec is Approved. Implementation starts now, test-driven: for every `tasks.md` checklist item, `test-writer` writes and confirms a failing test before any builder agent writes implementation code — see the `implement-feature` skill (`.claude/skills/implement-feature/`) for the full RED → GREEN → REFACTOR → VERIFY cycle mechanics. This doc is the concrete schedule: what gets built first, in what order, by which agent, against which test.
 
-Every task below is already spec-Approved per `gantt-mapping.md` (2026-08-06 snapshot). If any status has changed since, trust `gantt-mapping.md`/`tasks.md` over this doc and update this file to match.
+Do not skip ahead in this list. Later rows depend on earlier rows' tables/enums actually existing, not just being spec-approved.
 
-## Phase 0 — Scaffolding (do this first, once)
+## Phase 0 — Scaffolding (before anything else, once)
 
-| Task | Owner | Depends on |
+| Step | Agent | Task |
 |---|---|---|
-| Bootstrap Next.js 15 + Drizzle + Supabase client + Tailwind tokens + repo folder skeleton | `project-scaffolder` | `01-core-data-model`, `02-rbac-roles` approved (they are) |
+| 0.1 | `project-scaffolder` | Bootstrap Next.js 15 + Drizzle + Supabase clients + Tailwind tokens (real brand values, not placeholders) + `structure.md` folder skeleton. Confirm `npm run build` and `npm run typecheck` pass on the empty skeleton. |
+| 0.2 | `build-doctor` | First green-build confirmation on the skeleton before Phase 1 starts. |
 
-Nothing else starts until `npm run build` and `npm run typecheck` pass clean on the empty skeleton. This is Gantt 1.1, currently listed **Paused** in `gantt-mapping.md` — it unblocks the moment this phase completes; update that row when done.
+No RED/GREEN cycle here — there's no acceptance criterion to test yet, just infrastructure the rest of the day depends on.
 
-## Phase 1 — Milestone 1: Receiving & Core Inventory Transfers
+## Phase 1 — `01-core-data-model` (the critical path — everything else reads this schema)
 
-Build in this order — each row depends on the schema/RBAC layer below it existing first, not just being spec-approved:
+Work `tasks.md`'s Implementation Task 1 (Drizzle schema) as a sequence of small RED→GREEN→VERIFY cycles, not one giant PR. Suggested slice order, each slice = one cycle:
 
-| Order | Spec | What it builds | Agent chain |
-|---|---|---|---|
-| 1 | `01-core-data-model` | Core schema: `parties`, `items`, `locations`, `lots`, `inventory_transactions` | `database-builder` → `db-migration-verifier` |
-| 2 | `02-rbac-roles`, `21-user-profile-and-settings` | Auth, session-based role resolution, user profile/settings | `database-builder` → `db-migration-verifier` → `backend-builder` → `rbac-rls-reviewer` → `frontend-builder` → `design-system-auditor` |
-| 3 | `05-ui-shell-and-navigation` | App shell, nav, role-aware layout (shell contract only — this is the one spec flagged as "approved for consumption, final implementation QA remaining") | `frontend-builder` → `design-system-auditor` |
-| 4 | `07-incoming-receiving` | Receiving bay intake, inspection cross-reference, WRR creation, lot creation on confirm | `database-builder` (if new tables) → `db-migration-verifier` → `backend-builder` → `rbac-rls-reviewer` + `offline-sync-reviewer` (receiving scans are Tier 1) → `frontend-builder` (floor-priority screen — mobile-first, 56-64px targets) → `design-system-auditor` |
-| 5 | `11-transfer-and-inspection` | Internal transfer requests between locations | same chain as above; check `integration-reviewer` against `07`'s lot/location model once both exist |
-| 6 | `09-approval-queue` | Transfer approval/authorization workflow — real recorded decisions, not boolean flips | `backend-builder` → `rbac-rls-reviewer` → `frontend-builder` (office/desktop-first, mobile as working secondary) → `design-system-auditor` |
-| 7 | Cross-cutting | Receiving/transfer quantity & location validation (Gantt 1.8 — currently unassigned to a single spec, lives inside `07`/`11`'s own validation logic) | `backend-builder`, checked by `integration-reviewer` once both `07` and `11` are built |
-| 8 | `testing.md` process | Unit + integration + e2e coverage for everything above | `test-writer`, then `build-doctor` for a full green sweep |
-| 9 | Sign-off gate | Milestone 1 review | Human sign-off — not an agent step |
+| Cycle | What | RED (`test-writer`) | GREEN (`database-builder`) | VERIFY |
+|---|---|---|---|---|
+| 1.1 | Enums (`lib/db/schema/enums.ts`): `partyRoleEnum`, `flowTypeEnum`, `locationTypeEnum`, `lotStatusEnum`, `wrrStatusEnum`, `movementTypeEnum`, `pickListStatusEnum`, `conformanceStatusEnum`, `nonConformanceReasonEnum` | Vitest: importing each enum yields the exact expected value sets (Req 2.1) | Define the enums | — (pure TS, covered by 1.9's compile check) |
+| 1.2 | `parties` + `party_roles` (`lib/db/schema/parties.ts`) | Vitest schema shape test (Req 2.1, Design 1.2) | Implement table | — |
+| 1.3 | `item_categories` + `items` (`lib/db/schema/items.ts`) — `dsgc_item_number`, `customer_item_code`, `spq`, box dimensions, `volume_cbm` | Vitest: `spq > 0`, `volume_cbm > 0` constraints (Req 2.2) | Implement table + CHECK constraints | — |
+| 1.4 | `locations` — `Rack+Level-Position` label, `max_cbm_capacity` | Vitest: label format, capacity validation (Req 2.3) | Implement table | — |
+| 1.5 | `lots` — WRR-sourced `lot_number`, `wrr_item_id`, `flow_type`, `peza_number`, `commercial_invoice_no`, `ip_number`, `unit_cost`, dates, `status` | Vitest: `flow_type` partition constraint test (Req 2.5/6) | Implement table — remember `lots.item_id` stays `NOT NULL` (only `wrr_items.item_id` is nullable, per the 2026-08-05 verification fix) | — |
+| 1.6 | `lot_location_balances` + `lot_inventory_totals` view | Vitest: non-negative / committed-within-remaining constraint tests (Req 13) | Implement, with `qty_available = qty_remaining - qty_committed` as derived-only | — |
+| 1.7 | `inventory_commitments` + `inventory_commitment_lines` | Vitest: `commitmentStatusEnum` lifecycle transition tests (`active`→`inspection_pending`→`executed`/`released`/`expired`/`cancelled`) (Req 14) | Implement, uniqueness + concurrency constraints | — |
+| 1.8 | `wrr_documents` + `wrr_items` + `wrr_inspection_logs` | Vitest: `wrr_items.item_id` nullable, `wrr_documents.peza_number` present (Req 2.4/9) | Implement | — |
+| 1.9 | `forex_rates`, `inventory_transactions`, `pick_lists` + `pick_list_items` (priced-snapshot fields) | Vitest for each (Req 2.7, 2.6, 15) | Implement | — |
+| 1.10 | `lib/db/schema/index.ts` + `lib/db/types.ts` re-exports | Vitest: every table/type importable from the barrel file | Implement | `tsc --noEmit` must compile clean — three files have previously shipped with missing imports (`flowTypeEnum`, `parties`, `wrrItems`, `conformanceStatusEnum`, `nonConformanceReasonEnum`), check this specifically |
+| 1.11 | Migration generation | — (no new test; this step operationalizes 1.1–1.10) | `database-builder` runs `npx drizzle-kit generate` → `0001_core_data_model.sql`, adds FKs/indexes/scoped uniqueness/non-negative checks | `db-migration-verifier` runs the **real generated file** against real Postgres — this is the first time it's verifying literal SQL instead of hand-translated DDL; re-confirm all six previously-fixed bugs stay fixed |
 
-**Why this order, not spec-approval order:** `07-incoming-receiving` and `09-approval-queue` are both "Ready for Dev," but approval-queue authorizing a *transfer* only makes sense once transfers (`11`) and the underlying lots (`01`, via `07`) exist to be transferred. Building in numeric/approval order instead of dependency order is the most likely way to end up with an agent implementing against tables or states that don't exist yet.
+When 1.1–1.11 are green and verified: check off Implementation Task 1 and 2 in `01-core-data-model/tasks.md`, flip its unit-test checkbox, and update this doc + `gantt-mapping.md` row 1.2.
 
-## Phase 2 — Milestone 2: Classification & Inventory Processing (next, not yet started)
+## Phase 2 — `02-rbac-roles` (depends on Phase 1's `parties`/`party_roles`)
 
-Once Milestone 1 is code-complete and its integration/testing rows are green: `17-product-categorization-and-classification` → `18-barcode-integration` → `10-pick-list-and-acknowledgement-receipt` → `08-outgoing-withdrawal-and-two-stage-commitment`, then an `integration-reviewer` pass on the receiving-to-picking seam (Gantt 2.6). Full detail deferred to when Phase 1 closes — don't plan Phase 2 task-by-task yet, since Phase 1 implementation may surface schema gaps that change it.
+`tasks.md` Tasks 1–4 are already decided (see its Decision Record) — this is now pure implementation, still test-first:
+
+| Cycle | What | RED (`test-writer`) | GREEN (`backend-builder` unless noted) | VERIFY |
+|---|---|---|---|---|
+| 2.1 | Authorization tables: `roles`, `permissions`, `user_roles`, `role_permissions`, `user_party_scopes`, `rbac_security_events` | Vitest schema tests + migration | `database-builder` | `db-migration-verifier` |
+| 2.2 | Session resolver + typed authorization context (identity, roles, capabilities, party scope) | Vitest: forged/stale/missing/malformed claim handling | `backend-builder` | — |
+| 2.3 | `requirePermission(capability, scope)` central helper | Vitest: allowed/unauthenticated/forbidden/not-found outcomes | `backend-builder` | — |
+| 2.4 | Default-deny RLS policies per table from `design.md §7.4`, including the six previously-unmapped tables (`parties`, `party_roles`, `item_categories`, `lot_location_balances`, `inventory_commitments`, `inventory_commitment_lines`) | Real-Postgres integration tests: allowed-role and disallowed-role cases per table | `database-builder` | `db-migration-verifier` **and** `rbac-rls-reviewer` — both required before this cycle closes |
+| 2.5 | Admin invitation/activation, role assignment/revocation flows | Playwright e2e (admin flows) | `backend-builder` + `frontend-builder` (office/desktop-first UI, per `05-ui-shell-and-navigation` once available) | `rbac-rls-reviewer`, `design-system-auditor` |
+
+Party-scope revocation must take effect on the **next request** (decision `1I=C`), not next login — write that as an explicit test case, it's the one most likely to get silently implemented as "next login" by default.
+
+When Phase 2's core (2.1–2.4) is green and verified: `02-rbac-roles` moves from Ready-for-Dev to In Progress/Implemented in `gantt-mapping.md`.
+
+## Phase 3 — First floor feature: `07-incoming-receiving` (depends on Phase 1 + Phase 2)
+
+Once schema and auth are real: `database-builder` (any remaining receiving-specific tables) → `backend-builder` (WRR intake, inspection cross-reference, lot creation on confirm) → `rbac-rls-reviewer` + `offline-sync-reviewer` (receiving scans are Tier 1) → `frontend-builder` (mobile-first, 64px primary actions, portrait-only) → `design-system-auditor`. Full detail deferred to when Phase 2 closes — don't front-load Phase 3 planning while Phase 1/2 are still open, since implementing them may surface schema gaps that change it.
 
 ## Standing rule
 
-Same as `gantt-mapping.md`: when a task here starts, moves, or finishes, update this file and the corresponding `gantt-mapping.md` row together. A kickoff doc that drifts from actual progress is worse than no doc.
+Same as `gantt-mapping.md`: when a cycle starts, moves, or finishes, update this file and the corresponding `gantt-mapping.md` row together. A kickoff doc that drifts from actual progress is worse than no doc. Checked boxes in any `tasks.md` must correspond to an actual RED→GREEN→VERIFY cycle that happened — not to work that "should be fine."

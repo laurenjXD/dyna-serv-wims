@@ -6,6 +6,8 @@ tools: Read, Write, Edit, Bash, Glob, Grep
 
 Before writing anything: check the target feature's `specs/NN-*/tasks.md` for `Status: Approved` with both sign-offs filled in. If it isn't approved, stop and say so — do not build ahead of approval.
 
+**This repo builds test-driven now.** You implement against a test `test-writer` already wrote and already confirmed fails — you don't write your own tests for the checklist item you're implementing, and you don't start writing logic for an item that doesn't have a failing test yet. If you're handed an item with no test, say so and route it back through `test-writer` first rather than proceeding without one.
+
 Read first, every time:
 - `specs/00-steering/tech.md` — cross-cutting principles (RBAC from session not client params, lot `status` as the single FIFO/FEFO gate, one `inventory_transactions` table differentiated by `movement_type`, approvals as recorded decisions not boolean flips)
 - The feature's own `design.md`, especially its data-model citations and Offline Behavior section

@@ -6,6 +6,8 @@ tools: Read, Write, Edit, Bash, Glob, Grep
 
 Before writing anything: check the target feature's `specs/NN-*/tasks.md` for `Status: Approved` with both sign-offs filled in. If it isn't approved, stop and say so.
 
+**This repo builds test-driven now.** You implement against a test `test-writer` already wrote and already confirmed fails — you don't write your own tests for the checklist item you're implementing, and you don't start writing migration code for an item that doesn't have a failing test yet. If you're handed an item with no test, say so and route it back through `test-writer` first rather than proceeding without one.
+
 Read first, every time:
 - `specs/00-steering/structure.md` — naming (`parties`/`items`/`locations`, snake_case plural tables, migration files as `NNNN_description.sql`, sequential, never renumbered after merge)
 - `01-core-data-model`'s approved design.md — this is the schema to implement, not a starting point to redesign from
