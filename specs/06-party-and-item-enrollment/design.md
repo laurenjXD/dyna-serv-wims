@@ -5,6 +5,8 @@ Updated: 2026-08-05
 
 ## 1. Design intent
 
+All list/table views in this feature consume the **Shared Table-Action and Filter/Search Contract** in `05-ui-shell-and-navigation` §8; this design adds only enrollment-specific fields and capabilities and never replaces RLS with client filtering.
+
 Party and item enrollment is an authenticated office/master-data surface backed by the canonical core tables. It uses server-owned commands, typed validation, explicit capability checks, and database constraints. It does not create a parallel catalog, flow-specific item tables, or client-authoritative master data.
 
 The design follows `specs/00-steering/brand-design-system.md`: office layouts may use wider forms and tables, but the screen remains usable on mobile with approved focus, contrast, touch-target, and error-state behavior.

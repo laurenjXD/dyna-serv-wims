@@ -105,6 +105,7 @@ Initial RBAC-owned capability identifiers:
 | `access_assignments` | `read`, `grant`, `revoke` | `administrator` |
 | `party_scopes` | `read`, `grant`, `revoke` | `administrator` |
 | `security_events` | `read` | `administrator` |
+| `audit_log` | `read` | `supervisor`, `administrator` |
 
 The following operational capability catalog defines stable resource identifiers and the action vocabulary for first-wave feature domains (2026-08-05). Downstream specs confirm or extend actions within each resource; they do not rename these resource keys. Where the same resource permits both `global` and `assigned_party` scope kinds, both rows are listed. The full `role_permissions` seed data is derived from this table.
 
@@ -137,6 +138,7 @@ The following operational capability catalog defines stable resource identifiers
 | `notifications` | `read` | `global` | `warehouse_staff`, `supervisor`, `administrator` |
 | `notifications` | `read` | `assigned_party` | `party_user` |
 | `shipment_labels` | `generate` | `assigned_party` | `party_user` |
+| `audit_log` | `read` | `global` | `supervisor`, `administrator` |
 
 **Schema amendment (2026-08-06)**: `shipment_labels.generate` originates from `22-parties-portal` requirements.md R11 (supplier-initiated barcode pre-labeling of inbound dispatches) — a party in the inbound-supplying role generates a pre-arrival label for their own outbound shipment. Like every other row in this table, `shipment_labels.generate` is `assigned_party`-scoped only — the base capability model grants nothing beyond the caller's own `party_id`. But the actual RLS policy for the one write this capability gates (§7.4's `wrr_advance_notices` pattern) layers an *additional* business-rule condition on top: the caller's party must also hold a `party_roles` row with `role IN ('vendor', 'supplier')`, because `assigned_party` scope alone does not distinguish an inbound-supplying party from an outbound-receiving one within the same `flow_type` (a Trading `customer`/`end_customer` and a Trading `vendor`/`supplier` are both merely "assigned" to the same party record's Trading scope). This is framed the same way §3.4's self-approval prohibition is framed: a capability constraint layered on top of the base authorization model, not a new `scope_kind`.
 
@@ -430,8 +432,11 @@ All grants belong in the same migration that creates these functions, not left a
 | `user_roles` | Read own active/history-safe projection. | Read with `access_assignments.read`. | Controlled grant/revoke operation. |
 | `user_party_scopes` | Read own active/history-safe projection. | Read with `party_scopes.read`. | Controlled grant/revoke operation. |
 | `rbac_security_events` | No default access. | Read with `security_events.read`. | Controlled insert only; no update/delete. |
+| `audit_log` | No access. | Read all rows with `audit_log.read` (global). | Trusted server/database audit writer only; no client insert, update, or delete policy. |
 
 ### 7.4 Core-resource policy patterns
+
+`audit_log` is a global, RLS-protected accountability table, not a party-scoped business table. Its `SELECT` policy MUST require the caller's effective `audit_log.read` capability at global scope; the default role grants are `supervisor` and `administrator`. There is no `party_user` grant, and no client-facing `INSERT`, `UPDATE`, or `DELETE` policy. Trusted mutation paths write the actor user ID, actor-role snapshot, action, entity type/ID, before/after/diff payload, and canonical correlation ID atomically with the audited operation. The policy must not be replaced with an application-only filter or a browser-side party filter.
 
 Every pattern below MUST call `can_access_party_resource`, never `has_party_scope` directly, as the RLS predicate. This is not a restatement: `has_party_scope` alone is the first gate described in §3.2/§7.2, and `can_access_party_resource`'s independent `flow_type = 'supplies'` hard-deny is the second, non-derivative gate. A policy that calls `has_party_scope` directly has only one gate wired in, defeating the "no single implementation slip exposes Supplies data" design intent even though the helper itself is correct.
 
@@ -631,6 +636,8 @@ Migrations must be rerunnable only where explicitly designed, must not renumber 
 - Verify revoked/deactivated access fails on the next transaction/request.
 - Verify security events are append-only and actor attribution cannot be forged.
 - Run `db-migration-verifier` and `rbac-rls-reviewer` before sign-off.
+
+- [x] **Added 2026-08-06, audit-log cross-cutting revision**: verify the concrete `audit_log` contract from `01` against real Postgres with `audit_log.read` global capability grants, supervisor/administrator positive reads, party-user zero-row denial, no client mutation policies, payload-presence enforcement, and the 64-character correlation-id limit. **PASS** — disposable Postgres 16 harness completed all checks; no repository migration chain exists yet, so this was a design translation rather than a migration-file run.
 
 **`wrr_advance_notices` (added 2026-08-06, `rbac-rls-reviewer` finding G; real-Postgres pass 2 completed 2026-08-06 — see verification-status paragraph below):**
 

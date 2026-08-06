@@ -5,6 +5,8 @@ Updated: 2026-08-05
 
 ## 1. Design intent
 
+All list/table views in this feature consume the **Shared Table-Action and Filter/Search Contract** in `05-ui-shell-and-navigation` §8; this design adds only notification-specific fields and capabilities and never replaces RLS with client filtering.
+
 `14` is a scoped notification projection and delivery coordinator. A workflow commits authoritative state, writes a durable event/outbox entry, and `14` turns that event into recipient-specific in-app and optional email deliveries. The notification is a pointer and attention mechanism; the source record is always reloaded and reauthorized before action.
 
 ## 2. Dependencies and ownership

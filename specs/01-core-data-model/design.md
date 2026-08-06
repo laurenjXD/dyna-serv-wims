@@ -410,6 +410,40 @@ export const inventoryTransactions = pgTable("inventory_transactions", {
 });
 ```
 
+#### `audit_log` (`lib/db/schema/audit.ts`)
+
+`audit_log` is the immutable, cross-entity accountability record. It is deliberately separate from `inventory_transactions`: the inventory table records physical stock movement and quantity, while this table records who performed a business/security action, what entity changed, and the state-transition evidence. A trusted server/database path writes an audit row in the same transaction as the audited mutation; browser clients have no direct mutation policy.
+
+```typescript
+import { pgTable, uuid, varchar, jsonb, timestamp, index, check } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+
+export const auditLog = pgTable("audit_log", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  actorUserId: uuid("actor_user_id").notNull(),
+  actorRole: varchar("actor_role", { length: 50 }).notNull(), // role snapshot at event time
+  action: varchar("action", { length: 100 }).notNull(),
+  entityType: varchar("entity_type", { length: 100 }).notNull(),
+  entityId: uuid("entity_id").notNull(),
+  beforeData: jsonb("before_data"),
+  afterData: jsonb("after_data"),
+  diffData: jsonb("diff_data"),
+  // Canonical X-Correlation-Id from 04 §15.3: server-generated or validated UUID v4, max 64 chars.
+  correlationId: varchar("correlation_id", { length: 64 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  entityIdx: index("audit_log_entity_idx").on(table.entityType, table.entityId),
+  actorIdx: index("audit_log_actor_idx").on(table.actorUserId),
+  correlationIdx: index("audit_log_correlation_idx").on(table.correlationId),
+  payloadPresent: check(
+    "audit_log_payload_present",
+    sql`${table.beforeData} IS NOT NULL OR ${table.afterData} IS NOT NULL OR ${table.diffData} IS NOT NULL`,
+  ),
+}));
+```
+
+Audit rows are retained for **3 years** from `created_at`, as resolved by the product owner on 2026-08-06. After that period, the authorized retention/deletion job must follow `04` §10.4: deletion is separately authorized and produces its own audit record. Audit deletion is never a casual cascade from the entity being audited. Any broader business/provider-log retention decision in `04` §23.8 remains separate.
+
 #### `pick_lists` & `pick_list_items` (`lib/db/schema/pick_lists.ts`)
 ```typescript
 import { pgTable, uuid, varchar, text, integer, decimal, timestamp } from "drizzle-orm/pg-core";
@@ -577,7 +611,7 @@ erDiagram
 
 ## 6. Schema amendment (2026-08-06): `wrr_advance_notices`
 
-**Status of this section**: `01-core-data-model` reached `Status: Approved` on 2026-08-05, with both sign-offs recorded and two real-Postgres `db-migration-verifier` passes against the schema documented in §1–§5 above. This §6 addition has **NOT** been through `db-migration-verifier` and has **NOT** been through any sign-off — it does not inherit the verification already completed for the rest of this document, and it does not reopen or change the `Status` header or the existing Sign-off record in `tasks.md`. It requires its own dedicated `db-migration-verifier` pass, exactly like every other table in §1.2 did, before it may be treated as implementation-ready. This section exists so the table shape is written down precisely (per this repo's own established bug history — `01`'s earlier real-Postgres pass specifically caught tables left as prose instead of literal code, and code blocks with missing imports) rather than left as an unresolved prose description in a downstream spec.
+**Status of this section**: `01-core-data-model` reached `Status: Approved` on 2026-08-05, with both sign-offs recorded and two real-Postgres `db-migration-verifier` passes against the schema documented in §1–§5 above. This §6 addition remains separately unverified and separately signed off; it does not inherit the verification completed for the rest of this document. It requires its own dedicated `db-migration-verifier` pass before it may be treated as implementation-ready. This section exists so the table shape is written down precisely (per this repo's own established bug history — `01`'s earlier real-Postgres pass specifically caught tables left as prose instead of literal code, and code blocks with missing imports) rather than left as an unresolved prose description in a downstream spec.
 
 **Origin**: `22-parties-portal` requirements.md R11 / design.md §7c (supplier-initiated barcode pre-labeling of inbound dispatches) and `07-incoming-receiving`'s confirmed advance-notice matching flow (see `07` requirements.md's new "Supplier advance-notice intake" clause). A party in the inbound-supplying role (VMI vendor, or Trading `vendor`/`supplier`) submits a thin pre-arrival label form; this table stores that submission. It is never written to directly by `07`'s WRR-creation path, and it is never treated as authoritative for receiving — see `declared_qty` below.
 

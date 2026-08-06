@@ -102,6 +102,13 @@ A feature declares its surface when registering a route. The shell must not infe
 4. The shell contract SHALL remain usable by feature specs `06` through `22` (excluding deferred `19`) without requiring feature-specific role-name conditionals.
 5. The shell contract SHALL define ownership for global states versus feature-owned states so that features can provide empty-data, validation, confirmation, scan-result, conflict, and domain-specific recovery states without duplicating global shell behavior.
 
+### R10. Shared list interaction contract
+
+1. Every feature-owned table or list SHALL use the shared row-action, filter, and search contract defined in `design.md` §8.
+2. Row actions SHALL be derived from the caller's effective capability and the row's current state; unauthorized actions SHALL be omitted rather than rendered as disabled-only controls.
+3. The standard filter bar SHALL support the exact `16-reporting-and-analytics` FR-8.1 vocabulary: date range, party, flow type, and item/entity. A global cross-entity search control SHALL preserve the same authorization boundary.
+4. Filtered and searched results SHALL be produced by an authorized server query and remain subject to PostgreSQL RLS; client-side filtering SHALL not broaden or substitute for the canonical access predicate.
+
 ## 4. Acceptance criteria
 
 - [ ] A protected deep link redirects safely to sign-in when unauthenticated and returns only when the destination remains valid and authorized.
@@ -114,6 +121,7 @@ A feature declares its surface when registering a route. The shell must not infe
 - [ ] Initial session checking, retry/timeout, forbidden, storage-attention, online-required, synchronization-attention, and sign-out transition states are safe and recoverable.
 - [ ] A representative floor feature and office feature can mount through the shared shell contract without duplicating shell behavior.
 - [ ] Unit, integration, E2E, and manual checks required by `tasks.md` pass or are explicitly marked not applicable.
+- [ ] Representative list screens prove capability/row-state action gating, touch-target behavior, exact shared filters, cross-entity search, and RLS-preserving server queries.
 
 ## 5. Dependencies and exclusions
 

@@ -13,7 +13,7 @@ The current Gantt timeline tracks the **Spec Definition Phase** (Drafting Requir
 | # | Gantt task | Schedule | Overall % | Mapped spec(s) | Spec Status (Drafting / Approved) | Implementation Status |
 |---|---|---|---|---|---|---|
 | 1.1 | Repository and development environment setup | 7/31 – 8/5 | 70% | Pre-spec scaffolding | **Paused** (Awaiting Spec 01) | Not Started |
-| 1.2 | Core inventory data model and database schema | 7/31 – 8/5 | 100% | `01-core-data-model` | **Approved** (both sign-offs complete 2026-08-05) | Ready for Dev |
+| 1.2 | Core inventory data model and database schema | 7/31 – 8/5 | 100% | `01-core-data-model` | **Approved** (audit-log design amendment and both sign-offs complete 2026-08-06; audit-log retention resolved at three years) | Ready for Dev |
 | 1.3 | Warehouse user authentication and RBAC | 7/31 – 8/5 | 100% | `02-rbac-roles`, `21-user-profile-and-settings` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
 | 1.4 | Receiving and inspection interface | 7/31 – 8/5 | 0% | `07-incoming-receiving`, `05-ui-shell` | **Approved** (`07` approved; `05` shell contract approved for consumption while final implementation QA remains) | Ready for Dev |
 | 1.5 | Receiving transaction and lot creation logic | 7/31 – 8/5 | 0% | `07-incoming-receiving` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |

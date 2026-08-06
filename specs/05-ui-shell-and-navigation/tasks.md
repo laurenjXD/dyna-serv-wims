@@ -125,6 +125,7 @@ Testing: Type-check/build contract; E2E smoke coverage for representative floor 
 - [ ] Add representative integration examples for one floor route and one office route without implementing those feature workflows.
 - [ ] Add a contract check preventing feature code from defining duplicate global nav, shell tokens, or client-only authorization gates.
 - [ ] Update `specs/00-steering/gantt-mapping.md` after this spec's status changes; the receiving UI row should reference the approved shell contract rather than implying that the shell itself implements receiving.
+- [ ] Publish and exercise the **Shared Table-Action and Filter/Search Contract** from `design.md` §8: capability/row-state action omission, one primary action, floor touch targets, exact FR-8.1 filters, cross-entity search, and server/RLS-preserving query behavior.
 
 ## Testing matrix
 
@@ -155,7 +156,7 @@ Testing: Type-check/build contract; E2E smoke coverage for representative floor 
 
 ### Manual QA
 
-- [ ] Run the implementation-level design-system audit against `brand-design-system.md`; documentation-level audit completed 2026-08-06 in `design.md` §11.
+- [ ] Run the implementation-level design-system audit against `brand-design-system.md`; documentation-level audit completed 2026-08-06 in `design.md` §12.
 - [ ] Verify the real logo asset, font rendering, focus visibility, touch behavior, and contrast on representative desktop and mobile browsers.
 - [ ] Physical warehouse hardware QA is deferred to the project-wide pre-launch pass unless this feature introduces hardware-specific behavior beyond simulated scanner keyboard input.
 

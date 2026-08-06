@@ -5,6 +5,8 @@ Updated: 2026-08-05
 
 ## 1. Design intent
 
+All list/table views in this feature consume the **Shared Table-Action and Filter/Search Contract** in `05-ui-shell-and-navigation` §8; this design adds only Trading-specific fields and capabilities and never replaces RLS with client filtering.
+
 Trading pricing is an online, server-authoritative commercial boundary between a customer order and the physical withdrawal workflow. It resolves a price, freezes an auditable snapshot, and hands that snapshot to `08` for commitment and `10` for document rendering.
 
 This design keeps Trading stock and price data separate from VMI period billing and Supplies operations. It does not let item-master defaults or client forms become final transaction truth.

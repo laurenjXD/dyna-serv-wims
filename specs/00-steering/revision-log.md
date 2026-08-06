@@ -370,3 +370,13 @@ new RBAC catalog row is introduced; the function independently re-checks
 With this decision, `07`'s three documents and `22`'s three documents were
 approved using the standing auto-sign-off arrangement. Runtime implementation
 and test checklists remain pending work and do not imply code was written.
+
+## Cross-cutting audit and list interaction revision (2026-08-06)
+
+The approved documentation pass added a concrete `audit_log` table to `01-core-data-model/design.md`, explicitly distinct from `inventory_transactions`. The record captures actor user ID, actor-role snapshot, action, entity type/ID, before/after/diff payload, canonical `X-Correlation-Id` (`04` §15.3), and timestamp. **Resolved product-owner decision (2026-08-06):** audit rows are retained for three years from `created_at`; the authorized deletion job follows `04` §10.4. Broader business/provider-log retention remains separate in `04` §23.8.
+
+`02-rbac-roles/design.md` now defines global `audit_log.read` for `supervisor` and `administrator`, with RLS-backed reads and no client mutation policy. A real disposable Postgres 16 harness passed supervisor/admin reads, party-user denial, absence of INSERT/UPDATE/DELETE policies, payload-presence enforcement, and the 64-character correlation-id limit. No repository migration chain exists yet, so this was a design translation rather than a migration-file execution.
+
+`05-ui-shell-and-navigation` now owns the **Shared Table-Action and Filter/Search Contract**: capability/row-state-gated `view`/`edit`/`deactivate` affordances, one primary action per row, floor touch targets and no hover-only behavior, the exact `16` FR-8.1 date-range/party/flow-type/item-entity filters, global cross-entity search, and server/RLS-preserving query rules. The design-system audit found no token, typography, contrast, touch-target, or circular/hover-only drift. `06`, `11`, `13`, and `14` cite the contract by name without restating it. All touched documents returned to `Approved`; `19` remains deferred.
+
+**Decision resolved (product owner, 2026-08-06):** audit-log retention is three years. The broader `04 §23.8` retention question remains open only for business/provider logs not covered by this audit-log decision.

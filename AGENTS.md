@@ -12,7 +12,7 @@ No implementation code is written until a feature's `specs/NN-*/tasks.md` has `S
 - `parties` / `items` / `locations` naming — never `suppliers` / `SKU` / `bins`.
 - `pick_list` + `acknowledgement_receipt`, both priced. No `withdrawal_slip`. Trading price on a document is final; VMI price on a document is a per-release reference only.
 - Mobile-first, floor-priority design — see `specs/00-steering/brand-design-system.md`.
-- Approval applies to `requirements.md`, `design.md`, and `tasks.md` together. `05-ui-shell-and-navigation`, `07-incoming-receiving`, `18-barcode-integration`, and `22-parties-portal` are Approved across all three documents; `19-dispatch-scheduling-and-delivery-tracking` is explicitly deferred.
+- Approval applies to `requirements.md`, `design.md`, and `tasks.md` together. `01`–`18`, `20`, `21`, and `22` are Approved across all three documents; the cross-cutting `audit_log` and shared list-interaction amendment is verified at the design level, with audit-log retention resolved at three years. Broader business/provider-log retention remains the named `04 §23.8` decision. `19-dispatch-scheduling-and-delivery-tracking` is explicitly deferred.
 
 ## Where everything actually lives
 

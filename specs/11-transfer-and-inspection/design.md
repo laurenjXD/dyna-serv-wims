@@ -5,6 +5,8 @@ Updated: 2026-08-05
 
 ## 1. Design intent
 
+All list/table views in this feature consume the **Shared Table-Action and Filter/Search Contract** in `05-ui-shell-and-navigation` §8; this design adds only transfer/inspection-specific fields and capabilities and never replaces RLS with client filtering.
+
 This feature is a single-warehouse internal movement workflow. It turns an authorized transfer request into a validated physical movement between `locations`, optionally requiring transfer-specific inspection, and records one immutable `inventory_transaction` with `movement_type = 'transfer'`.
 
 The design intentionally separates three concerns:
