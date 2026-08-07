@@ -149,6 +149,7 @@ The generated WRR document SHALL include the following fields:
 - Source party (vendor) name and code
 - Flow type (`vmi` / `trading` / `supplies`)
 - PEZA permit number and import permit (IP) number where applicable
+- MAWB/MBL (Master Air Waybill / Bill of Lading) number where applicable
 
 **Per-line section (one row per `wrr_items` record):**
 

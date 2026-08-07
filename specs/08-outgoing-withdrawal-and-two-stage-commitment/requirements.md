@@ -1,7 +1,7 @@
 # Outgoing Withdrawal & Two-Stage Commitment — Requirements
 
 Status: Approved
-Updated: 2026-08-06
+Updated: 2026-08-07
 
 ## 1. Purpose and scope
 
@@ -51,9 +51,10 @@ pick-list generation input → FIFO/FEFO allocation
 
 1. An authorized user SHALL be able to initiate pick-list generation directly from the Master Inventory surface for a destination, `flow_type`, and one or more item quantities.
 2. The pick-list generation command SHALL validate active item references, permitted party/flow scope, UOM, quantity, and approved document metadata.
-3. The system SHALL use canonical `parties`, `items`, `locations`, `lots`, `pick_lists`, and `acknowledgement_receipt` terminology.
-4. The system SHALL not reserve stock until the allocation is validated and the pick-list generation command succeeds.
-5. Pick-list generation SHALL be idempotent and have safe stale-state/concurrency behavior.
+3. The pick-list generation command SHALL validate `item_code_is_provisional` (per `01-core-data-model`'s `master_inventory_tracking` read model) for every requested line and SHALL refuse to generate or reserve any pick list containing a line where `item_code_is_provisional` is true, returning a recoverable validation error that names the blocking item(s) rather than partially generating the pick list.
+4. The system SHALL use canonical `parties`, `items`, `locations`, `lots`, `pick_lists`, and `acknowledgement_receipt` terminology.
+5. The system SHALL not reserve stock until the allocation is validated and the pick-list generation command succeeds.
+6. Pick-list generation SHALL be idempotent and have safe stale-state/concurrency behavior.
 
 ### R2. Quantity, packaging, and flow rules
 
@@ -145,6 +146,7 @@ pick-list generation input → FIFO/FEFO allocation
 ## 5. Acceptance criteria
 
 - [ ] A valid pick-list generation action allocates authoritative available lots using approved FEFO/FIFO ordering across dispersed locations.
+- [ ] Pick-list generation is refused, with no partial pick list created, for any requested line whose `item_code_is_provisional` is true, and the error names the blocking item(s).
 - [ ] VMI/Trading SPQ rules and Supplies piece rules are enforced server-side.
 - [ ] FIFO override blocks commitment until an approved, current decision exists.
 - [ ] Stage 1 commitment reserves stock without decrementing inventory and creates exactly one operational `pick_list`.

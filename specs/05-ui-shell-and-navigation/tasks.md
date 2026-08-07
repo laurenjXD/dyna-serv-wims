@@ -127,6 +127,17 @@ Testing: Type-check/build contract; E2E smoke coverage for representative floor 
 - [ ] Update `specs/00-steering/gantt-mapping.md` after this spec's status changes; the receiving UI row should reference the approved shell contract rather than implying that the shell itself implements receiving.
 - [ ] Publish and exercise the **Shared Table-Action and Filter/Search Contract** from `design.md` §8: capability/row-state action omission, one primary action, floor touch targets, exact FR-8.1 filters, cross-entity search, and server/RLS-preserving query behavior.
 
+### 7. Implement the general landing page (`/`)
+
+**Added 2026-08-07**, covering R11 (`requirements.md`) and the `/` route-table entry and prose (`design.md` §3.2/§3.3). No capability of its own; each embedded read is gated by its own source spec.
+
+- [ ] Register `/` as the default post-login destination, capability `none`, per the route table.
+- [ ] Implement the floor-shell rendering: greeting, "TODAY" task-count summary card (receiving/picking/inspection counts), Quick Actions list, one full-width open-work-queue CTA — per `mockup.md` §1.
+- [ ] Implement the office-shell rendering (also used for `"party"` sessions): per-queue summary cards (Receiving/Picking/Inspection open+today counts) and a Recent Activity feed — per `mockup.md` §3.
+- [ ] Wire the floor/office summary counts to read-only queries against `07-incoming-receiving`, `08-outgoing-withdrawal-and-two-stage-commitment`/pick lists, `11-transfer-and-inspection`, and `09-approval-queue`, each already gated by that spec's own capability; do not introduce a new capability or duplicate their access predicates here.
+- [ ] Implement the office-surface-only `<ActivityHeatmap>` widget: import `16-reporting-and-analytics`'s existing component (design.md §4.3) as-is; gate it at the widget level by `reporting.read`; omit it entirely for any session without that capability, including every floor-shell session; never render it in the floor summary presentation.
+- [ ] Verify `/` never displays KPI cards or financial/margin metrics — those remain exclusive to `16-reporting-and-analytics`'s `/reports`.
+
 ## Testing matrix
 
 ### Unit tests (Vitest)
@@ -153,6 +164,8 @@ Testing: Type-check/build contract; E2E smoke coverage for representative floor 
 - [ ] Session expiry/revocation removes access without exposing protected content.
 - [ ] Loading, error, not-found, sign-out, and connectivity states are recoverable and do not leak sensitive details.
 - [ ] Respect `prefers-reduced-motion` and verify no shell interaction depends on animation.
+- [ ] **Added 2026-08-07:** `/` renders the correct per-surface summary for a floor, office, and `"party"` session, requires no capability, and never displays `16`'s KPI cards or financial metrics.
+- [ ] **Added 2026-08-07:** `/`'s office-surface `<ActivityHeatmap>` widget appears only for sessions holding `reporting.read` and is absent for every session without it, including all floor-shell sessions.
 
 ### Manual QA
 

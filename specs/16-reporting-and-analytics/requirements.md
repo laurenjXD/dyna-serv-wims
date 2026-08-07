@@ -51,7 +51,7 @@ Office-first (desktop-priority). The analytics surface is an office/supervisor p
 
 ### FR-1: Main Dashboard
 
-**FR-1.1** The dashboard SHALL be the default landing route (`/dashboard`) for users with the `reporting.read` capability.
+**FR-1.1** The dashboard SHALL be the default landing route (`/reports`) for users with the `reporting.read` capability. **Corrected 2026-08-07**: this route was previously written as `/dashboard`, which collided with `05-ui-shell-and-navigation`'s general operational landing page at `/`. `05`'s route table already reserves `/reports` for this dashboard; see `specs/00-steering/revision-log.md` for the resolution. This dashboard remains a distinct screen from `/`'s operational queue-count summary — this route is gated by `reporting.read` and shows KPI cards and the Quick Access panel defined below, neither of which appear on `/`. **Amended 2026-08-07 (later same day)**: `<ActivityHeatmap>` is the one exception — `05` R11.6 embeds this same component, `reporting.read`-gated at the widget level, on `/`'s office-surface rendering, per `16` AC-9's stated component-reusability contract. The full `/reports` page (KPI cards, heatmap, and Quick Access together) remains the only place all three appear as one screen.
 
 **FR-1.2** The dashboard SHALL display a KPI card row with the following metrics:
 
@@ -244,6 +244,6 @@ The following components SHALL be defined as named, reusable UI components. They
 
 **AC-8** No chart uses color as the sole encoding mechanism. Every trend arrow, status badge, and donut segment is accompanied by a text label or icon readable without color perception.
 
-**AC-9** The `<KpiCard>`, `<ActivityHeatmap>`, and `<TrendLineChart>` components are importable and render correctly when embedded from a feature outside spec `16` (e.g., within the Master Inventory view).
+**AC-9** The `<KpiCard>`, `<ActivityHeatmap>`, and `<TrendLineChart>` components are importable and render correctly when embedded from a feature outside spec `16` (e.g., within the Master Inventory view; realized 2026-08-07 as `<ActivityHeatmap>` embedded, `reporting.read`-gated at the widget level, in `05-ui-shell-and-navigation`'s office-surface `/` landing page — see `05` requirements.md R11.6).
 
 **AC-10** All aggregation queries for inventory metrics target `lot_inventory_totals`; no query performs a raw `SUM` or `COUNT` against `lot_location_balances` at the report/dashboard level. This is verified by query plan inspection in the performance test suite.

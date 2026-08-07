@@ -665,9 +665,9 @@ Testing follows the patterns defined in `specs/00-steering/testing.md`.
 
 ### 8.4 Playwright End-to-End Tests
 
-- Office Admin logs in, lands on `/dashboard`, sees all 6 KPI cards with non-zero values, and the heatmap renders without error.
+- Office Admin logs in, navigates to `/reports` (renamed from `/dashboard` 2026-08-07 — see `specs/00-steering/revision-log.md`), sees all 6 KPI cards with non-zero values, and the heatmap renders without error.
 - Office Admin applies the "VMI" heatmap filter; heatmap recalculates and re-renders.
-- Party user logs in, navigates to `/dashboard`; sees only their own party's data in KPI cards and the activity feed; cannot navigate to the Operational or Trading analytics sections.
+- Party user logs in, navigates to `/reports`; sees only their own party's data in KPI cards and the activity feed; cannot navigate to the Operational or Trading analytics sections.
 - Office Admin exports the Transaction Ledger CSV; downloaded file has correct headers and row count; no `buying_price` column appears in the file.
 - Party user attempts to access the CSV export endpoint directly; receives a 403 response.
 - Office Admin accesses the VMI analytics page; `<FlowPartitionSummary>` shows three panels at `lg` width.

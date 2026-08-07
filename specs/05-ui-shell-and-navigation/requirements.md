@@ -110,6 +110,17 @@ A feature declares its surface when registering a route. The shell must not infe
 4. Filtered and searched results SHALL be produced by an authorized server query and remain subject to PostgreSQL RLS; client-side filtering SHALL not broaden or substitute for the canonical access predicate.
 5. Shared item lists, Master Inventory tables, analytics views, and exports SHALL display `supplier_item_code` for `vmi` and `dsgc_item_number` for `trading` or `supplies`; `dsgc part number` SHALL not be used.
 
+### R11. General landing page
+
+**Added 2026-08-07**, capturing a product owner request for a general "overview of everything" screen as the default post-login destination for every authenticated user, already drawn in `mockup.md` §1 and §3 but not previously formalized here.
+
+1. WHEN an authenticated user completes sign-in with no pending safe/authorized deep-link destination, THE SYSTEM SHALL route the user to `/` as the default landing page, SO THAT every authenticated user — not only office/supervisor roles — has an immediate operational orientation screen.
+2. WHEN `/` renders, THE SYSTEM SHALL present the floor summary presentation for a floor session and the office summary presentation for an office or `"party"` session, per the shell surface resolved for that session (`design.md` §3.2/§3.3), SO THAT the landing page matches each audience's existing shell treatment rather than introducing a third bespoke layout.
+3. WHEN `/` renders, THE SYSTEM SHALL aggregate read-only summary counts sourced from `07-incoming-receiving`, `08-outgoing-withdrawal-and-two-stage-commitment`/pick lists, `11-transfer-and-inspection`, and `09-approval-queue`, SO THAT the page reflects real operational state without this spec re-deriving or duplicating any of those specs' own data or capability gates.
+4. THE SYSTEM SHALL NOT require a `capability` value to view `/`; it is a context-resolved aggregation route, consistent with the existing treatment of `/sync` and `/portal`.
+5. THE SYSTEM SHALL treat `/` as distinct from `16-reporting-and-analytics`'s `reporting.read`-gated analytics dashboard (now at `/reports`, per the 2026-08-07 route correction in `specs/00-steering/revision-log.md`): `/` SHALL NOT be gated by `reporting.read` and SHALL NOT display KPI cards or financial/margin metrics, SO THAT floor staff and other users without `reporting.read` still receive a landing page, and the two screens do not collide on the same route or duplicate each other's content. **Amended 2026-08-07 (later same day):** the 52-week activity heatmap is no longer a blanket exclusion — see R11.6 for the narrow, widget-gated exception.
+6. WHEN `/` renders for an office or `"party"` session, THE SYSTEM SHALL additionally display a `<ActivityHeatmap>` widget sourced from `16-reporting-and-analytics`'s existing component (design.md §4.3), gated by `reporting.read` at the widget level, SO THAT office users get a data-analytics glance on their default landing page without navigating to `/reports`, while the route itself remains ungated. THE SYSTEM SHALL NOT render this widget for any session lacking `reporting.read`, including every floor-shell session, and SHALL NOT render it as part of the floor summary presentation under any circumstance, SO THAT `16` §2.4's rule that floor staff never see reporting-derived analytics is preserved rather than loosened.
+
 ## 4. Acceptance criteria
 
 - [ ] A protected deep link redirects safely to sign-in when unauthenticated and returns only when the destination remains valid and authorized.
@@ -123,6 +134,8 @@ A feature declares its surface when registering a route. The shell must not infe
 - [ ] A representative floor feature and office feature can mount through the shared shell contract without duplicating shell behavior.
 - [ ] Unit, integration, E2E, and manual checks required by `tasks.md` pass or are explicitly marked not applicable.
 - [ ] Representative list screens prove capability/row-state action gating, touch-target behavior, exact shared filters, cross-entity search, and RLS-preserving server queries.
+- [ ] `/` renders the correct per-surface summary (floor task-count/quick-actions/work-queue CTA, or office per-queue cards/recent-activity feed) for a floor, office, and `"party"` session, requires no capability, and never displays `16`'s KPI cards or financial metrics.
+- [ ] `/`'s office-surface rendering (office and `"party"` sessions) additionally displays the `16-reporting-and-analytics` `<ActivityHeatmap>` widget only when the session holds `reporting.read`; the widget is absent for any session without that capability, including all floor-shell sessions, and never appears in the floor summary presentation.
 
 ## 5. Dependencies and exclusions
 
@@ -131,3 +144,5 @@ A feature declares its surface when registering a route. The shell must not infe
 - Capability and effective-access requirements depend on the approved interface from `02-rbac-roles`; this spec does not redefine the RBAC model.
 - Connectivity presentation depends on `03-offline-mode-and-client-storage`; this spec does not define offline synchronization.
 - This spec touches no `01-core-data-model` tables. If the approved design later requires direct profile/party data reads, those table dependencies must be named explicitly in `design.md` before approval.
+- **Added 2026-08-07:** the general landing page (R11) depends on read-only summary data from `07-incoming-receiving`, `08-outgoing-withdrawal-and-two-stage-commitment`, `11-transfer-and-inspection`, and `09-approval-queue`. Each of those specs is `Approved`; this spec consumes their already-gated reads and does not define a new capability or data-access path of its own for `/`.
+- **Added 2026-08-07 (later same day), R11.6 heatmap widget:** the office-surface `<ActivityHeatmap>` widget on `/` depends on `16-reporting-and-analytics`'s existing component and capability gate (`reporting.read`), per its design.md §4.3 and requirements.md AC-9's stated reusability contract. `16` is `Approved`; this spec reuses that component as-is and does not fork it or redefine its data source.

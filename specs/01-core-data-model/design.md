@@ -331,6 +331,7 @@ export const wrrDocuments = pgTable("wrr_documents", {
   ciplFileUrl: text("cipl_file_url"), // Attached PDF/Image CIPL document in Supabase Storage
   pezaNumber: varchar("peza_number", { length: 100 }), // PEZA Permit Number (manual)
   ipNumber: varchar("ip_number", { length: 100 }), // Import Permit (IP) Number
+  mawbMblNumber: varchar("mawb_mbl_number", { length: 100 }), // MAWB / MBL (Master Air Waybill / Bill of Lading)
   vendorPartyId: uuid("vendor_party_id").references(() => parties.id).notNull(),
   flowType: flowTypeEnum("flow_type").notNull(),
   status: wrrStatusEnum("status").default("staged_pending_arrival").notNull(),
@@ -530,11 +531,33 @@ erDiagram
    - **History Modal**: The full stock movement history is NOT shown inline to prevent clutter. Instead, an action button ("View History") opens a modal that fetches `inventory_transactions`. The modal displays the exact date, time, performing user, total quantity received, and total quantity dispatched/withdrawn.
 
    - **Canonical Master Inventory read models**: The Master Inventory and reporting surfaces consume two read-model contracts owned by `01`: `master_inventory_tracking` for current lot/location balances and `lot_history_export` for connected history. These are derived read models, not duplicate ledgers.
-     - `master_inventory_tracking` is keyed by `lot_number`, item/category, `flow_type`, and `location`; it exposes derived quantities from `lot_inventory_totals`/`lot_location_balances`, FEFO/FIFO ordering metadata, and the flow-based displayed code (`supplier_item_code` for VMI; `dsgc_item_number` for Trading/Supplies).
+     - `master_inventory_tracking` is keyed by `lot_number`, item/category, `flow_type`, and `location`; it exposes derived quantities from `lot_inventory_totals`/`lot_location_balances`, FEFO/FIFO ordering metadata, and a resolved `displayed_item_code` plus `item_code_is_provisional` flag, computed at read time (not a stored column on `items`):
+       ```
+       displayed_item_code =
+         CASE flow_type
+           WHEN 'vmi' THEN COALESCE(supplier_item_code, code)
+           ELSE            COALESCE(dsgc_item_number, code)   -- trading & supplies
+         END
+
+       item_code_is_provisional =
+         CASE flow_type
+           WHEN 'vmi' THEN supplier_item_code IS NULL
+           ELSE            dsgc_item_number IS NULL
+         END
+       ```
+       `items.dsgc_item_number` is only assigned once a Purchase Order exists for a Trading item; there is no `purchase_orders` table or spec in this repository, so a Trading item can and does exist in Master Inventory with `dsgc_item_number IS NULL` for a period after enrollment, prior to any PO. Falling back to the internal `items.code` in that gap, and flagging the fallback via `item_code_is_provisional`, requires no schema change and no backfill: whenever a future PO/Trading-order process (out of scope of `01`, not yet specced) writes `dsgc_item_number`, the next Master Inventory read resolves to the real value automatically. The provisional flag exists so the UI can distinguish "authoritative flow-specific code" from "internal code shown because the authoritative one doesn't exist yet" rather than silently presenting the fallback as if it were settled. VMI's fallback branch is defensive only — `supplier_item_code` is populated at receiving and should not normally be null. The write path that assigns `dsgc_item_number` (whatever future PO/Trading-order process owns it) is an open dependency this decision does not define; it is flagged here for whichever future spec ends up owning Trading purchase orders.
      - `lot_history_export` emits one detail row per connected `inventory_transaction`, inspection/disposition record, and current-balance reference, retaining `lot_number` and source-record identity. A grouped summary is an additional projection and never substitutes for detail rows.
      - Aging is calculated as report `as_of` minus the earliest confirmed receiving transaction connected to the same `lot_number`; `lots.created_at` is metadata only and is not the aging basis.
      - Financial fields (revenue, cost, profit, margin, and price references) are a separate projection. `02-rbac-roles` owns the capability and RLS enforcement; a user without the approved financial grant receives no financial columns, not merely null values.
      - This canonical read-model approach is preferred over browser-side joins across independently filtered endpoints because it preserves lot traceability, makes export grouping deterministic, and gives RLS one server-side query boundary. `lot_history_export` refreshes daily, retains three years, and is generated/served by `16-reporting-and-analytics`; `01` owns the canonical read-model contract and connected source identity.
+
+   - **Master Inventory UI Pattern (table-with-expandable-rows)** — see `specs/00-steering/revision-log.md`, "Master Inventory / Inventory Register — table-with-expandable-rows UI pattern, owning spec corrected to `01-core-data-model`" (2026-08-07): this screen is owned by `01`, not `16-reporting-and-analytics`, since it is the UI view over `01`'s own `items`/`lots`/`lot_location_balances`/`lot_inventory_totals` entities, not a reporting/analytics surface. The concrete pattern:
+     - **Collapsed row**: standard table density — item code, item name, UOM, stock level, and status, one row per item. The item-code column displays `master_inventory_tracking.displayed_item_code`; when the accompanying `item_code_is_provisional` flag is true, the cell shows a "Pending PO assignment" badge/tooltip beside the fallback internal `code`, so a picker or auditor is not misled into treating the fallback as the settled DSGC number.
+     - **Expand-on-click**: reveals dimensions, valuation, movement history, and VMI/Trading extension data (owner party, flow-type-specific fields) inline beneath the row, without navigating away from the table. Each transaction line in the movement history includes a "Reference" field: `inventory_transactions.commercial_invoice_no` for incoming (receiving) movements, or `inventory_transactions.ar_reference_no` for outgoing (Dispatch/Withdrawal) movements — both fields already exist on `inventory_transactions`; this is a display addition, not a schema change.
+     - **This inline-expansion pattern supersedes the separate History Modal** described above in this same item for movement history specifically — history now renders inline in the expanded row rather than in a dedicated modal. The Summary Table and Drill-Down View (Stacked Location & Active Lots Breakdown) content above are otherwise unchanged; only the mechanism for presenting movement history changes.
+     - **Responsive behavior**: below the `md` breakpoint the table collapses to stacked cards, per `brand-design-system.md` §3's mobile-first breakpoint rules.
+     - **Relationship to `brand-design-system.md` §9**: §9's guidance that floor screens avoid dense tables does not apply here — Master Inventory / Inventory Register is a back-office Inventory Controller task (audit, adjustment, drill-down research), not a floor scan-and-go task, so a dense table with progressive disclosure is the governing pattern, consistent with the density §9 already permits for office surfaces.
+     - **Scope note**: this is the one UI page `01-core-data-model` owns outright, a deliberate, explicitly-flagged departure from this spec's otherwise architecture/schema-level scope — recorded in the revision-log entry cited above rather than left as unremarked scope creep.
 
 5. **Unified Conditional Item Enrollment Workflow**:
    - Item enrollment operates via a single unified form interface. Selecting the primary `flow_type` (`vmi`, `trading`, or `supplies`) dynamically reveals conditional fields (e.g. default supplier party & SPQ meters for VMI; currency, buying price & selling price for Trading; internal reorder threshold for Supplies), writing cleanly to the single unified `items` table.

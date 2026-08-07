@@ -1,7 +1,7 @@
 # Outgoing Withdrawal & Two-Stage Commitment — Design
 
 Status: Approved
-Updated: 2026-08-06
+Updated: 2026-08-07
 
 ## 1. Design intent
 
@@ -121,9 +121,12 @@ Within one authoritative transaction it:
 1. authenticates and authorizes the current actor and destination/flow scope;
 2. locks or safely version-checks the selected item/lot/location state and reservation state;
 3. revalidates status, availability, SPQ/UOM, FEFO/FIFO, and approval;
-4. writes one `inventory_commitments` header record and one `inventory_commitment_line` per selected lot/location row, then atomically increments `lot_location_balances.qty_committed` by the committed quantity for each affected row;
-5. creates the `pick_list` and `pick_list_items` snapshot atomically with the commitment records;
-6. records commitment/audit data and returns the authoritative pick-list reference.
+4. validates `item_code_is_provisional` for every requested line and aborts the entire generation with a recoverable, item-naming error if any line's flag is true;
+5. writes one `inventory_commitments` header record and one `inventory_commitment_line` per selected lot/location row, then atomically increments `lot_location_balances.qty_committed` by the committed quantity for each affected row;
+6. creates the `pick_list` and `pick_list_items` snapshot atomically with the commitment records;
+7. records commitment/audit data and returns the authoritative pick-list reference.
+
+**Provisional item-code gate.** Step 4 checks `item_code_is_provisional` as defined by `01-core-data-model/design.md`'s `master_inventory_tracking` read model (`displayed_item_code`/`item_code_is_provisional`, added 2026-08-07): for Trading/Supplies lines this is true whenever `items.dsgc_item_number IS NULL`, i.e. no Purchase Order has yet been raised for that item; for VMI lines it is true whenever `items.supplier_item_code IS NULL`, which should not normally arise since that field is populated at receiving. This check must run before step 5, because `pick_list_items.item_code` (see `01-core-data-model/design.md`'s `pick_list_items` table) is written once as a permanent snapshot and is never recomputed later. Step 5's snapshot is the last point in the generation sequence where a provisional/fallback internal `items.code` could still be corrected before it is baked, unrecoverably, into a priced, customer-facing `pick_list`/`acknowledgement_receipt` document. A blocked line SHALL surface a recoverable "pending PO/DSGC-number assignment" attention state directing the user to complete that item's DSGC-number assignment before retrying generation; it SHALL NOT allow the rest of the requested lines to generate a partial pick list.
 
 **Quantity semantics at Stage 1.** `qty_available = qty_remaining − qty_committed` is derived by the `lot_inventory_totals` view and is never stored as a column. Stage 1 increments `qty_committed` only; `qty_remaining` is not touched. On-hand stock remains physically and systemically on the shelf. The cross-row invariant `qty_committed ≤ qty_remaining` is enforced by the locking/version-check transaction, not by a single-table CHECK constraint alone.
 

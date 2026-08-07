@@ -108,8 +108,9 @@ The approved read-only tool set for v1. The server implements each tool as a typ
 | `get_recent_transactions` | `inventory_transactions`, `lots`, `items` | `item_code?`, `party_code?`, `days?`, `limit?` | movement history (movement type, qty, from/to location, timestamp) scoped by RBAC |
 | `get_low_stock_items` | `lot_inventory_totals` (view), `items` | `flow_type?` | items where `qty_available < items.min_reorder_level`, scoped by caller's capability |
 | `get_pending_items` | `wrr_documents`, `pick_lists`, `wrr_inspection_logs` | `type?` (`wrr` \| `pick_list` \| `inspection`) | pending WRRs (`staged_pending_arrival` / `receiving_in_progress`), open pick lists (`allocated`), and pending inspection records — scoped by capability |
+| `get_analytics_summary` | `wrr_documents`, `pick_lists`, `lots`, `lot_inventory_totals` (view), `items`, `wrr_inspection_logs`, `inventory_transactions` | `flow_type?` | The six `16-reporting-and-analytics` FR-1.2 KPI metrics — Total Receipts (MTD), Total Dispatches (MTD), Total Lots In Stock, Total Committed Qty, Low Stock Items Count, Pending Inspections Count — plus the FR-1.4 Activity Heatmap's daily transaction-volume-by-day aggregate (trailing 52 weeks, count only, no per-transaction detail) |
 
-These seven tools are the complete allowed set in v1. Adding or enabling a tool outside this registry requires a spec revision and both sign-offs.
+These eight tools are the complete allowed set in v1. Adding or enabling a tool outside this registry requires a spec revision and both sign-offs.
 
 ### 10.1 Scope enforcement per tool
 
@@ -121,6 +122,7 @@ Each tool resolves the calling user's authorization context before executing:
 - `get_recent_transactions`: requires `inventory.read` (global). Party users have no grant on `inventory_transactions` (per `02` §7.4) and receive a capability-denied response.
 - `get_low_stock_items`: requires `reporting.read` (global) or `inventory.read` (global).
 - `get_pending_items`: capability is type-dependent — `receiving.view` for WRRs, `pick_list.read` for pick lists, `inspection.perform` or `inspection.resolve` for inspection records.
+- `get_analytics_summary`: requires `reporting.read` (`global`, `supervisor`/`administrator` only per `02-rbac-roles` and `16` §6.1). Floor staff (`warehouse_staff`) never hold `reporting.read` (per `16` FR-2.4/§2) and therefore never receive this tool's schema at all — the model is not offered the tool, not merely refused when asked. Party users are likewise excluded: `16` §6.1 grants party users only `reporting.party_read` (`assigned_party` scope), which this tool does not accept as a substitute, so party sessions do not receive this tool's schema either. The six `16` FR-1.2 KPI metrics and the FR-1.4 heatmap aggregate are counts and quantity sums, not Trading revenue, cost, profit, margin, or price references; none of this tool's returned fields fall under `reporting.financial_read` (`02`; `16` §6.1, line 562), so no field-level financial gating applies to `get_analytics_summary` as currently scoped. If a future revision adds a financial-flavored metric to this tool's return set, that field must additionally require `reporting.financial_read` and must be removed at the projection/RLS boundary for callers who lack it — never returned as null — consistent with `16` §6.1's "Financial absence must remove the columns... not return nulls" discipline; that revision would itself require a spec amendment to this registry, not a silent field addition.
 
 Every tool response includes an `as_of` timestamp representing the query execution time, used as the source citation freshness label.
 
@@ -137,7 +139,7 @@ The server-controlled system prompt establishes the chatbot as a read-only wareh
 
 ### 11.2 Tool allowlist
 
-The 7 tools in §10 are the complete allowed set. The server enforces this contract:
+The 8 tools in §10 are the complete allowed set. The server enforces this contract:
 
 - The model receives schemas only for tools that the current user's authorization scope permits. Unknown or out-of-scope tool calls return a typed refusal without disclosing why the tool is unavailable.
 - Tools are server-side functions. The LLM cannot call arbitrary SQL, receive a service-role connection, or access tables outside the registry.

@@ -103,7 +103,7 @@ These requirements close the gap between the chatbot's retrieval model and the t
 ## 7. Decisions required before approval
 
 - Approved model/provider, regions, retention, training/data-use settings, and fallback policy.
-- Initial read-only tools/query functions and fields allowed for each role/party/flow scope.
+- Initial read-only tools/query functions and fields allowed for each role/party/flow scope. **Amended 2026-08-07**: the tool set is not limited to inventory/operational data. `design.md` §10 adds an 8th tool, `get_analytics_summary`, covering `16-reporting-and-analytics`'s KPI/activity-volume metrics, gated on `reporting.read` (`supervisor`/`administrator` only, per `02-rbac-roles` and `16` §6.1) so floor staff and party users never receive its schema. None of its current fields require `reporting.financial_read`; see `design.md` §10.1 for the field-level rule that applies if a future revision adds a financial metric.
 - Chat-history retention, deletion/export, audit, incident response, and support access policy.
 - Source citation format and acceptable answer freshness/as-of semantics.
 - Usage quotas, rate limits, budget alerts, and whether the assistant is enabled for party users in v1.

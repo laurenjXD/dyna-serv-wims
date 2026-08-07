@@ -1,7 +1,7 @@
 # Outgoing Withdrawal & Two-Stage Commitment — Implementation Plan
 
 Status: Approved
-Updated: 2026-08-06
+Updated: 2026-08-07
 
 ## Implementation gate
 
@@ -59,6 +59,7 @@ Testing: Unit allocation/validation tests; real-Postgres concurrency/RLS integra
 
 - [ ] Build the office request/list/detail surface through `05`.
 - [ ] Validate party, flow, item, quantity, UOM, SPQ, roll/meter, and destination inputs on client and server.
+- [ ] Validate `item_code_is_provisional` (per `01`'s `master_inventory_tracking` read model) for every requested line and block generation with a named-item, recoverable error before any reservation/snapshot is created (R1.3; design.md §6 Stage 1 step 4).
 - [ ] Integrate the authoritative FIFO/FEFO allocation engine using available lots and dispersed location quantities.
 - [ ] Account for existing commitments and reject stale/over-available plans.
 - [ ] Produce a deterministic allocation plan with lot/location/quantity explanation.
@@ -135,6 +136,7 @@ Testing: Full applicable matrix below.
 ### Unit tests (Vitest)
 
 - [ ] Request/quantity/UOM/SPQ/roll-meter validation.
+- [ ] `item_code_is_provisional` gate rejects any requested line with a provisional code and blocks the entire generation (no partial pick list).
 - [ ] FEFO/FIFO selection, available-lot eligibility, dispersed-location allocation, and commitment accounting.
 - [ ] Override-required detection and approval-state validation.
 - [ ] Commitment/release/dispatch state transitions and idempotency result handling.

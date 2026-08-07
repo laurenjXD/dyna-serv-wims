@@ -117,7 +117,7 @@ Dependency on spec `04` (scheduled infrastructure) is partial: the `daily_transa
 
 **Steps:**
 
-1. Build `/dashboard` — the main landing page. Parallel RSC architecture per `design.md` §7.2: `KpiDataLoader`, `HeatmapDataLoader`, `QuickAccessLoader`, `RecentActivityLoader`. Each section wrapped in `<Suspense>` with a skeleton placeholder.
+1. Build `/reports` — the main analytics dashboard (renamed from `/dashboard` 2026-08-07 — see `specs/00-steering/revision-log.md`; the app's general landing page is `/`, owned by `05-ui-shell-and-navigation`). Parallel RSC architecture per `design.md` §7.2: `KpiDataLoader`, `HeatmapDataLoader`, `QuickAccessLoader`, `RecentActivityLoader`. Each section wrapped in `<Suspense>` with a skeleton placeholder.
 2. Build `/reports/inventory` — Stock Level Summary (`<StockLevelTable>`), Stock Aging Report, Lot Status Distribution (`<DonutChart>`), Low Stock Report, FIFO/FEFO Queue Health, Flow Partition View (`<FlowPartitionSummary>`).
 3. Build `/reports/receiving` — WRR Volume Trend (`<TrendLineChart>`), Discrepancy Rate KPI, Inspection Outcome Breakdown (`<BarChart>`), Average Receiving Cycle Time KPI, Top Received Items table.
 4. Build `/reports/outbound` — Pick List Volume Trend (`<TrendLineChart>`), Commitment Duration, FIFO Override Frequency (shows placeholder if spec `09` is not yet approved), Dispatch Rate, Top Dispatched Items table.
@@ -185,7 +185,7 @@ Dependency on spec `04` (scheduled infrastructure) is partial: the `daily_transa
 
 **Steps:**
 
-1. Seed the test database with at least 10 000 `inventory_transactions` rows, 200 `lots`, 50 `items`, 5 parties, 100 `wrr_documents`, and 100 `pick_lists`. Run a timed load test of `/dashboard` for an Office Admin session. Verify the first meaningful paint (KPI cards visible) occurs within 2 000ms.
+1. Seed the test database with at least 10 000 `inventory_transactions` rows, 200 `lots`, 50 `items`, 5 parties, 100 `wrr_documents`, and 100 `pick_lists`. Run a timed load test of `/reports` (renamed from `/dashboard` 2026-08-07) for an Office Admin session. Verify the first meaningful paint (KPI cards visible) occurs within 2 000ms.
 2. Confirm `lot_inventory_totals` is used as the aggregate scan source in all inventory KPI query plans. Use `EXPLAIN (ANALYZE, BUFFERS)` to confirm no sequential scan of `lot_location_balances` occurs at the analytics layer.
 3. If the dataset exceeds 500 000 rows (load test with synthetic data if needed): confirm the `daily_transaction_counts` materialized view is used by the heatmap query and that `REFRESH MATERIALIZED VIEW CONCURRENTLY` completes without locking reads.
 4. Run axe-core against the main dashboard page and all six domain pages. Resolve all WCAG AA violations before sign-off.
