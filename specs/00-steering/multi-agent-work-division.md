@@ -25,14 +25,14 @@ Split by dependency chain, not by spec count — specs within a track are tightl
 
 - Finish **Phase 2** of `02-rbac-roles` (currently mid-flight): cycle 2.4 (default-deny RLS policies, including the six previously-unmapped tables), then cycle 2.5 (admin invitation/role UI, once `05`'s actual frontend exists to build it in).
 - Then **Phase 3 onward**: `07-incoming-receiving` → `11-transfer-and-inspection` → `08-outgoing-withdrawal-and-two-stage-commitment` → `10-pick-list-and-acknowledgement-receipt`, in that order — this is the floor-operations chain and it is sequential by nature (receiving creates lots, transfer/inspection changes lot state, withdrawal consumes lots, pick-list/AR is the resulting document). Do not let another agent take one spec out of this chain; the coupling is real, not just filing convenience.
-- **This track is also the sole writer of the shared/locked files** listed below, for as long as Phase 1/2 activity is ongoing. Once Phase 2 is fully closed (cycle 2.4/2.5 done, `gantt-mapping.md` row 1.3 says `Implemented`), Track 1 should post a note in `revision-log.md` announcing the core is stable, at which point Tracks 2 and 3 may begin their own application-code work (they can do spec-level/documentation work on their tracks earlier — see "What can start now vs. later" below).
+- **This track is also the sole writer of the shared/locked files** listed below, for as long as Phase 1/2 activity is ongoing. Two separate announcements to post in `revision-log.md`, not one: (1) when cycle 2.3's guard passes its `rbac-rls-reviewer` pass, post that the calling contract is stable — this unlocks Tier 2 for Tracks 2/3 (write/unit-test code) per "What can start now vs. what waits" below, well before Phase 2 fully closes; (2) when Phase 2 is fully closed (cycle 2.4/2.5 done, `gantt-mapping.md` row 1.3 says `Implemented`), post core-stable — this is what narrows the shared-file lock itself (see below), not what gates Tracks 2/3's coding start.
 
 ### Track 2 — Office & Master Data
 **Owner: the other Claude Code agent, run by the second collaborator.**
 
 - `06-party-and-item-enrollment` → `09-approval-queue` → `14-notifications-and-alerts` → `17-product-categorization-and-classification` → `18-barcode-integration`.
 - `06` already has extensive same-day spec work (location enrollment, Contact Party email action, location/party transaction ledgers, the `/parties`/`/items`/`/locations` route-gate fix) — read `specs/00-steering/revision-log.md`'s 2026-08-07 entries for `06` before touching it, so you don't redo or contradict that reasoning.
-- `06`'s application code depends on `02-rbac-roles`'s `requirePermission`/session-resolver logic (`lib/rbac/`) actually existing — that's Track 1's output. Check `gantt-mapping.md` row 1.3 before writing `06` application code; if Phase 2 isn't closed yet, do `06`'s spec/design refinement and wait on code.
+- `06`'s application code depends on `02-rbac-roles`'s `requirePermission`/session-resolver logic (`lib/rbac/`). **This is unlocked as of 2026-08-07** — `rbac-rls-reviewer` passed the guard contract, Track 1 posted the guard-contract-stable announcement, and `lib/rbac/index.ts` now re-exports both `session` and `guard`. Write and unit-test `06`'s application code against `requirePermission()` now; just don't claim a real-Postgres-verified pass on any `06` route touching a table without its RLS policy yet (check `02-rbac-roles/design.md` §7.4's per-table list) — that part still waits on cycle 2.4.
 
 ### Track 3 — Analytics, Billing & External-Facing
 **Owner: Codex, run by the third collaborator.**
@@ -40,6 +40,58 @@ Split by dependency chain, not by spec count — specs within a track are tightl
 - `16-reporting-and-analytics` → `12-vmi-billing` → `13-trading-orders-and-pricing` → `22-parties-portal` → `15-ai-chatbot` (last — its tool registry reads from most other specs, so it benefits from those being stable first).
 - **Codex-specific**: read `AGENTS.md`, not `CLAUDE.md`, as your primary process doc — they say the same thing, `AGENTS.md` just doesn't assume Claude Code's skill/subagent infrastructure. If you don't have an equivalent of Claude Code's specialized review subagents (`rbac-rls-reviewer`, `design-system-auditor`, etc.), do the equivalent review pass yourself, read-only against the spec files, before making changes — the same pattern already used in this repo's `codex task.md` precedent ("For each persona named below, adopt its stated scope as a checklist and run that pass yourself, read-only against the spec files first").
 - `16` already has same-day spec work (the `/reports` route rename resolving a collision with `05`'s new landing page, the `<ActivityHeatmap>` reuse on `/`, the `get_analytics_summary` chatbot tool) — read the relevant 2026-08-07 `revision-log.md` entries before touching it.
+
+## Full implementation phase plan — all three tracks
+
+`specs/00-steering/implementation-kickoff.md` was written for one sequential implementer and only details Phases 0–3 (Track 1's own chain, through `07`). With three tracks running in parallel, Tracks 2 and 3 need their own phase sequence too, and all three need to see how their phases depend on each other — that's what this section is for.
+
+**Deliberately phase-level, not cycle-level, for Track 2/3's later phases.** `implementation-kickoff.md` itself defers Phase 3's cycle-by-cycle detail until Phase 2 closes, "since implementing them may surface schema gaps that change it" — the same caution applies here, more so, since Tracks 2/3 haven't started yet. Write the RED→GREEN→VERIFY cycle breakdown for your own phase immediately before you start it, not now — the earlier phases below (Track 1's) are already at that detail because they're already in flight or done; the later ones aren't, on purpose.
+
+### Track 1 — Core & Floor Operations (detailed cycle plan: `implementation-kickoff.md`)
+
+| Phase | Spec | Status as of 2026-08-07 |
+|---|---|---|
+| 0 | Scaffolding | Done |
+| 1 | `01-core-data-model` | Done, real-Postgres verified (4 passes) |
+| 2 | `02-rbac-roles` | Cycles 2.1–2.3 done, verified, and `rbac-rls-reviewer`-passed — guard-contract-stable announcement posted 2026-08-07, Tier 2 unlock live for Tracks 2/3; 2.4 (RLS policies) and 2.5 (admin UI, blocked on `05` frontend) remain |
+| 3 | `07-incoming-receiving` | Not started — full cycle plan to be written when Phase 2 closes |
+| 4 | `11-transfer-and-inspection` | Not started |
+| 5 | `08-outgoing-withdrawal-and-two-stage-commitment` | Not started |
+| 6 | `10-pick-list-and-acknowledgement-receipt` | Not started |
+
+Phases 3–6 are sequential and each depends on the one before it (receiving creates lots → transfer/inspection changes lot state → withdrawal consumes lots → pick-list/AR is the resulting document) — do not parallelize within Track 1 itself.
+
+### Track 2 — Office & Master Data
+
+| Phase | Spec | What it builds | Depends on |
+|---|---|---|---|
+| A | `06-party-and-item-enrollment` | `parties`/`items`/`locations` CRUD, search, lifecycle; location enrollment; Contact Party email action; location/party transaction ledgers (all already fully spec'd 2026-08-07 — this phase is implementation against an already-detailed design, not fresh design work) | Track 1 Phase 2 (needs `lib/rbac`'s `requirePermission` to gate every mutation) |
+| B | `09-approval-queue` | FIFO-override approval workflow, self-approval prohibition enforcement (per `02` §3.4 — this is where that rule actually lives, not in the RBAC guard itself) | Phase A (approval actor is a `user_profile`); Track 1 Phase 5 (`08`) for what triggers an override request |
+| C | `14-notifications-and-alerts` | Reorder/low-stock alerts, delivery via `04`'s existing Resend/Realtime infrastructure | Phase A/B for what it notifies about; `01`'s `lot_inventory_totals` (done) for low-stock detection |
+| D | `17-product-categorization-and-classification` | Category/subcategory hierarchy, flow validation | Phase A (`item_categories` already exists in `01`; this phase is the management UI/rules layer on top) |
+| E | `18-barcode-integration` | Barcode/QR generation and scan-matching | Phase A/D (needs items and categories settled); Track 1 Phase 3 (`07`) for the receiving-scan integration point |
+
+### Track 3 — Analytics, Billing & External-Facing
+
+| Phase | Spec | What it builds | Depends on |
+|---|---|---|---|
+| I | `16-reporting-and-analytics` | `/reports` dashboard, KPI cards, `<ActivityHeatmap>`, Master Inventory analytics views | Track 1 Phase 1 (the four derived read models — `master_inventory_tracking`, `lot_history_export`, `location_transaction_ledger`, `party_transaction_ledger` — are already implemented and verified, so this phase starts from a real foundation, not a spec-only one) |
+| II | `12-vmi-billing` | Period-average VMI CBM billing calculation | Phase I (reads the same read models); Track 1 Phase 1 (`lots.owner_party_id`, `flow_type` partitioning — done) |
+| III | `13-trading-orders-and-pricing` | Trading buy/sell pricing, order pricing logic | Phase I/II; Track 2 Phase A (`items.buying_price`/`selling_price` already exist in `01`, but the order/pricing workflow itself is `13`'s, not `06`'s) |
+| IV | `22-parties-portal` | External party-facing read views (`/portal/*`) | Phase I/II/III (the portal surfaces VMI analytics, billing statements, and Trading order status — needs all three settled first); Track 1 Phase 2 (party-scoped RLS) |
+| V | `15-ai-chatbot` | Three-persona assistant, 8-tool registry (7 operational + `get_analytics_summary`) | Nearly everything above — this is deliberately last. Its tool registry already reads from `01`, `16`; adding tools for `12`/`13`/`22` data is a later, separate registry amendment once those phases exist, not part of this phase |
+
+### Cross-track dependency map
+
+**Updated 2026-08-07 — this is no longer a single hard blocker.** `rbac-rls-reviewer` has passed the `requirePermission`/session-resolver guard contract (cycles 2.2/2.3); Track 1 posted the guard-contract-stable announcement in `revision-log.md`. Per the Tier 2 unlock in "What can start now vs. what waits" below, **Tracks 2 and 3 may write and unit-test application code now** — they do not need to wait for cycle 2.4 (RLS policies) or 2.5 (admin UI) to close. The remaining constraint is per-table, not global: neither track can claim a **real-Postgres-verified** pass for a route touching a table that doesn't have its RLS policy yet (Tier 3). Beyond that:
+
+- Track 2 Phase B (`09`) soft-depends on Track 1 Phase 5 (`08`) for its trigger condition, but can be built and tested against a stubbed trigger in the meantime — don't block Phase B entirely on Phase 5 finishing.
+- Track 3 Phase II (`12`) and III (`13`) soft-depend on Track 2 Phase A (`06`) for party data being manageable through a real UI, but the underlying `parties`/`items` tables are already real and verified (Track 1 Phase 1) — Track 3 can build against the tables directly without waiting on Track 2's UI.
+- Track 3 Phase IV (`22`) is the one genuine multi-track convergence point — it needs Phase I/II/III (its own track) **and** Track 1 Phase 2's party-scoped RLS **and**, practically, Track 2's `06` being far enough along that party records exist to portal-surface. Don't start `22` until the other four are at least in their own VERIFY step.
+
+### Mapping to `gantt-mapping.md`'s Milestones
+
+This phase plan is a *how* underneath the *when* `gantt-mapping.md` already tracks. Milestone 1 (Receiving & Core Inventory Transfers) is entirely Track 1's Phases 0–5. Milestone 2 (Classification & Inventory Processing) is Track 1 Phase 6 plus Track 2 Phases D/E. Milestone 3 (Inventory Control & Analytics) is Track 3 Phases I–III plus Track 2 Phase C. Milestone 4 (Final Handover & Deployment) is Track 3 Phases IV–V plus the cross-cutting docs/training/deployment specs (`20`, `04`), which don't belong to any one track and should be picked up by whichever track finishes its own chain first.
 
 ## Shared/locked files — single-writer rule
 
@@ -60,19 +112,110 @@ If your track needs a change to a locked file: write the exact change you need (
 
 ## What can start now vs. what waits
 
-**Can start immediately, all three tracks, no coordination needed:** requirements.md/design.md/tasks.md drafting or revision within your own track's spec folders. This is pure documentation, doesn't touch shared files, and is always fine per the project's core rule.
+Three tiers, not one blanket wait — the earlier draft of this doc made Tracks 2/3 wait for a single "core-stable" announcement before writing any code at all. That's more conservative than it needs to be: `01`'s schema is done and real-Postgres verified, and `02`'s calling contract (`requirePermission()`/`lib/rbac/session.ts`) is already stable — cycle 2.4's RLS policies enforce underneath that same function call, they don't change its API shape. Waiting for the literal full close of Phase 2 before touching any code wastes real parallel time for no safety benefit, since the part that would actually break Track 2/3's code (the guard's calling contract) isn't what's still moving.
 
-**Waits on Track 1 announcing core-stable:** any application code (schema, RLS policies, session/guard logic, routes) for Tracks 2 and 3, since it depends on `01`'s schema and `02`'s auth logic being in their final form. Writing code against a moving foundation means redoing it when the foundation shifts — check `gantt-mapping.md` before starting, not just at kickoff.
+**Tier 1 — start immediately, all three tracks, no coordination needed:** requirements.md/design.md/tasks.md drafting or revision within your own track's spec folders. Pure documentation, doesn't touch shared files, always fine per the project's core rule.
+
+**Tier 2 — start as soon as Track 1's cycle 2.3 (`requirePermission`/`lib/rbac/guard.ts`) has passed its `rbac-rls-reviewer` pass** (does not require cycle 2.4's RLS policies or cycle 2.5's admin UI to be done): write and unit-test your own application code — routes, server actions, components — calling `requirePermission()` against the current, stable `01`/`02` schema and guard contract. This is most of the actual coding work for Tracks 2/3, and it can start well before Track 1's chain fully closes. Track 1 posts the "guard reviewed, cycle 2.3 closed" note in `revision-log.md` the same way it will post "core-stable" — watch for that, not for the full Phase 2 close.
+
+**Tier 3 — waits on the real-Postgres RLS policy for your specific tables** (cycle 2.4, per-table, not all-or-nothing): the **live-Postgres verification pass** (`db-migration-verifier` + `rbac-rls-reviewer`) for any route/feature your track built against a table that doesn't have its RLS policy yet. You can write and unit-test the code in Tier 2; you cannot call it *verified* until the specific table(s) it touches have real RLS policies to verify against. Check `02-rbac-roles/design.md` §7.4's per-table policy list against your feature's tables before claiming a verification pass — don't assume "RBAC is done" covers a table it doesn't actually list yet.
 
 **Never starts without a product-owner call, any track:** anything the product owner explicitly deferred — the WRR email/PDF-parsing automation idea and any AI-generated-content feature not already in an approved spec. If you think you've found a good reason to build one of these now anyway, that reasoning belongs in a flagged question to the product owner, not in a spec change.
 
 ## Git workflow
 
-- One branch per track: `track-1-core-floor-ops`, `track-2-office-data`, `track-3-analytics-billing`. Never commit directly to `main`.
-- **No agent commits without its human collaborator explicitly asking for that specific commit.** This is `CLAUDE.md`'s existing git safety rule, restated here because it was violated three times in the session that produced this doc — an agent should never decide on its own that a batch of work is "done enough to commit."
-- Rebase your track branch onto `main` at the start of every session, before making changes — not after, so you find out about upstream changes before you've built on stale files.
-- Merge order into `main`: Track 1's core/floor-ops changes merge first (smallest, most foundational, least likely to conflict with anything), then Track 2, then Track 3 — always one at a time, never simultaneous merges of two track branches, even if a bot says they're conflict-free. Confirm `npm run build`, `npx tsc --noEmit`, and the full Vitest suite are clean on `main` after every merge before the next one starts.
-- Before opening a PR: run `git diff` yourself and read every file your track's agent touched. This session found three separate cases of an agent making an edit it never mentioned in its own summary — a stray field, a stray edit to an unrelated agent-definition file, and one invented feature added to a core steering doc that nobody had ever discussed. Catch these before they reach a PR, not after.
+Remote is `https://github.com/laurenjXD/dyna-serv-wims.git` (`origin`). Every command below assumes you're already in the repo root with that remote configured.
+
+### 0. Before anyone creates a track branch — check what already exists
+
+This repo already has branches from before this doc existed: `documentation`, `agents-nd-skills`, `party-portal`, and `jenjen-branch` (run `git branch -a` to see the current list — it may have grown since this was written). **Do not assume the three track branches are the only thing out there.** In particular, `party-portal` may already contain work relevant to Track 3's Phase IV (`22-parties-portal`) — before Track 3 starts that phase, check `git log party-portal` and diff it against `main` to see whether it's stale scratch work, something to merge first, or something to ignore. If unsure, ask the product owner rather than silently overwriting or ignoring it.
+
+### 1. One-time setup, each collaborator
+
+```bash
+git clone https://github.com/laurenjXD/dyna-serv-wims.git
+cd dyna-serv-wims
+git fetch origin
+# Track 1 uses track-1-core-floor-ops, Track 2 uses track-2-office-data, Track 3 uses track-3-analytics-billing.
+# Only create the branch for YOUR track:
+git checkout -b track-2-office-data origin/main   # example for Track 2; substitute your own track name/number
+git push -u origin track-2-office-data
+```
+
+If your track's branch already exists on `origin` (someone else already ran this), just check it out instead of creating it:
+```bash
+git checkout -b track-2-office-data origin/track-2-office-data
+```
+
+### 2. Every work session, in this order
+
+```bash
+git checkout track-2-office-data      # your track's branch — never work on main directly
+git fetch origin
+git rebase origin/main                # pull main's latest changes in BEFORE you start, not after
+```
+If the rebase reports conflicts here, resolve them now, before writing any new code for this session — see "Handling rebase conflicts" below. Only start making changes once this rebase is clean.
+
+### 3. Making changes
+
+Work normally within your track's assigned spec folders and code paths. Do not touch the shared/locked files listed above except through the cross-track request protocol. Run your project's test suite (`npm run build`, `npx tsc --noEmit`, `npx vitest run`) before considering any unit of work finished, same as this session did throughout.
+
+### 4. Before asking your human collaborator to commit
+
+Run `git status` and `git diff` yourself and actually read every changed file — not just the ones you meant to touch. This is not optional: this session found three separate cases of an agent making an edit it never mentioned in its own summary (a stray schema field, a stray edit to an unrelated agent-definition file, and one invented feature silently added to a core steering doc that had never been discussed). Report to your human collaborator exactly what changed, file by file, before they decide whether to commit.
+
+### 5. Committing — human-gated, every time
+
+**No agent runs `git commit` without its human collaborator explicitly asking for that specific commit.** This is `CLAUDE.md`'s existing git safety rule, restated here because it was violated three times in the session that produced this doc. The agent prepares the change and shows the diff; the human decides if and when it becomes a commit.
+
+```bash
+git add <specific files>              # never `git add -A`/`git add .` blindly — name the files you reviewed in step 4
+git commit -m "$(cat <<'EOF'
+<track-N> <spec-number>: <what changed and why, one or two sentences>
+
+Co-Authored-By: <the agent name>
+EOF
+)"
+```
+Commit message convention: prefix with your track (`track-2`) and the spec number the change belongs to (`06`), so `git log --oneline` across all three tracks stays readable once branches start merging. Example: `track-2 06: add location enrollment CRUD routes gated by locations.manage`.
+
+### 6. Pushing
+
+```bash
+git push origin track-2-office-data
+```
+If the push is rejected because `origin/track-2-office-data` moved (someone else, or you from another machine, pushed to it), `git fetch origin` and `git rebase origin/track-2-office-data` before retrying — never `git push --force` to a track branch without your human collaborator's explicit go-ahead, same rule as any other destructive git operation.
+
+### 7. Opening a PR
+
+Use the GitHub web UI, or the `gh` CLI if your environment has it installed (`gh pr create --base main --head track-2-office-data --title "..." --body "..."`). Either way, the PR description should name: which spec(s) this covers, which cycle/phase per this doc's phase-plan tables, and confirmation that build/typecheck/tests are clean. Do not merge your own PR — that's the product owner's call, per the merge order below.
+
+### 8. Merge order into `main` — one track at a time, never simultaneous
+
+Track 1 merges first (smallest, most foundational, least likely to conflict with anything downstream), then Track 2, then Track 3. After each merge:
+```bash
+git checkout main
+git pull origin main
+npm run build && npx tsc --noEmit && npx vitest run
+```
+All three must be clean before the next track's PR is merged. If a merge breaks something, that's fixed on `main` (or reverted) before the next track's merge proceeds — don't stack a second merge on top of a broken `main` hoping it sorts itself out.
+
+After merging, every track still working should immediately rebase (step 2) before continuing — don't let a track branch drift for days against a `main` that's already moved past it.
+
+### Handling rebase conflicts
+
+A conflict during `git rebase origin/main` almost always means either (a) you touched a shared/locked file you shouldn't have (check the list above — if so, that's the real bug to fix, not the conflict), or (b) two tracks' otherwise-independent changes happened to land near each other in a file you do legitimately share (rare, given the track split, but possible in `package.json`/`package-lock.json` if two tracks both added dependencies). Resolve conflicts by re-reading both versions' intent, not by blindly taking "ours" or "theirs" — a mis-resolved conflict in `lib/db/schema` or a migration file is exactly the kind of silent corruption this session already had to catch and recover from once. When resolved:
+```bash
+git add <resolved files>
+git rebase --continue
+```
+If a rebase goes badly wrong, `git rebase --abort` gets you back to before you started it — safe to use, not destructive to anything already pushed.
+
+### Emergency / rollback
+
+- Uncommitted work you want to discard: `git status` first (always, before any discard), then `git restore <file>` for a specific file or `git checkout -- .` for everything — never `git reset --hard` without checking `git status` first and confirming with your human collaborator, since it silently discards uncommitted work with no prompt.
+- A bad commit already pushed to your own track branch (not yet merged to `main`): revert it (`git revert <sha>`) rather than rewriting history with `git reset`/force-push, unless your human collaborator explicitly wants history rewritten.
+- Never force-push to `main`, under any circumstance, for any reason, on any track.
 
 ## Status reporting
 
