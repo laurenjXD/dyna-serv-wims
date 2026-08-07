@@ -251,13 +251,14 @@ Each track posts a dated entry to `specs/00-steering/revision-log.md` for every 
 
 **Track 3, 2026-08-07/08 — requested `daily_transaction_counts` materialized view + analytics indexes (`16` design.md §7.1/§7.3) and the RLS-enforcing query transaction wrapper (`02` design.md §6.3), before Track 3 could proceed.**
 
+(Matches Track 3's own request note, written independently on their branch: they needed these to move `lib/analytics/queries/heatmap.ts` off its direct-ledger fallback and to run `16`'s query functions inside a real RLS boundary before mounting protected `/reports` routes — same request, described from both sides.)
+
 **RESOLVED.** Delivered via expedited cherry-pick (not the full Track 1→main merge order, since Track 3 was actively blocked) — commit `5cdab55dd0661964e942e6377851b341e91d51bb` on `origin/track-1-core-floor-ops`, containing exactly:
 - `supabase/migrations/0006_daily_transaction_counts.sql` — the materialized view + unique index on `(activity_date, flow_type, movement_type)`. Real-Postgres verified, including a held-open-transaction proof that `REFRESH ... CONCURRENTLY` genuinely doesn't block reads.
 - `supabase/migrations/0007_analytics_indexes.sql` — all 8 indexes from `16`'s §7.1 table, confirmed non-duplicative of `0002`'s existing indexes, `EXPLAIN`-verified planner adoption.
 - `lib/db/rls-transaction.ts` (+ its unit and integration tests) — the `withRlsTransaction`/`buildRlsClaimStatements` wrapper. `rbac-rls-reviewer` caught a real bug before this shipped (claim-setting wasn't awaited before the callback ran — an unverified ordering assumption with a genuine unhandled-rejection path); fixed and re-verified before this commit.
 
 **Track 3 action**: `git fetch origin` then `git cherry-pick 5cdab55dd0661964e942e6377851b341e91d51bb` onto `track-3-analytics-billing`. This commit contains only these 8 files — nothing else from Track 1's in-progress work (the `05` shell components are still under review) is included, so the cherry-pick should apply clean.
-
 **One thing for Track 3 to know before using the RLS wrapper**: `rbac-rls-reviewer`'s review flagged that the wrapper's `role`-switch-to-`authenticated` mechanism is correct per design, but has not yet been verified against a live Postgres/connection-pooler (the 3 integration tests exist and are correct but currently skip cleanly — no `DATABASE_URL` available in this environment). This is `02` design.md §6.3's own explicit pre-approval gate, not a new gap. Don't treat this wrapper as fully production-verified until that integration pass actually runs against real Postgres once one is available.
 
 **Follow-up, 2026-08-08 — two real gaps found in the first delivery, both fixed:**
