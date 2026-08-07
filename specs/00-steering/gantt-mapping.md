@@ -12,7 +12,7 @@ The current Gantt timeline tracks the **Spec Definition Phase** (Drafting Requir
 
 | # | Gantt task | Schedule | Overall % | Mapped spec(s) | Spec Status (Drafting / Approved) | Implementation Status |
 |---|---|---|---|---|---|---|
-| 1.1 | Repository and development environment setup | 7/31 – 8/5 | 70% | Pre-spec scaffolding | **Paused** (Awaiting Spec 01) | Not Started |
+| 1.1 | Repository and development environment setup | 7/31 – 8/5 | 100% | Pre-spec scaffolding | **Approved** (Next.js 15 + Drizzle + Supabase + Tailwind skeleton scaffolded 2026-08-07; `build-doctor`-confirmed green build) | Done |
 | 1.2 | Core inventory data model and database schema | 7/31 – 8/5 | 100% | `01-core-data-model` | **Approved** (2026-08-06 Master Inventory read-model/aging/export amendment; PO decisions resolved) | Ready for Dev |
 | 1.3 | Warehouse user authentication and RBAC | 7/31 – 8/5 | 100% | `02-rbac-roles`, `21-user-profile-and-settings` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
 | 1.4 | Receiving and inspection interface | 7/31 – 8/5 | 0% | `07-incoming-receiving`, `05-ui-shell` | **Approved** (2026-08-06 visual receiving inspection and dynamic item-code contract) | Ready for Dev |

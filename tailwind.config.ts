@@ -1,0 +1,93 @@
+import type { Config } from "tailwindcss";
+
+// Design tokens sourced from specs/00-steering/brand-design-system.md.
+// Do not add ad-hoc hex values in components — every token lives here.
+// Any new value must be added to brand-design-system.md first (see its §13 Governance).
+const config: Config = {
+  content: [
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./lib/**/*.{js,ts,jsx,tsx,mdx}",
+  ],
+  theme: {
+    // §3: mobile-first breakpoints. `base` (unprefixed) is 0-639px by definition —
+    // Tailwind's default `sm/md/lg/xl` values already match brand-design-system.md §3 exactly.
+    screens: {
+      sm: "640px",
+      md: "768px",
+      lg: "1024px",
+      xl: "1280px",
+    },
+    extend: {
+      colors: {
+        // §1.1 Brand colors
+        "brand-navy": "#002060",
+        "brand-royal-blue": "#2E4094",
+        "brand-red": "#E30613",
+        // §1.2 Neutrals
+        "text-grey": "#555555",
+        "surface-white": "#FFFFFF",
+        "surface-light-grey": "#F2F2F2",
+        "on-surface": "#1A1B20",
+        // outline-variant is always used at 30% opacity per §1.2 — consume as
+        // `border-outline-variant/30`, never solid.
+        "outline-variant": "#C5C6D2",
+        // §1.3 Status colors (semantic — never conflate with brand-red)
+        "status-available": "#10B981",
+        "status-pending": "#F59E0B",
+        "status-held": "#EF4444",
+        "status-neutral": "#64748B",
+      },
+      fontFamily: {
+        // §2 Typography — wired to next/font/google CSS variables in app/layout.tsx.
+        heading: ["var(--font-fira-sans)", "sans-serif"], // headings, data-display numbers
+        body: ["var(--font-outfit)", "sans-serif"], // body copy, table cell content
+        label: ["var(--font-epilogue)", "sans-serif"], // nav items, badges, table headers, button labels
+        mono: ["var(--font-roboto-mono)", "monospace"], // codes, IDs, lot numbers, numeric columns
+      },
+      fontSize: {
+        // §2 Type scale — [fontSize, { lineHeight, letterSpacing }]
+        "headline-xl": ["40px", { lineHeight: "48px", letterSpacing: "-0.02em" }],
+        "headline-lg": ["32px", { lineHeight: "40px", letterSpacing: "normal" }],
+        "headline-md": ["24px", { lineHeight: "32px", letterSpacing: "normal" }],
+        "data-display": ["20px", { lineHeight: "24px", letterSpacing: "normal" }],
+        "body-lg": ["18px", { lineHeight: "28px", letterSpacing: "normal" }],
+        "body-md": ["16px", { lineHeight: "24px", letterSpacing: "normal" }],
+        "body-sm": ["14px", { lineHeight: "20px", letterSpacing: "normal" }],
+        label: ["14px", { lineHeight: "16px", letterSpacing: "0.05em" }],
+        // mono is "context-dependent, 11-24px" per §2 — common sizes provided,
+        // line-height fixed at the spec's documented 1.4x.
+        "mono-sm": ["11px", { lineHeight: "15.4px", letterSpacing: "normal" }],
+        "mono-md": ["14px", { lineHeight: "19.6px", letterSpacing: "normal" }],
+        "mono-lg": ["18px", { lineHeight: "25.2px", letterSpacing: "normal" }],
+        "mono-xl": ["24px", { lineHeight: "33.6px", letterSpacing: "normal" }],
+      },
+      spacing: {
+        // §4 Spacing & Layout — base unit 8px, multiples of 8 throughout.
+        "floor-padding": "16px", // floor screen page padding (not the office 32px default)
+        "office-margin": "2rem", // 32px office page margin
+        gutter: "1.5rem", // 24px office gutter
+      },
+      borderRadius: {
+        // §5 Shape
+        sm: "4px", // small pills, tags
+        DEFAULT: "8px", // standard cards, buttons, inputs
+        md: "12px", // larger cards, modals
+        lg: "16px", // hero cards, feature panels
+        full: "9999px", // status badges, avatar circles
+      },
+      maxWidth: {
+        // §4: office container max-width
+        container: "1280px",
+      },
+      boxShadow: {
+        // §6 Elevation & Surfaces
+        "elevation-1": "0 1px 2px rgba(0,32,96,0.08)", // office/desktop only, Level 1 cards/panels
+        "elevation-2": "0 4px 16px rgba(0,32,96,0.12)", // modals, drawers, dropdowns; also the floor card default
+      },
+    },
+  },
+  plugins: [],
+};
+
+export default config;

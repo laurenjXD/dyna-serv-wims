@@ -9,10 +9,14 @@ Do not skip ahead in this list. Later rows depend on earlier rows' tables/enums 
 
 ## Phase 0 — Scaffolding (before anything else, once)
 
+**Done 2026-08-07.**
+
 | Step | Agent | Task |
 |---|---|---|
-| 0.1 | `project-scaffolder` | Bootstrap Next.js 15 + Drizzle + Supabase clients + Tailwind tokens (real brand values, not placeholders) + `structure.md` folder skeleton. Confirm `npm run build` and `npm run typecheck` pass on the empty skeleton. |
-| 0.2 | `build-doctor` | First green-build confirmation on the skeleton before Phase 1 starts. |
+| 0.1 | `project-scaffolder` | ✅ Bootstrap Next.js 15 + Drizzle + Supabase clients + Tailwind tokens (real brand values, not placeholders) + `structure.md` folder skeleton. Confirm `npm run build` and `npm run typecheck` pass on the empty skeleton. |
+| 0.2 | `build-doctor` | ✅ First green-build confirmation on the skeleton before Phase 1 starts. Typecheck, lint, and build all pass clean; no mechanical issues found. |
+
+Phase 1 (`01-core-data-model`'s real Drizzle schema) is clear to begin.
 
 No RED/GREEN cycle here — there's no acceptance criterion to test yet, just infrastructure the rest of the day depends on.
 
