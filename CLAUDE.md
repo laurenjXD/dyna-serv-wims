@@ -23,6 +23,7 @@ A hybrid warehouse inventory system: VMI (vendor-owned stock, CBM-based billing)
 | `specs/00-steering/testing.md` | Vitest + Playwright, two-stage DB testing, floor/hardware simulation strategy |
 | `specs/00-steering/gantt-mapping.md` | What's actually approved vs. in-progress vs. not started, mapped to the delivery timeline |
 | `specs/00-steering/revision-log.md` | Every merge conflict and major decision, dated — check here before assuming something is settled |
+| `specs/00-steering/multi-agent-work-division.md` | **If more than one agent is working this repo at once, read this before touching anything.** Assigns tracks, locks shared files to a single writer, sets the git/merge protocol. |
 
 ## Non-negotiable decisions (do not re-litigate these)
 

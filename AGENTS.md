@@ -2,6 +2,8 @@
 
 **Canonical source is `CLAUDE.md` at this repo's root.** This file exists for agentic tools that read the `AGENTS.md` convention instead of Claude Code's `CLAUDE.md`. If you're Claude Code, read `CLAUDE.md` — it's the maintained version. If you're a different agent, everything below is a mirror; check `CLAUDE.md` and `specs/00-steering/revision-log.md` for anything more recent than what's written here, since this copy can lag.
 
+**If more than one agent is working this repo at once — read `specs/00-steering/multi-agent-work-division.md` before touching anything.** It assigns which specs/files belong to which agent, locks the shared foundational files to a single writer at a time, and sets the git branch/merge protocol. Working outside your assigned track or editing a locked file directly is exactly the failure mode that document exists to prevent.
+
 ## The one rule that overrides everything else
 
 No implementation code is written until a feature's `specs/NN-*/tasks.md` has `Status: Approved` with both required sign-offs. Writing spec docs (requirements/design/tasks) is always fine. Writing application code against an unapproved spec is not — stop and say so instead.

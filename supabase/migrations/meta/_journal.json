@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1786098599713,
+      "tag": "0001_core_data_model",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786109999999,
+      "tag": "0002_lot_inventory_totals_and_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786103834115,
+      "tag": "0004_rbac_tables",
+      "breakpoints": true
+    }
+  ]
+}

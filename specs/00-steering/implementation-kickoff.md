@@ -38,7 +38,9 @@ Work `tasks.md`'s Implementation Task 1 (Drizzle schema) as a sequence of small 
 | 1.10 | `lib/db/schema/index.ts` + `lib/db/types.ts` re-exports | Vitest: every table/type importable from the barrel file | Implement | `tsc --noEmit` must compile clean — three files have previously shipped with missing imports (`flowTypeEnum`, `parties`, `wrrItems`, `conformanceStatusEnum`, `nonConformanceReasonEnum`), check this specifically |
 | 1.11 | Migration generation | — (no new test; this step operationalizes 1.1–1.10) | `database-builder` runs `npx drizzle-kit generate` → `0001_core_data_model.sql`, adds FKs/indexes/scoped uniqueness/non-negative checks | `db-migration-verifier` runs the **real generated file** against real Postgres — this is the first time it's verifying literal SQL instead of hand-translated DDL; re-confirm all six previously-fixed bugs stay fixed |
 
-When 1.1–1.11 are green and verified: check off Implementation Task 1 and 2 in `01-core-data-model/tasks.md`, flip its unit-test checkbox, and update this doc + `gantt-mapping.md` row 1.2.
+**Done 2026-08-07.** 1.1–1.11 all green and verified; Implementation Task 1 and 2 checked off in `01-core-data-model/tasks.md`, unit-test checkbox flipped, `gantt-mapping.md` row 1.2 updated. The four derived read-model views (`master_inventory_tracking`, `lot_history_export`, `location_transaction_ledger`, `party_transaction_ledger`) and `lib/db/types.ts`, originally deferred out of the RED step, were implemented as an immediate follow-up (`0003_derived_read_models.sql`) and independently real-Postgres verified the same day — nothing was left as a silent gap.
+
+Phase 2 (`02-rbac-roles`) is clear to begin.
 
 ## Phase 2 — `02-rbac-roles` (depends on Phase 1's `parties`/`party_roles`)
 

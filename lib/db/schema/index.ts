@@ -17,3 +17,4 @@ export * from "./forex";
 export * from "./transactions";
 export * from "./audit";
 export * from "./pick_lists";
+export * from "./rbac";
