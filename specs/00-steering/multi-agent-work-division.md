@@ -93,6 +93,30 @@ Phases 3–6 are sequential and each depends on the one before it (receiving cre
 
 This phase plan is a *how* underneath the *when* `gantt-mapping.md` already tracks. Milestone 1 (Receiving & Core Inventory Transfers) is entirely Track 1's Phases 0–5. Milestone 2 (Classification & Inventory Processing) is Track 1 Phase 6 plus Track 2 Phases D/E. Milestone 3 (Inventory Control & Analytics) is Track 3 Phases I–III plus Track 2 Phase C. Milestone 4 (Final Handover & Deployment) is Track 3 Phases IV–V plus the cross-cutting docs/training/deployment specs (`20`, `04`), which don't belong to any one track and should be picked up by whichever track finishes its own chain first.
 
+## Additional scope folded in (2026-08-07) — read this after your track assignment above, changes nothing already assigned
+
+Five specs were found unassigned to any track after the original three-track split: `05-ui-shell-and-navigation` (an actual build, not just the locked spec — no shell code exists yet beyond Phase 0's bare `app/layout.tsx`), `03-offline-mode-and-client-storage`, `04-services-and-infrastructure`, `20-documentation-training-and-uat`, and `21-user-profile-and-settings`. `19-dispatch-scheduling-and-delivery-tracking` stays deferred — that one's deliberate, not a gap.
+
+**This section only adds new phases. It does not change, rename, reorder, or reopen anything in "The three tracks" or "Full implementation phase plan" above.** If your track already has spec/design work done on `06`, `16`, or anywhere else per those sections, that work stands as-is — nothing here asks you to revisit, redo, or touch it. Read this as new phases appended to the end of your track's existing list, not a revision of what's already there.
+
+### Track 1 — two new phases, both before the rest of your existing chain
+
+- **New Phase 2.5a — `05-ui-shell-and-navigation`, actual implementation.** Insert this immediately after Phase 2 closes and before Phase 3 (`07`). Every track's feature UI — including your own Phase 3's `07` receiving screens — needs the shell (auth-boundary redirect, navigation registry, page-header contract, floor/office responsive layout, the `/` landing page and route table already fully spec'd) to exist as real code first. Do not touch `06`, `16`, or any other track's files while doing this — this phase is `app/`, `components/global`, `components/ui`, and `05`'s own spec folder only.
+- **Fold `03-offline-mode-and-client-storage` into your existing Phases 3 and 5** (`07` and `08`), not as a separate phase — it's the Tier 1 offline queue for exactly those two features' floor scan flows, and building either one properly requires deciding its offline behavior at the same time, not bolting it on after.
+
+### Track 2 — one new phase, added at the end of your existing list
+
+- **New Phase F — `21-user-profile-and-settings`**, after your existing Phase E (`18`). Self-contained (password change, notification preferences); doesn't touch anything from Phases A–E. Build it without revisiting `06`/`09`/`14`/`17`/`18`'s already-completed work.
+
+### Track 3 — one new phase, added at the end of your existing list, gated on all three tracks
+
+- **New Phase VI — final convergence: `04-services-and-infrastructure` (deployment pipeline, background jobs, webhook handlers beyond the Phase-0 env-var scaffolding), `20-documentation-training-and-uat` (user docs, admin training, UAT), and the cross-cutting integration-testing/deployment gates `gantt-mapping.md` lists but no single spec owns** (e.g. "Cross-module inventory integration testing," "Final inventory system integration," production deployment itself). Assigned to Track 3 specifically because your existing chain (`16`→`12`→`13`→`22`→`15`) naturally finishes last — this is not "whichever track gets there first," it's yours, so it doesn't fall through the cracks.
+  - **Hard gate, don't start early**: this phase needs Track 1's and Track 2's chains (including their new Phase 2.5a/Phase F additions above) merged and stable on `main`, not just your own Phase V done. Check `gantt-mapping.md` for all three tracks' status before starting, the same way `22`'s convergence point already required checking multiple phases.
+
+### Revised Milestone mapping (supersedes the note in "Mapping to `gantt-mapping.md`'s Milestones" above about `20`/`04` being unassigned)
+
+Milestone 1 now includes Track 1's new Phase 2.5a. Milestone 4's "cross-cutting docs/training/deployment specs (`20`, `04`)" line above is superseded by this section: they're Track 3's Phase VI now, not an open question.
+
 ## Shared/locked files — single-writer rule
 
 These files are touched by almost every track sooner or later, which is exactly why uncoordinated concurrent edits to them will silently overwrite each other. **Only Track 1 edits these while Phase 1/2 core work is active.** Tracks 2 and 3 needing a change here must use the cross-track request protocol below, not edit directly:

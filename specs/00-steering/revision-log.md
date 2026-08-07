@@ -4,6 +4,16 @@ Every merge conflict and major revision, dated, with the resolution. This is the
 
 ## Resolved
 
+## Five unassigned specs folded into the three existing tracks, as additive-only phases (2026-08-07)
+
+Checking the full spec catalog against the three-track split found five specs nobody owned: `05-ui-shell-and-navigation` (no actual shell code exists yet, only Phase 0's bare `app/layout.tsx` — the spec itself was "locked" but that's about editing the design doc, not building the app), `03-offline-mode-and-client-storage`, `04-services-and-infrastructure`, `20-documentation-training-and-uat`, and `21-user-profile-and-settings`. `19-dispatch-scheduling-and-delivery-tracking` confirmed still correctly deferred, not a gap.
+
+**Assigned as new phases appended to each track's existing list, deliberately additive-only** — the product owner specifically asked that this not touch or imply redoing any work a track has already completed:
+- Track 1 gains Phase 2.5a (`05`'s actual implementation, inserted before Phase 3 since every track's UI depends on the shell existing) and folds `03` into its existing Phases 3/5 (`07`/`08`) rather than as a separate phase, since offline behavior is intrinsic to those features' floor scan flows.
+- Track 2 gains Phase F (`21`), appended after its existing Phase E.
+- Track 3 gains Phase VI (`04` + `20` + the cross-cutting integration-testing/deployment gates `gantt-mapping.md` lists but no spec owns), appended after its existing Phase V, explicitly hard-gated on all three tracks' existing chains being merged and stable first — not "whichever track finishes first," which the original Milestone-mapping note had left vague.
+
+Added as a new, clearly-separate section in `multi-agent-work-division.md` ("Additional scope folded in") rather than editing "The three tracks" or "Full implementation phase plan" sections directly, so nothing already-established in those sections is disturbed or implicitly reopened.
 ## Multi-agent work-division doc: fixed a stale contradiction, added detailed git protocol (2026-08-07)
 
 Before handing `multi-agent-work-division.md` to the other two collaborators, found and fixed a real inconsistency: the "Cross-track dependency map" and Track 2 sections still said Tracks 2/3 must wait for full Phase-2 core-stable before writing any code, contradicting the Tier-2 unlock (guard-contract-stable) that had already been posted earlier the same day. Updated both to correctly reflect that Tracks 2/3 may write and unit-test application code now, with only the real-Postgres verification pass still gated per-table on cycle 2.4's RLS policies.
