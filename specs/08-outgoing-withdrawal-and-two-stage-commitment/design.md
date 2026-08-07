@@ -35,7 +35,7 @@ Depends on:
 | `inventory_commitments` / `inventory_commitment_lines` | Store durable Stage 1 reservation ownership and Stage 2 execution/release state. | Core inventory boundary owns lifecycle and idempotency invariants. |
 | `pick_lists` | Store committed operational outbound document/status. | Final schema/status and commitment linkage must be reconciled with `01`. |
 | `pick_list_items` | Store item/lot/location/quantity/SPQ/box/price snapshot for the pick list. | Must distinguish requested, committed, and executed quantities if required. |
-| `inventory_transactions` | Insert immutable `pick` movement at final dispatch; read outgoing ledger. | No updates/deletes. |
+| `inventory_transactions` | Insert immutable `pick` movement at final dispatch, with `pick_list_id` set to the dispatched pick list (added 2026-08-07, mirroring `wrr_id`); read outgoing ledger. | No updates/deletes. |
 
 The core contract is now resolved: distributed quantity lives in
 `lot_location_balances`; `qty_available` is derived through
@@ -153,9 +153,11 @@ On successful dispatch, one atomic transaction:
 2. decrements `lot_location_balances.qty_committed` by the same quantity (releasing the reservation);
 3. transitions each `inventory_commitment_line` to `executed` and sets `qty_executed`;
 4. transitions the `inventory_commitments` header to `executed` and stamps `completed_at`;
-5. inserts an immutable `inventory_transactions` row with `movement_type = 'pick'`;
+5. inserts an immutable `inventory_transactions` row with `movement_type = 'pick'` and `pick_list_id` set to the dispatched `pick_lists.id` (the pick list being dispatched is already known at this point in the command);
 6. transitions the `pick_list` to `dispatched`;
 7. emits the document-generation event/command for `10`.
+
+**`pick_list_id` on the recorded transaction.** `01-core-data-model/design.md`'s `inventory_transactions` table gained a nullable `pick_list_id` column (added 2026-08-07) mirroring the existing `wrr_id` column's role for incoming movements: `wrr_id` links an incoming transaction to its vendor via `wrr_documents.vendor_party_id`, and `pick_list_id` is the symmetric link for an outgoing transaction to its customer via `pick_lists.customer_party_id`. Step 5 above is where this column is populated — the dispatch command already holds the `pick_list` reference it is executing, so no lookup or backfill is required. This closes an asymmetry that existed before 2026-08-07: incoming transactions could already be traced to a vendor party through `wrr_id`, but outgoing transactions had no equivalent document link to the customer.
 
 Email or PDF generation failure cannot roll back the committed stock movement; the document remains in an observable retry/attention state.
 

@@ -27,12 +27,15 @@ Depends on:
 
 | Table | Use in this feature | Ownership boundary |
 |---|---|---|
-| `parties` | Create, read, update, deactivate, and search party master records. | Core schema owns columns/constraints; RBAC owns authorization. |
+| `parties` | Create, read, update, deactivate, and search party master records; source of `email`/`contact_person` for the Contact Party action. | Core schema owns columns/constraints; RBAC owns authorization. |
 | `party_roles` | Add/remove business classifications attached to a party. | Not application-user roles; RBAC user roles remain separate. |
 | `items` | Create, read, update, deactivate, and search shared item master records. | Core schema owns item fields; pricing/flow workflows own business interpretation. |
 | `item_categories` | Read approved category references for item enrollment. | Category hierarchy management belongs to spec `17`. |
+| `locations` | Create, read, update, and deactivate physical storage/staging location records. **(Added 2026-08-07)** | Core schema owns columns/constraints; this feature owns enrollment only — occupied-CBM calculation, putaway recommendation, and inventory-transaction use belong to `07`/`08`/`11`. |
+| `email_deliveries` | Written by `04-services-and-infrastructure`'s pipeline when the Contact Party action is triggered; this feature reads delivery status for display only. **(Added 2026-08-07)** | `04` owns the table, retry/idempotency mechanics, and webhook updates. This feature never writes to it directly. |
+| `inventory_transactions` | Read via `01-core-data-model`'s `location_transaction_ledger` and `party_transaction_ledger` derived read models for the location detail and party detail views' ledger sections. **(Added 2026-08-07)** | `01` owns the canonical table and both read-model contracts (§3 item 4). This feature never writes to `inventory_transactions` and never redefines the read models here. |
 
-No `lots`, `inventory_transactions`, `wrr_documents`, `wrr_items`, `locations`, pricing tables, billing tables, user-role tables, or offline queue stores are owned by this feature. A server command may join related records for authorization/reference checks, but must not redefine them here.
+No `lots`, `wrr_documents`, `wrr_items`, pricing tables, billing tables, user-role tables, or offline queue stores are owned by this feature. `inventory_transactions` is consumed read-only, exclusively through `01`'s `location_transaction_ledger`/`party_transaction_ledger` read models (added 2026-08-07) — this feature never writes to it and never defines an independent query against it. A server command may join related records for authorization/reference checks, but must not redefine them here.
 
 ### Canonical field names reconciled with approved `01-core-data-model`
 
@@ -47,6 +50,8 @@ The following column names are final per the approved `01` schema. All forms, va
 **`items`** — `id`, `code` (varchar 100, NOT NULL UNIQUE), `supplier_item_code` (varchar 100), `customer_item_code` (varchar 100), `dsgc_item_number` (varchar 100), `name` (varchar 255, NOT NULL), `description` (text), `barcode` (varchar 100, NOT NULL UNIQUE), `item_type` (varchar 50, NOT NULL, default `standard`), `category_id` (FK → `item_categories.id`, nullable), `default_supplier_party_id` (FK → `parties.id`, nullable), `uom` (varchar 50, NOT NULL, default `piece`), `currency` (varchar 10, NOT NULL, default `USD`), `buying_price` (decimal 12,4, nullable), `selling_price` (decimal 12,4, nullable), `spq` (integer NOT NULL, default `1`), `spq_meter` (decimal 10,2, nullable), `length_cm` (decimal 10,2), `width_cm` (decimal 10,2), `height_cm` (decimal 10,2), `volume_cm3` (decimal 12,2), `volume_cbm` (decimal 10,4, NOT NULL), `boxes_per_pallet` (integer, nullable), `weight_kg` (decimal 10,3), `min_reorder_level` (integer NOT NULL, default `0`), `is_perishable` (boolean NOT NULL, default `false`), `is_active` (boolean NOT NULL, default `true`), `created_at`, `updated_at`.
 
 No provisional field names (`sku`, `warehouse_id`, or flow-specific columns) appear in the approved schema. The cross-reference fields `supplier_item_code`, `customer_item_code`, and `dsgc_item_number` are the final names; forms and API contracts must not use alternate names for these columns.
+
+**`locations`** (added 2026-08-07, per `01-core-data-model/design.md`'s `locations` table) — `id`, `zone` (varchar 50, NOT NULL), `rack` (varchar 50, NOT NULL), `level` (varchar 50, NOT NULL), `position` (varchar 50, NOT NULL), `label` (varchar 100, NOT NULL, UNIQUE — server-generated as `Rack+Level-Position`, e.g. `A1-01`; never free-typed), `location_type` (`location_type` enum, NOT NULL, default `storage` — approved values `receiving_bay`, `inspection`, `storage`, `picking`, `dispatch`), `max_cbm_capacity` (decimal 10,4, NOT NULL), `is_active` (boolean NOT NULL, default `true`), `created_at`. No `updated_at` column in the approved `01` schema for `locations`; edits update the row in place without a tracked modification timestamp beyond what the audit boundary records separately.
 
 ## 3. Route and shell integration
 
@@ -65,7 +70,16 @@ app/(authenticated)/
       new/page.tsx          # create form
       [itemId]/page.tsx     # detail/review
       [itemId]/edit/page.tsx
+    locations/              # added 2026-08-07
+      page.tsx              # searchable list
+      new/page.tsx          # create form
+      [locationId]/page.tsx      # detail/review
+      [locationId]/edit/page.tsx
 ```
+
+The `locations` routes follow the identical structural pattern as `parties`/`items` above — same list/create/detail/edit shape, same shell integration — so this reads as the spec's third master-data type rather than a bolted-on surface. Per `05-ui-shell-and-navigation/design.md` §3.2's route catalog, the top-level route is `/locations`, office surface, gated by `locations.manage` for the navigation entry (consistent with `/parties`/`/items` being gated by their respective `.manage` capabilities), owned by this spec (`06`).
+
+The party detail view (`[partyId]/page.tsx`) gains a "Contact Party" action (added 2026-08-07) — see §5a below. No new route is introduced for it; it is an action on the existing detail page.
 
 The exact route names are provisional. The routes use the authenticated shell and office surface from `05-ui-shell-and-navigation`. The shell supplies page title/context, global navigation, session controls, and global error/status regions; this feature supplies forms, lists, validation, and domain-specific confirmation.
 
@@ -89,7 +103,7 @@ request
   → safe result + revalidated list/detail view
 ```
 
-The applicable capability identifiers are confirmed against the `02-rbac-roles` §3.2 finalized catalog: `parties.read` (global), `parties.manage` (global), `items.read` (global), and `items.manage` (global). Party role classification mutations (adding or removing `party_roles` records) are performed under `parties.manage` authorization; no separate `party_roles.manage` capability exists in the `02` catalog. Access to `item_categories` records for selection during enrollment is covered by `items.read`; no standalone `item_categories.read` capability is defined in the `02` catalog. Any downstream spec that requires a new resource key must add it to the `02` catalog before implementation; this feature must not invent capability names outside that catalog.
+The applicable capability identifiers are confirmed against the `02-rbac-roles` §3.2 finalized catalog: `parties.read` (global), `parties.manage` (global), `items.read` (global), and `items.manage` (global). Party role classification mutations (adding or removing `party_roles` records) are performed under `parties.manage` authorization; no separate `party_roles.manage` capability exists in the `02` catalog. Access to `item_categories` records for selection during enrollment is covered by `items.read`; no standalone `item_categories.read` capability is defined in the `02` catalog. **(Added 2026-08-07)** Location create/update/deactivate is performed under `locations.manage`; location read/list is covered by `locations.read`. Both are confirmed against the `02` §3.2 catalog (`locations` resource key, `read`/`manage` actions — `read` held by `warehouse_staff`, `supervisor`, `administrator`; `manage` held by `administrator` only) and against `05-ui-shell-and-navigation/design.md`'s route-catalog capability table, which lists the same `locations` resource with the same two actions. The Contact Party email trigger (§5a) is performed under `parties.manage`, not a new capability. Any downstream spec that requires a new resource key must add it to the `02` catalog before implementation; this feature must not invent capability names outside that catalog.
 
 The client may send a requested record identifier, but the server resolves the actual record and current scope. A client-supplied `party_id`, role, flow, or category ID never grants access.
 
@@ -110,6 +124,27 @@ Edits use a version/updated-at precondition. A stale edit returns a conflict and
 Deactivation sets `is_active = false` on the `parties` row. It is a lifecycle update, not a database row delete. Before committing, the server evaluates impact on open WRR documents (`vendor_party_id` references), items using this party as `default_supplier_party_id`, active `user_party_scopes` assignments, and any other dependent records. Historical records remain addressable to authorized users. The specific blocking and non-blocking conditions belong to the owning workflow and RBAC domain designs and must not be assumed client-side.
 
 `party_roles` changes are business classifications. They do not grant or revoke application access. User-party scope changes remain exclusively in `02-rbac-roles`.
+
+### 5a. Contact Party email action (added 2026-08-07)
+
+**Scope call for v1:** a single "Contact Party" button on the party detail view (`[partyId]/page.tsx`), gated by `parties.manage`. Clicking it opens a minimal composer: a fixed, pre-approved transactional template addressed to `parties.contact_person` at `parties.email`, with an optional free-text message field appended to the template body. A full email-composer/thread UI, attachments, or a message history view are explicitly out of scope for v1 — this is a single fire-and-forget notification trigger, not a messaging feature.
+
+**Flow:**
+
+1. Authorized user (holding `parties.manage`) clicks "Contact Party" on the party detail view and optionally enters free-text content.
+2. A server action validates the capability, resolves the current `parties` row server-side (the client never supplies `email`/`contact_person` directly — only the `party_id`), and rejects the action if `parties.email` is null/empty for that party, returning an actionable error instead of silently no-op-ing.
+3. The server action calls `04-services-and-infrastructure`'s existing operational Resend pipeline (design.md §12.1's "Application/Edge Function -> Resend API" path, using `RESEND_FROM_OPERATIONS`) exactly as already used for "WRR/inspection alerts, notifications, documents, reports" per that table — this is one more trigger into that same pipeline, not a new send path.
+4. The pipeline writes an `email_deliveries` row per `04` §12.2 (`template_key`/`template_version` for this notification template, `resource_type = 'party'`, `resource_id = parties.id`, `idempotency_key`, correlation ID) and follows `04`'s existing async retry/backoff and webhook-driven status update mechanics (§12.3, §12.4) unchanged.
+5. Failure semantics match `04`'s existing fail-open rule (design.md's dependency-failure table, "Resend — application email" row): a Resend API timeout or transient failure retries asynchronously via the `email_deliveries` job and never blocks, reverses, or holds up any party record state. The button click itself is a fire-and-forget trigger from the caller's perspective; delivery status is observable later (e.g. a "last contacted" indicator sourced from `email_deliveries`) but is not a synchronous precondition for anything else in this feature.
+6. Who triggered the send and when is recorded via the existing `email_deliveries`/audit correlation mechanism already defined in `04` §12.2/§15 (actor, timestamp, correlation ID) — no parallel tracking table is created by this feature.
+
+**Explicitly not involved:** no user's personal email account, mailbox, OAuth grant, or SMTP credential is read, stored, or used at any point. The send is a server-side call to Resend's API using the application's own verified `RESEND_FROM_OPERATIONS` sender identity — architecturally identical to every other operational email already listed in `04`'s table, not a new subsystem.
+
+### 5b. Transaction Ledger (added 2026-08-07)
+
+The party detail view (`[partyId]/page.tsx`) renders a "Transaction Ledger" section beneath the existing party master-data content. It displays `01-core-data-model`'s `party_transaction_ledger` derived read model (§3 item 4) for the currently viewed `party_id` — a read-only, paginated table of every `inventory_transactions` row connected to that party as vendor (via `wrr_documents.vendor_party_id`), customer (via `pick_lists.customer_party_id` and the `inventory_transactions.pick_list_id` column added 2026-08-07), or VMI owner (via `lots.owner_party_id`). Columns follow `party_transaction_ledger`'s defined field set: movement type, quantity, item, lot number, direction/source, performed-by, timestamp, and the Reference field (`commercial_invoice_no` for incoming, `ar_reference_no` for outgoing).
+
+This is a read-only view. No new capability is introduced: the ledger is gated by the same `parties.read` capability that already gates viewing the party detail page (per §4's command boundary and `05-ui-shell-and-navigation/design.md`'s `/parties` route-table row, both confirmed against the `02-rbac-roles` §3.2 catalog), not a stricter or separate gate. This feature does not compute, cache, or duplicate the ledger query — it renders `01`'s read model as-is, the same consumption pattern already used for `master_inventory_tracking`/`lot_history_export` elsewhere in this repo.
 
 ## 6. Item model and workflows
 
@@ -194,6 +229,36 @@ When `07-incoming-receiving` encounters a WRR line whose scanned barcode does no
 
 Ownership boundary: `06` owns the enrollment step (item master record creation, validation, and barcode assignment). `07` owns the exception/hold state on the WRR line, the trigger that flags the unknown barcode, and the resume logic after enrollment is confirmed.
 
+## 6a. Location model and workflows (added 2026-08-07)
+
+This is the spec's third master-data type, following the identical create/edit/deactivate pattern as parties (§5) and items (§6). It uses the same office-primary, mobile-reviewable surface treatment stated in `requirements.md` §3: creating/editing a rack is an office task, but a warehouseman must be able to look up a location's label and remaining capacity on a handheld device while working the floor — this is a lookup/review case, not a floor scan-and-mutate flow, so it does not require the floor-priority form treatment `brand-design-system.md` §3 reserves for scan-driven screens.
+
+### Create
+
+1. User opens the location create route through an authorized capability (`locations.manage` — Administrator only per the `02` catalog).
+2. The form collects `zone`, `rack`, `level`, `position`, `location_type` (dropdown, default `storage`), and `max_cbm_capacity` using the exact column names from the approved `locations` schema. `is_active` defaults to `true`.
+3. The server (not the client) computes `label` as `Rack+Level-Position` from the submitted `rack`, `level`, `position` values, exactly matching `01-core-data-model`'s documented format (e.g. Rack `A`, Level `1`, Position `01` → `A1-01`). The computed label is shown to the user for confirmation before submit, but the authoritative value is server-computed and re-verified at write time — a client-supplied label is never trusted.
+4. The server revalidates `label` uniqueness (catching the case where two different `zone`/`rack`/`level`/`position` combinations would resolve to the same formatted label), `location_type` enum membership, `max_cbm_capacity` positivity, and actor capability in one transaction.
+5. The `locations` row is committed, with an audit event if required by the approved audit design.
+
+### Edit/deactivate
+
+Edits use the same stale-edit protection pattern as parties/items (§5/§6). Changing `rack`, `level`, or `position` on an existing location recomputes and re-validates `label` uniqueness server-side before commit, following the same rule as create.
+
+Deactivation sets `is_active = false` on the `locations` row. It is a lifecycle update, not a database row delete. Before committing, the server evaluates impact on existing `lot_location_balances` rows occupying the location and any in-progress putaway/transfer/pick operations referencing it; this feature does not recompute or reassign those balances — it only gates new use via `is_active`, matching the same boundary already stated for item deactivation in §6. The specific blocking/non-blocking conditions for *new* placement into a deactivated location belong to the owning workflow designs (`07`, `08`, `11`), which read `locations.is_active` as their gate.
+
+Hard deletion is unavailable for a location referenced by any `lot_location_balances` or `inventory_transactions` row, matching the party/item pattern in §5/§6.
+
+### Location type and capacity
+
+`location_type` distinguishes physical zones (`receiving_bay`, `inspection`, `storage`, `picking`, `dispatch`) per the approved `01` enum. This feature does not implement putaway recommendation, occupied-CBM computation, or capacity-preview UI — those consume `locations.max_cbm_capacity` and are owned by `01-core-data-model`'s read models and `07-incoming-receiving`'s putaway design. This feature's responsibility ends at storing a correct, validated `max_cbm_capacity` value on the `locations` row.
+
+### Movement Ledger (added 2026-08-07)
+
+The location detail view (`[locationId]/page.tsx`) renders a "Movement Ledger" section beneath the existing location master-data content. It displays `01-core-data-model`'s `location_transaction_ledger` derived read model (§3 item 4) for the currently viewed `location_id` — a read-only, paginated table of every `inventory_transactions` row where `from_location_id` or `to_location_id` matches that location, ordered by `created_at`. Columns follow `location_transaction_ledger`'s defined field set: movement type, quantity, item, lot number, direction relative to this location (in/out), performed-by, timestamp, and the Reference field (`commercial_invoice_no` for incoming, `ar_reference_no` for outgoing) — the same Reference pattern already established for Master Inventory's Movement History.
+
+This is a read-only view. No new capability is introduced: the ledger is gated by the same `locations.read` capability that already gates viewing the location detail page (per §4's command boundary and `05-ui-shell-and-navigation/design.md`'s `/locations` route-table row, both confirmed against the `02-rbac-roles` §3.2 catalog), not a stricter or separate gate. This feature does not compute, cache, or duplicate the ledger query — it renders `01`'s read model as-is.
+
 ## 7. Search, list, and detail behavior
 
 - List queries use server-side filtering/pagination and only return fields allowed by the caller's capability/scope.
@@ -201,10 +266,11 @@ Ownership boundary: `06` owns the enrollment step (item master record creation, 
 - Detail views show lifecycle status and safe related references. They do not become an inventory dashboard or expose lots/transactions without the owning feature's authorization.
 - Realtime, if enabled, invalidates the relevant list/detail query and triggers an authoritative refetch. It is not used as the sole source of truth.
 - Empty, loading, error, and stale-edit states use the shared shell and feature contracts from `05`.
+- **(Added 2026-08-07)** Location list/search matches normalized `zone`, `rack`, `level`, `position`, `label`, and `location_type`; results are filtered by `locations.read` scope. Location detail shows lifecycle status but does not become an occupied-CBM or inventory dashboard — that projection belongs to `01`'s Master Inventory read model and `16-reporting-and-analytics`.
 
 ## 8. Authorization and RLS
 
-The server checks the current session and capability before each read/mutation. PostgreSQL RLS remains the authoritative data boundary for protected `parties`, `party_roles`, `items`, and `item_categories` access once the core/RBAC policies are approved.
+The server checks the current session and capability before each read/mutation. PostgreSQL RLS remains the authoritative data boundary for protected `parties`, `party_roles`, `items`, `item_categories`, and `locations` access once the core/RBAC policies are approved.
 
 Potential scope rules:
 
@@ -213,6 +279,8 @@ Potential scope rules:
 - A `default_supplier_party_id` on an item must not accidentally expose the entire item record to an unrelated party user.
 - `party_roles` are not consulted as user roles and do not bypass current capability checks.
 - Unknown or out-of-scope records use the approved not-found/forbidden behavior without existence leakage.
+- **(Added 2026-08-07)** `locations.manage` is Administrator-only; `locations.read` is held by `warehouse_staff`, `supervisor`, and `administrator`. No party-user role holds either capability in the `02` catalog — location records are internal operational data with no party-facing projection in v1.
+- **(Added 2026-08-07)** The Contact Party email trigger requires `parties.manage` server-side; the server resolves `parties.email`/`contact_person` itself and never accepts a client-supplied recipient address.
 
 The final policy matrix and SQL policy implementation are supplied with the core/RBAC migration sequence and reviewed by `rbac-rls-reviewer`.
 
@@ -222,13 +290,17 @@ The final policy matrix and SQL policy implementation are supplied with the core
 - Offline floor workflows may consume a stale, bounded read cache only when their owning feature and offline policy allow it; the enrollment feature does not own that cache.
 - Audit/business events are written server-side in the authoritative transaction. The browser cannot fabricate an audit outcome.
 - Realtime is optional and must be scoped; events cause invalidation/refetch, not local authorization.
+- **(Added 2026-08-07 — Offline Behavior tiering)** Location create/update/deactivate and the Contact Party email trigger are **Tier 2 (online-only)**. This is confirmed, not unresolved: `03-offline-mode-and-client-storage/design.md` §5.1 defines a closed v1 Tier 1 allowlist of exactly three queueable operation types (`receiving_scan_observation`, `pick_list_scan_observation`, `inspection_observation`), none of which cover master-data mutation or outbound email. Both new actions follow the same Tier 2 boundary already established for every other mutation in this feature (party/item create/update/deactivate, per requirements.md R7) — no new tiering exception was introduced.
 
 ## 10. Design verification before approval
 
-- [x] Reconcile all fields and constraints with the approved `01-core-data-model` schema; resolve current naming/field inconsistencies before implementation. (Resolved 2026-08-05: exact column names, types, nullability, and constraints reconciled in §2 canonical fields block and §5/§6 throughout.)
-- [x] Confirm the final capability identifiers with `02-rbac-roles`. (Resolved 2026-08-05: capability vocabulary in §4 updated to match the finalized `02` §3.2 catalog — `parties.read`, `parties.manage`, `items.read`, `items.manage`; `party_roles.manage` and `item_categories.read` removed as they do not exist in the `02` catalog.) RLS policy implementation still requires `02` approval before implementation.
+- [x] Reconcile all fields and constraints with the approved `01-core-data-model` schema; resolve current naming/field inconsistencies before implementation. (Resolved 2026-08-05: exact column names, types, nullability, and constraints reconciled in §2 canonical fields block and §5/§6 throughout. Extended 2026-08-07: `locations` field block added to §2; location workflows added as §6a.)
+- [x] Confirm the final capability identifiers with `02-rbac-roles`. (Resolved 2026-08-05: capability vocabulary in §4 updated to match the finalized `02` §3.2 catalog — `parties.read`, `parties.manage`, `items.read`, `items.manage`; `party_roles.manage` and `item_categories.read` removed as they do not exist in the `02` catalog. Extended 2026-08-07: `locations.read`/`locations.manage` confirmed against the same `02` §3.2 catalog and cited in §4/§8; Contact Party action confirmed as `parties.manage`.) RLS policy implementation still requires `02` approval before implementation.
 - [x] Confirm category read/create ownership with `17-product-categorization-and-classification`. (Resolved 2026-08-05: §6 Category ownership subsection explicitly states `item_categories` is read-only from `06`'s perspective; creation/editing/hierarchy belong exclusively to `17`.)
 - [x] Confirm reference/default price semantics with `12-vmi-billing` and `13-trading-orders-and-pricing`. (Resolved 2026-08-05: §6 Price boundary explicitly prohibits writing `buying_price`/`selling_price` to any order line, commitment, or billing ledger row; full price resolution belongs to `13`/`12` respectively.)
+- [x] **(Added 2026-08-07)** Confirm location putaway/occupied-CBM/capacity-preview ownership boundary with `07-incoming-receiving`, `08-outgoing-withdrawal-and-two-stage-commitment`, and `11-transfer-and-inspection`. (Resolved: §6a explicitly scopes this feature to location record enrollment only; those three specs and `01`'s read models own all inventory-transaction use of a location.)
+- [x] **(Added 2026-08-07)** Confirm the Contact Party email action reuses `04-services-and-infrastructure`'s existing Resend/`email_deliveries` pipeline without redefining it. (Resolved: §5a cites `04` §12.1-§12.4 by section for pipeline mechanics; no new email subsystem, table, or sender identity is introduced.)
+- [x] **(Added 2026-08-07)** Confirm the location detail Movement Ledger and party detail Transaction Ledger render `01-core-data-model`'s existing `location_transaction_ledger`/`party_transaction_ledger` read models without a new capability or a duplicated query. (Resolved: §6a's Movement Ledger subsection and §5b's Transaction Ledger subsection both cite `01` §3 item 4 by name and confirm the ledgers inherit `locations.read`/`parties.read` respectively, the same capability that already gates each detail page.)
 - [ ] Confirm Auth, audit, Storage, Realtime, and migration boundaries with `04-services-and-infrastructure`.
 - [ ] Confirm route, page-header, responsive, and feedback contracts with `05-ui-shell-and-navigation`.
 - [ ] Confirm no mutation is admitted to the offline queue under `03-offline-mode-and-client-storage`.

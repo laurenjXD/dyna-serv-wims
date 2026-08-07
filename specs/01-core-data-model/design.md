@@ -393,6 +393,7 @@ import { lots } from "./lots";
 import { items } from "./items";
 import { locations } from "./locations";
 import { wrrDocuments } from "./wrr";
+import { pickLists } from "./pick_lists";
 
 export const inventoryTransactions = pgTable("inventory_transactions", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -407,10 +408,13 @@ export const inventoryTransactions = pgTable("inventory_transactions", {
   commercialInvoiceNo: varchar("commercial_invoice_no", { length: 100 }), // Associated with incoming WRR receipts
   arReferenceNo: varchar("ar_reference_no", { length: 100 }), // Associated with outgoing Dispatch/Withdrawal
   wrrId: uuid("wrr_id").references(() => wrrDocuments.id),
+  pickListId: uuid("pick_list_id").references(() => pickLists.id), // Added 2026-08-07: mirrors wrrId for outgoing/dispatch movements; set only for movement_type = 'pick', pointing to the dispatched pick_lists row
   performedByUserId: uuid("performed_by_user_id").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 ```
+
+`wrrId` links an incoming transaction to its source `wrr_documents` row (and, through `wrr_documents.vendor_party_id`, to the vendor party). `pickListId` is the symmetric link for outgoing transactions: it points to the `pick_lists` row that was dispatched, and through `pick_lists.customer_party_id` resolves to the customer party. Before this addition, incoming transactions could be traced to a vendor party but outgoing transactions had no equivalent document link — an asymmetry, not an intentional design choice. Both columns are nullable because a given `inventory_transactions` row is either an incoming movement (`wrrId` populated, `pickListId` null) or an outgoing/dispatch movement (`pickListId` populated, `wrrId` null); movement types outside those two (e.g. `putaway`, `transfer`, `reconciliation`) may leave both null.
 
 #### `audit_log` (`lib/db/schema/audit.ts`)
 
@@ -550,6 +554,8 @@ erDiagram
      - Aging is calculated as report `as_of` minus the earliest confirmed receiving transaction connected to the same `lot_number`; `lots.created_at` is metadata only and is not the aging basis.
      - Financial fields (revenue, cost, profit, margin, and price references) are a separate projection. `02-rbac-roles` owns the capability and RLS enforcement; a user without the approved financial grant receives no financial columns, not merely null values.
      - This canonical read-model approach is preferred over browser-side joins across independently filtered endpoints because it preserves lot traceability, makes export grouping deterministic, and gives RLS one server-side query boundary. `lot_history_export` refreshes daily, retains three years, and is generated/served by `16-reporting-and-analytics`; `01` owns the canonical read-model contract and connected source identity.
+     - **`location_transaction_ledger`** (added 2026-08-07): a derived read model, not a stored table — a straightforward filter over existing `inventory_transactions` columns, requiring no schema change. Defined as all `inventory_transactions` rows where `from_location_id = :location_id OR to_location_id = :location_id`, ordered by `created_at`. Each row exposes `movement_type`, `qty`, `item_id`/item name, `lot_id`/`lots.lot_number`, a direction indicator relative to the queried location (`in` when `to_location_id = :location_id`, `out` when `from_location_id = :location_id`), `performed_by_user_id`, `created_at`, and a "Reference" field using the same pattern already defined above in this item's Master Inventory UI Pattern subsection: `commercial_invoice_no` for incoming movements, `ar_reference_no` for outgoing (Dispatch/Withdrawal) movements. Consumed by `06-party-and-item-enrollment`'s location detail view as a read-only, paginated Movement Ledger.
+     - **`party_transaction_ledger`** (added 2026-08-07): a second derived read model, likewise requiring no new stored table, covering supplier, customer, and end-customer in one query since `parties` is a single table for all party roles. Defined as the union of three sources: (1) incoming/vendor side — `inventory_transactions` joined to `wrr_documents` via `wrr_id`, filtered `wrr_documents.vendor_party_id = :party_id`; (2) outgoing/customer side — `inventory_transactions` joined to `pick_lists` via the `pick_list_id` column added to `inventory_transactions` above, filtered `pick_lists.customer_party_id = :party_id`; (3) VMI ownership movements not tied to a specific WRR or pick list (e.g. internal transfers of VMI-owned lots) — `inventory_transactions` joined to `lots` via `lot_id`, filtered `lots.owner_party_id = :party_id`. Rows are ordered by `created_at` and expose the same field set as `location_transaction_ledger` (`movement_type`, `qty`, item, lot number, performed-by, timestamp, Reference field), plus which of the three sources produced the row. Consumed by `06-party-and-item-enrollment`'s party detail view as a read-only, paginated Transaction Ledger.
 
    - **Master Inventory UI Pattern (table-with-expandable-rows)** — see `specs/00-steering/revision-log.md`, "Master Inventory / Inventory Register — table-with-expandable-rows UI pattern, owning spec corrected to `01-core-data-model`" (2026-08-07): this screen is owned by `01`, not `16-reporting-and-analytics`, since it is the UI view over `01`'s own `items`/`lots`/`lot_location_balances`/`lot_inventory_totals` entities, not a reporting/analytics surface. The concrete pattern:
      - **Collapsed row**: standard table density — item code, item name, UOM, stock level, and status, one row per item. The item-code column displays `master_inventory_tracking.displayed_item_code`; when the accompanying `item_code_is_provisional` flag is true, the cell shows a "Pending PO assignment" badge/tooltip beside the fallback internal `code`, so a picker or auditor is not misled into treating the fallback as the settled DSGC number.

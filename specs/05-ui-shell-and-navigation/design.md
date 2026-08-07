@@ -65,8 +65,9 @@ The table below lists every authenticated route planned at launch. Each route na
 | `/approvals` | office | `fifo_override.approve` | `09-approval-queue` | Launch |
 | `/sync` | floor | none | `03-offline-mode-and-client-storage` | Launch (when offline feature enabled) |
 | `/transfers` | shared | `transfers.read` | `11-transfer-and-inspection` | Launch |
-| `/parties` | office | `parties.manage` | `06-party-and-item-enrollment` | Launch |
-| `/items` | office | `items.manage` | `06-party-and-item-enrollment` | Launch |
+| `/parties` | office | `parties.read` | `06-party-and-item-enrollment` | Launch |
+| `/items` | office | `items.read` | `06-party-and-item-enrollment` | Launch |
+| `/locations` | office | `locations.read` | `06-party-and-item-enrollment` | Launch |
 | `/reports` | office | `reporting.read` | `16-reporting-and-analytics` | Planned |
 | `/portal` | party | none | `22-parties-portal` | Planned |
 | `/portal/inventory` | party | `reporting.read` | `22-parties-portal` | Planned |
@@ -74,6 +75,8 @@ The table below lists every authenticated route planned at launch. Each route na
 | `/portal/documents` | party | `documents.read` | `22-parties-portal` | Planned |
 | `/portal/notifications` | party | `notifications.read` | `22-parties-portal` | Planned |
 | `/portal/labels` | party | `shipment_labels.generate` | `22-parties-portal` | Planned |
+
+**Fixed 2026-08-07: `/parties`, `/items`, and `/locations` route-gate correction.** These three rows previously required `parties.manage` / `items.manage` / `locations.manage` to reach the route at all. Per `02-rbac-roles`, the `.read` capability for each of these three resources is held broadly by `warehouse_staff`, `supervisor`, and `administrator`, while `.manage` is administrator-only (locations) or otherwise narrower than `.read` — so gating the route itself by `.manage` would have blocked every role RBAC intends to have read access from ever reaching the page. Corrected to gate all three routes by the `.read` capability instead; create/edit/deactivate actions inside each page remain gated by the corresponding `.manage` capability at the action level, per §8's Shared table, row-action, and filter/search contract (capability/row-state action gating — an action a session's capability doesn't cover is omitted, not disabled-and-visible). This is the same pattern already governing every other list screen in this design; `/parties` and `/items` had carried the same over-tight gate since before this session, and `/locations` inherited it on creation — both are fixed together here rather than leaving `/locations` consistent with a bug.
 
 **Added 2026-08-07, general operational landing page (`/`):** the product owner requested a general "overview of everything" screen acting as the default post-login destination for every authenticated user, not gated to office/supervisor roles. This screen was already drawn in `mockup.md` §1 (floor shell — default route) and §3 (office shell — dashboard/review route) but was never formalized into this route table until now.
 

@@ -87,7 +87,7 @@ Testing: Unit scan/state tests; Playwright simulated scanner and real browser In
 - [ ] Reject wrong, duplicate, over-pick, under-pick, stale, and mismatched scans with recoverable feedback.
 - [ ] Define physical `dispatch` movement/handoff behavior with the approved location/transaction design.
 - [ ] Implement the final online dispatch command that rechecks commitment and current domain state.
-- [ ] Atomically decrement inventory, release reservation, insert one immutable `pick` transaction, and transition pick-list status.
+- [ ] Atomically decrement inventory, release reservation, insert one immutable `pick` transaction with `pick_list_id` set to the dispatched pick list (design.md §7's "`pick_list_id` on the recorded transaction" paragraph), and transition pick-list status.
 - [ ] Return the original result for duplicate/lost-response retries; never decrement twice.
 - [ ] Keep partial/exception outcomes blocked until their approved resolution is applied.
 
@@ -148,6 +148,7 @@ Testing: Full applicable matrix below.
 - [ ] Apply complete migrations in real Postgres and verify reservation/commitment constraints, pick-list relations, lot quantities, and immutable transaction behavior.
 - [ ] Verify concurrent allocation cannot reserve the same available quantity twice.
 - [ ] Verify Stage 1 reserves without decrementing and Stage 2 decrements/releases/writes exactly once.
+- [ ] Verify the Stage 2 `inventory_transactions` row carries `pick_list_id` set to the dispatched pick list's id.
 - [ ] Verify stale, revoked, out-of-scope, invalid-approval, and cross-party requests fail safely under RLS.
 - [ ] Verify duplicate/lost-response commands return one authoritative outcome.
 - [ ] Verify Outgoing Ledger is read-only and scope-filtered.
