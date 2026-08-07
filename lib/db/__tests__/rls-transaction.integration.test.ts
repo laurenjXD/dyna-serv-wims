@@ -45,6 +45,14 @@ import postgres, { type Sql } from "postgres";
 const connectionString = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL ?? "";
 const hasLiveDb = connectionString.length > 0;
 
+// rls-pool.ts reads DATABASE_URL at module-load time; TEST_DATABASE_URL
+// (this file's own preferred var) must be mirrored onto it before the
+// dynamic import below so the real, reusable pool adapter connects to the
+// same disposable test database as this file's own `sql` client.
+if (process.env.TEST_DATABASE_URL && !process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
+}
+
 describe.skipIf(!hasLiveDb)(
   "rls-transaction.ts — real-Postgres commit/rollback + claim propagation",
   () => {
@@ -55,6 +63,13 @@ describe.skipIf(!hasLiveDb)(
       sql = postgres(connectionString, { prepare: false });
       await sql.unsafe(`DROP TABLE IF EXISTS ${table}`);
       await sql.unsafe(`CREATE TABLE ${table} (id serial PRIMARY KEY, note text NOT NULL)`);
+      // The wrapper switches the transaction's role GUC to `authenticated`
+      // (design.md §6.3's own PostgREST/RPC-exposure rationale) which, per
+      // §7.1's default-deny baseline, has zero table privileges until
+      // explicitly granted -- this scratch table needs the same explicit
+      // grant any real table would get in its own migration.
+      await sql.unsafe(`GRANT SELECT, INSERT ON ${table} TO authenticated`);
+      await sql.unsafe(`GRANT USAGE, SELECT ON SEQUENCE ${table}_id_seq TO authenticated`);
     });
 
     afterAll(async () => {
@@ -65,16 +80,17 @@ describe.skipIf(!hasLiveDb)(
     it("rolls back an insert when the callback throws — the row is never visible from a new connection (design.md §6.3 guaranteed-rollback clause)", async () => {
       const { withRlsTransaction } = await import("../rls-transaction");
 
-      const pool = buildPgPool(sql);
+      const { rlsPool: pool } = await import("../rls-pool");
       const getAuthenticatedSession = async () => ({
         userId: "11111111-1111-1111-1111-111111111111",
       });
 
       await expect(
         withRlsTransaction({ getAuthenticatedSession, pool }, async (tx: unknown) => {
-          await (tx as { execute: (q: unknown) => Promise<unknown> }).execute(
-            sql`INSERT INTO ${sql(table)} (note) VALUES ('should-not-persist')`,
-          );
+          await (tx as { execute: (q: unknown) => Promise<unknown> }).execute({
+            sql: `INSERT INTO ${table} (note) VALUES ($1)`,
+            params: ["should-not-persist"],
+          });
           throw new Error("forced rollback");
         }),
       ).rejects.toThrow("forced rollback");
@@ -89,15 +105,16 @@ describe.skipIf(!hasLiveDb)(
     it("commits an insert on a successful callback — the row IS visible from a new connection afterward", async () => {
       const { withRlsTransaction } = await import("../rls-transaction");
 
-      const pool = buildPgPool(sql);
+      const { rlsPool: pool } = await import("../rls-pool");
       const getAuthenticatedSession = async () => ({
         userId: "22222222-2222-2222-2222-222222222222",
       });
 
       const result = await withRlsTransaction({ getAuthenticatedSession, pool }, async (tx: unknown) => {
-        await (tx as { execute: (q: unknown) => Promise<unknown> }).execute(
-          sql`INSERT INTO ${sql(table)} (note) VALUES ('should-persist')`,
-        );
+        await (tx as { execute: (q: unknown) => Promise<unknown> }).execute({
+          sql: `INSERT INTO ${table} (note) VALUES ($1)`,
+          params: ["should-persist"],
+        });
         return "committed";
       });
 
@@ -110,15 +127,16 @@ describe.skipIf(!hasLiveDb)(
     it("propagates auth.uid()-resolvable claims transaction-locally and does not leak them to a later query on the same pooled connection", async () => {
       const { withRlsTransaction, buildRlsClaimStatements } = await import("../rls-transaction");
 
-      const pool = buildPgPool(sql);
+      const { rlsPool: pool } = await import("../rls-pool");
       const userId = "33333333-3333-3333-3333-333333333333";
       const getAuthenticatedSession = async () => ({ userId });
 
       let claimSeenInsideTransaction: string | null = null;
       await withRlsTransaction({ getAuthenticatedSession, pool }, async (tx: unknown) => {
-        const rows = await (tx as { execute: (q: unknown) => Promise<{ sub: string }[]> }).execute(
-          sql`SELECT (current_setting('request.jwt.claims', true)::jsonb ->> 'sub') AS sub`,
-        );
+        const rows = await (tx as { execute: (q: unknown) => Promise<{ sub: string }[]> }).execute({
+          sql: "select (current_setting('request.jwt.claims', true)::jsonb ->> 'sub') as sub",
+          params: [],
+        });
         claimSeenInsideTransaction = rows[0]?.sub ?? null;
         return null;
       });
@@ -139,85 +157,9 @@ describe.skipIf(!hasLiveDb)(
   },
 );
 
-// Minimal RlsPool adapter over postgres.js's own `sql.begin()` transaction
-// primitive, matching the RlsPool/RlsConnection/TransactionBoundClient shape
-// documented in rls-transaction.test.ts. Kept local to this file since it is
-// test-harness wiring, not the module under test.
-function buildPgPool(sql: Sql) {
-  return {
-    async connect() {
-      let resolveBegun: (tx: unknown) => void;
-      let rejectBegun: (err: unknown) => void;
-      let settleOuter: (() => void) | undefined;
-      let outcome: "commit" | "rollback" | undefined;
-
-      const begunPromise = new Promise<unknown>((resolve, reject) => {
-        resolveBegun = resolve;
-        rejectBegun = reject;
-      });
-
-      const txFinished = new Promise<void>((resolve) => {
-        settleOuter = resolve;
-      });
-
-      // postgres.js's sql.begin() itself manages BEGIN/COMMIT/ROLLBACK
-      // around the callback it is given. We bridge that shape to the
-      // explicit begin()/commit()/rollback()/release() contract this
-      // wrapper's tests describe by resolving `begunPromise` with a
-      // tx-bound client once inside sql.begin()'s callback, then blocking
-      // that same callback until our own commit()/rollback() decides the
-      // outcome.
-      const txLifecyclePromise = sql
-        .begin(async (txSql) => {
-          const txClient = {
-            execute: async (query: unknown) => {
-              // Support both a tagged-template Sql fragment and our own
-              // { sql, params } claim-statement shape.
-              if (
-                query &&
-                typeof query === "object" &&
-                "sql" in (query as Record<string, unknown>)
-              ) {
-                const q = query as { sql: string; params: unknown[] };
-                return txSql.unsafe(q.sql, q.params as never);
-              }
-              return txSql.apply(txSql, query as never);
-            },
-          };
-          resolveBegun(txClient);
-          await txFinished;
-          if (outcome === "rollback") {
-            throw new Error("__rls_transaction_test_forced_rollback__");
-          }
-          return undefined;
-        })
-        .catch((err: unknown) => {
-          if (
-            err instanceof Error &&
-            err.message === "__rls_transaction_test_forced_rollback__"
-          ) {
-            return undefined; // expected rollback signal, not a real failure
-          }
-          throw err;
-        });
-
-      return {
-        begin: async () => begunPromise,
-        commit: async () => {
-          outcome = "commit";
-          settleOuter!();
-          await txLifecyclePromise;
-        },
-        rollback: async () => {
-          outcome = "rollback";
-          settleOuter!();
-          await txLifecyclePromise;
-        },
-        release: () => {
-          // postgres.js manages pool release internally once sql.begin()'s
-          // callback settles; nothing further to do here.
-        },
-      };
-    },
-  };
-}
+// The local buildPgPool adapter that used to live here has been promoted to
+// lib/db/rls-pool.ts (exported as `rlsPool`) so real application code has a
+// ready-to-use RlsPool adapter, not just test-harness wiring. This file now
+// imports and exercises that real module directly (see the `rlsPool` import
+// above each test), so running these tests proves the exported module
+// itself works against real Postgres, not a duplicate local copy of it.

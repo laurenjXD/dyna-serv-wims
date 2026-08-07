@@ -93,6 +93,30 @@ Phases 3–6 are sequential and each depends on the one before it (receiving cre
 
 This phase plan is a *how* underneath the *when* `gantt-mapping.md` already tracks. Milestone 1 (Receiving & Core Inventory Transfers) is entirely Track 1's Phases 0–5. Milestone 2 (Classification & Inventory Processing) is Track 1 Phase 6 plus Track 2 Phases D/E. Milestone 3 (Inventory Control & Analytics) is Track 3 Phases I–III plus Track 2 Phase C. Milestone 4 (Final Handover & Deployment) is Track 3 Phases IV–V plus the cross-cutting docs/training/deployment specs (`20`, `04`), which don't belong to any one track and should be picked up by whichever track finishes its own chain first.
 
+## Additional scope folded in (2026-08-07) — read this after your track assignment above, changes nothing already assigned
+
+Five specs were found unassigned to any track after the original three-track split: `05-ui-shell-and-navigation` (an actual build, not just the locked spec — no shell code exists yet beyond Phase 0's bare `app/layout.tsx`), `03-offline-mode-and-client-storage`, `04-services-and-infrastructure`, `20-documentation-training-and-uat`, and `21-user-profile-and-settings`. `19-dispatch-scheduling-and-delivery-tracking` stays deferred — that one's deliberate, not a gap.
+
+**This section only adds new phases. It does not change, rename, reorder, or reopen anything in "The three tracks" or "Full implementation phase plan" above.** If your track already has spec/design work done on `06`, `16`, or anywhere else per those sections, that work stands as-is — nothing here asks you to revisit, redo, or touch it. Read this as new phases appended to the end of your track's existing list, not a revision of what's already there.
+
+### Track 1 — two new phases, both before the rest of your existing chain
+
+- **New Phase 2.5a — `05-ui-shell-and-navigation`, actual implementation.** Insert this immediately after Phase 2 closes and before Phase 3 (`07`). Every track's feature UI — including your own Phase 3's `07` receiving screens — needs the shell (auth-boundary redirect, navigation registry, page-header contract, floor/office responsive layout, the `/` landing page and route table already fully spec'd) to exist as real code first. Do not touch `06`, `16`, or any other track's files while doing this — this phase is `app/`, `components/global`, `components/ui`, and `05`'s own spec folder only.
+- **Fold `03-offline-mode-and-client-storage` into your existing Phases 3 and 5** (`07` and `08`), not as a separate phase — it's the Tier 1 offline queue for exactly those two features' floor scan flows, and building either one properly requires deciding its offline behavior at the same time, not bolting it on after.
+
+### Track 2 — one new phase, added at the end of your existing list
+
+- **New Phase F — `21-user-profile-and-settings`**, after your existing Phase E (`18`). Self-contained (password change, notification preferences); doesn't touch anything from Phases A–E. Build it without revisiting `06`/`09`/`14`/`17`/`18`'s already-completed work.
+
+### Track 3 — one new phase, added at the end of your existing list, gated on all three tracks
+
+- **New Phase VI — final convergence: `04-services-and-infrastructure` (deployment pipeline, background jobs, webhook handlers beyond the Phase-0 env-var scaffolding), `20-documentation-training-and-uat` (user docs, admin training, UAT), and the cross-cutting integration-testing/deployment gates `gantt-mapping.md` lists but no single spec owns** (e.g. "Cross-module inventory integration testing," "Final inventory system integration," production deployment itself). Assigned to Track 3 specifically because your existing chain (`16`→`12`→`13`→`22`→`15`) naturally finishes last — this is not "whichever track gets there first," it's yours, so it doesn't fall through the cracks.
+  - **Hard gate, don't start early**: this phase needs Track 1's and Track 2's chains (including their new Phase 2.5a/Phase F additions above) merged and stable on `main`, not just your own Phase V done. Check `gantt-mapping.md` for all three tracks' status before starting, the same way `22`'s convergence point already required checking multiple phases.
+
+### Revised Milestone mapping (supersedes the note in "Mapping to `gantt-mapping.md`'s Milestones" above about `20`/`04` being unassigned)
+
+Milestone 1 now includes Track 1's new Phase 2.5a. Milestone 4's "cross-cutting docs/training/deployment specs (`20`, `04`)" line above is superseded by this section: they're Track 3's Phase VI now, not an open question.
+
 ## Shared/locked files — single-writer rule
 
 These files are touched by almost every track sooner or later, which is exactly why uncoordinated concurrent edits to them will silently overwrite each other. **Only Track 1 edits these while Phase 1/2 core work is active.** Tracks 2 and 3 needing a change here must use the cross-track request protocol below, not edit directly:
@@ -255,11 +279,24 @@ Drizzle schema additions needed in `lib/db/schema/` — new file `approvals.ts` 
 
 ### [RESOLVED] Track 3 — analytics migration and RLS query-boundary prerequisites (2026-08-07)
 
-**Requested from Track 1 (locked files):**
+**Track 3, 2026-08-07/08 — requested `daily_transaction_counts` materialized view + analytics indexes (`16` design.md §7.1/§7.3) and the RLS-enforcing query transaction wrapper (`02` design.md §6.3), before Track 3 could proceed.**
 
-1. Add the sequential migrations required by `16-reporting-and-analytics/design.md` §7.1/§7.3: `daily_transaction_counts` materialized view, its unique `(activity_date, flow_type, movement_type)` index supporting `REFRESH MATERIALIZED VIEW CONCURRENTLY`, and the approved analytics indexes on `inventory_transactions`, `lots`, `wrr_documents`, `wrr_inspection_logs`, and `pick_lists`. Track 3's `lib/analytics/queries/heatmap.ts` correctly uses the direct-ledger fallback until this migration is present.
-2. Provide the `02-rbac-roles` §6.3 RLS-enforcing transaction/query wrapper (or its stable import/calling contract). `16` query functions must run inside that wrapper before protected `/reports` pages and export route handlers can be implemented without relying on application-level filtering.
+**RESOLVED.** Delivered via expedited cherry-pick (not the full Track 1→main merge order, since Track 3 was actively blocked) — commit `5cdab55dd0661964e942e6377851b341e91d51bb` on `origin/track-1-core-floor-ops`, containing exactly:
+- `supabase/migrations/0006_daily_transaction_counts.sql` — the materialized view + unique index on `(activity_date, flow_type, movement_type)`. Real-Postgres verified, including a held-open-transaction proof that `REFRESH ... CONCURRENTLY` genuinely doesn't block reads.
+- `supabase/migrations/0007_analytics_indexes.sql` — all 8 indexes from `16`'s §7.1 table, confirmed non-duplicative of `0002`'s existing indexes, `EXPLAIN`-verified planner adoption.
+- `lib/db/rls-transaction.ts` (+ its unit and integration tests) — the `withRlsTransaction`/`buildRlsClaimStatements` wrapper. `rbac-rls-reviewer` caught a real bug before this shipped (claim-setting wasn't awaited before the callback ran — an unverified ordering assumption with a genuine unhandled-rejection path); fixed and re-verified before this commit.
+
+**Track 3 action**: `git fetch origin` then `git cherry-pick 5cdab55dd0661964e942e6377851b341e91d51bb` onto `track-3-analytics-billing`. This commit contains only these 8 files — nothing else from Track 1's in-progress work (the `05` shell components are still under review) is included, so the cherry-pick should apply clean.
 
 **Why:** Track 3 has implemented the typed server-side analytics query/export contracts in `lib/analytics/queries/`, but cannot write `supabase/migrations/*` or `lib/rbac/*` under the active shared-file lock. These are prerequisites for Task 16.2's real-Postgres verification and for safely mounting protected analytics routes. No workaround or application-layer substitute will be added.
 
-**Resolution**: Delivered by Track 1 in commit `d801eb1`; cherry-picked to Track 2.
+**One thing for Track 3 to know before using the RLS wrapper**: `rbac-rls-reviewer`'s review flagged that the wrapper's `role`-switch-to-`authenticated` mechanism is correct per design, but has not yet been verified against a live Postgres/connection-pooler (the 3 integration tests exist and are correct but currently skip cleanly — no `DATABASE_URL` available in this environment). This is `02` design.md §6.3's own explicit pre-approval gate, not a new gap. Don't treat this wrapper as fully production-verified until that integration pass actually runs against real Postgres once one is available.
+
+**Follow-up, 2026-08-08 — two real gaps found in the first delivery, both fixed:**
+
+1. **Missing `vitest.setup.ts`.** Track 3's `vitest.config.mts` already contains `setupFiles: ["./vitest.setup.ts"]` from earlier, separate Track 1 work that Track 3 never received. That reference was live but the file it pointed to wasn't delivered, blocking Track 3's entire unit-test run. Fixed: `vitest.setup.ts` delivered in commit `55055d7`.
+2. **No reusable runtime `RlsPool` adapter existed** — `lib/db/rls-transaction.ts`'s wrapper only had an abstract `RlsPool`/`RlsConnection` interface. Fixed: `lib/db/rls-pool.ts` added as the real adapter.
+
+**Fixing the second gap surfaced a real bug in the integration test** (never previously run against real Postgres): queries built via `sql`...`` on the outer non-transactional postgres.js client weren't running inside the transaction (tagged templates execute immediately against whichever client tags them). Fixed by using `{ sql, params }` shape everywhere. Also: bare Postgres container has no `authenticated`/`anon` roles — test now grants them explicitly, matching §7.1's default-deny baseline.
+
+**Resolution**: Delivered by Track 1 in commits `d801eb1` (matview/indexes/wrapper) and `55055d7` (rls-pool + vitest.setup.ts fixes); both cherry-picked to Track 2.
