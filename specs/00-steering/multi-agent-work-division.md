@@ -377,3 +377,11 @@ Drizzle schema additions needed in `lib/db/schema/` — new file `approvals.ts` 
 **Fixing the second gap surfaced a real bug in the integration test** (never previously run against real Postgres): queries built via `sql`...`` on the outer non-transactional postgres.js client weren't running inside the transaction (tagged templates execute immediately against whichever client tags them). Fixed by using `{ sql, params }` shape everywhere. Also: bare Postgres container has no `authenticated`/`anon` roles — test now grants them explicitly, matching §7.1's default-deny baseline.
 
 **Resolution**: Delivered by Track 1 in commits `d801eb1` (matview/indexes/wrapper) and `55055d7` (rls-pool + vitest.setup.ts fixes); both cherry-picked to Track 2.
+### Track 3 — analytics migration and RLS query-boundary prerequisites (2026-08-07)
+
+**Requested from Track 1 (locked files):**
+
+1. Add the sequential migrations required by `16-reporting-and-analytics/design.md` §7.1/§7.3: `daily_transaction_counts` materialized view, its unique `(activity_date, flow_type, movement_type)` index supporting `REFRESH MATERIALIZED VIEW CONCURRENTLY`, and the approved analytics indexes on `inventory_transactions`, `lots`, `wrr_documents`, `wrr_inspection_logs`, and `pick_lists`. Track 3's `lib/analytics/queries/heatmap.ts` correctly uses the direct-ledger fallback until this migration is present.
+2. Provide the `02-rbac-roles` §6.3 RLS-enforcing transaction/query wrapper (or its stable import/calling contract). `16` query functions must run inside that wrapper before protected `/reports` pages and export route handlers can be implemented without relying on application-level filtering.
+
+**Why:** Track 3 has implemented the typed server-side analytics query/export contracts in `lib/analytics/queries/`, but cannot write `supabase/migrations/*` or `lib/rbac/*` under the active shared-file lock. These are prerequisites for Task 16.2's real-Postgres verification and for safely mounting protected analytics routes. No workaround or application-layer substitute will be added.
