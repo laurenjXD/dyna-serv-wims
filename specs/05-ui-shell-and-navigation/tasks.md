@@ -137,6 +137,10 @@ Testing: Type-check/build contract; E2E smoke coverage for representative floor 
 - [ ] Wire the floor/office summary counts to read-only queries against `07-incoming-receiving`, `08-outgoing-withdrawal-and-two-stage-commitment`/pick lists, `11-transfer-and-inspection`, and `09-approval-queue`, each already gated by that spec's own capability; do not introduce a new capability or duplicate their access predicates here.
 - [ ] Implement the office-surface-only `<ActivityHeatmap>` widget: import `16-reporting-and-analytics`'s existing component (design.md §4.3) as-is; gate it at the widget level by `reporting.read`; omit it entirely for any session without that capability, including every floor-shell session; never render it in the floor summary presentation.
 - [ ] Verify `/` never displays KPI cards or financial/margin metrics — those remain exclusive to `16-reporting-and-analytics`'s `/reports`.
+- [x] Floor task-count card and nav labels, and the "Quick Actions" header, use approved floor-legal typography (16px minimum, correct font-family role) — **done 2026-08-08**, two `design-system-auditor`-found violations fixed (see `revision-log.md`).
+- [ ] **Added 2026-08-08, `design-system-auditor` finding, explicitly deferred**: widen `quickActions` (currently `readonly string[]`, labels only) to carry a per-item `href`/action, and render each as a tappable 64px-minimum row with icon, per `mockup.md` §1 — not yet real, current render is plain non-interactive text.
+- [ ] **Added 2026-08-08, `design-system-auditor` finding, explicitly deferred**: widen `recentActivity`'s type to carry timestamp and status (not just `description`), and render as a TIME | ACTIVITY | STATUS table with color+text status badges, per `mockup.md` §3.
+- [ ] **Added 2026-08-08, `design-system-auditor` finding, explicitly deferred**: `ShellChrome.tsx` currently renders only navigation + `main` — build the surrounding `AppHeader`/logo/connectivity-indicator/account-control/status-region composition `design.md` §4's shell tree requires; this phase built the nav/landing-content layer only.
 
 ## Testing matrix
 

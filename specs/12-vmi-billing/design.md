@@ -60,7 +60,7 @@ export const vmiContracts = pgTable("vmi_contracts", {
 
 ### 1.2 `vmi_cbm_ledger`
 
-One row per VMI party per calendar day. The `ending_cbm` column is the authoritative occupied-CBM snapshot; `inbound_cbm` and `outbound_cbm` are informational delta values derived from `inventory_transactions`.
+One row per VMI party per calendar day. The `ending_cbm` column is the authoritative occupied-CBM snapshot; `inbound_cbm` and `outbound_cbm` are informational delta values derived from `inventory_transactions`. **(2026-08-08)** `applied_cbm_rate_usd` and `daily_amount_usd` are captured the same night as `ending_cbm`, using whichever `vmi_contracts.cbm_rate_usd` is in effect at that moment — this is what lets a mid-period rate change bill correctly (each day is priced at the rate that was actually active that day, not retroactively repriced by whatever the rate happens to be at statement-generation time). It also matches the client's own CBM ledger reference format (`DATE | BEGINNING CBM | IN | OUT | ENDING CBM | DAILY AMOUNT`) as a queryable/displayable row, not just an internal aggregate.
 
 ```typescript
 import {
@@ -76,6 +76,8 @@ export const vmiCbmLedger = pgTable("vmi_cbm_ledger", {
   inboundCbm: decimal("inbound_cbm", { precision: 12, scale: 4 }).default("0").notNull(),   // Informational only
   outboundCbm: decimal("outbound_cbm", { precision: 12, scale: 4 }).default("0").notNull(), // Informational only
   endingCbm: decimal("ending_cbm", { precision: 12, scale: 4 }).default("0").notNull(),     // Authoritative snapshot
+  appliedCbmRateUsd: decimal("applied_cbm_rate_usd", { precision: 10, scale: 6 }).notNull(), // vmi_contracts.cbm_rate_usd in effect this day
+  dailyAmountUsd: decimal("daily_amount_usd", { precision: 14, scale: 4 }).notNull(),         // ending_cbm × applied_cbm_rate_usd
   calculatedAt: timestamp("calculated_at").notNull(), // When the CRON snapshot was taken
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({
@@ -106,8 +108,8 @@ export const vmiBillingStatements = pgTable("vmi_billing_statements", {
 
   // Storage charge inputs
   periodAverageCbm: decimal("period_average_cbm", { precision: 14, scale: 4 }).notNull(), // AVG(ending_cbm) for period
-  appliedCbmRateUsd: decimal("applied_cbm_rate_usd", { precision: 10, scale: 6 }).notNull(), // Snapshotted from contract
-  storageChargeUsd: decimal("storage_charge_usd", { precision: 14, scale: 4 }).notNull(), // periodAverageCbm × rate × days
+  appliedCbmRateUsd: decimal("applied_cbm_rate_usd", { precision: 10, scale: 6 }).notNull(), // Current contract rate at generation time, for display; NOT used to compute storageChargeUsd (see below) — the effective rate may have varied within the period
+  storageChargeUsd: decimal("storage_charge_usd", { precision: 14, scale: 4 }).notNull(), // SUM(vmi_cbm_ledger.daily_amount_usd) over the period — each day already priced at that day's rate
 
   // Additional charge lines (null = not enabled on contract)
   handlingFeeCount: integer("handling_fee_count"),           // WRR count in period; null if not enabled
@@ -226,12 +228,17 @@ For each party_id where vmi_contracts exists AND parties.is_active = true:
 5. Compute outbound_cbm (informational):
      Same join as step 4 but movement_type = 'pick'.
 
-6. INSERT INTO vmi_cbm_ledger
+6. applied_cbm_rate_usd = vmi_contracts.cbm_rate_usd for :party_id, read fresh at this
+   moment — this is what makes a rate change take effect only from the day it's
+   changed forward, never retroactively.
+   daily_amount_usd = ending_cbm × applied_cbm_rate_usd
+
+7. INSERT INTO vmi_cbm_ledger
      (party_id, ledger_date, beginning_cbm, inbound_cbm,
-      outbound_cbm, ending_cbm, calculated_at)
+      outbound_cbm, ending_cbm, applied_cbm_rate_usd, daily_amount_usd, calculated_at)
    VALUES
      (:party_id, :today, :beginning_cbm, :inbound_cbm,
-      :outbound_cbm, :ending_cbm, NOW())
+      :outbound_cbm, :ending_cbm, :applied_cbm_rate_usd, :daily_amount_usd, NOW())
    ON CONFLICT (party_id, ledger_date) DO NOTHING.
 ```
 
@@ -255,7 +262,7 @@ Triggered by an Office Administrator selecting a party and a billing month.
    storage_period_days = number of calendar days in the month
 
 2. Fetch ledger rows:
-     SELECT ending_cbm FROM vmi_cbm_ledger
+     SELECT ending_cbm, daily_amount_usd FROM vmi_cbm_ledger
      WHERE party_id = :party_id
        AND ledger_date BETWEEN :period_start AND :period_end
      ORDER BY ledger_date
@@ -267,9 +274,21 @@ Triggered by an Office Administrator selecting a party and a billing month.
 
 3. period_average_cbm = AVG(ending_cbm) across all fetched rows.
    (Arithmetic mean. Days with no ledger row are an exception state,
-    not silently treated as zero — see step 2 above.)
+    not silently treated as zero — see step 2 above. Stored on the
+    statement as a display/reference figure only — it is not used to
+    compute storage_charge_usd, see step 4.)
 
-4. storage_charge_usd = period_average_cbm × contract.cbm_rate_usd × storage_period_days
+4. storage_charge_usd = SUM(daily_amount_usd) across all fetched rows.
+   (2026-08-08: changed from `period_average_cbm × contract.cbm_rate_usd ×
+   storage_period_days` to summing each day's already-priced
+   `daily_amount_usd`. The two formulas are mathematically identical when
+   the rate is constant for the whole period — but summing the per-day
+   amount is what correctly handles a rate change mid-period, since each
+   `vmi_cbm_ledger` row was already priced at whatever rate was in effect
+   that day, per §2.1 step 6. `applied_cbm_rate_usd` is no longer read
+   fresh from the contract at statement time for this calculation; it is
+   still read fresh for display, so the statement can show the effective
+   blended rate for the period if it varied.)
 
 5. If contract.handling_fee_enabled = true:
      handling_fee_count = COUNT of wrr_documents WHERE
@@ -390,6 +409,31 @@ No party may read another party's billing data. Row-level filtering is `party_id
 | --- | --- |
 | `01-core-data-model` | `lot_inventory_totals` view, `lot_location_balances`, `lots`, `items.volume_cbm`, `inventory_transactions` (informational delta), `forex_rates`, `wrr_documents`, `pick_lists`, `parties` |
 | `04-services-and-infrastructure` | PDF generation artifact pipeline; Resend email delivery |
+| `05-ui-shell-and-navigation` | `/billing-pricing` route entry, office shell (added 2026-08-08, see §6) |
 | `10-pick-list-and-acknowledgement-receipt` | Per-release disclaimer language only; no billing input |
+| `22-parties-portal` | Owns VMI party-facing statement access (`vmi_statements.read`) independently of `/billing-pricing`, which is office-only |
 
 `12` does NOT consume `pick_list_items.unit_price`. That field is owned by `10` for document display only and is explicitly excluded from all billing calculations here.
+
+---
+
+## 6. UI and shell integration (added 2026-08-08)
+
+`12` and `13` share one office-surface route, `/billing-pricing`, rather than each owning a separate top-level nav entry — both are financial-ledger views over the same class of data (party-scoped commercial history), and a single Office Admin/Supervisor workflow (`reporting.financial_read`) reviews both. The page is **not** part of `06-party-and-item-enrollment` — enrollment is master-data CRUD gated by `items.manage`/`parties.manage`; this page is read-heavy financial reporting gated by `reporting.financial_read`, a different capability and a different audience. `06`'s party/item detail pages link out to it (a "View billing history" / "View pricing history" action), the same pattern `06` already uses for the transaction-ledger links (§5b/§6a) — enrollment does not embed the ledger itself.
+
+```text
+app/(authenticated)/
+  billing-pricing/
+    page.tsx                # tab shell: VMI | Trading, redirects to ?tab=vmi by default
+    vmi/page.tsx             # this spec (12): party picker, vmi_cbm_ledger table, statement history/generation
+    trading/page.tsx         # 13-trading-orders-and-pricing: Trading Pricing & Margin Ledger (see 13 §7a)
+```
+
+**VMI tab** (owned by `12`), **office-only**:
+
+- Party picker (Office Admin/Supervisor: any active VMI party).
+- `vmi_cbm_ledger` rendered as a table matching the client's reference format exactly: `DATE | BEGINNING CBM | IN (CBM) | OUT (CBM) | ENDING CBM | DAILY AMOUNT`, one row per `ledger_date`, most recent first, date-range filterable (defaults to the current billing month).
+- Below the ledger: statement history for the selected party (`vmi_billing_statements`, most recent first) and the "Generate Statement" action for a completed month, per §2.2. No new calculation logic is introduced here — this is a read/action surface over what §1-§2 already define.
+- `vmi_contracts` (the rate itself) is shown read-only on this tab for context; editing the contract's `cbm_rate_usd` and charge-type flags is a separate Office Admin form (`billing-pricing/vmi/contracts/[partyId]/edit`, `vmi_contracts.manage`-equivalent capability — reuses the existing `vmi_contracts` write RLS from §4, no new capability invented). A rate change here takes effect from the next CRON snapshot forward only, per §2.1 step 6 — it never rewrites already-written `vmi_cbm_ledger` rows.
+
+Capability gate: `reporting.financial_read`, held by `supervisor`/`administrator` only per `02-rbac-roles` — this is an internal-staff surface. **A VMI party user does not reach `/billing-pricing` at all** — `reporting.financial_read` is not granted to `party_user` (per `02` §3.2), so gating the route by it is safe here, unlike the earlier `/parties`/`/items`/`/locations` bug where the gating capability was *narrower* than the set of legitimate readers. A VMI party's own statement/credit-note visibility already exists as a separate, already-approved surface: `vmi_statements.read` (`assigned_party` scope, `party_user` role — added 2026-08-06 for `22-parties-portal` R4.4). This page does not replace or duplicate that; the portal keeps owning party-facing VMI statement access, and this office page is purely internal.

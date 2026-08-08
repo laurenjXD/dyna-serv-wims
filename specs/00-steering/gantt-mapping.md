@@ -49,7 +49,8 @@ The current Gantt timeline tracks the **Spec Definition Phase** (Drafting Requir
 | 3.3 | Immutable inventory movement history | `16-reporting-and-analytics` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
 | 3.4 | Inventory valuation and stock reports | `16-reporting-and-analytics` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
 | 3.5 | Inventory analytics and trend dashboard | `16-reporting-and-analytics` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
-| 3.6 | VMI CBM storage billing calculations | `12-vmi-billing` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
+| 3.6 | VMI CBM storage billing calculations | `12-vmi-billing` | **Approved** (all three documents and both sign-offs complete 2026-08-06; `05` §6 `/billing-pricing` VMI tab and `vmi_cbm_ledger` daily-amount columns added 2026-08-08) | Ready for Dev |
+| 3.6a | Trading order pricing and margin calculations | `13-trading-orders-and-pricing` | **Approved** (all three documents and both sign-offs complete 2026-08-06; §7a `/billing-pricing` Trading margin ledger tab added 2026-08-08) | Ready for Dev |
 | 3.7 | Inventory dashboard performance optimization | Cross-cutting perf, `04/05` | **Not Started** | Not Started |
 | 3.8 | Cross-module inventory integration testing | `testing.md` | **Process Approved** | Not Started |
 | 3.9 | Milestone 3 inventory control review and launch | Sign-off gate | **Not Started** | Not Started |

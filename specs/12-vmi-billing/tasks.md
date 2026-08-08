@@ -26,9 +26,9 @@ These tasks are design-phase decisions. Each must be resolved and recorded befor
   - Record decision in `specs/00-steering/revision-log.md`.
 
 - [ ] **A.2 Confirm period-average billing formula with Finance stakeholder**
-  - Confirm: billing basis is AVG(daily ending_cbm) × cbm_rate_usd × days, not SUM(daily ending_cbm) × cbm_rate_usd.
-  - Confirm: `cbm_rate_usd` is a daily rate per CBM (not a monthly rate).
-  - Confirm: partial-month periods (onboarding mid-month) use the actual number of days with ledger data as the denominator, or the full calendar month length.
+  - **(2026-08-08) Superseded, not simply resolved**: `storage_charge_usd` is now `SUM(vmi_cbm_ledger.daily_amount_usd)` over the period, not `period_average_cbm × cbm_rate_usd × days`. The two are mathematically identical only when the rate never changes mid-period; summing pre-priced daily rows is what makes a rate change take effect only from the day it changes forward. See `design.md` §2.2 steps 3-4 and `revision-log.md`'s 2026-08-08 entry.
+  - Confirm: `cbm_rate_usd` is a daily rate per CBM (not a monthly rate). Unchanged, still true.
+  - Confirm: partial-month periods (onboarding mid-month) use the actual number of days with ledger data as the denominator, or the full calendar month length. Still open — not resolved by the above change.
   - Record decision in `specs/00-steering/revision-log.md`.
 
 - [ ] **A.3 Confirm multi-currency denominations**
@@ -58,7 +58,7 @@ These tasks are design-phase decisions. Each must be resolved and recorded befor
 
 - [ ] **B.2 Define `vmi_cbm_ledger` table**
   - File: `lib/db/schema/vmi_billing.ts`
-  - Columns per `design.md §1.2`: `id`, `party_id`, `ledger_date`, `beginning_cbm`, `inbound_cbm`, `outbound_cbm`, `ending_cbm`, `calculated_at`, `created_at`.
+  - Columns per `design.md §1.2`: `id`, `party_id`, `ledger_date`, `beginning_cbm`, `inbound_cbm`, `outbound_cbm`, `ending_cbm`, `applied_cbm_rate_usd`, `daily_amount_usd`, `calculated_at`, `created_at`. **(2026-08-08: `applied_cbm_rate_usd`/`daily_amount_usd` added — see revision-log.md)**
   - Unique constraint on `(party_id, ledger_date)`.
 
 - [ ] **B.3 Define `vmi_billing_statements` table**
@@ -105,6 +105,7 @@ These tasks are design-phase decisions. Each must be resolved and recorded befor
 - [ ] **C.3 Implement the CRON endpoint**
   - File: `app/api/cron/vmi-ledger-sync/route.ts`
   - Runs the snapshot and delta queries for all active VMI parties.
+  - Reads each party's current `vmi_contracts.cbm_rate_usd` fresh at run time and computes `applied_cbm_rate_usd`/`daily_amount_usd = ending_cbm × applied_cbm_rate_usd` before insert. **(2026-08-08, design.md §2.1 step 6)**
   - Inserts one `vmi_cbm_ledger` row per party using `ON CONFLICT (party_id, ledger_date) DO NOTHING`.
   - Secured: must only accept requests from Vercel Cron (bearer token check).
   - Scheduled at `59 23 * * *` Asia/Manila (configure in `vercel.json`).
@@ -125,12 +126,13 @@ These tasks are design-phase decisions. Each must be resolved and recorded befor
 
 - [ ] **D.1 Implement period-average calculation**
   - File: `lib/billing/vmi-statement-generator.ts`
-  - Fetch all `vmi_cbm_ledger` rows for `(party_id, period_start, period_end)`.
-  - Compute `period_average_cbm = AVG(ending_cbm)`.
+  - Fetch all `vmi_cbm_ledger` rows for `(party_id, period_start, period_end)`, including `daily_amount_usd`.
+  - Compute `period_average_cbm = AVG(ending_cbm)` — **display/reference figure only as of 2026-08-08, not a calculation input; see D.2.**
   - Apply empty-period policy resolved in A.5.
 
 - [ ] **D.2 Implement storage charge and surcharge calculations**
-  - `storage_charge_usd = period_average_cbm × cbm_rate_usd × storage_period_days`
+  - `storage_charge_usd = SUM(daily_amount_usd)` across the fetched rows. **(2026-08-08, supersedes `period_average_cbm × cbm_rate_usd × storage_period_days` — see A.2 above and design.md §2.2 step 4.)**
+  - `applied_cbm_rate_usd` stored on the statement is the current contract rate at generation time, for display only (may not equal every day's actual rate if it varied within the period).
   - Surcharge: per-day calculation where `ending_cbm > cbm_threshold_contracted`.
 
 - [ ] **D.3 Implement additional charge line items**
@@ -177,14 +179,19 @@ These tasks are design-phase decisions. Each must be resolved and recorded befor
 
 ## Task Group E — UI / Dashboard
 
-- [ ] **E.1 Route: `/dashboard/vmi-billing`**
-  - Party selector (Office Admin sees all VMI parties; a vendor sees only their own).
+- [ ] **E.1 Route: `/billing-pricing/vmi`** *(2026-08-08: renamed from `/dashboard/vmi-billing`; now the VMI tab of the `/billing-pricing` shell shared with `13-trading-orders-and-pricing` — see design.md §6, `05-ui-shell-and-navigation` route catalog, and revision-log.md)*
+  - Office-only, gated `reporting.financial_read` (Office Admin/Supervisor). Party selector shows all active VMI parties — **not** a vendor self-service view; a VMI party's own statement access is `22-parties-portal`'s separate `vmi_statements.read` surface, unaffected by this route.
   - Period selector (year + month).
 
 - [ ] **E.2 Daily ledger table**
-  - Columns: date, beginning CBM, inbound CBM, outbound CBM, ending CBM, calculated_at.
+  - Columns, matching the client's own reference format: `DATE | BEGINNING CBM | IN (CBM) | OUT (CBM) | ENDING CBM | DAILY AMOUNT` — i.e. `ledger_date`, `beginning_cbm`, `inbound_cbm`, `outbound_cbm`, `ending_cbm`, `daily_amount_usd`. **(2026-08-08: `daily_amount_usd` column added; `calculated_at` dropped from the visible table — it remains queryable but is not one of the client's reference columns.)**
   - Filterable by party and month.
   - Read-only; no inline editing.
+
+- [ ] **E.4 `vmi_contracts` read-only display + edit sub-route** *(2026-08-08, design.md §6)*
+  - Read-only contract summary (rate, currency, charge-type flags) shown on the VMI tab for context.
+  - Edit form at `billing-pricing/vmi/contracts/[partyId]/edit`, reusing the existing `vmi_contracts` write RLS (§4) — no new capability.
+  - A rate change here must only affect the next CRON snapshot forward (§2.1 step 6); it must never rewrite existing `vmi_cbm_ledger` rows.
 
 - [ ] **E.3 Statement generation action**
   - Visible to Office Admin only.

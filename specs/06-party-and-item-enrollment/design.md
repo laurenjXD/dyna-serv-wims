@@ -41,7 +41,7 @@ No `lots`, `wrr_documents`, `wrr_items`, pricing tables, billing tables, user-ro
 
 The following column names are final per the approved `01` schema. All forms, validation schemas, server actions, and integration tests for this feature must use these exact names.
 
-**`parties`** — `id`, `code` (varchar 50, NOT NULL UNIQUE), `name` (varchar 255, NOT NULL), `contact_person` (varchar 255), `email` (varchar 255), `phone` (varchar 50), `tax_id` (varchar 50), `address` (text), `notes` (text), `is_active` (boolean NOT NULL, default `true`), `created_at`, `updated_at`.
+**`parties`** — `id`, `code` (varchar 50, NOT NULL UNIQUE), `name` (varchar 255, NOT NULL), `contact_person` (varchar 255), `email` (varchar 255), `phone` (varchar 50), `tax_id` (varchar 50), `address_1` (text), `address_2` (text), `payment_terms` (varchar 100), `notes` (text), `is_active` (boolean NOT NULL, default `true`), `created_at`, `updated_at`. **(2026-08-08: `address` split into `address_1`/`address_2`; `payment_terms` added — see revision-log.md)**
 
 **`party_roles`** — `id`, `party_id` (FK → `parties.id`, CASCADE on delete, NOT NULL), `role` (enum NOT NULL — approved values: `vendor`, `supplier`, `customer`, `end_customer`, `internal_warehouse`), `created_at`. No `updated_at`. No database-level unique constraint on `(party_id, role)` in the approved schema; the server action must enforce no duplicate role assignment per party.
 
@@ -112,7 +112,7 @@ The client may send a requested record identifier, but the server resolves the a
 ### Create
 
 1. User opens the party create route through an authorized capability (`parties.manage`).
-2. The form collects `code` (required, normalized, unique), `name` (required), `contact_person`, `email`, `phone`, `tax_id`, `address`, and `notes` using the exact column names from the approved `parties` schema. `is_active` defaults to `true`.
+2. The form collects `code` (required, normalized, unique), `name` (required), `contact_person`, `email`, `phone`, `tax_id`, `address_1`, `address_2`, `payment_terms`, and `notes` using the exact column names from the approved `parties` schema. `is_active` defaults to `true`.
 3. The user selects one or more business roles from the canonical `partyRoleEnum`: `vendor`, `supplier`, `customer`, `end_customer`, or `internal_warehouse`. These are business classifications only; they do not grant application access.
 4. The server revalidates uniqueness of `code`, role validity (no duplicate `(party_id, role)` pairs), and actor capability in one transaction.
 5. The `parties` row and any `party_roles` rows are committed, with an audit event if required by the approved audit design.

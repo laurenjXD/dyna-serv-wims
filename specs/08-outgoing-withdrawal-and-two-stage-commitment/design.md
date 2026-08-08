@@ -178,6 +178,25 @@ The Outgoing Ledger is a read-only, scope-filtered query over `inventory_transac
 
 Item code is the prominent first field in office review. Floor screens do not use the ledger's dense table; they use task cards and scan feedback.
 
+**Column list (added 2026-08-08)**, mirroring `07-incoming-receiving`'s Incoming Ledger column list and `01-core-data-model`'s `location_transaction_ledger`/`party_transaction_ledger` field set/Reference-column convention (design.md §3 item 4), so all of this project's transaction-ledger surfaces read consistently:
+
+| Column | Source |
+| --- | --- |
+| Date/time | `inventory_transactions.created_at` (dispatch event timestamp) |
+| Transaction # | `inventory_transactions.transaction_number` |
+| Item code | `items.code` via `inventory_transactions.item_id` — prominent first field per the paragraph above |
+| Item name | `items.name` |
+| Lot number | `lots.lot_number` via `inventory_transactions.lot_id` |
+| Qty | `inventory_transactions.qty` |
+| From location | `locations.label` via `inventory_transactions.from_location_id` |
+| Pick list # | `pick_lists.pick_list_number` via `inventory_transactions.pick_list_id` |
+| Customer party | `parties.name`/`code` via `pick_lists.customer_party_id` |
+| Acknowledgement receipt # | `acknowledgement_receipts.document_number`, resolved via the same `pick_list_id` (per `10`) |
+| Performed by | `performed_by_user_id` resolved to display name |
+| Reference | `inventory_transactions.ar_reference_no` |
+
+`to_location_id` is not shown — outgoing/dispatch movements leave the warehouse (no destination location within the facility), so this column is intentionally omitted rather than displayed empty. Flow type (`inventory_transactions.flow_type`) is available for filtering (VMI/Trading/Supplies) but not a default visible column, same as the Incoming Ledger. Once the transfer/ledger contract referenced above is finalized, transfer rows (`movement_type = 'transfer'`) will need their own `from`/`to` location pair shown instead of the pick-list columns — flagged here, not yet resolved.
+
 ## 10. Offline, security, and infrastructure boundary
 
 - Request creation, allocation, FIFO override, commitment, release, pricing, and final dispatch are Tier 2/online-only.
