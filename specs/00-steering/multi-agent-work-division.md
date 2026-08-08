@@ -16,6 +16,73 @@ None of the three agents share memory or a conversation history with each other.
 
 **The one rule that overrides everything else, unchanged from `CLAUDE.md`:** no application code is written against any feature whose `tasks.md` isn't `Status: Approved` with both sign-offs. This applies identically to all three agents. Writing requirements/design/tasks docs is always fine; writing application code against an unapproved spec is not, regardless of which agent or which track.
 
+## Wednesday Sprint Amendment — 2026-08-08 (deadline: 2026-08-11)
+
+**Read this section before the original track assignments below if you are joining on 2026-08-08 or later.**
+
+The M1+M2 deadline is Wednesday 2026-08-11. Track 1 has completed Phases 0–5 (`01`, `02`, `07`, `09`, `11`) and Phase 5 (`08` backend). The original track assignments are still valid for long-term ownership, but for the Wednesday sprint the three collaborators should re-focus as follows:
+
+### Sprint Track A — "Shell & Deploy" (new priority, Wednesday critical path)
+
+**Branch:** `track-1-core-floor-ops` (or a new `track-a-shell-deploy` branch from current `track-2-office-data`).
+
+**Goal: live preview URL by Monday 2026-08-10.**
+
+- Install `zod` package (`npm install zod`) — fixes 62 approval test failures and unblocks approval UI.
+- Implement `lib/shell/surface.ts`, `lib/shell/navigation.ts`, `lib/shell/state.ts` — the missing modules that cause 28 TypeScript errors.
+- Complete `ShellChrome.tsx` (add `<header>` landmark, mobile sidebar toggle, `StatusRegion`) — 3 RED tests waiting in `components/global/__tests__/ShellChrome.test.tsx`.
+- Wire Supabase auth end-to-end: login page, session cookie, redirect for unauthenticated.
+- `21-user-profile-and-settings` profile/settings pages — quick win once shell exists.
+- Vercel deployment: environment variables, preview URL, confirm migrations run on production Supabase.
+- **File ownership for this sprint:** `app/(authenticated)/layout.tsx`, `components/global/ShellChrome.tsx`, `lib/shell/*`, `app/login/`, `app/layout.tsx`, Vercel config. Do NOT touch `lib/withdrawal/*`, `lib/actions/withdrawals.ts`, or any spec 08/10/17/18 files.
+
+### Sprint Track B — "Withdrawal & Floor UI" (this branch: `track-2-office-data`)
+
+**Goal: full receiving → transfer → withdrawal → dispatch cycle visible end-to-end.**
+
+- `08` floor UI pages: `/pick-lists/[id]/pick/page.tsx`, `/pick-lists/[id]/dispatch/page.tsx` (floor surface, 375px first).
+- `10` pick-list backend trigger: consumable event from `commitWithdrawal` → pick-list document record created (PDF deferred to post-M2).
+- Approval queue UI pages: `/approvals/page.tsx`, `/approvals/[id]/page.tsx` — office surface once shell from Track A merges.
+- Outgoing ledger UI: `/outgoing-ledger/page.tsx` — office surface.
+- RBAC admin UI cycle 2.5 (once shell exists from Track A).
+- **File ownership:** `app/(authenticated)/pick-lists/*`, `app/(authenticated)/outgoing-ledger/*`, `app/(authenticated)/approvals/*`, `lib/actions/withdrawals.ts`, `lib/db/queries/withdrawals.ts`.
+
+### Sprint Track C — "M2 Stretch" (new branch: `track-c-m2-stretch` from `main`)
+
+**Goal: item categorization working; barcode lookup functional.**
+
+- `17-product-categorization-and-classification`: migrations, category/subcategory CRUD UI, item-to-category assignment — most achievable M2 item.
+- `18-barcode-integration`: schema + lookup API; hardware scanner tests deferred to pre-launch QA.
+- **File ownership:** `specs/17-*/*`, `specs/18-*/*`, `lib/db/schema/categories.ts`, `lib/db/queries/categories.ts`, `lib/actions/categories.ts`, `app/(authenticated)/categories/*`.
+- **Migration rule:** Track C's first migration must be numbered 0018 or higher — check `supabase/migrations/` on `main` before creating. Request via cross-track protocol if a lower number is needed and Track B hasn't vacated it.
+
+### Wednesday sprint merge plan
+
+1. All three sprint tracks rebase from `main` before starting.
+2. Track A merges first (shell is a dependency of Track B and C's UI pages). Target: Monday 2026-08-10.
+3. Track B and C rebase from `main` after Track A merges, then merge independently.
+4. Shared files (`supabase/migrations/`, `lib/db/schema/index.ts`): each track adds only its own entries; resolve on PR.
+
+### Actual phase status as of 2026-08-08
+
+| Track | Phase | Status |
+|---|---|---|
+| Track 1 | 0 Scaffolding | Done |
+| Track 1 | 1 `01-core-data-model` | Done, real-Postgres verified |
+| Track 1 | 2 `02-rbac-roles` (cycles 2.1–2.4) | Done, real-Postgres verified |
+| Track 1 | 2.5a `05-ui-shell-and-navigation` | RED tests written; `lib/shell/*` missing — Sprint Track A |
+| Track 1 | 3 `07-incoming-receiving` | Implemented, VERIFY complete 2026-08-08 |
+| Track 1 | 4 `11-transfer-and-inspection` | Implemented, VERIFY complete 2026-08-08 |
+| Track 1 | 5 `08-outgoing-withdrawal` | Backend GREEN (68 tests); floor UI pending Sprint Track B |
+| Track 1 | 6 `10-pick-list-and-acknowledgement-receipt` | Backend trigger pending; PDF deferred |
+| Track 2 | A `06-party-and-item-enrollment` | Implemented, VERIFY complete |
+| Track 2 | B `09-approval-queue` | Implemented, VERIFY complete 2026-08-08 |
+| Track 2 | C `14-notifications-and-alerts` | Not started |
+| Track 2 | D `17-product-categorization` | Not started — Sprint Track C |
+| Track 2 | E `18-barcode-integration` | Not started — Sprint Track C |
+| Track 3 | I `16-reporting-and-analytics` | Migrations + query layer partial (Track 3 cherry-picked) |
+| Track 3 | II–V `12`/`13`/`22`/`15` | Not started |
+
 ## The three tracks
 
 Split by dependency chain, not by spec count — specs within a track are tightly coupled to each other; specs across tracks mostly aren't. Each track is one agent's exclusive responsibility for its listed specs' `design.md`/`tasks.md` content and application code. Agents do not edit another track's spec folders. If Track 2 or 3 needs something Track 1 owns, they open a named request (see "Cross-track requests" below) instead of editing it directly.
