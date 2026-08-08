@@ -156,6 +156,18 @@ GRANT USAGE ON SCHEMA public TO authenticated;
 --> statement-breakpoint
 GRANT USAGE ON SCHEMA public TO rbac_definer;
 --> statement-breakpoint
+-- CREATE, not just USAGE -- same reason as rbac_internal above: this
+-- migration's `ALTER VIEW public.party_visible_items OWNER TO rbac_definer`
+-- (near the end of this file) requires it, and that requirement was missed
+-- here the first time for the same reason it was missed on rbac_internal --
+-- caught only once this migration was actually run against Supabase's
+-- non-superuser `postgres` role (2026-08-08). rbac_definer is NOLOGIN and
+-- not reachable by `authenticated`/`anon`, so this does not expand what any
+-- externally-reachable session can do -- it only lets the already-trusted
+-- migration role (acting as rbac_definer's member) finish reassigning
+-- ownership of objects this same migration creates.
+GRANT CREATE ON SCHEMA public TO rbac_definer;
+--> statement-breakpoint
 
 -- rbac_definer's table-scoped SELECT-only access to the specific RBAC tables
 -- the five helpers read -- no broader grant.
