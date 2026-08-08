@@ -9,8 +9,10 @@ export const parties = pgTable("parties", {
   contactPerson: varchar("contact_person", { length: 255 }),
   email: varchar("email", { length: 255 }),
   phone: varchar("phone", { length: 50 }),
-  taxId: varchar("tax_id", { length: 50 }), // Tax ID / TIN
-  address: text("address"),
+  taxId: varchar("tax_id", { length: 50 }),
+  address1: text("address_1"),
+  address2: text("address_2"),
+  paymentTerms: varchar("payment_terms", { length: 100 }),
   notes: text("notes"),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
