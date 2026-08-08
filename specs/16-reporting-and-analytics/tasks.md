@@ -232,19 +232,21 @@ Dependency on spec `04` (scheduled infrastructure) is partial: the `daily_transa
 
 Before setting `Status: Approved`, both signatories must confirm all items below:
 
-- [x] `01-core-data-model` is `Status: Approved` with both sign-offs.
-- [x] `02-rbac-roles` is `Status: Approved` with both sign-offs; `reporting.party_read` and `reporting.financial_read` are in the canonical capability catalog, with financial access granted to Supervisor and Administrator.
-- [x] `05-ui-shell-and-navigation` is `Status: Approved` with both sign-offs.
-- [x] All ten reusable components are implemented, exported, and pass component tests.
-- [x] No analytics query performs a raw aggregate against `lot_location_balances` — confirmed by query plan review.
-- [x] `daily_transaction_counts` materialized view migration is present and `CONCURRENTLY` refresh is verified.
-- [x] All analytics indexes from `design.md` §7.1 are present in migrations and do not conflict with `01`.
-- [x] Party user data isolation is verified by real-Postgres integration tests for every analytics domain.
-- [x] Sensitive fields (`buying_price`, `selling_price`, `default_supplier_party_id`) are absent from all party-user responses — confirmed by column-presence test, not value-check.
-- [x] All four CSV export endpoints are scoped by RLS, re-verify capability on every call, and paginate correctly.
-- [x] Dashboard first paint completes in under 2 000ms on a 10 000+ row seeded dataset.
-- [x] Zero WCAG AA violations reported by axe-core on all analytics pages.
-- [x] All Playwright E2E tests pass.
-- [x] `db-migration-verifier` reports PASS on all migrations introduced by this spec.
-- [x] `rbac-rls-reviewer` reports no findings on analytics pages and export handlers.
-- [x] `stock_entries` does not appear anywhere in this feature's code or queries.
+**Corrected 2026-08-08**: every item below was marked `[x]` since this section was first drafted, before any of this spec's actual implementation existed (traced via `git log` to the original spec-drafting commit). That's not evidence of real completion — per this project's own standing rule, a checked box must correspond to an actual verification that happened, not "should be fine." Re-verified each item against the real code on this branch as of today; corrected to match.
+
+- [x] `01-core-data-model` is `Status: Approved` with both sign-offs. (Spec-level fact, genuinely true.)
+- [x] `02-rbac-roles` is `Status: Approved` with both sign-offs; `reporting.party_read` and `reporting.financial_read` are in the canonical capability catalog, with financial access granted to Supervisor and Administrator. (Spec-level fact, genuinely true.)
+- [x] `05-ui-shell-and-navigation` is `Status: Approved` with both sign-offs. (Spec-level fact, genuinely true — the actual shell UI code is separate, in-progress Track 1 work, not this criterion.)
+- [ ] All ten reusable components are implemented, exported, and pass component tests. **Partially true**: all ten exist in `components/analytics/` and are exported. Not true: only `components/analytics/__tests__/utils.test.ts` exists — no per-component render test for any of the ten.
+- [x] No analytics query performs a raw aggregate against `lot_location_balances` — confirmed by query plan review. (Grepped `lib/analytics/queries/*.ts`: no raw aggregate outside `lot_inventory_totals` usage.)
+- [x] `daily_transaction_counts` materialized view migration is present and `CONCURRENTLY` refresh is verified. **Real as of 2026-08-08** — `supabase/migrations/0006_daily_transaction_counts.sql`, delivered by Track 1 and independently `db-migration-verifier`-verified (held-open-transaction proof that `CONCURRENTLY` genuinely doesn't block reads).
+- [x] All analytics indexes from `design.md` §7.1 are present in migrations and do not conflict with `01`. **Real as of 2026-08-08** — `supabase/migrations/0007_analytics_indexes.sql`, same delivery, `EXPLAIN`-verified planner adoption.
+- [ ] Party user data isolation is verified by real-Postgres integration tests for every analytics domain. Not done — no integration test in `lib/analytics/queries/__tests__/` runs against real Postgres or exercises RLS; the two existing test files (`export.test.ts`, `shared.test.ts`) are unit-level.
+- [ ] Sensitive fields (`buying_price`, `selling_price`, `default_supplier_party_id`) are absent from all party-user responses — confirmed by column-presence test, not value-check. Not done — no test file references any of these three fields.
+- [ ] All four CSV export endpoints are scoped by RLS, re-verify capability on every call, and paginate correctly. Not done — `lib/analytics/csv.ts` (serialization, formula-injection protection) exists, but no route handler wires it to the now-available RLS wrapper; nothing is mounted yet.
+- [ ] Dashboard first paint completes in under 2 000ms on a 10 000+ row seeded dataset. Not done — no dashboard page exists yet.
+- [ ] Zero WCAG AA violations reported by axe-core on all analytics pages. Not done — no pages exist yet.
+- [ ] All Playwright E2E tests pass. Not done — no Playwright suite exists for this spec yet.
+- [x] `db-migration-verifier` reports PASS on all migrations introduced by this spec. True for the migration files themselves (`0006`/`0007`, verified as noted above) — does not cover the query-function-to-migration integration, which is the still-open item above.
+- [ ] `rbac-rls-reviewer` reports no findings on analytics pages and export handlers. Not done — no pages or export handlers exist yet to review.
+- [x] `stock_entries` does not appear anywhere in this feature's code or queries. (Grepped `lib/`, `components/`, `app/` — zero matches.)
