@@ -79,6 +79,7 @@ Testing: Unit state/validation tests; real-Postgres transition/RLS/concurrency i
 - [ ] Prevent draft orders from reserving/decrementing inventory or generating final documents.
 - [ ] Implement priced-ready state only after a valid immutable price snapshot exists.
 - [ ] Define post-commit cancellation/release integration with `08` without editing frozen pricing history.
+- [ ] **(2026-08-08)** Build the Trading Pricing & Margin Ledger tab at `billing-pricing/trading` — the `13`-owned half of the shared `/billing-pricing` shell (`12-vmi-billing` owns the VMI tab). Computed-on-read query (no stored table, no CRON — see design.md §7a) joining `trading_order_items`/`trading_price_snapshots`/`items.buying_price`/dispatch timestamp via `inventory_transactions.pick_list_id`. Office-only, `reporting.financial_read`; `UNIT COST`/`COST AMOUNT`/`MARGIN`/`MARGIN %` columns additionally gated `trading.margin_view` and omitted (not nulled) without it. This route supersedes the earlier, never-built `trading/pricing/history/page.tsx` placeholder — do not build both.
 
 ### 5. Implement price resolution and freeze
 

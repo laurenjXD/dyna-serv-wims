@@ -33,7 +33,7 @@ It does not define application roles/RLS, inventory transactions, receiving, pri
 
 ### R1. Party enrollment
 
-1. An authorized user SHALL be able to create a party with `code`, `name`, contact person, email, phone, tax ID, address, and notes as defined by the approved core-data schema.
+1. An authorized user SHALL be able to create a party with `code`, `name`, contact person, email, phone, tax ID, address line 1, address line 2, payment terms, and notes as defined by the approved core-data schema.
 2. A party code SHALL be required, normalized, and unique according to the approved database constraint.
 3. A party name SHALL be required and validated for safe length/content limits.
 4. A party SHALL have one or more approved business `party_roles` where required by the business flow; duplicate role assignments SHALL be rejected.
