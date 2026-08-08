@@ -38,7 +38,6 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-// @ts-expect-error - component does not exist yet; this is the RED step.
 import { FloorPrimaryAction } from "@/components/global/FloorPrimaryAction";
 
 describe("FloorPrimaryAction (brand-design-system.md §9, requirements.md R7.7)", () => {

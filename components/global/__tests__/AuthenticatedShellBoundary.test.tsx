@@ -48,7 +48,6 @@ import type {
   AuthorizationResolution,
   RequestAuthorizationResolver,
 } from "@/lib/rbac/session";
-// @ts-expect-error - component does not exist yet; this is the RED step.
 import { AuthenticatedShellBoundary } from "@/components/global/AuthenticatedShellBoundary";
 
 function deferredResolver(): {

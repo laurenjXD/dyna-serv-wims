@@ -48,7 +48,6 @@ vi.mock("@/components/reporting/ActivityHeatmap", () => ({
   ActivityHeatmap: () => <div data-testid="activity-heatmap-slot" />,
 }));
 
-// @ts-expect-error - component does not exist yet; this is the RED step.
 import { LandingPage } from "@/components/global/LandingPage";
 
 const sampleData: LandingPageSummaryData = {

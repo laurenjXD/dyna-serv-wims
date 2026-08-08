@@ -26,7 +26,6 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { SHELL_STATE_KINDS, type ShellState } from "@/lib/shell/state";
-// @ts-expect-error - component does not exist yet; this is the RED step.
 import { ShellStateView } from "@/components/global/ShellStateView";
 
 // Minimal, valid payload per state.ts's discriminated union for every kind

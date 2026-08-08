@@ -42,7 +42,6 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import type { AuthorizationContext } from "@/lib/rbac/session";
-// @ts-expect-error - component does not exist yet; this is the RED step.
 import { ShellNavigation } from "@/components/global/ShellNavigation";
 
 const receivingOnlyContext: Pick<AuthorizationContext, "grants"> = {
