@@ -3,27 +3,12 @@
 // jest-dom" matchers here is a no-op for plain "node"-environment logic
 // tests since they never call the extended matchers.
 import "@testing-library/jest-dom/vitest";
-
-// @testing-library/react's built-in auto-cleanup only registers itself when
-// it detects a *global* `afterEach` (see its dist/index.js: `typeof
-// afterEach === 'function'`). This project intentionally does not set
-// `test.globals: true` in vitest.config.mts (per-file explicit imports are
-// preferred), so that auto-detection never fires and DOM from one test
-// leaks into the next within the same file. Register cleanup explicitly
-// instead so every `*.test.tsx` file gets a fresh document.body per test
-// regardless of that global-detection quirk.
-<<<<<<< HEAD
-import { afterEach } from "vitest";
-=======
 import { afterEach, vi } from "vitest";
->>>>>>> 94bc52b5ffa0381afc26f1c0ea5fea13991c1e6f
 import { cleanup } from "@testing-library/react";
 
 afterEach(() => {
   cleanup();
 });
-<<<<<<< HEAD
-=======
 
 // ─── Global module stubs for unit tests ──────────────────────────────────────
 //
@@ -71,4 +56,3 @@ vi.mock("@/lib/db/client", () => {
     },
   };
 });
->>>>>>> 94bc52b5ffa0381afc26f1c0ea5fea13991c1e6f
