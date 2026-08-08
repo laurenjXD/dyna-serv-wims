@@ -295,7 +295,7 @@ export function PartyForm({ action, party, cancelHref }: PartyFormProps) {
                 {PARTY_ROLES.map(({ value, label }) => (
                   <label
                     key={value}
-                    className="flex cursor-pointer items-center gap-2 font-body text-body-md text-on-surface"
+                    className="flex cursor-pointer items-center gap-2 font-label text-label text-on-surface"
                   >
                     <input
                       type="checkbox"
@@ -324,7 +324,7 @@ export function PartyForm({ action, party, cancelHref }: PartyFormProps) {
         <button
           type="submit"
           disabled={isPending}
-          className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:opacity-50"
+          className="btn-diagonal-cut flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:opacity-50"
         >
           {isPending
             ? "Saving…"

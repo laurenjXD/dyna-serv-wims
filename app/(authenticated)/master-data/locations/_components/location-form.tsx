@@ -286,7 +286,7 @@ export function LocationForm({
           </span>
         </p>
         {labelPreview ? (
-          <p className="mt-1 font-mono text-mono-xl font-bold text-brand-navy">
+          <p className="mt-1 font-mono text-mono-md font-bold text-brand-navy">
             {labelPreview}
           </p>
         ) : (
@@ -317,7 +317,7 @@ export function LocationForm({
         <button
           type="submit"
           disabled={isPending}
-          className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:opacity-50"
+          className="btn-diagonal-cut flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:opacity-50"
         >
           {isPending
             ? "Saving…"

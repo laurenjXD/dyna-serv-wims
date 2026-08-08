@@ -47,7 +47,7 @@ export default async function ItemsPage({ searchParams }: PageProps) {
     <div className="mx-auto max-w-container">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-heading font-bold text-headline-md text-brand-navy">
+          <h1 className="font-heading font-semibold text-headline-md text-brand-navy">
             Items
           </h1>
           <p className="mt-1 font-body text-body-md text-text-grey">
@@ -58,7 +58,7 @@ export default async function ItemsPage({ searchParams }: PageProps) {
         {canManage && (
           <Link
             href="/master-data/items/new"
-            className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="btn-diagonal-cut flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy"
           >
             New Item
           </Link>
@@ -95,7 +95,7 @@ export default async function ItemsPage({ searchParams }: PageProps) {
         </form>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
+      <div className="mt-4 overflow-hidden rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="font-body text-body-md text-text-grey">
@@ -156,7 +156,7 @@ export default async function ItemsPage({ searchParams }: PageProps) {
                     <td className="px-4 py-3 text-right">
                       <Link
                         href={`/master-data/items/${item.id}`}
-                        className="font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                        className="inline-flex h-11 items-center font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
                       >
                         View
                       </Link>

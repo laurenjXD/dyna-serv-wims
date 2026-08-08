@@ -17,7 +17,7 @@ export default async function NewLocationPage() {
   return (
     <div className="mx-auto max-w-2xl">
       <div className="mb-6">
-        <h1 className="font-heading font-bold text-headline-md text-brand-navy">
+        <h1 className="font-heading font-semibold text-headline-md text-brand-navy">
           New Location
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">
@@ -26,7 +26,7 @@ export default async function NewLocationPage() {
         </p>
       </div>
 
-      <div className="rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
         <LocationForm
           action={createLocationAction}
           cancelHref="/master-data/locations"

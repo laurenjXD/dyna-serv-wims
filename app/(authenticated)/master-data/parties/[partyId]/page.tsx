@@ -32,9 +32,13 @@ export default async function PartyDetailPage({
 
   const resolver = await createPageResolver();
 
-  // Require at minimum parties.read
-  const readPerm = await requirePermission(resolver, "parties.read");
-  if (readPerm.kind !== "authorized") {
+  // Require parties.read for the page and inventory.read for the Transaction Ledger
+  // (inventory_transactions RLS policy gates on inventory.read, not parties.read)
+  const [readPerm, inventoryPerm] = await Promise.all([
+    requirePermission(resolver, "parties.read"),
+    requirePermission(resolver, "inventory.read"),
+  ]);
+  if (readPerm.kind !== "authorized" || inventoryPerm.kind !== "authorized") {
     notFound();
   }
 
@@ -74,7 +78,7 @@ export default async function PartyDetailPage({
               <li>
                 <Link
                   href="/master-data/parties"
-                  className="hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy rounded"
+                  className="inline-flex h-11 items-center rounded hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 >
                   Parties
                 </Link>
@@ -85,7 +89,7 @@ export default async function PartyDetailPage({
               </li>
             </ol>
           </nav>
-          <h1 className="font-heading font-bold text-headline-md text-brand-navy">
+          <h1 className="font-heading font-semibold text-headline-md text-brand-navy">
             {party.name}
           </h1>
           <p className="mt-1 font-mono text-mono-md text-text-grey">
@@ -118,7 +122,7 @@ export default async function PartyDetailPage({
       </div>
 
       {/* Master data */}
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-brand-navy">
           Party Information
         </h2>
@@ -181,7 +185,7 @@ export default async function PartyDetailPage({
       </div>
 
       {/* Business roles + Contact Party action (interactive, client component) */}
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
         <PartyDetailActions
           partyId={partyId}
           roles={party.roles}
@@ -192,7 +196,7 @@ export default async function PartyDetailPage({
 
       {/* Deactivation zone — only for active parties that the user can manage */}
       {canManage && party.isActive && (
-        <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+        <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
           <h2 className="font-heading font-semibold text-data-display text-on-surface">
             Danger Zone
           </h2>
@@ -207,7 +211,7 @@ export default async function PartyDetailPage({
       )}
 
       {/* Transaction Ledger — design.md §5b */}
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-brand-navy">
           Transaction Ledger
         </h2>

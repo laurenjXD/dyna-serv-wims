@@ -27,8 +27,13 @@ export default async function LocationDetailPage({
 
   const resolver = await createPageResolver();
 
-  const readPerm = await requirePermission(resolver, "locations.read");
-  if (readPerm.kind !== "authorized") {
+  // Require locations.read for the page and inventory.read for the Movement Ledger
+  // (inventory_transactions RLS policy gates on inventory.read, not locations.read)
+  const [readPerm, inventoryPerm] = await Promise.all([
+    requirePermission(resolver, "locations.read"),
+    requirePermission(resolver, "inventory.read"),
+  ]);
+  if (readPerm.kind !== "authorized" || inventoryPerm.kind !== "authorized") {
     notFound();
   }
 
@@ -64,7 +69,7 @@ export default async function LocationDetailPage({
               <li>
                 <Link
                   href="/master-data/locations"
-                  className="hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy rounded"
+                  className="inline-flex h-11 items-center rounded hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 >
                   Locations
                 </Link>
@@ -105,7 +110,7 @@ export default async function LocationDetailPage({
       </div>
 
       {/* Location details */}
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-brand-navy">
           Location Information
         </h2>
@@ -161,7 +166,7 @@ export default async function LocationDetailPage({
 
       {/* Deactivation zone */}
       {canManage && location.isActive && (
-        <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+        <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
           <h2 className="font-heading font-semibold text-data-display text-on-surface">
             Danger Zone
           </h2>
@@ -176,7 +181,7 @@ export default async function LocationDetailPage({
       )}
 
       {/* Movement Ledger — design.md §6a Movement Ledger */}
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-brand-navy">
           Movement Ledger
         </h2>

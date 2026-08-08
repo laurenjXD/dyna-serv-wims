@@ -40,7 +40,7 @@ export default async function ItemDetailPage({ params }: PageProps) {
           <nav className="mb-2" aria-label="Breadcrumb">
             <ol className="flex items-center gap-1 font-body text-body-sm text-text-grey">
               <li>
-                <Link href="/master-data/items" className="hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy rounded">
+                <Link href="/master-data/items" className="inline-flex h-11 items-center rounded hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy">
                   Items
                 </Link>
               </li>
@@ -50,7 +50,7 @@ export default async function ItemDetailPage({ params }: PageProps) {
               </li>
             </ol>
           </nav>
-          <h1 className="font-heading font-bold text-headline-md text-brand-navy">
+          <h1 className="font-heading font-semibold text-headline-md text-brand-navy">
             {item.name}
           </h1>
           <p className="mt-1 font-mono text-mono-md text-text-grey">
@@ -80,7 +80,7 @@ export default async function ItemDetailPage({ params }: PageProps) {
       </div>
 
       {/* Core identifiers */}
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-brand-navy">
           Item Information
         </h2>
@@ -163,7 +163,7 @@ export default async function ItemDetailPage({ params }: PageProps) {
       </div>
 
       {/* Dimensions and volume */}
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-brand-navy">
           Dimensions &amp; Volume
         </h2>
@@ -229,7 +229,7 @@ export default async function ItemDetailPage({ params }: PageProps) {
 
       {/* Deactivation zone */}
       {canManage && item.isActive && (
-        <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+        <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
           <h2 className="font-heading font-semibold text-data-display text-on-surface">
             Danger Zone
           </h2>
@@ -244,7 +244,7 @@ export default async function ItemDetailPage({ params }: PageProps) {
       )}
 
       {/* Reference prices — clearly labelled as non-final */}
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-brand-navy">
           Reference Prices
         </h2>

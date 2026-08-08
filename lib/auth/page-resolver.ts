@@ -10,7 +10,7 @@
 //   lib/rbac/session.ts — createRequestAuthorizationResolver
 //   lib/supabase/server.ts — createClient (SSR-safe)
 
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull, lte, or } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
 import { createRequestAuthorizationResolver } from "@/lib/rbac/session";
 import type { RawAuthorizationRecord } from "@/lib/rbac/session";
@@ -65,6 +65,8 @@ export async function createPageResolver() {
           and(
             eq(userRoles.userId, userId),
             isNull(userRoles.revokedAt),
+            lte(userRoles.validFrom, new Date()),
+            or(isNull(userRoles.validUntil), gt(userRoles.validUntil, new Date())),
             eq(roles.isActive, true),
             eq(permissions.isActive, true),
           ),
@@ -81,6 +83,8 @@ export async function createPageResolver() {
           and(
             eq(userPartyScopes.userId, userId),
             isNull(userPartyScopes.revokedAt),
+            lte(userPartyScopes.validFrom, new Date()),
+            or(isNull(userPartyScopes.validUntil), gt(userPartyScopes.validUntil, new Date())),
           ),
         );
 

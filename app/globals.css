@@ -1,3 +1,10 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer utilities {
+  /* Brand diagonal-cut shape for office primary CTA buttons (brand-design-system.md §7, §9) */
+  .btn-diagonal-cut {
+    clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 100%, 0 100%);
+  }
+}
