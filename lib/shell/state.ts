@@ -1,8 +1,15 @@
 // Shell global state contract — a discriminated union, never a collapsed
-// generic-error type.
+// generic-error type. Also exports `useShellSidebar`, the client-only hook
+// backing ShellChrome's mobile nav drawer toggle.
 //
 // Traceability: specs/05-ui-shell-and-navigation/design.md §3.4
-// ("Application state catalog", 17 distinct rows) and requirements.md R6.6.
+// ("Application state catalog", 17 distinct rows), requirements.md R6.6,
+// and design.md §6 ("At narrow mobile widths the sidebar collapses to a
+// hamburger/drawer").
+
+"use client";
+
+import { useState } from "react";
 
 export type ShellStateKind =
   | "session_checking"
@@ -67,3 +74,30 @@ export type ShellState =
   | { kind: "storage_attention" }
   | { kind: "online_required"; action: string }
   | { kind: "navigation_transition" };
+
+// ---------------------------------------------------------------------------
+// Sidebar open/close hook (client-only)
+// ---------------------------------------------------------------------------
+
+export interface ShellSidebarState {
+  isOpen: boolean;
+  open: () => void;
+  close: () => void;
+  toggle: () => void;
+}
+
+/**
+ * Manages the mobile navigation drawer open/close state for ShellChrome.
+ * Must only be used inside a "use client" component. Intentionally simple:
+ * useState only, no Zustand, no Context, no external state library.
+ */
+export function useShellSidebar(): ShellSidebarState {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return {
+    isOpen,
+    open: () => setIsOpen(true),
+    close: () => setIsOpen(false),
+    toggle: () => setIsOpen((prev) => !prev),
+  };
+}
