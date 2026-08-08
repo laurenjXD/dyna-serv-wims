@@ -117,6 +117,9 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'rbac_definer') THEN
     CREATE ROLE rbac_definer NOLOGIN NOINHERIT BYPASSRLS;
   END IF;
+  -- Grant postgres membership so ALTER FUNCTION ... OWNER TO rbac_definer works
+  -- in Supabase's managed environment (postgres is not a true superuser there).
+  GRANT rbac_definer TO postgres;
 END $$;
 --> statement-breakpoint
 
