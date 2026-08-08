@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 // Authenticated route-group layout — the actual integration point wiring
 // AuthenticatedShellBoundary + ShellNavigation into the real Next.js app,
 // per specs/05-ui-shell-and-navigation/design.md §4/§7.
@@ -9,15 +8,6 @@
 // function shape Next.js can serialize across the Server->Client boundary.
 // See ./actions.ts for the known 02-rbac-roles backend seam gap
 // (`loadAuthorizationRecord` has no real query yet).
-=======
-// Authenticated route-group layout — wires AuthenticatedShellBoundary +
-// ShellNavigation into the real Next.js app per
-// specs/05-ui-shell-and-navigation/design.md §4/§7.
-//
-// Hands AuthenticatedShellBoundary a resolver whose `getContext` is the
-// `resolveShellAuthorization` Server Action (./actions.ts) — the one
-// function shape Next.js can serialize across the Server->Client boundary.
->>>>>>> 94bc52b5ffa0381afc26f1c0ea5fea13991c1e6f
 import type { ReactNode } from "react";
 import type { RequestAuthorizationResolver } from "@/lib/rbac/session";
 import { AuthenticatedShellBoundary } from "@/components/global/AuthenticatedShellBoundary";
