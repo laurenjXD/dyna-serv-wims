@@ -1,0 +1,61 @@
+// Navigation registry filtering — capability-based visibility and surface
+// presentation selection.
+//
+// Traceability:
+// - specs/05-ui-shell-and-navigation/design.md §5 (registry rules: hidden
+//   not disabled, capability keys from 02 catalog, surface determines which
+//   nav presentation shows an entry).
+// - requirements.md R3.4 (visibility from server-provided capability
+//   context; entries without a required capability are hidden entirely).
+//
+// Neither function is an authorization gate — authorization is enforced
+// server-side on every request. These functions are presentation helpers only.
+
+import type { AuthorizationContext } from "@/lib/rbac/session";
+import type { SessionPresentationTier } from "./surface";
+import type { RouteRegistryEntry } from "./registry";
+import { ROUTE_REGISTRY } from "./registry";
+
+/**
+ * Returns the subset of ROUTE_REGISTRY entries the current session may see.
+ *
+ * An entry with `capability: null` is unconditionally included (only `/sync`,
+ * `/`, `/profile`, and `/portal` fall into this category per the registry).
+ * An entry whose capability the grants array does not cover is excluded
+ * entirely — never disabled-and-visible (design.md §5, R3.4).
+ */
+export function filterVisibleRoutes(
+  context: Pick<AuthorizationContext, "grants">,
+): RouteRegistryEntry[] {
+  return ROUTE_REGISTRY.filter((entry) => {
+    if (entry.capability === null) return true;
+    return context.grants.some(
+      (g) =>
+        g.resource === entry.capability!.resource &&
+        g.action === entry.capability!.action,
+    );
+  });
+}
+
+/**
+ * Filters an already-capability-filtered route list to only the entries
+ * appropriate for the current session's presentation tier.
+ *
+ * Surface rules (design.md §3.3):
+ * - "shared" entries are shown to all tiers.
+ * - "floor" entries are shown to floor-tier sessions only.
+ * - "office" entries are shown to office-tier sessions only.
+ * - "party" entries are shown to party-tier sessions only.
+ */
+export function selectRoutesForPresentation(
+  routes: RouteRegistryEntry[],
+  tier: SessionPresentationTier,
+): RouteRegistryEntry[] {
+  return routes.filter((entry) => {
+    if (entry.surface === "shared") return true;
+    if (tier === "floor") return entry.surface === "floor";
+    if (tier === "office") return entry.surface === "office";
+    if (tier === "party") return entry.surface === "party";
+    return false;
+  });
+}
