@@ -133,7 +133,7 @@ export async function getPartyWithRoles(
       email: parties.email,
       phone: parties.phone,
       taxId: parties.taxId,
-      address: parties.address,
+      address: parties.address1,
       notes: parties.notes,
       isActive: parties.isActive,
       createdAt: parties.createdAt,

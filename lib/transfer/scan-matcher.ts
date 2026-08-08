@@ -54,7 +54,7 @@ export type TransferScanResult =
 export function matchTransferScan(
   barcode: string,
   lines: TransferLine[],
-  phase: "source" | "destination"
+  _phase: "source" | "destination"
 ): TransferScanResult {
   // Guard: reject empty or whitespace-only barcodes
   if (barcode.trim() === "") {
