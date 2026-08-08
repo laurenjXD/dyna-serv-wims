@@ -6,6 +6,29 @@ import "@testing-library/jest-dom/vitest";
 import { afterEach, vi } from "vitest";
 import { cleanup } from "@testing-library/react";
 
+// ─── Web Audio API stub for jsdom ─────────────────────────────────────────────
+//
+// jsdom does not implement the Web Audio API. Component tests that exercise
+// ScanFeedbackProvider (and any other component that uses AudioContext) call
+// vi.spyOn(window, "AudioContext", "get") to inject a mock constructor, which
+// requires the property to already exist as an accessor on window. Without this
+// stub the spy throws "The property 'AudioContext' is not defined on the object."
+//
+// Defining it here as a configurable accessor (get + set) lets the spy replace
+// the getter, and lets tests directly assign a mock with window.AudioContext = fn.
+// The default value is undefined so any component that tries to use the real
+// AudioContext in the test environment hits the try/catch and silently skips audio.
+if (typeof window !== "undefined" && !Object.prototype.hasOwnProperty.call(window, "AudioContext")) {
+  let _webAudioContext: unknown = undefined;
+  Object.defineProperty(window, "AudioContext", {
+    get: () => _webAudioContext,
+    set: (value: unknown) => {
+      _webAudioContext = value;
+    },
+    configurable: true, // required for vi.spyOn to replace the getter in tests
+  });
+}
+
 afterEach(() => {
   cleanup();
 });
