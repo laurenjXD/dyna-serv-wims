@@ -5,6 +5,9 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  // tsconfig.json sets jsx: "preserve" for Next's SWC pipeline, which
+  // Vitest's own esbuild transform doesn't share — needed for any *.test.tsx.
+  esbuild: { jsx: "automatic" },
   test: {
     environment: "node",
     pool: "vmThreads",
