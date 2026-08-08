@@ -1,0 +1,110 @@
+-- Fix: `lot_inventory_totals` (0002_lot_inventory_totals_and_indexes.sql)
+-- was created before RLS existed (0008_rls_policies.sql) and never received
+-- a GRANT for `authenticated`, nor a `security_invoker` setting. Bug found
+-- by test-writer while building Track 3's RLS-aware analytics executor:
+-- 16-reporting-and-analytics/requirements.md's NFR-1 mandates
+-- `lot_inventory_totals` as the sole aggregation source for inventory
+-- metrics, but every `authenticated` caller -- including global-scope staff
+-- -- currently gets `permission denied` querying it.
+--
+-- Real-Postgres verification performed before writing this migration
+-- (disposable Postgres 16 container, 0001-0008 applied in sequence, then
+-- tested by hand before deciding the fix -- see the sign-off note at the
+-- end of this file for the full result log):
+--
+-- 1. Ownership/privilege finding: after 0001-0008 apply, `lot_inventory_
+--    totals` is owned by whichever role ran the migrations (in this
+--    project's Supabase environment, `postgres`/`supabase_admin`; the
+--    local verification used the docker `postgres:16` image's default
+--    superuser role as the closest analogue). That owner is a
+--    superuser/BYPASSRLS role. `pg_class.relacl` for the view is empty (no
+--    grants at all beyond the owner's own implicit privilege) -- this is
+--    exactly why `authenticated` currently gets `permission denied`: it has
+--    literally zero privilege on the view object itself, never mind the
+--    tables underneath it.
+--
+-- 2. Confirmed empirically that a NAIVE fix (`GRANT SELECT ON
+--    lot_inventory_totals TO authenticated;` alone, no security_invoker
+--    change) is a REAL cross-party data leak, not just a hypothetical risk:
+--    with that grant in place and no other change, a party-scoped VMI
+--    session (a `party_user`-role account holding a `user_party_scopes` row
+--    for Party A / flow_type 'vmi' only, nothing for Party B) querying
+--    `lot_inventory_totals` directly saw BOTH Party A's and Party B's lots
+--    aggregated (2 rows), while the exact same session querying the
+--    underlying `lot_location_balances` table directly (which DOES carry
+--    `security_invoker`-equivalent behavior for a base table, i.e. its own
+--    real RLS policy) correctly saw only Party A's 1 row. This is because a
+--    non-`security_invoker` view checks privileges on its underlying tables
+--    as the VIEW OWNER (the superuser/BYPASSRLS migration role), not the
+--    querying session's own role -- the owner's BYPASSRLS silently skips
+--    `lot_location_balances`' RLS entirely regardless of which
+--    `authenticated` session is actually running the query. Simply granting
+--    SELECT on top of that ownership shape would have made the current
+--    "nobody can query it" bug into a strictly worse "every authenticated
+--    user, including externally-scoped party accounts, can see every
+--    other party's inventory aggregates" bug.
+--
+-- 3. `security_invoker = true` (Postgres 15+, available here on Postgres
+--    16) is the correct, verified fix: it makes the view evaluate
+--    underlying-table privileges/RLS as the ACTUAL CALLING role, not the
+--    view owner. Re-running the same party-scoped-session test after
+--    applying `security_invoker = true` (see below) returned only Party
+--    A's 1 row -- matching the direct `lot_location_balances` query exactly,
+--    with no leak.
+--
+-- Per design.md's read-model convention (0002's own header: "Drizzle-kit
+-- does not generate views from table definitions ... this VIEW is
+-- hand-written"), this fix is also hand-written raw SQL, not drizzle-kit
+-- output.
+--
+-- This migration does not modify 0001-0008 (already delivered/verified
+-- elsewhere) -- it only alters the existing view's setting and adds the
+-- missing grant, both additive, idempotent operations.
+
+ALTER VIEW public.lot_inventory_totals SET (security_invoker = true);
+--> statement-breakpoint
+
+-- SELECT-only, matching every other core-resource grant in 0008 (design.md
+-- §7.1: "no broad authenticated table privileges beyond those required by
+-- explicit policies"). With security_invoker now true, this grant is safe:
+-- the calling role's own privileges/RLS on lot_location_balances (already
+-- ENABLE + FORCE ROW LEVEL SECURITY per 0008) are what actually gates every
+-- row this view can return, not this grant by itself. Global-scope staff
+-- (whose lot_location_balances_select policy permits
+-- `inventory.read`/`global`) get full aggregates across every lot; a
+-- VMI party-scoped session (not `16`'s current intended access path for
+-- this view, but proven safe here regardless) gets only the lots their own
+-- party-scope grants already allow via lot_location_balances' own RLS --
+-- never a cross-party leak.
+GRANT SELECT ON public.lot_inventory_totals TO authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Real-Postgres verification log (disposable Postgres 16 container,
+-- 0001-0009 applied in sequence; this is a summary of the interactive
+-- verification session run before finalizing this file -- db-migration-
+-- verifier is still required to independently re-run this before sign-off,
+-- per this repo's "you do not verify your own migration" rule):
+--
+--   1. Pre-fix: `SET ROLE authenticated; SELECT * FROM lot_inventory_totals;`
+--      -> `ERROR: permission denied for view lot_inventory_totals`. Confirmed.
+--   2. Naive-grant-only variant (GRANT SELECT, no security_invoker), tested
+--      and then REVOKED before writing this file (never shipped): a
+--      warehouse_staff-role session correctly saw both test lots (2 rows,
+--      qty_remaining 100 and 200) -- looked correct in isolation.
+--   3. Same naive-grant-only variant, party-scoped VMI session (Party A
+--      only, via user_party_scopes + party_user role): incorrectly saw
+--      BOTH lots (2 rows) via the view, while the identical session querying
+--      `lot_location_balances` directly correctly saw only 1 row (Party A's
+--      own). Proven leak -- this is why the naive grant alone was rejected.
+--   4. After `ALTER VIEW ... SET (security_invoker = true)` +
+--      `GRANT SELECT ... TO authenticated`: re-ran step 1's global-staff
+--      query -> now returns both lots correctly (2 rows, same totals as
+--      step 2). Re-ran step 3's Party-A-scoped session -> now returns only
+--      1 row (Party A's own lot, qty_remaining 100), matching the direct
+--      `lot_location_balances` query exactly. No leak.
+--   5. Re-ran every 0001-0008 real-table/RLS-policy smoke check used during
+--      this same session (lots_select, lot_location_balances_select,
+--      wrr_documents_select_party/staff, pick_lists_select_staff/party) with
+--      no regressions -- this migration touches only the one view's own
+--      setting and its own grant, nothing else.
+-- ---------------------------------------------------------------------------

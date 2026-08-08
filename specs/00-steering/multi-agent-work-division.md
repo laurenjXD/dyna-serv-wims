@@ -16,6 +16,83 @@ None of the three agents share memory or a conversation history with each other.
 
 **The one rule that overrides everything else, unchanged from `CLAUDE.md`:** no application code is written against any feature whose `tasks.md` isn't `Status: Approved` with both sign-offs. This applies identically to all three agents. Writing requirements/design/tasks docs is always fine; writing application code against an unapproved spec is not, regardless of which agent or which track.
 
+## Wednesday Sprint Amendment — 2026-08-08 (deadline: 2026-08-11)
+
+**Read this section before the original track assignments below if you are joining on 2026-08-08 or later.**
+
+The M1+M2 deadline is Wednesday 2026-08-11. Tonight (Saturday 2026-08-08) two tracks are running. A third track joins Sunday if a third collaborator is available.
+
+### Tonight: Two active tracks
+
+### Sprint Track A — "Shell & Deploy" (TONIGHT, Wednesday critical path)
+
+**Branch:** create `track-a-shell-deploy` from current `main`.
+
+```bash
+git checkout main && git pull origin main
+git checkout -b track-a-shell-deploy
+git push -u origin track-a-shell-deploy
+```
+
+**Goal: `lib/shell/*` built + app visible in browser by tonight.**
+
+- Install `zod` (`npm install zod`) — fixes 62 approval test failures and unblocks approval UI.
+- Create `lib/shell/surface.ts` — exports `resolveSessionPresentationTier(roleKeys)` returning `"floor" | "office" | "party"`. This is the immediate TypeScript error blocker.
+- Create `lib/shell/navigation.ts` — exports `filterVisibleRoutes(routes, capabilities)` per `05/design.md` route catalog.
+- Create `lib/shell/state.ts` — shell sidebar open/close state (simple boolean atom or React state hook).
+- Complete `ShellChrome.tsx`: add `<header>` landmark, mobile sidebar hamburger toggle, `role="status"` StatusRegion — 3 RED tests are waiting in `components/global/__tests__/ShellChrome.test.tsx`.
+- Wire Supabase auth: login page at `app/login/page.tsx`, session check in `AuthenticatedShellBoundary`, redirect unauthenticated users.
+- Vercel deployment: environment variables, preview URL live.
+- `21-user-profile-and-settings` profile/settings pages — quick win once shell is green.
+- **File ownership:** `lib/shell/*`, `components/global/ShellChrome.tsx`, `app/login/`, `app/(authenticated)/profile/`, `app/(authenticated)/settings/`, Vercel config. Do NOT touch `lib/withdrawal/*`, `lib/actions/withdrawals.ts`, or any spec 08/10/17/18 files.
+
+### Sprint Track B — "Withdrawal & Floor UI" (TONIGHT, this branch: `track-2-office-data`)
+
+**Goal: full pick-list + dispatch flow implemented; approval and ledger UI pages done.**
+
+- `08` floor UI pages: `/pick-lists/[id]/pick/page.tsx`, `/pick-lists/[id]/dispatch/page.tsx` — floor surface, 375px first, no glassmorphism.
+- `10` pick-list document record: create `generated_documents` schema + insert at `commitWithdrawal` time (PDF deferred).
+- Approval queue office pages: `/approvals/page.tsx`, `/approvals/[id]/page.tsx`.
+- Outgoing ledger office page: `/outgoing-ledger/page.tsx`.
+- RBAC cycle 2.5 admin invitation UI (once Track A's shell merges to main).
+- **File ownership:** `app/(authenticated)/pick-lists/*`, `app/(authenticated)/outgoing-ledger/*`, `app/(authenticated)/approvals/*`, `lib/actions/withdrawals.ts`, `lib/db/queries/withdrawals.ts`.
+
+### Tomorrow (Sunday): Third track optional
+
+If a third collaborator joins:
+
+**Sprint Track C — "M2 Stretch" (branch: `track-c-m2-stretch` from `main`)**
+- `17-product-categorization-and-classification` — migrations, category CRUD UI.
+- `18-barcode-integration` — schema + lookup API (hardware tests deferred).
+- First migration must be 0018+; check `supabase/migrations/` on `main` first.
+
+### Tonight merge plan
+
+1. Both tracks pull from `main` before starting.
+2. Track A targets a merge to `main` by Sunday morning — shell is a dependency of Track B's UI pages.
+3. Track B rebases from `main` after Track A merges, then merges.
+4. Shared files (`supabase/migrations/`, `lib/db/schema/index.ts`): each track adds its own entries only; resolve on PR.
+
+### Actual phase status as of 2026-08-08
+
+| Track | Phase | Status |
+|---|---|---|
+| Track 1 | 0 Scaffolding | Done |
+| Track 1 | 1 `01-core-data-model` | Done, real-Postgres verified |
+| Track 1 | 2 `02-rbac-roles` (cycles 2.1–2.4) | Done, real-Postgres verified |
+| Track 1 | 2.5a `05-ui-shell-and-navigation` | RED tests written; `lib/shell/*` missing — Sprint Track A |
+| Track 1 | 3 `07-incoming-receiving` | Implemented, VERIFY complete 2026-08-08 |
+| Track 1 | 4 `11-transfer-and-inspection` | Implemented, VERIFY complete 2026-08-08 |
+| Track 1 | 5 `08-outgoing-withdrawal` | Backend GREEN (68 tests); floor UI pending Sprint Track B |
+| Track 1 | 6 `10-pick-list-and-acknowledgement-receipt` | Backend trigger pending; PDF deferred |
+| Track 2 | A `06-party-and-item-enrollment` | Implemented, VERIFY complete |
+| Track 2 | B `09-approval-queue` | Implemented, VERIFY complete 2026-08-08 |
+| Track 2 | C `14-notifications-and-alerts` | Not started |
+| Track 2 | D `17-product-categorization` | Not started — Sprint Track C |
+| Track 2 | E `18-barcode-integration` | Not started — Sprint Track C |
+| Track 3 | I `16-reporting-and-analytics` | Migrations + query layer partial (Track 3 cherry-picked) |
+| Track 3 | II–V `12`/`13`/`22`/`15` | Not started |
+
 ## The three tracks
 
 Split by dependency chain, not by spec count — specs within a track are tightly coupled to each other; specs across tracks mostly aren't. Each track is one agent's exclusive responsibility for its listed specs' `design.md`/`tasks.md` content and application code. Agents do not edit another track's spec folders. If Track 2 or 3 needs something Track 1 owns, they open a named request (see "Cross-track requests" below) instead of editing it directly.
@@ -144,11 +221,15 @@ Three tiers, not one blanket wait — the earlier draft of this doc made Tracks 
 
 **Tier 3 — waits on the real-Postgres RLS policy for your specific tables** (cycle 2.4, per-table, not all-or-nothing): the **live-Postgres verification pass** (`db-migration-verifier` + `rbac-rls-reviewer`) for any route/feature your track built against a table that doesn't have its RLS policy yet. You can write and unit-test the code in Tier 2; you cannot call it *verified* until the specific table(s) it touches have real RLS policies to verify against. Check `02-rbac-roles/design.md` §7.4's per-table policy list against your feature's tables before claiming a verification pass — don't assume "RBAC is done" covers a table it doesn't actually list yet.
 
+<<<<<<< HEAD
 **Tier 3 UNLOCKED, 2026-08-08.** Cycle 2.4 (`supabase/migrations/0008_rls_policies.sql`) is implemented and fully verified — two independent rounds of `db-migration-verifier` + `rbac-rls-reviewer` (both required for this cycle), the first finding three real bugs (an inactive-profile access gap, a `parties`-visibility bug denying flow-scoped party users their own counterparty's record, and a cross-party role-enumeration vulnerability), all fixed and re-verified clean on round 2. RLS policies now exist for every table in the schema per `02` §7.3/§7.4, covering all of `06`'s tables (`parties`, `party_roles`, `item_categories`, `locations`, `items`) and everything `16`/`12`/`13`/`22` will need from `01`'s core tables. **Not covered, correctly** — `wrr_advance_notices`, `vmi_billing_statement`, `vmi_credit_notes` (none of these tables exist in the schema yet; their RLS lands whenever those specs' own migrations do). This is SELECT-only by design — INSERT/UPDATE/DELETE policies belong to whichever feature migration (`07`/`08`/`11`) owns writing to each table, not this cycle.
 
 **Delivered proactively** (Track 2 flagged being blocked on this in conversation, not as a written request here — logged after the fact for the record): commit `3b6efe8d1563dd7913c4120e98a377beb4a3bffb` on `origin/track-1-core-floor-ops`, containing `supabase/migrations/0008_rls_policies.sql` plus the corrected `specs/02-rbac-roles/design.md`/`tasks.md`, `specs/00-steering/gantt-mapping.md`, and this file's own updates above.
 
 **Track 2 action**: `git fetch origin` then `git cherry-pick 3b6efe8d1563dd7913c4120e98a377beb4a3bffb` onto `track-2-office-data`. This commit touches only `02`-owned files and steering docs — none of `06`'s own files — so it should apply clean regardless of how far Track 2's own `06` work has progressed. Once applied, Track 2 can request a real `db-migration-verifier` pass on their `06` routes against `parties`/`items`/`locations`/`item_categories`/`party_roles`, since those tables now have real RLS policies to verify against.
+=======
+**Tier 3 UNLOCKED, 2026-08-08.** Cycle 2.4 (`supabase/migrations/0008_rls_policies.sql`) is implemented and fully verified — two independent rounds of `db-migration-verifier` + `rbac-rls-reviewer` (both required for this cycle), the first finding three real bugs (an inactive-profile access gap, a `parties`-visibility bug denying flow-scoped party users their own counterparty's record, and a cross-party role-enumeration vulnerability), all fixed and re-verified clean on round 2. RLS policies now exist for every table in the schema per `02` §7.3/§7.4, covering all of `06`'s tables (`parties`, `party_roles`, `item_categories`, `locations`, `items`) and everything `16`/`12`/`13`/`22` will need from `01`'s core tables. **Not covered, correctly** — `wrr_advance_notices`, `vmi_billing_statement`, `vmi_credit_notes` (none of these tables exist in the schema yet; their RLS lands whenever those specs' own migrations do). This is SELECT-only by design — INSERT/UPDATE/DELETE policies belong to whichever feature migration (`07`/`08`/`11`) owns writing to each table, not this cycle. Delivery/cherry-pick details below.
+>>>>>>> 94bc52b5ffa0381afc26f1c0ea5fea13991c1e6f
 
 **Never starts without a product-owner call, any track:** anything the product owner explicitly deferred — the WRR email/PDF-parsing automation idea and any AI-generated-content feature not already in an approved spec. If you think you've found a good reason to build one of these now anyway, that reasoning belongs in a flagged question to the product owner, not in a spec change.
 
@@ -255,6 +336,37 @@ Each track posts a dated entry to `specs/00-steering/revision-log.md` for every 
 
 *(Track 2 or 3: add dated requests here when you need a locked-file change. Track 1: mark resolved with a pointer when done.)*
 
+<<<<<<< HEAD
+=======
+### [RESOLVED] Track 2 → Track 1: `approval_requests`/`approval_decisions` migration + Drizzle schema (2026-08-08)
+
+**Requested by**: Track 2 (this agent)
+**Needed for**: Phase B — `09-approval-queue` implementation
+**Blocked files**: `supabase/migrations/` (new migration file) and `lib/db/schema/` (new schema additions) — both Track 1 locked
+
+**What's needed**: Two new tables per `specs/09-approval-queue/design.md` §3:
+
+1. `approval_requests` — fields: UUID PK, public reference number, idempotency key, approval type (`fifo_override`), target resource type/ID, target snapshot (JSONB, `FifoOverrideSnapshot` shape from design.md §3), party/flow scope reference, requester user ID, created timestamp, reason (min 10 chars), status enum (`pending`/`approved`/`rejected`/`cancelled`/`expired`/`superseded`), expiry timestamp, correlation ID. Unique constraint on `(idempotency_key)`. Index on `(status, expiry)` for pending-queue queries, `(requester_user_id)`, `(type, status)`.
+
+2. `approval_decisions` — fields: UUID PK, `request_id` FK → `approval_requests.id`, reviewer user ID, decision enum (`approved`/`rejected`), timestamp, reason/comment, `consumed_at` timestamp (nullable — set atomically on consumption), consumer workflow reference, correlation ID. Append-only: no UPDATE/DELETE policy for `authenticated`. Unique constraint on `(request_id)` where decision is terminal (one terminal decision per request). Index on `(request_id)`, `(consumed_at)`.
+
+RLS policies (per design.md §6 default-deny pattern):
+- `approval_requests` SELECT: requester sees own requests; supervisor/administrator with `fifo_override.approve` sees all pending requests
+- `approval_requests` INSERT: actor with `fifo_override.request` can insert
+- `approval_decisions` SELECT: reviewer sees decisions for requests they can view; requester sees decisions on own requests
+- `approval_decisions` INSERT: actor with `fifo_override.approve` can insert (never UPDATE/DELETE for authenticated)
+
+Drizzle schema additions needed in `lib/db/schema/` — new file `approvals.ts` exporting `approvalRequests`, `approvalDecisions`, and the status/decision enums.
+
+**Migration number**: next sequential after `0008` (currently `0009` is available — no `0006`/`0007` files exist on `track-2-office-data`).
+
+**Track 2 will handle**: all Server Actions, business logic (policy registry, state machine, self-approval enforcement, expiry, concurrency), queue UI, tests, and RLS verification — once the migration + schema exist. Track 2 is NOT asking Track 1 to implement `09`'s application code, only to provide the database foundation in the locked files.
+
+**Resolution**: Delivered by Track 1 in commit `5a3c66d`; cherry-picked to Track 2.
+
+### [RESOLVED] Track 3 — analytics migration and RLS query-boundary prerequisites (2026-08-07)
+
+>>>>>>> 94bc52b5ffa0381afc26f1c0ea5fea13991c1e6f
 **Track 3, 2026-08-07/08 — requested `daily_transaction_counts` materialized view + analytics indexes (`16` design.md §7.1/§7.3) and the RLS-enforcing query transaction wrapper (`02` design.md §6.3), before Track 3 could proceed.**
 
 **RESOLVED.** Delivered via expedited cherry-pick (not the full Track 1→main merge order, since Track 3 was actively blocked) — commit `5cdab55dd0661964e942e6377851b341e91d51bb` on `origin/track-1-core-floor-ops`, containing exactly:
@@ -264,10 +376,16 @@ Each track posts a dated entry to `specs/00-steering/revision-log.md` for every 
 
 **Track 3 action**: `git fetch origin` then `git cherry-pick 5cdab55dd0661964e942e6377851b341e91d51bb` onto `track-3-analytics-billing`. This commit contains only these 8 files — nothing else from Track 1's in-progress work (the `05` shell components are still under review) is included, so the cherry-pick should apply clean.
 
+<<<<<<< HEAD
+=======
+**Why:** Track 3 has implemented the typed server-side analytics query/export contracts in `lib/analytics/queries/`, but cannot write `supabase/migrations/*` or `lib/rbac/*` under the active shared-file lock. These are prerequisites for Task 16.2's real-Postgres verification and for safely mounting protected analytics routes. No workaround or application-layer substitute will be added.
+
+>>>>>>> 94bc52b5ffa0381afc26f1c0ea5fea13991c1e6f
 **One thing for Track 3 to know before using the RLS wrapper**: `rbac-rls-reviewer`'s review flagged that the wrapper's `role`-switch-to-`authenticated` mechanism is correct per design, but has not yet been verified against a live Postgres/connection-pooler (the 3 integration tests exist and are correct but currently skip cleanly — no `DATABASE_URL` available in this environment). This is `02` design.md §6.3's own explicit pre-approval gate, not a new gap. Don't treat this wrapper as fully production-verified until that integration pass actually runs against real Postgres once one is available.
 
 **Follow-up, 2026-08-08 — two real gaps found in the first delivery, both fixed:**
 
+<<<<<<< HEAD
 1. **Missing `vitest.setup.ts`.** Track 3's `vitest.config.mts` (delivered in `5cdab55`, and correctly so — it's the full committed file, not a diff) already contains `setupFiles: ["./vitest.setup.ts"]` from earlier, separate Track 1 work that Track 3 never received. That reference was live but the file it pointed to wasn't delivered, blocking Track 3's entire unit-test run before any test could even load. Root cause: this file was miscategorized as "shell-specific" and excluded from the first delivery; it's actually project-wide test infrastructure that the already-delivered config depends on.
 2. **No reusable runtime `RlsPool` adapter existed** — `lib/db/rls-transaction.ts`'s wrapper only had an abstract `RlsPool`/`RlsConnection` interface (correctly DI-testable, but not something Track 3 could plug into real query code without building their own Postgres-wire adapter, which would mean reimplementing Track 1's own locked-file domain).
 
@@ -278,3 +396,19 @@ Each track posts a dated entry to `specs/00-steering/revision-log.md` for every 
 **Delivered**: `lib/db/rls-pool.ts` (new — the real adapter, promoted out of the integration test's own local proof-of-concept, now the one implementation both the test and real application code share) plus the corrected integration test and `vitest.setup.ts`. Commit `3de96780695f168ee3b6b31e3b2cd3027c11c10c` on `origin/track-1-core-floor-ops`, pushed on top of the prior `5cdab55` delivery.
 
 **Track 3 action**: `git fetch origin` then, on top of wherever the `5cdab55` cherry-pick already landed on `track-3-analytics-billing`, `git cherry-pick 3de96780695f168ee3b6b31e3b2cd3027c11c10c`. Then run `npm install` (this commit doesn't add new `package.json` dependencies itself, but `vitest.setup.ts` needs `jsdom`/`@testing-library/*` already present in `package.json` from the first delivery — worth confirming `node_modules` actually has them installed, not just declared) before running `npm test` again.
+=======
+1. **Missing `vitest.setup.ts`.** Track 3's `vitest.config.mts` already contains `setupFiles: ["./vitest.setup.ts"]` from earlier, separate Track 1 work that Track 3 never received. That reference was live but the file it pointed to wasn't delivered, blocking Track 3's entire unit-test run. Fixed: `vitest.setup.ts` delivered in commit `55055d7`.
+2. **No reusable runtime `RlsPool` adapter existed** — `lib/db/rls-transaction.ts`'s wrapper only had an abstract `RlsPool`/`RlsConnection` interface. Fixed: `lib/db/rls-pool.ts` added as the real adapter.
+
+**Fixing the second gap surfaced a real bug in the integration test** (never previously run against real Postgres): queries built via `sql`...`` on the outer non-transactional postgres.js client weren't running inside the transaction (tagged templates execute immediately against whichever client tags them). Fixed by using `{ sql, params }` shape everywhere. Also: bare Postgres container has no `authenticated`/`anon` roles — test now grants them explicitly, matching §7.1's default-deny baseline.
+
+**Resolution**: Delivered by Track 1 in commits `d801eb1` (matview/indexes/wrapper) and `55055d7` (rls-pool + vitest.setup.ts fixes); both cherry-picked to Track 2.
+### Track 3 — analytics migration and RLS query-boundary prerequisites (2026-08-07)
+
+**Requested from Track 1 (locked files):**
+
+1. Add the sequential migrations required by `16-reporting-and-analytics/design.md` §7.1/§7.3: `daily_transaction_counts` materialized view, its unique `(activity_date, flow_type, movement_type)` index supporting `REFRESH MATERIALIZED VIEW CONCURRENTLY`, and the approved analytics indexes on `inventory_transactions`, `lots`, `wrr_documents`, `wrr_inspection_logs`, and `pick_lists`. Track 3's `lib/analytics/queries/heatmap.ts` correctly uses the direct-ledger fallback until this migration is present.
+2. Provide the `02-rbac-roles` §6.3 RLS-enforcing transaction/query wrapper (or its stable import/calling contract). `16` query functions must run inside that wrapper before protected `/reports` pages and export route handlers can be implemented without relying on application-level filtering.
+
+**Why:** Track 3 has implemented the typed server-side analytics query/export contracts in `lib/analytics/queries/`, but cannot write `supabase/migrations/*` or `lib/rbac/*` under the active shared-file lock. These are prerequisites for Task 16.2's real-Postgres verification and for safely mounting protected analytics routes. No workaround or application-layer substitute will be added.
+>>>>>>> 94bc52b5ffa0381afc26f1c0ea5fea13991c1e6f

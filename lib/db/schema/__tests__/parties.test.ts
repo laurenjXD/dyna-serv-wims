@@ -23,14 +23,15 @@ describe("parties.ts — parties table (Req 2, 3)", () => {
     expect(column(parties, "name").notNull).toBe(true);
   });
 
-  it("has nullable contact/regulatory fields: contactPerson, email, phone, taxId, address, notes", async () => {
+  it("has nullable contact/regulatory fields: contactPerson, email, phone, taxId, address1, address2, notes", async () => {
     const { parties } = await import("../parties");
     for (const key of [
       "contactPerson",
       "email",
       "phone",
       "taxId",
-      "address",
+      "address1",
+      "address2",
       "notes",
     ]) {
       expect(hasColumn(parties, key)).toBe(true);
