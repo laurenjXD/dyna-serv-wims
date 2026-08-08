@@ -134,7 +134,7 @@ describe("AuthenticatedShellBoundary (design.md §3.4, requirements.md R2.3/R2.4
     });
   });
 
-  it("redirects to /login when the resolution is forbidden, same as unauthenticated (never leaks the internal denial reason via a different UX path)", async () => {
+  it("renders the same revoked_session message for forbidden as for unauthenticated, but does NOT redirect (2026-08-08: redirecting forbidden to /login created an infinite loop, since a forbidden session is already validly authenticated — re-login just succeeds again and lands back on forbidden)", async () => {
     const resolver: RequestAuthorizationResolver = {
       getContext: async () => ({ kind: "forbidden", reason: "missing_profile" }),
     };
@@ -149,9 +149,11 @@ describe("AuthenticatedShellBoundary (design.md §3.4, requirements.md R2.3/R2.4
       expect(screen.getByTestId("shell-state-revoked_session")).toBeInTheDocument();
     });
     expect(screen.queryByTestId("protected-content")).not.toBeInTheDocument();
-    await waitFor(() => {
-      expect(push).toHaveBeenCalledWith("/login");
-    });
+
+    // Give any (incorrect) redirect effect a tick to fire, then assert it
+    // never does — this is the regression test for the loop.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(push).not.toHaveBeenCalled();
   });
 
   it("renders the empty-access state (not the full nav shell) when authorized but grants is empty (R2.4)", async () => {

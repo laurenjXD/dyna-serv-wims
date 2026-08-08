@@ -68,14 +68,25 @@ export function AuthenticatedShellBoundary({
   }, [resolver]);
 
   // The "revoked_session" ShellStateView copy says "Redirecting you to sign
-  // in..." -- this effect is what makes that claim true. Previously nothing
-  // actually navigated anywhere: a session that resolved to unauthenticated
-  // or forbidden left the user stranded on this static message forever
-  // (caught 2026-08-08 against a real deploy). Runs as its own effect,
-  // keyed on the resolved kind, so it fires exactly once per transition
-  // into one of these two states, not on every render.
+  // in..." -- this effect is what makes that claim true for a genuinely
+  // absent session. Previously nothing actually navigated anywhere at all
+  // (caught 2026-08-08 against a real deploy: stuck forever on the static
+  // message).
+  //
+  // Deliberately `unauthenticated` ONLY, not `forbidden` too (a mistake in
+  // this fix's first version, caught the same day): `forbidden` means the
+  // Supabase session IS valid -- `loadAuthorizationRecord` just has no real
+  // query wired in yet (02-rbac-roles seam gap, app/(authenticated)/actions.ts).
+  // Redirecting an already-authenticated-but-forbidden session back to
+  // /login creates an infinite loop -- login keeps succeeding (the
+  // credentials are genuinely valid), landing back on `/`, resolving
+  // forbidden again, redirecting again. `forbidden` still renders the
+  // identical `revoked_session` ShellStateView below (R2.3/R2.4: never
+  // leak *why* access was denied, same message either way) -- it just
+  // doesn't navigate anywhere, since re-login cannot fix a missing DB
+  // record and there is nowhere more correct to send this session yet.
   useEffect(() => {
-    if (resolution?.kind === "unauthenticated" || resolution?.kind === "forbidden") {
+    if (resolution?.kind === "unauthenticated") {
       router.push(SIGN_IN_ROUTE);
     }
   }, [resolution?.kind, router]);
