@@ -20,48 +20,58 @@ None of the three agents share memory or a conversation history with each other.
 
 **Read this section before the original track assignments below if you are joining on 2026-08-08 or later.**
 
-The M1+M2 deadline is Wednesday 2026-08-11. Track 1 has completed Phases 0–5 (`01`, `02`, `07`, `09`, `11`) and Phase 5 (`08` backend). The original track assignments are still valid for long-term ownership, but for the Wednesday sprint the three collaborators should re-focus as follows:
+The M1+M2 deadline is Wednesday 2026-08-11. Tonight (Saturday 2026-08-08) two tracks are running. A third track joins Sunday if a third collaborator is available.
 
-### Sprint Track A — "Shell & Deploy" (new priority, Wednesday critical path)
+### Tonight: Two active tracks
 
-**Branch:** `track-1-core-floor-ops` (or a new `track-a-shell-deploy` branch from current `track-2-office-data`).
+### Sprint Track A — "Shell & Deploy" (TONIGHT, Wednesday critical path)
 
-**Goal: live preview URL by Monday 2026-08-10.**
+**Branch:** create `track-a-shell-deploy` from current `main`.
 
-- Install `zod` package (`npm install zod`) — fixes 62 approval test failures and unblocks approval UI.
-- Implement `lib/shell/surface.ts`, `lib/shell/navigation.ts`, `lib/shell/state.ts` — the missing modules that cause 28 TypeScript errors.
-- Complete `ShellChrome.tsx` (add `<header>` landmark, mobile sidebar toggle, `StatusRegion`) — 3 RED tests waiting in `components/global/__tests__/ShellChrome.test.tsx`.
-- Wire Supabase auth end-to-end: login page, session cookie, redirect for unauthenticated.
-- `21-user-profile-and-settings` profile/settings pages — quick win once shell exists.
-- Vercel deployment: environment variables, preview URL, confirm migrations run on production Supabase.
-- **File ownership for this sprint:** `app/(authenticated)/layout.tsx`, `components/global/ShellChrome.tsx`, `lib/shell/*`, `app/login/`, `app/layout.tsx`, Vercel config. Do NOT touch `lib/withdrawal/*`, `lib/actions/withdrawals.ts`, or any spec 08/10/17/18 files.
+```bash
+git checkout main && git pull origin main
+git checkout -b track-a-shell-deploy
+git push -u origin track-a-shell-deploy
+```
 
-### Sprint Track B — "Withdrawal & Floor UI" (this branch: `track-2-office-data`)
+**Goal: `lib/shell/*` built + app visible in browser by tonight.**
 
-**Goal: full receiving → transfer → withdrawal → dispatch cycle visible end-to-end.**
+- Install `zod` (`npm install zod`) — fixes 62 approval test failures and unblocks approval UI.
+- Create `lib/shell/surface.ts` — exports `resolveSessionPresentationTier(roleKeys)` returning `"floor" | "office" | "party"`. This is the immediate TypeScript error blocker.
+- Create `lib/shell/navigation.ts` — exports `filterVisibleRoutes(routes, capabilities)` per `05/design.md` route catalog.
+- Create `lib/shell/state.ts` — shell sidebar open/close state (simple boolean atom or React state hook).
+- Complete `ShellChrome.tsx`: add `<header>` landmark, mobile sidebar hamburger toggle, `role="status"` StatusRegion — 3 RED tests are waiting in `components/global/__tests__/ShellChrome.test.tsx`.
+- Wire Supabase auth: login page at `app/login/page.tsx`, session check in `AuthenticatedShellBoundary`, redirect unauthenticated users.
+- Vercel deployment: environment variables, preview URL live.
+- `21-user-profile-and-settings` profile/settings pages — quick win once shell is green.
+- **File ownership:** `lib/shell/*`, `components/global/ShellChrome.tsx`, `app/login/`, `app/(authenticated)/profile/`, `app/(authenticated)/settings/`, Vercel config. Do NOT touch `lib/withdrawal/*`, `lib/actions/withdrawals.ts`, or any spec 08/10/17/18 files.
 
-- `08` floor UI pages: `/pick-lists/[id]/pick/page.tsx`, `/pick-lists/[id]/dispatch/page.tsx` (floor surface, 375px first).
-- `10` pick-list backend trigger: consumable event from `commitWithdrawal` → pick-list document record created (PDF deferred to post-M2).
-- Approval queue UI pages: `/approvals/page.tsx`, `/approvals/[id]/page.tsx` — office surface once shell from Track A merges.
-- Outgoing ledger UI: `/outgoing-ledger/page.tsx` — office surface.
-- RBAC admin UI cycle 2.5 (once shell exists from Track A).
+### Sprint Track B — "Withdrawal & Floor UI" (TONIGHT, this branch: `track-2-office-data`)
+
+**Goal: full pick-list + dispatch flow implemented; approval and ledger UI pages done.**
+
+- `08` floor UI pages: `/pick-lists/[id]/pick/page.tsx`, `/pick-lists/[id]/dispatch/page.tsx` — floor surface, 375px first, no glassmorphism.
+- `10` pick-list document record: create `generated_documents` schema + insert at `commitWithdrawal` time (PDF deferred).
+- Approval queue office pages: `/approvals/page.tsx`, `/approvals/[id]/page.tsx`.
+- Outgoing ledger office page: `/outgoing-ledger/page.tsx`.
+- RBAC cycle 2.5 admin invitation UI (once Track A's shell merges to main).
 - **File ownership:** `app/(authenticated)/pick-lists/*`, `app/(authenticated)/outgoing-ledger/*`, `app/(authenticated)/approvals/*`, `lib/actions/withdrawals.ts`, `lib/db/queries/withdrawals.ts`.
 
-### Sprint Track C — "M2 Stretch" (new branch: `track-c-m2-stretch` from `main`)
+### Tomorrow (Sunday): Third track optional
 
-**Goal: item categorization working; barcode lookup functional.**
+If a third collaborator joins:
 
-- `17-product-categorization-and-classification`: migrations, category/subcategory CRUD UI, item-to-category assignment — most achievable M2 item.
-- `18-barcode-integration`: schema + lookup API; hardware scanner tests deferred to pre-launch QA.
-- **File ownership:** `specs/17-*/*`, `specs/18-*/*`, `lib/db/schema/categories.ts`, `lib/db/queries/categories.ts`, `lib/actions/categories.ts`, `app/(authenticated)/categories/*`.
-- **Migration rule:** Track C's first migration must be numbered 0018 or higher — check `supabase/migrations/` on `main` before creating. Request via cross-track protocol if a lower number is needed and Track B hasn't vacated it.
+**Sprint Track C — "M2 Stretch" (branch: `track-c-m2-stretch` from `main`)**
+- `17-product-categorization-and-classification` — migrations, category CRUD UI.
+- `18-barcode-integration` — schema + lookup API (hardware tests deferred).
+- First migration must be 0018+; check `supabase/migrations/` on `main` first.
 
-### Wednesday sprint merge plan
+### Tonight merge plan
 
-1. All three sprint tracks rebase from `main` before starting.
-2. Track A merges first (shell is a dependency of Track B and C's UI pages). Target: Monday 2026-08-10.
-3. Track B and C rebase from `main` after Track A merges, then merge independently.
-4. Shared files (`supabase/migrations/`, `lib/db/schema/index.ts`): each track adds only its own entries; resolve on PR.
+1. Both tracks pull from `main` before starting.
+2. Track A targets a merge to `main` by Sunday morning — shell is a dependency of Track B's UI pages.
+3. Track B rebases from `main` after Track A merges, then merges.
+4. Shared files (`supabase/migrations/`, `lib/db/schema/index.ts`): each track adds its own entries only; resolve on PR.
 
 ### Actual phase status as of 2026-08-08
 
