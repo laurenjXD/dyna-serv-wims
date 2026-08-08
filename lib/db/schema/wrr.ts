@@ -38,6 +38,7 @@ export const wrrItems = pgTable("wrr_items", {
   scannedQty: integer("scanned_qty").default(0).notNull(),
   unitCbm: decimal("unit_cbm", { precision: 10, scale: 4 }).notNull(),
   uom: varchar("uom", { length: 50 }).notNull(),
+  disposition: text("disposition").default("store").notNull(), // 'store' | 'inspect'; CHECK constraint in migration 0012
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

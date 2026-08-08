@@ -4,6 +4,20 @@ Every merge conflict and major revision, dated, with the resolution. This is the
 
 ## Resolved
 
+## `07-incoming-receiving` VERIFY pass — three deferred RBAC/RLS gaps, one spec mismatch fixed (2026-08-08)
+
+`rbac-rls-reviewer` and `design-system-auditor` post-implementation audits on the completed `07-incoming-receiving` implementation found six findings. One spec mismatch was fixed immediately; the remainder are either deferred architectural gaps (same class as `09-approval-queue` Phase B) or intentional design trade-offs.
+
+**Finding F5 — FIXED: print page gated on `receiving.confirm` instead of `receiving.view` per design.md §5.4.** The print page used `requirePermission("receiving.confirm")` as its gate, but §5.4 states any user with `receiving.view` may reprint at any lifecycle status (printing does not change WRR state). Fixed in `app/(authenticated)/receiving/[wrrId]/print/page.tsx` to use `receiving.view`. Over-restriction, not a data leak — but a confirmed mismatch with the spec's stated authorization rule.
+
+**Finding F1 — DEFERRED: server-side `db` client bypasses all RLS (same as `09` Phase B Finding B1 and `06` Phase A Gap A).** All `0008` + `0012` policies exist and are correctly written, but are never evaluated by server-side Drizzle calls since `lib/db/client.ts` is a plain postgres-js connection with no JWT claim propagation. The sole enforcement gate for all receiving operations is the application-layer `requirePermission()` call on every action and page. Deferred to `04-services-and-infrastructure` with all prior instances of this class.
+
+**Finding F3 — DEFERRED: `commitWrr` status-immutability guard is application-layer only.** The `wrr_documents_update` RLS policy's `USING` predicate (status must be `staged_pending_arrival` or `receiving_in_progress`) would prevent re-committing a confirmed WRR — but since the db client bypasses RLS, only `validateCommit`'s application-layer check runs. Same class as `09` Phase B Finding B2. Deferred to `04`.
+
+**Finding F6 — KNOWN INCOMPLETE: `commitWrr` does not yet create `lots`, `lot_location_balances`, or `inventory_transactions`.** Per design.md §9, the commit transaction must atomically create these records. The current implementation only flips the WRR status to `confirmed`. No INSERT policies or grants exist yet on those tables for `authenticated`. The lot-creation step is the next planned extension of `commitWrr` and requires a dedicated migration (0013 or later) adding those policies before it can be wired in. Documented as a known gap; does not block `07` tasks.md from being marked implemented for its current checklist items.
+
+**Design-system findings — all FIXED:** 14 brand-design-system violations corrected in the same pass: 3× primary CTA buttons changed from `bg-brand-navy` → `bg-brand-red` (receiving list, create WRR, print); 2× focus rings changed from `focus:ring-brand-red` → `focus:ring-brand-navy` on floor screen; floor scan feedback blocks changed from `text-surface-white` (fails AAA 7:1 on status-available/status-held) → `text-on-surface` (near-black, exceeds AAA on both backgrounds); floor warning alert changed from `bg-status-pending/10 text-status-pending` (2.6:1, fails AA) → `bg-status-pending text-on-surface`; disposition badges on floor screen gained paired icons (▼ STORE, ○ INSPECT) to satisfy §1.3 color-not-alone rule; Remove line button changed from ghost `h-8` → solid `bg-status-held h-11`; Add Line border changed from `border-brand-navy` → `border-outline-variant`.
+
 ## `09-approval-queue` Phase B — two open RBAC/RLS architectural gaps carried forward; one structural grant fixed; terminal-decision uniqueness enforced at DB level (2026-08-08)
 
 `rbac-rls-reviewer` post-implementation audit of the completed `09-approval-queue` found four findings. Two are fixed; two are known open gaps that extend the same class of gap already documented from `06` Phase A.
