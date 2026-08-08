@@ -20,3 +20,4 @@ export * from "./pick_lists";
 export * from "./rbac";
 export * from "./approvals";
 export * from "./transfers";
+export * from "./documents";
