@@ -116,14 +116,14 @@ export default async function ExecuteTransferPage({
           {/* Back link — h-14 (56px) minimum floor touch target per §3 */}
           <Link
             href={`/transfers/${transferId}`}
-            className="inline-flex h-14 items-center gap-2 font-label text-label text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy active:scale-[0.97]"
+            className="inline-flex h-14 items-center gap-2 font-label text-body-md text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy active:scale-[0.97]"
           >
             {/* Left arrow — no icon dependency, unicode for floor performance */}
             <span aria-hidden="true">&#8592;</span>
             <span>Back to Transfer</span>
           </Link>
           {/* Flow type badge — Epilogue, floor-visible */}
-          <span className="font-label text-label text-white/70 uppercase">
+          <span className="font-label text-body-md text-white/70 uppercase">
             {transfer.flowType.toUpperCase()}
           </span>
         </div>
@@ -278,7 +278,7 @@ export default async function ExecuteTransferPage({
           <form action={handleMarkTransferred} className="flex flex-col gap-3">
             <label
               htmlFor="qty-input"
-              className="font-label text-label text-surface-white"
+              className="font-label text-body-md text-surface-white"
             >
               Quantity transferred (all lines)
             </label>
@@ -296,7 +296,7 @@ export default async function ExecuteTransferPage({
             <button
               type="submit"
               // active: press feedback, no hover: (floor screen per §3 §10)
-              className="flex h-16 w-full items-center justify-center rounded bg-brand-red font-label text-label text-surface-white active:scale-[0.97] focus:outline-none focus:ring-4 focus:ring-surface-white"
+              className="flex h-16 w-full items-center justify-center rounded bg-brand-red font-label text-body-md text-surface-white active:scale-[0.97] focus:outline-none focus:ring-4 focus:ring-brand-navy"
             >
               Mark Transferred
             </button>
@@ -309,7 +309,7 @@ export default async function ExecuteTransferPage({
         <div className="sticky bottom-0 bg-brand-navy px-4 pb-6 pt-4 shadow-elevation-2">
           <Link
             href={`/transfers/${transferId}`}
-            className="flex h-16 w-full items-center justify-center rounded bg-brand-navy border-2 border-surface-white font-label text-label text-surface-white active:scale-[0.97] focus:outline-none focus:ring-4 focus:ring-surface-white"
+            className="flex h-16 w-full items-center justify-center rounded bg-brand-navy border-2 border-surface-white font-label text-body-md text-surface-white active:scale-[0.97] focus:outline-none focus:ring-4 focus:ring-brand-navy"
           >
             Return to Transfer
           </Link>
