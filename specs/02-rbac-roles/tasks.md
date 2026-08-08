@@ -1,7 +1,7 @@
 # RBAC & Roles — Implementation Plan
 
 Status: Approved
-Updated: 2026-08-05 (pass-2 db-migration-verifier — all 5 remaining items verified PASS)
+Updated: 2026-08-08 (cycle 2.4 implemented and real-Postgres verified — see below)
 
 ## Scope and implementation gate
 
@@ -104,10 +104,10 @@ The role model is explicitly unstable (`specs/00-steering/revision-log.md`). The
 - [x] Ensure party users can access only records belonging to their authorized party scope and cannot infer other parties through joins, counts, errors, or realtime events.
 - [x] Ensure operational users receive only the approved warehouse/workflow access and cannot gain privileges by changing request parameters.
 - [x] Ensure administrators retain required global oversight while all sensitive mutations remain attributable to an authenticated actor.
-- [ ] Define and test insert/update/delete policy behavior separately; do not assume a select policy protects mutations.
+- [ ] Define and test insert/update/delete policy behavior separately; do not assume a select policy protects mutations. **Deliberately deferred, not overlooked**: `0008_rls_policies.sql` (2026-08-08) is SELECT-only by design — every table's INSERT/UPDATE/DELETE policy belongs to whichever feature migration owns writing to it (`07`/`08`/`11`, not yet built), so this item stays open until those land.
 - [x] Define policy behavior for audit records so they are append-only and readable only at the approved scope.
 - [x] Have the `rbac-rls-reviewer` review the design and policies before sign-off.
-- [ ] Run real-Postgres integration tests against the complete migration sequence before sign-off, as required by `specs/00-steering/testing.md`.
+- [x] Run real-Postgres integration tests against the complete migration sequence before sign-off, as required by `specs/00-steering/testing.md`. **Done 2026-08-08**: `0008_rls_policies.sql` implements §7.2's five helper functions + a sixth (`has_any_party_scope`, added to fix a real bug — see below), §7.3's RBAC-table policies, and §7.4's core-resource policies for every table that exists in the schema (`wrr_advance_notices`/`vmi_billing_statement`/`vmi_credit_notes` correctly excluded — those tables don't exist yet). Two full independent rounds of `db-migration-verifier` + `rbac-rls-reviewer` (both required, not either/or, per this cycle's own standing rule) against real disposable Postgres 16: round 1 found three real bugs (an inactive-profile-still-has-access gap in `has_permission`, fixed inline before either reviewer even saw it; `parties_select_party`'s null-flow_type-only matching wrongly denying flow-scoped party users their own counterparty's record; and a cross-party role-enumeration vulnerability in `party_has_any_role`, found independently by `db-migration-verifier` and not caught by the first `rbac-rls-reviewer` pass). All three fixed (design.md §3.2/§7.4 corrected first, then the SQL to match) and round 2 gave a full PASS from both reviewers with live re-proof, no regressions. Full detail in `specs/00-steering/revision-log.md`'s 2026-08-08 entries.
 
 #### Decisions for Task 4
 
