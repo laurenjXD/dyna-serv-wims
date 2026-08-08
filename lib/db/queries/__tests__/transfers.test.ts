@@ -1,0 +1,535 @@
+// RED-step unit tests for lib/db/queries/transfers.ts (does not exist yet).
+//
+// Traceability:
+//   specs/11-transfer-and-inspection/requirements.md
+//     R1.1 — authorized user SHALL request movement from one source to one destination
+//     R1.2 — request SHALL identify item, lot, flow type, quantity, source/destination, reason
+//     R3.1 — system SHALL maintain a single shared inspection record structure
+//     R7.1 — authorized users SHALL review transfer requests, current state, history
+//     R7.2 — search/filter SHALL support status, date, source/destination, item/lot
+//     R8.1 — every transfer read and mutation SHALL use current capability, party/flow scope
+//   specs/11-transfer-and-inspection/design.md
+//     §2 — transfer_requests and transfer_lines table shapes
+//     §4 — transfer state and command boundaries
+//
+// Acceptance criteria covered:
+//   "Authorized users can list transfer requests filterable by status with pagination
+//    (requirements.md R7.1, R7.2; design.md §4)."
+//   "A known transfer ID returns its request with all transfer_lines nested;
+//    an unknown ID returns null (design.md §2, requirements.md R7.1)."
+//
+// ---------------------------------------------------------------------------
+// Expected module contract for lib/db/queries/transfers.ts (for backend-builder):
+//
+//   export type TransferRequestRow = {
+//     id: string;
+//     status: string;
+//     flowType: string;
+//     fromLocationId: string;
+//     toLocationId: string;
+//     requestedBy: string;
+//     requiresApproval: boolean;
+//     createdAt: Date;
+//   };
+//
+//   export type TransferLineRow = {
+//     id: string;
+//     transferRequestId: string;
+//     lotId: string;
+//     itemId: string;
+//     qtyRequested: string;
+//     qtyTransferred: string;
+//     status: string;
+//   };
+//
+//   export type TransferRequestWithLines = TransferRequestRow & {
+//     lines: TransferLineRow[];
+//   };
+//
+//   // Returns paginated transfer requests; optional status filter.
+//   export async function listTransferRequests(
+//     db: DbLike,
+//     opts: { limit: number; offset: number; status?: string },
+//   ): Promise<{ rows: TransferRequestRow[]; total: number }>;
+//
+//   // Returns the transfer request with nested lines or null when not found.
+//   export async function getTransferRequest(
+//     db: DbLike,
+//     transferId: string,
+//   ): Promise<TransferRequestWithLines | null>;
+//
+// ---------------------------------------------------------------------------
+// Mock pattern:
+//
+// listTransferRequests issues two db.select() calls:
+//   1. Data query  — fluent chain ending in .offset() which resolves to rows.
+//   2. Count query — thenable chain resolving to [{ count: String(n) }].
+//
+// makeDataChain(rows)     — fluent chain; .offset() resolves to rows.
+// makeCountChain(n)       — thenable chain resolving to [{ count: String(n) }].
+// makeListDb(rows, total) — wires both via mockReturnValueOnce.
+//
+// getTransferRequest issues one db.select() that left-joins transfer_requests to
+// transfer_lines; raw join rows (one per line, or one null-line row when no lines
+// exist) are assembled by the function.
+// ---------------------------------------------------------------------------
+
+import { describe, expect, it, vi } from "vitest";
+import {
+  listTransferRequests,
+  getTransferRequest,
+} from "../transfers";
+
+// ---------------------------------------------------------------------------
+// Mock helpers
+// ---------------------------------------------------------------------------
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyFn = (...args: any[]) => any;
+
+// Data chain: fluent chain where the last call is .offset(), which resolves.
+function makeDataChain(resolvedRows: unknown[]) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const chain: Record<string, any> = {};
+  for (const method of [
+    "from",
+    "leftJoin",
+    "innerJoin",
+    "where",
+    "orderBy",
+    "limit",
+  ]) {
+    chain[method] = vi.fn(() => chain);
+  }
+  chain["offset"] = vi.fn().mockResolvedValue(resolvedRows);
+  return chain;
+}
+
+// Count chain: thenable chain resolving to [{ count: String(n) }].
+function makeCountChain(count: number) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const chain: Record<string, any> = {};
+  for (const method of ["from", "where", "leftJoin", "innerJoin", "orderBy"]) {
+    chain[method] = vi.fn(() => chain);
+  }
+  const resolved = Promise.resolve([{ count: String(count) }]);
+  chain["then"] = resolved.then.bind(resolved) as AnyFn;
+  chain["catch"] = resolved.catch.bind(resolved) as AnyFn;
+  chain["finally"] = resolved.finally.bind(resolved) as AnyFn;
+  return chain;
+}
+
+// Wires one data + one count query for listTransferRequests.
+function makeListDb(dataRows: unknown[], total: number) {
+  return {
+    select: vi
+      .fn()
+      .mockReturnValueOnce(makeDataChain(dataRows))
+      .mockReturnValueOnce(makeCountChain(total)),
+  };
+}
+
+// Simple thenable chain for getTransferRequest (single joined select).
+function makeSelectChain(rows: unknown[]) {
+  const resolved = Promise.resolve(rows);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const chain: Record<string, any> = {};
+  for (const method of ["from", "where", "leftJoin", "orderBy"]) {
+    chain[method] = vi.fn(() => chain);
+  }
+  chain["then"] = resolved.then.bind(resolved) as AnyFn;
+  chain["catch"] = resolved.catch.bind(resolved) as AnyFn;
+  chain["finally"] = resolved.finally.bind(resolved) as AnyFn;
+  return chain;
+}
+
+// ---------------------------------------------------------------------------
+// Fixture builders
+// ---------------------------------------------------------------------------
+
+const NOW = new Date("2026-08-08T10:00:00Z");
+
+function rawTransferRequestRow(overrides: Partial<{
+  id: string;
+  status: string;
+  flowType: string;
+  fromLocationId: string;
+  toLocationId: string;
+  requestedBy: string;
+  requiresApproval: boolean;
+  createdAt: Date;
+}> = {}) {
+  return {
+    id: "transfer-uuid-1",
+    status: "staged",
+    flowType: "vmi",
+    fromLocationId: "loc-uuid-from",
+    toLocationId: "loc-uuid-to",
+    requestedBy: "user-uuid-staff",
+    requiresApproval: false,
+    createdAt: NOW,
+    ...overrides,
+  };
+}
+
+function rawTransferLineRow(overrides: Partial<{
+  id: string;
+  transferRequestId: string;
+  lotId: string;
+  itemId: string;
+  qtyRequested: string;
+  qtyTransferred: string;
+  status: string;
+}> = {}) {
+  return {
+    id: "line-uuid-1",
+    transferRequestId: "transfer-uuid-1",
+    lotId: "lot-uuid-1",
+    itemId: "item-uuid-1",
+    qtyRequested: "10",
+    qtyTransferred: "0",
+    status: "pending",
+    ...overrides,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// listTransferRequests — empty state
+// (requirements.md R7.1, R7.2; design.md §4)
+// ---------------------------------------------------------------------------
+
+describe("listTransferRequests — empty database (R7.1, R7.2, design.md §4)", () => {
+  it("(AC: list with pagination) returns { rows: [], total: 0 } when no transfer requests exist", async () => {
+    const db = makeListDb([], 0);
+
+    const result = await listTransferRequests(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      { limit: 10, offset: 0 },
+    );
+
+    expect(result).toHaveProperty("rows");
+    expect(result).toHaveProperty("total");
+    expect(result.rows).toHaveLength(0);
+    expect(result.total).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// listTransferRequests — status filter
+// (requirements.md R7.2; design.md §4 state model)
+// ---------------------------------------------------------------------------
+
+describe("listTransferRequests — status filter (R7.2, design.md §4)", () => {
+  it("(AC: status filter applied) returns only transfer requests matching the supplied status filter", async () => {
+    const inProgressRow = rawTransferRequestRow({
+      id: "transfer-in-progress",
+      status: "in_progress",
+    });
+    const db = makeListDb([inProgressRow], 1);
+
+    const result = await listTransferRequests(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      { limit: 10, offset: 0, status: "in_progress" },
+    );
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0].status).toBe("in_progress");
+    expect(result.total).toBe(1);
+  });
+
+  it("(AC: status filter returns empty) returns empty rows when no requests match the supplied status filter", async () => {
+    const db = makeListDb([], 0);
+
+    const result = await listTransferRequests(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      { limit: 10, offset: 0, status: "completed" },
+    );
+
+    expect(result.rows).toHaveLength(0);
+    expect(result.total).toBe(0);
+  });
+
+  it("(AC: where() invoked on status filter) calls where() on the data chain when a status filter is supplied", async () => {
+    const dataChain = makeDataChain([]);
+    const db = {
+      select: vi
+        .fn()
+        .mockReturnValueOnce(dataChain)
+        .mockReturnValueOnce(makeCountChain(0)),
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await listTransferRequests(db as any, { limit: 10, offset: 0, status: "completed" });
+
+    const whereFn = dataChain["where"] as ReturnType<typeof vi.fn>;
+    expect(whereFn).toHaveBeenCalled();
+  });
+
+  it("(AC: no status filter returns all) returns all statuses when no status filter is provided", async () => {
+    const rows = [
+      rawTransferRequestRow({ id: "t-1", status: "staged" }),
+      rawTransferRequestRow({ id: "t-2", status: "in_progress" }),
+      rawTransferRequestRow({ id: "t-3", status: "completed" }),
+    ];
+    const db = makeListDb(rows, 3);
+
+    const result = await listTransferRequests(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      { limit: 10, offset: 0 },
+    );
+
+    expect(result.rows).toHaveLength(3);
+    expect(result.total).toBe(3);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// listTransferRequests — pagination
+// (requirements.md R7.2; design.md §4)
+// ---------------------------------------------------------------------------
+
+describe("listTransferRequests — pagination (R7.2, design.md §4)", () => {
+  it("(AC: limit/offset respected) limit=1 offset=0 returns 1 row with total=3", async () => {
+    const db = makeListDb([rawTransferRequestRow({ id: "t-page-1" })], 3);
+
+    const result = await listTransferRequests(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      { limit: 1, offset: 0 },
+    );
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.total).toBe(3);
+  });
+
+  it("(AC: total is unpaginated count) total is the unpaginated count, independent of page size", async () => {
+    const db = makeListDb(
+      [rawTransferRequestRow({ id: "t-page-2" }), rawTransferRequestRow({ id: "t-page-3" })],
+      20,
+    );
+
+    const result = await listTransferRequests(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      { limit: 2, offset: 10 },
+    );
+
+    expect(result.rows.length).toBe(2);
+    expect(result.total).toBe(20);
+  });
+
+  it("(AC: limit/offset passed to Drizzle chain) applies the provided limit and offset via the Drizzle chain", async () => {
+    const dataChain = makeDataChain([]);
+    const db = {
+      select: vi
+        .fn()
+        .mockReturnValueOnce(dataChain)
+        .mockReturnValueOnce(makeCountChain(0)),
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await listTransferRequests(db as any, { limit: 5, offset: 15 });
+
+    const limitFn = dataChain["limit"] as ReturnType<typeof vi.fn>;
+    const offsetFn = dataChain["offset"] as ReturnType<typeof vi.fn>;
+    expect(limitFn).toHaveBeenCalledWith(5);
+    expect(offsetFn).toHaveBeenCalledWith(15);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// listTransferRequests — row shape
+// (requirements.md R1.2, R7.1; design.md §2)
+// ---------------------------------------------------------------------------
+
+describe("listTransferRequests — row shape (R1.2, R7.1, design.md §2)", () => {
+  it("(AC: row fields present) each returned row includes id, status, flowType, fromLocationId, toLocationId, requestedBy, requiresApproval, createdAt", async () => {
+    const row = rawTransferRequestRow({});
+    const db = makeListDb([row], 1);
+
+    const result = await listTransferRequests(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      { limit: 10, offset: 0 },
+    );
+
+    const r = result.rows[0];
+    expect(r).toHaveProperty("id");
+    expect(r).toHaveProperty("status");
+    expect(r).toHaveProperty("flowType");
+    expect(r).toHaveProperty("fromLocationId");
+    expect(r).toHaveProperty("toLocationId");
+    expect(r).toHaveProperty("requestedBy");
+    expect(r).toHaveProperty("requiresApproval");
+    expect(r).toHaveProperty("createdAt");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getTransferRequest — not found
+// (requirements.md R7.1; design.md §4)
+// ---------------------------------------------------------------------------
+
+describe("getTransferRequest — not found (R7.1, design.md §4)", () => {
+  it("(AC: unknown ID returns null) returns null when the transferId does not match any transfer request", async () => {
+    const db = {
+      select: vi.fn().mockReturnValue(makeSelectChain([])),
+    };
+
+    const result = await getTransferRequest(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      "non-existent-uuid",
+    );
+
+    expect(result).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getTransferRequest — known ID with no lines
+// (requirements.md R7.1; design.md §2)
+// ---------------------------------------------------------------------------
+
+describe("getTransferRequest — known ID with no lines (R7.1, design.md §2)", () => {
+  it("(AC: empty lines array) returns the request with lines: [] when the transfer exists but has no transfer_lines rows", async () => {
+    // Left join: one row returned with null line fields
+    const requestOnlyRow = {
+      ...rawTransferRequestRow({ id: "transfer-uuid-no-lines" }),
+      // line fields are null (left join with no line rows)
+      lineId: null,
+      lineTransferRequestId: null,
+      lineLotId: null,
+      lineItemId: null,
+      lineQtyRequested: null,
+      lineQtyTransferred: null,
+      lineStatus: null,
+    };
+    const db = {
+      select: vi.fn().mockReturnValue(makeSelectChain([requestOnlyRow])),
+    };
+
+    const result = await getTransferRequest(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      "transfer-uuid-no-lines",
+    );
+
+    expect(result).not.toBeNull();
+    expect(result!.id).toBe("transfer-uuid-no-lines");
+    expect(Array.isArray(result!.lines)).toBe(true);
+    expect(result!.lines).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getTransferRequest — known ID with lines
+// (requirements.md R7.1, R1.2; design.md §2)
+// ---------------------------------------------------------------------------
+
+describe("getTransferRequest — known ID with lines (R7.1, R1.2, design.md §2)", () => {
+  it("(AC: lines array populated) returns the request with all lines populated when transfer_lines rows exist", async () => {
+    const transfer = rawTransferRequestRow({ id: "transfer-uuid-with-lines" });
+    const line1 = rawTransferLineRow({
+      id: "line-uuid-1",
+      transferRequestId: "transfer-uuid-with-lines",
+      lotId: "lot-uuid-1",
+      qtyRequested: "10",
+      qtyTransferred: "0",
+      status: "pending",
+    });
+    const line2 = rawTransferLineRow({
+      id: "line-uuid-2",
+      transferRequestId: "transfer-uuid-with-lines",
+      lotId: "lot-uuid-2",
+      qtyRequested: "5",
+      qtyTransferred: "5",
+      status: "completed",
+    });
+
+    // One joined row per line
+    const joinedRows = [
+      {
+        ...transfer,
+        lineId: line1.id,
+        lineTransferRequestId: line1.transferRequestId,
+        lineLotId: line1.lotId,
+        lineItemId: line1.itemId,
+        lineQtyRequested: line1.qtyRequested,
+        lineQtyTransferred: line1.qtyTransferred,
+        lineStatus: line1.status,
+      },
+      {
+        ...transfer,
+        lineId: line2.id,
+        lineTransferRequestId: line2.transferRequestId,
+        lineLotId: line2.lotId,
+        lineItemId: line2.itemId,
+        lineQtyRequested: line2.qtyRequested,
+        lineQtyTransferred: line2.qtyTransferred,
+        lineStatus: line2.status,
+      },
+    ];
+    const db = {
+      select: vi.fn().mockReturnValue(makeSelectChain(joinedRows)),
+    };
+
+    const result = await getTransferRequest(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      "transfer-uuid-with-lines",
+    );
+
+    expect(result).not.toBeNull();
+    expect(result!.id).toBe("transfer-uuid-with-lines");
+    expect(Array.isArray(result!.lines)).toBe(true);
+    expect(result!.lines).toHaveLength(2);
+  });
+
+  it("(AC: line field shape) each line includes id, transferRequestId, lotId, itemId, qtyRequested, qtyTransferred, status", async () => {
+    const transfer = rawTransferRequestRow({ id: "transfer-uuid-shape" });
+    const line = rawTransferLineRow({
+      id: "line-uuid-shape",
+      transferRequestId: "transfer-uuid-shape",
+      lotId: "lot-uuid-shape",
+      itemId: "item-uuid-shape",
+      qtyRequested: "20",
+      qtyTransferred: "10",
+      status: "in_transit",
+    });
+
+    const joinedRow = {
+      ...transfer,
+      lineId: line.id,
+      lineTransferRequestId: line.transferRequestId,
+      lineLotId: line.lotId,
+      lineItemId: line.itemId,
+      lineQtyRequested: line.qtyRequested,
+      lineQtyTransferred: line.qtyTransferred,
+      lineStatus: line.status,
+    };
+    const db = {
+      select: vi.fn().mockReturnValue(makeSelectChain([joinedRow])),
+    };
+
+    const result = await getTransferRequest(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      "transfer-uuid-shape",
+    );
+
+    expect(result!.lines).toHaveLength(1);
+    const l = result!.lines[0];
+    expect(l).toHaveProperty("id");
+    expect(l).toHaveProperty("transferRequestId");
+    expect(l).toHaveProperty("lotId");
+    expect(l).toHaveProperty("itemId");
+    expect(l).toHaveProperty("qtyRequested");
+    expect(l).toHaveProperty("qtyTransferred");
+    expect(l).toHaveProperty("status");
+  });
+});
