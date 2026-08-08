@@ -3,13 +3,12 @@
 // Traceability:
 //   specs/09-approval-queue/design.md §7 (queue UI routes, office shell)
 //   specs/00-steering/brand-design-system.md (office surface, WCAG AA)
-//
-// This page is UI-only for design review. Mock data is used in place of real
-// DB queries. Server Actions and migrations are not implemented at this stage.
 
 import Link from "next/link";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
+import { db } from "@/lib/db/client";
+import { listPendingApprovalRequests } from "@/lib/db/queries/approvals";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -23,52 +22,7 @@ type ApprovalStatus =
 
 type ApprovalType = "fifo_override";
 
-interface ApprovalQueueRow {
-  id: string;
-  referenceNumber: string;
-  type: ApprovalType;
-  requesterName: string;
-  requestedAt: Date;
-  expiresAt: Date;
-  status: ApprovalStatus;
-}
-
-// ─── Mock data ───────────────────────────────────────────────────────────────
-// TODO: replace with real DB query once Track 1 delivers the approval_requests
-// migration. The stub function signature intentionally matches the shape that
-// backend-builder will implement (filter params, paginated result).
-
-async function getApprovalQueue(): Promise<ApprovalQueueRow[]> {
-  return [
-    {
-      id: "apr-001",
-      referenceNumber: "APQ-2026-001",
-      type: "fifo_override",
-      requesterName: "Maria Santos",
-      requestedAt: new Date("2026-08-08T09:15:00Z"),
-      expiresAt: new Date("2026-08-08T09:45:00Z"),
-      status: "pending",
-    },
-    {
-      id: "apr-002",
-      referenceNumber: "APQ-2026-002",
-      type: "fifo_override",
-      requesterName: "Carlos Reyes",
-      requestedAt: new Date("2026-08-07T14:30:00Z"),
-      expiresAt: new Date("2026-08-07T15:00:00Z"),
-      status: "approved",
-    },
-    {
-      id: "apr-003",
-      referenceNumber: "APQ-2026-003",
-      type: "fifo_override",
-      requesterName: "Ana Lim",
-      requestedAt: new Date("2026-08-06T11:00:00Z"),
-      expiresAt: new Date("2026-08-06T11:30:00Z"),
-      status: "expired",
-    },
-  ];
-}
+const PAGE_SIZE = 20;
 
 // ─── Status badge helpers ─────────────────────────────────────────────────────
 // Tokens sourced from tailwind.config.ts — no raw hex values.
@@ -104,11 +58,11 @@ const TYPE_LABELS: Record<ApprovalType, string> = {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 interface PageProps {
-  searchParams: Promise<{ status?: string; type?: string }>;
+  searchParams: Promise<{ status?: string; type?: string; page?: string }>;
 }
 
 export default async function ApprovalQueuePage({ searchParams }: PageProps) {
-  const { status: statusFilter, type: typeFilter } = await searchParams;
+  const { status: statusFilter, type: typeFilter, page: pageParam } = await searchParams;
   const resolver = await createPageResolver();
 
   // Gate on fifo_override.approve — reviewers only (supervisor role, global scope).
@@ -129,21 +83,22 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
     );
   }
 
-  // TODO: replace with real DB query once Track 1 delivers migration.
-  const allRequests = await getApprovalQueue();
+  const currentPage = Math.max(1, Number(pageParam ?? "1") || 1);
+  const offset = (currentPage - 1) * PAGE_SIZE;
 
-  // Filter mock data by URL params.
-  const filtered = allRequests.filter((r) => {
-    if (statusFilter && statusFilter !== "all" && r.status !== statusFilter)
-      return false;
-    if (typeFilter && typeFilter !== "all" && r.type !== typeFilter)
-      return false;
-    return true;
+  // Resolve approvalType filter: URL param "type" maps to approvalType; "all"
+  // means no type filter. Only "fifo_override" is a registered type in v1.
+  const approvalType =
+    typeFilter && typeFilter !== "all" ? typeFilter : undefined;
+
+  const { rows: filtered, total } = await listPendingApprovalRequests(db, {
+    limit: PAGE_SIZE,
+    offset,
+    approvalType,
   });
 
-  const hasActiveFilter =
-    (statusFilter && statusFilter !== "all") ||
-    (typeFilter && typeFilter !== "all");
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const hasActiveFilter = approvalType !== undefined;
 
   return (
     <div className="mx-auto max-w-container">
@@ -198,7 +153,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
 
           <button
             type="submit"
-            className="flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-red"
+            className="flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
           >
             Apply
           </button>
@@ -264,51 +219,83 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/30">
-                {filtered.map((req) => (
-                  <tr
-                    key={req.id}
-                    className="hover:bg-surface-light-grey/50"
-                  >
-                    {/* Roboto Mono for reference numbers per §9 tables */}
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {req.referenceNumber}
-                    </td>
-                    <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                      {TYPE_LABELS[req.type]}
-                    </td>
-                    <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                      {req.requesterName}
-                    </td>
-                    <td className="px-4 py-3 font-body text-body-md text-text-grey">
-                      {req.requestedAt.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3 font-body text-body-md text-text-grey">
-                      {req.expiresAt.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3">
-                      {/* Status badge — radius-full, Epilogue SemiBold uppercase, §1.3 colors at /10 opacity */}
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase ${STATUS_CLASSES[req.status]}`}
-                      >
-                        {STATUS_LABELS[req.status]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {/* Touch target ≥ 44px (h-11) per brand-design-system.md §3 */}
-                      <Link
-                        href={`/approvals/${req.id}`}
-                        className="inline-flex h-11 items-center font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                      >
-                        View
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map((req) => {
+                  const status = req.status as ApprovalStatus;
+                  const approvalTypeCast = req.approvalType as ApprovalType;
+                  return (
+                    <tr
+                      key={req.id}
+                      className="hover:bg-surface-light-grey/50"
+                    >
+                      {/* Roboto Mono for reference numbers per §9 tables */}
+                      <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
+                        {req.requestNumber}
+                      </td>
+                      <td className="px-4 py-3 font-body text-body-md text-on-surface">
+                        {TYPE_LABELS[approvalTypeCast] ?? req.approvalType}
+                      </td>
+                      <td className="px-4 py-3 font-body text-body-md text-on-surface">
+                        {/* requesterUserId is available; requesterName requires a join not in this query */}
+                        <span className="font-mono text-mono-md">{req.requesterUserId}</span>
+                      </td>
+                      <td className="px-4 py-3 font-body text-body-md text-text-grey">
+                        {req.createdAt.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 font-body text-body-md text-text-grey">
+                        {req.expiryAt.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3">
+                        {/* Status badge — radius-full, Epilogue SemiBold uppercase, §1.3 colors at /10 opacity */}
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase ${STATUS_CLASSES[status] ?? ""}`}
+                        >
+                          {STATUS_LABELS[status] ?? status.toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {/* Touch target ≥ 44px (h-11) per brand-design-system.md §3 */}
+                        <Link
+                          href={`/approvals/${req.id}`}
+                          className="inline-flex h-11 items-center font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                        >
+                          View
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </div>
+
+      {/* Pagination controls */}
+      {totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-between font-body text-body-sm text-text-grey">
+          <span>
+            Page {currentPage} of {totalPages} ({total} total)
+          </span>
+          <div className="flex gap-2">
+            {currentPage > 1 && (
+              <Link
+                href={`/approvals?${new URLSearchParams({ ...(typeFilter ? { type: typeFilter } : {}), page: String(currentPage - 1) })}`}
+                className="inline-flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              >
+                Previous
+              </Link>
+            )}
+            {currentPage < totalPages && (
+              <Link
+                href={`/approvals?${new URLSearchParams({ ...(typeFilter ? { type: typeFilter } : {}), page: String(currentPage + 1) })}`}
+                className="inline-flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              >
+                Next
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -4,6 +4,20 @@ Every merge conflict and major revision, dated, with the resolution. This is the
 
 ## Resolved
 
+## `09-approval-queue` Phase B — two open RBAC/RLS architectural gaps carried forward; one structural grant fixed; terminal-decision uniqueness enforced at DB level (2026-08-08)
+
+`rbac-rls-reviewer` post-implementation audit of the completed `09-approval-queue` found four findings. Two are fixed; two are known open gaps that extend the same class of gap already documented from `06` Phase A.
+
+**Finding B1 — Drizzle client bypasses RLS (same as Gap A from `06` Phase A).** `lib/db/client.ts` creates a plain `postgres-js` connection with no JWT claim propagation. All `0010_approval_rls_policies.sql` policies exist and are correctly written, but are not reachable by Next.js server-side Drizzle queries. The only actual enforcement gate for approval operations is the application-layer `requirePermission()` call. This gap affects every table in the project — it is not specific to approval tables. **Deferred to `04-services-and-infrastructure`**, same as Phase A Gap A. The application-layer `requirePermission("fifo_override.approve")` check is present and correct on every action and page path.
+
+**Finding B2 — No `SELECT ... FOR UPDATE` transaction wrapping in `recordDecision`.** `design.md §5` requires the approve/reject command to acquire a row-level lock before checking and writing the decision, preventing two concurrent supervisors from producing two terminal decision rows. The current `lib/actions/approvals.ts` implementation performs the SELECT, validation, INSERT, and UPDATE as four separate un-transacted operations. A concurrent pair of reviewers can both read the request as `pending` before either commits, producing two `approval_decisions` rows. **Partially mitigated**: `supabase/migrations/0011_approval_constraints_fix.sql` adds a partial UNIQUE index `uniq_approval_decisions_terminal ON approval_decisions(request_id) WHERE outcome IN ('approved', 'rejected')`, so the second concurrent INSERT fails with a unique-constraint violation rather than silently succeeding. The first reviewer's decision still lands correctly. The full `FOR UPDATE` lock (which also prevents the duplicate `approval_requests.status` UPDATE) requires a Drizzle transaction wrapper that propagates the authenticated session — this is part of the same `04` infrastructure work as B1. **Deferred to `04`**.
+
+**Finding B3 — GRANT UPDATE on `approval_requests` was table-level (FIXED).** `0010_approval_rls_policies.sql` issued `GRANT UPDATE ON public.approval_requests TO authenticated`, which allowed a requester's self-cancellation UPDATE to also modify `target_snapshot`, `reason`, and other immutable columns — the RLS `WITH CHECK` only verified the resulting `status` value. Fixed in `0011`: `REVOKE UPDATE ON public.approval_requests FROM authenticated` + `GRANT UPDATE (status) ON public.approval_requests TO authenticated`. Only the `status` column can now be set by an authenticated session.
+
+**Finding A1 — Misleading comment in `0010` (FIXED).** The section-4 comment read "No INSERT or UPDATE grant on `approval_decisions`" which contradicted the `GRANT INSERT` on the next line. Fixed in place to "No UPDATE grant on approval_decisions" with a clarifying note that INSERT is granted so reviewers can record decisions.
+
+The application-layer `requirePermission`, `isExpired`, `checkSelfApproval`, and `transitionRequest` guards are all present and correctly ordered. The gaps documented here are defense-in-depth gaps (no unguarded path exists at the application layer), not unguarded mutation paths.
+
 ## Track 2 Phase A (`06`) — two open RBAC/RLS architectural gaps recorded; not Track 2's to fix unilaterally (2026-08-08)
 
 During the `rbac-rls-reviewer` pass over the Track 2 Phase A (`06-party-and-item-enrollment`) implementation, two structural gaps were found and documented here rather than silently fixed, because both require architectural decisions outside Track 2's authority.
