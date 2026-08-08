@@ -94,7 +94,7 @@ export default async function DispatchConfirmationPage({
             <span>Back to Pick</span>
           </Link>
           {/* Flow type badge — Epilogue, floor-visible */}
-          <span className="font-label text-body-md text-white/70 uppercase">
+          <span className="font-label text-body-md text-surface-white/70 uppercase">
             {pickListData.flowType.toUpperCase()}
           </span>
         </div>

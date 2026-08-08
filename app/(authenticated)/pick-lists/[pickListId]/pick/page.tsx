@@ -82,7 +82,7 @@ export default async function PickExecutionPage({
             <span>Back to Pick List</span>
           </Link>
           {/* Flow type badge — Epilogue, floor-visible */}
-          <span className="font-label text-body-md text-white/70 uppercase">
+          <span className="font-label text-body-md text-surface-white/70 uppercase">
             {(pickList as PickListRow).flowType.toUpperCase()}
           </span>
         </div>
