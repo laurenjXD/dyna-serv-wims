@@ -171,6 +171,22 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     launchStatus: "planned",
   },
   {
+    id: "profile",
+    path: "/profile",
+    surface: "shared",
+    capability: "none",
+    featureSpecs: ["21-user-profile-and-settings"],
+    launchStatus: "launch",
+  },
+  {
+    id: "settings",
+    path: "/settings",
+    surface: "office",
+    capability: "users.read",
+    featureSpecs: ["21-user-profile-and-settings"],
+    launchStatus: "launch",
+  },
+  {
     id: "portal",
     path: "/portal",
     surface: "party",

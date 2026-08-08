@@ -13,24 +13,25 @@ Cites foundational specs:
 ## 1. UI Architecture & Layout
 
 ### 1.1 Personal Profile (`/profile`)
-The profile layout will utilize a centered, card-based interface focused on the individual user.
+The profile layout is a centered, card-based interface focused on the individual user, built to **floor defaults** — see the amendment note below.
 
 **Component Tree:**
 ```
 [ Shell Layout ]
   └── <ProfileContainer>
-       ├── <Tabs>
-       │    ├── Tab: Account
-       │    │    ├── <AvatarUpload>
-       │    │    ├── <DisplayNameInput>
-       │    │    └── <ContactNumberInput>
-       │    ├── Tab: Security
-       │    │    ├── <ChangePasswordForm>
-       │    │    └── <ActiveSessionsList>
-       │    └── Tab: Preferences
-       │         ├── <DarkModeToggle>
-       │         └── <DensityToggle> (Compact vs Standard padding)
+       ├── Section: Account
+       │    ├── <AvatarUpload>
+       │    ├── <DisplayNameInput>
+       │    └── <ContactNumberInput>
+       ├── Section: Security
+       │    ├── <ChangePasswordForm>
+       │    └── <ActiveSessionsList>
+       └── Section: Preferences
+            ├── <DarkModeToggle>
+            └── <DensityToggle> (Compact vs Standard padding)
 ```
+
+**Amendment (2026-08-08):** `05-ui-shell-and-navigation` design.md §3.3 states that shared routes (reachable by any authenticated user, including floor staff — `/profile` is registered as `surface: "shared"` in `lib/shell/registry.ts`) use floor-first layout and touch targets by default, and may only use the `lg` sidebar/office enhancement if the feature spec explicitly declares that exception. This section did not declare such an exception. `design-system-auditor` flagged the original implementation (glassmorphism card, `<Tabs>` navigation, 44px touch targets, hover-only states, 14px text, `text-grey` body copy) as a real violation of that rule. Per Product Owner decision, `/profile` is rebuilt to floor defaults: solid `surface-white` Level-2 cards (no `backdrop-blur`), stacked full-page sections instead of `<Tabs>` (tabs/side-by-side panels are named explicitly as an office-only pattern in `brand-design-system.md` §3), 56px minimum touch targets (`brand-design-system.md` §3), `active:` press feedback instead of `hover:` (§9), `on-surface` body text (§1.2), and no text below 16px (§2). The three logical groupings (Account/Security/Preferences) are preserved as clearly separated `<section>`s on one continuous scrollable page rather than as sequential full screens — the content within each section was judged not dense enough to require screen-by-screen sequencing. `/settings` (§1.2 below) is unaffected — it remains office-first, since `02-rbac-roles`/admin routes are not floor-reachable surfaces.
 
 ### 1.2 Admin Settings Shell (`/settings`)
 The settings area requires deeper navigation to manage the warehouse system. It will employ a secondary left-rail navigation pattern inside the main app shell.

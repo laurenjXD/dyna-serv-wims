@@ -163,12 +163,12 @@ describe("lib/shell/navigation — filterVisibleRoutes (R3.4, R3.5)", () => {
     );
   });
 
-  it("a context with zero grants sees only the 'none'-capability routes ('/', '/sync', '/portal')", async () => {
+  it("a context with zero grants sees only the 'none'-capability routes ('/', '/profile', '/sync', '/portal')", async () => {
     const { filterVisibleRoutes } = await import("../navigation");
     const visible = filterVisibleRoutes(zeroGrantContext);
     const visiblePaths = visible.map((row) => row.path).sort();
 
-    expect(visiblePaths).toEqual(["/", "/portal", "/sync"]);
+    expect(visiblePaths).toEqual(["/", "/portal", "/profile", "/sync"].sort());
   });
 
   it("does not mutate or expand the caller-supplied context (registry filtering is presentation-only, R3.5)", async () => {

@@ -90,6 +90,8 @@ const EXPECTED_ROUTES: Array<{
   { id: "items", path: "/items", surface: "office", capability: "items.read", featureSpecs: ["06-party-and-item-enrollment"], launchStatus: "launch" },
   { id: "locations", path: "/locations", surface: "office", capability: "locations.read", featureSpecs: ["06-party-and-item-enrollment"], launchStatus: "launch" },
   { id: "reports", path: "/reports", surface: "office", capability: "reporting.read", featureSpecs: ["16-reporting-and-analytics"], launchStatus: "planned" },
+  { id: "profile", path: "/profile", surface: "shared", capability: "none", featureSpecs: ["21-user-profile-and-settings"], launchStatus: "launch" },
+  { id: "settings", path: "/settings", surface: "office", capability: "users.read", featureSpecs: ["21-user-profile-and-settings"], launchStatus: "launch" },
   { id: "portal", path: "/portal", surface: "party", capability: "none", featureSpecs: ["22-parties-portal"], launchStatus: "planned" },
   { id: "portal-inventory", path: "/portal/inventory", surface: "party", capability: "reporting.read", featureSpecs: ["22-parties-portal"], launchStatus: "planned" },
   { id: "portal-orders", path: "/portal/orders", surface: "party", capability: "pick_list.read", featureSpecs: ["22-parties-portal"], launchStatus: "planned" },
@@ -99,7 +101,7 @@ const EXPECTED_ROUTES: Array<{
 ];
 
 describe("lib/shell/registry — route catalog matches design.md §3.2 exactly (R3.1, R3.2)", () => {
-  it("exports ROUTE_REGISTRY with exactly the current 23 rows (no stale /dashboard, no extra/missing rows)", async () => {
+  it("exports ROUTE_REGISTRY with exactly the current 25 rows (no stale /dashboard, no extra/missing rows; 2026-08-08 amendment adds /profile and /settings per 21-user-profile-and-settings)", async () => {
     const { ROUTE_REGISTRY } = await import("../registry");
     expect(Array.isArray(ROUTE_REGISTRY)).toBe(true);
     expect(ROUTE_REGISTRY).toHaveLength(EXPECTED_ROUTES.length);

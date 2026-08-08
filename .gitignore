@@ -46,3 +46,6 @@ next-env.d.ts
 
 # drizzle-kit local state
 /drizzle/
+
+# supabase CLI local state
+supabase/.temp/
