@@ -90,7 +90,7 @@ export function ScanFeedbackProvider({ children }: { children: ReactNode }) {
         data-testid="scan-feedback-overlay"
         data-state={feedbackState}
         className={[
-          "fixed inset-0 z-50 pointer-events-none transition-opacity duration-150",
+          "fixed inset-0 z-50 pointer-events-none motion-safe:transition-opacity motion-safe:duration-150",
           feedbackState === "success" ? "bg-status-available opacity-100" : "",
           feedbackState === "error" ? "bg-status-held opacity-100" : "",
           feedbackState === "idle" ? "opacity-0" : "",

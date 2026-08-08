@@ -34,7 +34,7 @@
 // callback from the simulated scanner instance.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import { MobileQRScanner } from "@/components/barcode/MobileQRScanner";
 
 // ---------------------------------------------------------------------------

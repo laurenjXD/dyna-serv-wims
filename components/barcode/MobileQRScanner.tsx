@@ -125,7 +125,6 @@ export function MobileQRScanner({
       // Cleanup on unmount — stop scanner and release camera resource.
       scanner.clear().catch(() => {});
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Floor surface: solid `surface-white`, no glassmorphism, `shadow-elevation-2`.

@@ -189,14 +189,15 @@ describe("ScanFeedbackProvider (specs/18-barcode-integration FR-4.1, FR-4.2, AC-
   it("AC-2 / FR-4.2: Web Audio AudioContext is instantiated when triggerSuccess fires (audio beep)", () => {
     // Spy on window.AudioContext before rendering.
     const AudioContextSpy = vi
-      .spyOn(window, "AudioContext" as keyof typeof window, "get")
+      .spyOn(window, "AudioContext", "get")
       .mockReturnValue(
         vi.fn(() => mockAudioContext) as unknown as typeof AudioContext,
       );
 
     // Fallback: directly assign if `get` spy doesn't apply in jsdom.
-    const originalAudioContext = (window as typeof window & { AudioContext?: unknown }).AudioContext;
-    (window as typeof window & { AudioContext?: unknown }).AudioContext = vi.fn(() => mockAudioContext);
+    const winAny = window as unknown as { AudioContext?: unknown };
+    const originalAudioContext = winAny.AudioContext;
+    winAny.AudioContext = vi.fn(() => mockAudioContext);
 
     renderWithProvider();
 
@@ -207,13 +208,13 @@ describe("ScanFeedbackProvider (specs/18-barcode-integration FR-4.1, FR-4.2, AC-
     // AudioContext must have been constructed. The mock records construction
     // calls via vi.fn().
     const audioCtxCalls = (
-      (window as typeof window & { AudioContext?: unknown }).AudioContext as ReturnType<typeof vi.fn>
+      winAny.AudioContext as ReturnType<typeof vi.fn>
     ).mock?.calls?.length;
 
     expect(audioCtxCalls).toBeGreaterThan(0);
 
     // Restore
-    (window as typeof window & { AudioContext?: unknown }).AudioContext = originalAudioContext;
+    winAny.AudioContext = originalAudioContext;
     AudioContextSpy.mockRestore();
   });
 

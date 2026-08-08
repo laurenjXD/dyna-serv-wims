@@ -51,7 +51,7 @@ export function LabelPrinter({
       <button
         type="button"
         onClick={() => window.print()}
-        className="h-16 w-full bg-brand-red text-surface-white font-label text-label rounded active:scale-[0.97] transition-transform"
+        className="h-16 w-full bg-brand-red text-surface-white font-label text-body-md rounded active:scale-[0.97] motion-safe:transition-transform"
       >
         Print Label
       </button>
