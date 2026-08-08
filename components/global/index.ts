@@ -1,6 +1,9 @@
-// Placeholder — Phase 0 scaffolding only.
-//
-// Shell components (nav, header, sidebar, etc.) live here once
-// 05-ui-shell-and-navigation's approved tasks are implemented. Nothing is
-// implemented yet.
-export {};
+// Shell components (nav, header, sidebar, etc.) for
+// 05-ui-shell-and-navigation.
+export * from "./ShellStateView";
+export * from "./RouteGuard";
+export * from "./AuthenticatedShellBoundary";
+export * from "./ShellChrome";
+export * from "./ShellNavigation";
+export * from "./LandingPage";
+export * from "./FloorPrimaryAction";

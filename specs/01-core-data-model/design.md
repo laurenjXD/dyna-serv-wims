@@ -97,7 +97,9 @@ export const parties = pgTable("parties", {
   email: varchar("email", { length: 255 }),
   phone: varchar("phone", { length: 50 }),
   taxId: varchar("tax_id", { length: 50 }), // Tax ID / TIN
-  address: text("address"),
+  address1: text("address_1"), // Street/building line
+  address2: text("address_2"), // Unit/floor/barangay/city line — optional
+  paymentTerms: varchar("payment_terms", { length: 100 }), // e.g. "Net 30", "COD" — free text, not an enum (varies per vendor/customer agreement)
   notes: text("notes"),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),

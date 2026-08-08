@@ -142,6 +142,22 @@ describe("wrr.ts — wrr_items table (Req 6)", () => {
     const { wrrItems } = await import("../wrr");
     expect(column(wrrItems, "createdAt").notNull).toBe(true);
   });
+
+  // specs/07-incoming-receiving/design.md §5.1 — disposition field amendment
+  it("has disposition present (design.md §5.1 schema amendment)", async () => {
+    const { wrrItems } = await import("../wrr");
+    expect(hasColumn(wrrItems, "disposition")).toBe(true);
+  });
+
+  it("has disposition notNull (required for commit path per design.md §9)", async () => {
+    const { wrrItems } = await import("../wrr");
+    expect(column(wrrItems, "disposition").notNull).toBe(true);
+  });
+
+  it("has disposition default 'store' (design.md §7.1 — store is the default disposition)", async () => {
+    const { wrrItems } = await import("../wrr");
+    expect(column(wrrItems, "disposition").hasDefault).toBe(true);
+  });
 });
 
 describe("wrr.ts — wrr_inspection_logs table", () => {

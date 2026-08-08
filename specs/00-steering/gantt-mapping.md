@@ -14,7 +14,7 @@ The current Gantt timeline tracks the **Spec Definition Phase** (Drafting Requir
 |---|---|---|---|---|---|---|
 | 1.1 | Repository and development environment setup | 7/31 – 8/5 | 100% | Pre-spec scaffolding | **Approved** (Next.js 15 + Drizzle + Supabase + Tailwind skeleton scaffolded 2026-08-07; `build-doctor`-confirmed green build) | Done |
 | 1.2 | Core inventory data model and database schema | 7/31 – 8/5 | 100% | `01-core-data-model` | **Approved** (2026-08-06 Master Inventory read-model/aging/export amendment; PO decisions resolved) | **Implemented** (real Drizzle schema, migrations `0001`–`0003`, real-Postgres verified 2026-08-07 — four verification passes, zero regressions) |
-| 1.3 | Warehouse user authentication and RBAC | 7/31 – 8/5 | 100% | `02-rbac-roles`, `21-user-profile-and-settings` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
+| 1.3 | Warehouse user authentication and RBAC | 7/31 – 8/5 | 100% | `02-rbac-roles`, `21-user-profile-and-settings` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | **Implemented** (cycles 2.1–2.4 real-Postgres verified 2026-08-07/08 — schema, session resolver, guard, RLS policies; cycle 2.5 admin UI remains, blocked on `05` frontend) |
 | 1.4 | Receiving and inspection interface | 7/31 – 8/5 | 0% | `07-incoming-receiving`, `05-ui-shell` | **Approved** (2026-08-06 visual receiving inspection and dynamic item-code contract) | Ready for Dev |
 | 1.5 | Receiving transaction and lot creation logic | 7/31 – 8/5 | 0% | `07-incoming-receiving` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
 | 1.6 | Internal inventory transfer requests | 8/6 – 8/11 | 100% | `11-transfer-and-inspection` | **Approved** (2026-08-06 Daily Inspection/split-disposition amendment; Master Inventory initiation decision resolved) | Ready for Dev |
@@ -49,7 +49,8 @@ The current Gantt timeline tracks the **Spec Definition Phase** (Drafting Requir
 | 3.3 | Immutable inventory movement history | `16-reporting-and-analytics` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
 | 3.4 | Inventory valuation and stock reports | `16-reporting-and-analytics` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
 | 3.5 | Inventory analytics and trend dashboard | `16-reporting-and-analytics` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
-| 3.6 | VMI CBM storage billing calculations | `12-vmi-billing` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
+| 3.6 | VMI CBM storage billing calculations | `12-vmi-billing` | **Approved** (all three documents and both sign-offs complete 2026-08-06; `05` §6 `/billing-pricing` VMI tab and `vmi_cbm_ledger` daily-amount columns added 2026-08-08) | Ready for Dev |
+| 3.6a | Trading order pricing and margin calculations | `13-trading-orders-and-pricing` | **Approved** (all three documents and both sign-offs complete 2026-08-06; §7a `/billing-pricing` Trading margin ledger tab added 2026-08-08) | Ready for Dev |
 | 3.7 | Inventory dashboard performance optimization | Cross-cutting perf, `04/05` | **Not Started** | Not Started |
 | 3.8 | Cross-module inventory integration testing | `testing.md` | **Process Approved** | Not Started |
 | 3.9 | Milestone 3 inventory control review and launch | Sign-off gate | **Not Started** | Not Started |

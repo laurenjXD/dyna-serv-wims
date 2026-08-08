@@ -154,7 +154,7 @@ Document generation failure never rolls back a committed inventory transaction. 
 | Warehouse address | configuration | |
 | Party name | `parties.name` snapshot | |
 | Party code | `parties.code` snapshot | |
-| Delivery address | `parties.address` snapshot | Shown if applicable (VMI/Trading with delivery) |
+| Delivery address | `parties.address_1` + `parties.address_2` snapshot (concatenated) | Shown if applicable (VMI/Trading with delivery) |
 | Flow type | `pick_lists.flow_type` | VMI / Trading / Supplies |
 | *Per line:* item code | `pick_list_items.item_code` snapshot | Roboto Mono |
 | *Per line:* item name | `pick_list_items.item_description` snapshot | |

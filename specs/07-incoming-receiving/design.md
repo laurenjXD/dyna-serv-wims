@@ -367,7 +367,25 @@ The idempotency mechanism returns the original authoritative result for a duplic
 
 Receiving consumes the approved location/capacity suggestion interface. It may display remaining CBM and candidate `locations`, but it does not create a second capacity calculation or own location enrollment. Putaway recommendations apply only to lots committed with `store` disposition; quarantined lots at the `inspection` location are handed off to `11` for resolution before any putaway recommendation applies.
 
-The Incoming Ledger is a server-side query/view over `inventory_transactions` filtered by `movement_type` `receiving` and `putaway`, joined through approved relationships for WRR, item, lot, party, user, and location display. It is read-only and scope-filtered. Historical corrections are new domain transactions, never ledger edits.
+The Incoming Ledger is a server-side query/view over `inventory_transactions` filtered by `movement_type IN ('receiving', 'putaway')`, joined through approved relationships for WRR, item, lot, party, user, and location display. It is read-only and scope-filtered. Historical corrections are new domain transactions, never ledger edits.
+
+**Column list (added 2026-08-08)**, following the same field set and "Reference" column convention already established for `01-core-data-model`'s `location_transaction_ledger`/`party_transaction_ledger` (design.md §3 item 4), so all of this project's transaction-ledger surfaces read consistently:
+
+| Column | Source |
+| --- | --- |
+| Date/time | `inventory_transactions.created_at` |
+| Transaction # | `inventory_transactions.transaction_number` |
+| Movement type | `inventory_transactions.movement_type` (`receiving` \| `putaway`) |
+| Item | `items.code` / `items.name` via `inventory_transactions.item_id` |
+| Lot number | `lots.lot_number` via `inventory_transactions.lot_id` |
+| Qty | `inventory_transactions.qty` |
+| To location | `locations.label` via `inventory_transactions.to_location_id` (the putaway or inspection location) |
+| WRR # | `wrr_documents.wrr_number` via `inventory_transactions.wrr_id` |
+| Vendor party | `parties.name`/`code` via `wrr_documents.vendor_party_id` |
+| Performed by | `performed_by_user_id` resolved to display name |
+| Reference | `inventory_transactions.commercial_invoice_no` |
+
+`from_location_id` is not shown — incoming movements originate outside the warehouse (no source location), so this column is intentionally omitted rather than displayed empty. Flow type (`inventory_transactions.flow_type`) is available for filtering (VMI/Trading/Supplies) but not a default visible column, consistent with the collapsed-row density this table targets.
 
 ## 11. Offline, realtime, and infrastructure boundaries
 

@@ -53,6 +53,8 @@ The table below lists every authenticated route planned at launch. Each route na
 | Path | Surface | Required capability | Feature spec | Launch status |
 | --- | --- | --- | --- | --- |
 | `/` | shared | none | `05-ui-shell-and-navigation` | Launch |
+| `/profile` | shared | none | `21-user-profile-and-settings` | Launch |
+| `/settings` | office | `users.read` | `21-user-profile-and-settings` | Launch |
 | `/receiving` | floor | `receiving.view` | `07-incoming-receiving` | Launch |
 | `/receiving/[wrr_id]` | floor | `receiving.view` | `07-incoming-receiving` | Launch |
 | `/inventory` | office | `inventory.read` | `08-outgoing-withdrawal-and-two-stage-commitment` | Launch |
@@ -68,6 +70,7 @@ The table below lists every authenticated route planned at launch. Each route na
 | `/parties` | office | `parties.read` | `06-party-and-item-enrollment` | Launch |
 | `/items` | office | `items.read` | `06-party-and-item-enrollment` | Launch |
 | `/locations` | office | `locations.read` | `06-party-and-item-enrollment` | Launch |
+| `/billing-pricing` | office | `reporting.financial_read` | `12-vmi-billing`, `13-trading-orders-and-pricing` | Planned |
 | `/reports` | office | `reporting.read` | `16-reporting-and-analytics` | Planned |
 | `/portal` | party | none | `22-parties-portal` | Planned |
 | `/portal/inventory` | party | `reporting.read` | `22-parties-portal` | Planned |

@@ -72,6 +72,17 @@ export const commitmentStatusEnum = pgEnum("commitment_status", [
   "cancelled",          // Manually cancelled before execution
 ]);
 
+// Approval queue enums — specs/09-approval-queue/design.md §3/§5
+
+export const approvalRequestStatusEnum = pgEnum("approval_request_status", [
+  "pending",
+  "approved",
+  "rejected",
+  "cancelled",
+  "expired",
+  "superseded",
+]);
+
 // RBAC enums — specs/02-rbac-roles/design.md §4
 
 export const userProfileStatusEnum = pgEnum("user_profile_status", [
