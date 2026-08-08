@@ -226,3 +226,29 @@ Each track posts a dated entry to `specs/00-steering/revision-log.md` for every 
 ## Pending cross-track requests
 
 *(Track 2 or 3: add dated requests here when you need a locked-file change. Track 1: mark resolved with a pointer when done.)*
+
+### [OPEN] Track 2 → Track 1: `approval_requests`/`approval_decisions` migration + Drizzle schema (2026-08-08)
+
+**Requested by**: Track 2 (this agent)
+**Needed for**: Phase B — `09-approval-queue` implementation
+**Blocked files**: `supabase/migrations/` (new migration file) and `lib/db/schema/` (new schema additions) — both Track 1 locked
+
+**What's needed**: Two new tables per `specs/09-approval-queue/design.md` §3:
+
+1. `approval_requests` — fields: UUID PK, public reference number, idempotency key, approval type (`fifo_override`), target resource type/ID, target snapshot (JSONB, `FifoOverrideSnapshot` shape from design.md §3), party/flow scope reference, requester user ID, created timestamp, reason (min 10 chars), status enum (`pending`/`approved`/`rejected`/`cancelled`/`expired`/`superseded`), expiry timestamp, correlation ID. Unique constraint on `(idempotency_key)`. Index on `(status, expiry)` for pending-queue queries, `(requester_user_id)`, `(type, status)`.
+
+2. `approval_decisions` — fields: UUID PK, `request_id` FK → `approval_requests.id`, reviewer user ID, decision enum (`approved`/`rejected`), timestamp, reason/comment, `consumed_at` timestamp (nullable — set atomically on consumption), consumer workflow reference, correlation ID. Append-only: no UPDATE/DELETE policy for `authenticated`. Unique constraint on `(request_id)` where decision is terminal (one terminal decision per request). Index on `(request_id)`, `(consumed_at)`.
+
+RLS policies (per design.md §6 default-deny pattern):
+- `approval_requests` SELECT: requester sees own requests; supervisor/administrator with `fifo_override.approve` sees all pending requests
+- `approval_requests` INSERT: actor with `fifo_override.request` can insert
+- `approval_decisions` SELECT: reviewer sees decisions for requests they can view; requester sees decisions on own requests
+- `approval_decisions` INSERT: actor with `fifo_override.approve` can insert (never UPDATE/DELETE for authenticated)
+
+Drizzle schema additions needed in `lib/db/schema/` — new file `approvals.ts` exporting `approvalRequests`, `approvalDecisions`, and the status/decision enums.
+
+**Migration number**: next sequential after `0008` (currently `0009` is available — no `0006`/`0007` files exist on `track-2-office-data`).
+
+**Track 2 will handle**: all Server Actions, business logic (policy registry, state machine, self-approval enforcement, expiry, concurrency), queue UI, tests, and RLS verification — once the migration + schema exist. Track 2 is NOT asking Track 1 to implement `09`'s application code, only to provide the database foundation in the locked files.
+
+**Resolution**: *(Track 1: add migration file path and commit SHA here when done, then Track 2 can cherry-pick)*
