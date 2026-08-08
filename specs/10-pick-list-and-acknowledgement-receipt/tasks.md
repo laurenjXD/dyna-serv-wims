@@ -34,11 +34,11 @@ No document table, template, PDF generation, Storage object, print action, or do
 Testing: Documentation/template review; no implementation tests.
 
 - [x] Confirm exact pick-list and acknowledgement-receipt fields, totals, currencies, references, signature fields, page format, and print requirements. *(Resolved: design.md §6, §7)*
-- [ ] Reconcile the source event/status/quantity model with approved `08` and `01`, including when the pick list is generated and when the receipt becomes eligible.
-- [ ] Decide whether document metadata uses one `generated_documents` model or separate receipt metadata plus shared artifacts.
+- [x] Reconcile the source event/status/quantity model with approved `08` and `01`, including when the pick list is generated and when the receipt becomes eligible. *(Resolved 2026-08-08: pick list is generated at Stage 1 commitment, per `08/design.md` §6 step 6 and `10/design.md` §3 "commitment/pick-list-created → pick_list generation requested." Acknowledgement receipt is triggered at Stage 2 dispatch, per `08/design.md` §7 step 7 and `10/design.md` §3 "dispatch-committed + pricing snapshot available → acknowledgement_receipt generation requested." Quantity model: `pick_list_items.qty` = committed/allocated quantity; AR "actual dispatched qty" sourced from `inventory_commitment_lines.qty_executed` / the dispatched `inventory_transactions.qty` for the `pick` movement. Status model: `pick_lists.status` (allocated → picked → dispatched) and `inventory_commitments.status` (active → executed) are consistent across `01` and `08`.)*
+- [x] Decide whether document metadata uses one `generated_documents` model or separate receipt metadata plus shared artifacts. *(Resolved 2026-08-08: one `generated_documents` table with `document_type` as discriminator, per the schema block already defined in `10/design.md` §2, which shows `document_type`, `source_type`, and `source_id` fields on a single table. The alternative of separate per-document-type tables noted in §2 is not adopted. Resolved as the simpler approach; `document_type` values are 'pick_list' and 'acknowledgement_receipt'.)*
 - [x] Define snapshot/version/hash, idempotency, supersession, retention, and reprint semantics. *(Resolved: design.md §4.3, §7.1, §7.3)*
 - [x] Define Supplies pricing/reference behavior before rendering financial values. *(Resolved: design.md §4.3 — no price shown on Supplies documents)*
-- [ ] Record cross-feature decisions in `specs/00-steering/revision-log.md`.
+- [x] Record cross-feature decisions in `specs/00-steering/revision-log.md`. *(Completed 2026-08-08)*
 
 ### 2. Define pricing and source-snapshot boundaries
 
@@ -46,7 +46,7 @@ Testing: Contract tests with `12`/`13`; integration validation.
 
 - [x] Define the typed Trading final-price snapshot contract from `13`. *(Resolved: design.md §4.3)*
 - [x] Define the VMI per-release reference-price contract from `12` and explicitly prevent period-bill substitution. *(Resolved: design.md §4.3)*
-- [ ] Define required source versions/event IDs and rendered-value snapshot fields for items, parties, lots, locations, quantities, UOMs, and prices.
+- [x] Define required source versions/event IDs and rendered-value snapshot fields for items, parties, lots, locations, quantities, UOMs, and prices. *(Resolved 2026-08-08: field-level snapshot contract is fully defined in `10/design.md` §6.1 — pick list, 15 fields with named sources — and §6.2 — acknowledgement receipt, 20+ fields with named sources. Pricing snapshot semantics for all three flows are in §4.3. Source version/event ID is implementation detail for Task 2: use `inventory_commitments.id` as the pick-list source reference and the dispatched `inventory_transactions.id` (the `pick` movement) as the receipt source reference.)*
 - [ ] Validate that generation cannot render from draft/uncommitted source state or client-supplied values.
 - [ ] Define behavior for source-version drift, missing pricing snapshot, partial execution, and corrected/superseded documents.
 - [ ] Add tests proving document generation does not mutate inventory, reservations, approvals, or billing state.
