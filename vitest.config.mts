@@ -2,6 +2,12 @@ import { defineConfig } from "vitest/config";
 import path from "path";
 
 export default defineConfig({
+  // tsconfig.json sets jsx: "preserve" for Next's SWC pipeline, which
+  // Vitest's own esbuild transform doesn't share — needed for any
+  // *.test.tsx file to compile (component tests, not yet written on this
+  // branch, but this is per-file-driven via "**/*.test.tsx" in `include`
+  // below, so add it now rather than when the first one breaks).
+  esbuild: { jsx: "automatic" },
   test: {
     environment: "node",
     include: ["**/*.test.ts", "**/*.test.tsx"],
