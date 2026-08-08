@@ -2,8 +2,28 @@
 
 Every merge conflict and major revision, dated, with the resolution. This is the audit trail for "why does the spec say X" when X isn't obvious from the doc alone.
 
-<<<<<<< HEAD
-=======
+## `0008_rls_policies.sql` still missing `GRANT CREATE ON SCHEMA rbac_internal TO rbac_definer` after an earlier attempted fix (2026-08-08)
+
+Running `db:migrate` against the real, linked Supabase project failed at `ALTER FUNCTION rbac_internal.current_user_is_active() OWNER TO rbac_definer` with `permission denied for schema rbac_internal (SQLSTATE 42501)`. This is the second time this exact error surfaced: an earlier commit (`9f05b55`, "fix(track-a): rbac_definer grant, vitest timeout, and db client mock") already attempted a fix by moving `GRANT rbac_definer TO postgres` inside the migration's idempotent `DO` block — but that addressed role *membership* idempotency, not the actual missing privilege, so the same error reappeared on the next real run.
+
+Root cause, confirmed by Postgres's actual `ALTER ... OWNER TO` privilege rule: the new owner of an object must hold `CREATE` on that object's containing schema — a separate check from "session role is a member of the new owner role." `0008` granted `rbac_definer` `USAGE` on `rbac_internal` but never `CREATE`. Against a real Postgres superuser (the local Docker container this migration was verified against during Phase 2), the check never fires — superuser bypasses it entirely — which is why two rounds of `db-migration-verifier`/`rbac-rls-reviewer` real-Postgres passes never caught this. Supabase's hosted `postgres` role isn't a true superuser (a fact the migration's own comment on `GRANT rbac_definer TO postgres` already anticipated, just not completely), so the check fires there and only there.
+
+**Fixed** by adding `GRANT CREATE ON SCHEMA rbac_internal TO rbac_definer;` immediately after the existing `USAGE` grant, with an inline comment explaining both the mechanism and why local verification missed it. Confirmed safe to simply re-run: `drizzle-orm`'s postgres-js migrator wraps an entire migration file in one `session.transaction(...)` (`node_modules/drizzle-orm/pg-core/dialect.js`), and `CREATE ROLE`/`CREATE SCHEMA`/`CREATE FUNCTION` are all transactional DDL in Postgres, so the failed attempt rolled back completely — no partial state was left on the real project.
+
+Fixed directly in `0008_rls_policies.sql` rather than as a new fix-forward migration (the way `0009_lot_inventory_totals_grant.sql` fixed `0002`'s view): `0009`'s target had already successfully applied to a real, persistent database elsewhere; `0008` has never successfully completed against any real, persistent database — only ephemeral test containers — so there is no shipped state anywhere for a fix-forward migration to reconcile against. This is a correction to unreleased content, not a patch to something already live.
+
+**Not yet done, flagged rather than skipped**: this grant addition has not been through its own dedicated `db-migration-verifier` pass — mechanical, doesn't change any policy/function logic, but per this project's standing rule ("`database-builder` never self-verifies"), a real pass against a disposable Postgres container configured to *not* be superuser (matching Supabase's actual privilege model, unlike the container used for `0008`'s original verification) should confirm this before the next real-Postgres-verified sign-off claim is made for `0008`.
+
+## Unresolved merge conflict markers found committed on `main` in this file and `multi-agent-work-division.md`; both cleaned up (2026-08-08)
+
+Both steering docs — this file and `multi-agent-work-division.md` — had literal, unresolved `<<<<<<< HEAD` / `=======` / `>>>>>>> 94bc52b` conflict markers sitting in already-committed content on `main`, discovered while adding an unrelated entry. Not a working-tree conflict from an in-progress operation; these were merged into history as-is at some point after PR #3 (`94bc52b`, the `track-2-office-data` merge).
+
+**This file (`revision-log.md`)**: 7 conflict blocks, all the same trivial shape — the `HEAD` side was empty in every single one, with real content only on the `94bc52b` side (five were pure blank-line artifacts from adjacent-paragraph splits during a rebase; two carried real entries: the `08`/`10` Task 1 resolution and the `07`/`09`/`06` VERIFY-pass findings). Resolved by keeping the non-empty side in all 7 — nothing was actually in contention, so nothing was lost or chosen between.
+
+**`multi-agent-work-division.md`**: 4 conflict blocks. Two followed the same empty-`HEAD` pattern as above (a Track 2 cross-track request record, a "Why" paragraph) and resolved the same way. The other two had real, differing content on both sides — resolved by checking which side's cited commit SHAs actually exist in `main`'s real ancestry (`git merge-base --is-ancestor`), not by guessing: `HEAD`'s content cited `3b6efe8`, `3de9678`, and `5cdab55`, all confirmed ancestors of current `main`; the `94bc52b` side's equivalent content cited `d801eb1` and `55055d7` — commits that share identical messages with `5cdab55`/`3de9678` (evidently the same real-world work, committed independently on a diverged line) but are **not** ancestors of current `main` at all. Kept `HEAD`'s version in both blocks; discarded the `94bc52b` side, which in one case also carried a stale, pre-resolution duplicate of a Track 3 request already marked `[RESOLVED]` earlier in the same file.
+
+Verified clean afterward: repo-wide grep for conflict markers (outside `node_modules`) returns nothing; 1128/1128 tests pass; `tsc --noEmit` clean. No content judgment call was made blind — every resolution either had one side empty (nothing to choose between) or was checked against actual git ancestry before picking a side, per this project's own standing rule against blindly taking "ours" or "theirs" on a conflict.
+
 ## `08` and `10` Task 1 contract items resolved; two PO decisions flagged for cancellation/expiry (2026-08-08)
 
 Pre-implementation pass over `08-outgoing-withdrawal-and-two-stage-commitment/tasks.md` and `10-pick-list-and-acknowledgement-receipt/tasks.md` Task 1 open items, cross-referencing `01-core-data-model/design.md`, `08/design.md`, `10/design.md`, and `11-transfer-and-inspection/design.md`. Most items are resolved from the approved specs; two require a Product Owner decision before task 4's cancellation/release/expiry checklist item can proceed.
@@ -52,15 +72,12 @@ No `Status:` header changed on any document. `08` and `10` both remain `Approved
 
 **Finding 7 — PRE-EXISTING B-CLASS: Drizzle client bypasses RLS (same as `09` B1, `07` F1, `06` Gap A).** All `0014` policies exist and are correctly written (after Finding 1's fix) but are never evaluated server-side. Deferred to `04`. Application-layer `requirePermission()` gates are present and correctly ordered on every action and page path.
 
->>>>>>> 94bc52b5ffa0381afc26f1c0ea5fea13991c1e6f
 ## `13-trading-orders-and-pricing` added to `gantt-mapping.md` under Milestone 3, per Product Owner (2026-08-08)
 
 Closes the gap flagged in the prior entry: the Product Owner confirmed Milestone 3 (Inventory Control & Analytics) as the right home, pairing it with `12-vmi-billing`. Added as row `3.6a` (lettered to avoid renumbering the existing 3.6-3.9 rows and any external references to them), immediately following `3.6`'s VMI billing row. Both rows' status notes updated to cite today's `/billing-pricing` shared-page addition. No `Status` change; `13` remains `Approved`.
 
 ## Resolved
 
-<<<<<<< HEAD
-=======
 ## `07-incoming-receiving` VERIFY pass — three deferred RBAC/RLS gaps, one spec mismatch fixed (2026-08-08)
 
 `rbac-rls-reviewer` and `design-system-auditor` post-implementation audits on the completed `07-incoming-receiving` implementation found six findings. One spec mismatch was fixed immediately; the remainder are either deferred architectural gaps (same class as `09-approval-queue` Phase B) or intentional design trade-offs.
@@ -99,7 +116,6 @@ During the `rbac-rls-reviewer` pass over the Track 2 Phase A (`06-party-and-item
 
 **What Track 2 did fix in this pass**: corrected `lib/auth/page-resolver.ts`'s `user_party_scopes` and `user_roles` queries to add the `valid_from ≤ now()` / `(valid_until IS NULL OR valid_until > now())` interval conditions, which were present in `0008`'s `rbac_internal.has_party_scope` RLS helper but absent from the application-layer resolver — a real divergence that would have granted party scope to not-yet-active or already-expired assignments. Also added a `requirePermission(resolver, "inventory.read")` gate to both the party-detail and location-detail pages before calling the Transaction/Movement Ledger queries, since `inventory_transactions`' RLS policy gates on `inventory.read` (not `parties.read`/`locations.read`).
 
->>>>>>> 94bc52b5ffa0381afc26f1c0ea5fea13991c1e6f
 ## Implementation-readiness check on today's amendments: `12`'s `tasks.md` was stale and contradicted its own `design.md`; fixed before calling anything ready (2026-08-08)
 
 The Product Owner asked whether today's accumulated amendments (billing-pricing page, `vmi_cbm_ledger` daily-amount columns, `parties` address/payment-terms split, ledger column lists) are ready for implementation. `Status: Approved` was already true on every touched `tasks.md` (checked directly, not assumed), but that header alone doesn't prove the actual build checklist matches the current `design.md` — so each touched spec's `tasks.md` was diffed against today's design changes rather than taking the header at face value.
@@ -156,19 +172,12 @@ Net effect for both: the enrollment-time fields are hand-entered inputs; `12`/`1
 **Fixed**: `ShellNavigation.tsx`'s floor nav labels and `LandingPage.tsx`'s floor task-count labels used `text-label` (14px), violating §2/§11's hard 16px-minimum floor-text rule. `LandingPage.tsx`'s "Quick Actions" header used `font-heading text-headline-md` (Fira Sans headline) when it's a section eyebrow per `mockup.md` §1, which §2 scopes to Epilogue/`label`, not Fira Sans. Fixed both by using `font-label text-body-md` (Epilogue at 16px) — the same combination `FloorPrimaryAction.tsx` already established for exactly this "label-styled but floor-legal" need. **Logging this combination per §13's governance rule** (any value/combination not itself a named row in §2's type-scale table must be recorded here before shipping): `font-label` (Epilogue) + `text-body-md` (16px/24px) is the correct pairing for floor label-style text (nav items, section eyebrows, data labels) where the type scale's own `label` row (14px) would violate the floor minimum. Office-context label text keeps using `text-label` (14px) as before — this combination is floor-specific, not a replacement for `label` everywhere. Also added the missing "TODAY" eyebrow above the floor task-count card, matching `mockup.md` §1 (was previously omitted entirely).
 
 **Explicitly deferred, not silently gapped** — three content-shape gaps found need real data/type-shape changes beyond this pass's scope, not a quick class-name fix:
-<<<<<<< HEAD
-=======
-
->>>>>>> 94bc52b5ffa0381afc26f1c0ea5fea13991c1e6f
 - Floor "Quick Actions" render as plain `<li>` text (`LandingPageSummaryData.quickActions: readonly string[]`, labels only) — `mockup.md` §1 depicts these as tappable rows with icons and 64px touch targets. Needs `quickActions` widened to carry an `href`/action per item.
 - Office "Recent Activity" renders `description` only — `mockup.md` §3 depicts a TIME | ACTIVITY | STATUS table with color+text status badges. Needs `recentActivity`'s type widened to carry timestamp and status.
 - `ShellChrome.tsx` renders only navigation + `main` — no `AppHeader`, logo, connectivity indicator, account control, or status region, all of which `design.md` §4's shell composition tree requires. This batch built the navigation/landing-content layer; the surrounding header/chrome composition is a separate, not-yet-scoped piece of work.
 
 All three are real, `design.md`/`mockup.md`-backed gaps, not invented scope — tracked here so a future pass picks them up deliberately rather than this phase being marked "done" over a silent gap. 44/44 component tests still pass after the two fixes; no test needed updating since none asserted on the specific className/font-family values that changed.
-<<<<<<< HEAD
-=======
 
->>>>>>> 94bc52b5ffa0381afc26f1c0ea5fea13991c1e6f
 ## `02-rbac-roles` design.md corrections: undocumented catalog additions and a real `parties` RLS bug, both caught reviewing `0008_rls_policies.sql` (2026-08-08)
 
 Two independent review passes (`db-migration-verifier` and `rbac-rls-reviewer`), both reviewing the just-written `supabase/migrations/0008_rls_policies.sql` (Phase 2 cycle 2.4), converged on the same two findings in `02-rbac-roles/design.md`.
@@ -201,28 +210,18 @@ Notably, `rbac-rls-reviewer` caught a real, concrete bug in the transaction wrap
 Also cleaned up 6 stale `TS2578` typecheck errors (`@ts-expect-error` directives left over from the shell components' RED step, now invalid since the real implementations exist) that three separate subagents in a row had individually flagged as "pre-existing, not my problem" without anyone fixing them — restored the zero-typecheck-error baseline this project has held since Phase 1.
 
 Separately: investigated an apparent multi-machine working-directory collision (Track 3's branch got checked out in Track 1's local working directory mid-session, briefly disrupting in-progress files). Root cause confirmed benign: Track 2/3 are genuinely on separate machines and pushed correctly to `origin` as designed — the disruption was self-inflicted, caused by an agent running `git checkout track-3-analytics-billing` locally to inspect a file instead of the non-destructive `git show <branch>:<path>`. Added "never checkout another branch to inspect it" to every subagent task prompt going forward.
-<<<<<<< HEAD
-=======
 
->>>>>>> 94bc52b5ffa0381afc26f1c0ea5fea13991c1e6f
 ## Five unassigned specs folded into the three existing tracks, as additive-only phases (2026-08-07)
 
 Checking the full spec catalog against the three-track split found five specs nobody owned: `05-ui-shell-and-navigation` (no actual shell code exists yet, only Phase 0's bare `app/layout.tsx` — the spec itself was "locked" but that's about editing the design doc, not building the app), `03-offline-mode-and-client-storage`, `04-services-and-infrastructure`, `20-documentation-training-and-uat`, and `21-user-profile-and-settings`. `19-dispatch-scheduling-and-delivery-tracking` confirmed still correctly deferred, not a gap.
 
 **Assigned as new phases appended to each track's existing list, deliberately additive-only** — the product owner specifically asked that this not touch or imply redoing any work a track has already completed:
-<<<<<<< HEAD
-=======
-
->>>>>>> 94bc52b5ffa0381afc26f1c0ea5fea13991c1e6f
 - Track 1 gains Phase 2.5a (`05`'s actual implementation, inserted before Phase 3 since every track's UI depends on the shell existing) and folds `03` into its existing Phases 3/5 (`07`/`08`) rather than as a separate phase, since offline behavior is intrinsic to those features' floor scan flows.
 - Track 2 gains Phase F (`21`), appended after its existing Phase E.
 - Track 3 gains Phase VI (`04` + `20` + the cross-cutting integration-testing/deployment gates `gantt-mapping.md` lists but no spec owns), appended after its existing Phase V, explicitly hard-gated on all three tracks' existing chains being merged and stable first — not "whichever track finishes first," which the original Milestone-mapping note had left vague.
 
 Added as a new, clearly-separate section in `multi-agent-work-division.md` ("Additional scope folded in") rather than editing "The three tracks" or "Full implementation phase plan" sections directly, so nothing already-established in those sections is disturbed or implicitly reopened.
-<<<<<<< HEAD
-=======
 
->>>>>>> 94bc52b5ffa0381afc26f1c0ea5fea13991c1e6f
 ## Multi-agent work-division doc: fixed a stale contradiction, added detailed git protocol (2026-08-07)
 
 Before handing `multi-agent-work-division.md` to the other two collaborators, found and fixed a real inconsistency: the "Cross-track dependency map" and Track 2 sections still said Tracks 2/3 must wait for full Phase-2 core-stable before writing any code, contradicting the Tier-2 unlock (guard-contract-stable) that had already been posted earlier the same day. Updated both to correctly reflect that Tracks 2/3 may write and unit-test application code now, with only the real-Postgres verification pass still gated per-table on cycle 2.4's RLS policies.

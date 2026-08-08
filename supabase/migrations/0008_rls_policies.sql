@@ -138,6 +138,18 @@ GRANT EXECUTE ON FUNCTION auth.uid() TO rbac_definer;
 --> statement-breakpoint
 GRANT USAGE ON SCHEMA rbac_internal TO rbac_definer;
 --> statement-breakpoint
+-- CREATE, not just USAGE: Postgres requires the NEW owner of an object to
+-- hold CREATE on that object's schema before `ALTER ... OWNER TO` will
+-- succeed (this is a separate check from "session role is a member of the
+-- new owner role," which the `GRANT rbac_definer TO postgres` above already
+-- satisfies). Missing this grant is harmless against a real superuser
+-- (superuser bypasses the check entirely, which is why this passed local
+-- Docker Postgres real-Postgres verification) but fails with "permission
+-- denied for schema rbac_internal" against Supabase's hosted `postgres`
+-- role, which is not a true superuser -- caught only once this migration
+-- was actually run against a real Supabase project (2026-08-08).
+GRANT CREATE ON SCHEMA rbac_internal TO rbac_definer;
+--> statement-breakpoint
 GRANT USAGE ON SCHEMA rbac_internal TO authenticated;
 --> statement-breakpoint
 GRANT USAGE ON SCHEMA public TO authenticated;
