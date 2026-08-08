@@ -2,6 +2,18 @@
 
 Every merge conflict and major revision, dated, with the resolution. This is the audit trail for "why does the spec say X" when X isn't obvious from the doc alone.
 
+## Login succeeded but redirected nowhere: root `middleware.ts` was never created (2026-08-08)
+
+After the RBAC seam-gap fix and password reset above, login itself started succeeding (confirmed directly against Supabase Auth's admin API — `last_sign_in_at` updated on each attempt), but the app still appeared to redirect nowhere after a successful sign-in.
+
+Root cause: `lib/supabase/middleware.ts` already contains the full `updateSession()` session-refresh helper, and its own header comment already said it gets "wired into the root `middleware.ts` once route groups/auth flows exist" — but no root `middleware.ts` file was ever created. Without it, the standard `@supabase/ssr` Next.js App Router pattern this whole auth setup depends on never ran: nothing refreshed/propagated the session on the server-side request that follows a client-side login, so the shell's server-side session read (`resolveShellAuthorization` → `createPageResolver`) didn't reliably see the freshly-created session.
+
+**Fixed** by creating `middleware.ts` at the project root, delegating to the existing `updateSession()` helper unchanged, with a matcher excluding static assets. Confirmed compliant with `05-ui-shell-and-navigation/design.md` §3's middleware constraint ("may handle only... session refresh... must not perform Drizzle/TCP database work or replace server-side resource authorization") — `updateSession()` only talks to Supabase Auth over HTTP, never touches the database, and doesn't itself decide route authorization.
+
+**Also added**, as a belt-and-suspenders companion fix matching Supabase's documented Next.js pattern: `app/login/page.tsx` called `router.push("/")` on successful sign-in but never `router.refresh()`, so even with middleware now refreshing cookies correctly, the client-side Router Cache could still serve a stale pre-login RSC payload for `/`. Added `router.refresh()` alongside the existing push.
+
+Verified: `next build` succeeds locally with env vars unset and now shows a compiled `ƒ Middleware` bundle (previously absent, confirming it wasn't wired in at all before). 1129/1129 tests pass, `tsc --noEmit` clean.
+
 ## Closed the `loadAuthorizationRecord` seam gap by removing a duplicate stub; bootstrapped the first administrator (2026-08-08)
 
 The known gap flagged twice already tonight — `app/(authenticated)/actions.ts`'s `loadAuthorizationRecord` hardcoded to return `null`, forcing every session into `forbidden` — turned out not to need new code at all. `lib/auth/page-resolver.ts`'s `createPageResolver()` already had a complete, real implementation of the exact same query (`user_profiles` → `user_roles` → `roles` → `role_permissions` → `permissions`, plus active `user_party_scopes`, with the same `valid_from`/`valid_until` interval conditions `06`'s page-resolver fix established earlier), already in production use by `/settings`, `/profile`, `/master-data`, `/receiving`, and others. The shell's own root layout (`app/(authenticated)/layout.tsx` → `resolveShellAuthorization`) was simply never wired to use it — it built its own separate, stubbed resolver instead of delegating to the one that already worked. Fixed by deleting the duplicate and delegating to `createPageResolver()`.
