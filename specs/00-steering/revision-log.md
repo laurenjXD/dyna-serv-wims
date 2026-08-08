@@ -2,6 +2,24 @@
 
 Every merge conflict and major revision, dated, with the resolution. This is the audit trail for "why does the spec say X" when X isn't obvious from the doc alone.
 
+## `11-transfer-and-inspection` VERIFY pass — Finding 1 fixed; Findings 2-7 deferred or documented (2026-08-08)
+
+`rbac-rls-reviewer` post-implementation audit on the completed `11-transfer-and-inspection` implementation found seven findings. Finding 1 was fixed immediately (wrong capability at both app and DB layer — a real enforcement gap, not a deferred class). Findings 2-7 are either the same class of deferred architectural gap documented from `06`/`09`/`07`, minor catalog drift, or pre-existing B-class infrastructure gaps.
+
+**Finding 1 — FIXED: `resolveInspectionCase` used `inspection.perform` instead of `inspection.resolve`, breaking the two-person separation rule.** `02-rbac-roles §3.2` defines `inspection.resolve` as supervisor-only; `warehouse_staff` cannot resolve cases. `resolveInspectionCase` in `lib/actions/transfers.ts` was calling `requirePermission("inspection.perform")` (which warehouse_staff also hold), and `0014`'s `inspection_cases_update` and `inspection_dispositions_insert` RLS policies used the same wrong capability. Fixed: action changed to `requirePermission("inspection.resolve")`; `supabase/migrations/0017_fix_inspection_resolve_policies.sql` drops and recreates both policies with `inspection.resolve`. Tests updated; 15/15 unit tests GREEN after fix. Committed as `fix(11): use inspection.resolve (supervisor-only) for case resolution`.
+
+**Finding 2 — DEFERRED: `createTransfer` sets `requiresApproval` from caller-supplied input.** `design.md §4` states the system should determine whether a transfer requires approval based on flow type, quantity threshold, or other rules — not trust the client to set this flag. The current implementation passes `data.requiresApproval ?? false` directly from validated input into the INSERT. This is application-layer only; no DB-layer enforcement exists for what value this column holds. Deferred: the approval routing rule engine belongs with `08-outgoing-withdrawal-and-two-stage-commitment` (which owns the full approval-request workflow) or as a named `11` extension task. Same class as `09` B2.
+
+**Finding 3 — DEFERRED: `transfer.approve` capability is seeded in `0005` but no `updateTransferStatus` caller enforces it for approval transitions.** Any caller with `transfer.execute` can flip a `requires_approval = true` transfer to `in_progress` without going through the approval-queue workflow. No DB-layer policy distinguishes status transitions by capability. Deferred to the `08`/`09` integration seam — when those are implemented, the approval-queue workflow routes around direct `updateTransferStatus` calls. Flagged for the `integration-reviewer` to check when `08`+`09` are connected to `11`.
+
+**Finding 4 — CATALOG DRIFT: `transfer.approve` capability resource type is inconsistent (singular vs. plural) between seed and call sites.** Not a functional bug (seed and helper use matching strings end-to-end), but catalog drift that will confuse future `has_permission` authors. To be corrected in a future migration normalizing the `capabilities` table's `resource_type` column; not `11`'s to fix unilaterally.
+
+**Finding 5 — MINOR: Execute page gates on `transfer.execute` only; design.md §3 mentions `transfer.view` as also relevant.** The gate is correct for the action the page hosts. A separate read-only progress view for `transfer.view`-only users is not implemented — minor over-restriction, not a leak. Deferred; list/detail pages provide the view surface.
+
+**Finding 6 — KNOWN INCOMPLETE: `updateTransferStatus` does not yet create `inventory_transactions`.** Per design.md §7, committing to `completed` must atomically deduct from the source lot-location balance and credit the destination. The current implementation only flips status. Same class as `07` F6. Deferred as a named extension task on `11`'s checklist; does not block current checklist items.
+
+**Finding 7 — PRE-EXISTING B-CLASS: Drizzle client bypasses RLS (same as `09` B1, `07` F1, `06` Gap A).** All `0014` policies exist and are correctly written (after Finding 1's fix) but are never evaluated server-side. Deferred to `04`. Application-layer `requirePermission()` gates are present and correctly ordered on every action and page path.
+
 ## `13-trading-orders-and-pricing` added to `gantt-mapping.md` under Milestone 3, per Product Owner (2026-08-08)
 
 Closes the gap flagged in the prior entry: the Product Owner confirmed Milestone 3 (Inventory Control & Analytics) as the right home, pairing it with `12-vmi-billing`. Added as row `3.6a` (lettered to avoid renumbering the existing 3.6-3.9 rows and any external references to them), immediately following `3.6`'s VMI billing row. Both rows' status notes updated to cite today's `/billing-pricing` shared-page addition. No `Status` change; `13` remains `Approved`.
