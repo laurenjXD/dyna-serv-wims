@@ -14,12 +14,20 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import type {
   AuthorizationContext,
   AuthorizationResolution,
   RequestAuthorizationResolver,
 } from "@/lib/rbac/session";
 import { ShellStateView } from "./ShellStateView";
+
+// Where an unauthenticated/revoked session actually gets sent. This is
+// `/login` (the route this project actually built), not `/sign-in` (the
+// name used in specs/05-ui-shell-and-navigation/design.md's App Router
+// skeleton) -- flagged here as a real spec/implementation naming mismatch,
+// not silently reconciled by picking one and hoping nobody notices.
+const SIGN_IN_ROUTE = "/login";
 
 // Exposes the already-resolved AuthorizationContext to descendants once
 // authorized, so a shell-composition component (e.g. app/(authenticated)'s
@@ -39,6 +47,7 @@ export function AuthenticatedShellBoundary({
   resolver: RequestAuthorizationResolver;
   children: ReactNode;
 }) {
+  const router = useRouter();
   const [resolution, setResolution] = useState<AuthorizationResolution | null>(null);
 
   useEffect(() => {
@@ -57,6 +66,19 @@ export function AuthenticatedShellBoundary({
     // A new resolver instance means a new request-scoped resolution;
     // re-resolve whenever the caller supplies a different resolver.
   }, [resolver]);
+
+  // The "revoked_session" ShellStateView copy says "Redirecting you to sign
+  // in..." -- this effect is what makes that claim true. Previously nothing
+  // actually navigated anywhere: a session that resolved to unauthenticated
+  // or forbidden left the user stranded on this static message forever
+  // (caught 2026-08-08 against a real deploy). Runs as its own effect,
+  // keyed on the resolved kind, so it fires exactly once per transition
+  // into one of these two states, not on every render.
+  useEffect(() => {
+    if (resolution?.kind === "unauthenticated" || resolution?.kind === "forbidden") {
+      router.push(SIGN_IN_ROUTE);
+    }
+  }, [resolution?.kind, router]);
 
   // Never render `children` while resolution is pending (R2.3: no
   // optimistic protected-content render).
