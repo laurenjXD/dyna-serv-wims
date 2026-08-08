@@ -138,13 +138,25 @@ const transferExecuteContext: AuthorizationContext = {
   partyScopes: [],
 };
 
-// Has inspection.perform capability
+// Has inspection.perform capability (warehouse_staff + supervisor — opens cases)
 const inspectionPerformContext: AuthorizationContext = {
   userId: "user-uuid-inspector",
   profileStatus: "active",
   activeRoleKeys: ["warehouse_staff"],
   grants: [
     { resource: "inspection", action: "perform", scopeKind: "global" },
+  ],
+  partyScopes: [],
+};
+
+// Has inspection.resolve capability (supervisor-only — resolves dispositions)
+const inspectionResolveContext: AuthorizationContext = {
+  userId: "user-uuid-supervisor",
+  profileStatus: "active",
+  activeRoleKeys: ["supervisor"],
+  grants: [
+    { resource: "inspection", action: "perform", scopeKind: "global" },
+    { resource: "inspection", action: "resolve", scopeKind: "global" },
   ],
   partyScopes: [],
 };
@@ -166,6 +178,9 @@ const transferExecuteResolver = () =>
 
 const inspectionPerformResolver = () =>
   makeResolver({ kind: "authorized", context: inspectionPerformContext });
+
+const inspectionResolveResolver = () =>
+  makeResolver({ kind: "authorized", context: inspectionResolveContext });
 
 const noPermissionsResolver = () =>
   makeResolver({ kind: "authorized", context: noPermissionsContext });
@@ -533,8 +548,8 @@ describe("openInspectionCase — success (R3.1, R3.2, design.md §6.1)", () => {
 // (requirements.md R3.4, R8.1; design.md §6.3)
 // ---------------------------------------------------------------------------
 
-describe("resolveInspectionCase — no inspection.perform permission (R3.4, R8.1, design.md §6.3)", () => {
-  it("(AC: inspection.perform required) returns { ok: false, errors: ['forbidden'] } when resolver lacks inspection.perform", async () => {
+describe("resolveInspectionCase — no inspection.resolve permission (R3.4, R8.1, design.md §6.3)", () => {
+  it("(AC: inspection.resolve required — supervisor only) returns { ok: false, errors: ['forbidden'] } when resolver lacks inspection.resolve", async () => {
     const db = makeTransferDb([], [inspectionCaseRow()]);
 
     const result = await resolveInspectionCase(
@@ -569,7 +584,7 @@ describe("resolveInspectionCase — case not found (R3.4, design.md §6.3)", () 
     const db = makeTransferDb([], []);
 
     const result = await resolveInspectionCase(
-      inspectionPerformResolver(),
+      inspectionResolveResolver(),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       db as any,
       "non-existent-case-uuid",
@@ -603,7 +618,7 @@ describe("resolveInspectionCase — validation fails (R3.4, design.md §6.2, §6
     const db = makeTransferDb([], [resolvedCase]);
 
     const result = await resolveInspectionCase(
-      inspectionPerformResolver(),
+      inspectionResolveResolver(),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       db as any,
       "case-uuid-already-resolved",
@@ -632,7 +647,7 @@ describe("resolveInspectionCase — validation fails (R3.4, design.md §6.2, §6
     const db = makeTransferDb([], [failedCase]);
 
     const result = await resolveInspectionCase(
-      inspectionPerformResolver(),
+      inspectionResolveResolver(),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       db as any,
       "case-uuid-failed",
@@ -667,7 +682,7 @@ describe("resolveInspectionCase — success (R3.3, R3.4, design.md §6.3)", () =
     const db = makeTransferDb([], [openCase]);
 
     const result = await resolveInspectionCase(
-      inspectionPerformResolver(),
+      inspectionResolveResolver(),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       db as any,
       "case-uuid-open",
@@ -709,7 +724,7 @@ describe("resolveInspectionCase — success (R3.3, R3.4, design.md §6.3)", () =
     const db = makeTransferDb([], [openCase]);
 
     const result = await resolveInspectionCase(
-      inspectionPerformResolver(),
+      inspectionResolveResolver(),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       db as any,
       "case-uuid-open-2",

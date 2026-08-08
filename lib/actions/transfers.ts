@@ -223,7 +223,8 @@ export async function openInspectionCase(
 
 /**
  * Resolves an inspection case with a disposition.
- * Requires inspection.perform capability.
+ * Requires inspection.resolve capability (supervisor-only — two-person separation
+ * per 02-rbac-roles §3.2; warehouse_staff may open cases but not resolve them).
  * Validates case is 'open' via validateInspectionDisposition before any DB write.
  * Updates case to terminal status and inserts a disposition record.
  */
@@ -237,8 +238,9 @@ export async function resolveInspectionCase(
     notes?: string;
   },
 ): Promise<ResolveCaseResult> {
-  // 1. Authorization
-  const perm = await requirePermission(resolver, "inspection.perform");
+  // 1. Authorization — inspection.resolve is supervisor-only (02-rbac-roles §3.2).
+  // inspection.perform (warehouse_staff + supervisor) covers opening cases only.
+  const perm = await requirePermission(resolver, "inspection.resolve");
   if (perm.kind !== "authorized") {
     return { ok: false, errors: ["forbidden"] };
   }
