@@ -246,14 +246,14 @@ Add to §3.2's operational capability catalog table:
 
 Add to the role-assignment table:
 
+**Note — `notifications.read`/`global` already exists in the catalog** (pre-dates this task, granted to `warehouse_staff`, `supervisor`, `administrator` — see the row already at design.md §3.2 before this edit). That grant covers staff/supervisor/admin reading their own recipient-targeted notifications regardless of party, which is correct: staff aren't party-bound, and several `R1-A` operational alerts (low stock, receiving discrepancy, inspection failure) aren't party-scoped events at all. Do **not** duplicate `warehouse_staff`/`supervisor` into a new `assigned_party` row for `read` — under this catalog's union-of-grants semantics (§3.3), a `global` grant already subsumes anything `assigned_party` would add for those two roles, so an extra row would be redundant and would also contradict the amendment paragraph's own "a recipient only ever sees their own party/flow-scoped notifications" claim (that claim is true for `party_user`, not for staff, who read globally by design). Add `assigned_party` for `party_user` only:
+
 ```
-('warehouse_staff', 'notifications', 'read', 'assigned_party'),
-('supervisor', 'notifications', 'read', 'assigned_party'),
+('party_user', 'notifications', 'read', 'assigned_party'),
 ('supervisor', 'notifications', 'read_diagnostics', 'global'),
 ('administrator', 'notifications', 'read', 'global'),
 ('administrator', 'notifications', 'read_diagnostics', 'global'),
 ('administrator', 'notifications', 'manage_rules', 'global'),
-('party_user', 'notifications', 'read', 'assigned_party'),
 -- manage_preferences: every authenticated role manages their OWN
 -- preferences regardless of other grants — this is a self-scoped
 -- capability, not party/flow-scoped. Model as 'global' scope_kind with
@@ -265,21 +265,27 @@ Add to the role-assignment table:
 ('party_user', 'notifications', 'manage_preferences', 'global'),
 ```
 
+Note `administrator`'s `read`/`global` tuple above was likely already implied by the pre-existing row (confirm before adding — don't create a duplicate row if `administrator` is already listed on the pre-existing `notifications`/`read`/`global` line; if so, just leave that line as-is and skip re-adding it).
+
 - [ ] **Step 3: Add a dated amendment paragraph**
 
 Directly beneath the table, following this project's established convention (see the 2026-08-08 "Catalog addition" paragraphs already in `specs/02-rbac-roles/design.md`):
 
 ```markdown
-**Catalog addition (2026-08-09):** `notifications.read`/`manage_preferences`/
+**Catalog addition (2026-08-09):** `notifications.manage_preferences`/
 `manage_rules`/`read_diagnostics` originate from `14-notifications-and-alerts`
 requirements.md R6.1 and tasks.md Task Group 3's "add notification read/
 read-state/preferences/operations capabilities to the canonical RBAC
-catalog" item. `read` uses `assigned_party` scope kind (a recipient only
-ever sees their own party/flow-scoped notifications, per design.md §5's
-authorization intersection); `manage_preferences` uses `global` scope kind
-with an application/RLS-layer `user_id = auth.uid()` restriction, since a
-user manages only their own preferences regardless of party scope, the
-same self-row pattern already used for `user_profiles`.
+catalog" item. `notifications.read` itself is not new — it already existed
+at `global` scope for `warehouse_staff`/`supervisor`/`administrator` (staff
+aren't party-bound, and several `R1-A` operational alerts are not
+party-scoped events); this amendment adds it at `assigned_party` scope for
+`party_user` only, since a party user must see only notifications tied to
+their own party (design.md §5's authorization intersection).
+`manage_preferences` uses `global` scope kind with an application/RLS-layer
+`user_id = auth.uid()` restriction, since a user manages only their own
+preferences regardless of party scope, the same self-row pattern already
+used for `user_profiles`.
 ```
 
 - [ ] **Step 4: Run the existing `02-rbac-roles` test suite to confirm nothing else references a stale row count**
