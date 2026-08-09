@@ -200,7 +200,7 @@ export default async function PortalDocumentsPage({
 function PickListsTab({ docs }: { docs: PickListDoc[] }) {
   if (docs.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-white/75 px-6 py-12 text-center shadow-elevation-1 backdrop-blur-md">
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-1">
         <Package size={40} className="text-text-grey" aria-hidden="true" />
         <p className="font-body text-body-md text-text-grey">
           No pick lists yet.
@@ -210,7 +210,7 @@ function PickListsTab({ docs }: { docs: PickListDoc[] }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-white/75 shadow-elevation-1 backdrop-blur-md">
+    <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
@@ -273,7 +273,7 @@ function PickListsTab({ docs }: { docs: PickListDoc[] }) {
 function AcknowledgementReceiptsTab({ docs }: { docs: ARDoc[] }) {
   if (docs.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-white/75 px-6 py-12 text-center shadow-elevation-1 backdrop-blur-md">
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-1">
         <CheckCircle2
           size={40}
           className="text-text-grey"
@@ -301,7 +301,7 @@ function AcknowledgementReceiptsTab({ docs }: { docs: ARDoc[] }) {
         </p>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-white/75 shadow-elevation-1 backdrop-blur-md">
+      <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>

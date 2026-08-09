@@ -26,7 +26,7 @@
 // not as a separate surprise.
 export function ActivityHeatmap() {
   return (
-    <div className="rounded bg-white/75 p-4 shadow-elevation-1 backdrop-blur-md">
+    <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
       <p className="font-label text-label uppercase text-text-grey">Warehouse Activity</p>
       <p className="font-body text-body-sm text-text-grey">
         Activity heatmap coming soon.

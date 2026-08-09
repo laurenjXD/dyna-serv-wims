@@ -40,10 +40,11 @@ const config: Config = {
       },
       fontFamily: {
         // §2 Typography — wired to next/font/google CSS variables in app/layout.tsx.
-        heading: ["var(--font-fira-sans)", "sans-serif"], // headings, data-display numbers
-        body: ["var(--font-outfit)", "sans-serif"], // body copy, table cell content
-        label: ["var(--font-epilogue)", "sans-serif"], // nav items, badges, table headers, button labels
-        mono: ["var(--font-roboto-mono)", "monospace"], // codes, IDs, lot numbers, numeric columns
+        // heading/body/label all resolve to Inter, differentiated by weight, not family.
+        heading: ["var(--font-inter)", "sans-serif"], // headings, data-display numbers
+        body: ["var(--font-inter)", "sans-serif"], // body copy, table cell content
+        label: ["var(--font-inter)", "sans-serif"], // nav items, badges, table headers, button labels
+        mono: ["var(--font-jetbrains-mono)", "monospace"], // codes, IDs, lot numbers, numeric columns
       },
       fontSize: {
         // §2 Type scale — [fontSize, { lineHeight, letterSpacing }]
@@ -54,7 +55,7 @@ const config: Config = {
         "body-lg": ["18px", { lineHeight: "28px", letterSpacing: "normal" }],
         "body-md": ["16px", { lineHeight: "24px", letterSpacing: "normal" }],
         "body-sm": ["14px", { lineHeight: "20px", letterSpacing: "normal" }],
-        label: ["14px", { lineHeight: "16px", letterSpacing: "0.05em" }],
+        label: ["14px", { lineHeight: "16px", letterSpacing: "0.03em" }],
         // mono is "context-dependent, 11-24px" per §2 — common sizes provided,
         // line-height fixed at the spec's documented 1.4x.
         "mono-sm": ["11px", { lineHeight: "15.4px", letterSpacing: "normal" }],

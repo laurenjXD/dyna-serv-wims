@@ -229,7 +229,7 @@ export default async function PortalInventoryPage({ searchParams }: PageProps) {
       </div>
 
       {/* ── Inventory table — Level 1 glassmorphism (office/party surface) ─── */}
-      <div className="mt-4 overflow-hidden rounded-2xl border border-outline-variant/30 bg-white/75 shadow-elevation-1 backdrop-blur-md">
+      <div className="mt-4 overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
         {MOCK_INVENTORY_ROWS.length === 0 ? (
           <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
             <Package size={40} className="text-text-grey" aria-hidden="true" />

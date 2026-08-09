@@ -179,7 +179,7 @@ export default async function TransferDetailPage({
       )}
 
       {/* Transfer summary card — Level 1 office elevation */}
-      <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-brand-navy">
           Transfer Details
         </h2>
@@ -243,7 +243,7 @@ export default async function TransferDetailPage({
 
       {/* Action buttons — conditional on transfer status and execute capability */}
       {canExecute && (
-        <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
+        <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
           <h2 className="font-heading font-semibold text-data-display text-brand-navy">
             Actions
           </h2>
@@ -293,7 +293,7 @@ export default async function TransferDetailPage({
       )}
 
       {/* Lines table — Level 1 office elevation */}
-      <div className="mt-6 overflow-hidden rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1">
+      <div className="mt-6 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
         <div className="px-6 py-4">
           <h2 className="font-heading font-semibold text-data-display text-brand-navy">
             Transfer Lines ({transfer.lines.length})

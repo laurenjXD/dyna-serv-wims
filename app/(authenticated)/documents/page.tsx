@@ -4,7 +4,7 @@
 //   specs/10-pick-list-and-acknowledgement-receipt/design.md (document generation,
 //     pick_list + acknowledgement_receipt tables, print view)
 //   specs/00-steering/brand-design-system.md §6 (office Level 1 elevation:
-//     bg-white/75 backdrop-blur-md), §2 (typography), §9 (office table pattern)
+//     bg-surface-white), §2 (typography), §9 (office table pattern)
 //
 // Surface: Office. Capability gate: documents.read.
 // Offline: document listing is Tier 2 — online only, never cached.
@@ -317,7 +317,7 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
 function PickListsTab() {
   if (MOCK_PICK_LISTS.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-white/75 px-6 py-12 text-center backdrop-blur-md">
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center">
         <Package size={40} className="text-text-grey" aria-hidden="true" />
         <p className="font-body text-body-md text-text-grey">No pick lists yet.</p>
         <p className="font-body text-body-sm text-text-grey">
@@ -328,7 +328,7 @@ function PickListsTab() {
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-white/75 shadow-elevation-1 backdrop-blur-md">
+    <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
@@ -430,7 +430,7 @@ function PickListsTab() {
 function AcknowledgementReceiptsTab() {
   if (MOCK_ACKNOWLEDGEMENT_RECEIPTS.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-white/75 px-6 py-12 text-center backdrop-blur-md">
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center">
         <CheckCircle2 size={40} className="text-text-grey" aria-hidden="true" />
         <p className="font-body text-body-md text-text-grey">
           No acknowledgement receipts yet.
@@ -443,7 +443,7 @@ function AcknowledgementReceiptsTab() {
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-white/75 shadow-elevation-1 backdrop-blur-md">
+    <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>

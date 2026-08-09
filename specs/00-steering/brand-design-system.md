@@ -48,25 +48,27 @@ Reuses `brand-red` for error borders/text — not a third red.
 
 ## 2. Typography
 
+**Revised 2026-08-09** — consolidated from four families to two, moving to a modern dashboard-style type system. See `revision-log.md` for rationale. `Fira Sans` / `Outfit` / `Epilogue` / `Roboto Mono` are retired; do not introduce new usages of them.
+
 | Family | Role | Weights used |
 |---|---|---|
-| **Fira Sans** | Headings, data-display numbers | Bold (700), SemiBold (600) |
-| **Outfit** | Body copy, table cell content | Regular (400) only |
-| **Epilogue** | Functional labels — nav items, badges, table headers, button labels | SemiBold (600) only |
-| **Roboto Mono** | Codes, IDs, lot numbers, table numeric columns | Regular (400), Bold (700) |
+| **Inter** | Everything except mono content: headings, data-display numbers, body copy, functional labels (nav items, badges, table headers, button labels) — differentiated by weight, not by switching families | ExtraBold (800), Bold (700), SemiBold (600), Medium (500), Regular (400) |
+| **JetBrains Mono** | Codes, IDs, lot numbers, table numeric columns | Regular (400), Bold (700) |
 
 ### Type scale
 | Style | Family/Weight | Size | Line height | Tracking |
 |---|---|---|---|---|
-| headline-xl | Fira Sans Bold | 40px | 48px | -0.02em |
-| headline-lg | Fira Sans Bold | 32px | 40px | normal |
-| headline-md | Fira Sans SemiBold | 24px | 32px | normal |
-| data-display | Fira Sans SemiBold | 20px | 24px | normal |
-| body-lg | Outfit Regular | 18px | 28px | normal |
-| body-md | Outfit Regular | 16px | 24px | normal |
-| body-sm | Outfit Regular | 14px | 20px | normal |
-| label | Epilogue SemiBold | 14px | 16px | 0.05em |
-| mono | Roboto Mono Regular/Bold | context-dependent, 11-24px | 1.4x size | normal |
+| headline-xl | Inter ExtraBold | 40px | 48px | -0.02em |
+| headline-lg | Inter Bold | 32px | 40px | -0.01em |
+| headline-md | Inter SemiBold | 24px | 32px | normal |
+| data-display | Inter SemiBold | 20px | 24px | normal |
+| body-lg | Inter Regular | 18px | 28px | normal |
+| body-md | Inter Regular | 16px | 24px | normal |
+| body-sm | Inter Regular | 14px | 20px | normal |
+| label | Inter SemiBold | 14px | 16px | 0.03em |
+| mono | JetBrains Mono Regular/Bold | context-dependent, 11-24px | 1.4x size | normal |
+
+**Why one family instead of four:** Inter's weight range (400-800) is wide enough to carry heading/body/label roles on its own without visually competing typefaces, and it stays extremely legible at small sizes — relevant since floor screens enforce a 16px minimum (below). Fewer families also means fewer next/font subsets to load and less risk of the kind of file-wide font-substitution drift already caught once in this project by `design-system-auditor`.
 
 **Floor-specific minimum:** no text below 16px (`body-md`) anywhere on a floor screen, even for secondary labels — `body-sm` (14px) is office-only. Small text that's easy to read on a desk-height monitor is not easy to read on a handheld scanner in motion.
 
@@ -128,13 +130,15 @@ Portrait is the primary, supported orientation for all floor screens — most ru
 
 ## 6. Elevation & Surfaces
 
+**Revised 2026-08-09 — glassmorphism retired app-wide, not just on floor.** Office cards previously used `bg-white/75` + `backdrop-blur-md`. That's replaced with solid cards on a light `surface-light-grey` page background, matching the flat, modern-dashboard direction (see `revision-log.md`). Glass/blur surfaces are no longer used anywhere in the product — the floor-only restriction below is now redundant with the office rule but is kept for its own documented reasoning (contrast, performance).
+
 | Level | Surface | Shadow | Used for |
 |---|---|---|---|
-| 0 | Page background | none | Base page |
-| 1 | `bg-white/75` + `backdrop-blur-md` — **office/desktop only** | `0 1px 2px rgba(0,32,96,0.08)` | Cards, panels |
+| 0 | Page background — `surface-light-grey` (office), `surface-white` (floor, per §8 contrast) | none | Base page |
+| 1 | Solid `surface-white`, `border` `outline-variant/30` | `0 1px 2px rgba(0,32,96,0.08)` | Cards, panels — office and floor alike |
 | 2 | Solid `surface-white` | `0 4px 16px rgba(0,32,96,0.12)` | Modals, drawers, dropdowns |
 
-**Floor-specific override: no glassmorphism (translucent/blurred surfaces) on floor screens.** Backdrop blur reduces effective contrast exactly where AAA contrast is required (§1.5), and costs real rendering performance on the mid-tier rugged Android hardware floor devices actually run (§8). Floor cards use solid `surface-white` at full opacity, Level 2 treatment, even though that's nominally the "modal" level elsewhere — floor screens don't get a Level 1 option.
+**Floor-specific note (retained): no glassmorphism (translucent/blurred surfaces) on floor screens.** Backdrop blur reduces effective contrast exactly where AAA contrast is required (§1.5), and costs real rendering performance on the mid-tier rugged Android hardware floor devices actually run (§8). Floor cards use solid `surface-white` at full opacity, Level 2 treatment, even though that's nominally the "modal" level elsewhere — floor screens don't get a Level 1 option.
 
 ---
 
@@ -166,7 +170,7 @@ Floor devices are rugged mid-tier Android hardware (Zebra/Honeywell-class scanne
 ## 9. Component Guidance
 
 **Buttons**
-- Primary: `brand-red`, diagonal-cut (office) / solid corners acceptable (floor, see §7), white text, Epilogue SemiBold label
+- Primary: `brand-red`, diagonal-cut (office) / solid corners acceptable (floor, see §7), white text, Inter SemiBold label
 - Office size: 44px default height. **Floor size: 64px minimum height, full-width, is the default — not an opt-in "lg" variant.**
 - Secondary: `brand-navy` solid, no diagonal cut
 - Outline: 2px `outline-variant` border, transparent background — office only; floor screens avoid outline-only buttons since they're harder to spot at speed
@@ -174,15 +178,19 @@ Floor devices are rugged mid-tier Android hardware (Zebra/Honeywell-class scanne
 
 **Touch/press feedback (floor) vs. hover (office) — these are not interchangeable.** Touchscreens don't have a meaningful hover state; a hover-triggered effect on tap can double-fire or feel laggy. Floor buttons get an immediate `active:` press state (scale to 0.97, no transition delay) instead of any `hover:` effect. Office/desktop components keep hover (§10).
 
-**Sidebar**: `brand-navy` background, white/70% opacity inactive labels, `brand-red` active-item background, Epilogue SemiBold 14px labels, real letter-mark logo (never an icon-font ligature rendered as text). **On floor screens, the sidebar collapses to a bottom tab bar or is hidden entirely during an active scan flow** — a persistent side rail is desktop real estate floor screens don't have to spare.
+**Sidebar**: `brand-navy` background, white/70% opacity inactive labels, `brand-red` active-item background, Inter SemiBold 14px labels, real letter-mark logo (never an icon-font ligature rendered as text). **On floor screens, the sidebar collapses to a bottom tab bar or is hidden entirely during an active scan flow** — a persistent side rail is desktop real estate floor screens don't have to spare.
 
 **Cards**: Office: Level 1 elevation. Floor: Level 2, solid, per §6.
 
-**Status badges/pills**: `radius-full`, Epilogue SemiBold uppercase, colored per §1.3 — paired with an icon on floor screens, never color alone (§1.3, §5).
+**Status badges/pills**: `radius-full`, Inter SemiBold uppercase, colored per §1.3 — paired with an icon on floor screens, never color alone (§1.3, §5).
 
-**Tables**: Epilogue SemiBold uppercase headers, Outfit Regular body, Roboto Mono for ID/code/quantity columns. **Floor screens avoid dense tables entirely** — the Incoming Stock Ledger pattern (a full data table) is an office/review pattern, not something a warehouseman scans against in real time; floor equivalents should be card-based lists, one item per row, not a multi-column table requiring horizontal scanning.
+**Tables**: Inter SemiBold uppercase headers, Inter Regular body, JetBrains Mono for ID/code/quantity columns. **Floor screens avoid dense tables entirely** — the Incoming Stock Ledger pattern (a full data table) is an office/review pattern, not something a warehouseman scans against in real time; floor equivalents should be card-based lists, one item per row, not a multi-column table requiring horizontal scanning.
 
-**Forms**: Outfit Regular, `brand-navy` focus ring. Floor screens minimize form fields per §3's input-priority rule — every field that could instead be a scan or a single tap should be.
+**Forms**: Inter Regular, `brand-navy` focus ring. Floor screens minimize form fields per §3's input-priority rule — every field that could instead be a scan or a single tap should be.
+
+**Dashboard / KPI cards** *(added 2026-08-09)*: Office screens that summarize data (Analytics/Reporting §16, dashboard landing views, Approval Queue overview) use a light `surface-light-grey` page background with `surface-white` KPI tiles at Level 1 elevation, `radius-md`, laid out in a responsive grid (`md:grid-cols-2 lg:grid-cols-3`+). Each tile: `label` (Inter SemiBold, uppercase, `text-grey`) above a `headline-lg`/`headline-xl` figure in Inter ExtraBold, with an optional small trend indicator using `status-available`/`status-held` (never bare red/green — pair with an ↑/↓ glyph, same color-not-alone rule as §1.3). `brand-red` is the one accent used sparingly for the single most important figure or chart series per view, not applied to every tile — this mirrors the reference dashboard's restraint of one accent color against a mostly neutral palette. Chart cards (line/bar) follow the same tile treatment; chart colors pull from the existing brand/status palette only — no new hex values introduced for data visualization (§13).
+
+**Floor adaptation of the dashboard pattern**: floor screens never render a multi-tile KPI grid — that's an office-density pattern and violates §3's one-primary-action rule. Where a floor screen needs a single at-a-glance figure (e.g., "Items scanned today"), it gets one large `headline-xl` stat at the top of the existing card-list layout, not a grid, and it is never itself the primary tap target.
 
 ---
 
@@ -207,7 +215,7 @@ Floor devices are rugged mid-tier Android hardware (Zebra/Honeywell-class scanne
 
 ## 12. Implementation (Next.js + Tailwind — Option A stack)
 
-- All tokens defined in `tailwind.config.ts` — components consume Tailwind classes, never inline hex values.
+- All tokens defined in `tailwind.config.ts` — components consume Tailwind classes, never inline hex values. **Narrow exception, added 2026-08-09**: SVG-based charting libraries (e.g. recharts) take raw prop values (`fill`, `stroke`, `tick.fill`, tooltip `contentStyle`), not Tailwind classes, so a chart component may pass hex literals directly — but only values that are an exact, traceable match to an already-documented token in §1 (e.g. `#002060` for `brand-navy`, `#E30613` for `brand-red`). No chart may introduce a hex value that isn't already named in §1. This is the only sanctioned inline-hex path in the codebase.
 - Mobile-first Tailwind usage is structural, not optional: base (unprefixed) classes are the floor/mobile styles; `md:`/`lg:` prefixes layer on office/desktop enhancements. Writing desktop styles unprefixed and mobile as an override is backwards and not permitted per §3.
 - Fonts loaded via `next/font/google`, scoped to weights actually used (§2).
 - Floor-screen components should be built and tested first at the 375px breakpoint, not designed at desktop width and shrunk down — matches §3's actual priority, not just its stated intent.

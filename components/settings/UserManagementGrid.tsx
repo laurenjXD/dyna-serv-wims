@@ -169,7 +169,7 @@ export function UserManagementGrid({
         </select>
       </div>
 
-      <div className="overflow-x-auto rounded-md bg-surface-white/75 shadow-elevation-1 backdrop-blur-md">
+      <div className="overflow-x-auto rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-1">
         <table className="w-full text-left" data-testid="user-management-table">
           <thead>
             <tr className="border-b border-outline-variant/30">

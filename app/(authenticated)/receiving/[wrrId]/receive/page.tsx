@@ -166,7 +166,7 @@ export default async function ReceiveFloorPage({
           {/* Back link — h-14 (56px) minimum floor touch target per §3 */}
           <Link
             href={`/receiving/${wrrId}`}
-            className="inline-flex h-14 items-center gap-2 text-body-md font-outfit text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
+            className="inline-flex h-14 items-center gap-2 text-body-md font-body text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
           >
             {/* Left arrow — no icon dependency, pure text/unicode for floor performance */}
             <span aria-hidden="true">&#8592;</span>
@@ -231,7 +231,7 @@ export default async function ReceiveFloorPage({
             {dispositionResult && (
               <p className="mt-1 font-body text-body-md text-on-surface">
                 Disposition:{" "}
-                <span className="text-body-md font-outfit uppercase">
+                <span className="text-body-md font-body uppercase">
                   {dispositionResult}
                 </span>
               </p>
@@ -280,11 +280,11 @@ export default async function ReceiveFloorPage({
                     </p>
                     {/* Disposition — label + badge with icon, never color alone per §1.3 floor rule */}
                     <div className="mt-1 flex items-center gap-2">
-                      <span className="text-body-md font-outfit text-on-surface">
+                      <span className="text-body-md font-body text-on-surface">
                         Disposition:
                       </span>
                       <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-body-md font-outfit uppercase ${
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-body-md font-body uppercase ${
                           item.disposition === "store"
                             ? "bg-status-available/10 text-on-surface"
                             : "bg-status-pending/10 text-on-surface"
@@ -339,7 +339,7 @@ export default async function ReceiveFloorPage({
             <form action={handleScan} className="flex flex-col gap-3">
               <label
                 htmlFor="barcode-input"
-                className="text-body-md font-outfit text-surface-white"
+                className="text-body-md font-body text-surface-white"
               >
                 Scan or enter barcode
               </label>

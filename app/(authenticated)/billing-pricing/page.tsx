@@ -263,7 +263,7 @@ function VmiBillingTab({ selectedMonth, selectedYear }: TabProps) {
       </form>
 
       {/* Summary card */}
-      <div className="rounded-2xl border border-outline-variant/30 bg-white/75 p-6 shadow-elevation-1 backdrop-blur-md">
+      <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
         <h2 className="font-heading font-semibold text-headline-md text-brand-navy">
           {MONTHS[selectedMonth]} {selectedYear} — Summary
         </h2>
@@ -305,7 +305,7 @@ function VmiBillingTab({ selectedMonth, selectedYear }: TabProps) {
       </div>
 
       {/* CBM Ledger table */}
-      <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-white/75 shadow-elevation-1 backdrop-blur-md">
+      <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
         <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
           <h2 className="font-heading font-semibold text-headline-md text-brand-navy">
             CBM Ledger
@@ -460,7 +460,7 @@ function TradingMarginTab({ selectedMonth, selectedYear }: TabProps) {
       </form>
 
       {/* Summary card */}
-      <div className="rounded-2xl border border-outline-variant/30 bg-white/75 p-6 shadow-elevation-1 backdrop-blur-md">
+      <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
         <h2 className="font-heading font-semibold text-headline-md text-brand-navy">
           {MONTHS[selectedMonth]} {selectedYear} — Summary
         </h2>
@@ -505,7 +505,7 @@ function TradingMarginTab({ selectedMonth, selectedYear }: TabProps) {
       </div>
 
       {/* Margin ledger table */}
-      <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-white/75 shadow-elevation-1 backdrop-blur-md">
+      <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
         <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
           <h2 className="font-heading font-semibold text-headline-md text-brand-navy">
             Margin Ledger

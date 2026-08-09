@@ -80,7 +80,7 @@ export default async function ItemDetailPage({ params }: PageProps) {
       </div>
 
       {/* Core identifiers */}
-      <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-brand-navy">
           Item Information
         </h2>
@@ -163,7 +163,7 @@ export default async function ItemDetailPage({ params }: PageProps) {
       </div>
 
       {/* Dimensions and volume */}
-      <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-brand-navy">
           Dimensions &amp; Volume
         </h2>
@@ -229,7 +229,7 @@ export default async function ItemDetailPage({ params }: PageProps) {
 
       {/* Deactivation zone */}
       {canManage && item.isActive && (
-        <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
+        <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
           <h2 className="font-heading font-semibold text-data-display text-on-surface">
             Danger Zone
           </h2>
@@ -244,7 +244,7 @@ export default async function ItemDetailPage({ params }: PageProps) {
       )}
 
       {/* Reference prices — clearly labelled as non-final */}
-      <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-brand-navy">
           Reference Prices
         </h2>

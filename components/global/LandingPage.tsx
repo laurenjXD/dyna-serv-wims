@@ -102,7 +102,7 @@ export function LandingPage({
         {content.queueCards.map((card) => (
           <div
             key={card.queue}
-            className="rounded bg-white/75 p-4 shadow-elevation-1 backdrop-blur-md"
+            className="rounded bg-surface-white p-4 shadow-elevation-1"
           >
             <p className="font-label text-label uppercase text-text-grey">{card.queue}</p>
             <p className="font-heading text-headline-md font-semibold text-brand-navy">
@@ -115,7 +115,7 @@ export function LandingPage({
 
       <section
         data-testid="landing-recent-activity"
-        className="rounded bg-white/75 p-4 shadow-elevation-1 backdrop-blur-md"
+        className="rounded bg-surface-white p-4 shadow-elevation-1"
       >
         <h2 className="font-heading text-headline-md font-semibold text-brand-navy">
           Recent Activity

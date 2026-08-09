@@ -216,7 +216,7 @@ async function PartiesTab({
       </div>
 
       {/* Table */}
-      <div className="mt-4 overflow-hidden rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1">
+      <div className="mt-4 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="font-body text-body-md text-text-grey">
@@ -345,7 +345,7 @@ async function ItemsTab({
 
   if (itemsReadResult.kind !== "authorized") {
     return (
-      <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 px-6 py-12 text-center">
+      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 px-6 py-12 text-center">
         <p className="font-body text-body-md text-text-grey">
           You do not have permission to view items.
         </p>
@@ -401,7 +401,7 @@ async function ItemsTab({
       </div>
 
       {/* Table */}
-      <div className="mt-4 overflow-hidden rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1">
+      <div className="mt-4 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="font-body text-body-md text-text-grey">
@@ -530,7 +530,7 @@ async function LocationsTab({
 
   if (locReadResult.kind !== "authorized") {
     return (
-      <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 px-6 py-12 text-center">
+      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 px-6 py-12 text-center">
         <p className="font-body text-body-md text-text-grey">
           You do not have permission to view locations.
         </p>
@@ -586,7 +586,7 @@ async function LocationsTab({
       </div>
 
       {/* Table */}
-      <div className="mt-4 overflow-hidden rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1">
+      <div className="mt-4 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="font-body text-body-md text-text-grey">

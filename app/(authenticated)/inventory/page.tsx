@@ -134,7 +134,7 @@ export default async function InventoryPage({ searchParams }: PageProps) {
 
 function StockViewTab() {
   return (
-    <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 px-6 py-12 text-center">
+    <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 px-6 py-12 text-center">
       <p className="font-body text-body-md text-text-grey">
         Stock view with FIFO/FEFO pick-list generation is coming in the next implementation cycle.
       </p>
@@ -151,7 +151,7 @@ async function PickListsTab() {
   const { rows } = await listPickLists(db, { limit: 50, offset: 0 });
 
   return (
-    <div className="mt-6 overflow-hidden rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1">
+    <div className="mt-6 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
       {rows.length === 0 ? (
         <div className="px-6 py-12 text-center">
           <p className="font-body text-body-md text-text-grey">
@@ -227,7 +227,7 @@ async function PickListsTab() {
 
 function DailyInspectionTab() {
   return (
-    <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 px-6 py-12 text-center">
+    <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 px-6 py-12 text-center">
       <p className="font-body text-body-md text-text-grey">
         Daily Inspection initiation is managed here (Supervisor / Administrator only).
       </p>

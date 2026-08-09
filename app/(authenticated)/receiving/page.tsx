@@ -227,7 +227,7 @@ async function ReceiveTab({
       </div>
 
       {/* WRR table — Level 1 office elevation per brand-design-system.md §6 */}
-      <div className="mt-4 overflow-hidden rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1">
+      <div className="mt-4 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="font-body text-body-md text-text-grey">
@@ -421,7 +421,7 @@ async function WrrsTab({
       </div>
 
       {/* WRR table — Level 1 office elevation */}
-      <div className="mt-4 overflow-hidden rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1">
+      <div className="mt-4 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="font-body text-body-md text-text-grey">
@@ -556,7 +556,7 @@ async function LedgerTab({ pageParam }: { pageParam?: string }) {
       </p>
 
       {/* Ledger table — Level 1 office elevation per brand-design-system.md §6 */}
-      <div className="mt-4 overflow-hidden rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1">
+      <div className="mt-4 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="font-body text-body-md text-text-grey">

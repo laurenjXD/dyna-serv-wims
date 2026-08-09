@@ -4,7 +4,7 @@
 //   specs/09-approval-queue/design.md §7 (queue UI routes, office shell)
 //   specs/09-approval-queue/requirements.md R3 (queue filtering), R7 (audit/security)
 //   specs/00-steering/brand-design-system.md §2 (typography), §6 (office Level 1
-//     elevation: bg-white/75 backdrop-blur-md), §9 (office table pattern)
+//     elevation: bg-surface-white), §9 (office table pattern)
 //
 // Surface: Office. Capability gate: fifo_override.approve (supervisor, global scope).
 // Design.md §4: fifo_override.approve granted to supervisor only.
@@ -266,8 +266,8 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
       </div>
 
       {/* Queue table — Level 1 office elevation per brand-design-system.md §6:
-          bg-white/75 backdrop-blur-md (glassmorphism, office-only) */}
-      <div className="mt-4 overflow-hidden rounded-2xl border border-outline-variant/30 bg-white/75 backdrop-blur-md shadow-elevation-1">
+          bg-surface-white (glassmorphism, office-only) */}
+      <div className="mt-4 overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
         {sortedRows.length === 0 ? (
           /* Empty state — CheckCircle2 icon + copy */
           <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">

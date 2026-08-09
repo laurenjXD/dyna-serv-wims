@@ -60,7 +60,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
         </button>
 
         {/* Brand word-mark. Real letter-mark asset (text stand-in for now —
-            see tasks.md deferred item on logo asset wiring). Epilogue
+            see tasks.md deferred item on logo asset wiring). Inter
             SemiBold per brand-design-system §2 / §9 sidebar spec. */}
         <span className="font-label text-body-md font-semibold uppercase tracking-wide text-surface-white">
           Dyna-Serv WIMS
@@ -90,8 +90,17 @@ export function ShellChrome({ children }: { children: ReactNode }) {
       {/* pb-20 (base) clears the fixed floor bottom tab bar; office tier
           doesn't render that bar, so the extra bottom space is harmless.
           lg:pl-64 clears the office/party desktop sidebar's fixed width.
-          pt-14 clears the fixed AppHeader. */}
-      <main className="pb-20 pt-14 lg:pb-0 lg:pl-64">{children}</main>
+          pt-14 clears the fixed AppHeader.
+          Office/party tiers get the light `surface-light-grey` dashboard
+          backdrop (brand-design-system §6/§9, revised 2026-08-09); floor
+          keeps a plain white background per §6's AAA-contrast floor rule. */}
+      <main
+        className={`min-h-screen pb-20 pt-14 lg:pb-0 lg:pl-64 ${
+          tier === "floor" ? "" : "bg-surface-light-grey"
+        }`}
+      >
+        {children}
+      </main>
     </>
   );
 }

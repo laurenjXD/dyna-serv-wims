@@ -89,7 +89,7 @@ Two active tracks. One human collaborator per track. Read this before touching a
 | Spec | What's blocked | What's needed |
 |---|---|---|
 | **17 — Product Categorization** | All implementation | 8 Section 1 PO decisions: Machines subcategories, Supplies taxonomy, multi-flow join table, hard vs. warning rules, governance roles, name uniqueness scope. Must be recorded in `revision-log.md` before any code. |
-| **10 — PDF pipeline** | PDF generation, Storage, signed URLs | Inline vs. Edge/job decision, orphan-artifact reconciliation, Storage bucket ownership |
+| ~~**10 — PDF pipeline**~~ | ~~PDF generation, Storage, signed URLs~~ | **Resolved 2026-08-09** (see `revision-log.md`): inline generation (Option A), nightly pg_cron orphan reconciliation, bucket ownership already settled in `04` §10. Retention for `generated_documents` and their Storage objects is now permanent via hot/cold tiering (3yr hot in Supabase, then archived off-platform), superseding the earlier 3-year-deletion figure. Track 2 (spec 12/13) is unblocked to build PDF statement generation. |
 | **19 — Dispatch scheduling** | All implementation | Reserved/deferred by PO. Number reserved because other specs reference it. |
 
 ---

@@ -134,7 +134,7 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
       {/* Create Transfer form — standard office surface */}
       <form action={handleCreateTransfer} className="mt-6 space-y-6">
         {/* Header section — office card, Level 1 elevation */}
-        <div className="rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
+        <div className="rounded-md bg-surface-white shadow-elevation-1 p-6">
           <h2 className="font-heading font-semibold text-data-display text-brand-navy">
             Transfer Details
           </h2>
@@ -245,7 +245,7 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
         </div>
 
         {/* Transfer lines section */}
-        <div className="rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
+        <div className="rounded-md bg-surface-white shadow-elevation-1 p-6">
           <h2 className="font-heading font-semibold text-data-display text-brand-navy">
             Transfer Lines
           </h2>

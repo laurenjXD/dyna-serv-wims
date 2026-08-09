@@ -38,7 +38,7 @@ export default async function EditPartyPage({ params }: PageProps) {
         </p>
       </div>
 
-      <div className="rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
+      <div className="rounded-md bg-surface-white shadow-elevation-1 p-6">
         <PartyForm
           action={updatePartyAction}
           party={party}
