@@ -87,4 +87,21 @@ describe("resolveRecipients (design.md §5 authorization intersection)", () => {
 
     expect(resolveRecipients([candidate, candidate], event)).toEqual([{ userId: "user-5" }]);
   });
+
+  it("excludes a null-flowType party scope from matching a 'supplies' event (02-rbac-roles/design.md: null flowType is not a bare wildcard, never matches supplies)", () => {
+    const event: NotificationSourceEvent = {
+      requiredCapability: { resource: "inventory", action: "read" },
+      partyId: "party-1",
+      flowType: "supplies",
+    };
+    const candidates: RecipientCandidate[] = [
+      {
+        userId: "user-6",
+        grants: [{ resource: "inventory", action: "read", scopeKind: "assigned_party" }],
+        partyScopes: [{ partyId: "party-1", flowType: null }],
+      },
+    ];
+
+    expect(resolveRecipients(candidates, event)).toEqual([]);
+  });
 });

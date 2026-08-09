@@ -45,7 +45,14 @@ function partyScopeMatches(
   return candidate.partyScopes.some(
     (scope) =>
       scope.partyId === event.partyId &&
-      (scope.flowType === null || scope.flowType === event.flowType),
+      // Mirrors 02-rbac-roles/design.md's has_party_scope match logic exactly:
+      // a null-flowType assignment is NOT a bare wildcard — it never matches
+      // a 'supplies' event, only vmi/trading/null. A single implementation
+      // slip here would leak Supplies-flow notifications through a
+      // VMI/Trading party assignment (design.md §3.4, acceptance criterion
+      // #7: party_user grants never expose internal Supplies data).
+      (scope.flowType === event.flowType ||
+        (scope.flowType === null && event.flowType !== "supplies")),
   );
 }
 
