@@ -89,7 +89,7 @@ export default async function PartyDetailPage({
               </li>
             </ol>
           </nav>
-          <h1 className="font-heading font-semibold text-headline-md text-brand-navy">
+          <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
             {party.name}
           </h1>
           <p className="mt-1 font-mono text-mono-md text-text-grey">
@@ -123,7 +123,7 @@ export default async function PartyDetailPage({
 
       {/* Master data */}
       <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
-        <h2 className="font-heading font-semibold text-data-display text-brand-navy">
+        <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Party Information
         </h2>
         <dl className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -212,7 +212,7 @@ export default async function PartyDetailPage({
 
       {/* Transaction Ledger — design.md §5b */}
       <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
-        <h2 className="font-heading font-semibold text-data-display text-brand-navy">
+        <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Transaction Ledger
         </h2>
         <p className="mt-1 font-body text-body-sm text-text-grey">

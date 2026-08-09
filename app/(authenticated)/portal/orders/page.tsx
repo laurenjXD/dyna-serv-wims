@@ -121,7 +121,7 @@ export default async function PortalOrdersPage() {
     <div className="mx-auto max-w-container">
       {/* Page header — Fira Sans Bold headline-xl per §2 */}
       <div>
-        <h1 className="font-heading font-bold text-headline-xl text-brand-navy">
+        <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
           My Orders
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">

@@ -183,7 +183,7 @@ export default async function ReceiveFloorPage({
       <div className="flex flex-1 flex-col px-4 py-4">
         {/* Progress header — Fira Sans, large enough for floor visibility */}
         <div className="rounded-md bg-surface-white p-4 shadow-elevation-2">
-          <h1 className="font-heading font-semibold text-headline-md text-brand-navy">
+          <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
             Scan Items
           </h1>
           {/* Progress — no text below 16px (body-md) on floor screens per §2 */}

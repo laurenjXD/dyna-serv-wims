@@ -80,7 +80,7 @@ export default async function LocationDetailPage({
               </li>
             </ol>
           </nav>
-          <h1 className="font-heading font-bold text-headline-xl text-brand-navy">
+          <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
             {location.label}
           </h1>
           <p className="mt-1 font-body text-body-md text-text-grey capitalize">
@@ -111,7 +111,7 @@ export default async function LocationDetailPage({
 
       {/* Location details */}
       <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
-        <h2 className="font-heading font-semibold text-data-display text-brand-navy">
+        <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Location Information
         </h2>
         <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -182,7 +182,7 @@ export default async function LocationDetailPage({
 
       {/* Movement Ledger — design.md §6a Movement Ledger */}
       <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
-        <h2 className="font-heading font-semibold text-data-display text-brand-navy">
+        <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Movement Ledger
         </h2>
         <p className="mt-1 font-body text-body-sm text-text-grey">

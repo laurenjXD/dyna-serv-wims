@@ -136,7 +136,7 @@ export default async function InspectionQueuePage({ searchParams }: PageProps) {
       <div className="flex min-h-screen flex-col bg-brand-navy px-4 py-4">
         {/* Floor top bar */}
         <div className="pb-4">
-          <h1 className="font-heading font-bold text-headline-md text-white">
+          <h1 className="font-heading font-extrabold text-headline-md text-white">
             Daily Inspection
           </h1>
           <p className="mt-1 font-body text-body-md text-white/70">
@@ -241,7 +241,7 @@ export default async function InspectionQueuePage({ searchParams }: PageProps) {
     <div className="mx-auto max-w-container">
       {/* Page header */}
       <div>
-        <h1 className="font-heading font-semibold text-headline-md text-brand-navy">
+        <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
           Inspection Queue
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">

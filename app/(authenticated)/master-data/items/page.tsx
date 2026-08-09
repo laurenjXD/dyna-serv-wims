@@ -47,7 +47,7 @@ export default async function ItemsPage({ searchParams }: PageProps) {
     <div className="mx-auto max-w-container">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-heading font-semibold text-headline-md text-brand-navy">
+          <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
             Items
           </h1>
           <p className="mt-1 font-body text-body-md text-text-grey">

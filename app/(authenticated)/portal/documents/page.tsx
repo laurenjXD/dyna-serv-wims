@@ -149,7 +149,7 @@ export default async function PortalDocumentsPage({
     <div className="mx-auto max-w-container">
       {/* Page header */}
       <div>
-        <h1 className="font-heading font-bold text-headline-xl text-brand-navy">
+        <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
           My Documents
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">

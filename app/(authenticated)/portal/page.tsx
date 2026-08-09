@@ -115,7 +115,7 @@ export default async function PortalPage() {
       <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="font-heading font-bold text-headline-xl text-brand-navy">
+            <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
               Welcome, {partyName}
             </h1>
             <p className="mt-1 font-body text-body-md text-text-grey">

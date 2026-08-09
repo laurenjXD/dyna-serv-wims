@@ -126,7 +126,7 @@ export default async function WrrDetailPage({ params, searchParams }: PageProps)
 
       {/* Page heading + status badge */}
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="font-heading font-semibold text-headline-md text-brand-navy">
+        <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
           {wrr.wrrNumber}
         </h1>
         <span
@@ -160,7 +160,7 @@ export default async function WrrDetailPage({ params, searchParams }: PageProps)
 
       {/* WRR summary card — Level 1 office elevation */}
       <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
-        <h2 className="font-heading font-semibold text-data-display text-brand-navy">
+        <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Document Details
         </h2>
         <dl className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -211,7 +211,7 @@ export default async function WrrDetailPage({ params, searchParams }: PageProps)
 
       {/* Action buttons — conditional on WRR status */}
       <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
-        <h2 className="font-heading font-semibold text-data-display text-brand-navy">
+        <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Actions
         </h2>
         <div className="mt-4 flex flex-wrap gap-3">
@@ -262,7 +262,7 @@ export default async function WrrDetailPage({ params, searchParams }: PageProps)
       {/* Items table — Level 1 office elevation */}
       <div className="mt-6 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
         <div className="px-6 py-4">
-          <h2 className="font-heading font-semibold text-data-display text-brand-navy">
+          <h2 className="font-heading font-semibold text-data-display text-on-surface">
             Expected Lines ({wrr.items.length})
           </h2>
         </div>

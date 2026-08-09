@@ -2,6 +2,20 @@
 
 Every merge conflict and major revision, dated, with the resolution. This is the audit trail for "why does the spec say X" when X isn't obvious from the doc alone.
 
+## Modern restyle extended to every office page, not just dashboard/reports (2026-08-10)
+
+The Product Owner pointed out the modern restyle had only actually reached `/` and `/reports` — every other office page (receiving, transfers, inspection, approvals, documents, billing-pricing, enrollment, master-data/*, portal/*, settings, sync, and their detail/form sub-pages) still had the old `text-brand-navy` headings and inconsistent title weights, so the app read as two different design systems depending on which page you were on. This closes that gap.
+
+**Mechanical, line-scoped sweep** (not a hand-edit per file, given the scale — 40+ files in `app/(authenticated)/**`, 5 more in `components/**`): any `className` string containing both `font-heading` and `text-brand-navy` had `text-brand-navy` → `text-on-surface`. This is safe by construction — `font-heading` only appears on actual heading/title elements (h1/h2/h3, or a `<p>` styled as a section title), never on links, tabs, checkboxes, or focus rings, all of which also use `text-brand-navy` elsewhere but were correctly left untouched (those are interactive-element accents, not the "black text" rule from `brand-design-system.md` §1.1a). Verified zero remaining `font-heading` + `text-brand-navy` combinations app-wide after the sweep.
+
+**Additionally**, every genuine `<h1>` page title had its weight bumped from `font-bold`/`font-semibold` to `font-extrabold`, matching the weight already used on `/` and `/reports` — same mechanical approach, scoped to lines starting with `<h1 className="font-heading`.
+
+**Not touched, deliberately**: floor-screen headings (already `text-white` on dark navy backgrounds, never matched the `text-brand-navy` sweep pattern), link/tab/checkbox/focus-ring uses of `brand-navy` (functional accent color, not body text), and card shadow/elevation treatment (still `shadow-elevation-1` + border everywhere — no change from the earlier flat-card pass).
+
+No `Status` header changed — `brand-design-system.md`'s existing §1.1a text-color rule already covered this; this entry is the implementation catching up to a rule stated but not yet fully applied.
+
+Verified: `tsc --noEmit` clean (same pre-existing, unrelated `playwright.config.ts` error only); 1221/1221 unit tests pass; `next build` succeeds, all 35 routes compile.
+
 ## Accent-indigo palette adopted; brand-red hex updated; text-color rule reaffirmed (2026-08-10)
 
 Product Owner supplied a specific 4-swatch palette (`#EBEAFF`, `#9694FF`, `#3D3BF3`, `#FF2929`) as a color-only refinement pass on top of the dashboard restyle above — explicit instruction was to recolor without restructuring ("keep the ui ux and the included kpi metrics, tables, and actions"), and to keep all heading/label/body text black regardless of the new accents.

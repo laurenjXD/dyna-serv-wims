@@ -138,7 +138,7 @@ export default async function TransferListPage({ searchParams }: PageProps) {
       <div className="flex min-h-screen flex-col bg-brand-navy px-4 py-4">
         {/* Floor top bar */}
         <div className="flex items-center justify-between pb-4">
-          <h1 className="font-heading font-bold text-headline-md text-white">
+          <h1 className="font-heading font-extrabold text-headline-md text-white">
             Transfers
           </h1>
           {/* Daily Inspection shortcut — prominent if inspections exist today */}
@@ -252,7 +252,7 @@ export default async function TransferListPage({ searchParams }: PageProps) {
       {/* Page header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="font-heading font-semibold text-headline-md text-brand-navy">
+          <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
             Transfer Queue
           </h1>
           <p className="mt-1 font-body text-body-md text-text-grey">

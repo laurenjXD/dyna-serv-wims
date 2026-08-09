@@ -42,19 +42,19 @@ export function LandingPage({
           </span>
           <div className="grid grid-cols-3 gap-2">
             <div className="flex flex-col items-center">
-              <span className="font-heading text-data-display font-semibold text-brand-navy">
+              <span className="font-heading text-data-display font-semibold text-on-surface">
                 {content.taskCounts.receiving}
               </span>
               <span className="font-label text-body-md uppercase text-on-surface">Receiving</span>
             </div>
             <div className="flex flex-col items-center">
-              <span className="font-heading text-data-display font-semibold text-brand-navy">
+              <span className="font-heading text-data-display font-semibold text-on-surface">
                 {content.taskCounts.picking}
               </span>
               <span className="font-label text-body-md uppercase text-on-surface">Picking</span>
             </div>
             <div className="flex flex-col items-center">
-              <span className="font-heading text-data-display font-semibold text-brand-navy">
+              <span className="font-heading text-data-display font-semibold text-on-surface">
                 {content.taskCounts.inspection}
               </span>
               <span className="font-label text-body-md uppercase text-on-surface">Inspection</span>
@@ -105,7 +105,7 @@ export function LandingPage({
             className="rounded bg-surface-white p-4 shadow-elevation-1"
           >
             <p className="font-label text-label uppercase text-text-grey">{card.queue}</p>
-            <p className="font-heading text-headline-md font-semibold text-brand-navy">
+            <p className="font-heading text-headline-md font-semibold text-on-surface">
               {card.openCount} open
             </p>
             <p className="font-body text-body-sm text-text-grey">{card.todayCount} today</p>
@@ -117,7 +117,7 @@ export function LandingPage({
         data-testid="landing-recent-activity"
         className="rounded bg-surface-white p-4 shadow-elevation-1"
       >
-        <h2 className="font-heading text-headline-md font-semibold text-brand-navy">
+        <h2 className="font-heading text-headline-md font-semibold text-on-surface">
           Recent Activity
         </h2>
         <ul className="flex flex-col gap-2">

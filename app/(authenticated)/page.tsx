@@ -81,7 +81,7 @@ function FloorLanding({
     <div className="flex min-h-full flex-col gap-6 bg-brand-navy px-4 py-6">
       {/* ── Greeting header ──────────────────────────────────────────────── */}
       <header>
-        <h1 className="font-heading text-headline-lg font-bold text-white">
+        <h1 className="font-heading text-headline-lg font-extrabold text-white">
           Good {greeting}, {firstName}
         </h1>
         <p className="mt-1 font-body text-body-md text-white/70">{dateString}</p>

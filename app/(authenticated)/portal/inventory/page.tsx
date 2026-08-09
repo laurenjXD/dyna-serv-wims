@@ -164,7 +164,7 @@ export default async function PortalInventoryPage({ searchParams }: PageProps) {
       {/* Page header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="font-heading font-bold text-headline-xl text-brand-navy">
+          <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
             My Inventory
           </h1>
           <p className="mt-1 font-body text-body-md text-text-grey">

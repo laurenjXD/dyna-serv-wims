@@ -83,7 +83,7 @@ export default async function EnrollmentPage({ searchParams }: PageProps) {
     <div className="mx-auto max-w-container">
       {/* Page header */}
       <div>
-        <h1 className="font-heading font-semibold text-headline-md text-brand-navy">
+        <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
           Enrollment
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">

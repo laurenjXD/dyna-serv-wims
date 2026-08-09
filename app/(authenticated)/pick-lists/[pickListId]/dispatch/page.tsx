@@ -173,7 +173,7 @@ export default async function DispatchConfirmationPage({
           </Link>
           <div className="min-w-0">
             {/* "Dispatch" heading — Fira Sans Bold, text-headline-lg */}
-            <h1 className="font-heading text-headline-lg font-bold text-white">
+            <h1 className="font-heading text-headline-lg font-extrabold text-white">
               Dispatch
             </h1>
             {/* Pick list reference — Roboto Mono, secondary text */}

@@ -179,7 +179,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
     <div className="mx-auto max-w-container">
       {/* Page header — text-headline-xl Fira Sans Bold per brand-design-system.md §2 */}
       <div>
-        <h1 className="font-heading font-bold text-headline-xl text-brand-navy">
+        <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
           Approval Queue
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">

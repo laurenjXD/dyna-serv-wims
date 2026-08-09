@@ -50,7 +50,7 @@ export default async function ItemDetailPage({ params }: PageProps) {
               </li>
             </ol>
           </nav>
-          <h1 className="font-heading font-semibold text-headline-md text-brand-navy">
+          <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
             {item.name}
           </h1>
           <p className="mt-1 font-mono text-mono-md text-text-grey">
@@ -81,7 +81,7 @@ export default async function ItemDetailPage({ params }: PageProps) {
 
       {/* Core identifiers */}
       <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
-        <h2 className="font-heading font-semibold text-data-display text-brand-navy">
+        <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Item Information
         </h2>
         <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -164,7 +164,7 @@ export default async function ItemDetailPage({ params }: PageProps) {
 
       {/* Dimensions and volume */}
       <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
-        <h2 className="font-heading font-semibold text-data-display text-brand-navy">
+        <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Dimensions &amp; Volume
         </h2>
         <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -245,7 +245,7 @@ export default async function ItemDetailPage({ params }: PageProps) {
 
       {/* Reference prices — clearly labelled as non-final */}
       <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
-        <h2 className="font-heading font-semibold text-data-display text-brand-navy">
+        <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Reference Prices
         </h2>
         <div className="mt-2 rounded border border-status-pending/30 bg-status-pending/5 px-4 py-2">

@@ -134,7 +134,7 @@ export function UserManagementGrid({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col items-stretch justify-between gap-3 md:flex-row md:items-center">
-        <h1 className="font-heading text-headline-md font-semibold text-brand-navy">
+        <h1 className="font-heading text-headline-md font-semibold text-on-surface">
           Team Members
         </h1>
         <button

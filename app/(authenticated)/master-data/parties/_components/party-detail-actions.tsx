@@ -158,7 +158,7 @@ function ContactPartyModal({
       <div className="w-full max-w-lg rounded-md bg-surface-white shadow-elevation-2 p-6">
         <h2
           id="contact-party-title"
-          className="font-heading font-semibold text-headline-md text-brand-navy"
+          className="font-heading font-semibold text-headline-md text-on-surface"
         >
           Contact Party
         </h2>
@@ -260,7 +260,7 @@ export function PartyDetailActions({
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h3
             id="roles-heading"
-            className="font-heading font-semibold text-data-display text-brand-navy"
+            className="font-heading font-semibold text-data-display text-on-surface"
           >
             Business Roles
           </h3>
