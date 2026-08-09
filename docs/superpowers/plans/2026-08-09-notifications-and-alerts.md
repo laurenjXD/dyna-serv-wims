@@ -691,7 +691,7 @@ export function isWithinCooldown(input: {
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run lib/notifications/__tests__/dedup.test.ts`
-Expected: PASS, 4/4
+Expected: PASS, 6/6 (2 buildIdempotencyKey cases + 4 isWithinCooldown cases)
 
 - [ ] **Step 5: Commit**
 
