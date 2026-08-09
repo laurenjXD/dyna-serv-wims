@@ -1,26 +1,19 @@
-// Inventory — office withdrawal hub: Pick Lists + Ledger tabs.
+// Inventory — office withdrawal hub: Stock View + Pick Lists + Daily Inspection tabs.
 //
 // Traceability:
-//   specs/08-outgoing-withdrawal-and-two-stage-commitment/design.md §3 (route —
-//     `inventory/page.tsx` is the office withdrawal hub; today it holds only
-//     the Pick Lists + Ledger tabs moved here verbatim from the former
-//     standalone `/pick-lists` and `/outgoing-ledger` routes — item
-//     selection / FIFO allocation / pick-list generation UI is explicitly
-//     NOT built here yet, per the 2026-08-09 restructuring task), §9
-//     (Outgoing ledger design)
+//   specs/08-outgoing-withdrawal-and-two-stage-commitment/design.md §3 (route),
+//     §9 (Outgoing ledger design — ledger content moved to /outgoing per
+//     2026-08-09 PO restructuring)
 //   specs/08-outgoing-withdrawal-and-two-stage-commitment/requirements.md
-//     R5.3, R5.7 (pick_list exposure), R9.1-R9.4 (Outgoing Ledger contract)
+//     R5.3, R5.7 (pick_list exposure)
+//   specs/11-transfer-and-inspection — Daily Inspection surface (placeholder)
 //   specs/00-steering/brand-design-system.md §3 (office tab pattern), §6
 //     (office surface, Level 1 elevation)
-//   specs/00-steering/revision-log.md (2026-08-09 restructuring — merge
-//     standalone /pick-lists and /outgoing-ledger routes into this page)
+//   specs/00-steering/revision-log.md (2026-08-09 restructuring — Ledger tab
+//     moved to /outgoing; new Stock View and Daily Inspection placeholder tabs)
 //
 // Surface: Office — desktop-first, secondary mobile support.
 // Permission gate: pick_list.read
-//
-// R9.4: the Ledger tab's content is read-only; this module exports ONLY the
-// default component (no mutation side-exports), same contract the former
-// outgoing-ledger/page.tsx enforced.
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -29,8 +22,6 @@ import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { listPickLists } from "@/lib/db/queries/withdrawals";
 import type { PickListRow } from "@/lib/db/queries/withdrawals";
-import { listOutgoingLedger } from "@/lib/actions/withdrawals";
-import type { OutgoingLedgerRow } from "@/lib/db/queries/withdrawals";
 
 // ─── Status badge colors ─────────────────────────────────────────────────────
 // brand-design-system.md §1.3 semantic color mapping per task spec:
@@ -54,11 +45,12 @@ const FLOW_LABELS: Record<string, string> = {
   supplies: "Supplies",
 };
 
-type TabKey = "pick-lists" | "ledger";
+type TabKey = "stock-view" | "pick-lists" | "daily-inspection";
 
 const TABS: Array<{ key: TabKey; label: string }> = [
+  { key: "stock-view", label: "Stock View" },
   { key: "pick-lists", label: "Pick Lists" },
-  { key: "ledger", label: "Ledger" },
+  { key: "daily-inspection", label: "Daily Inspection" },
 ];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -69,11 +61,15 @@ interface PageProps {
 
 export default async function InventoryPage({ searchParams }: PageProps) {
   const { tab: tabParam } = await searchParams;
-  const activeTab: TabKey = tabParam === "ledger" ? "ledger" : "pick-lists";
+
+  const activeTab: TabKey =
+    tabParam === "pick-lists" ? "pick-lists" :
+    tabParam === "daily-inspection" ? "daily-inspection" :
+    "stock-view";
 
   const resolver = await createPageResolver();
 
-  // Gate: pick_list.read required for both tabs on this hub.
+  // Gate: pick_list.read required for all tabs on this hub.
   const permResult = await requirePermission(resolver, "pick_list.read");
   if (permResult.kind !== "authorized") {
     notFound();
@@ -82,23 +78,16 @@ export default async function InventoryPage({ searchParams }: PageProps) {
   return (
     <div className="mx-auto max-w-container">
       {/* Page header */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="font-heading font-semibold text-headline-md text-brand-navy">
-            Inventory
-          </h1>
-          <p className="mt-1 font-body text-body-md text-text-grey">
-            Withdrawal office hub — committed pick lists and the read-only
-            outgoing ledger. Item selection and pick-list generation from
-            Master Inventory are not yet built here.
-          </p>
-        </div>
+      <div>
+        <h1 className="font-heading font-semibold text-headline-md text-brand-navy">
+          Inventory
+        </h1>
+        <p className="mt-1 font-body text-body-md text-text-grey">
+          Stock overview, committed pick lists, and daily inspection initiation.
+        </p>
       </div>
 
-      {/* Tab switcher — office pattern per brand-design-system.md §3
-          ("Multi-step forms, tabs, and side-by-side panels are office
-          patterns"). This page is an office review/list surface, not a
-          scan-driven floor flow. */}
+      {/* Tab switcher — office pattern per brand-design-system.md §3 */}
       <div
         role="tablist"
         aria-label="Inventory sections"
@@ -106,10 +95,16 @@ export default async function InventoryPage({ searchParams }: PageProps) {
       >
         {TABS.map((tab) => {
           const isActive = tab.key === activeTab;
+          const href =
+            tab.key === "stock-view"
+              ? "/inventory"
+              : tab.key === "pick-lists"
+              ? "/inventory?tab=pick-lists"
+              : "/inventory?tab=daily-inspection";
           return (
             <Link
               key={tab.key}
-              href={tab.key === "pick-lists" ? "/inventory" : "/inventory?tab=ledger"}
+              href={href}
               role="tab"
               aria-selected={isActive}
               className={`flex h-11 items-center border-b-2 px-4 font-label text-label uppercase tracking-[0.05em] focus:outline-none focus:ring-2 focus:ring-brand-navy ${
@@ -124,11 +119,28 @@ export default async function InventoryPage({ searchParams }: PageProps) {
         })}
       </div>
 
-      {activeTab === "pick-lists" ? (
+      {activeTab === "stock-view" ? (
+        <StockViewTab />
+      ) : activeTab === "pick-lists" ? (
         <PickListsTab />
       ) : (
-        <LedgerTab resolver={resolver} />
+        <DailyInspectionTab />
       )}
+    </div>
+  );
+}
+
+// ─── Stock View tab (default) — placeholder ───────────────────────────────────
+
+function StockViewTab() {
+  return (
+    <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 px-6 py-12 text-center">
+      <p className="font-body text-body-md text-text-grey">
+        Stock view with FIFO/FEFO pick-list generation is coming in the next implementation cycle.
+      </p>
+      <p className="mt-2 font-body text-body-sm text-text-grey">
+        Select items from live inventory to auto-generate a pick list.
+      </p>
     </div>
   );
 }
@@ -211,126 +223,14 @@ async function PickListsTab() {
   );
 }
 
-// ─── Ledger tab ───────────────────────────────────────────────────────────────
+// ─── Daily Inspection tab — placeholder ───────────────────────────────────────
 
-async function LedgerTab({
-  resolver,
-}: {
-  resolver: Awaited<ReturnType<typeof createPageResolver>>;
-}) {
-  const ledgerResult = await listOutgoingLedger(resolver, db, {
-    limit: 100,
-    offset: 0,
-  });
-
-  // listOutgoingLedger returns { rows, total } on success or { ok: false } on error.
-  const rows: OutgoingLedgerRow[] =
-    "rows" in ledgerResult ? ledgerResult.rows : [];
-
+function DailyInspectionTab() {
   return (
-    <div className="mt-6">
+    <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 px-6 py-12 text-center">
       <p className="font-body text-body-md text-text-grey">
-        Read-only record of outgoing inventory transactions (picks). No edits
-        or deletions — corrections use new approved transactions.
+        Daily Inspection initiation is managed here (Supervisor / Administrator only).
       </p>
-
-      {/* Ledger table — Level 1 office elevation per brand-design-system.md §6.
-          design.md §9: item code is the prominent first field in office review. */}
-      <div className="mt-4 overflow-hidden rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1">
-        {rows.length === 0 ? (
-          <div className="px-6 py-12 text-center">
-            <p className="font-body text-body-md text-text-grey">
-              No outgoing transactions yet.
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                  {/* design.md §9 column list — Epilogue SemiBold uppercase headers per §9 */}
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Date/Time
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Transaction #
-                  </th>
-                  {/* Item code — prominent first data column per design.md §9 */}
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Item Code
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Item Name
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Lot Number
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Qty
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    From Location
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Pick List #
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Customer Party
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Acknowledgement Receipt #
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Performed By
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/30">
-                {rows.map((row: OutgoingLedgerRow) => (
-                  <tr key={row.transactionId} className="hover:bg-surface-light-grey/50">
-                    <td className="px-4 py-3 font-body text-body-md text-text-grey">
-                      {row.createdAt.toLocaleString()}
-                    </td>
-                    {/* Roboto Mono for reference/code numbers per §9 */}
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {row.transactionNumber}
-                    </td>
-                    {/* Item code — prominent first per design.md §9 */}
-                    <td className="px-4 py-3 font-mono text-mono-md font-bold text-on-surface">
-                      {row.itemCode}
-                    </td>
-                    <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                      {row.itemName}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {row.lotNumber}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {row.qty}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {row.fromLocationLabel}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {row.pickListNumber ?? "—"}
-                    </td>
-                    <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                      {row.customerPartyName ?? "—"}
-                    </td>
-                    {/* Acknowledgement receipt — v1 not yet joined; placeholder */}
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      —
-                    </td>
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {row.performedByUserId}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
     </div>
   );
 }

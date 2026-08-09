@@ -71,7 +71,14 @@ import { describe, expect, it } from "vitest";
 describe("lib/shell/surface — resolveRouteSurface (design.md §3.2/§5, registration-fixed, not inferred)", () => {
   it("returns 'floor' for a floor-declared route", async () => {
     const { resolveRouteSurface } = await import("../surface");
-    expect(resolveRouteSurface("/receiving")).toBe("floor");
+    // /receiving changed to "shared" per 2026-08-09 PO amendment; using
+    // /receiving/[wrr_id] which remains "floor".
+    expect(resolveRouteSurface("/receiving/[wrr_id]")).toBe("floor");
+  });
+
+  it("returns 'shared' for /receiving (2026-08-09 PO amendment: surface changed floor -> shared)", async () => {
+    const { resolveRouteSurface } = await import("../surface");
+    expect(resolveRouteSurface("/receiving")).toBe("shared");
   });
 
   it("returns 'office' for an office-declared route, including the corrected /master-data/parties/.read row", async () => {
