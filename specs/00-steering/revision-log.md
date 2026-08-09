@@ -2,6 +2,23 @@
 
 Every merge conflict and major revision, dated, with the resolution. This is the audit trail for "why does the spec say X" when X isn't obvious from the doc alone.
 
+## Pending cross-track requests
+
+### [OPEN] Track 2 → Track 3: `14-notifications-and-alerts` schema + RBAC capabilities (2026-08-09)
+
+**Requested by:** Track 2
+**Needed for:** Spec 14 Phase 2 (durable event routing, RLS-gated queries, notification center UI)
+**Blocked files:** `lib/db/schema/notifications.ts` (new), `lib/db/schema/enums.ts` (new enums — see draft), `supabase/migrations/` (new migration — next sequential number), `supabase/migrations/` (RLS policies for the three new tables, default-deny per `02` §7.1's pattern), and the `specs/02-rbac-roles/design.md` §3.2 capability seed migration for the four new `notifications.*` rows (spec text already amended by Track 2, see the 2026-08-09 catalog-addition entry — only the SQL seed migration itself is Track 3's to write).
+
+**What's needed:**
+1. Land the three tables and seven enums exactly as drafted in `docs/superpowers/plans/2026-08-09-notifications-schema-draft.md` at `lib/db/schema/notifications.ts` (+ the enum additions merged into the existing `lib/db/schema/enums.ts`), export from `lib/db/schema/index.ts`.
+2. Generate + hand-write the migration (the partial unique index / composite dedup key on `notification_deliveries` needs the same hand-written-SQL treatment as `lot_inventory_totals` or `user_party_scopes`' `NULLS NOT DISTINCT` index — `drizzle-kit generate` alone won't produce it correctly for the idempotency-key uniqueness scope).
+3. RLS: default-deny on all three tables. `notifications` SELECT: `recipient_user_id = auth.uid()`. `notification_deliveries` SELECT: join to `notifications` and same recipient check, OR `notifications.read_diagnostics` capability for the admin diagnostics view. `notification_preferences` SELECT/UPDATE: `user_id = auth.uid()`. No client-side INSERT/UPDATE grants on `notifications` or `notification_deliveries` at all — those are service-role-only (the router writes them, never a browser session).
+4. Seed the four `notifications.*` capability rows into `permissions`/`role_permissions` per Task 2's already-amended `02` design.md text.
+5. Run `db-migration-verifier` (real Postgres, not mocked) before announcing done, per this project's standing rule.
+
+**Track 3 will handle:** migration authorship, RLS policy authorship, `db-migration-verifier` pass, announcement in this same log entry (`[RESOLVED]` + commit SHA) when landed.
+
 ## Office sidebar reorganized into grouped sections (2026-08-09)
 
 The Product Owner asked for the office sidebar to read as organized sections rather than one flat list of ~15 links. Added a `group: NavGroup` field to `RouteRegistryEntry` (`lib/shell/registry.ts`) and a `NAV_GROUP_ORDER` constant fixing the eleven groups' display order (Overview, Receiving, Outbound, Transfers & Inspection, Approvals, Master Data, Documents, Reporting, System, Account, Party Portal). New `groupRoutesForSidebar()` in `lib/shell/navigation.ts` buckets an already-filtered/presented route list into sections by that order — a pure presentation function, not a new authorization boundary; `filterVisibleRoutes`/`selectRoutesForPresentation` are unchanged and still the only capability-driven filtering. `ShellNavigation.tsx`'s office/party desktop-sidebar branch now renders a dimmed uppercase section header (`data-testid="nav-group-<slug>"`) above each non-empty group; a group with zero visible entries after capability filtering is omitted entirely, never rendered as an empty header. **Deliberately floor-exempt**: the bottom tab bar stays a flat row — per `brand-design-system.md` §3's floor-priority rules, a floor session's visible entry count is already small and horizontal grouping would cost tap-target space for no benefit, so `groupRoutesForSidebar` is only called from the office/party render branch.
