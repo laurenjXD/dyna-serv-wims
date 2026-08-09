@@ -141,6 +141,8 @@ The following operational capability catalog defines stable resource identifiers
 | `forex_rates` | `manage` | `global` | `administrator` |
 | `notifications` | `read` | `global` | `warehouse_staff`, `supervisor`, `administrator` |
 | `notifications` | `read` | `assigned_party` | `party_user` |
+| `notifications` | `update_state` | `global` | `warehouse_staff`, `supervisor`, `administrator` |
+| `notifications` | `update_state` | `assigned_party` | `party_user` |
 | `notifications` | `manage_preferences` | `global` | `warehouse_staff`, `supervisor`, `administrator`, `party_user` |
 | `notifications` | `manage_rules` | `global` | `administrator` |
 | `notifications` | `read_diagnostics` | `global` | `supervisor`, `administrator` |
@@ -164,19 +166,27 @@ The following operational capability catalog defines stable resource identifiers
 **Catalog addition (2026-08-08)**: `wrr_documents.read`, `lots.read`, and `lot_location_balances.read` (all `assigned_party`) originate from `02`'s own §7.4 core-resource policy patterns, not from a new feature request — neither `07-incoming-receiving` nor `11-transfer-and-inspection` has separately defined these as requirements.md operations. §7.4's existing party-read patterns for `wrr_documents` (via `vendor_party_id`/`flow_type`), the VMI branch of `lots` (via `owner_party_id`/`'vmi'`), and `lot_location_balances` (via the one-hop join to `lots.owner_party_id`/`'vmi'`) all call `can_access_party_resource` with exactly these resource/action strings, and §7.4's own rule that "every pattern below MUST call `can_access_party_resource` ... as the RLS predicate" cannot actually function without the corresponding `permissions` rows existing for `has_permission`/`can_access_party_resource` to resolve against. This addition completes `02`'s own already-approved §7.4 policy text so it is executable; it confers no capability beyond what §7.4 already described, and is not a new grant to any role beyond `party_user` at `assigned_party` scope, matching every other row in this table.
 
 **Catalog addition (2026-08-09):** `notifications.manage_preferences`/
-`manage_rules`/`read_diagnostics` originate from `14-notifications-and-alerts`
-requirements.md R6.1 and tasks.md Task Group 3's "add notification read/
-read-state/preferences/operations capabilities to the canonical RBAC
-catalog" item. `notifications.read` itself is not new — it already existed
-at `global` scope for `warehouse_staff`/`supervisor`/`administrator` (staff
-aren't party-bound, and several `R1-A` operational alerts are not
-party-scoped events); this amendment adds it at `assigned_party` scope for
-`party_user` only, since a party user must see only notifications tied to
-their own party (design.md §5's authorization intersection).
-`manage_preferences` uses `global` scope kind with an application/RLS-layer
-`user_id = auth.uid()` restriction, since a user manages only their own
-preferences regardless of party scope, the same self-row pattern already
-used for `user_profiles`.
+`manage_rules`/`read_diagnostics`/`update_state` originate from
+`14-notifications-and-alerts` requirements.md R6.1 and tasks.md Task Group
+3's "add notification read/read-state/preferences/operations capabilities
+to the canonical RBAC catalog" item. `notifications.read` itself is not
+new at either scope — both the `global` row (`warehouse_staff`/
+`supervisor`/`administrator`; staff aren't party-bound, and several
+`R1-A` operational alerts are not party-scoped events) and the
+`assigned_party` row (`party_user`, who must see only notifications tied
+to their own party per design.md §5's authorization intersection) already
+existed in this catalog before this amendment — this entry is listed here
+only for traceability, not as a change. `update_state` (marking a
+notification read/acknowledged/dismissed) mirrors `read`'s own scope
+split: `global` for `warehouse_staff`/`supervisor`/`administrator`,
+`assigned_party` for `party_user` — a recipient can only ever mutate their
+own notification row (enforced by the query layer's/RLS's
+`recipient_user_id = auth.uid()` predicate, the actual row-level boundary;
+the capability grant only gates whether the mutation surface is reachable
+at all). `manage_preferences` uses `global` scope kind with an
+application/RLS-layer `user_id = auth.uid()` restriction, since a user
+manages only their own preferences regardless of party scope, the same
+self-row pattern already used for `user_profiles`.
 
 Names are added to this canonical catalog only when the owning feature's requirements define the operation; the table above covers operations whose business meaning is stable from the revision-plan scope.
 

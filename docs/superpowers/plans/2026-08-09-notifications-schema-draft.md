@@ -90,6 +90,11 @@ export const notifications = pgTable("notifications", {
   templateVersion: text("template_version").notNull(),
   // Source event this notification was created from — for idempotency
   // and for "refetch authoritative source record" (requirements.md R1.5).
+  // Not an FK to an outbox table (04's outbox doesn't exist yet, and
+  // threshold alerts from the evaluation job have no upstream event at
+  // all) — Phase 2's threshold-alert job must mint a deterministic UUID
+  // per (rule, item, evaluation window) so the recipientEventUnique index
+  // below still dedups correctly across repeated evaluation runs.
   sourceEventId: uuid("source_event_id").notNull(),
   sourceType: text("source_type").notNull(), // e.g. "wrr_documents", "approval_requests"
   sourceId: uuid("source_id").notNull(),
@@ -122,7 +127,7 @@ export const notifications = pgTable("notifications", {
 ## `notification_deliveries` (design.md §3 "notification_deliveries")
 
 ```typescript
-import { pgTable, uuid, text, integer, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, integer, timestamp, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { notificationDeliveryChannelEnum, notificationDeliveryStatusEnum } from "./enums";
 import { notifications } from "./notifications"; // same file, defined above
 
@@ -141,10 +146,19 @@ export const notificationDeliveries = pgTable("notification_deliveries", {
   deliveredAt: timestamp("delivered_at", { withTimezone: true }),
   failedAt: timestamp("failed_at", { withTimezone: true }),
 }, (table) => ({
-  // The real design.md §4 composite dedup key lives here, where channel
-  // genuinely varies per row.
-  eventChannelUnique: uniqueIndex("notification_deliveries_idempotency_unique")
-    .on(table.notificationId, table.channel, table.idempotencyKey),
+  // The real design.md §4 composite dedup key (event_id, recipient_id,
+  // channel, template_version) is already fully encoded INTO
+  // idempotencyKey itself by lib/notifications/dedup.ts's
+  // buildIdempotencyKey() — so the uniqueness constraint belongs on
+  // idempotencyKey alone. Scoping it to (notificationId, channel,
+  // idempotencyKey) as an earlier draft did would let the same
+  // idempotency key be inserted twice under two different
+  // notification_ids, defeating the exact duplicate-effect the key
+  // exists to prevent.
+  idempotencyKeyUnique: uniqueIndex("notification_deliveries_idempotency_unique")
+    .on(table.idempotencyKey),
+  notificationChannelIdx: index("notification_deliveries_notification_channel_idx")
+    .on(table.notificationId, table.channel),
 }));
 ```
 

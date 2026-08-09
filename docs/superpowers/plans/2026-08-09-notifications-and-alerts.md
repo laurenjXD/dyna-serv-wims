@@ -825,7 +825,7 @@ npx vitest run
 npx tsc --noEmit
 ```
 
-Expected: every existing test still passes, plus the 12 new tests from Tasks 4-6 (5 + 4 + 3); `tsc --noEmit` clean.
+Expected: every existing test still passes, plus the 15 new tests from Tasks 4-6 (6 + 6 + 3); `tsc --noEmit` clean.
 
 - [ ] **Step 2: Commit if anything is still unstaged**
 
