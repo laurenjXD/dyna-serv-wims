@@ -25,6 +25,7 @@ Two active tracks. One human collaborator per track. Read this before touching a
 **Human:** Jaime
 
 **Owns:**
+
 - All navigation/shell UX restructuring (receiving tabs, enrollment page, outgoing page, inventory tabs)
 - Spec 07 — lot creation gap: wire `commitWrr` to create `lots`, `lot_location_balances`, `inventory_transactions`
 - Spec 08 — FIFO/FEFO engine: stock selection logic in the `/inventory` Stock View
@@ -35,6 +36,7 @@ Two active tracks. One human collaborator per track. Read this before touching a
 - Spec 15 — AI chatbot (last — depends on all other specs being stable)
 
 **Locked files (do not edit without Track 2 agreement):**
+
 - `specs/00-steering/*` — single writer
 - `lib/rbac/*`, `lib/db/schema/*`, `supabase/migrations/*`
 - `CLAUDE.md`, `AGENTS.md`
@@ -61,11 +63,13 @@ Two active tracks. One human collaborator per track. Read this before touching a
 **Human:** Lauren / second collaborator
 
 **Owns:**
+
 - Spec 14 — Notifications & alerts (reorder-level, low-stock, WRR arrival)
 - Spec 12 — VMI billing (nightly CRON, `vmi_cbm_ledger` daily amounts, statement generation)
 - Spec 13 — Trading pricing (`trading_price_snapshots`, margin ledger, `/billing-pricing` Trading tab)
 
 **Locked files (do not edit without Track 3 agreement):**
+
 - `specs/00-steering/*`
 - `lib/rbac/*`, `lib/db/schema/*`, `supabase/migrations/*`
 - `CLAUDE.md`, `AGENTS.md`
@@ -93,13 +97,16 @@ Two active tracks. One human collaborator per track. Read this before touching a
 ## Shared file protocol
 
 ### Files either track may read but only Track 3 may write
+
 `specs/00-steering/*`, `lib/rbac/*`, `lib/db/schema/*`, `supabase/migrations/*`, `CLAUDE.md`, `AGENTS.md`, `.claude/agents/*`
 
 ### Cross-track schema changes
+
 If Track 2 needs a new migration or schema change, open a named request in `revision-log.md` under "Pending cross-track requests". Track 3 writes the migration and announces completion in the same log entry.
 
 ### Git workflow
-```
+
+```sh
 Before starting any session:
   git fetch origin
   git rebase origin/main          # if on a feature branch
@@ -117,6 +124,7 @@ Merging to main:
 ```
 
 ### Commit message convention
+
 ```
 feat(spec-nn): short description of what and why
 fix(spec-nn): short description
@@ -130,6 +138,7 @@ test(spec-nn): short description
 All capability strings used in `requirePermission()` calls and RLS policies must exist in `specs/02-rbac-roles/design.md §3.2`. Adding a new capability requires a spec amendment to `02` and a corresponding migration. Both tracks are bound by this.
 
 Current confirmed capability strings relevant to in-progress work:
+
 - `pick_list.generate`, `pick_list.read`, `pick_list.execute`
 - `receiving.view`, `receiving.confirm`, `receiving.create`
 - `transfer.view`, `transfer.execute`, `transfer.approve`
