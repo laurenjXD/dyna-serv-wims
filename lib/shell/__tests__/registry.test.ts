@@ -76,19 +76,28 @@ const EXPECTED_ROUTES: Array<{
   { id: "root", path: "/", surface: "shared", capability: "none", featureSpecs: ["05-ui-shell-and-navigation"], launchStatus: "launch" },
   { id: "receiving", path: "/receiving", surface: "floor", capability: "receiving.view", featureSpecs: ["07-incoming-receiving"], launchStatus: "launch" },
   { id: "receiving-detail", path: "/receiving/[wrr_id]", surface: "floor", capability: "receiving.view", featureSpecs: ["07-incoming-receiving"], launchStatus: "launch" },
-  { id: "inventory", path: "/inventory", surface: "office", capability: "inventory.read", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
-  { id: "inventory-pick-list-new", path: "/inventory/pick-list/new", surface: "office", capability: "pick_list.generate", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
-  { id: "inventory-pick-list-detail", path: "/inventory/pick-list/[pick_list_id]", surface: "floor", capability: "pick_list.execute", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
-  { id: "inspection", path: "/inspection", surface: "shared", capability: "inspection.perform", featureSpecs: ["07-incoming-receiving", "08-outgoing-withdrawal-and-two-stage-commitment", "11-transfer-and-inspection"], launchStatus: "launch" },
-  { id: "inspection-detail", path: "/inspection/[inspection_id]", surface: "floor", capability: "inspection.perform", featureSpecs: ["07-incoming-receiving", "08-outgoing-withdrawal-and-two-stage-commitment", "11-transfer-and-inspection"], launchStatus: "launch" },
-  { id: "dispatch-detail", path: "/dispatch/[pick_list_id]", surface: "floor", capability: "dispatch.execute", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
-  { id: "documents", path: "/documents", surface: "office", capability: "documents.read", featureSpecs: ["10-pick-list-and-acknowledgement-receipt"], launchStatus: "launch" },
+  // 2026-08-09: corrected back to /inventory — the standalone /pick-lists
+  // and /outgoing-ledger routes were merged into inventory/page.tsx (Pick
+  // Lists + Ledger tabs). The floor pick/dispatch detail routes stay at
+  // /pick-lists/[pickListId]/... unchanged. See revision-log.md.
+  { id: "inventory", path: "/inventory", surface: "office", capability: "pick_list.read", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
+  { id: "inventory-pick-list-execute", path: "/pick-lists/[pickListId]/pick", surface: "floor", capability: "pick_list.execute", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
+  { id: "inventory-pick-list-dispatch", path: "/pick-lists/[pickListId]/dispatch", surface: "floor", capability: "dispatch.execute", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
+  { id: "inspection", path: "/inspection", surface: "shared", capability: "inspection.perform", featureSpecs: ["07-incoming-receiving", "08-outgoing-withdrawal-and-two-stage-commitment", "11-transfer-and-inspection"], launchStatus: "planned" },
+  { id: "inspection-detail", path: "/inspection/[inspection_id]", surface: "floor", capability: "inspection.perform", featureSpecs: ["07-incoming-receiving", "08-outgoing-withdrawal-and-two-stage-commitment", "11-transfer-and-inspection"], launchStatus: "planned" },
+  { id: "documents", path: "/documents", surface: "office", capability: "documents.read", featureSpecs: ["10-pick-list-and-acknowledgement-receipt"], launchStatus: "planned" },
   { id: "approvals", path: "/approvals", surface: "office", capability: "fifo_override.approve", featureSpecs: ["09-approval-queue"], launchStatus: "launch" },
-  { id: "sync", path: "/sync", surface: "floor", capability: "none", featureSpecs: ["03-offline-mode-and-client-storage"], launchStatus: "launch" },
-  { id: "transfers", path: "/transfers", surface: "shared", capability: "transfers.read", featureSpecs: ["11-transfer-and-inspection"], launchStatus: "launch" },
-  { id: "parties", path: "/parties", surface: "office", capability: "parties.read", featureSpecs: ["06-party-and-item-enrollment"], launchStatus: "launch" },
-  { id: "items", path: "/items", surface: "office", capability: "items.read", featureSpecs: ["06-party-and-item-enrollment"], launchStatus: "launch" },
-  { id: "locations", path: "/locations", surface: "office", capability: "locations.read", featureSpecs: ["06-party-and-item-enrollment"], launchStatus: "launch" },
+  { id: "sync", path: "/sync", surface: "floor", capability: "none", featureSpecs: ["03-offline-mode-and-client-storage"], launchStatus: "planned" },
+  // 2026-08-08: corrected transfers.read -> transfer.view (singular) —
+  // 0014_transfer_rls_policies.sql's deliberate, documented capability
+  // vocabulary for this feature. See revision-log.md.
+  { id: "transfers", path: "/transfers", surface: "shared", capability: "transfer.view", featureSpecs: ["11-transfer-and-inspection"], launchStatus: "launch" },
+  { id: "parties", path: "/master-data/parties", surface: "office", capability: "parties.read", featureSpecs: ["06-party-and-item-enrollment"], launchStatus: "launch" },
+  { id: "items", path: "/master-data/items", surface: "office", capability: "items.read", featureSpecs: ["06-party-and-item-enrollment"], launchStatus: "launch" },
+  { id: "locations", path: "/master-data/locations", surface: "office", capability: "locations.read", featureSpecs: ["06-party-and-item-enrollment"], launchStatus: "launch" },
+  // 2026-08-09: added — was already in 05's design.md route table (Planned)
+  // but had never been added to this registry. See revision-log.md.
+  { id: "billing-pricing", path: "/billing-pricing", surface: "office", capability: "reporting.financial_read", featureSpecs: ["12-vmi-billing", "13-trading-orders-and-pricing"], launchStatus: "planned" },
   { id: "reports", path: "/reports", surface: "office", capability: "reporting.read", featureSpecs: ["16-reporting-and-analytics"], launchStatus: "planned" },
   { id: "profile", path: "/profile", surface: "shared", capability: "none", featureSpecs: ["21-user-profile-and-settings"], launchStatus: "launch" },
   { id: "settings", path: "/settings", surface: "office", capability: "users.read", featureSpecs: ["21-user-profile-and-settings"], launchStatus: "launch" },
@@ -101,7 +110,7 @@ const EXPECTED_ROUTES: Array<{
 ];
 
 describe("lib/shell/registry — route catalog matches design.md §3.2 exactly (R3.1, R3.2)", () => {
-  it("exports ROUTE_REGISTRY with exactly the current 25 rows (no stale /dashboard, no extra/missing rows; 2026-08-08 amendment adds /profile and /settings per 21-user-profile-and-settings)", async () => {
+  it("exports ROUTE_REGISTRY with exactly the current 25 rows (no stale /dashboard, no extra/missing rows; 2026-08-09 amendment removes the standalone /incoming-ledger and /outgoing-ledger rows — both merged into their parent office pages as tabs — restores /inventory as the withdrawal hub path, and adds the previously-missing /billing-pricing row)", async () => {
     const { ROUTE_REGISTRY } = await import("../registry");
     expect(Array.isArray(ROUTE_REGISTRY)).toBe(true);
     expect(ROUTE_REGISTRY).toHaveLength(EXPECTED_ROUTES.length);
@@ -125,11 +134,11 @@ describe("lib/shell/registry — route catalog matches design.md §3.2 exactly (
     expect(ROUTE_REGISTRY.some((row) => row.path === "/dashboard")).toBe(false);
   });
 
-  it("gates /parties, /items, and /locations by the .read capability, never .manage (2026-08-07 route-gate fix)", async () => {
+  it("gates /master-data/parties, /master-data/items, and /master-data/locations by the .read capability, never .manage (2026-08-07 route-gate fix)", async () => {
     const { ROUTE_REGISTRY } = await import("../registry");
-    const parties = ROUTE_REGISTRY.find((row) => row.path === "/parties");
-    const items = ROUTE_REGISTRY.find((row) => row.path === "/items");
-    const locations = ROUTE_REGISTRY.find((row) => row.path === "/locations");
+    const parties = ROUTE_REGISTRY.find((row) => row.path === "/master-data/parties");
+    const items = ROUTE_REGISTRY.find((row) => row.path === "/master-data/items");
+    const locations = ROUTE_REGISTRY.find((row) => row.path === "/master-data/locations");
 
     expect(parties?.capability).toBe("parties.read");
     expect(items?.capability).toBe("items.read");

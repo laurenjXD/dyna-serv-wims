@@ -96,8 +96,11 @@ export async function commitWithdrawal(
   db: DbLike,
   input: unknown,
 ): Promise<CommitWithdrawalResult> {
-  // Step 1: Authorization — withdrawal.request is required (design.md §6 step 1)
-  const perm = await requirePermission(resolver, "withdrawal.request");
+  // Step 1: Authorization — pick_list.generate is required (design.md §6 step 1).
+  // 2026-08-08: was "withdrawal.request", an unseeded, unjustified capability
+  // that contradicted 05's explicit no-withdrawal-model rule — see
+  // outgoing-ledger/page.tsx's note and revision-log.md.
+  const perm = await requirePermission(resolver, "pick_list.generate");
   if (perm.kind !== "authorized") {
     return { ok: false, errors: ["forbidden"] };
   }
@@ -227,7 +230,7 @@ export async function commitWithdrawal(
 // Verifies commitment, transitions pick_list to dispatched, updates commitment
 // to executed, and inserts the immutable inventory_transactions pick row.
 //
-// Requires withdrawal.execute capability.
+// Requires dispatch.execute capability.
 // Returns { ok: false, errors: ['not_found'] } when the pick list is missing.
 // Returns { ok: false, errors: ['already_dispatched'] } for idempotency guard.
 // ---------------------------------------------------------------------------
@@ -237,8 +240,9 @@ export async function dispatchPickList(
   db: DbLike,
   pickListId: string,
 ): Promise<DispatchPickListResult> {
-  // Step 1: Authorization — withdrawal.execute required (design.md §7)
-  const perm = await requirePermission(resolver, "withdrawal.execute");
+  // Step 1: Authorization — dispatch.execute required (design.md §7).
+  // 2026-08-08: was "withdrawal.execute" — see commitWithdrawal's note above.
+  const perm = await requirePermission(resolver, "dispatch.execute");
   if (perm.kind !== "authorized") {
     return { ok: false, errors: ["forbidden"] };
   }
@@ -330,7 +334,7 @@ export async function dispatchPickList(
 // ---------------------------------------------------------------------------
 // listOutgoingLedger — read-only action wrapper
 //
-// Requires withdrawal.view capability.
+// Requires pick_list.read capability.
 // Delegates data fetching to the query layer.
 // ---------------------------------------------------------------------------
 
@@ -339,8 +343,9 @@ export async function listOutgoingLedger(
   db: DbLike,
   opts: { limit: number; offset: number },
 ): Promise<ListOutgoingLedgerResult> {
-  // Authorization — withdrawal.view required (R9.1, R10.1)
-  const perm = await requirePermission(resolver, "withdrawal.view");
+  // Authorization — pick_list.read required (R9.1, R10.1).
+  // 2026-08-08: was "withdrawal.view" — see commitWithdrawal's note above.
+  const perm = await requirePermission(resolver, "pick_list.read");
   if (perm.kind !== "authorized") {
     return { ok: false, errors: ["forbidden"] };
   }

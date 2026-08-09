@@ -11,35 +11,21 @@
 // reference is the one function shape Next.js can serialize across that
 // boundary, so it is the correct mechanism here, not a workaround.
 //
-// KNOWN SEAM GAP (flag for integration-reviewer and 02-rbac-roles' backend
-// work): `loadAuthorizationRecord` has no real role/capability-grant query
-// yet. Returning `null` is the deliberate, safe, fail-closed default
-// (lib/rbac/session.ts resolves a `null` record to
-// `{ kind: "forbidden", reason: "missing_profile" }`, never a false grant)
-// until 02's DB-backed lookup is wired in here.
-
-import { createClient } from "@/lib/supabase/server";
-import {
-  createRequestAuthorizationResolver,
-  type AuthorizationResolution,
-  type RawAuthorizationRecord,
-} from "@/lib/rbac/session";
+// FORMER SEAM GAP, CLOSED (2026-08-08): this file used to construct its own
+// resolver with `loadAuthorizationRecord` hardcoded to return `null` —
+// meaning every session, however genuinely authenticated, resolved to
+// forbidden. Meanwhile `lib/auth/page-resolver.ts`'s `createPageResolver()`
+// already had a complete, real implementation of the exact same query
+// (user_profiles -> user_roles -> roles -> role_permissions -> permissions,
+// plus active user_party_scopes), already in production use by every other
+// authenticated route (`/settings`, `/profile`, `/master-data`, `/receiving`,
+// etc.) — just never wired into the one resolver gating the shell itself.
+// Fixed by delegating to that existing resolver instead of maintaining a
+// second, divergent implementation of the same query.
+import { createPageResolver } from "@/lib/auth/page-resolver";
+import type { AuthorizationResolution } from "@/lib/rbac/session";
 
 export async function resolveShellAuthorization(): Promise<AuthorizationResolution> {
-  const resolver = createRequestAuthorizationResolver({
-    async getAuthenticatedSession() {
-      const supabase = await createClient();
-      const { data, error } = await supabase.auth.getUser();
-      if (error || !data.user) return null;
-      return { userId: data.user.id };
-    },
-    // Intentionally ignores the userId argument for now — see the seam-gap
-    // note above. TypeScript structurally allows a function with fewer
-    // parameters to satisfy `(userId: string) => ...`.
-    async loadAuthorizationRecord(): Promise<RawAuthorizationRecord | null> {
-      return null;
-    },
-  });
-
+  const resolver = await createPageResolver();
   return resolver.getContext();
 }

@@ -68,9 +68,7 @@ describe("lib/shell/active-route — resolveActiveRouteId (R3.6, design.md §5)"
 
   it("strips a query string before matching", async () => {
     const { resolveActiveRouteId } = await import("../active-route");
-    expect(resolveActiveRouteId("/inventory/pick-list/new?from=inventory")).toBe(
-      "inventory-pick-list-new",
-    );
+    expect(resolveActiveRouteId("/inventory?tab=ledger")).toBe("inventory");
   });
 
   it("strips a hash fragment before matching", async () => {
@@ -90,9 +88,11 @@ describe("lib/shell/active-route — resolveActiveRouteId (R3.6, design.md §5)"
     expect(resolveActiveRouteId("/?ref=email")).toBe("root");
   });
 
-  it("matches a dynamic-segment route nested two levels deep in a multi-segment path prefix (dispatch/[pick_list_id])", async () => {
+  it("matches a dynamic-segment route nested three levels deep in a multi-segment path prefix (pick-lists/[pickListId]/dispatch)", async () => {
     const { resolveActiveRouteId } = await import("../active-route");
-    expect(resolveActiveRouteId("/dispatch/PL-2026-777")).toBe("dispatch-detail");
+    expect(resolveActiveRouteId("/pick-lists/PL-2026-777/dispatch")).toBe(
+      "inventory-pick-list-dispatch",
+    );
   });
 
   it("returns null for a completely unregistered path", async () => {
@@ -100,14 +100,16 @@ describe("lib/shell/active-route — resolveActiveRouteId (R3.6, design.md §5)"
     expect(resolveActiveRouteId("/this-route-does-not-exist")).toBeNull();
   });
 
-  it("does not match a dynamic-segment route's placeholder value against a route that has a different static prefix", async () => {
+  it("does not match a dynamic-segment route's placeholder value against a route that has a different static suffix", async () => {
     const { resolveActiveRouteId } = await import("../active-route");
-    // "/inventory/pick-list/PL-2026-777" must resolve to the pick-list DETAIL
-    // route, never the "new" route, even though both share the
-    // "/inventory/pick-list/..." prefix.
-    expect(resolveActiveRouteId("/inventory/pick-list/PL-2026-777")).toBe(
-      "inventory-pick-list-detail",
+    // "/pick-lists/PL-2026-777/pick" must resolve to the pick-execution
+    // route, never the dispatch route, even though both share the
+    // "/pick-lists/[pickListId]/..." prefix.
+    expect(resolveActiveRouteId("/pick-lists/PL-2026-777/pick")).toBe(
+      "inventory-pick-list-execute",
     );
-    expect(resolveActiveRouteId("/inventory/pick-list/new")).toBe("inventory-pick-list-new");
+    expect(resolveActiveRouteId("/pick-lists/PL-2026-777/dispatch")).toBe(
+      "inventory-pick-list-dispatch",
+    );
   });
 });

@@ -42,7 +42,14 @@ export default function LoginPage() {
       }
 
       // On success, return to the authenticated shell's landing route.
+      // router.refresh() alongside push (2026-08-08): App Router's client
+      // Router Cache can otherwise serve a stale RSC payload for `/` from
+      // before sign-in; refresh() drops that cache and forces a fresh
+      // server-side render under the new session, working together with
+      // middleware.ts's cookie refresh (added the same day — without it,
+      // a successful sign-in appeared to redirect nowhere).
       router.push("/");
+      router.refresh();
     } catch {
       setError("An unexpected error occurred. Please try again.");
     } finally {

@@ -14,12 +14,20 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import type {
   AuthorizationContext,
   AuthorizationResolution,
   RequestAuthorizationResolver,
 } from "@/lib/rbac/session";
 import { ShellStateView } from "./ShellStateView";
+
+// Where an unauthenticated/revoked session actually gets sent. This is
+// `/login` (the route this project actually built), not `/sign-in` (the
+// name used in specs/05-ui-shell-and-navigation/design.md's App Router
+// skeleton) -- flagged here as a real spec/implementation naming mismatch,
+// not silently reconciled by picking one and hoping nobody notices.
+const SIGN_IN_ROUTE = "/login";
 
 // Exposes the already-resolved AuthorizationContext to descendants once
 // authorized, so a shell-composition component (e.g. app/(authenticated)'s
@@ -39,6 +47,7 @@ export function AuthenticatedShellBoundary({
   resolver: RequestAuthorizationResolver;
   children: ReactNode;
 }) {
+  const router = useRouter();
   const [resolution, setResolution] = useState<AuthorizationResolution | null>(null);
 
   useEffect(() => {
@@ -57,6 +66,30 @@ export function AuthenticatedShellBoundary({
     // A new resolver instance means a new request-scoped resolution;
     // re-resolve whenever the caller supplies a different resolver.
   }, [resolver]);
+
+  // The "revoked_session" ShellStateView copy says "Redirecting you to sign
+  // in..." -- this effect is what makes that claim true for a genuinely
+  // absent session. Previously nothing actually navigated anywhere at all
+  // (caught 2026-08-08 against a real deploy: stuck forever on the static
+  // message).
+  //
+  // Deliberately `unauthenticated` ONLY, not `forbidden` too (a mistake in
+  // this fix's first version, caught the same day): `forbidden` means the
+  // Supabase session IS valid -- `loadAuthorizationRecord` just has no real
+  // query wired in yet (02-rbac-roles seam gap, app/(authenticated)/actions.ts).
+  // Redirecting an already-authenticated-but-forbidden session back to
+  // /login creates an infinite loop -- login keeps succeeding (the
+  // credentials are genuinely valid), landing back on `/`, resolving
+  // forbidden again, redirecting again. `forbidden` still renders the
+  // identical `revoked_session` ShellStateView below (R2.3/R2.4: never
+  // leak *why* access was denied, same message either way) -- it just
+  // doesn't navigate anywhere, since re-login cannot fix a missing DB
+  // record and there is nowhere more correct to send this session yet.
+  useEffect(() => {
+    if (resolution?.kind === "unauthenticated") {
+      router.push(SIGN_IN_ROUTE);
+    }
+  }, [resolution?.kind, router]);
 
   // Never render `children` while resolution is pending (R2.3: no
   // optimistic protected-content render).

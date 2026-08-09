@@ -50,13 +50,20 @@ The target route shape is provisional:
 ```text
 app/(authenticated)/
   inventory/
-    page.tsx                    # item selection and pick-list generation
+    page.tsx                    # office withdrawal hub — Pick Lists tab
+                                 #   (committed pick lists) + Ledger tab
+                                 #   (read-only outgoing ledger). Item
+                                 #   selection / FIFO allocation / pick-list
+                                 #   GENERATION UI IS NOT YET BUILT HERE —
+                                 #   explicitly open, not silently
+                                 #   implemented; see the note below.
   pick-lists/
     [pickListId]/page.tsx       # committed pick-list detail
     [pickListId]/pick/page.tsx  # floor pick execution
     [pickListId]/dispatch/page.tsx # floor direct dispatch confirmation
-  outgoing-ledger/page.tsx      # office/review read-only ledger
 ```
+
+**2026-08-09 restructuring — what actually exists today.** `inventory/page.tsx` now exists and matches this route block's originally-approved path (superseding the 2026-08-08 registry note that had temporarily renamed it to `/pick-lists`). It currently holds exactly two tabs, moved verbatim from what had briefly existed as standalone sibling routes: **Pick Lists** (the list of committed pick lists, formerly `pick-lists/page.tsx`) and **Ledger** (the read-only Outgoing Ledger, formerly `outgoing-ledger/page.tsx`). The item-selection/FIFO-allocation/pick-list-generation UI this section's original text describes ("item selection and pick-list generation") is **not yet built** — this is an open gap, tracked here rather than silently treated as done. The former standalone `outgoing-ledger/page.tsx` route no longer exists as a separate sibling; it is the Ledger tab on `inventory/page.tsx`. The floor pick/dispatch execution routes under `pick-lists/[pickListId]/...` are unchanged and were not moved.
 
 The final route naming must align with `05` and `10`. The earlier desktop three-panel pattern (`search | cart | summary`) may remain an office request-builder enhancement, but it is not the floor baseline. Floor pick/dispatch uses a single-column, one-task-per-screen pattern at 375–430px with no persistent sidebar during active scanning.
 
@@ -175,6 +182,8 @@ There is intentionally no outbound inspection disposition. If stock requires agi
 ## 9. Outgoing ledger design
 
 The Outgoing Ledger is a read-only, scope-filtered query over `inventory_transactions`, primarily `movement_type = 'pick'`. Transfer rows are included only under the final transfer/ledger contract. It joins approved pick-list, item, lot, location, party, user, and acknowledgement-receipt references without becoming a mutable reporting table.
+
+**Reached via `/inventory`, not a separate route (updated 2026-08-09).** The Outgoing Ledger is the "Ledger" tab on `inventory/page.tsx`, alongside the "Pick Lists" tab (the list of committed pick lists). There is no standalone `/outgoing-ledger` route — see §3's route block.
 
 Item code is the prominent first field in office review. Floor screens do not use the ledger's dense table; they use task cards and scan feedback.
 

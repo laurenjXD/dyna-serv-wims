@@ -42,13 +42,28 @@
 //     `children` verbatim, tagged `data-testid="protected-content"` by
 //     the caller in these tests.
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import type {
   AuthorizationResolution,
   RequestAuthorizationResolver,
 } from "@/lib/rbac/session";
 import { AuthenticatedShellBoundary } from "@/components/global/AuthenticatedShellBoundary";
+
+// Mock next/navigation — useRouter is only available in a Next.js render
+// context; jsdom never has it. `push` is shared/reset per-test below so
+// individual tests can assert on redirect calls (2026-08-08: the
+// "revoked_session" state's copy claims a redirect happens; this file's
+// tests previously never verified that claim, since nothing actually
+// performed one — see the real bug fixed the same day in the component).
+const push = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push }),
+}));
+
+beforeEach(() => {
+  push.mockClear();
+});
 
 function deferredResolver(): {
   resolver: RequestAuthorizationResolver;
@@ -110,6 +125,35 @@ describe("AuthenticatedShellBoundary (design.md §3.4, requirements.md R2.3/R2.4
       expect(screen.getByTestId("shell-state-revoked_session")).toBeInTheDocument();
     });
     expect(screen.queryByTestId("protected-content")).not.toBeInTheDocument();
+
+    // The displayed copy ("Redirecting you to sign in…") must be true, not
+    // just a claim — 2026-08-08: previously nothing actually navigated
+    // anywhere and the user was stranded on this message indefinitely.
+    await waitFor(() => {
+      expect(push).toHaveBeenCalledWith("/login");
+    });
+  });
+
+  it("renders the same revoked_session message for forbidden as for unauthenticated, but does NOT redirect (2026-08-08: redirecting forbidden to /login created an infinite loop, since a forbidden session is already validly authenticated — re-login just succeeds again and lands back on forbidden)", async () => {
+    const resolver: RequestAuthorizationResolver = {
+      getContext: async () => ({ kind: "forbidden", reason: "missing_profile" }),
+    };
+
+    render(
+      <AuthenticatedShellBoundary resolver={resolver}>
+        <div data-testid="protected-content">secret</div>
+      </AuthenticatedShellBoundary>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("shell-state-revoked_session")).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId("protected-content")).not.toBeInTheDocument();
+
+    // Give any (incorrect) redirect effect a tick to fire, then assert it
+    // never does — this is the regression test for the loop.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(push).not.toHaveBeenCalled();
   });
 
   it("renders the empty-access state (not the full nav shell) when authorized but grants is empty (R2.4)", async () => {

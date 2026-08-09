@@ -12,7 +12,11 @@
 import Link from "next/link";
 import type { AuthorizationContext } from "@/lib/rbac/session";
 import type { SessionPresentationTier } from "@/lib/shell/surface";
-import { filterVisibleRoutes, selectRoutesForPresentation } from "@/lib/shell/navigation";
+import {
+  filterVisibleRoutes,
+  groupRoutesForSidebar,
+  selectRoutesForPresentation,
+} from "@/lib/shell/navigation";
 import { resolveActiveRouteId } from "@/lib/shell/active-route";
 import type { RouteRegistryEntry } from "@/lib/shell/registry";
 
@@ -96,15 +100,40 @@ export function ShellNavigation({
     );
   }
 
+  const sections = groupRoutesForSidebar(presented);
+
   return (
     <nav
       data-testid="desktop-sidebar"
       aria-label="Primary"
-      className="hidden flex-col gap-1 bg-brand-navy p-4 lg:flex lg:h-screen lg:w-64"
+      className="hidden flex-col gap-4 overflow-y-auto bg-brand-navy p-4 lg:flex lg:h-screen lg:w-64"
     >
-      {presented.map((entry) => (
-        <NavLink key={entry.id} entry={entry} isActive={entry.id === activeId} tier={tier} />
+      {sections.map((section) => (
+        <div key={section.group} data-testid={`nav-group-${slugify(section.group)}`}>
+          {/* Section header — Epilogue label style, dimmer than links so it
+              reads as a grouping cue, not another tap target. Not a heading
+              element in the a11y tree sense that needs its own landmark;
+              this is a visual/structural grouping within the single
+              `nav aria-label="Primary"` landmark, per design.md §4's
+              "one navigation landmark" shell composition. */}
+          <p className="px-4 pb-1 pt-2 font-label text-label uppercase tracking-wide text-surface-white/40">
+            {section.group}
+          </p>
+          <div className="flex flex-col gap-1">
+            {section.entries.map((entry) => (
+              <NavLink key={entry.id} entry={entry} isActive={entry.id === activeId} tier={tier} />
+            ))}
+          </div>
+        </div>
       ))}
     </nav>
   );
+}
+
+function slugify(label: string): string {
+  return label
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }

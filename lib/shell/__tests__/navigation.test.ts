@@ -73,6 +73,7 @@
 
 import { describe, expect, it } from "vitest";
 import type { AuthorizationContext, Grant } from "@/lib/rbac/session";
+import type { RouteRegistryEntry } from "../registry";
 
 function grant(resource: string, action: string): Grant {
   return { resource, action, scopeKind: "global" };
@@ -93,9 +94,13 @@ const WAREHOUSE_STAFF_GRANTS: Grant[] = [
   grant("fifo_override", "request"),
   grant("dispatch", "read"),
   grant("dispatch", "execute"),
-  grant("transfers", "read"),
-  grant("transfers", "request"),
-  grant("transfers", "execute"),
+  // 2026-08-08: corrected from plural "transfers" to singular "transfer" —
+  // 0014_transfer_rls_policies.sql's deliberate, documented capability
+  // vocabulary for this feature (see revision-log.md). warehouse_staff
+  // holds view/request/execute per that migration's role_permissions seed.
+  grant("transfer", "view"),
+  grant("transfer", "request"),
+  grant("transfer", "execute"),
   grant("documents", "read"),
   grant("documents", "generate"),
   grant("documents", "download"),
@@ -111,14 +116,14 @@ const staffContext: Pick<AuthorizationContext, "grants"> = {
 const zeroGrantContext: Pick<AuthorizationContext, "grants"> = { grants: [] };
 
 describe("lib/shell/navigation — filterVisibleRoutes (R3.4, R3.5)", () => {
-  it("a warehouse_staff context can reach /parties, /items, and /locations via the .read capability (proves the 2026-08-07 route-gate fix)", async () => {
+  it("a warehouse_staff context can reach /master-data/parties, /master-data/items, and /master-data/locations via the .read capability (proves the 2026-08-07 route-gate fix)", async () => {
     const { filterVisibleRoutes } = await import("../navigation");
     const visible = filterVisibleRoutes(staffContext);
     const visiblePaths = visible.map((row) => row.path);
 
-    expect(visiblePaths).toContain("/parties");
-    expect(visiblePaths).toContain("/items");
-    expect(visiblePaths).toContain("/locations");
+    expect(visiblePaths).toContain("/master-data/parties");
+    expect(visiblePaths).toContain("/master-data/items");
+    expect(visiblePaths).toContain("/master-data/locations");
   });
 
   it("a warehouse_staff context cannot reach /approvals, /reports, or /portal/labels (capabilities it never holds)", async () => {
@@ -132,7 +137,7 @@ describe("lib/shell/navigation — filterVisibleRoutes (R3.4, R3.5)", () => {
     expect(visiblePaths).not.toContain("/portal/inventory");
   });
 
-  it("a warehouse_staff context also reaches its own floor-surface routes (/receiving, /inspection, /inventory/pick-list/[pick_list_id])", async () => {
+  it("a warehouse_staff context also reaches its own floor-surface routes (/receiving, /inspection, /pick-lists/[pickListId]/pick)", async () => {
     const { filterVisibleRoutes } = await import("../navigation");
     const visible = filterVisibleRoutes(staffContext);
     const visiblePaths = visible.map((row) => row.path);
@@ -140,7 +145,7 @@ describe("lib/shell/navigation — filterVisibleRoutes (R3.4, R3.5)", () => {
     expect(visiblePaths).toContain("/receiving");
     expect(visiblePaths).toContain("/receiving/[wrr_id]");
     expect(visiblePaths).toContain("/inspection");
-    expect(visiblePaths).toContain("/inventory/pick-list/[pick_list_id]");
+    expect(visiblePaths).toContain("/pick-lists/[pickListId]/pick");
   });
 
   it("a context holding EVERY capability referenced by ROUTE_REGISTRY sees every capability-gated and 'none'-gated route (mechanism has no hidden exclusion)", async () => {
@@ -182,13 +187,13 @@ describe("lib/shell/navigation — filterVisibleRoutes (R3.4, R3.5)", () => {
 describe("lib/shell/navigation — selectRoutesForPresentation (design.md §3.3 surface routing rules)", () => {
   it("floor presentation includes 'floor' and 'shared' surface routes but never 'office'-only or 'party' routes, even when capability-visible", async () => {
     const { filterVisibleRoutes, selectRoutesForPresentation } = await import("../navigation");
-    const visible = filterVisibleRoutes(staffContext); // includes /parties (office-only surface)
+    const visible = filterVisibleRoutes(staffContext); // includes /master-data/parties (office-only surface)
     const floorNav = selectRoutesForPresentation(visible, "floor");
     const floorPaths = floorNav.map((row) => row.path);
 
     expect(floorPaths).toContain("/receiving"); // floor surface
     expect(floorPaths).toContain("/inspection"); // shared surface
-    expect(floorPaths).not.toContain("/parties"); // office-only surface, even though capability-visible
+    expect(floorPaths).not.toContain("/master-data/parties"); // office-only surface, even though capability-visible
     expect(floorPaths).not.toContain("/inventory"); // office-only surface
   });
 
@@ -198,7 +203,7 @@ describe("lib/shell/navigation — selectRoutesForPresentation (design.md §3.3 
     const officeNav = selectRoutesForPresentation(visible, "office");
     const officePaths = officeNav.map((row) => row.path);
 
-    expect(officePaths).toContain("/parties");
+    expect(officePaths).toContain("/master-data/parties");
     expect(officePaths).toContain("/inspection"); // shared surface
     expect(officePaths).not.toContain("/receiving/[wrr_id]"); // floor-only surface
   });
@@ -219,5 +224,48 @@ describe("lib/shell/navigation — selectRoutesForPresentation (design.md §3.3 
     expect(partyPaths.every((path) => path.startsWith("/portal"))).toBe(true);
     expect(partyPaths).not.toContain("/");
     expect(partyPaths).not.toContain("/inspection");
+  });
+});
+
+describe("lib/shell/navigation — groupRoutesForSidebar (2026-08-09, sidebar section grouping)", () => {
+  it("buckets entries by their registry `group` field, in NAV_GROUP_ORDER order, not first-appearance order", async () => {
+    const { groupRoutesForSidebar } = await import("../navigation");
+    const { NAV_GROUP_ORDER } = await import("../registry");
+    // Deliberately out of NAV_GROUP_ORDER order to prove the function sorts
+    // by the canonical group order, not input order.
+    const routes = [
+      { id: "settings", group: "Account" },
+      { id: "root", group: "Overview" },
+      { id: "profile", group: "Account" },
+      { id: "receiving", group: "Receiving" },
+    ] as unknown as RouteRegistryEntry[];
+
+    const sections = groupRoutesForSidebar(routes);
+    const groupOrder = sections.map((s) => s.group);
+
+    expect(groupOrder).toEqual(["Overview", "Receiving", "Account"]);
+    const accountSection = sections.find((s) => s.group === "Account")!;
+    expect(accountSection.entries.map((e) => e.id)).toEqual(["settings", "profile"]);
+    // Sanity: the three groups present are all real NAV_GROUP_ORDER members.
+    for (const g of groupOrder) {
+      expect(NAV_GROUP_ORDER).toContain(g);
+    }
+  });
+
+  it("omits a group entirely when it has zero entries after filtering, rather than rendering an empty section", async () => {
+    const { groupRoutesForSidebar } = await import("../navigation");
+    const routes = [
+      { id: "root", group: "Overview" },
+    ] as unknown as RouteRegistryEntry[];
+
+    const sections = groupRoutesForSidebar(routes);
+
+    expect(sections).toHaveLength(1);
+    expect(sections[0].group).toBe("Overview");
+  });
+
+  it("returns no sections for an empty route list", async () => {
+    const { groupRoutesForSidebar } = await import("../navigation");
+    expect(groupRoutesForSidebar([])).toEqual([]);
   });
 });
