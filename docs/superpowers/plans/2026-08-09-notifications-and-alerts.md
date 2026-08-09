@@ -571,10 +571,12 @@ export function resolveRecipients(
 }
 ```
 
+**Post-final-review note:** the code above (and the `if (event.partyId === null) return true;` line inside `partyScopeMatches`) reflects Task 4's *original* implementation, not the final shipped state. The final whole-branch review found two real gaps here (a missing second Supplies-isolation gate, and this exact null-partyId line wrongly admitting `assigned_party`-only grant holders to every global event) — both fixed in commit `9470e76`, with 2 additional tests. See `lib/notifications/recipient-resolution.ts` for the actual shipped code; do not copy the block above.
+
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run lib/notifications/__tests__/recipient-resolution.test.ts`
-Expected: PASS, 6/6
+Expected: PASS, 8/8 (after the final-review fix added 2 tests; 6/6 at Task 4's original commit)
 
 - [ ] **Step 5: Commit**
 
@@ -708,7 +710,7 @@ git commit -m "feat(14): add idempotency-key and cooldown-window logic"
 
 **Interfaces:**
 - Consumes: nothing external.
-- Produces: `projectSafeTemplate(raw: RawTemplateInput, audience: "internal" | "party_safe"): SafeTemplateOutput`, consumed by Phase 2 Task 8's router immediately before writing `titleSafe`/`bodySafe` to a `notifications` row, and by Phase 2's email-template rendering.
+- Produces (as shipped after the final-review fix, commit `9470e76` — see note after the Step 3 code block below): `projectSafeTemplate(raw: RawTemplateInput, audience: "internal" | "party_safe", context: { templateVersion: string; recipientPartyId?: string }): SafeTemplateOutput` where `SafeTemplateOutput = { title: string; body: string; templateVersion: string }`, consumed by Phase 2 Task 8's router immediately before writing `titleSafe`/`bodySafe`/`templateVersion` to a `notifications` row, and by Phase 2's email-template rendering.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -804,10 +806,12 @@ export function projectSafeTemplate(
 }
 ```
 
+**Post-final-review note:** the code above reflects Task 6's *original* implementation, not the final shipped state. The final whole-branch review found two real gaps here (no `title`/`templateVersion` in the output, despite this function's own stated consumer contract requiring both; and `partyName` emitted unconditionally for `party_safe`, risking cross-party leakage — design.md §5 names "unrelated party information" as its own leak class alongside cost/margin) — both fixed in commit `9470e76`, which added a third `context` parameter, `title`/`templateVersion` to the output, and `eventPartyId`-vs-`recipientPartyId` gating for `partyName`, plus 4 additional tests. See `lib/notifications/templates.ts` for the actual shipped code and signature; do not copy the block above.
+
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run lib/notifications/__tests__/templates.test.ts`
-Expected: PASS, 3/3
+Expected: PASS, 7/7 (after the final-review fix added 4 tests; 3/3 at Task 6's original commit)
 
 - [ ] **Step 5: Commit**
 
@@ -825,7 +829,7 @@ npx vitest run
 npx tsc --noEmit
 ```
 
-Expected: every existing test still passes, plus the 15 new tests from Tasks 4-6 (6 + 6 + 3); `tsc --noEmit` clean.
+Expected (at Task 7's original run, before the final-review fix): every existing test still passes, plus the 15 new tests from Tasks 4-6 (6 + 6 + 3); `tsc --noEmit` clean. **After the final-review fix (commit `9470e76`), the actual count is 21 (8 + 6 + 7)** — Task 4 gained 2 tests and Task 6 gained 4, per the post-final-review notes on their respective sections above.
 
 - [ ] **Step 2: Commit if anything is still unstaged**
 
@@ -861,4 +865,4 @@ Phase 2 covers, at the task-list level (not yet code-level):
 
 **Placeholder scan:** every code block in Tasks 1-6 is complete, real, and directly runnable — no `TODO`/`TBD` inside any code block. Phase 2 is deliberately described at task-list granularity, not code-level, with an explicit stated reason (two real external blocking dependencies) rather than a bare "TBD" — this is a scope boundary, not an unfilled placeholder, per the same logic the skill's own "Scope Check" section endorses for multi-subsystem specs.
 
-**Type consistency:** `RecipientCandidate`/`NotificationSourceEvent`/`ResolvedRecipient` (Task 4) are self-contained and don't collide with any later Phase 2 type. `buildIdempotencyKey`'s `channel: "in_app" | "email"` matches `notificationDeliveryChannelEnum`'s two values exactly (Task 1's draft schema). `projectSafeTemplate`'s `audience: "internal" | "party_safe"` matches design.md §5's own two named template variants. No signature drift found.
+**Type consistency:** `RecipientCandidate`/`NotificationSourceEvent`/`ResolvedRecipient` (Task 4) are self-contained and don't collide with any later Phase 2 type. `buildIdempotencyKey`'s `channel: "in_app" | "email"` matches `notificationDeliveryChannelEnum`'s two values exactly (Task 1's draft schema). `projectSafeTemplate`'s `audience: "internal" | "party_safe"` matches design.md §5's own two named template variants. No signature drift found at Task 7's own commit. **Final whole-branch review (commit `9470e76`) subsequently changed `projectSafeTemplate`'s signature** (added a required third `context` parameter, added `title`/`templateVersion` to `SafeTemplateOutput`) and `recipient-resolution.ts`'s internal logic (two real gaps: a missing Supplies-isolation gate, and null-partyId events wrongly admitting assigned_party-only grants) — see the post-final-review notes on Tasks 4 and 6 above for what changed and why. No Phase 2 code exists yet to have drifted against the old signatures.
