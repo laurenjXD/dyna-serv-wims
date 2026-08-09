@@ -19,7 +19,7 @@ import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { getWrrDocument } from "@/lib/db/queries/receiving";
-import { commitWrr } from "@/lib/actions/receiving";
+import { commitWrr, startReceiving } from "@/lib/actions/receiving";
 import type { WrrItemRow } from "@/lib/db/queries/receiving";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -63,8 +63,9 @@ export default async function WrrDetailPage({ params, searchParams }: PageProps)
   const { commitError } = await searchParams;
   const resolver = await createPageResolver();
 
-  // Gate: receiving.confirm required to view WRR detail.
-  const permResult = await requirePermission(resolver, "receiving.confirm");
+  // Gate: receiving.view — read-only detail/review surface visible to any staff
+  // who can view WRRs, not only those who can confirm.
+  const permResult = await requirePermission(resolver, "receiving.view");
   if (permResult.kind !== "authorized") {
     notFound();
   }
@@ -72,6 +73,15 @@ export default async function WrrDetailPage({ params, searchParams }: PageProps)
   const wrr = await getWrrDocument(db, wrrId);
   if (!wrr) {
     notFound();
+  }
+
+  // ─── Inline server action: startReceiving ──────────────────────────────────
+  async function handleStartReceiving(): Promise<void> {
+    "use server";
+    const actionResolver = await createPageResolver();
+    await startReceiving(actionResolver, db, wrrId);
+    // Revalidate by redirecting back to this page so the updated status renders.
+    redirect(`/receiving/${wrrId}`);
   }
 
   // ─── Inline server action: commitWrr ────────────────────────────────────────
@@ -206,25 +216,14 @@ export default async function WrrDetailPage({ params, searchParams }: PageProps)
         </h2>
         <div className="mt-4 flex flex-wrap gap-3">
           {wrr.status === "staged_pending_arrival" && (
-            <>
-              {/*
-               * TODO: Wire to startReceiving server action once added to
-               * lib/actions/receiving.ts. The action should transition
-               * wrr_documents.status from 'staged_pending_arrival' to
-               * 'receiving_in_progress'. Currently rendered as disabled.
-               */}
+            <form action={handleStartReceiving}>
               <button
-                type="button"
-                disabled
-                title="Start Receiving action is not yet implemented in lib/actions/receiving.ts"
-                className="flex h-11 cursor-not-allowed items-center justify-center rounded bg-brand-navy/40 px-4 font-label text-label text-surface-white"
+                type="submit"
+                className="flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
               >
                 Start Receiving
               </button>
-              <p className="flex items-center font-body text-body-sm text-text-grey">
-                Start Receiving is pending implementation.
-              </p>
-            </>
+            </form>
           )}
 
           {wrr.status === "receiving_in_progress" && (
@@ -241,7 +240,7 @@ export default async function WrrDetailPage({ params, searchParams }: PageProps)
               <form action={handleCommit}>
                 <button
                   type="submit"
-                  className="flex h-11 items-center justify-center rounded bg-brand-red px-4 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  className="flex h-11 items-center justify-center rounded bg-brand-red px-4 font-label text-label text-surface-white hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 >
                   Commit Receipt
                 </button>

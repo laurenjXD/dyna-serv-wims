@@ -91,8 +91,9 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
   const { errors: encodedErrors } = await searchParams;
   const resolver = await createPageResolver();
 
-  // Gate: receiving.confirm required to create a WRR.
-  const permResult = await requirePermission(resolver, "receiving.confirm");
+  // Gate: receiving.create — creation surface only requires create capability,
+  // not confirm (confirming is a separate elevated permission).
+  const permResult = await requirePermission(resolver, "receiving.create");
   if (permResult.kind !== "authorized") {
     notFound();
   }
@@ -313,7 +314,7 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
           {/* Primary CTA — brand-red per brand-design-system.md §9, h-11 office touch target */}
           <button
             type="submit"
-            className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
           >
             Create WRR
           </button>
