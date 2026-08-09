@@ -96,6 +96,7 @@ Testing: Unit state/validation tests; Playwright conformance/non-conformance flo
 Testing: Unit commit validation; real-Postgres transaction/idempotency/RLS integration; Playwright confirmation/retry flows.
 
 - [ ] Implement one authoritative confirm-receipt server command.
+- [x] Record the Product Owner's 2026-08-09 decision that `store` lines carry an explicit pre-receiving `putaway_location_id`; `inspect` lines resolve the active inspection location. This is a schema amendment owned by `01`, implemented in migration `0020_wrr_item_putaway_location.sql`.
 - [ ] Recheck WRR state, scan totals, conformance, active references, flow partition, lot metadata, and required prerequisites inside the transaction.
 - [ ] Create approved lots/available state and immutable receiving transactions atomically.
 - [ ] Transition WRR to confirmed exactly once and return the authoritative result for duplicate retries.

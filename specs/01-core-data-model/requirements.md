@@ -62,6 +62,7 @@ The `01` canonical `lot_history_export` read-model contract refreshes daily, ret
    - `wrr_items.lot_number` MUST be the source business lot number from the WRR and MUST be required for receipt confirmation.
    - `lots.lot_number` MUST be copied from the confirmed WRR item and linked by `lots.wrr_item_id`; it MUST NOT be system-generated.
    - The internal UUID remains the database identity. `lot_number` MUST NOT be globally unique because the same business lot number may recur across distinct WRR receipts or items; uniqueness MUST be scoped to the relevant WRR item/lot context. No second vendor-lot field is permitted.
+   - **Amended 2026-08-09:** `wrr_items.putaway_location_id` MAY remain null while a line is staged, but a `store`-disposition line MUST carry an active `storage` location before receipt confirmation. `inspect` lines leave it null and are posted to the active `inspection` location by `07`'s confirmation command.
 
 7. **Partition-Based Withdrawal SPQ Enforcement**:
    - Validation engines MUST reject withdrawal requests for `vmi` or `trading` lots if the requested piece quantity is not an exact multiple of `items.spq` ($\text{qty} \pmod{\text{spq}} = 0$).

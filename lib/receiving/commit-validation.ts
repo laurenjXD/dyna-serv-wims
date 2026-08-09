@@ -28,6 +28,7 @@ export type WrrLine = {
   expectedQty: number;
   scannedQty: number;
   disposition: "store" | "inspect" | null | undefined;
+  putawayLocationId?: string | null;
 };
 
 export type CommitValidationResult =

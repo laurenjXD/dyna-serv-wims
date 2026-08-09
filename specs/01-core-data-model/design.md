@@ -325,6 +325,7 @@ import { pgTable, uuid, varchar, text, integer, decimal, timestamp } from "drizz
 import { flowTypeEnum, wrrStatusEnum, conformanceStatusEnum, nonConformanceReasonEnum } from "./enums";
 import { parties } from "./parties";
 import { items } from "./items";
+import { locations } from "./locations";
 
 export const wrrDocuments = pgTable("wrr_documents", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -355,6 +356,10 @@ export const wrrItems = pgTable("wrr_items", {
   scannedQty: integer("scanned_qty").default(0).notNull(),
   unitCbm: decimal("unit_cbm", { precision: 10, scale: 4 }).notNull(),
   uom: varchar("uom", { length: 50 }).notNull(),
+  disposition: text("disposition").default("store").notNull(),
+  // Added 2026-08-09: selected for store lines during staging; confirmation
+  // resolves inspection lines to the active inspection location instead.
+  putawayLocationId: uuid("putaway_location_id").references(() => locations.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

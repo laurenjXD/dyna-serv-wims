@@ -20,6 +20,7 @@ interface LineState {
   unitCbm: string;
   uom: string;
   disposition: "store" | "inspect";
+  putawayLocationId: string;
   itemCode: string;
   customerItemCode: string;
 }
@@ -30,6 +31,7 @@ const EMPTY_LINE: LineState = {
   unitCbm: "",
   uom: "",
   disposition: "store",
+  putawayLocationId: "",
   itemCode: "",
   customerItemCode: "",
 };
@@ -210,6 +212,31 @@ export function WrrLineItems() {
                 <option value="store">Store</option>
                 <option value="inspect">Inspect</option>
               </select>
+            </div>
+
+            {/* Store lines must name their designated storage location before
+                confirmation. Inspect lines intentionally leave this blank and
+                commit to the configured inspection location instead. */}
+            <div>
+              <label
+                htmlFor={`line-${index}-putawayLocationId`}
+                className="block font-label text-label text-text-grey"
+              >
+                Putaway Location ID {line.disposition === "store" && (
+                  <span aria-hidden="true" className="text-brand-red">*</span>
+                )}
+              </label>
+              <input
+                id={`line-${index}-putawayLocationId`}
+                name={`line_${index}_putawayLocationId`}
+                type="text"
+                required={line.disposition === "store"}
+                disabled={line.disposition === "inspect"}
+                value={line.putawayLocationId}
+                onChange={(e) => updateLine(index, "putawayLocationId", e.target.value)}
+                placeholder={line.disposition === "store" ? "Storage location UUID" : "Resolved to inspection location"}
+                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral disabled:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              />
             </div>
 
             {/* Item Code (supplier) — optional */}

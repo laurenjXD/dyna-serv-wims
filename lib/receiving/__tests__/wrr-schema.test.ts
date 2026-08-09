@@ -31,6 +31,7 @@ const VALID_LINE = {
   expectedQty: 10,
   unitCbm: 0.5,
   disposition: "store" as const,
+  putawayLocationId: "location-storage-uuid",
 };
 
 const VALID_CREATE_WRR = {

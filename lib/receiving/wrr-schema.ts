@@ -16,6 +16,7 @@ export type CreateWrrLine = {
   unitCbm: number;
   uom: string;
   disposition: "store" | "inspect";
+  putawayLocationId?: string | null;
   itemId?: string | null;
   itemCode?: string | null;
   customerItemCode?: string | null;
@@ -157,6 +158,21 @@ function validateLine(
     errors.push(`Line[${index}]: disposition must be 'store' or 'inspect'`);
   }
 
+  const putawayLocationId = line["putawayLocationId"];
+  if (
+    disposition === "store" &&
+    (typeof putawayLocationId !== "string" || putawayLocationId.trim() === "")
+  ) {
+    errors.push(`Line[${index}]: putawayLocationId is required for store disposition`);
+  }
+  if (
+    putawayLocationId !== undefined &&
+    putawayLocationId !== null &&
+    (typeof putawayLocationId !== "string" || putawayLocationId.trim() === "")
+  ) {
+    errors.push(`Line[${index}]: putawayLocationId must be a non-empty string when provided`);
+  }
+
   if (errors.length > 0) {
     return { errors, line: null };
   }
@@ -169,6 +185,8 @@ function validateLine(
       unitCbm: unitCbm as number,
       uom: typeof line["uom"] === "string" ? line["uom"] : "",
       disposition,
+      putawayLocationId:
+        typeof putawayLocationId === "string" ? putawayLocationId : null,
       itemId: (line["itemId"] as string | null | undefined) ?? null,
       itemCode: (line["itemCode"] as string | null | undefined) ?? null,
       customerItemCode: (line["customerItemCode"] as string | null | undefined) ?? null,

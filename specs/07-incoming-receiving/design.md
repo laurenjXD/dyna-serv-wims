@@ -135,6 +135,7 @@ All fields confirmed from the approved `01-core-data-model` schema, plus the `di
 | Unit CBM | `wrr_items.unit_cbm` | Per-carton CBM for putaway calculations. |
 | UOM | `wrr_items.uom` | Unit of measure. |
 | Disposition | `wrr_items.disposition` | `store` or `inspect`. Determines lot status and posting location at commit. To be added to `01` via schema amendment. |
+| Putaway location | `wrr_items.putaway_location_id` | **Added 2026-08-09 by Product Owner decision.** Required for `store` lines before receiving begins; must reference an active `storage` location and is revalidated in the confirmation transaction. Null for `inspect` lines, which resolve the active `inspection` location instead. |
 
 ### 5.2 Scan-line state and discrepancy
 

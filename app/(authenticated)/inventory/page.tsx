@@ -20,6 +20,11 @@ import { notFound } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
+import {
+  buildStockAllocationPreview,
+  listStockView,
+  type StockViewRow,
+} from "@/lib/db/queries/inventory";
 import { listPickLists } from "@/lib/db/queries/withdrawals";
 import type { PickListRow } from "@/lib/db/queries/withdrawals";
 
@@ -56,11 +61,11 @@ const TABS: Array<{ key: TabKey; label: string }> = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 interface PageProps {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; item?: string; qty?: string }>;
 }
 
 export default async function InventoryPage({ searchParams }: PageProps) {
-  const { tab: tabParam } = await searchParams;
+  const { tab: tabParam, item: itemId, qty } = await searchParams;
 
   const activeTab: TabKey =
     tabParam === "pick-lists" ? "pick-lists" :
@@ -120,7 +125,7 @@ export default async function InventoryPage({ searchParams }: PageProps) {
       </div>
 
       {activeTab === "stock-view" ? (
-        <StockViewTab />
+        <StockViewTab itemId={itemId} requestedQty={qty} />
       ) : activeTab === "pick-lists" ? (
         <PickListsTab />
       ) : (
@@ -130,19 +135,64 @@ export default async function InventoryPage({ searchParams }: PageProps) {
   );
 }
 
-// ─── Stock View tab (default) — placeholder ───────────────────────────────────
+// ─── Stock View tab (default) ─────────────────────────────────────────────────
 
-function StockViewTab() {
+async function StockViewTab({ itemId, requestedQty }: { itemId?: string; requestedQty?: string }) {
+  const rows = await listStockView(db);
+  const itemOptions = Array.from(
+    new Map(rows.map((row) => [row.itemId, row])).values(),
+  );
+  const quantity = Number(requestedQty);
+  const preview = itemId && Number.isInteger(quantity) && quantity > 0
+    ? buildStockAllocationPreview(rows, itemId, quantity)
+    : null;
+  const rowByLotLocation = new Map(rows.map((row) => [`${row.lotId}:${row.locationId}`, row]));
+
   return (
-    <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 px-6 py-12 text-center">
-      <p className="font-body text-body-md text-text-grey">
-        Stock view with FIFO/FEFO pick-list generation is coming in the next implementation cycle.
-      </p>
-      <p className="mt-2 font-body text-body-sm text-text-grey">
-        Select items from live inventory to auto-generate a pick list.
-      </p>
+    <div className="mt-6 space-y-6">
+      <form className="rounded-md bg-white/75 p-6 shadow-elevation-1" method="get">
+        <input type="hidden" name="tab" value="stock-view" />
+        <div className="flex flex-col gap-4 md:flex-row md:items-end">
+          <label className="flex min-w-0 flex-1 flex-col gap-1 font-label text-label text-on-surface">
+            Item
+            <select name="item" defaultValue={itemId ?? ""} className="h-11 rounded border border-outline-variant bg-white px-3 font-body text-body-md">
+              <option value="">Select available item</option>
+              {itemOptions.map((item) => <option key={item.itemId} value={item.itemId}>{item.itemCode} — {item.itemName}</option>)}
+            </select>
+          </label>
+          <label className="flex w-full flex-col gap-1 font-label text-label text-on-surface md:w-40">
+            Quantity
+            <input name="qty" type="number" min="1" step="1" defaultValue={requestedQty} className="h-11 rounded border border-outline-variant bg-white px-3 font-body text-body-md" />
+          </label>
+          <button type="submit" className="h-11 rounded bg-brand-navy px-5 font-label text-label uppercase tracking-[0.05em] text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy">
+            Preview allocation
+          </button>
+        </div>
+        <p className="mt-3 font-body text-body-sm text-text-grey">Preview only — pick-list commitment revalidates stock and reserves quantities online.</p>
+      </form>
+
+      {preview && (
+        <section className="rounded-md bg-white/75 p-6 shadow-elevation-1" aria-label="Allocation preview">
+          <h2 className="font-heading text-headline-sm font-semibold text-brand-navy">Standard {preview.strategy} allocation</h2>
+          {!preview.ok ? <p className="mt-3 font-body text-body-md text-status-error">Insufficient available stock for this quantity. No partial allocation is proposed.</p> : (
+            <ol className="mt-4 divide-y divide-outline-variant/30">
+              {preview.lines.map((line, index) => {
+                const row = rowByLotLocation.get(`${line.lotId}:${line.locationId}`);
+                return <li key={`${line.lotId}:${line.locationId}`} className="flex items-center justify-between gap-4 py-3 font-body text-body-md text-on-surface"><span>{index + 1}. {row?.lotNumber ?? line.lotId} · {row?.locationLabel ?? line.locationId}</span><span className="font-mono text-mono-md">{line.qtyAllocated} {row?.uom ?? ""}</span></li>;
+              })}
+            </ol>
+          )}
+        </section>
+      )}
+
+      <StockTable rows={rows} />
     </div>
   );
+}
+
+function StockTable({ rows }: { rows: StockViewRow[] }) {
+  if (rows.length === 0) return <div className="rounded-md bg-white/75 px-6 py-12 text-center shadow-elevation-1"><p className="font-body text-body-md text-text-grey">No available stock to allocate.</p></div>;
+  return <div className="overflow-x-auto rounded-md bg-white/75 shadow-elevation-1"><table className="w-full border-collapse"><thead><tr className="border-b border-outline-variant/30 bg-surface-light-grey">{["Item", "Lot", "Location", "Available", "Committed", "Expiry"].map((label) => <th key={label} className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">{label}</th>)}</tr></thead><tbody className="divide-y divide-outline-variant/30">{rows.map((row) => <tr key={`${row.lotId}:${row.locationId}`}><td className="px-4 py-3 font-body text-body-md text-on-surface">{row.itemCode}<span className="block text-body-sm text-text-grey">{row.itemName}</span></td><td className="px-4 py-3 font-mono text-mono-md text-on-surface">{row.lotNumber}</td><td className="px-4 py-3 font-body text-body-md text-on-surface">{row.locationLabel}</td><td className="px-4 py-3 font-mono text-mono-md text-on-surface">{row.qtyRemaining - row.qtyCommitted} {row.uom}</td><td className="px-4 py-3 font-mono text-mono-md text-text-grey">{row.qtyCommitted}</td><td className="px-4 py-3 font-body text-body-md text-text-grey">{row.expiryDate ?? "—"}</td></tr>)}</tbody></table></div>;
 }
 
 // ─── Pick Lists tab ───────────────────────────────────────────────────────────

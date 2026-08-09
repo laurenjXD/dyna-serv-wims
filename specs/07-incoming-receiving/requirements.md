@@ -43,10 +43,11 @@ The final enum and transition constraints must be reconciled with `01-core-data-
 1. An authorized back-office user SHALL be able to create a WRR from an external CIPL/packing-list reference.
 2. The WRR SHALL capture the approved header references, including WRR number, CIPL reference/attachment where provided, invoice reference, import/PEZA references where applicable, MAWB/MBL (Master Air Waybill / Bill of Lading) number where applicable, source party, and `flow_type`.
 3. Each expected line SHALL identify an approved `item`, required WRR `lot_number`, expected quantity, UOM, unit CBM/reference packaging data required for reconciliation, and an inbound **disposition** (`store` or `inspect`). The `lot_number` field on `wrr_items` is the single canonical business lot identifier; it is copied verbatim to the resulting `lots` record at confirmation and is not supplemented or replaced by any vendor-supplied reference.
-4. A staged WRR SHALL not increment active inventory, create available lots, or write a `receiving` inventory transaction.
-5. The system SHALL validate that referenced parties/items are active and authorized for the operation, while unknown items follow the exception path in R4.
-6. The system SHALL support editing staged lines before physical receiving begins, subject to audit/version rules.
-7. Once physical receiving begins, changes to expected lines SHALL be restricted or explicitly versioned; silent changes to the scan baseline are prohibited.
+4. **Amended 2026-08-09 (Product Owner):** every `store`-disposition line SHALL record its designated active storage `putaway_location_id` before receiving begins. An `inspect`-disposition line SHALL not use this value; confirmation resolves the active `inspection` location instead. The confirmation command re-validates both location state and type inside its transaction.
+5. A staged WRR SHALL not increment active inventory, create available lots, or write a `receiving` inventory transaction.
+6. The system SHALL validate that referenced parties/items are active and authorized for the operation, while unknown items follow the exception path in R4.
+7. The system SHALL support editing staged lines before physical receiving begins, subject to audit/version rules.
+8. Once physical receiving begins, changes to expected lines SHALL be restricted or explicitly versioned; silent changes to the scan baseline are prohibited.
 
 ### R1a. Supplier advance-notice intake
 
