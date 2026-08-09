@@ -1,6 +1,9 @@
 # Revision Log — Hyperion 3PL / Dyna-Serv
 
 Every merge conflict and major revision, dated, with the resolution. This is the audit trail for "why does the spec say X" when X isn't obvious from the doc alone.
+## Unapproved `withdrawal.*` capability caught in `0019_document_rls.sql` before it reached production (2026-08-10)
+
+A collaborator preparing to apply pending migrations `0018`–`0020` to production found `0019_document_rls.sql` seeded and referenced `withdrawal.view`/`withdrawal.execute`, blocking the batch before applying anything. This is the same unapproved vocabulary already found and removed from application code on 2026-08-08 (see the "Route-registry/capability reconciliation" entry on `main`) — never seeded before this migration, no backing in `10-pick-list-and-acknowledgement-receipt/design.md` (whose own tasks.md §RLS item is explicitly still open, deferring to `02`'s catalog), and in conflict with `05`'s rule against a withdrawal-request model. `10`'s `generated_documents`/`document_events` tables are exactly the `documents` resource `02-rbac-roles/design.md` §3.2 already defines (`documents.read`/`generate`/`download`, global scope, already seeded to `warehouse_staff`/`supervisor`/`administrator` in `0005_rbac_constraints_and_seed.sql`, plus `documents.read` `assigned_party` for `party_user`) — so `0019` was rewritten to reference the existing `documents.read`/`documents.generate` capabilities via `has_permission`, with the standalone `withdrawal` permission-seed block removed entirely (no new permission rows needed; they already exist). Caught and fixed before `0019` was ever applied to any environment, so no rollback/backfill is needed — `0018`–`0020` can proceed in order once this fix is picked up.
 
 ## Eight cross-spec PO decisions resolved (2026-08-09)
 
