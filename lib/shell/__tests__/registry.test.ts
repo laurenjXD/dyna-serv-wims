@@ -89,11 +89,11 @@ const EXPECTED_ROUTES: Array<{
   { id: "outgoing", path: "/outgoing", surface: "floor", capability: "pick_list.execute", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
   { id: "inventory-pick-list-execute", path: "/pick-lists/[pickListId]/pick", surface: "floor", capability: "pick_list.execute", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
   { id: "inventory-pick-list-dispatch", path: "/pick-lists/[pickListId]/dispatch", surface: "floor", capability: "dispatch.execute", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
-  { id: "inspection", path: "/inspection", surface: "shared", capability: "inspection.perform", featureSpecs: ["07-incoming-receiving", "08-outgoing-withdrawal-and-two-stage-commitment", "11-transfer-and-inspection"], launchStatus: "planned" },
-  { id: "inspection-detail", path: "/inspection/[inspection_id]", surface: "floor", capability: "inspection.perform", featureSpecs: ["07-incoming-receiving", "08-outgoing-withdrawal-and-two-stage-commitment", "11-transfer-and-inspection"], launchStatus: "planned" },
+  { id: "inspection", path: "/inspection", surface: "shared", capability: "inspection.perform", featureSpecs: ["07-incoming-receiving", "08-outgoing-withdrawal-and-two-stage-commitment", "11-transfer-and-inspection"], launchStatus: "launch" },
+  { id: "inspection-detail", path: "/inspection/[inspection_id]", surface: "floor", capability: "inspection.perform", featureSpecs: ["07-incoming-receiving", "08-outgoing-withdrawal-and-two-stage-commitment", "11-transfer-and-inspection"], launchStatus: "launch" },
   { id: "documents", path: "/documents", surface: "office", capability: "documents.read", featureSpecs: ["10-pick-list-and-acknowledgement-receipt"], launchStatus: "planned" },
   { id: "approvals", path: "/approvals", surface: "office", capability: "fifo_override.approve", featureSpecs: ["09-approval-queue"], launchStatus: "launch" },
-  { id: "sync", path: "/sync", surface: "floor", capability: "none", featureSpecs: ["03-offline-mode-and-client-storage"], launchStatus: "planned" },
+  { id: "sync", path: "/sync", surface: "floor", capability: "none", featureSpecs: ["03-offline-mode-and-client-storage"], launchStatus: "launch" },
   // 2026-08-08: corrected transfers.read -> transfer.view (singular) —
   // 0014_transfer_rls_policies.sql's deliberate, documented capability
   // vocabulary for this feature. See revision-log.md.
@@ -110,10 +110,10 @@ const EXPECTED_ROUTES: Array<{
   { id: "reports", path: "/reports", surface: "office", capability: "reporting.read", featureSpecs: ["16-reporting-and-analytics"], launchStatus: "planned" },
   { id: "profile", path: "/profile", surface: "shared", capability: "none", featureSpecs: ["21-user-profile-and-settings"], launchStatus: "launch" },
   { id: "settings", path: "/settings", surface: "office", capability: "users.read", featureSpecs: ["21-user-profile-and-settings"], launchStatus: "launch" },
-  { id: "portal", path: "/portal", surface: "party", capability: "none", featureSpecs: ["22-parties-portal"], launchStatus: "planned" },
-  { id: "portal-inventory", path: "/portal/inventory", surface: "party", capability: "reporting.read", featureSpecs: ["22-parties-portal"], launchStatus: "planned" },
-  { id: "portal-orders", path: "/portal/orders", surface: "party", capability: "pick_list.read", featureSpecs: ["22-parties-portal"], launchStatus: "planned" },
-  { id: "portal-documents", path: "/portal/documents", surface: "party", capability: "documents.read", featureSpecs: ["22-parties-portal"], launchStatus: "planned" },
+  { id: "portal", path: "/portal", surface: "party", capability: "none", featureSpecs: ["22-parties-portal"], launchStatus: "launch" },
+  { id: "portal-inventory", path: "/portal/inventory", surface: "party", capability: "reporting.read", featureSpecs: ["22-parties-portal"], launchStatus: "launch" },
+  { id: "portal-orders", path: "/portal/orders", surface: "party", capability: "pick_list.read", featureSpecs: ["22-parties-portal"], launchStatus: "launch" },
+  { id: "portal-documents", path: "/portal/documents", surface: "party", capability: "documents.read", featureSpecs: ["22-parties-portal"], launchStatus: "launch" },
   { id: "portal-notifications", path: "/portal/notifications", surface: "party", capability: "notifications.read", featureSpecs: ["22-parties-portal"], launchStatus: "planned" },
   { id: "portal-labels", path: "/portal/labels", surface: "party", capability: "shipment_labels.generate", featureSpecs: ["22-parties-portal"], launchStatus: "planned" },
 ];
