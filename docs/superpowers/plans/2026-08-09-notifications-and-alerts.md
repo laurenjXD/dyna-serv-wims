@@ -306,8 +306,7 @@ git commit -m "docs(02,14): add notification capability catalog rows"
 ### Task 3: Open the formal cross-track request
 
 **Files:**
-- Modify: `specs/00-steering/multi-agent-work-division.md` (add to a new "## Pending cross-track requests" section if one doesn't exist yet — check first, this doc's current version doesn't have one)
-- Modify: `specs/00-steering/revision-log.md` (the doc's own protocol names this file as where the request goes: *"open a named request in revision-log.md under 'Pending cross-track requests'"*)
+- Modify: `specs/00-steering/revision-log.md` only (the *current*, active two-track doc's protocol names this file as where the request goes: *"open a named request in revision-log.md under 'Pending cross-track requests'"* — do not touch `specs/00-steering/multi-agent-work-division.md`, it stays Track-3-locked)
 
 **Interfaces:**
 - Consumes: Task 1's schema draft file path, Task 2's capability catalog diff.
@@ -319,7 +318,9 @@ git commit -m "docs(02,14): add notification capability catalog rows"
 grep -n "Pending cross-track requests" "specs/00-steering/revision-log.md"
 ```
 
-If found, add your entry under it. If not found, create the section right after the file's opening paragraph (before the first dated entry), matching the exact heading level (`##`) and the request-entry format the *old* three-track doc used (visible in `multi-agent-work-division.md`'s git history / the archived version) — a numbered/dated block with **Requested by**, **Needed for**, **Blocked files**, **What's needed**, **Track 3 will handle**.
+**Important — target file correction:** an earlier draft of this task named `specs/00-steering/multi-agent-work-division.md` as a file to modify. That was wrong: the *old*, now-superseded three-track doc self-referenced its own "Pending cross-track requests" section, but the *current* two-track doc (`Status: Active`, effective 2026-08-09, the one actually governing this work) explicitly redirects the protocol to `revision-log.md` instead — its own "Cross-track schema changes" section reads: *"open a named request in `revision-log.md` under 'Pending cross-track requests'."* Do **not** edit `multi-agent-work-division.md` at all in this task — it stays Track-3-locked and untouched. Only `specs/00-steering/revision-log.md` is written.
+
+If a "## Pending cross-track requests" heading is found in `revision-log.md`, add your entry under it. If not found, create the section right after the file's opening paragraph (before the first dated entry) with heading level `##`, using the request-entry format visible in the old three-track doc's now-archived convention (referenced in `revision-log.md`'s own entries, e.g. the 2026-08-08 "Track 3 cross-track request resolved" entry) — a dated block with **Requested by**, **Needed for**, **Blocked files**, **What's needed**, **Track 3 will handle**.
 
 - [ ] **Step 2: Write the request entry**
 
@@ -343,7 +344,7 @@ If found, add your entry under it. If not found, create the section right after 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add "specs/00-steering/revision-log.md" "specs/00-steering/multi-agent-work-division.md"
+git add "specs/00-steering/revision-log.md"
 git commit -m "docs(14): open cross-track schema request to Track 3"
 ```
 
