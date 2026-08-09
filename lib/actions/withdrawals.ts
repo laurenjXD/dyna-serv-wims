@@ -27,7 +27,8 @@
 //     withdrawal.request, withdrawal.execute, withdrawal.view
 //   specs/00-steering/tech.md — RBAC always from session, never client params.
 
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
+import { createHash } from "node:crypto";
 import type { RequestAuthorizationResolver } from "@/lib/rbac/session";
 import { requirePermission } from "@/lib/rbac/guard";
 import { validateWithdrawal } from "@/lib/withdrawal/withdrawal-validator";
@@ -38,6 +39,7 @@ import {
   inventoryCommitmentLines,
 } from "@/lib/db/schema/commitments";
 import { inventoryTransactions } from "@/lib/db/schema/transactions";
+import { generatedDocuments } from "@/lib/db/schema/documents";
 import {
   listOutgoingLedger as queryListOutgoingLedger,
   type OutgoingLedgerRow,
@@ -51,10 +53,15 @@ type DbLike = {
   select: (...args: any[]) => any;
   insert: (...args: any[]) => any;
   update: (...args: any[]) => any;
+  execute?: (...args: any[]) => any;
 };
 
 type AnyRecord = Record<string, any>;
 /* eslint-enable @typescript-eslint/no-explicit-any */
+
+function hashSnapshot(data: unknown): string {
+  return createHash("sha256").update(JSON.stringify(data)).digest("hex");
+}
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -185,6 +192,31 @@ export async function commitWithdrawal(
       .returning();
   }
 
+  // Step 8: Document generation trigger — spec 10 (design.md §6 step 7).
+  // Intentionally outside the commitment transaction; failure must not roll back
+  // the inventory reservation. generate_document_number acquires a row-level
+  // lock on document_number_sequences so the sequence is atomic.
+  try {
+    const numRows = (await db.execute!(
+      sql`SELECT generate_document_number('pick_list')`,
+    )) as Array<{ generate_document_number: string }>;
+    const documentNumber = numRows[0].generate_document_number;
+    await db
+      .insert(generatedDocuments)
+      .values({
+        documentType: "pick_list",
+        documentNumber,
+        templateVersion: "1.0",
+        sourceType: "inventory_commitment",
+        sourceId: commitmentId,
+        snapshotHash: hashSnapshot({ pickListId, commitmentId, lines: data.lines }),
+        status: "pending",
+        systemExecutor: "commitWithdrawal",
+      });
+  } catch {
+    // Non-fatal — visual/print generation failing does not undo the stock reservation.
+  }
+
   // Return authoritative pick-list reference (design.md §6 step 7)
   return { ok: true, pickListId };
 }
@@ -252,7 +284,7 @@ export async function dispatchPickList(
   // TODO: load pick_list_items and iterate per line for multi-line pick lists.
   const transactionNumber = `TXN-${Date.now()}`;
 
-  await db
+  const [insertedTransaction] = (await db
     .insert(inventoryTransactions)
     .values({
       transactionNumber,
@@ -265,11 +297,32 @@ export async function dispatchPickList(
       pickListId,
       performedByUserId: userId,
     })
-    .returning();
+    .returning()) as AnyRecord[];
 
-  // Step 7: Emit document generation event for 10-pick-list-and-acknowledgement-receipt
-  // (design.md §7 step 7 — document generation failure must not roll back the stock movement)
-  // TODO: emit pick_list_dispatched event / call 10's generation command.
+  // Step 7: Document generation trigger — spec 10 (design.md §7 step 7).
+  // Intentionally outside the dispatch transaction; failure must not roll back
+  // the stock movement.
+  try {
+    const transactionId = (insertedTransaction as { id: string }).id;
+    const numRows = (await db.execute!(
+      sql`SELECT generate_document_number('acknowledgement_receipt')`,
+    )) as Array<{ generate_document_number: string }>;
+    const documentNumber = numRows[0].generate_document_number;
+    await db
+      .insert(generatedDocuments)
+      .values({
+        documentType: "acknowledgement_receipt",
+        documentNumber,
+        templateVersion: "1.0",
+        sourceType: "inventory_transaction",
+        sourceId: transactionId,
+        snapshotHash: hashSnapshot({ pickListId, transactionId }),
+        status: "pending",
+        systemExecutor: "dispatchPickList",
+      });
+  } catch {
+    // Non-fatal — document generation failure does not roll back the stock movement.
+  }
 
   return { ok: true };
 }
