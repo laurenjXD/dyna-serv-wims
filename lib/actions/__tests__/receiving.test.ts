@@ -80,7 +80,7 @@ import type {
   AuthorizationResolution,
   RequestAuthorizationResolver,
 } from "@/lib/rbac/session";
-import { createWrr, recordScan, commitWrr } from "../receiving";
+import { createWrr, recordScan, commitWrr, startReceiving } from "../receiving";
 
 // ---------------------------------------------------------------------------
 // Resolver mock helpers
@@ -669,5 +669,153 @@ describe("commitWrr — success (R3.5, R7.2, design.md §9)", () => {
     expect(updatedPayload["confirmedAt"]).not.toBeNull();
     expect(updatedPayload).toHaveProperty("confirmedByUserId");
     expect(updatedPayload["confirmedByUserId"]).toBe("user-uuid-staff");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// startReceiving — Authorization
+// (requirements.md R2.4 — authorized server command required; R7.1)
+// ---------------------------------------------------------------------------
+
+describe("startReceiving — no receiving.confirm permission (R2.4, R7.1, design.md §4)", () => {
+  it("(AC R2.4: receiving.confirm required) returns { ok: false, errors: ['forbidden'] } when resolver lacks receiving.confirm", async () => {
+    const db = makeReceivingDb([wrrDocRow({ status: "staged_pending_arrival" })]);
+
+    const result = await startReceiving(
+      noReceivingResolver(), // no grants at all
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      "wrr-uuid-existing",
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(Array.isArray(result.errors)).toBe(true);
+      expect(result.errors).toContain("forbidden");
+    }
+    // No DB mutation must occur when forbidden.
+    expect(db.update).not.toHaveBeenCalled();
+  });
+
+  it("(AC R2.4: scan-only resolver is also forbidden) returns { ok: false, errors: ['forbidden'] } when resolver has receiving.scan but not receiving.confirm", async () => {
+    const db = makeReceivingDb([wrrDocRow({ status: "staged_pending_arrival" })]);
+
+    const result = await startReceiving(
+      scanOnlyResolver(), // scan but not confirm
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      "wrr-uuid-existing",
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toContain("forbidden");
+    }
+    expect(db.update).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// startReceiving — WRR not found
+// (requirements.md R2.4; design.md §4 state model)
+// ---------------------------------------------------------------------------
+
+describe("startReceiving — WRR not found (R2.4, design.md §4)", () => {
+  it("(AC R2.4: not_found when wrrId is unknown) returns { ok: false, errors: ['not_found'] } when the wrrId does not exist in the database", async () => {
+    const db = makeReceivingDb([]); // empty — no WRR rows
+
+    const result = await startReceiving(
+      authorizedConfirmResolver(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      "non-existent-wrr-uuid",
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(Array.isArray(result.errors)).toBe(true);
+      expect(result.errors).toContain("not_found");
+    }
+    expect(db.update).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// startReceiving — Invalid status (already in progress)
+// (requirements.md R2.4 — transition only from staged_pending_arrival; design.md §4)
+// ---------------------------------------------------------------------------
+
+describe("startReceiving — invalid_status when already receiving_in_progress (R2.4, design.md §4)", () => {
+  it("(AC R2.4: re-starting an in-progress WRR is rejected) returns { ok: false, errors: ['invalid_status'] } when WRR status is receiving_in_progress", async () => {
+    // Default wrrDocRow has status: "receiving_in_progress"
+    const db = makeReceivingDb([wrrDocRow()]);
+
+    const result = await startReceiving(
+      authorizedConfirmResolver(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      "wrr-uuid-existing",
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(Array.isArray(result.errors)).toBe(true);
+      expect(result.errors).toContain("invalid_status");
+    }
+    // No status transition must be written for a WRR that is already in progress.
+    expect(db.update).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// startReceiving — Invalid status (already confirmed)
+// (requirements.md R2.4; design.md §4 state model)
+// ---------------------------------------------------------------------------
+
+describe("startReceiving — invalid_status when already confirmed (R2.4, design.md §4)", () => {
+  it("(AC R2.4: confirmed WRR cannot be re-opened) returns { ok: false, errors: ['invalid_status'] } when WRR status is confirmed", async () => {
+    const db = makeReceivingDb([wrrDocRow({ status: "confirmed" })]);
+
+    const result = await startReceiving(
+      authorizedConfirmResolver(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      "wrr-uuid-existing",
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(Array.isArray(result.errors)).toBe(true);
+      expect(result.errors).toContain("invalid_status");
+    }
+    expect(db.update).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// startReceiving — Success
+// (requirements.md R2.4 — transitions staged_pending_arrival → receiving_in_progress)
+// ---------------------------------------------------------------------------
+
+describe("startReceiving — success (R2.4, design.md §4)", () => {
+  it("(AC R2.4: staged WRR transitions to receiving_in_progress) returns { ok: true } and writes status='receiving_in_progress' when WRR is staged_pending_arrival", async () => {
+    const db = makeReceivingDb([wrrDocRow({ status: "staged_pending_arrival" })]);
+
+    const result = await startReceiving(
+      authorizedConfirmResolver(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      "wrr-uuid-existing",
+    );
+
+    expect(result.ok).toBe(true);
+
+    // The status must have been updated exactly once.
+    expect(db.update).toHaveBeenCalledTimes(1);
+
+    // The update payload must transition to receiving_in_progress.
+    const updatedPayload = db._updated[0] as AnyRecord;
+    expect(updatedPayload).toBeDefined();
+    expect(updatedPayload["status"]).toBe("receiving_in_progress");
   });
 });

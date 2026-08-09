@@ -243,6 +243,46 @@ export async function recordScan(
 }
 
 // ---------------------------------------------------------------------------
+// startReceiving
+// ---------------------------------------------------------------------------
+
+/**
+ * Transitions a WRR from staged_pending_arrival → receiving_in_progress.
+ * Requires receiving.confirm capability.
+ * Rejects if the WRR is already in progress, confirmed, or cancelled.
+ */
+export async function startReceiving(
+  resolver: RequestAuthorizationResolver,
+  db: DbLike,
+  wrrId: string,
+): Promise<{ ok: true } | { ok: false; errors: string[] }> {
+  // 1. Authorization
+  const perm = await requirePermission(resolver, "receiving.confirm");
+  if (perm.kind !== "authorized") {
+    return { ok: false, errors: ["forbidden"] };
+  }
+
+  // 2. Fetch WRR
+  const doc = await fetchWrrForAction(db, wrrId);
+  if (doc === null) {
+    return { ok: false, errors: ["not_found"] };
+  }
+
+  // 3. Status guard — only staged_pending_arrival may transition to in_progress
+  if (doc.status !== "staged_pending_arrival") {
+    return { ok: false, errors: ["invalid_status"] };
+  }
+
+  // 4. Transition status
+  await db
+    .update(wrrDocuments)
+    .set({ status: "receiving_in_progress", updatedAt: new Date() })
+    .where(eq(wrrDocuments.id, wrrId));
+
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
 // commitWrr
 // ---------------------------------------------------------------------------
 
