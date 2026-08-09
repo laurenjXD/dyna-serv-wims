@@ -209,7 +209,6 @@ export const notificationPreferences = pgTable("notification_preferences", {
 ## `alert_rules` and `inventory_alert_events` — deferred to a Phase 0b request
 
 Not included in this first request. `requirements.md` §6 leaves "initial alert metrics/events and owning feature for each threshold" and the exact rule-table shape only provisional pending the Product Owner's threshold decisions (reorder-level source, expiry windows, commitment-overdue window, cooldown periods — `requirements.md` §6 last bullet). The seven `R1-A` alert types themselves (low stock, expiry, lot depleted, receiving discrepancy, inspection failure, commitment overdue, document generation failure) are individually well-specified — deferring only the generic *rule administration* table, not the alerts themselves. Phase 2 implements those seven alerts as fixed application logic against the fixed thresholds already stated in `requirements.md` R1-A (24h low-stock cooldown, 30/7-day expiry windows); `alert_rules`/`inventory_alert_events` (for future admin-configurable thresholds) becomes a Phase 3 follow-up once the Product Owner has actually made those calls, per design.md's own "provisional until schema review" framing.
-```
 
 - [ ] **Step 2: Verify the draft is self-contained**
 
