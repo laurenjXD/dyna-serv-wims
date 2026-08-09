@@ -22,7 +22,7 @@ Two active tracks. One human collaborator per track. Read this before touching a
 ### Track 3 — Core Inventory & Infrastructure
 
 **Branch:** `track-3-validation-and-m2`
-**Human:** Jaime
+**Human:** Andj
 
 **Owns:**
 
