@@ -212,7 +212,7 @@ All five levels SHALL be accompanied by a visible legend strip below the heatmap
 
 **Tooltip:** On hover or keyboard focus, shows: `"{count} transactions on {date}"`. Typography: `body-sm` (Outfit 14px) for the date label, `mono` (Roboto Mono) for the count. Background: solid `on-surface`, white text — Level 2 elevation pattern.
 
-**Filter tabs:** Rendered above the grid. Active tab uses `brand-red` background, Epilogue SemiBold 14px white label, diagonal-cut motif (office context). Inactive tabs use `surface-light-grey` background, `on-surface` label.
+**Filter tabs:** Rendered above the grid. Active tab uses `brand-red` background, Inter SemiBold 14px white label, `rounded` corners (diagonal-cut motif retired — see `brand-design-system.md` §7). Inactive tabs use `surface-light-grey` background, `on-surface` label.
 
 **Accessibility:**
 

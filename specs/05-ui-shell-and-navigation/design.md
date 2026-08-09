@@ -172,7 +172,7 @@ AuthenticatedLayout
 ├── DesktopSidebar (office enhancement)
 ├── MobileFloorNavigation (floor/portrait mode)
 ├── AppHeader
-│   ├── Brand/Logo (real letter-mark logo, never an icon-font ligature rendered as text; diagonal-cut motif per brand-design-system.md §7 in office contexts)
+│   ├── Brand/Logo (real letter-mark logo, never an icon-font ligature rendered as text; diagonal-cut motif retired per brand-design-system.md §7)
 │   ├── PageHeader slot
 │   ├── ConnectivityIndicator (optional, read-only)
 │   └── AccountControl

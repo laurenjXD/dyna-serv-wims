@@ -2,6 +2,20 @@
 
 Every merge conflict and major revision, dated, with the resolution. This is the audit trail for "why does the spec say X" when X isn't obvious from the doc alone.
 
+## Diagonal-cut motif retired app-wide (2026-08-09)
+
+Follow-up to the same-day dashboard restyle above — the Product Owner asked for the diagonal-cut clip-path (`brand-design-system.md` §7, previously applied to office primary CTA buttons) removed everywhere, as a final cleanup pass on the flat/modern direction. The angular cut corner read as a leftover brochure-era accent once the rest of the UI moved to plain rounded cards and buttons.
+
+**`app/globals.css`**: `.btn-diagonal-cut` (the `clip-path: polygon(...)` utility) deleted outright — nothing else in the file used it.
+
+**`btn-diagonal-cut` class references removed from 10 button call sites**, all primary CTAs on master-data pages: `master-data/{items,locations,parties}/page.tsx`, their respective `_components/{item,location,party}-form.tsx`, `party-detail-actions.tsx`, and `enrollment/page.tsx` (3 call sites). Buttons keep every other class (color, height, hover/press states) — only the clip-path utility class is gone, so they fall back to the plain `rounded` corner already present in the same class string.
+
+**`brand-design-system.md` §7** rewritten to state the retirement explicitly rather than deleting the section (keeps the historical `clip-path` value discoverable if anyone asks "why did buttons used to look like that"); §9's button guidance updated to drop the "diagonal-cut (office)" distinction — Primary buttons are just `rounded` now, no floor/office split needed for corner shape. Companion spec references updated for accuracy: `structure.md` (pointer to the motif removed), `16-reporting-and-analytics/design.md` (filter-tab description), `05-ui-shell-and-navigation/design.md` and its `mockup.md` (logo/shape notes) all now say "retired" instead of describing active behavior.
+
+No `Status` header changed on any spec — all remain Approved; this is a corrective visual cleanup, not a reopening.
+
+Verified: `tsc --noEmit` clean (same pre-existing, unrelated `playwright.config.ts` error only); 1221/1221 unit tests pass.
+
 ## Typography consolidated to Inter + JetBrains Mono; dashboard/KPI card pattern added (2026-08-09)
 
 Product Owner asked for a more modern, dashboard-style visual direction (reference: a light-background analytics dashboard with KPI tiles, a dark sidebar, and a single warm accent color) applied app-wide, adapted per screen surface. Two changes to `brand-design-system.md` (Approved, single source of truth alongside the Figma file — Figma itself is not updated by this entry and should be reconciled separately):

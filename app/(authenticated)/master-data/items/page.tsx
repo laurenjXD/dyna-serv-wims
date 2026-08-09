@@ -58,7 +58,7 @@ export default async function ItemsPage({ searchParams }: PageProps) {
         {canManage && (
           <Link
             href="/master-data/items/new"
-            className="btn-diagonal-cut flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy"
           >
             New Item
           </Link>

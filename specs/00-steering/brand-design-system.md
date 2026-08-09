@@ -142,17 +142,9 @@ Portrait is the primary, supported orientation for all floor screens — most ru
 
 ---
 
-## 7. The Diagonal-Cut Motif
+## 7. The Diagonal-Cut Motif — retired
 
-```css
-clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 100%, 0 100%);
-```
-
-**Applied to**: primary CTA buttons, active nav tabs, brand logo blocks, key highlight badges — office contexts primarily.
-
-**Floor-specific note:** the diagonal cut is cosmetically fine on floor buttons but must never reduce the effective tap target — the clipped corner's dead zone doesn't count toward the 64px minimum in §3. If in doubt on a floor screen, skip the motif rather than risk a smaller effective target.
-
-**Never applied to**: circular elements (avatars, floating action buttons), form inputs, standard cards, table rows.
+**Retired 2026-08-09.** The diagonal-cut clip-path (previously applied to primary CTA buttons) is removed app-wide as part of the modern-dashboard restyle (`revision-log.md`) — it read as an angular, brochure-era accent that fought the flat, rectangular card language the rest of the restyle adopted. Primary buttons use plain `rounded` corners now, same as every other button variant in §9. `.btn-diagonal-cut` no longer exists in `app/globals.css`; do not reintroduce it or the `clip-path` polygon it used.
 
 ---
 
@@ -170,9 +162,9 @@ Floor devices are rugged mid-tier Android hardware (Zebra/Honeywell-class scanne
 ## 9. Component Guidance
 
 **Buttons**
-- Primary: `brand-red`, diagonal-cut (office) / solid corners acceptable (floor, see §7), white text, Inter SemiBold label
+- Primary: `brand-red`, `rounded` corners (see §7 — diagonal-cut retired), white text, Inter SemiBold label
 - Office size: 44px default height. **Floor size: 64px minimum height, full-width, is the default — not an opt-in "lg" variant.**
-- Secondary: `brand-navy` solid, no diagonal cut
+- Secondary: `brand-navy` solid
 - Outline: 2px `outline-variant` border, transparent background — office only; floor screens avoid outline-only buttons since they're harder to spot at speed
 - Destructive: `status-held` solid
 
