@@ -1,4 +1,4 @@
-// Receiving — WRR work-queue list page, with a Ledger tab for confirmed WRRs.
+// Receiving — WRR work-queue list page, with WRRs and Incoming Ledger tabs.
 //
 // Traceability:
 //   specs/07-incoming-receiving/design.md §3 (route), §4 (state model), §10
@@ -7,29 +7,12 @@
 //   specs/00-steering/brand-design-system.md §3 (office tab pattern), §6
 //     (office surface, Level 1 elevation)
 //   specs/00-steering/revision-log.md (2026-08-09 restructuring — merge the
-//     standalone /incoming-ledger route into this page as a "Ledger" tab)
+//     standalone /incoming-ledger route into this page; 2026-08-09 PO change —
+//     three-tab layout: Receive / WRRs / Incoming Ledger; New WRR moved inside
+//     WRRs tab gated by receiving.create)
 //
-// Surface: Office — desktop-first, secondary mobile support. This page is a
-// list/review surface (glassmorphism cards, table, hover states), not a scan
-// flow — see the tab-placement note below for why a tab switcher is used
-// here despite the shell route registry currently tagging `/receiving` as
-// "floor" (lib/shell/registry.ts). Per brand-design-system.md §3, "Multi-step
-// forms, tabs, and side-by-side panels are office patterns" and are
-// explicitly NOT appropriate for a scan-driven floor screen (e.g. the WRR
-// scan/reconciliation flow at /receiving/[wrrId]/receive, which stays a
-// single-column, one-primary-action screen and is unaffected by this
-// change). This exact page, however, has always been built as an
-// office-style desktop list/table (see the pre-existing "Surface: Office"
-// header comment below, predating this change) — it is the pre-receiving
-// office surface described in design.md §1, not the floor receiving
-// surface. The registry's "floor" tag on the `/receiving` path is therefore
-// a pre-existing mismatch between the route's registered surface and what
-// was actually built at that path (matching several other already-flagged
-// registry/reality mismatches in this codebase); tabs are used here because
-// this specific screen is functionally an office review screen, not because
-// the registry's surface tag was overridden. Flagged for a future registry
-// correction rather than silently worked around.
-// Permission gate: receiving.confirm
+// Surface: Shared (floor staff see Receive tab; supervisors see WRRs tab with
+// New WRR button). Permission gate: receiving.confirm for all tabs.
 
 import Link from "next/link";
 import { createPageResolver } from "@/lib/auth/page-resolver";
@@ -74,11 +57,12 @@ const STATUS_FILTER_OPTIONS = [
   { value: "cancelled", label: "Cancelled" },
 ];
 
-type TabKey = "queue" | "ledger";
+type TabKey = "receive" | "wrrs" | "ledger";
 
 const TABS: Array<{ key: TabKey; label: string }> = [
-  { key: "queue", label: "Work Queue" },
-  { key: "ledger", label: "Ledger" },
+  { key: "receive", label: "Receive" },
+  { key: "wrrs", label: "WRRs" },
+  { key: "ledger", label: "Incoming Ledger" },
 ];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -93,11 +77,15 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
     status: statusFilter,
     page: pageParam,
   } = await searchParams;
-  const activeTab: TabKey = tabParam === "ledger" ? "ledger" : "queue";
+
+  const activeTab: TabKey =
+    tabParam === "wrrs" ? "wrrs" :
+    tabParam === "ledger" ? "ledger" :
+    "receive";
 
   const resolver = await createPageResolver();
 
-  // Gate: receiving.confirm required to view the receiving queue and ledger.
+  // Gate: receiving.confirm required to view any tab.
   const permResult = await requirePermission(resolver, "receiving.confirm");
   if (permResult.kind !== "authorized") {
     return (
@@ -114,31 +102,23 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
     );
   }
 
+  // Additional check: can this user create WRRs? Used in WRRs tab.
+  const canCreate = (await requirePermission(resolver, "receiving.create")).kind === "authorized";
+
   return (
     <div className="mx-auto max-w-container">
-      {/* Page header */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="font-heading font-semibold text-headline-md text-brand-navy">
-            Receiving
-          </h1>
-          <p className="mt-1 font-body text-body-md text-text-grey">
-            Warehouse receipt records — work queue and confirmed-receipt
-            ledger.
-          </p>
-        </div>
-        {/* New WRR button — h-11 (44px) per brand-design-system.md §3 office target */}
-        <Link
-          href="/receiving/new"
-          className="inline-flex h-11 items-center justify-center rounded bg-brand-red px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
-        >
-          New WRR
-        </Link>
+      {/* Page header — "New WRR" button removed from here (moved into WRRs tab) */}
+      <div>
+        <h1 className="font-heading font-semibold text-headline-md text-brand-navy">
+          Receiving
+        </h1>
+        <p className="mt-1 font-body text-body-md text-text-grey">
+          Warehouse receipt records — work queue and confirmed-receipt
+          ledger.
+        </p>
       </div>
 
-      {/* Tab switcher — office pattern per brand-design-system.md §3 (see
-          the header comment above for why this page qualifies as office
-          despite the route registry's current "floor" tag). */}
+      {/* Tab switcher — office pattern per brand-design-system.md §3 */}
       <div
         role="tablist"
         aria-label="Receiving sections"
@@ -146,10 +126,16 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
       >
         {TABS.map((tab) => {
           const isActive = tab.key === activeTab;
+          const href =
+            tab.key === "receive"
+              ? "/receiving"
+              : tab.key === "wrrs"
+              ? "/receiving?tab=wrrs"
+              : "/receiving?tab=ledger";
           return (
             <Link
               key={tab.key}
-              href={tab.key === "queue" ? "/receiving" : "/receiving?tab=ledger"}
+              href={href}
               role="tab"
               aria-selected={isActive}
               className={`flex h-11 items-center border-b-2 px-4 font-label text-label uppercase tracking-[0.05em] focus:outline-none focus:ring-2 focus:ring-brand-navy ${
@@ -164,8 +150,10 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
         })}
       </div>
 
-      {activeTab === "queue" ? (
-        <WorkQueueTab statusFilter={statusFilter} pageParam={pageParam} />
+      {activeTab === "receive" ? (
+        <ReceiveTab statusFilter={statusFilter} pageParam={pageParam} />
+      ) : activeTab === "wrrs" ? (
+        <WrrsTab statusFilter={statusFilter} pageParam={pageParam} canCreate={canCreate} />
       ) : (
         <LedgerTab pageParam={pageParam} />
       )}
@@ -173,9 +161,9 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
   );
 }
 
-// ─── Work Queue tab (default) ─────────────────────────────────────────────────
+// ─── Receive tab (default) — staged/in-progress WRRs ready to be received ────
 
-async function WorkQueueTab({
+async function ReceiveTab({
   statusFilter,
   pageParam,
 }: {
@@ -200,6 +188,7 @@ async function WorkQueueTab({
       {/* Status filter bar */}
       <div className="mt-6">
         <form method="GET" className="flex flex-wrap items-end gap-3">
+          <input type="hidden" name="tab" value="receive" />
           <div className="flex flex-col gap-1">
             <label
               htmlFor="status-filter"
@@ -353,7 +342,192 @@ async function WorkQueueTab({
   );
 }
 
-// ─── Ledger tab ───────────────────────────────────────────────────────────────
+// ─── WRRs tab — all statuses, "New WRR" button gated by receiving.create ──────
+
+async function WrrsTab({
+  statusFilter,
+  pageParam,
+  canCreate,
+}: {
+  statusFilter?: string;
+  pageParam?: string;
+  canCreate: boolean;
+}) {
+  const currentPage = Math.max(1, Number(pageParam ?? "1") || 1);
+  const offset = (currentPage - 1) * QUEUE_PAGE_SIZE;
+  const status =
+    statusFilter && statusFilter !== "" ? statusFilter : undefined;
+
+  const { rows, total } = await listWrrDocuments(db, {
+    limit: QUEUE_PAGE_SIZE,
+    offset,
+    status,
+  });
+
+  const totalPages = Math.ceil(total / QUEUE_PAGE_SIZE);
+
+  return (
+    <div>
+      {/* Tab header with "New WRR" button — gated by receiving.create */}
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <form method="GET" className="flex flex-wrap items-end gap-3">
+            <input type="hidden" name="tab" value="wrrs" />
+            <div className="flex flex-col gap-1">
+              <label
+                htmlFor="wrrs-status-filter"
+                className="font-label text-label text-text-grey"
+              >
+                Status
+              </label>
+              <select
+                id="wrrs-status-filter"
+                name="status"
+                defaultValue={statusFilter ?? ""}
+                className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              >
+                {STATUS_FILTER_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="submit"
+              className="flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            >
+              Apply
+            </button>
+            {status && (
+              <Link
+                href="/receiving?tab=wrrs"
+                className="flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              >
+                Clear
+              </Link>
+            )}
+          </form>
+        </div>
+        {/* New WRR button — receiving.create gated, h-11 (44px) office target */}
+        {canCreate && (
+          <Link
+            href="/receiving/new"
+            className="inline-flex h-11 items-center justify-center rounded bg-brand-red px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+          >
+            New WRR
+          </Link>
+        )}
+      </div>
+
+      {/* WRR table — Level 1 office elevation */}
+      <div className="mt-4 overflow-hidden rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1">
+        {rows.length === 0 ? (
+          <div className="px-6 py-12 text-center">
+            <p className="font-body text-body-md text-text-grey">
+              {status
+                ? "No WRRs match the current filter."
+                : "No warehouse receipt records yet."}
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                    WRR Number
+                  </th>
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                    Flow Type
+                  </th>
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                    Staged By
+                  </th>
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                    Created At
+                  </th>
+                  <th className="sr-only px-4 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-outline-variant/30">
+                {rows.map((row: WrrDocumentRow) => (
+                  <tr key={row.id} className="hover:bg-surface-light-grey/50">
+                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
+                      {row.wrrNumber}
+                    </td>
+                    <td className="px-4 py-3 font-body text-body-md text-on-surface">
+                      {FLOW_LABELS[row.flowType] ?? row.flowType}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase ${STATUS_CLASSES[row.status] ?? "bg-status-neutral/10 text-status-neutral"}`}
+                      >
+                        {STATUS_LABELS[row.status] ?? row.status.toUpperCase()}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
+                      {row.stagedByUserId}
+                    </td>
+                    <td className="px-4 py-3 font-body text-body-md text-text-grey">
+                      {row.createdAt.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Link
+                        href={`/receiving/${row.id}`}
+                        className="inline-flex h-11 items-center font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                      >
+                        View
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-between font-body text-body-sm text-text-grey">
+          <span>
+            Page {currentPage} of {totalPages} ({total} total)
+          </span>
+          <div className="flex gap-2">
+            {currentPage > 1 && (
+              <Link
+                href={`/receiving?tab=wrrs&${new URLSearchParams({
+                  ...(status ? { status } : {}),
+                  page: String(currentPage - 1),
+                })}`}
+                className="inline-flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              >
+                Previous
+              </Link>
+            )}
+            {currentPage < totalPages && (
+              <Link
+                href={`/receiving?tab=wrrs&${new URLSearchParams({
+                  ...(status ? { status } : {}),
+                  page: String(currentPage + 1),
+                })}`}
+                className="inline-flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              >
+                Next
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Incoming Ledger tab ──────────────────────────────────────────────────────
 //
 // Confirmed-only view, no status filter shown (always confirmed per task
 // spec). The authoritative incoming ledger view is over inventory_transactions

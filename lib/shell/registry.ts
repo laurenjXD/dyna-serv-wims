@@ -73,7 +73,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
   {
     id: "receiving",
     path: "/receiving",
-    surface: "floor",
+    surface: "shared",
     capability: "receiving.view",
     featureSpecs: ["07-incoming-receiving"],
     launchStatus: "launch",
@@ -99,6 +99,15 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     path: "/inventory",
     surface: "office",
     capability: "pick_list.read",
+    featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"],
+    launchStatus: "launch",
+    group: "Outbound",
+  },
+  {
+    id: "outgoing",
+    path: "/outgoing",
+    surface: "floor",
+    capability: "pick_list.execute",
     featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"],
     launchStatus: "launch",
     group: "Outbound",
@@ -194,6 +203,15 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     featureSpecs: ["11-transfer-and-inspection"],
     launchStatus: "launch",
     group: "Transfers & Inspection",
+  },
+  {
+    id: "enrollment",
+    path: "/enrollment",
+    surface: "office",
+    capability: "parties.read",
+    featureSpecs: ["06-party-and-item-enrollment"],
+    launchStatus: "launch",
+    group: "Master Data",
   },
   {
     // 2026-08-08: corrected from `/parties` to the actually-built

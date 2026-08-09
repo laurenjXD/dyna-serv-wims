@@ -74,13 +74,19 @@ const EXPECTED_ROUTES: Array<{
   launchStatus: string;
 }> = [
   { id: "root", path: "/", surface: "shared", capability: "none", featureSpecs: ["05-ui-shell-and-navigation"], launchStatus: "launch" },
-  { id: "receiving", path: "/receiving", surface: "floor", capability: "receiving.view", featureSpecs: ["07-incoming-receiving"], launchStatus: "launch" },
+  // 2026-08-09 PO amendment: surface changed floor -> shared. /receiving hosts
+  // both the floor Receive tab (warehouse staff) and the office WRRs tab
+  // (supervisors), so it must be declared shared. See revision-log.md.
+  { id: "receiving", path: "/receiving", surface: "shared", capability: "receiving.view", featureSpecs: ["07-incoming-receiving"], launchStatus: "launch" },
   { id: "receiving-detail", path: "/receiving/[wrr_id]", surface: "floor", capability: "receiving.view", featureSpecs: ["07-incoming-receiving"], launchStatus: "launch" },
   // 2026-08-09: corrected back to /inventory — the standalone /pick-lists
   // and /outgoing-ledger routes were merged into inventory/page.tsx (Pick
   // Lists + Ledger tabs). The floor pick/dispatch detail routes stay at
   // /pick-lists/[pickListId]/... unchanged. See revision-log.md.
   { id: "inventory", path: "/inventory", surface: "office", capability: "pick_list.read", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
+  // 2026-08-09 PO amendment: /outgoing added as a floor pick-execution hub
+  // (Active Picks + Outgoing Ledger tabs). See revision-log.md.
+  { id: "outgoing", path: "/outgoing", surface: "floor", capability: "pick_list.execute", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
   { id: "inventory-pick-list-execute", path: "/pick-lists/[pickListId]/pick", surface: "floor", capability: "pick_list.execute", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
   { id: "inventory-pick-list-dispatch", path: "/pick-lists/[pickListId]/dispatch", surface: "floor", capability: "dispatch.execute", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
   { id: "inspection", path: "/inspection", surface: "shared", capability: "inspection.perform", featureSpecs: ["07-incoming-receiving", "08-outgoing-withdrawal-and-two-stage-commitment", "11-transfer-and-inspection"], launchStatus: "planned" },
@@ -92,6 +98,9 @@ const EXPECTED_ROUTES: Array<{
   // 0014_transfer_rls_policies.sql's deliberate, documented capability
   // vocabulary for this feature. See revision-log.md.
   { id: "transfers", path: "/transfers", surface: "shared", capability: "transfer.view", featureSpecs: ["11-transfer-and-inspection"], launchStatus: "launch" },
+  // 2026-08-09 PO amendment: /enrollment added as office Master Data hub
+  // (Parties / Items / Locations tabs). See revision-log.md.
+  { id: "enrollment", path: "/enrollment", surface: "office", capability: "parties.read", featureSpecs: ["06-party-and-item-enrollment"], launchStatus: "launch" },
   { id: "parties", path: "/master-data/parties", surface: "office", capability: "parties.read", featureSpecs: ["06-party-and-item-enrollment"], launchStatus: "launch" },
   { id: "items", path: "/master-data/items", surface: "office", capability: "items.read", featureSpecs: ["06-party-and-item-enrollment"], launchStatus: "launch" },
   { id: "locations", path: "/master-data/locations", surface: "office", capability: "locations.read", featureSpecs: ["06-party-and-item-enrollment"], launchStatus: "launch" },
@@ -110,7 +119,7 @@ const EXPECTED_ROUTES: Array<{
 ];
 
 describe("lib/shell/registry — route catalog matches design.md §3.2 exactly (R3.1, R3.2)", () => {
-  it("exports ROUTE_REGISTRY with exactly the current 25 rows (no stale /dashboard, no extra/missing rows; 2026-08-09 amendment removes the standalone /incoming-ledger and /outgoing-ledger rows — both merged into their parent office pages as tabs — restores /inventory as the withdrawal hub path, and adds the previously-missing /billing-pricing row)", async () => {
+  it("exports ROUTE_REGISTRY with exactly the current 27 rows (no stale /dashboard, no extra/missing rows; 2026-08-09 PO amendment adds /outgoing floor pick-execution hub and /enrollment office master-data hub, changes /receiving surface to shared)", async () => {
     const { ROUTE_REGISTRY } = await import("../registry");
     expect(Array.isArray(ROUTE_REGISTRY)).toBe(true);
     expect(ROUTE_REGISTRY).toHaveLength(EXPECTED_ROUTES.length);
