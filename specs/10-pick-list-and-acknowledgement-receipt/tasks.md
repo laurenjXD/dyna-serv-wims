@@ -59,8 +59,8 @@ Testing: Schema review; real-Postgres and Storage integration planning.
 - [ ] Define append-only print/reprint/generation/failure/supersession events.
 - [x] Define unique document number and idempotency constraints. *(Resolved: design.md §7.2)*
 - [x] Define private `generated-documents` bucket/object path and short-lived signed access. *(Resolved: design.md §8.3, §8.4 — bucket: `documents`, paths defined, 60-minute signed URLs)*
-- [ ] Define orphan-artifact reconciliation, upload/database partial failure recovery, retention, backup/export, and restore checks with `04`.
-- [ ] Define inline versus Edge/job generation based on artifact size/runtime and approved failure handling.
+- [x] Define orphan-artifact reconciliation, upload/database partial failure recovery, retention, backup/export, and restore checks with `04`. *(Resolved 2026-08-09: nightly pg_cron job; rows stuck in pending/generating >4 hours marked failed; Storage orphans deleted in same pass; three-year retention matching audit_log/lot_history_export decisions. See revision-log.md.)*
+- [x] Define inline versus Edge/job generation based on artifact size/runtime and approved failure handling. *(Resolved 2026-08-09: inline — PDF renders synchronously in Server Action; existing non-fatal try/catch isolates renderer failure from inventory. See revision-log.md.)*
 - [ ] Have `db-migration-verifier` review all database changes and `rbac-rls-reviewer` review Storage/source access.
 
 ### 4. Implement pick-list projection

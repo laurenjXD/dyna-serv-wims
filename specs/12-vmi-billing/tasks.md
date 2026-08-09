@@ -36,7 +36,7 @@ These tasks are design-phase decisions. Each must be resolved and recorded befor
   - Confirm PDF primary/secondary display behavior for each currency.
   - Record in revision log.
 
-- [ ] **A.4 Confirm corrections and credits policy**
+- [x] **A.4 Confirm corrections and credits policy** *(Resolved 2026-08-09: corrections issue a new "correction statement" referencing the original statement number and showing the delta. Original is never mutated or voided — remains visible in portal history. `generated_documents.supersedes_id` FK supports this without schema changes. See revision-log.md.)*
   - Confirm: corrections void the original and insert a new statement; the original is never deleted.
   - Confirm: credit notes apply only to the next generated statement, never retroactively.
   - Confirm: who (which role capability) may issue a credit note vs. a correction.

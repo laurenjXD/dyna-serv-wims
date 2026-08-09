@@ -71,7 +71,7 @@ export function WrrLineItems() {
               <button
                 type="button"
                 onClick={() => removeLine(index)}
-                className="inline-flex h-11 items-center rounded bg-status-held px-3 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="inline-flex h-11 items-center rounded bg-status-held px-3 font-label text-label text-surface-white hover:opacity-90 active:opacity-70 motion-safe:transition-opacity motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
               >
                 Remove
               </button>
@@ -259,7 +259,7 @@ export function WrrLineItems() {
       <button
         type="button"
         onClick={addLine}
-        className="inline-flex h-11 items-center justify-center rounded border-2 border-outline-variant px-4 font-label text-label text-brand-navy hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+        className="inline-flex h-11 items-center justify-center rounded border-2 border-outline-variant/30 px-4 font-label text-label text-brand-navy hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
       >
         + Add Line
       </button>

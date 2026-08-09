@@ -27,7 +27,7 @@ The role model is explicitly unstable (`specs/00-steering/revision-log.md`). The
 
 ### 1. Resolve and formalize the authorization model
 
-- [ ] Confirm the supported identity classes and operational roles with the product owner (at minimum: warehouse staff, supervisors, administrators, and party users; exact role granularity remains open).
+- [x] Confirm the supported identity classes and operational roles with the product owner. *(Resolved 2026-08-09: four roles — `warehouse_staff`, `supervisor`, `administrator`, `party_user`. One `party_user` role; flow/party scope is controlled by `user_party_scopes` records at assignment time, not by separate per-flow roles. Role catalog closed for v1. See revision-log.md.)*
 - [x] Define the permission vocabulary as stable capabilities rather than UI route names, including resource, action, and scope dimensions.
 - [x] Define whether a user may hold multiple roles and how effective permissions are combined.
 - [x] Define the relationship between an authenticated user and one or more parties, including whether party users can be limited to specific party records or flow partitions.
