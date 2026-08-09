@@ -51,14 +51,30 @@ Provisional App Router surfaces:
 ```text
 app/(authenticated)/
   receiving/
-    page.tsx                         # WRR list / receiving work queue
+    page.tsx                         # WRR list / receiving work queue, with a
+                                      #   "Ledger" tab (confirmed-only,
+                                      #   read-only transaction view) —
+                                      #   merged 2026-08-09; see below
     new/page.tsx                     # office pre-receiving form
     [wrrId]/page.tsx                 # WRR detail/review
     [wrrId]/print/page.tsx           # printable WRR
     [wrrId]/receive/page.tsx         # floor scan/reconciliation flow
     [wrrId]/inspection/page.tsx      # inbound inspection/conformance
-  incoming-ledger/page.tsx          # office/review read-only transaction view
 ```
+
+**2026-08-09 restructuring**: the standalone `incoming-ledger/page.tsx` route
+that previously sat here as a sibling of `receiving/` has been removed. The
+Incoming Ledger is now the "Ledger" tab on `receiving/page.tsx` itself
+(`?tab=ledger`), not a separate top-level route — the Product Owner
+corrected an earlier build mistake where it had been split into its own
+route despite this design's own §10 describing it as part of the receiving
+work-queue surface. `receiving/page.tsx`'s default tab ("Work Queue") is
+unchanged from before. Tabs are used here because this specific page (the
+WRR list/queue) is functionally an office review/list screen — glassmorphism
+Level 1 cards, table, hover states — per `brand-design-system.md` §3's rule
+that tabs are an office pattern; the floor-oriented scan/reconciliation
+route (`[wrrId]/receive/page.tsx`) is unaffected and remains a
+single-column, one-primary-action floor screen.
 
 Route names and capability references remain provisional until `05`, `02`, and the feature route inventory are approved.
 
@@ -368,6 +384,8 @@ The idempotency mechanism returns the original authoritative result for a duplic
 Receiving consumes the approved location/capacity suggestion interface. It may display remaining CBM and candidate `locations`, but it does not create a second capacity calculation or own location enrollment. Putaway recommendations apply only to lots committed with `store` disposition; quarantined lots at the `inspection` location are handed off to `11` for resolution before any putaway recommendation applies.
 
 The Incoming Ledger is a server-side query/view over `inventory_transactions` filtered by `movement_type IN ('receiving', 'putaway')`, joined through approved relationships for WRR, item, lot, party, user, and location display. It is read-only and scope-filtered. Historical corrections are new domain transactions, never ledger edits.
+
+**Reached via `/receiving`, not a separate route (updated 2026-08-09).** The Incoming Ledger is the "Ledger" tab on `receiving/page.tsx` (`?tab=ledger`), confirmed-only with no status filter shown, alongside the default "Work Queue" tab (all statuses, filterable) that was already `receiving/page.tsx`'s existing content. There is no standalone `/incoming-ledger` route — see §3's route block.
 
 **Column list (added 2026-08-08)**, following the same field set and "Reference" column convention already established for `01-core-data-model`'s `location_transaction_ledger`/`party_transaction_ledger` (design.md §3 item 4), so all of this project's transaction-ledger surfaces read consistently:
 

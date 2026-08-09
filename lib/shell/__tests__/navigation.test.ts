@@ -73,6 +73,7 @@
 
 import { describe, expect, it } from "vitest";
 import type { AuthorizationContext, Grant } from "@/lib/rbac/session";
+import type { RouteRegistryEntry } from "../registry";
 
 function grant(resource: string, action: string): Grant {
   return { resource, action, scopeKind: "global" };
@@ -193,7 +194,7 @@ describe("lib/shell/navigation — selectRoutesForPresentation (design.md §3.3 
     expect(floorPaths).toContain("/receiving"); // floor surface
     expect(floorPaths).toContain("/inspection"); // shared surface
     expect(floorPaths).not.toContain("/master-data/parties"); // office-only surface, even though capability-visible
-    expect(floorPaths).not.toContain("/pick-lists"); // office-only surface
+    expect(floorPaths).not.toContain("/inventory"); // office-only surface
   });
 
   it("office presentation includes 'office' and 'shared' surface routes but never 'floor'-only or 'party' routes", async () => {
@@ -223,5 +224,48 @@ describe("lib/shell/navigation — selectRoutesForPresentation (design.md §3.3 
     expect(partyPaths.every((path) => path.startsWith("/portal"))).toBe(true);
     expect(partyPaths).not.toContain("/");
     expect(partyPaths).not.toContain("/inspection");
+  });
+});
+
+describe("lib/shell/navigation — groupRoutesForSidebar (2026-08-09, sidebar section grouping)", () => {
+  it("buckets entries by their registry `group` field, in NAV_GROUP_ORDER order, not first-appearance order", async () => {
+    const { groupRoutesForSidebar } = await import("../navigation");
+    const { NAV_GROUP_ORDER } = await import("../registry");
+    // Deliberately out of NAV_GROUP_ORDER order to prove the function sorts
+    // by the canonical group order, not input order.
+    const routes = [
+      { id: "settings", group: "Account" },
+      { id: "root", group: "Overview" },
+      { id: "profile", group: "Account" },
+      { id: "receiving", group: "Receiving" },
+    ] as unknown as RouteRegistryEntry[];
+
+    const sections = groupRoutesForSidebar(routes);
+    const groupOrder = sections.map((s) => s.group);
+
+    expect(groupOrder).toEqual(["Overview", "Receiving", "Account"]);
+    const accountSection = sections.find((s) => s.group === "Account")!;
+    expect(accountSection.entries.map((e) => e.id)).toEqual(["settings", "profile"]);
+    // Sanity: the three groups present are all real NAV_GROUP_ORDER members.
+    for (const g of groupOrder) {
+      expect(NAV_GROUP_ORDER).toContain(g);
+    }
+  });
+
+  it("omits a group entirely when it has zero entries after filtering, rather than rendering an empty section", async () => {
+    const { groupRoutesForSidebar } = await import("../navigation");
+    const routes = [
+      { id: "root", group: "Overview" },
+    ] as unknown as RouteRegistryEntry[];
+
+    const sections = groupRoutesForSidebar(routes);
+
+    expect(sections).toHaveLength(1);
+    expect(sections[0].group).toBe("Overview");
+  });
+
+  it("returns no sections for an empty route list", async () => {
+    const { groupRoutesForSidebar } = await import("../navigation");
+    expect(groupRoutesForSidebar([])).toEqual([]);
   });
 });

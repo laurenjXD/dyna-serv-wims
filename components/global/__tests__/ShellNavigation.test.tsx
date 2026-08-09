@@ -50,9 +50,11 @@ const receivingOnlyContext: Pick<AuthorizationContext, "grants"> = {
 
 const officeContext: Pick<AuthorizationContext, "grants"> = {
   grants: [
-    // 2026-08-08: corrected from "inventory.read" -- the "/pick-lists" route
+    // 2026-08-08: corrected from "inventory.read" -- the "/inventory" route
     // (registry id "inventory") requires "pick_list.read", not "inventory.read".
-    // See revision-log.md.
+    // See revision-log.md. 2026-08-09: path restored to "/inventory" after
+    // the standalone /pick-lists and /outgoing-ledger routes were merged
+    // into inventory/page.tsx.
     { resource: "pick_list", action: "read", scopeKind: "global" },
     { resource: "documents", action: "read", scopeKind: "global" },
   ],
@@ -93,20 +95,22 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
 
   it("omits nav entries the context has no grant for (R3.4 — hidden, not disabled)", () => {
     render(
-      <ShellNavigation tier="office" context={officeContext} currentPath="/pick-lists" />,
+      <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" />,
     );
     // officeContext holds pick_list.read and documents.read only; it does
     // NOT hold fifo_override.approve (/approvals) or parties.read
     // (/master-data/parties) — those entries must not render at all.
     // `/documents` itself is `launchStatus: "planned"` (not yet built), so
     // even though documents.read is granted, that entry is correctly
-    // omitted too — asserting on `/outgoing-ledger` instead (also
-    // pick_list.read, and `launchStatus: "launch"`) to keep this test
-    // proving "granted AND launched -> visible", not just "granted".
+    // omitted too. `/inventory` (also pick_list.read, and
+    // `launchStatus: "launch"`) is the sole remaining assertion proving
+    // "granted AND launched -> visible" -- the former standalone
+    // `/outgoing-ledger` route this test also asserted on was merged into
+    // `/inventory`'s Ledger tab (2026-08-09) and no longer exists as its
+    // own registry row.
     expect(screen.queryByTestId("nav-entry-approvals")).not.toBeInTheDocument();
     expect(screen.queryByTestId("nav-entry-parties")).not.toBeInTheDocument();
     expect(screen.getByTestId("nav-entry-inventory")).toBeInTheDocument();
-    expect(screen.getByTestId("nav-entry-outgoing-ledger")).toBeInTheDocument();
   });
 
   it("marks only the resolved active entry with aria-current='page', including for a dynamic-segment path (R3.6/R3.7)", () => {
@@ -137,5 +141,31 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
       />,
     );
     expect(screen.queryByTestId("nav-entry-reports")).not.toBeInTheDocument();
+  });
+
+  it("renders the office sidebar in grouped sections with a header per group (2026-08-09, sidebar reorganization)", () => {
+    render(
+      <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" />,
+    );
+    // officeContext holds pick_list.read (-> "Outbound" group) and
+    // documents.read (route is launchStatus:"planned", so it never
+    // contributes a visible entry or a group) -- exactly one group header
+    // should render: "Outbound".
+    expect(screen.getByTestId("nav-group-outbound")).toBeInTheDocument();
+    expect(screen.getByText("Outbound")).toBeInTheDocument();
+    // No empty-group headers for capabilities this context doesn't hold.
+    expect(screen.queryByTestId("nav-group-master-data")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("nav-group-approvals")).not.toBeInTheDocument();
+  });
+
+  it("never renders group headers for the floor bottom tab bar (grouping is office/party-only)", () => {
+    render(
+      <ShellNavigation tier="floor" context={receivingOnlyContext} currentPath="/receiving" />,
+    );
+    // The floor tab bar still renders the "Receiving" nav LINK itself (that's
+    // correct, unrelated to grouping) — what must be absent is any
+    // `nav-group-*` section-header wrapper around it.
+    expect(screen.queryByTestId("nav-group-receiving")).not.toBeInTheDocument();
+    expect(document.querySelector('[data-testid^="nav-group-"]')).toBeNull();
   });
 });

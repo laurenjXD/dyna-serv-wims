@@ -14,6 +14,41 @@
 export type ShellSurface = "floor" | "office" | "shared" | "party";
 export type RouteLaunchStatus = "launch" | "planned";
 
+// Sidebar section grouping (added 2026-08-09, per Product Owner request:
+// the office desktop sidebar was one flat list of ~15 links with no
+// structure). Purely a presentation grouping for `ShellNavigation`'s
+// office/party rendering — NOT a capability boundary and not consulted by
+// `filterVisibleRoutes`/`selectRoutesForPresentation`, which still operate
+// on the flat registry exactly as before. Order here is the intended
+// display order of the groups themselves; entries within a group keep
+// their existing relative order from ROUTE_REGISTRY.
+export type NavGroup =
+  | "Overview"
+  | "Receiving"
+  | "Outbound"
+  | "Transfers & Inspection"
+  | "Approvals"
+  | "Master Data"
+  | "Documents"
+  | "Reporting"
+  | "System"
+  | "Account"
+  | "Party Portal";
+
+export const NAV_GROUP_ORDER: readonly NavGroup[] = [
+  "Overview",
+  "Receiving",
+  "Outbound",
+  "Transfers & Inspection",
+  "Approvals",
+  "Master Data",
+  "Documents",
+  "Reporting",
+  "System",
+  "Account",
+  "Party Portal",
+];
+
 export interface RouteRegistryEntry {
   id: string;
   path: string;
@@ -21,6 +56,7 @@ export interface RouteRegistryEntry {
   capability: string;
   featureSpecs: readonly string[];
   launchStatus: RouteLaunchStatus;
+  group: NavGroup;
   offlineFeatureGated?: boolean;
 }
 
@@ -32,6 +68,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "none",
     featureSpecs: ["05-ui-shell-and-navigation"],
     launchStatus: "launch",
+    group: "Overview",
   },
   {
     id: "receiving",
@@ -40,6 +77,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "receiving.view",
     featureSpecs: ["07-incoming-receiving"],
     launchStatus: "launch",
+    group: "Receiving",
   },
   {
     id: "receiving-detail",
@@ -48,18 +86,22 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "receiving.view",
     featureSpecs: ["07-incoming-receiving"],
     launchStatus: "launch",
+    group: "Receiving",
   },
   {
-    // 2026-08-08: registry corrected from `/inventory` (05 design.md's
-    // original spec path) to `/pick-lists` (the path actually built).
-    // `05`'s own route table has not been updated to match — flagged in
-    // revision-log.md rather than silently left inconsistent.
+    // 2026-08-09: registry corrected back to `/inventory` — the standalone
+    // `/pick-lists` and `/outgoing-ledger` routes were merged into
+    // `inventory/page.tsx` (Pick Lists + Ledger tabs), matching `08` design.md
+    // §3's originally-approved route block. The 2026-08-08 note this replaces
+    // ("corrected from /inventory to /pick-lists") is superseded, not
+    // re-litigated — see revision-log.md.
     id: "inventory",
-    path: "/pick-lists",
+    path: "/inventory",
     surface: "office",
     capability: "pick_list.read",
     featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"],
     launchStatus: "launch",
+    group: "Outbound",
   },
   {
     id: "inventory-pick-list-execute",
@@ -68,6 +110,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "pick_list.execute",
     featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"],
     launchStatus: "launch",
+    group: "Outbound",
   },
   {
     id: "inventory-pick-list-dispatch",
@@ -76,6 +119,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "dispatch.execute",
     featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"],
     launchStatus: "launch",
+    group: "Outbound",
   },
   {
     // launchStatus corrected to "planned" 2026-08-08 — no /inspection page
@@ -90,6 +134,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
       "11-transfer-and-inspection",
     ],
     launchStatus: "planned",
+    group: "Transfers & Inspection",
   },
   {
     id: "inspection-detail",
@@ -102,6 +147,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
       "11-transfer-and-inspection",
     ],
     launchStatus: "planned",
+    group: "Transfers & Inspection",
   },
   {
     // Removed 2026-08-08: the standalone `/dispatch/[pick_list_id]` row
@@ -114,6 +160,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "documents.read",
     featureSpecs: ["10-pick-list-and-acknowledgement-receipt"],
     launchStatus: "planned",
+    group: "Documents",
   },
   {
     id: "approvals",
@@ -122,6 +169,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "fifo_override.approve",
     featureSpecs: ["09-approval-queue"],
     launchStatus: "launch",
+    group: "Approvals",
   },
   {
     id: "sync",
@@ -131,6 +179,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     featureSpecs: ["03-offline-mode-and-client-storage"],
     launchStatus: "planned",
     offlineFeatureGated: true,
+    group: "System",
   },
   {
     // 2026-08-08: corrected `transfers.read` -> `transfer.view` (singular).
@@ -144,6 +193,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "transfer.view",
     featureSpecs: ["11-transfer-and-inspection"],
     launchStatus: "launch",
+    group: "Transfers & Inspection",
   },
   {
     // 2026-08-08: corrected from `/parties` to the actually-built
@@ -154,6 +204,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "parties.read",
     featureSpecs: ["06-party-and-item-enrollment"],
     launchStatus: "launch",
+    group: "Master Data",
   },
   {
     id: "items",
@@ -162,6 +213,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "items.read",
     featureSpecs: ["06-party-and-item-enrollment"],
     launchStatus: "launch",
+    group: "Master Data",
   },
   {
     id: "locations",
@@ -170,6 +222,16 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "locations.read",
     featureSpecs: ["06-party-and-item-enrollment"],
     launchStatus: "launch",
+    group: "Master Data",
+  },
+  {
+    id: "billing-pricing",
+    path: "/billing-pricing",
+    surface: "office",
+    capability: "reporting.financial_read",
+    featureSpecs: ["12-vmi-billing", "13-trading-orders-and-pricing"],
+    launchStatus: "planned",
+    group: "Reporting",
   },
   {
     id: "reports",
@@ -178,24 +240,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "reporting.read",
     featureSpecs: ["16-reporting-and-analytics"],
     launchStatus: "planned",
-  },
-  {
-    // 2026-08-08: was built but never registered, so it was unreachable
-    // from navigation entirely (a real gap, not a naming mismatch).
-    id: "incoming-ledger",
-    path: "/incoming-ledger",
-    surface: "office",
-    capability: "receiving.confirm",
-    featureSpecs: ["07-incoming-receiving"],
-    launchStatus: "launch",
-  },
-  {
-    id: "outgoing-ledger",
-    path: "/outgoing-ledger",
-    surface: "office",
-    capability: "pick_list.read",
-    featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"],
-    launchStatus: "launch",
+    group: "Reporting",
   },
   {
     id: "profile",
@@ -204,6 +249,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "none",
     featureSpecs: ["21-user-profile-and-settings"],
     launchStatus: "launch",
+    group: "Account",
   },
   {
     id: "settings",
@@ -212,6 +258,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "users.read",
     featureSpecs: ["21-user-profile-and-settings"],
     launchStatus: "launch",
+    group: "Account",
   },
   {
     id: "portal",
@@ -220,6 +267,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "none",
     featureSpecs: ["22-parties-portal"],
     launchStatus: "planned",
+    group: "Party Portal",
   },
   {
     id: "portal-inventory",
@@ -228,6 +276,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "reporting.read",
     featureSpecs: ["22-parties-portal"],
     launchStatus: "planned",
+    group: "Party Portal",
   },
   {
     id: "portal-orders",
@@ -236,6 +285,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "pick_list.read",
     featureSpecs: ["22-parties-portal"],
     launchStatus: "planned",
+    group: "Party Portal",
   },
   {
     id: "portal-documents",
@@ -244,6 +294,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "documents.read",
     featureSpecs: ["22-parties-portal"],
     launchStatus: "planned",
+    group: "Party Portal",
   },
   {
     id: "portal-notifications",
@@ -252,6 +303,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "notifications.read",
     featureSpecs: ["22-parties-portal"],
     launchStatus: "planned",
+    group: "Party Portal",
   },
   {
     id: "portal-labels",
@@ -260,5 +312,6 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "shipment_labels.generate",
     featureSpecs: ["22-parties-portal"],
     launchStatus: "planned",
+    group: "Party Portal",
   },
 ];

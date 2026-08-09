@@ -68,7 +68,7 @@ describe("lib/shell/active-route — resolveActiveRouteId (R3.6, design.md §5)"
 
   it("strips a query string before matching", async () => {
     const { resolveActiveRouteId } = await import("../active-route");
-    expect(resolveActiveRouteId("/pick-lists?from=inventory")).toBe("inventory");
+    expect(resolveActiveRouteId("/inventory?tab=ledger")).toBe("inventory");
   });
 
   it("strips a hash fragment before matching", async () => {

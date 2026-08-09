@@ -57,7 +57,7 @@ The table below lists every authenticated route planned at launch. Each route na
 | `/settings` | office | `users.read` | `21-user-profile-and-settings` | Launch |
 | `/receiving` | floor | `receiving.view` | `07-incoming-receiving` | Launch |
 | `/receiving/[wrr_id]` | floor | `receiving.view` | `07-incoming-receiving` | Launch |
-| `/pick-lists` | office | `pick_list.read` | `08-outgoing-withdrawal-and-two-stage-commitment` | Launch |
+| `/inventory` | office | `pick_list.read` | `08-outgoing-withdrawal-and-two-stage-commitment` | Launch |
 | `/pick-lists/[pickListId]/pick` | floor | `pick_list.execute` | `08-outgoing-withdrawal-and-two-stage-commitment` | Launch |
 | `/pick-lists/[pickListId]/dispatch` | floor | `dispatch.execute` | `08-outgoing-withdrawal-and-two-stage-commitment` | Launch |
 | `/inspection` | shared | `inspection.perform` | `07-incoming-receiving`, `08-outgoing-withdrawal-and-two-stage-commitment`, `11-transfer-and-inspection` | Planned |
@@ -69,8 +69,6 @@ The table below lists every authenticated route planned at launch. Each route na
 | `/master-data/parties` | office | `parties.read` | `06-party-and-item-enrollment` | Launch |
 | `/master-data/items` | office | `items.read` | `06-party-and-item-enrollment` | Launch |
 | `/master-data/locations` | office | `locations.read` | `06-party-and-item-enrollment` | Launch |
-| `/incoming-ledger` | office | `receiving.confirm` | `07-incoming-receiving` | Launch |
-| `/outgoing-ledger` | office | `pick_list.read` | `08-outgoing-withdrawal-and-two-stage-commitment` | Launch |
 | `/billing-pricing` | office | `reporting.financial_read` | `12-vmi-billing`, `13-trading-orders-and-pricing` | Planned |
 | `/reports` | office | `reporting.read` | `16-reporting-and-analytics` | Planned |
 | `/portal` | party | none | `22-parties-portal` | Planned |
@@ -79,6 +77,8 @@ The table below lists every authenticated route planned at launch. Each route na
 | `/portal/documents` | party | `documents.read` | `22-parties-portal` | Planned |
 | `/portal/notifications` | party | `notifications.read` | `22-parties-portal` | Planned |
 | `/portal/labels` | party | `shipment_labels.generate` | `22-parties-portal` | Planned |
+
+**Fixed 2026-08-09: `/incoming-ledger` and `/outgoing-ledger` merged into their parent office pages; `/pick-lists` restored to `/inventory`.** The Product Owner corrected an earlier build mistake: the Incoming Ledger and Outgoing Ledger had been implemented as standalone top-level routes, but `07`'s and `08`'s own approved route blocks (design.md §3 in each) always specified them as part of `receiving/page.tsx` and `inventory/page.tsx` respectively — the standalone routes were never an approved deviation. Both standalone rows are removed from this table; the Incoming Ledger is now a "Ledger" tab on `/receiving` (`?tab=ledger`), and the Outgoing Ledger is now a "Ledger" tab on `/inventory` (`?tab=ledger`), alongside a "Pick Lists" tab holding the list of committed pick lists (formerly the standalone `/pick-lists` row, which is removed and superseded by this `/inventory` row — the 2026-08-08 note that had temporarily renamed this row to `/pick-lists` is superseded, not re-litigated). `/inventory` today holds only these two tabs; the item-selection/FIFO-allocation/pick-list-generation UI `08`'s design.md §3 originally described for this path is not yet built — see that spec's own 2026-08-09 note. The floor pick/dispatch execution routes (`/pick-lists/[pickListId]/pick`, `/pick-lists/[pickListId]/dispatch`) are unchanged and were not renamed or moved.
 
 **Fixed 2026-08-07: `/parties`, `/items`, and `/locations` route-gate correction.** These three rows previously required `parties.manage` / `items.manage` / `locations.manage` to reach the route at all. Per `02-rbac-roles`, the `.read` capability for each of these three resources is held broadly by `warehouse_staff`, `supervisor`, and `administrator`, while `.manage` is administrator-only (locations) or otherwise narrower than `.read` — so gating the route itself by `.manage` would have blocked every role RBAC intends to have read access from ever reaching the page. Corrected to gate all three routes by the `.read` capability instead; create/edit/deactivate actions inside each page remain gated by the corresponding `.manage` capability at the action level, per §8's Shared table, row-action, and filter/search contract (capability/row-state action gating — an action a session's capability doesn't cover is omitted, not disabled-and-visible). This is the same pattern already governing every other list screen in this design; `/parties` and `/items` had carried the same over-tight gate since before this session, and `/locations` inherited it on creation — both are fixed together here rather than leaving `/locations` consistent with a bug.
 
@@ -109,7 +109,7 @@ Rules:
 
 ### 3.3 Floor versus office shell behavior and outbound flow model
 
-**Outbound flow — no withdrawal request.** The outbound workflow in this system does not use a withdrawal-request document that later becomes a pick list. An office user selects items directly from Master Inventory, the system performs FIFO/FEFO allocation, and a committed pick list is generated directly (`pick_list.generate`, via the outbound withdrawal action — see `08`'s design.md for the exact route once the generation UI is built; not yet implemented, per the Planned status above). If the FIFO/FEFO allocation requires a non-standard lot, a FIFO override request is raised and must be approved through `/approvals` before the pick list is generated. The floor user then executes the committed pick list at `/pick-lists/[pickListId]/pick` (`pick_list.execute`), and dispatches it at `/pick-lists/[pickListId]/dispatch` (`dispatch.execute`). There is no intermediate "withdrawal request" *state* or document, and no navigation entry implying one. **Amendment (2026-08-08)**: this paragraph and the route table above were corrected to match the routes actually built (`/pick-lists/...`, not the originally-specified `/inventory/pick-list/...`) — `08`'s implementation used the `pick-lists` path and, separately, had adopted an unapproved `withdrawal.*` capability vocabulary in application code (fixed the same day, application-code-only, to use this table's already-approved `pick_list.*`/`dispatch.*` names — see revision-log.md). The rule itself is unchanged: the shell must never introduce a route or navigation label that implies a withdrawal-*request* model (a document that precedes and is later converted into a pick list) — `/pick-lists` naming the operational list of already-committed pick lists does not violate this, since no such precursor document or state exists anywhere in the system.
+**Outbound flow — no withdrawal request.** The outbound workflow in this system does not use a withdrawal-request document that later becomes a pick list. An office user selects items directly from Master Inventory, the system performs FIFO/FEFO allocation, and a committed pick list is generated directly (`pick_list.generate`, via the outbound withdrawal action — see `08`'s design.md for the exact route once the generation UI is built; not yet implemented, per the Planned status above). If the FIFO/FEFO allocation requires a non-standard lot, a FIFO override request is raised and must be approved through `/approvals` before the pick list is generated. The floor user then executes the committed pick list at `/pick-lists/[pickListId]/pick` (`pick_list.execute`), and dispatches it at `/pick-lists/[pickListId]/dispatch` (`dispatch.execute`). There is no intermediate "withdrawal request" *state* or document, and no navigation entry implying one. **Amendment (2026-08-08, superseded in part 2026-08-09)**: this paragraph and the route table above were corrected to match the routes actually built (`/pick-lists/[pickListId]/pick`, `/pick-lists/[pickListId]/dispatch` for the floor execution/dispatch steps) — `08`'s implementation used the `pick-lists` path for those two floor routes and, separately, had adopted an unapproved `withdrawal.*` capability vocabulary in application code (fixed the same day, application-code-only, to use this table's already-approved `pick_list.*`/`dispatch.*` names — see revision-log.md). **2026-08-09**: the office-side list of committed pick lists, which the 2026-08-08 note above had temporarily renamed to a standalone `/pick-lists` route, is restored to `/inventory` per `08`'s originally-approved route block — it is now a "Pick Lists" tab on `inventory/page.tsx`, alongside a "Ledger" tab (the former standalone `/outgoing-ledger`). Only the two floor execution/dispatch routes remain at the `/pick-lists/[pickListId]/...` path; the office list view does not live there anymore. The rule itself is unchanged: the shell must never introduce a route or navigation label that implies a withdrawal-*request* model (a document that precedes and is later converted into a pick list) — neither `/inventory` (an office hub naming the operational list of already-committed pick lists plus their ledger) nor `/pick-lists/[pickListId]/...` (the floor execution routes) violates this, since no such precursor document or state exists anywhere in the system.
 
 **Surface routing rules:**
 
@@ -117,7 +117,7 @@ Rules:
 | --- | --- | --- | --- | --- |
 | `/` | | | ✓ (added 2026-08-07 — general landing page, floor-first for floor sessions, office-tier for office and `"party"` sessions) | |
 | `/receiving`, `/receiving/[wrr_id]` | ✓ | | | |
-| `/pick-lists` | | ✓ | | |
+| `/inventory` | | ✓ | | |
 | `/pick-lists/[pickListId]/pick`, `/pick-lists/[pickListId]/dispatch` | ✓ | | | |
 | `/inspection`, `/inspection/[inspection_id]` | | | ✓ (floor-first layout) | |
 | `/documents` | | ✓ | | |
@@ -125,7 +125,6 @@ Rules:
 | `/sync` | ✓ | | | |
 | `/transfers` | | | ✓ (floor-first layout) | |
 | `/master-data/parties`, `/master-data/items`, `/master-data/locations` | | ✓ | | |
-| `/incoming-ledger`, `/outgoing-ledger` | | ✓ | | |
 | `/reports` | | ✓ | | |
 | `/portal`, `/portal/inventory`, `/portal/orders`, `/portal/documents`, `/portal/notifications`, `/portal/labels` | | | | ✓ (added 2026-08-06 — office-tier composition per the "party" bullet below, distinct column since `"party"` is its own `ShellSurface` value, not a relabeled `"office"`) |
 

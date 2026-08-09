@@ -204,7 +204,7 @@ export default async function DispatchConfirmationPage({
       {dispatchComplete && (
         <div className="sticky bottom-0 bg-brand-navy px-4 pb-6 pt-4 shadow-elevation-2">
           <Link
-            href="/pick-lists"
+            href="/inventory"
             className="flex h-16 w-full items-center justify-center rounded border-2 border-surface-white bg-brand-navy font-label text-body-md text-surface-white active:scale-[0.97] focus:outline-none focus:ring-4 focus:ring-brand-navy"
           >
             Return to Pick Lists

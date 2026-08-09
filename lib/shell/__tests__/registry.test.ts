@@ -76,9 +76,11 @@ const EXPECTED_ROUTES: Array<{
   { id: "root", path: "/", surface: "shared", capability: "none", featureSpecs: ["05-ui-shell-and-navigation"], launchStatus: "launch" },
   { id: "receiving", path: "/receiving", surface: "floor", capability: "receiving.view", featureSpecs: ["07-incoming-receiving"], launchStatus: "launch" },
   { id: "receiving-detail", path: "/receiving/[wrr_id]", surface: "floor", capability: "receiving.view", featureSpecs: ["07-incoming-receiving"], launchStatus: "launch" },
-  // 2026-08-08: corrected from /inventory + /inventory/pick-list/* to the
-  // routes actually built (/pick-lists/*) — see revision-log.md.
-  { id: "inventory", path: "/pick-lists", surface: "office", capability: "pick_list.read", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
+  // 2026-08-09: corrected back to /inventory — the standalone /pick-lists
+  // and /outgoing-ledger routes were merged into inventory/page.tsx (Pick
+  // Lists + Ledger tabs). The floor pick/dispatch detail routes stay at
+  // /pick-lists/[pickListId]/... unchanged. See revision-log.md.
+  { id: "inventory", path: "/inventory", surface: "office", capability: "pick_list.read", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
   { id: "inventory-pick-list-execute", path: "/pick-lists/[pickListId]/pick", surface: "floor", capability: "pick_list.execute", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
   { id: "inventory-pick-list-dispatch", path: "/pick-lists/[pickListId]/dispatch", surface: "floor", capability: "dispatch.execute", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
   { id: "inspection", path: "/inspection", surface: "shared", capability: "inspection.perform", featureSpecs: ["07-incoming-receiving", "08-outgoing-withdrawal-and-two-stage-commitment", "11-transfer-and-inspection"], launchStatus: "planned" },
@@ -93,8 +95,9 @@ const EXPECTED_ROUTES: Array<{
   { id: "parties", path: "/master-data/parties", surface: "office", capability: "parties.read", featureSpecs: ["06-party-and-item-enrollment"], launchStatus: "launch" },
   { id: "items", path: "/master-data/items", surface: "office", capability: "items.read", featureSpecs: ["06-party-and-item-enrollment"], launchStatus: "launch" },
   { id: "locations", path: "/master-data/locations", surface: "office", capability: "locations.read", featureSpecs: ["06-party-and-item-enrollment"], launchStatus: "launch" },
-  { id: "incoming-ledger", path: "/incoming-ledger", surface: "office", capability: "receiving.confirm", featureSpecs: ["07-incoming-receiving"], launchStatus: "launch" },
-  { id: "outgoing-ledger", path: "/outgoing-ledger", surface: "office", capability: "pick_list.read", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
+  // 2026-08-09: added — was already in 05's design.md route table (Planned)
+  // but had never been added to this registry. See revision-log.md.
+  { id: "billing-pricing", path: "/billing-pricing", surface: "office", capability: "reporting.financial_read", featureSpecs: ["12-vmi-billing", "13-trading-orders-and-pricing"], launchStatus: "planned" },
   { id: "reports", path: "/reports", surface: "office", capability: "reporting.read", featureSpecs: ["16-reporting-and-analytics"], launchStatus: "planned" },
   { id: "profile", path: "/profile", surface: "shared", capability: "none", featureSpecs: ["21-user-profile-and-settings"], launchStatus: "launch" },
   { id: "settings", path: "/settings", surface: "office", capability: "users.read", featureSpecs: ["21-user-profile-and-settings"], launchStatus: "launch" },
@@ -107,7 +110,7 @@ const EXPECTED_ROUTES: Array<{
 ];
 
 describe("lib/shell/registry — route catalog matches design.md §3.2 exactly (R3.1, R3.2)", () => {
-  it("exports ROUTE_REGISTRY with exactly the current 26 rows (no stale /dashboard, no extra/missing rows; 2026-08-08 amendment corrects paths to match what's actually built and adds /incoming-ledger, /outgoing-ledger)", async () => {
+  it("exports ROUTE_REGISTRY with exactly the current 25 rows (no stale /dashboard, no extra/missing rows; 2026-08-09 amendment removes the standalone /incoming-ledger and /outgoing-ledger rows — both merged into their parent office pages as tabs — restores /inventory as the withdrawal hub path, and adds the previously-missing /billing-pricing row)", async () => {
     const { ROUTE_REGISTRY } = await import("../registry");
     expect(Array.isArray(ROUTE_REGISTRY)).toBe(true);
     expect(ROUTE_REGISTRY).toHaveLength(EXPECTED_ROUTES.length);
