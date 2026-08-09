@@ -60,8 +60,8 @@ The table below lists every authenticated route planned at launch. Each route na
 | `/inventory` | office | `pick_list.read` | `08-outgoing-withdrawal-and-two-stage-commitment` | Launch |
 | `/pick-lists/[pickListId]/pick` | floor | `pick_list.execute` | `08-outgoing-withdrawal-and-two-stage-commitment` | Launch |
 | `/pick-lists/[pickListId]/dispatch` | floor | `dispatch.execute` | `08-outgoing-withdrawal-and-two-stage-commitment` | Launch |
-| `/inspection` | shared | `inspection.perform` | `07-incoming-receiving`, `08-outgoing-withdrawal-and-two-stage-commitment`, `11-transfer-and-inspection` | Planned |
-| `/inspection/[inspection_id]` | floor | `inspection.perform` | `07-incoming-receiving`, `08-outgoing-withdrawal-and-two-stage-commitment`, `11-transfer-and-inspection` | Planned |
+| `/inspection` | shared | `inspection.perform` | `07-incoming-receiving`, `08-outgoing-withdrawal-and-two-stage-commitment`, `11-transfer-and-inspection` | Launch |
+| `/inspection/[inspection_id]` | floor | `inspection.perform` | `07-incoming-receiving`, `08-outgoing-withdrawal-and-two-stage-commitment`, `11-transfer-and-inspection` | Launch |
 | `/documents` | office | `documents.read` | `10-pick-list-and-acknowledgement-receipt` | Planned |
 | `/approvals` | office | `fifo_override.approve` | `09-approval-queue` | Launch |
 | `/sync` | floor | none | `03-offline-mode-and-client-storage` | Planned (when offline feature enabled) |

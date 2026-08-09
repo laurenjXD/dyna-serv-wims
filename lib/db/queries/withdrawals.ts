@@ -35,6 +35,7 @@ export type DbLike = { select: (...args: any[]) => any };
 
 export type PickListRow = {
   id: string;
+  pickListNumber: string;
   status: string;
   customerPartyId: string;
   flowType: string;
@@ -124,6 +125,7 @@ export async function getPickList(
   const rows = (await db
     .select({
       id: pickLists.id,
+      pickListNumber: pickLists.pickListNumber,
       status: pickLists.status,
       customerPartyId: pickLists.customerPartyId,
       flowType: pickLists.flowType,

@@ -131,8 +131,8 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     group: "Outbound",
   },
   {
-    // launchStatus corrected to "planned" 2026-08-08 — no /inspection page
-    // has actually been built yet; this row was marked "launch" prematurely.
+    // launchStatus updated to "launch" 2026-08-09 — /inspection page and
+    // /inspection/[id] page are now built per spec 11 UI tasks.
     id: "inspection",
     path: "/inspection",
     surface: "shared",
@@ -142,7 +142,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
       "08-outgoing-withdrawal-and-two-stage-commitment",
       "11-transfer-and-inspection",
     ],
-    launchStatus: "planned",
+    launchStatus: "launch",
     group: "Transfers & Inspection",
   },
   {
@@ -155,7 +155,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
       "08-outgoing-withdrawal-and-two-stage-commitment",
       "11-transfer-and-inspection",
     ],
-    launchStatus: "planned",
+    launchStatus: "launch",
     group: "Transfers & Inspection",
   },
   {
@@ -181,12 +181,17 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     group: "Approvals",
   },
   {
+    // 2026-08-09: launchStatus updated to "launch" — /sync conflict review
+    // surface is now built per spec 03 design.md §6.6/§9.1. The surface is
+    // office-style (supervisor conflict review) even though the registry entry
+    // lists surface "floor" (the floor only shows a shell banner pointing here;
+    // the full conflict review UI is office-style per design.md §9).
     id: "sync",
     path: "/sync",
     surface: "floor",
     capability: "none",
     featureSpecs: ["03-offline-mode-and-client-storage"],
-    launchStatus: "planned",
+    launchStatus: "launch",
     offlineFeatureGated: true,
     group: "System",
   },
@@ -279,39 +284,48 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     group: "Account",
   },
   {
+    // 2026-08-09: launchStatus updated to "launch" — /portal hub page is now
+    // built per spec 22 design.md §3 (party surface, office-style glassmorphism).
     id: "portal",
     path: "/portal",
     surface: "party",
     capability: "none",
     featureSpecs: ["22-parties-portal"],
-    launchStatus: "planned",
+    launchStatus: "launch",
     group: "Party Portal",
   },
   {
+    // 2026-08-09: launchStatus updated to "launch" — /portal/inventory page
+    // built per spec 22 design.md §5 (VMI inventory-position view, read-only).
     id: "portal-inventory",
     path: "/portal/inventory",
     surface: "party",
     capability: "reporting.read",
     featureSpecs: ["22-parties-portal"],
-    launchStatus: "planned",
+    launchStatus: "launch",
     group: "Party Portal",
   },
   {
+    // 2026-08-09: launchStatus updated to "launch" — /portal/orders page
+    // built per spec 22 design.md §6 (Trading order/document history, read-only).
     id: "portal-orders",
     path: "/portal/orders",
     surface: "party",
     capability: "pick_list.read",
     featureSpecs: ["22-parties-portal"],
-    launchStatus: "planned",
+    launchStatus: "launch",
     group: "Party Portal",
   },
   {
+    // 2026-08-09: launchStatus updated to "launch" — /portal/documents page
+    // built per spec 22 design.md §7 (pick lists + acknowledgement receipts,
+    // read-only; VMI statements sub-task remains blocked on Task 1 gate).
     id: "portal-documents",
     path: "/portal/documents",
     surface: "party",
     capability: "documents.read",
     featureSpecs: ["22-parties-portal"],
-    launchStatus: "planned",
+    launchStatus: "launch",
     group: "Party Portal",
   },
   {

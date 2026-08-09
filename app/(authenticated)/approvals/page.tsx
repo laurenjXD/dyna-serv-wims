@@ -2,15 +2,34 @@
 //
 // Traceability:
 //   specs/09-approval-queue/design.md §7 (queue UI routes, office shell)
-//   specs/00-steering/brand-design-system.md (office surface, WCAG AA)
+//   specs/09-approval-queue/requirements.md R3 (queue filtering), R7 (audit/security)
+//   specs/00-steering/brand-design-system.md §2 (typography), §6 (office Level 1
+//     elevation: bg-white/75 backdrop-blur-md), §9 (office table pattern)
+//
+// Surface: Office. Capability gate: fifo_override.approve (supervisor, global scope).
+// Design.md §4: fifo_override.approve granted to supervisor only.
+// Offline: approval queue operations are Tier 2 — online only, never cached.
 
 import Link from "next/link";
+import { CheckCircle2, Clock } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { listPendingApprovalRequests } from "@/lib/db/queries/approvals";
+// TODO: wire to real query from approval_requests table (listPendingApprovalRequests
+// already implemented — integration under specs/09-approval-queue tasks.md §6)
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const PAGE_SIZE = 20;
+
+// ─── Status badge helpers ─────────────────────────────────────────────────────
+// Tokens sourced from tailwind.config.ts — no raw hex values.
+// brand-design-system.md §1.3:
+//   pending  → status-pending (amber)
+//   approved → status-available (green)
+//   rejected/expired/cancelled → status-held (red)
+//   consumed → status-neutral
 
 type ApprovalStatus =
   | "pending"
@@ -19,15 +38,6 @@ type ApprovalStatus =
   | "expired"
   | "cancelled"
   | "consumed";
-
-type ApprovalType = "fifo_override";
-
-const PAGE_SIZE = 20;
-
-// ─── Status badge helpers ─────────────────────────────────────────────────────
-// Tokens sourced from tailwind.config.ts — no raw hex values.
-// Note: brand-design-system.md §1.3 maps "approved" → status-available (green)
-// and "pending" → status-pending (amber). status-held covers rejected/expired/cancelled.
 
 const STATUS_LABELS: Record<ApprovalStatus, string> = {
   pending: "PENDING",
@@ -39,34 +49,90 @@ const STATUS_LABELS: Record<ApprovalStatus, string> = {
 };
 
 const STATUS_CLASSES: Record<ApprovalStatus, string> = {
-  // status-pending (amber) — "Pending, in-transit, under inspection" per §1.3
   pending: "bg-status-pending/10 text-status-pending",
-  // status-available (green) — "Available, passed inspection, approved" per §1.3
   approved: "bg-status-available/10 text-status-available",
-  // status-held (red) — "Held, failed, rejected" per §1.3
   rejected: "bg-status-held/10 text-status-held",
   expired: "bg-status-held/10 text-status-held",
   cancelled: "bg-status-held/10 text-status-held",
-  // status-neutral — "Depleted, on-hold, draft" per §1.3; consumed is terminal/neutral
   consumed: "bg-status-neutral/10 text-status-neutral",
 };
+
+type ApprovalType = "fifo_override";
 
 const TYPE_LABELS: Record<ApprovalType, string> = {
   fifo_override: "FIFO Override",
 };
 
+// Reason category labels — tasks.md §1 resolved categories.
+const REASON_CATEGORY_LABELS: Record<string, string> = {
+  customer_preference: "Customer Preference",
+  lot_condition: "Lot Condition",
+  partial_lot: "Partial Lot",
+  other: "Other",
+};
+
+// ─── Time helpers (server-side, computed at render time) ──────────────────────
+
+/** Returns a human-readable relative age: "just now", "5m ago", "2h ago", "3d ago". */
+function relativeTime(date: Date, now: Date = new Date()): string {
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60_000);
+  if (diffMins < 1) return "just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}d ago`;
+}
+
+/** Returns expiry countdown: "expired", "expires in 5m", "expires in 18h". */
+function expiryCountdown(expiryAt: Date, now: Date = new Date()): string {
+  const diffMs = expiryAt.getTime() - now.getTime();
+  if (diffMs <= 0) return "expired";
+  const diffMins = Math.floor(diffMs / 60_000);
+  if (diffMins < 60) return `expires in ${diffMins}m`;
+  const diffHours = Math.floor(diffMins / 60);
+  return `expires in ${diffHours}h`;
+}
+
+// ─── Snapshot helpers ─────────────────────────────────────────────────────────
+// FifoOverrideSnapshot shape per design.md §3 — JSONB so we guard narrowly.
+
+function getSnapshotItemLotRef(snapshot: unknown): string {
+  if (!snapshot || typeof snapshot !== "object") return "—";
+  const s = snapshot as Record<string, unknown>;
+  const itemCode = typeof s.item_code === "string" ? s.item_code : null;
+  const lotNumber = typeof s.lot_number === "string" ? s.lot_number : null;
+  if (itemCode && lotNumber) return `${itemCode} / ${lotNumber}`;
+  if (itemCode) return itemCode;
+  if (lotNumber) return lotNumber;
+  return "—";
+}
+
+/** Returns the reason category chip label from snapshot.reason or request.reason. */
+function getReasonCategoryLabel(reason: string | undefined | null): string {
+  if (!reason) return "—";
+  return REASON_CATEGORY_LABELS[reason] ?? reason;
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 interface PageProps {
-  searchParams: Promise<{ status?: string; type?: string; page?: string }>;
+  searchParams: Promise<{ status?: string; type?: string; sort?: string; page?: string }>;
 }
 
 export default async function ApprovalQueuePage({ searchParams }: PageProps) {
-  const { status: statusFilter, type: typeFilter, page: pageParam } = await searchParams;
+  const {
+    status: statusFilter,
+    type: typeFilter,
+    sort: sortParam,
+    page: pageParam,
+  } = await searchParams;
+
   const resolver = await createPageResolver();
 
-  // Gate on fifo_override.approve — reviewers only (supervisor role, global scope).
-  // design.md §4: fifo_override.approve is granted to supervisor only.
+  // Gate: fifo_override.approve required (supervisor, global scope).
+  // Not notFound — this route's existence is safe to disclose per design.md §7.
   const permResult = await requirePermission(resolver, "fifo_override.approve");
   if (permResult.kind !== "authorized") {
     return (
@@ -86,25 +152,34 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
   const currentPage = Math.max(1, Number(pageParam ?? "1") || 1);
   const offset = (currentPage - 1) * PAGE_SIZE;
 
-  // Resolve approvalType filter: URL param "type" maps to approvalType; "all"
-  // means no type filter. Only "fifo_override" is a registered type in v1.
+  // Type filter: URL param "type" maps to approvalType; "all" means no filter.
   const approvalType =
     typeFilter && typeFilter !== "all" ? typeFilter : undefined;
 
-  const { rows: filtered, total } = await listPendingApprovalRequests(db, {
+  // Sort param: "oldest" (default) or "newest"
+  const sortOrder = sortParam === "newest" ? "newest" : "oldest";
+
+  const { rows, total } = await listPendingApprovalRequests(db, {
     limit: PAGE_SIZE,
     offset,
     approvalType,
   });
 
+  // Client-side sort by age when "newest" is selected (query defaults oldest-first).
+  const sortedRows =
+    sortOrder === "newest" ? [...rows].reverse() : rows;
+
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const hasActiveFilter = approvalType !== undefined;
 
+  // Snapshot current time once for consistent relative-time rendering.
+  const now = new Date();
+
   return (
     <div className="mx-auto max-w-container">
-      {/* Page header — headline-md is Fira Sans SemiBold per §2 type scale */}
+      {/* Page header — text-headline-xl Fira Sans Bold per brand-design-system.md §2 */}
       <div>
-        <h1 className="font-heading font-semibold text-headline-md text-brand-navy">
+        <h1 className="font-heading font-bold text-headline-xl text-brand-navy">
           Approval Queue
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">
@@ -112,27 +187,10 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
         </p>
       </div>
 
-      {/* Filter bar — font-body text-body-md on select elements per brief */}
+      {/* Filter bar */}
       <div className="mt-6">
         <form method="GET" className="flex flex-wrap items-end gap-3">
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="status-filter"
-              className="font-label text-label text-text-grey"
-            >
-              Status
-            </label>
-            <select
-              id="status-filter"
-              name="status"
-              defaultValue={statusFilter ?? "pending"}
-              className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            >
-              <option value="pending">Pending</option>
-              <option value="all">All statuses</option>
-            </select>
-          </div>
-
+          {/* Type filter — v1: only fifo_override registered per requirements.md §3 */}
           <div className="flex flex-col gap-1">
             <label
               htmlFor="type-filter"
@@ -151,9 +209,47 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
             </select>
           </div>
 
+          {/* Status filter */}
+          <div className="flex flex-col gap-1">
+            <label
+              htmlFor="status-filter"
+              className="font-label text-label text-text-grey"
+            >
+              Status
+            </label>
+            <select
+              id="status-filter"
+              name="status"
+              defaultValue={statusFilter ?? "pending"}
+              className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            >
+              <option value="pending">Pending</option>
+              <option value="all">All statuses</option>
+            </select>
+          </div>
+
+          {/* Age sort */}
+          <div className="flex flex-col gap-1">
+            <label
+              htmlFor="sort-filter"
+              className="font-label text-label text-text-grey"
+            >
+              Age Sort
+            </label>
+            <select
+              id="sort-filter"
+              name="sort"
+              defaultValue={sortParam ?? "oldest"}
+              className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            >
+              <option value="oldest">Oldest first</option>
+              <option value="newest">Newest first</option>
+            </select>
+          </div>
+
           <button
             type="submit"
-            className="flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:transition-opacity motion-safe:duration-150"
           >
             Apply
           </button>
@@ -169,25 +265,31 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
         </form>
       </div>
 
-      {/* Queue table — Level 1 office elevation per brand-design-system.md §6 */}
-      <div className="mt-4 overflow-hidden rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1">
-        {filtered.length === 0 ? (
-          // Empty state — appears when no requests match filters or queue is empty
-          <div className="px-6 py-12 text-center">
+      {/* Queue table — Level 1 office elevation per brand-design-system.md §6:
+          bg-white/75 backdrop-blur-md (glassmorphism, office-only) */}
+      <div className="mt-4 overflow-hidden rounded-2xl border border-outline-variant/30 bg-white/75 backdrop-blur-md shadow-elevation-1">
+        {sortedRows.length === 0 ? (
+          /* Empty state — CheckCircle2 icon + copy */
+          <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
+            <CheckCircle2
+              size={40}
+              className="text-status-available"
+              aria-hidden="true"
+            />
             <p className="font-body text-body-md text-text-grey">
               {hasActiveFilter
                 ? "No approval requests match the current filters."
-                : "No approval requests in the queue."}
+                : "No pending approvals."}
             </p>
-            {hasActiveFilter && (
-              <p className="mt-2 font-body text-body-sm text-text-grey">
-                Try clearing the filters or check back later.
-              </p>
-            )}
             {!hasActiveFilter && (
-              <p className="mt-2 font-body text-body-sm text-text-grey">
+              <p className="font-body text-body-sm text-text-grey">
                 New requests appear here when warehousemen submit FIFO override
                 requests during picking.
+              </p>
+            )}
+            {hasActiveFilter && (
+              <p className="font-body text-body-sm text-text-grey">
+                Try clearing the filters or check back later.
               </p>
             )}
           </div>
@@ -196,21 +298,24 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
             <table className="w-full border-collapse">
               <thead>
                 <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                  {/* Epilogue SemiBold uppercase per brand-design-system.md §9 tables */}
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Reference #
-                  </th>
+                  {/* Epilogue SemiBold uppercase headers per brand-design-system.md §9 */}
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                     Type
                   </th>
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Requester
+                    Requested By
                   </th>
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Requested At
+                    Item / Lot
                   </th>
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Expires At
+                    Reason
+                  </th>
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                    Age
+                  </th>
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                    Expiry
                   </th>
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                     Status
@@ -219,46 +324,79 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/30">
-                {filtered.map((req) => {
+                {sortedRows.map((req) => {
                   const status = req.status as ApprovalStatus;
                   const approvalTypeCast = req.approvalType as ApprovalType;
+                  const itemLotRef = getSnapshotItemLotRef(req.targetSnapshot);
+                  const reasonLabel = getReasonCategoryLabel(req.reason);
+                  const age = relativeTime(req.createdAt, now);
+                  const expiry = expiryCountdown(req.expiryAt, now);
+                  const isExpired = req.expiryAt.getTime() <= now.getTime();
+
                   return (
                     <tr
                       key={req.id}
                       className="hover:bg-surface-light-grey/50"
                     >
-                      {/* Roboto Mono for reference numbers per §9 tables */}
-                      <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                        {req.requestNumber}
-                      </td>
+                      {/* Type — body text */}
                       <td className="px-4 py-3 font-body text-body-md text-on-surface">
                         {TYPE_LABELS[approvalTypeCast] ?? req.approvalType}
                       </td>
-                      <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                        {/* requesterUserId is available; requesterName requires a join not in this query */}
-                        <span className="font-mono text-mono-md">{req.requesterUserId}</span>
+
+                      {/* Requested By — Roboto Mono for user IDs per §9 */}
+                      <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
+                        {req.requesterUserId}
                       </td>
-                      <td className="px-4 py-3 font-body text-body-md text-text-grey">
-                        {req.createdAt.toLocaleString()}
+
+                      {/* Item / Lot reference — Roboto Mono for codes */}
+                      <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
+                        {itemLotRef}
                       </td>
-                      <td className="px-4 py-3 font-body text-body-md text-text-grey">
-                        {req.expiryAt.toLocaleString()}
-                      </td>
+
+                      {/* Reason category chip */}
                       <td className="px-4 py-3">
-                        {/* Status badge — radius-full, Epilogue SemiBold uppercase, §1.3 colors at /10 opacity */}
-                        <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase ${STATUS_CLASSES[status] ?? ""}`}
-                        >
-                          {STATUS_LABELS[status] ?? status.toUpperCase()}
+                        <span className="inline-flex items-center rounded-full bg-status-neutral/10 px-2 py-0.5 font-label text-label text-status-neutral uppercase tracking-[0.05em]">
+                          {reasonLabel}
                         </span>
                       </td>
+
+                      {/* Age — relative time with Clock icon */}
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center gap-1 font-body text-body-md text-text-grey">
+                          <Clock size={16} className="shrink-0" aria-hidden="true" />
+                          {age}
+                        </span>
+                      </td>
+
+                      {/* Expiry countdown — amber when soon, held-red when expired */}
+                      <td className="px-4 py-3 font-body text-body-md">
+                        <span
+                          className={
+                            isExpired
+                              ? "text-status-held"
+                              : "text-text-grey"
+                          }
+                        >
+                          {expiry}
+                        </span>
+                      </td>
+
+                      {/* Status badge — radius-full, §1.3 semantic colors */}
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase tracking-[0.05em] ${STATUS_CLASSES[status] ?? ""}`}
+                        >
+                          {STATUS_LABELS[status] ?? req.status.toUpperCase()}
+                        </span>
+                      </td>
+
+                      {/* Review action — h-11 (44px) office touch target */}
                       <td className="px-4 py-3 text-right">
-                        {/* Touch target ≥ 44px (h-11) per brand-design-system.md §3 */}
                         <Link
                           href={`/approvals/${req.id}`}
-                          className="inline-flex h-11 items-center font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                          className="inline-flex h-11 items-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:transition-opacity motion-safe:duration-150"
                         >
-                          View
+                          Review
                         </Link>
                       </td>
                     </tr>
@@ -279,7 +417,11 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
           <div className="flex gap-2">
             {currentPage > 1 && (
               <Link
-                href={`/approvals?${new URLSearchParams({ ...(typeFilter ? { type: typeFilter } : {}), page: String(currentPage - 1) })}`}
+                href={`/approvals?${new URLSearchParams({
+                  ...(typeFilter ? { type: typeFilter } : {}),
+                  ...(sortParam ? { sort: sortParam } : {}),
+                  page: String(currentPage - 1),
+                })}`}
                 className="inline-flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
               >
                 Previous
@@ -287,7 +429,11 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
             )}
             {currentPage < totalPages && (
               <Link
-                href={`/approvals?${new URLSearchParams({ ...(typeFilter ? { type: typeFilter } : {}), page: String(currentPage + 1) })}`}
+                href={`/approvals?${new URLSearchParams({
+                  ...(typeFilter ? { type: typeFilter } : {}),
+                  ...(sortParam ? { sort: sortParam } : {}),
+                  page: String(currentPage + 1),
+                })}`}
                 className="inline-flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
               >
                 Next
