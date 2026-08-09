@@ -66,7 +66,7 @@ export const alertRuleScopeEnum = pgEnum("alert_rule_scope", [
 ## `notifications` (design.md §3 "notifications")
 
 ```typescript
-import { pgTable, uuid, text, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, index, uniqueIndex } from "drizzle-orm/pg-core";
 import {
   notificationCategoryEnum,
   notificationSeverityEnum,
@@ -110,7 +110,7 @@ export const notifications = pgTable("notifications", {
   // design.md §4's "(event_id, recipient_id, channel, template_version)"
   // — that composite key is enforced on notification_deliveries instead,
   // where channel actually varies per row.
-  recipientEventUnique: index("notifications_recipient_event_unique")
+  recipientEventUnique: uniqueIndex("notifications_recipient_event_unique")
     .on(table.recipientUserId, table.sourceEventId, table.templateVersion),
   recipientUnreadIdx: index("notifications_recipient_status_idx")
     .on(table.recipientUserId, table.status),
