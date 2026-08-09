@@ -12,9 +12,21 @@ This replaces all prior brand documents. Where anything else conflicts with this
 ### 1.1 Brand colors
 | Token | Hex | Usage |
 |---|---|---|
-| `brand-navy` | `#002060` | Primary brand color. Sidebar background, logo, page headers, heavy-emphasis text on light backgrounds. |
-| `brand-royal-blue` | `#2E4094` | Secondary structural color. Secondary nav elements, section headings that aren't the primary page title. |
-| `brand-red` | `#E30613` | Accent/CTA only. Primary buttons, active nav state, key highlights. **Never used for status/semantic meaning** — see §1.3. |
+| `brand-navy` | `#002060` | Primary brand color. Sidebar background, logo, page headers, icon accents. |
+| `brand-royal-blue` | `#2E4094` | Secondary structural color. Secondary nav elements, chart series. |
+| `brand-red` | `#FF2929` | Accent/CTA only. Primary buttons, key highlights. Updated 2026-08-10 from `#E30613` to the product-owner-supplied palette below — same role, brighter red. **Never used for status/semantic meaning** — see §1.3. |
+
+### 1.1a Accent indigo scale (added 2026-08-10)
+
+Product-owner-supplied palette, backgrounds/icons/active-states only — **never text color** (see the text-color rule at the end of this section).
+
+| Token | Hex | Usage |
+|---|---|---|
+| `accent-indigo-50` | `#EBEAFF` | Lightest tint — icon-badge backgrounds on KPI/dashboard cards, subtle highlight fills. |
+| `accent-indigo-300` | `#9694FF` | Mid tone — secondary accents, hover states on indigo elements, chart secondary series. |
+| `accent-indigo-600` | `#3D3BF3` | Primary indigo accent — sidebar active-nav-item background (replaces `brand-red` there, giving the active state a distinct identity from CTA red), icon-badge foreground, primary chart bars. |
+
+**Text-color rule (reaffirmed 2026-08-10): headings, labels, and body copy are always `on-surface` or `text-grey` — never `brand-navy`, `brand-red`, `brand-royal-blue`, or any `accent-indigo-*` value.** Those colors are for backgrounds, icons, borders, active-state fills, and chart marks only. This keeps every page's actual reading text black/near-black regardless of how many accent colors a given screen uses elsewhere.
 
 ### 1.2 Neutrals
 | Token | Hex | Usage |
@@ -170,7 +182,7 @@ Floor devices are rugged mid-tier Android hardware (Zebra/Honeywell-class scanne
 
 **Touch/press feedback (floor) vs. hover (office) — these are not interchangeable.** Touchscreens don't have a meaningful hover state; a hover-triggered effect on tap can double-fire or feel laggy. Floor buttons get an immediate `active:` press state (scale to 0.97, no transition delay) instead of any `hover:` effect. Office/desktop components keep hover (§10).
 
-**Sidebar**: `brand-navy` background, white/70% opacity inactive labels, `brand-red` active-item background, Inter SemiBold 14px labels, real letter-mark logo (never an icon-font ligature rendered as text). **On floor screens, the sidebar collapses to a bottom tab bar or is hidden entirely during an active scan flow** — a persistent side rail is desktop real estate floor screens don't have to spare.
+**Sidebar**: `brand-navy` background, white/70% opacity inactive labels, `accent-indigo-600` active-item background (updated 2026-08-10 — office sidebar's active state is indigo, not `brand-red`, so it reads as a distinct navigation signal from CTA-red buttons elsewhere on the page), Inter SemiBold 14px labels, real letter-mark logo (never an icon-font ligature rendered as text). **On floor screens, the sidebar collapses to a bottom tab bar or is hidden entirely during an active scan flow** — a persistent side rail is desktop real estate floor screens don't have to spare. Floor tab bar's active state stays `brand-red` (unchanged) — this indigo/red split is office-sidebar-only.
 
 **Cards**: Office: Level 1 elevation. Floor: Level 2, solid, per §6.
 
@@ -180,7 +192,7 @@ Floor devices are rugged mid-tier Android hardware (Zebra/Honeywell-class scanne
 
 **Forms**: Inter Regular, `brand-navy` focus ring. Floor screens minimize form fields per §3's input-priority rule — every field that could instead be a scan or a single tap should be.
 
-**Dashboard / KPI cards** *(added 2026-08-09)*: Office screens that summarize data (Analytics/Reporting §16, dashboard landing views, Approval Queue overview) use a light `surface-light-grey` page background with `surface-white` KPI tiles at Level 1 elevation, `radius-md`, laid out in a responsive grid (`md:grid-cols-2 lg:grid-cols-3`+). Each tile: `label` (Inter SemiBold, uppercase, `text-grey`) above a `headline-lg`/`headline-xl` figure in Inter ExtraBold, with an optional small trend indicator using `status-available`/`status-held` (never bare red/green — pair with an ↑/↓ glyph, same color-not-alone rule as §1.3). `brand-red` is the one accent used sparingly for the single most important figure or chart series per view, not applied to every tile — this mirrors the reference dashboard's restraint of one accent color against a mostly neutral palette. Chart cards (line/bar) follow the same tile treatment; chart colors pull from the existing brand/status palette only — no new hex values introduced for data visualization (§13).
+**Dashboard / KPI cards** *(added 2026-08-09, updated 2026-08-10)*: Office screens that summarize data (Analytics/Reporting §16, dashboard landing views, Approval Queue overview) use a light `surface-light-grey` page background with `surface-white` KPI tiles at Level 1 elevation, `radius-md`, laid out in a responsive grid (`md:grid-cols-2 lg:grid-cols-3`+). Each tile: `label` (Inter SemiBold, uppercase, `text-grey`) above a `headline-lg`/`headline-xl` figure in Inter ExtraBold **in `on-surface`, never a brand color** (§1.1a's text-color rule), with a small leading icon in an `accent-indigo-50` badge (`accent-indigo-600` icon color) and an optional trend indicator using `status-available`/`status-held` (never bare red/green — pair with an ↑/↓ glyph, same color-not-alone rule as §1.3). `brand-red` remains the one CTA-red accent used sparingly for the single most important figure or chart series per view; `accent-indigo-600` is the default chart/icon accent everywhere else. Chart cards (line/bar) follow the same tile treatment; chart colors pull from the existing brand/status/accent-indigo palette only — no new hex values introduced for data visualization (§13).
 
 **Floor adaptation of the dashboard pattern**: floor screens never render a multi-tile KPI grid — that's an office-density pattern and violates §3's one-primary-action rule. Where a floor screen needs a single at-a-glance figure (e.g., "Items scanned today"), it gets one large `headline-xl` stat at the top of the existing card-list layout, not a grid, and it is never itself the primary tap target.
 

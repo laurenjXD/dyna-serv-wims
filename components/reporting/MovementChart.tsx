@@ -4,9 +4,10 @@
 // so this is split out from the server-rendered reports/page.tsx (same
 // pattern as any other client-only widget in an otherwise server page).
 //
-// brand-design-system.md §9 dashboard pattern (added 2026-08-09): chart
-// colors pull from the existing brand/status palette only, brand-red used
-// sparingly as the single highlighted series/bar.
+// brand-design-system.md §9 dashboard pattern: chart colors pull from the
+// existing brand/status/accent palette only, brand-red (#FF2929) used
+// sparingly as the single highlighted series/bar, accent-indigo-600
+// (#3D3BF3) for the rest.
 //
 // Inline hex below is the sanctioned §12 exception for SVG chart props
 // (recharts doesn't accept Tailwind classes) — every value here is an exact
@@ -61,7 +62,7 @@ export function MovementChart({ data }: { data: MovementChartDatum[] }) {
             {data.map((entry, index) => (
               <Cell
                 key={entry.date}
-                fill={index === data.length - 1 ? "#E30613" : "#002060"}
+                fill={index === data.length - 1 ? "#FF2929" : "#3D3BF3"}
               />
             ))}
           </Bar>

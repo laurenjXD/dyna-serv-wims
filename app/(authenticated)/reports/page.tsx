@@ -103,7 +103,7 @@ function KpiCard({ label, value, icon, subtext }: KpiCardProps) {
           )}
         </div>
         <span
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-navy/5 text-brand-navy"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-indigo-50 text-accent-indigo-600"
           aria-hidden="true"
         >
           {icon}

@@ -2,6 +2,20 @@
 
 Every merge conflict and major revision, dated, with the resolution. This is the audit trail for "why does the spec say X" when X isn't obvious from the doc alone.
 
+## Accent-indigo palette adopted; brand-red hex updated; text-color rule reaffirmed (2026-08-10)
+
+Product Owner supplied a specific 4-swatch palette (`#EBEAFF`, `#9694FF`, `#3D3BF3`, `#FF2929`) as a color-only refinement pass on top of the dashboard restyle above — explicit instruction was to recolor without restructuring ("keep the ui ux and the included kpi metrics, tables, and actions"), and to keep all heading/label/body text black regardless of the new accents.
+
+**`brand-design-system.md` §1.1**: `brand-red` hex changed from `#E30613` to `#FF2929` — same role (CTA/accent only), brighter red, exact PO-supplied value. **New §1.1a**: `accent-indigo-50`/`-300`/`-600` (`#EBEAFF`/`#9694FF`/`#3D3BF3`) added as a background/icon/active-state accent scale, with an explicit reaffirmed rule that these — and `brand-navy`/`brand-red`/`brand-royal-blue` — are never used as text color; headings/labels/body stay `on-surface`/`text-grey` always. `tailwind.config.ts` updated to match (`brand-red` value changed, three new `accent-indigo-*` color tokens added).
+
+**Applied to**: dashboard (`/`) and reports (`/reports`) KPI-card icon badges (`bg-brand-navy/5 text-brand-navy` → `bg-accent-indigo-50 text-accent-indigo-600`); `MovementChart.tsx`'s bar fill (`#002060` → `#3D3BF3`, highlighted last bar `#E30613` → `#FF2929`); `ShellNavigation.tsx`'s office sidebar active-nav-item background (`bg-brand-red` → `bg-accent-indigo-600`) — gives the sidebar's active state a distinct identity from CTA-red buttons elsewhere on the same page. Floor tab bar's active state is unchanged (`brand-red`) — this office-sidebar/floor-tab-bar split is deliberate, not an oversight.
+
+**Known accessibility finding, not fixed, flagged for the Product Owner**: white text on the new `#FF2929` red computes to **~3.75:1 contrast**, below the §1.5 office AA minimum (4.5:1 for normal text) and well below the §1.5 floor AAA minimum (7:1) for any time-critical floor button using this color. The prior `#E30613` passed AA (~4.88:1) but not AAA either. This wasn't fixed unilaterally because the PO supplied this exact hex intentionally; options are (a) darken the red slightly while staying visually close to the swatch, (b) switch button label text to `on-surface`/black on red backgrounds instead of white, or (c) accept AA-only compliance and document floor primary buttons should avoid this red for time-critical actions. No button text color was changed in this pass — flagging only.
+
+No `Status` header changed — `brand-design-system.md` remains Approved.
+
+Verified: `tsc --noEmit` clean (same pre-existing, unrelated `playwright.config.ts` error only); 1221/1221 unit tests pass.
+
 ## Diagonal-cut motif retired app-wide (2026-08-09)
 
 Follow-up to the same-day dashboard restyle above — the Product Owner asked for the diagonal-cut clip-path (`brand-design-system.md` §7, previously applied to office primary CTA buttons) removed everywhere, as a final cleanup pass on the flat/modern direction. The angular cut corner read as a leftover brochure-era accent once the rest of the UI moved to plain rounded cards and buttons.

@@ -23,7 +23,13 @@ const config: Config = {
         // §1.1 Brand colors
         "brand-navy": "#002060",
         "brand-royal-blue": "#2E4094",
-        "brand-red": "#E30613",
+        "brand-red": "#FF2929",
+        // §1.1a Accent indigo scale (added 2026-08-10, product-owner-supplied
+        // palette) — backgrounds/icons/active-states only, never text color
+        // (§2's text-color rule: headings/body/labels always on-surface/text-grey).
+        "accent-indigo-50": "#EBEAFF",
+        "accent-indigo-300": "#9694FF",
+        "accent-indigo-600": "#3D3BF3",
         // §1.2 Neutrals
         "text-grey": "#555555",
         "surface-white": "#FFFFFF",

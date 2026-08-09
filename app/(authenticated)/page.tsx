@@ -193,7 +193,7 @@ function QueueCard({
         <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
           {label}
         </p>
-        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-navy/5 text-brand-navy">
+        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-indigo-50 text-accent-indigo-600">
           <Icon size={18} aria-hidden="true" />
         </span>
       </div>

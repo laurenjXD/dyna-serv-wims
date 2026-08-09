@@ -127,7 +127,7 @@ function NavLink({
         transition-colors duration-150
         focus-visible:ring-2 focus-visible:ring-white focus:outline-none
         ${isActive
-          ? "bg-brand-red text-white shadow-elevation-1"
+          ? "bg-accent-indigo-600 text-white shadow-elevation-1"
           : "text-white/70 hover:bg-white/10 hover:text-white"}`}
     >
       <Icon size={16} aria-hidden="true" />
