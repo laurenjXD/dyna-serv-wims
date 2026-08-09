@@ -50,7 +50,10 @@ const receivingOnlyContext: Pick<AuthorizationContext, "grants"> = {
 
 const officeContext: Pick<AuthorizationContext, "grants"> = {
   grants: [
-    { resource: "inventory", action: "read", scopeKind: "global" },
+    // 2026-08-08: corrected from "inventory.read" -- the "/pick-lists" route
+    // (registry id "inventory") requires "pick_list.read", not "inventory.read".
+    // See revision-log.md.
+    { resource: "pick_list", action: "read", scopeKind: "global" },
     { resource: "documents", action: "read", scopeKind: "global" },
   ],
 };
@@ -90,15 +93,20 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
 
   it("omits nav entries the context has no grant for (R3.4 — hidden, not disabled)", () => {
     render(
-      <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" />,
+      <ShellNavigation tier="office" context={officeContext} currentPath="/pick-lists" />,
     );
-    // officeContext holds inventory.read and documents.read only; it does
+    // officeContext holds pick_list.read and documents.read only; it does
     // NOT hold fifo_override.approve (/approvals) or parties.read
-    // (/parties) — those entries must not render at all.
+    // (/master-data/parties) — those entries must not render at all.
+    // `/documents` itself is `launchStatus: "planned"` (not yet built), so
+    // even though documents.read is granted, that entry is correctly
+    // omitted too — asserting on `/outgoing-ledger` instead (also
+    // pick_list.read, and `launchStatus: "launch"`) to keep this test
+    // proving "granted AND launched -> visible", not just "granted".
     expect(screen.queryByTestId("nav-entry-approvals")).not.toBeInTheDocument();
     expect(screen.queryByTestId("nav-entry-parties")).not.toBeInTheDocument();
     expect(screen.getByTestId("nav-entry-inventory")).toBeInTheDocument();
-    expect(screen.getByTestId("nav-entry-documents")).toBeInTheDocument();
+    expect(screen.getByTestId("nav-entry-outgoing-ledger")).toBeInTheDocument();
   });
 
   it("marks only the resolved active entry with aria-current='page', including for a dynamic-segment path (R3.6/R3.7)", () => {

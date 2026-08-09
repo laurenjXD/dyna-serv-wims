@@ -32,7 +32,13 @@ export default async function OutgoingLedgerPage() {
   const resolver = await createPageResolver();
 
   // Gate: withdrawal.view required to view the outgoing ledger (R9.1, R10.1).
-  const permResult = await requirePermission(resolver, "withdrawal.view");
+  // 2026-08-08: "withdrawal.view" -> "pick_list.read". "withdrawal.*" was
+  // never seeded in any migration and directly contradicts 05's explicit
+  // rule against introducing a withdrawal-request naming model — an
+  // unjustified capability, not a deliberate naming choice (unlike 11's
+  // singular `transfer.*`, which 0014 documents as intentional). See
+  // revision-log.md.
+  const permResult = await requirePermission(resolver, "pick_list.read");
   if (permResult.kind !== "authorized") {
     notFound();
   }

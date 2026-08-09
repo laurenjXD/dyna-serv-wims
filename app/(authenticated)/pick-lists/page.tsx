@@ -48,7 +48,8 @@ export default async function PickListsPage() {
   const resolver = await createPageResolver();
 
   // Gate: withdrawal.view required to list pick lists.
-  const permResult = await requirePermission(resolver, "withdrawal.view");
+  // 2026-08-08: "withdrawal.view" -> "pick_list.read" — see outgoing-ledger/page.tsx's note.
+  const permResult = await requirePermission(resolver, "pick_list.read");
   if (permResult.kind !== "authorized") {
     notFound();
   }

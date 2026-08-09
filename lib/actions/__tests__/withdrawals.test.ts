@@ -111,28 +111,31 @@ function makeResolver(
   };
 }
 
-// Supervisor — has withdrawal.request, withdrawal.execute, withdrawal.approve
+// Supervisor — has pick_list.generate, dispatch.execute, pick_list.read.
+// 2026-08-08: fixture corrected from the invented "withdrawal" resource
+// (never seeded, contradicted 05's explicit no-withdrawal-model rule) to
+// the already-approved 05/02 capability vocabulary the app code now
+// actually checks — see revision-log.md.
 const supervisorContext: AuthorizationContext = {
   userId: "user-uuid-supervisor",
   profileStatus: "active",
   activeRoleKeys: ["supervisor"],
   grants: [
-    { resource: "withdrawal", action: "request", scopeKind: "global" },
-    { resource: "withdrawal", action: "execute", scopeKind: "global" },
-    { resource: "withdrawal", action: "approve", scopeKind: "global" },
-    { resource: "withdrawal", action: "view", scopeKind: "global" },
+    { resource: "pick_list", action: "generate", scopeKind: "global" },
+    { resource: "dispatch", action: "execute", scopeKind: "global" },
+    { resource: "pick_list", action: "read", scopeKind: "global" },
   ],
   partyScopes: [],
 };
 
-// Warehouse staff — has withdrawal.execute and withdrawal.view; NOT withdrawal.request
+// Warehouse staff — has dispatch.execute and pick_list.read; NOT pick_list.generate
 const warehouseStaffContext: AuthorizationContext = {
   userId: "user-uuid-staff",
   profileStatus: "active",
   activeRoleKeys: ["warehouse_staff"],
   grants: [
-    { resource: "withdrawal", action: "execute", scopeKind: "global" },
-    { resource: "withdrawal", action: "view", scopeKind: "global" },
+    { resource: "dispatch", action: "execute", scopeKind: "global" },
+    { resource: "pick_list", action: "read", scopeKind: "global" },
   ],
   partyScopes: [],
 };

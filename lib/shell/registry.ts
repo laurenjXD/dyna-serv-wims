@@ -50,30 +50,36 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     launchStatus: "launch",
   },
   {
+    // 2026-08-08: registry corrected from `/inventory` (05 design.md's
+    // original spec path) to `/pick-lists` (the path actually built).
+    // `05`'s own route table has not been updated to match — flagged in
+    // revision-log.md rather than silently left inconsistent.
     id: "inventory",
-    path: "/inventory",
+    path: "/pick-lists",
     surface: "office",
-    capability: "inventory.read",
+    capability: "pick_list.read",
     featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"],
     launchStatus: "launch",
   },
   {
-    id: "inventory-pick-list-new",
-    path: "/inventory/pick-list/new",
-    surface: "office",
-    capability: "pick_list.generate",
-    featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"],
-    launchStatus: "launch",
-  },
-  {
-    id: "inventory-pick-list-detail",
-    path: "/inventory/pick-list/[pick_list_id]",
+    id: "inventory-pick-list-execute",
+    path: "/pick-lists/[pickListId]/pick",
     surface: "floor",
     capability: "pick_list.execute",
     featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"],
     launchStatus: "launch",
   },
   {
+    id: "inventory-pick-list-dispatch",
+    path: "/pick-lists/[pickListId]/dispatch",
+    surface: "floor",
+    capability: "dispatch.execute",
+    featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"],
+    launchStatus: "launch",
+  },
+  {
+    // launchStatus corrected to "planned" 2026-08-08 — no /inspection page
+    // has actually been built yet; this row was marked "launch" prematurely.
     id: "inspection",
     path: "/inspection",
     surface: "shared",
@@ -83,7 +89,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
       "08-outgoing-withdrawal-and-two-stage-commitment",
       "11-transfer-and-inspection",
     ],
-    launchStatus: "launch",
+    launchStatus: "planned",
   },
   {
     id: "inspection-detail",
@@ -95,23 +101,19 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
       "08-outgoing-withdrawal-and-two-stage-commitment",
       "11-transfer-and-inspection",
     ],
-    launchStatus: "launch",
+    launchStatus: "planned",
   },
   {
-    id: "dispatch-detail",
-    path: "/dispatch/[pick_list_id]",
-    surface: "floor",
-    capability: "dispatch.execute",
-    featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"],
-    launchStatus: "launch",
-  },
-  {
+    // Removed 2026-08-08: the standalone `/dispatch/[pick_list_id]` row
+    // that used to be here was never built. Dispatch actually lives at
+    // `/pick-lists/[pickListId]/dispatch` — see the "inventory-pick-list-
+    // dispatch" entry above. See revision-log.md.
     id: "documents",
     path: "/documents",
     surface: "office",
     capability: "documents.read",
     featureSpecs: ["10-pick-list-and-acknowledgement-receipt"],
-    launchStatus: "launch",
+    launchStatus: "planned",
   },
   {
     id: "approvals",
@@ -127,20 +129,27 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     surface: "floor",
     capability: "none",
     featureSpecs: ["03-offline-mode-and-client-storage"],
-    launchStatus: "launch",
+    launchStatus: "planned",
     offlineFeatureGated: true,
   },
   {
+    // 2026-08-08: corrected `transfers.read` -> `transfer.view` (singular).
+    // 0014_transfer_rls_policies.sql deliberately seeds a singular `transfer`
+    // resource as "the authoritative capability vocabulary for this
+    // feature's RLS surface per design.md §5" -- this row was simply never
+    // updated to match when that decision was made. See revision-log.md.
     id: "transfers",
     path: "/transfers",
     surface: "shared",
-    capability: "transfers.read",
+    capability: "transfer.view",
     featureSpecs: ["11-transfer-and-inspection"],
     launchStatus: "launch",
   },
   {
+    // 2026-08-08: corrected from `/parties` to the actually-built
+    // `/master-data/parties` — see revision-log.md.
     id: "parties",
-    path: "/parties",
+    path: "/master-data/parties",
     surface: "office",
     capability: "parties.read",
     featureSpecs: ["06-party-and-item-enrollment"],
@@ -148,7 +157,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
   },
   {
     id: "items",
-    path: "/items",
+    path: "/master-data/items",
     surface: "office",
     capability: "items.read",
     featureSpecs: ["06-party-and-item-enrollment"],
@@ -156,7 +165,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
   },
   {
     id: "locations",
-    path: "/locations",
+    path: "/master-data/locations",
     surface: "office",
     capability: "locations.read",
     featureSpecs: ["06-party-and-item-enrollment"],
@@ -169,6 +178,24 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "reporting.read",
     featureSpecs: ["16-reporting-and-analytics"],
     launchStatus: "planned",
+  },
+  {
+    // 2026-08-08: was built but never registered, so it was unreachable
+    // from navigation entirely (a real gap, not a naming mismatch).
+    id: "incoming-ledger",
+    path: "/incoming-ledger",
+    surface: "office",
+    capability: "receiving.confirm",
+    featureSpecs: ["07-incoming-receiving"],
+    launchStatus: "launch",
+  },
+  {
+    id: "outgoing-ledger",
+    path: "/outgoing-ledger",
+    surface: "office",
+    capability: "pick_list.read",
+    featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"],
+    launchStatus: "launch",
   },
   {
     id: "profile",

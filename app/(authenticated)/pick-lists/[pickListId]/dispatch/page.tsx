@@ -47,7 +47,9 @@ export default async function DispatchConfirmationPage({
   const resolver = await createPageResolver();
 
   // Gate: withdrawal.execute — floor staff / warehouse operator capability.
-  const permResult = await requirePermission(resolver, "withdrawal.execute");
+  // 2026-08-08: "withdrawal.execute" -> "dispatch.execute" (05's already-approved
+  // capability for this exact route) — see outgoing-ledger/page.tsx's note.
+  const permResult = await requirePermission(resolver, "dispatch.execute");
   if (permResult.kind !== "authorized") {
     notFound();
   }

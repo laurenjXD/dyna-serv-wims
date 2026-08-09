@@ -57,19 +57,20 @@ The table below lists every authenticated route planned at launch. Each route na
 | `/settings` | office | `users.read` | `21-user-profile-and-settings` | Launch |
 | `/receiving` | floor | `receiving.view` | `07-incoming-receiving` | Launch |
 | `/receiving/[wrr_id]` | floor | `receiving.view` | `07-incoming-receiving` | Launch |
-| `/inventory` | office | `inventory.read` | `08-outgoing-withdrawal-and-two-stage-commitment` | Launch |
-| `/inventory/pick-list/new` | office | `pick_list.generate` | `08-outgoing-withdrawal-and-two-stage-commitment` | Launch |
-| `/inventory/pick-list/[pick_list_id]` | floor | `pick_list.execute` | `08-outgoing-withdrawal-and-two-stage-commitment` | Launch |
-| `/inspection` | shared | `inspection.perform` | `07-incoming-receiving`, `08-outgoing-withdrawal-and-two-stage-commitment`, `11-transfer-and-inspection` | Launch |
-| `/inspection/[inspection_id]` | floor | `inspection.perform` | `07-incoming-receiving`, `08-outgoing-withdrawal-and-two-stage-commitment`, `11-transfer-and-inspection` | Launch |
-| `/dispatch/[pick_list_id]` | floor | `dispatch.execute` | `08-outgoing-withdrawal-and-two-stage-commitment` | Launch |
-| `/documents` | office | `documents.read` | `10-pick-list-and-acknowledgement-receipt` | Launch |
+| `/pick-lists` | office | `pick_list.read` | `08-outgoing-withdrawal-and-two-stage-commitment` | Launch |
+| `/pick-lists/[pickListId]/pick` | floor | `pick_list.execute` | `08-outgoing-withdrawal-and-two-stage-commitment` | Launch |
+| `/pick-lists/[pickListId]/dispatch` | floor | `dispatch.execute` | `08-outgoing-withdrawal-and-two-stage-commitment` | Launch |
+| `/inspection` | shared | `inspection.perform` | `07-incoming-receiving`, `08-outgoing-withdrawal-and-two-stage-commitment`, `11-transfer-and-inspection` | Planned |
+| `/inspection/[inspection_id]` | floor | `inspection.perform` | `07-incoming-receiving`, `08-outgoing-withdrawal-and-two-stage-commitment`, `11-transfer-and-inspection` | Planned |
+| `/documents` | office | `documents.read` | `10-pick-list-and-acknowledgement-receipt` | Planned |
 | `/approvals` | office | `fifo_override.approve` | `09-approval-queue` | Launch |
-| `/sync` | floor | none | `03-offline-mode-and-client-storage` | Launch (when offline feature enabled) |
-| `/transfers` | shared | `transfers.read` | `11-transfer-and-inspection` | Launch |
-| `/parties` | office | `parties.read` | `06-party-and-item-enrollment` | Launch |
-| `/items` | office | `items.read` | `06-party-and-item-enrollment` | Launch |
-| `/locations` | office | `locations.read` | `06-party-and-item-enrollment` | Launch |
+| `/sync` | floor | none | `03-offline-mode-and-client-storage` | Planned (when offline feature enabled) |
+| `/transfers` | shared | `transfer.view` | `11-transfer-and-inspection` | Launch |
+| `/master-data/parties` | office | `parties.read` | `06-party-and-item-enrollment` | Launch |
+| `/master-data/items` | office | `items.read` | `06-party-and-item-enrollment` | Launch |
+| `/master-data/locations` | office | `locations.read` | `06-party-and-item-enrollment` | Launch |
+| `/incoming-ledger` | office | `receiving.confirm` | `07-incoming-receiving` | Launch |
+| `/outgoing-ledger` | office | `pick_list.read` | `08-outgoing-withdrawal-and-two-stage-commitment` | Launch |
 | `/billing-pricing` | office | `reporting.financial_read` | `12-vmi-billing`, `13-trading-orders-and-pricing` | Planned |
 | `/reports` | office | `reporting.read` | `16-reporting-and-analytics` | Planned |
 | `/portal` | party | none | `22-parties-portal` | Planned |
@@ -108,7 +109,7 @@ Rules:
 
 ### 3.3 Floor versus office shell behavior and outbound flow model
 
-**Outbound flow — no withdrawal request.** The outbound workflow in this system does not use a withdrawal-request document that later becomes a pick list. An office user selects items directly from Master Inventory (`/inventory`), the system performs FIFO/FEFO allocation, and a committed pick list is generated directly (`/inventory/pick-list/new` → `pick_list.generate`). If the FIFO/FEFO allocation requires a non-standard lot, a FIFO override request is raised and must be approved through `/approvals` before the pick list is generated. The floor user then executes the committed pick list at `/inventory/pick-list/[pick_list_id]` (`pick_list.execute`). There is no intermediate "withdrawal request" state, no route for it, and no navigation entry for it. The shell must never introduce a route or navigation label that implies a withdrawal-request model.
+**Outbound flow — no withdrawal request.** The outbound workflow in this system does not use a withdrawal-request document that later becomes a pick list. An office user selects items directly from Master Inventory, the system performs FIFO/FEFO allocation, and a committed pick list is generated directly (`pick_list.generate`, via the outbound withdrawal action — see `08`'s design.md for the exact route once the generation UI is built; not yet implemented, per the Planned status above). If the FIFO/FEFO allocation requires a non-standard lot, a FIFO override request is raised and must be approved through `/approvals` before the pick list is generated. The floor user then executes the committed pick list at `/pick-lists/[pickListId]/pick` (`pick_list.execute`), and dispatches it at `/pick-lists/[pickListId]/dispatch` (`dispatch.execute`). There is no intermediate "withdrawal request" *state* or document, and no navigation entry implying one. **Amendment (2026-08-08)**: this paragraph and the route table above were corrected to match the routes actually built (`/pick-lists/...`, not the originally-specified `/inventory/pick-list/...`) — `08`'s implementation used the `pick-lists` path and, separately, had adopted an unapproved `withdrawal.*` capability vocabulary in application code (fixed the same day, application-code-only, to use this table's already-approved `pick_list.*`/`dispatch.*` names — see revision-log.md). The rule itself is unchanged: the shell must never introduce a route or navigation label that implies a withdrawal-*request* model (a document that precedes and is later converted into a pick list) — `/pick-lists` naming the operational list of already-committed pick lists does not violate this, since no such precursor document or state exists anywhere in the system.
 
 **Surface routing rules:**
 
@@ -116,15 +117,15 @@ Rules:
 | --- | --- | --- | --- | --- |
 | `/` | | | ✓ (added 2026-08-07 — general landing page, floor-first for floor sessions, office-tier for office and `"party"` sessions) | |
 | `/receiving`, `/receiving/[wrr_id]` | ✓ | | | |
-| `/inventory`, `/inventory/pick-list/new` | | ✓ | | |
-| `/inventory/pick-list/[pick_list_id]` | ✓ | | | |
+| `/pick-lists` | | ✓ | | |
+| `/pick-lists/[pickListId]/pick`, `/pick-lists/[pickListId]/dispatch` | ✓ | | | |
 | `/inspection`, `/inspection/[inspection_id]` | | | ✓ (floor-first layout) | |
-| `/dispatch/[pick_list_id]` | ✓ | | | |
 | `/documents` | | ✓ | | |
 | `/approvals` | | ✓ | | |
 | `/sync` | ✓ | | | |
 | `/transfers` | | | ✓ (floor-first layout) | |
-| `/parties`, `/items` | | ✓ | | |
+| `/master-data/parties`, `/master-data/items`, `/master-data/locations` | | ✓ | | |
+| `/incoming-ledger`, `/outgoing-ledger` | | ✓ | | |
 | `/reports` | | ✓ | | |
 | `/portal`, `/portal/inventory`, `/portal/orders`, `/portal/documents`, `/portal/notifications`, `/portal/labels` | | | | ✓ (added 2026-08-06 — office-tier composition per the "party" bullet below, distinct column since `"party"` is its own `ShellSurface` value, not a relabeled `"office"`) |
 

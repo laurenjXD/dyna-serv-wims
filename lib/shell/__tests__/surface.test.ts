@@ -74,10 +74,10 @@ describe("lib/shell/surface — resolveRouteSurface (design.md §3.2/§5, regist
     expect(resolveRouteSurface("/receiving")).toBe("floor");
   });
 
-  it("returns 'office' for an office-declared route, including the corrected /parties/.read row", async () => {
+  it("returns 'office' for an office-declared route, including the corrected /master-data/parties/.read row", async () => {
     const { resolveRouteSurface } = await import("../surface");
-    expect(resolveRouteSurface("/parties")).toBe("office");
-    expect(resolveRouteSurface("/locations")).toBe("office");
+    expect(resolveRouteSurface("/master-data/parties")).toBe("office");
+    expect(resolveRouteSurface("/master-data/locations")).toBe("office");
   });
 
   it("returns 'shared' for the general landing page '/'", async () => {
