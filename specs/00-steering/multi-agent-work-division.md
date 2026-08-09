@@ -59,7 +59,7 @@ Two active tracks. One human collaborator per track. Read this before touching a
 
 ### Track 2 — Notifications, Billing & Pricing
 
-**Branch:** `main` (directly) or a feature branch merged to main
+**Branch:** `track-4-notifications-billing-pricing`
 **Human:** Lauren / second collaborator
 
 **Owns:**
