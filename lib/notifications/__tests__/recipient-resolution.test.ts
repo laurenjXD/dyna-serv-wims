@@ -104,4 +104,38 @@ describe("resolveRecipients (design.md §5 authorization intersection)", () => {
 
     expect(resolveRecipients(candidates, event)).toEqual([]);
   });
+
+  it("excludes an assigned_party-only grant holder from a global (null-partyId) event, even with the right capability", () => {
+    const event: NotificationSourceEvent = {
+      requiredCapability: { resource: "documents", action: "generate" },
+      partyId: null,
+      flowType: null,
+    };
+    const candidates: RecipientCandidate[] = [
+      {
+        userId: "user-7",
+        grants: [{ resource: "documents", action: "generate", scopeKind: "assigned_party" }],
+        partyScopes: [{ partyId: "party-1", flowType: "vmi" }],
+      },
+    ];
+
+    expect(resolveRecipients(candidates, event)).toEqual([]);
+  });
+
+  it("gate 2: unconditionally excludes an assigned_party scope match on a 'supplies' event even when a scope row explicitly claims flowType 'supplies' (defense-in-depth against a scope row that should never exist per 02 §3.2)", () => {
+    const event: NotificationSourceEvent = {
+      requiredCapability: { resource: "inventory", action: "read" },
+      partyId: "party-1",
+      flowType: "supplies",
+    };
+    const candidates: RecipientCandidate[] = [
+      {
+        userId: "user-8",
+        grants: [{ resource: "inventory", action: "read", scopeKind: "assigned_party" }],
+        partyScopes: [{ partyId: "party-1", flowType: "supplies" }],
+      },
+    ];
+
+    expect(resolveRecipients(candidates, event)).toEqual([]);
+  });
 });
