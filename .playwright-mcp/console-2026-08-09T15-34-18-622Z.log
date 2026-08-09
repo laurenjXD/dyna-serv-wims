@@ -1,0 +1,46 @@
+[   14480ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/:0
+[   14907ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ webpack-internal:///(pages-dir-browser)/./node_modules/react-dom/cjs/react-dom-client.development.js:28004
+[   15056ms] [LOG] [Client Instrumentation Hook] Slow execution detected: 57ms (Note: Code download overhead is not included in this measurement) @ webpack-internal:///(pages-dir-browser)/./node_modules/next/dist/lib/require-instrumentation-client.js:18
+[   15084ms] Error: Your project's URL and Key are required to create a Supabase client!
+
+Check your Supabase project's API settings to find these values
+
+https://supabase.com/dashboard/project/_/settings/api
+    at <unknown> (https://supabase.com/dashboard/project/_/settings/api)
+    at <unknown> (https://supabase.com/dashboard/project/_/settings/api)
+    at createServerClient (webpack-internal:///(middleware)/./node_modules/@supabase/ssr/dist/module/createServerClient.js:18:15)
+    at updateSession (webpack-internal:///(middleware)/./lib/supabase/middleware.ts:16:87)
+    at middleware (webpack-internal:///(middleware)/./middleware.ts:27:89)
+    at eval (webpack-internal:///(middleware)/./node_modules/next/dist/build/webpack/loaders/next-middleware-loader.js?absolutePagePath=D%3A%5CSchool-related%20docus%5Cdyna-serv%20wims%5Cdyna-serv%20wims%5Cmiddleware.ts&page=%2Fmiddleware&rootDir=D%3A%5CSchool-related%20docus%5Cdyna-serv%20wims%5Cdyna-serv%20wims&matchers=&preferredRegion=&middlewareConfig=e30%3D!:32:26)
+    at AsyncLocalStorage.run (node:async_hooks:346:14)
+    at eval (webpack-internal:///(middleware)/./node_modules/next/dist/esm/server/web/adapter.js:257:236)
+    at AsyncLocalStorage.run (node:async_hooks:346:14)
+    at eval (webpack-internal:///(middleware)/./node_modules/next/dist/esm/server/web/adapter.js:257:121)
+    at async adapter (webpack-internal:///(middleware)/./node_modules/next/dist/esm/server/web/adapter.js:212:16)
+    at async (file://D:\School-related docus\dyna-serv wims\dyna-serv wims\node_modules\next\dist\server\web\sandbox\sandbox.js:112:26)
+[   15067ms] [LOG] [HMR] connected @ webpack-internal:///(pages-dir-browser)/./node_modules/next/dist/client/dev/hot-reloader/pages/websocket.js:45
+[   17986ms] [WARNING] [Fast Refresh] performing full reload because your application had an unrecoverable error @ webpack-internal:///(pages-dir-browser)/./node_modules/next/dist/client/dev/hot-reloader/pages/hot-reloader-pages.js:347
+[   18217ms] [LOG] [Fast Refresh] rebuilding @ webpack-internal:///(pages-dir-browser)/./node_modules/next/dist/client/dev/hot-reloader/pages/hot-reloader-pages.js:206
+[   28698ms] [LOG] [Fast Refresh] rebuilding @ webpack-internal:///(pages-dir-browser)/./node_modules/next/dist/client/dev/hot-reloader/pages/hot-reloader-pages.js:206
+[   28754ms] [WARNING] [Fast Refresh] performing full reload because your application had an unrecoverable error @ webpack-internal:///(pages-dir-browser)/./node_modules/next/dist/client/dev/hot-reloader/pages/hot-reloader-pages.js:347
+[   30165ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/:0
+[   30498ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ webpack-internal:///(pages-dir-browser)/./node_modules/react-dom/cjs/react-dom-client.development.js:28004
+[   30532ms] [LOG] [Client Instrumentation Hook] Slow execution detected: 18ms (Note: Code download overhead is not included in this measurement) @ webpack-internal:///(pages-dir-browser)/./node_modules/next/dist/lib/require-instrumentation-client.js:18
+[   30540ms] Error: Your project's URL and Key are required to create a Supabase client!
+
+Check your Supabase project's API settings to find these values
+
+https://supabase.com/dashboard/project/_/settings/api
+    at <unknown> (https://supabase.com/dashboard/project/_/settings/api)
+    at <unknown> (https://supabase.com/dashboard/project/_/settings/api)
+    at createServerClient (webpack-internal:///(middleware)/./node_modules/@supabase/ssr/dist/module/createServerClient.js:18:15)
+    at updateSession (webpack-internal:///(middleware)/./lib/supabase/middleware.ts:16:87)
+    at middleware (webpack-internal:///(middleware)/./middleware.ts:27:89)
+    at eval (webpack-internal:///(middleware)/./node_modules/next/dist/build/webpack/loaders/next-middleware-loader.js?absolutePagePath=D%3A%5CSchool-related%20docus%5Cdyna-serv%20wims%5Cdyna-serv%20wims%5Cmiddleware.ts&page=%2Fmiddleware&rootDir=D%3A%5CSchool-related%20docus%5Cdyna-serv%20wims%5Cdyna-serv%20wims&matchers=&preferredRegion=&middlewareConfig=e30%3D!:32:26)
+    at AsyncLocalStorage.run (node:async_hooks:346:14)
+    at eval (webpack-internal:///(middleware)/./node_modules/next/dist/esm/server/web/adapter.js:257:236)
+    at AsyncLocalStorage.run (node:async_hooks:346:14)
+    at eval (webpack-internal:///(middleware)/./node_modules/next/dist/esm/server/web/adapter.js:257:121)
+    at async adapter (webpack-internal:///(middleware)/./node_modules/next/dist/esm/server/web/adapter.js:212:16)
+    at async (file://D:\School-related docus\dyna-serv wims\dyna-serv wims\node_modules\next\dist\server\web\sandbox\sandbox.js:112:26)
+[   30536ms] [LOG] [HMR] connected @ webpack-internal:///(pages-dir-browser)/./node_modules/next/dist/client/dev/hot-reloader/pages/websocket.js:45

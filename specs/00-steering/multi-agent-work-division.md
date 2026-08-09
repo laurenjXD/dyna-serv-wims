@@ -104,22 +104,36 @@ Two active tracks. One human collaborator per track. Read this before touching a
 
 If Track 2 needs a new migration or schema change, open a named request in `revision-log.md` under "Pending cross-track requests". Track 3 writes the migration and announces completion in the same log entry.
 
-### Git workflow
+### Git workflow & Revision Log Protocol
 
 ```sh
 Before starting any session:
   git fetch origin
-  git rebase origin/main          # if on a feature branch
-  git log origin/main --oneline -5  # check for new main commits
+  git rebase origin/main            # if on a feature branch
+  git log origin/main --oneline -5    # check for new main commits
+  # READ: last 10 entries of specs/00-steering/revision-log.md for new decisions/requests
+
+During session:
+  # Whenever a PO decision, spec amendment, or schema request is made:
+  # Append a dated entry in specs/00-steering/revision-log.md
 
 Before committing:
-  git status                      # no surprise files
+  git status                        # check for surprise/unintended files
   npx tsc --noEmit && npx vitest run && npm run build
-  git add <specific files>        # never git add -A blindly
+
+Committing (ALWAYS include revision-log.md if decisions/requests occurred):
+  git add specs/00-steering/revision-log.md <specific modified files>
+  git commit -m "feat(spec-nn): description + update revision log"
+  git push origin <your-track-branch>
+
+If ONLY committing a decision or cross-track request:
+  git add specs/00-steering/revision-log.md
+  git commit -m "docs(steering): record PO decision on <topic>"
+  git push origin <your-track-branch>
 
 Merging to main:
   PR from feature branch → main
-  Build must be green before merge
+  Build & tests must be green before merge
   No force-push to main, ever
 ```
 
@@ -129,6 +143,7 @@ Merging to main:
 feat(spec-nn): short description of what and why
 fix(spec-nn): short description
 test(spec-nn): short description
+docs(steering): short description of log/decision update
 ```
 
 ---
