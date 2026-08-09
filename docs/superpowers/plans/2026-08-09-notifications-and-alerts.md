@@ -459,6 +459,23 @@ describe("resolveRecipients (design.md §5 authorization intersection)", () => {
 
     expect(resolveRecipients([candidate, candidate], event)).toEqual([{ userId: "user-5" }]);
   });
+
+  it("excludes a null-flowType party scope from matching a 'supplies' event (02-rbac-roles/design.md: null flowType is not a bare wildcard, never matches supplies)", () => {
+    const event: NotificationSourceEvent = {
+      requiredCapability: { resource: "inventory", action: "read" },
+      partyId: "party-1",
+      flowType: "supplies",
+    };
+    const candidates: RecipientCandidate[] = [
+      {
+        userId: "user-6",
+        grants: [{ resource: "inventory", action: "read", scopeKind: "assigned_party" }],
+        partyScopes: [{ partyId: "party-1", flowType: null }],
+      },
+    ];
+
+    expect(resolveRecipients(candidates, event)).toEqual([]);
+  });
 });
 ```
 
@@ -518,7 +535,14 @@ function partyScopeMatches(
   return candidate.partyScopes.some(
     (scope) =>
       scope.partyId === event.partyId &&
-      (scope.flowType === null || scope.flowType === event.flowType),
+      // Mirrors 02-rbac-roles/design.md's has_party_scope match logic
+      // exactly: a null-flowType assignment is NOT a bare wildcard — it
+      // never matches a 'supplies' event, only vmi/trading/null. A single
+      // implementation slip here would leak Supplies-flow notifications
+      // through a VMI/Trading party assignment (design.md §3.4, acceptance
+      // criterion #7: party_user grants never expose internal Supplies data).
+      (scope.flowType === event.flowType ||
+        (scope.flowType === null && event.flowType !== "supplies")),
   );
 }
 
@@ -550,7 +574,7 @@ export function resolveRecipients(
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run lib/notifications/__tests__/recipient-resolution.test.ts`
-Expected: PASS, 5/5
+Expected: PASS, 6/6
 
 - [ ] **Step 5: Commit**
 
