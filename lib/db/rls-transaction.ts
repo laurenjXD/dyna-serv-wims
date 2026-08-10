@@ -62,8 +62,23 @@ export interface RlsClaimStatement {
 // The transaction-bound client is the ONLY place any SQL (claim-setting or
 // callback queries) can run. No pool-level or connection-level execute
 // method exists to call by mistake — see RlsConnection/RlsPool below.
+//
+// `db` is an additive, optional field (deliberately typed `unknown` here,
+// not `PostgresJsDatabase<...>`): this module stays driver-agnostic per its
+// own header comment, so it cannot import drizzle-orm/postgres-js or the
+// app's schema module without coupling the wrapper to one specific driver.
+// The concrete real implementation (lib/db/rls-pool.ts) always populates
+// this with a real `drizzle(txSql, { schema })` instance bound to the
+// transaction-scoped connection; callers narrow it to the app's actual
+// `PostgresJsDatabase<typeof schema>` type at the call site. Optional (not
+// required) so existing hand-rolled mocks that only implement `execute`
+// (e.g. lib/db/__tests__/rls-transaction.test.ts) remain valid without
+// modification — a mock pool that never populates `db` continues to
+// typecheck and continues to exercise every existing execute()-only
+// assertion unchanged.
 export interface TransactionBoundClient {
   execute(statement: unknown): Promise<unknown>;
+  db?: unknown;
 }
 
 export interface RlsConnection {

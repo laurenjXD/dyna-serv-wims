@@ -121,6 +121,7 @@ import {
   removePartyRole,
   updateParty,
 } from "../parties";
+import { mockRlsDeps } from "@/lib/db/__tests__/helpers/mock-rls";
 
 // ---------------------------------------------------------------------------
 // Resolver mock helpers (same pattern as lib/rbac/__tests__/guard.test.ts)
@@ -202,8 +203,7 @@ const validPartyInput = {
 
 describe("createParty — authorization (R6.1, design.md §4: parties.manage required)", () => {
   it("returns { ok: false, error: 'Forbidden' } when the resolver is unauthenticated (R6.1)", async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await createParty(unauthenticatedResolver(), {} as any, validPartyInput);
+    const result = await createParty(unauthenticatedResolver(), validPartyInput);
     expect(result.ok).toBe(false);
     if (!result.ok && "error" in result) {
       expect(result.error).toMatch(/forbidden|unauthorized|permission/i);
@@ -211,8 +211,7 @@ describe("createParty — authorization (R6.1, design.md §4: parties.manage req
   });
 
   it("returns { ok: false, error: 'Forbidden' } when the resolver is authenticated but lacks parties.manage (R6.1)", async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await createParty(forbiddenResolver(), {} as any, validPartyInput);
+    const result = await createParty(forbiddenResolver(), validPartyInput);
     expect(result.ok).toBe(false);
     if (!result.ok && "error" in result) {
       expect(typeof result.error).toBe("string");
@@ -228,9 +227,8 @@ describe("createParty — validation (R1.1-R1.3, design.md §5 Create)", () => {
 
     const result = await createParty(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       { name: "Acme Ltd" }, // no code
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -246,9 +244,8 @@ describe("createParty — validation (R1.1-R1.3, design.md §5 Create)", () => {
 
     const result = await createParty(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       { code: "PARTY-001" }, // no name
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -266,9 +263,8 @@ describe("createParty — success (R1.1, design.md §5 Create)", () => {
 
     const result = await createParty(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       validPartyInput,
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(true);
@@ -287,8 +283,6 @@ describe("updateParty — authorization (R6.1, design.md §4: parties.manage req
   it("returns forbidden when unauthenticated", async () => {
     const result = await updateParty(
       unauthenticatedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      {} as any,
       "party-1",
       validPartyInput,
       "2024-01-01T12:00:00.000Z",
@@ -299,8 +293,6 @@ describe("updateParty — authorization (R6.1, design.md §4: parties.manage req
   it("returns forbidden when lacking parties.manage", async () => {
     const result = await updateParty(
       forbiddenResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      {} as any,
       "party-1",
       validPartyInput,
       "2024-01-01T12:00:00.000Z",
@@ -323,11 +315,10 @@ describe("updateParty — stale-edit conflict (R2.4, design.md §5 Edit/deactiva
 
     const result = await updateParty(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "party-1",
       validPartyInput,
       "2024-01-01T12:00:00.000Z", // stale: older than the DB row
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -349,11 +340,10 @@ describe("updateParty — stale-edit conflict (R2.4, design.md §5 Edit/deactiva
 
     const result = await updateParty(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "party-1",
       validPartyInput,
       currentUpdatedAt,
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(true);
@@ -368,8 +358,6 @@ describe("deactivateParty — authorization (R6.1, design.md §4: parties.manage
   it("returns forbidden when unauthenticated", async () => {
     const result = await deactivateParty(
       unauthenticatedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      {} as any,
       "party-1",
     );
     expect(result.ok).toBe(false);
@@ -384,12 +372,11 @@ describe("deactivateParty — warn-not-block (R1.7, design.md §5 Edit/deactivat
 
     const result = await deactivateParty(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "party-1",
       {
         partyHasOperationalRecords: vi.fn().mockResolvedValue(true),
       },
+      mockRlsDeps(db).deps,
     );
 
     // Design.md §5: "evaluate impact... [but] historical records remain
@@ -406,12 +393,11 @@ describe("deactivateParty — warn-not-block (R1.7, design.md §5 Edit/deactivat
 
     const result = await deactivateParty(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "party-1",
       {
         partyHasOperationalRecords: vi.fn().mockResolvedValue(false),
       },
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(true);
@@ -426,8 +412,6 @@ describe("addPartyRole — authorization (R6.1, design.md §4: parties.manage re
   it("returns forbidden when unauthenticated", async () => {
     const result = await addPartyRole(
       unauthenticatedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      {} as any,
       "party-1",
       "vendor",
     );
@@ -439,8 +423,6 @@ describe("addPartyRole — role validation (R1.4, R1.5, design.md §5 Create ste
   it("returns { ok: false, error: '...' } when validatePartyRoleValue rejects the role (e.g. application-user role 'administrator')", async () => {
     const result = await addPartyRole(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      {} as any,
       "party-1",
       "administrator", // application-user role, not a business party role
     );
@@ -454,8 +436,6 @@ describe("addPartyRole — role validation (R1.4, R1.5, design.md §5 Create ste
   it("returns { ok: false, error: '...' } for an unrecognized role value", async () => {
     const result = await addPartyRole(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      {} as any,
       "party-1",
       "unknown_role",
     );
@@ -477,10 +457,9 @@ describe("addPartyRole — duplicate prevention (R1.4, design.md §2 party_roles
 
     const result = await addPartyRole(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "party-1",
       "vendor", // already present
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -504,10 +483,9 @@ describe("addPartyRole — duplicate prevention (R1.4, design.md §2 party_roles
 
     const result = await addPartyRole(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "party-1",
       "vendor", // not yet assigned
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(true);
@@ -518,12 +496,10 @@ describe("addPartyRole — duplicate prevention (R1.4, design.md §2 party_roles
 // removePartyRole
 // ---------------------------------------------------------------------------
 
-describe("removePartyRole — authorization (R6.1, design.md §4: parties.manage required)", () => {
+describe("removePartyRole — authorization (R1.4, design.md §5)", () => {
   it("returns forbidden when unauthenticated", async () => {
     const result = await removePartyRole(
       unauthenticatedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      {} as any,
       "party-1",
       "role-row-uuid-1",
     );
@@ -533,8 +509,6 @@ describe("removePartyRole — authorization (R6.1, design.md §4: parties.manage
   it("returns forbidden when lacking parties.manage", async () => {
     const result = await removePartyRole(
       forbiddenResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      {} as any,
       "party-1",
       "role-row-uuid-1",
     );
@@ -552,10 +526,9 @@ describe("removePartyRole — success (R1.4, design.md §5)", () => {
 
     const result = await removePartyRole(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "party-1",
       "role-row-uuid-1",
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(true);
@@ -571,8 +544,6 @@ describe("contactParty — authorization (R6.8, design.md §5a, requirements.md 
     const sendEmail = vi.fn();
     const result = await contactParty(
       unauthenticatedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      {} as any,
       "party-1",
       sendEmail,
     );
@@ -585,8 +556,6 @@ describe("contactParty — authorization (R6.8, design.md §5a, requirements.md 
     const sendEmail = vi.fn();
     const result = await contactParty(
       forbiddenResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      {} as any,
       "party-1",
       sendEmail,
     );
@@ -609,10 +578,10 @@ describe("contactParty — null email rejection (R1.9, design.md §5a step 2: re
 
     const result = await contactParty(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "party-1",
       sendEmail,
+      null,
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -637,10 +606,10 @@ describe("contactParty — null email rejection (R1.9, design.md §5a step 2: re
 
     const result = await contactParty(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "party-1",
       sendEmail,
+      null,
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -662,11 +631,10 @@ describe("contactParty — success (R1.9, design.md §5a)", () => {
 
     const result = await contactParty(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "party-1",
       sendEmail,
       "Please review the attached inventory report.",
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(true);
@@ -686,10 +654,10 @@ describe("contactParty — success (R1.9, design.md §5a)", () => {
 
     await contactParty(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "party-1",
       sendEmail,
+      null,
+      mockRlsDeps(db).deps,
     );
 
     // The payload passed to sendEmail must use the server-resolved email,
@@ -721,10 +689,10 @@ describe("contactParty — success (R1.9, design.md §5a)", () => {
     try {
       result = await contactParty(
         authorizedResolver(),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        db as any,
         "party-1",
         sendEmail,
+        null,
+        mockRlsDeps(db).deps,
       );
     } catch {
       threw = true;

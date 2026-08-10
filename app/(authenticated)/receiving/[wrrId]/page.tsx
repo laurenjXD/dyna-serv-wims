@@ -9,8 +9,11 @@
 // Surface: Office. Permission gate: receiving.confirm.
 //
 // Action buttons are shown conditionally by WRR status:
-//   staged_pending_arrival → "Start Receiving" (TODO: startReceiving action not yet in lib/actions/receiving.ts)
-//   receiving_in_progress  → "Scan Items" link + "Commit" button
+//   staged_pending_arrival → "Start Receiving"
+//   receiving_in_progress  → "Scan / Receive Items" link (per-line commit now
+//     happens on the floor scan screen — [wrrId]/receive/page.tsx — per
+//     design.md §9's 2026-08-10 per-line-commit reversal; this detail page no
+//     longer offers a whole-WRR commit action)
 //   confirmed              → "Print Receipt" link
 
 import Link from "next/link";
@@ -19,8 +22,9 @@ import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { getWrrDocument } from "@/lib/db/queries/receiving";
-import { commitWrr, startReceiving } from "@/lib/actions/receiving";
+import { startReceiving } from "@/lib/actions/receiving";
 import type { WrrItemRow } from "@/lib/db/queries/receiving";
+import { WRRUnitLabelGenerator } from "@/components/barcode/WRRUnitLabelGenerator";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -55,12 +59,10 @@ const DISPOSITION_CLASSES: Record<string, string> = {
 
 interface PageProps {
   params: Promise<{ wrrId: string }>;
-  searchParams: Promise<{ commitError?: string }>;
 }
 
-export default async function WrrDetailPage({ params, searchParams }: PageProps) {
+export default async function WrrDetailPage({ params }: PageProps) {
   const { wrrId } = await params;
-  const { commitError } = await searchParams;
   const resolver = await createPageResolver();
 
   // Gate: receiving.view — read-only detail/review surface visible to any staff
@@ -79,27 +81,10 @@ export default async function WrrDetailPage({ params, searchParams }: PageProps)
   async function handleStartReceiving(): Promise<void> {
     "use server";
     const actionResolver = await createPageResolver();
-    await startReceiving(actionResolver, db, wrrId);
+    await startReceiving(actionResolver, wrrId);
     // Revalidate by redirecting back to this page so the updated status renders.
     redirect(`/receiving/${wrrId}`);
   }
-
-  // ─── Inline server action: commitWrr ────────────────────────────────────────
-  async function handleCommit(): Promise<void> {
-    "use server";
-    const actionResolver = await createPageResolver();
-    const result = await commitWrr(actionResolver, db, wrrId);
-    if (result.ok) {
-      redirect(`/receiving/${wrrId}`);
-    }
-    const encodedErrors = encodeURIComponent(result.errors.join("|"));
-    redirect(`/receiving/${wrrId}?commitError=${encodedErrors}`);
-  }
-
-  // Parse commit errors if present
-  const commitErrors = commitError
-    ? decodeURIComponent(commitError).split("|").filter(Boolean)
-    : [];
 
   return (
     <div className="mx-auto max-w-container">
@@ -135,28 +120,6 @@ export default async function WrrDetailPage({ params, searchParams }: PageProps)
           {STATUS_LABELS[wrr.status] ?? wrr.status.toUpperCase()}
         </span>
       </div>
-
-      {/* Commit error banner */}
-      {commitErrors.length > 0 && (
-        <div
-          role="alert"
-          className="mt-4 rounded-md bg-status-held/10 px-4 py-3"
-        >
-          <p className="font-label text-label uppercase text-status-held">
-            Commit failed
-          </p>
-          <ul className="mt-2 list-inside list-disc space-y-1">
-            {commitErrors.map((err) => (
-              <li
-                key={err}
-                className="font-body text-body-md text-status-held"
-              >
-                {err}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       {/* WRR summary card — Level 1 office elevation */}
       <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
@@ -227,25 +190,16 @@ export default async function WrrDetailPage({ params, searchParams }: PageProps)
           )}
 
           {wrr.status === "receiving_in_progress" && (
-            <>
-              {/* Scan Items — links to floor scan interface */}
-              <Link
-                href={`/receiving/${wrrId}/receive`}
-                className="inline-flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              >
-                Scan Items
-              </Link>
-
-              {/* Commit — inline server action */}
-              <form action={handleCommit}>
-                <button
-                  type="submit"
-                  className="flex h-11 items-center justify-center rounded bg-brand-red px-4 font-label text-label text-surface-white hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                >
-                  Commit Receipt
-                </button>
-              </form>
-            </>
+            // Scan / Receive — links to the floor scan-and-per-line-commit
+            // interface. Per-line "Store"/"Hold" commits happen there
+            // (design.md §6.2/§6.3/§9); this office detail page does not
+            // offer a whole-WRR commit action.
+            <Link
+              href={`/receiving/${wrrId}/receive`}
+              className="inline-flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            >
+              Scan / Receive Items
+            </Link>
           )}
 
           {wrr.status === "confirmed" && (
@@ -295,6 +249,9 @@ export default async function WrrDetailPage({ params, searchParams }: PageProps)
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                     Disposition
                   </th>
+                  <th className="px-4 py-3 text-center font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                    Labels
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/30">
@@ -320,6 +277,15 @@ export default async function WrrDetailPage({ params, searchParams }: PageProps)
                       >
                         {item.disposition === "store" ? "STORE" : "INSPECT"}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <WRRUnitLabelGenerator
+                        wrrItemId={item.id}
+                        wrrNumber={wrr.wrrNumber}
+                        itemCode={item.itemId ?? item.lotNumber}
+                        lotNumber={item.lotNumber}
+                        expectedQty={item.expectedQty}
+                      />
                     </td>
                   </tr>
                 ))}

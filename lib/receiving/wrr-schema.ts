@@ -9,6 +9,9 @@
 //   specs/07-incoming-receiving/requirements.md R1.2 — vendorPartyId, flowType, commercialInvoiceNo
 //   specs/07-incoming-receiving/requirements.md R1.3 — line fields: item, lot_number, expected_qty, UOM, unit_cbm, disposition
 //   specs/07-incoming-receiving/requirements.md R5.1 — disposition must be 'store' or 'inspect'
+//   specs/07-incoming-receiving/requirements.md R1.4 (amended 2026-08-10) — a store-disposition
+//     line SHALL NOT be required to carry a putawayLocationId at WRR creation or staging time;
+//     it is populated per line at scan/store time instead (see design.md §5.1 "Reversed 2026-08-10")
 
 export type CreateWrrLine = {
   lotNumber: string;
@@ -158,13 +161,11 @@ function validateLine(
     errors.push(`Line[${index}]: disposition must be 'store' or 'inspect'`);
   }
 
+  // putawayLocationId is no longer required for store-disposition lines at
+  // WRR creation time (Reversed 2026-08-10, see design.md §5.1 / R1.4
+  // amended 2026-08-10). It is populated per line at scan/store time
+  // instead. A caller-supplied value, if present, is still validated below.
   const putawayLocationId = line["putawayLocationId"];
-  if (
-    disposition === "store" &&
-    (typeof putawayLocationId !== "string" || putawayLocationId.trim() === "")
-  ) {
-    errors.push(`Line[${index}]: putawayLocationId is required for store disposition`);
-  }
   if (
     putawayLocationId !== undefined &&
     putawayLocationId !== null &&

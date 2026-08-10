@@ -20,6 +20,15 @@ import {
 } from "@/lib/enrollment/contact-party";
 import type { ContactPartyEmailPayload } from "@/lib/enrollment/contact-party";
 import { parties, partyRoles } from "@/lib/db/schema/parties";
+import { withRlsTransaction } from "@/lib/db/rls-transaction";
+import type { RlsTransactionDeps } from "@/lib/db/rls-transaction";
+import { rlsPool } from "@/lib/db/rls-pool";
+import { getAuthenticatedSession } from "@/lib/auth/get-authenticated-session";
+
+const defaultRlsDeps: RlsTransactionDeps = {
+  getAuthenticatedSession,
+  pool: rlsPool,
+};
 
 // Re-export for callers that import from this module.
 export type { ContactPartyEmailPayload };
@@ -69,8 +78,8 @@ async function checkPermission(
  */
 export async function createParty(
   resolver: RequestAuthorizationResolver,
-  db: DbLike,
   input: unknown,
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<ActionCreateResult> {
   const denied = await checkPermission(resolver, "parties.manage");
   if (denied) return denied;
@@ -85,22 +94,31 @@ export async function createParty(
   }
 
   const data = parsed.data;
-  const [inserted] = await db
-    .insert(parties)
-    .values({
-      code: data.code,
-      name: data.name,
-      contactPerson: data.contactPerson ?? undefined,
-      email: data.email ?? undefined,
-      phone: data.phone ?? undefined,
-      taxId: data.taxId ?? undefined,
-      address: data.address ?? undefined,
-      notes: data.notes ?? undefined,
-      isActive: data.isActive,
-    })
-    .returning({ id: parties.id });
 
-  return { ok: true, data: { id: inserted.id } };
+  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
+    const [inserted] = await db
+      .insert(parties)
+      .values({
+        code: data.code,
+        name: data.name,
+        contactPerson: data.contactPerson ?? undefined,
+        email: data.email ?? undefined,
+        phone: data.phone ?? undefined,
+        taxId: data.taxId ?? undefined,
+        address: data.address ?? undefined,
+        notes: data.notes ?? undefined,
+        isActive: data.isActive,
+      })
+      .returning({ id: parties.id });
+
+    return { ok: true, data: { id: inserted.id } } satisfies ActionCreateResult;
+  });
+
+  if (rlsResult.kind === "unauthenticated") {
+    return { ok: false, error: "Forbidden" };
+  }
+  return rlsResult.value;
 }
 
 // ---------------------------------------------------------------------------
@@ -114,10 +132,10 @@ export async function createParty(
  */
 export async function updateParty(
   resolver: RequestAuthorizationResolver,
-  db: DbLike,
   id: string,
   input: unknown,
   submittedUpdatedAt: string,
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<ActionResult> {
   const denied = await checkPermission(resolver, "parties.manage");
   if (denied) return denied;
@@ -131,42 +149,52 @@ export async function updateParty(
     return { ok: false, fieldErrors };
   }
 
-  // Fetch current row for stale-edit check
-  const [currentRow] = await db
-    .select({ id: parties.id, updated_at: parties.updatedAt })
-    .from(parties)
-    .where(eq(parties.id, id))
-    .limit(1);
-
-  if (!currentRow) {
-    return { ok: false, error: "Not found" };
-  }
-
-  // Stale-edit guard
-  const dbTimestamp = (currentRow as { updated_at: Date }).updated_at.getTime();
-  const submittedTimestamp = new Date(submittedUpdatedAt).getTime();
-  if (dbTimestamp !== submittedTimestamp) {
-    return { ok: false, error: "Conflict" };
-  }
-
   const data = parsed.data;
-  await db
-    .update(parties)
-    .set({
-      code: data.code,
-      name: data.name,
-      contactPerson: data.contactPerson ?? undefined,
-      email: data.email ?? undefined,
-      phone: data.phone ?? undefined,
-      taxId: data.taxId ?? undefined,
-      address: data.address ?? undefined,
-      notes: data.notes ?? undefined,
-      isActive: data.isActive,
-    })
-    .where(eq(parties.id, id))
-    .returning({ id: parties.id });
 
-  return { ok: true };
+  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
+
+    // Fetch current row for stale-edit check
+    const [currentRow] = await db
+      .select({ id: parties.id, updated_at: parties.updatedAt })
+      .from(parties)
+      .where(eq(parties.id, id))
+      .limit(1);
+
+    if (!currentRow) {
+      return { ok: false, error: "Not found" } satisfies ActionResult;
+    }
+
+    // Stale-edit guard
+    const dbTimestamp = (currentRow as { updated_at: Date }).updated_at.getTime();
+    const submittedTimestamp = new Date(submittedUpdatedAt).getTime();
+    if (dbTimestamp !== submittedTimestamp) {
+      return { ok: false, error: "Conflict" } satisfies ActionResult;
+    }
+
+    await db
+      .update(parties)
+      .set({
+        code: data.code,
+        name: data.name,
+        contactPerson: data.contactPerson ?? undefined,
+        email: data.email ?? undefined,
+        phone: data.phone ?? undefined,
+        taxId: data.taxId ?? undefined,
+        address: data.address ?? undefined,
+        notes: data.notes ?? undefined,
+        isActive: data.isActive,
+      })
+      .where(eq(parties.id, id))
+      .returning({ id: parties.id });
+
+    return { ok: true } satisfies ActionResult;
+  });
+
+  if (rlsResult.kind === "unauthenticated") {
+    return { ok: false, error: "Forbidden" };
+  }
+  return rlsResult.value;
 }
 
 // ---------------------------------------------------------------------------
@@ -181,7 +209,6 @@ export async function updateParty(
  */
 export async function deactivateParty(
   resolver: RequestAuthorizationResolver,
-  db: DbLike,
   id: string,
   deps?: {
     partyHasOperationalRecords?: (
@@ -189,23 +216,33 @@ export async function deactivateParty(
       partyId: string,
     ) => Promise<boolean>;
   },
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<ActionSimpleResult> {
   const denied = await checkPermission(resolver, "parties.manage");
   if (denied) return denied;
 
-  // Evaluate impact (warn-not-block — result is intentionally unused here;
-  // the downstream UI/UX layer uses it to present a warning, not a gate).
-  if (deps?.partyHasOperationalRecords) {
-    await deps.partyHasOperationalRecords(db, id);
+  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
+
+    // Evaluate impact (warn-not-block — result is intentionally unused here;
+    // the downstream UI/UX layer uses it to present a warning, not a gate).
+    if (deps?.partyHasOperationalRecords) {
+      await deps.partyHasOperationalRecords(db, id);
+    }
+
+    await db
+      .update(parties)
+      .set({ isActive: false })
+      .where(eq(parties.id, id))
+      .returning({ id: parties.id });
+
+    return { ok: true } satisfies ActionSimpleResult;
+  });
+
+  if (rlsResult.kind === "unauthenticated") {
+    return { ok: false, error: "Forbidden" };
   }
-
-  await db
-    .update(parties)
-    .set({ isActive: false })
-    .where(eq(parties.id, id))
-    .returning({ id: parties.id });
-
-  return { ok: true };
+  return rlsResult.value;
 }
 
 // ---------------------------------------------------------------------------
@@ -219,9 +256,9 @@ export async function deactivateParty(
  */
 export async function addPartyRole(
   resolver: RequestAuthorizationResolver,
-  db: DbLike,
   partyId: string,
   role: unknown,
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<ActionSimpleResult> {
   const denied = await checkPermission(resolver, "parties.manage");
   if (denied) return denied;
@@ -234,31 +271,40 @@ export async function addPartyRole(
 
   const validRole = role as string;
 
-  // Fetch existing roles for duplicate detection
-  const existingRows = await db
-    .select({ role: partyRoles.role })
-    .from(partyRoles)
-    .where(eq(partyRoles.partyId, partyId));
+  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const existingRoleValues = (existingRows as any[]).map(
-    (r) => r.role,
-  ) as import("@/lib/enrollment/party-roles").PartyRoleValue[];
+    // Fetch existing roles for duplicate detection
+    const existingRows = await db
+      .select({ role: partyRoles.role })
+      .from(partyRoles)
+      .where(eq(partyRoles.partyId, partyId));
 
-  const duplicateCheck = checkDuplicatePartyRole(
-    existingRoleValues,
-    validRole as import("@/lib/enrollment/party-roles").PartyRoleValue,
-  );
-  if (duplicateCheck.isDuplicate) {
-    return { ok: false, error: duplicateCheck.reason };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const existingRoleValues = (existingRows as any[]).map(
+      (r) => r.role,
+    ) as import("@/lib/enrollment/party-roles").PartyRoleValue[];
+
+    const duplicateCheck = checkDuplicatePartyRole(
+      existingRoleValues,
+      validRole as import("@/lib/enrollment/party-roles").PartyRoleValue,
+    );
+    if (duplicateCheck.isDuplicate) {
+      return { ok: false, error: duplicateCheck.reason } satisfies ActionSimpleResult;
+    }
+
+    await db
+      .insert(partyRoles)
+      .values({ partyId, role: validRole })
+      .returning({ id: partyRoles.id });
+
+    return { ok: true } satisfies ActionSimpleResult;
+  });
+
+  if (rlsResult.kind === "unauthenticated") {
+    return { ok: false, error: "Forbidden" };
   }
-
-  await db
-    .insert(partyRoles)
-    .values({ partyId, role: validRole })
-    .returning({ id: partyRoles.id });
-
-  return { ok: true };
+  return rlsResult.value;
 }
 
 // ---------------------------------------------------------------------------
@@ -270,20 +316,29 @@ export async function addPartyRole(
  */
 export async function removePartyRole(
   resolver: RequestAuthorizationResolver,
-  db: DbLike,
   partyId: string,
   roleRowId: string,
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<ActionSimpleResult> {
   const denied = await checkPermission(resolver, "parties.manage");
   if (denied) return denied;
 
-  // Scope DELETE by both roleRowId AND partyId — prevents cross-party deletion
-  // by a caller who supplies a roleRowId belonging to a different party.
-  await db
-    .delete(partyRoles)
-    .where(and(eq(partyRoles.id, roleRowId), eq(partyRoles.partyId, partyId)));
+  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
 
-  return { ok: true };
+    // Scope DELETE by both roleRowId AND partyId — prevents cross-party deletion
+    // by a caller who supplies a roleRowId belonging to a different party.
+    await db
+      .delete(partyRoles)
+      .where(and(eq(partyRoles.id, roleRowId), eq(partyRoles.partyId, partyId)));
+
+    return { ok: true } satisfies ActionSimpleResult;
+  });
+
+  if (rlsResult.kind === "unauthenticated") {
+    return { ok: false, error: "Forbidden" };
+  }
+  return rlsResult.value;
 }
 
 // ---------------------------------------------------------------------------
@@ -299,58 +354,67 @@ export async function removePartyRole(
  */
 export async function contactParty(
   resolver: RequestAuthorizationResolver,
-  db: DbLike,
   partyId: string,
   sendEmail: (payload: ContactPartyEmailPayload) => Promise<void>,
   message?: string | null,
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<ActionSimpleResult> {
   const denied = await checkPermission(resolver, "parties.manage");
   if (denied) return denied;
 
-  // Resolve party email server-side — recipient is never client-supplied (R6.3)
-  const [partyRow] = await db
-    .select({
-      id: parties.id,
-      email: parties.email,
-      contact_person: parties.contactPerson,
-    })
-    .from(parties)
-    .where(eq(parties.id, partyId))
-    .limit(1);
+  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
 
-  if (!partyRow) {
-    return { ok: false, error: "Party not found." };
+    // Resolve party email server-side — recipient is never client-supplied (R6.3)
+    const [partyRow] = await db
+      .select({
+        id: parties.id,
+        email: parties.email,
+        contact_person: parties.contactPerson,
+      })
+      .from(parties)
+      .where(eq(parties.id, partyId))
+      .limit(1);
+
+    if (!partyRow) {
+      return { ok: false, error: "Party not found." } satisfies ActionSimpleResult;
+    }
+
+    const raw = partyRow as {
+      id: string;
+      email: string | null;
+      contact_person: string | null;
+    };
+
+    // Validate email presence (R1.9)
+    const emailCheck = validatePartyEmailPresence(raw.email);
+    if (!emailCheck.ok) {
+      return emailCheck;
+    }
+
+    // Build payload with server-resolved data only (R6.3)
+    const payload = buildContactPartyPayload(
+      {
+        id: raw.id,
+        email: raw.email as string,
+        contactPerson: raw.contact_person ?? null,
+      },
+      message,
+    );
+
+    // Invoke 04's existing Resend pipeline — fail-open (design.md §5a step 5)
+    try {
+      await sendEmail(payload);
+    } catch {
+      // Silently swallow send errors — party record state is never altered by
+      // a send failure. Retry is handled by 04's async-retry infrastructure.
+    }
+
+    return { ok: true } satisfies ActionSimpleResult;
+  });
+
+  if (rlsResult.kind === "unauthenticated") {
+    return { ok: false, error: "Forbidden" };
   }
-
-  const raw = partyRow as {
-    id: string;
-    email: string | null;
-    contact_person: string | null;
-  };
-
-  // Validate email presence (R1.9)
-  const emailCheck = validatePartyEmailPresence(raw.email);
-  if (!emailCheck.ok) {
-    return emailCheck;
-  }
-
-  // Build payload with server-resolved data only (R6.3)
-  const payload = buildContactPartyPayload(
-    {
-      id: raw.id,
-      email: raw.email as string,
-      contactPerson: raw.contact_person ?? null,
-    },
-    message,
-  );
-
-  // Invoke 04's existing Resend pipeline — fail-open (design.md §5a step 5)
-  try {
-    await sendEmail(payload);
-  } catch {
-    // Silently swallow send errors — party record state is never altered by
-    // a send failure. Retry is handled by 04's async-retry infrastructure.
-  }
-
-  return { ok: true };
+  return rlsResult.value;
 }

@@ -103,6 +103,7 @@ import {
   openInspectionCase,
   resolveInspectionCase,
 } from "../transfers";
+import { mockRlsDeps } from "@/lib/db/__tests__/helpers/mock-rls";
 
 // ---------------------------------------------------------------------------
 // Resolver mock helpers
@@ -310,9 +311,8 @@ describe("createTransfer — no transfer.request permission (R1.1, R8.1, design.
 
     const result = await createTransfer(
       noPermissionsResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       validCreateTransferInput(),
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -337,14 +337,13 @@ describe("createTransfer — invalid input (R1.3, design.md §4)", () => {
 
     const result = await createTransfer(
       transferRequestResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       {
         fromLocationId: "loc-uuid-same",
         toLocationId: "loc-uuid-same",
         flowType: "vmi",
         lines: [{ lotId: "lot-1", itemId: "item-1", qtyRequested: 5 }],
       },
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -362,14 +361,13 @@ describe("createTransfer — invalid input (R1.3, design.md §4)", () => {
 
     const result = await createTransfer(
       transferRequestResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       {
         fromLocationId: "loc-uuid-from",
         toLocationId: "loc-uuid-to",
         flowType: "vmi",
         lines: [],
       },
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -392,9 +390,8 @@ describe("createTransfer — success (R1.1, R1.5, design.md §4)", () => {
 
     const result = await createTransfer(
       transferRequestResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       validCreateTransferInput(),
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(true);
@@ -417,10 +414,9 @@ describe("updateTransferStatus — no transfer.execute permission (R8.1, design.
 
     const result = await updateTransferStatus(
       noPermissionsResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "transfer-uuid-existing",
       "in_progress",
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -443,10 +439,9 @@ describe("updateTransferStatus — transfer not found (R7.1, design.md §4)", ()
 
     const result = await updateTransferStatus(
       transferExecuteResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "non-existent-transfer-uuid",
       "in_progress",
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -467,10 +462,9 @@ describe("updateTransferStatus — success (R5.1, design.md §4)", () => {
 
     const result = await updateTransferStatus(
       transferExecuteResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "transfer-uuid-existing",
       "in_progress",
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(true);
@@ -489,8 +483,6 @@ describe("openInspectionCase — no inspection.perform permission (R3.1, R8.1, d
 
     const result = await openInspectionCase(
       noPermissionsResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       {
         sourceRefType: "transfer_line",
         sourceRefId: "line-uuid-1",
@@ -500,6 +492,7 @@ describe("openInspectionCase — no inspection.perform permission (R3.1, R8.1, d
         flowType: "vmi",
         contextType: "transfer",
       },
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -521,8 +514,6 @@ describe("openInspectionCase — success (R3.1, R3.2, design.md §6.1)", () => {
 
     const result = await openInspectionCase(
       inspectionPerformResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       {
         sourceRefType: "transfer_line",
         sourceRefId: "line-uuid-1",
@@ -532,6 +523,7 @@ describe("openInspectionCase — success (R3.1, R3.2, design.md §6.1)", () => {
         flowType: "vmi",
         contextType: "transfer",
       },
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(true);
@@ -554,14 +546,13 @@ describe("resolveInspectionCase — no inspection.resolve permission (R3.4, R8.1
 
     const result = await resolveInspectionCase(
       noPermissionsResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "case-uuid-existing",
       {
         dispositionType: "return_to_stock",
         quantityAffected: 10,
         notes: "Routine pass",
       },
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -585,13 +576,12 @@ describe("resolveInspectionCase — case not found (R3.4, design.md §6.3)", () 
 
     const result = await resolveInspectionCase(
       inspectionResolveResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "non-existent-case-uuid",
       {
         dispositionType: "return_to_stock",
         quantityAffected: 5,
       },
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -619,13 +609,12 @@ describe("resolveInspectionCase — validation fails (R3.4, design.md §6.2, §6
 
     const result = await resolveInspectionCase(
       inspectionResolveResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "case-uuid-already-resolved",
       {
         dispositionType: "return_to_stock",
         quantityAffected: 10,
       },
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -648,13 +637,12 @@ describe("resolveInspectionCase — validation fails (R3.4, design.md §6.2, §6
 
     const result = await resolveInspectionCase(
       inspectionResolveResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "case-uuid-failed",
       {
         dispositionType: "reject",
         quantityAffected: 5,
       },
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -683,14 +671,13 @@ describe("resolveInspectionCase — success (R3.3, R3.4, design.md §6.3)", () =
 
     const result = await resolveInspectionCase(
       inspectionResolveResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "case-uuid-open",
       {
         dispositionType: "return_to_stock",
         quantityAffected: 10,
         notes: "All items in good condition",
       },
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(true);
@@ -725,14 +712,13 @@ describe("resolveInspectionCase — success (R3.3, R3.4, design.md §6.3)", () =
 
     const result = await resolveInspectionCase(
       inspectionResolveResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "case-uuid-open-2",
       {
         dispositionType: "reject",
         quantityAffected: 3,
         notes: "Physical damage observed",
       },
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(true);

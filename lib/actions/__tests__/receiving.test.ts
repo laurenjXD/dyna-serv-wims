@@ -80,7 +80,12 @@ import type {
   AuthorizationResolution,
   RequestAuthorizationResolver,
 } from "@/lib/rbac/session";
-import { createWrr, recordScan, commitWrr, startReceiving } from "../receiving";
+import { createWrr, recordScan, startReceiving } from "../receiving";
+import { mockRlsDeps } from "@/lib/db/__tests__/helpers/mock-rls";
+// commitWrr was replaced by commitWrrLine (per-line commit reversal,
+// 2026-08-10) — its own coverage lives in
+// lib/actions/__tests__/receiving.commit-line.integration.test.ts. This
+// mocked-DB suite no longer exercises the removed whole-WRR commitWrr.
 
 // ---------------------------------------------------------------------------
 // Resolver mock helpers
@@ -273,9 +278,8 @@ describe("createWrr — unauthenticated (R7.1, design.md §4)", () => {
 
     const result = await createWrr(
       unauthenticatedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       validCreateWrrInput(),
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -290,9 +294,8 @@ describe("createWrr — unauthenticated (R7.1, design.md §4)", () => {
 
     const result = await createWrr(
       noReceivingResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       validCreateWrrInput(),
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -314,9 +317,8 @@ describe("createWrr — invalid input (R1.3, design.md §5.1)", () => {
 
     const result = await createWrr(
       authorizedConfirmResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       { vendorPartyId: "party-uuid", flowType: "vmi", lines: [] },
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -334,9 +336,8 @@ describe("createWrr — invalid input (R1.3, design.md §5.1)", () => {
 
     const result = await createWrr(
       authorizedConfirmResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       { flowType: "vmi", lines: [{ lotNumber: "LOT-001", expectedQty: 5, unitCbm: 0.5, uom: "CTN", disposition: "store" }] },
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -358,9 +359,8 @@ describe("createWrr — success (R1.1, R1.4, design.md §4)", () => {
 
     const result = await createWrr(
       authorizedConfirmResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       validCreateWrrInput(),
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(true);
@@ -384,10 +384,9 @@ describe("recordScan — no receiving.scan permission (R7.1, design.md §4)", ()
 
     const result = await recordScan(
       noReceivingResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "wrr-uuid-existing",
       "1234567890",
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -408,10 +407,9 @@ describe("recordScan — WRR not found (R3.3, design.md §6)", () => {
 
     const result = await recordScan(
       scanOnlyResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "non-existent-wrr-uuid",
       "1234567890",
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -435,10 +433,9 @@ describe("recordScan — WRR not in receiving_in_progress (R3.1, design.md §4)"
 
     const result = await recordScan(
       scanOnlyResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "wrr-uuid-existing",
       "1234567890",
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -455,10 +452,9 @@ describe("recordScan — WRR not in receiving_in_progress (R3.1, design.md §4)"
 
     const result = await recordScan(
       scanOnlyResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "wrr-uuid-existing",
       "1234567890",
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -483,10 +479,9 @@ describe("recordScan — unknown barcode (R3.3, design.md §6)", () => {
 
     const result = await recordScan(
       scanOnlyResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "wrr-uuid-existing",
       "UNKNOWN-BARCODE-XYZ",
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -514,10 +509,9 @@ describe("recordScan — valid scan (R3.1, R3.2, design.md §5.2, §6)", () => {
 
     const result = await recordScan(
       scanOnlyResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "wrr-uuid-existing",
       "MATCH-BARCODE-001",
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(true);
@@ -531,183 +525,12 @@ describe("recordScan — valid scan (R3.1, R3.2, design.md §5.2, §6)", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// commitWrr — Authorization
-// (requirements.md R7.1; design.md §9)
-// ---------------------------------------------------------------------------
-
-describe("commitWrr — no receiving.confirm permission (R7.1, design.md §9)", () => {
-  it("(AC: receiving.confirm required) returns { ok: false, errors: ['forbidden'] } when resolver lacks receiving.confirm", async () => {
-    const db = makeReceivingDb([wrrDocRow()], [wrrItemRow()]);
-
-    const result = await commitWrr(
-      scanOnlyResolver(), // has scan but not confirm
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
-      "wrr-uuid-existing",
-    );
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(Array.isArray(result.errors)).toBe(true);
-      expect(result.errors).toContain("forbidden");
-    }
-  });
-});
-
-// ---------------------------------------------------------------------------
-// commitWrr — WRR not found
-// (requirements.md R3.5; design.md §9)
-// ---------------------------------------------------------------------------
-
-describe("commitWrr — WRR not found (R3.5, design.md §9)", () => {
-  it("(AC: not found returns error) returns { ok: false, errors: ['not_found'] } when wrrId does not exist", async () => {
-    const db = makeReceivingDb([], []);
-
-    const result = await commitWrr(
-      authorizedConfirmResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
-      "non-existent-wrr-uuid",
-    );
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(Array.isArray(result.errors)).toBe(true);
-      expect(result.errors).toContain("not_found");
-    }
-  });
-});
-
-// ---------------------------------------------------------------------------
-// commitWrr — validateCommit fails (under-scanned)
-// (requirements.md R3.5; design.md §9, §5.2)
-// ---------------------------------------------------------------------------
-
-describe("commitWrr — validation fails (R3.5, design.md §9, §5.2)", () => {
-  it("(AC: under-scanned line blocks commit) returns { ok: false, errors } when a line is under-scanned (validateCommit fails)", async () => {
-    // scannedQty (3) < expectedQty (10) — validateCommit will reject this.
-    const underScannedItem = wrrItemRow({
-      id: "item-under-scanned",
-      expectedQty: 10,
-      scannedQty: 3,
-      itemId: "item-master-uuid-1",
-      disposition: "store",
-    });
-    const db = makeReceivingDb(
-      [wrrDocRow({ status: "receiving_in_progress" })],
-      [underScannedItem],
-    );
-
-    const result = await commitWrr(
-      authorizedConfirmResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
-      "wrr-uuid-existing",
-    );
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(Array.isArray(result.errors)).toBe(true);
-      expect(result.errors.length).toBeGreaterThan(0);
-    }
-  });
-
-  it("(AC: unresolved itemId blocks commit) returns { ok: false, errors } when a line has null itemId (validateCommit fails)", async () => {
-    // itemId is null — validateCommit will reject this (R4.3).
-    const unresolvedItem = wrrItemRow({
-      id: "item-unresolved",
-      expectedQty: 5,
-      scannedQty: 5,
-      itemId: null, // not yet enrolled
-      disposition: "store",
-    });
-    const db = makeReceivingDb(
-      [wrrDocRow({ status: "receiving_in_progress" })],
-      [unresolvedItem],
-    );
-
-    const result = await commitWrr(
-      authorizedConfirmResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
-      "wrr-uuid-existing",
-    );
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(Array.isArray(result.errors)).toBe(true);
-      expect(result.errors.length).toBeGreaterThan(0);
-    }
-  });
-});
-
-// ---------------------------------------------------------------------------
-// commitWrr — Success
-// (requirements.md R3.5, R7.2; design.md §9)
-// ---------------------------------------------------------------------------
-
-describe("commitWrr — success (R3.5, R7.2, design.md §9)", () => {
-  it("(AC: status set to confirmed, confirmedAt/confirmedByUserId recorded) returns { ok: true } and updates WRR status to 'confirmed' when all lines are fully scanned and resolved", async () => {
-    // All lines fully scanned and have resolved itemId + disposition.
-    const fullyScannedItem = wrrItemRow({
-      id: "item-fully-scanned",
-      expectedQty: 10,
-      scannedQty: 10,
-      itemId: "item-master-uuid-1",
-      disposition: "store",
-    });
-    const db = makeReceivingDb(
-      [wrrDocRow({ status: "receiving_in_progress" })],
-      [fullyScannedItem],
-    );
-
-    const result = await commitWrr(
-      authorizedConfirmResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
-      "wrr-uuid-existing",
-    );
-
-    expect(result.ok).toBe(true);
-
-    // The WRR status must have been updated.
-    expect(db.update).toHaveBeenCalled();
-
-    // The update payload must include status='confirmed'.
-    const updatedPayload = db._updated[0] as AnyRecord;
-    expect(updatedPayload).toBeDefined();
-    expect(updatedPayload["status"]).toBe("confirmed");
-
-    // confirmedAt and confirmedByUserId must be set.
-    expect(updatedPayload).toHaveProperty("confirmedAt");
-    expect(updatedPayload["confirmedAt"]).not.toBeNull();
-    expect(updatedPayload).toHaveProperty("confirmedByUserId");
-    expect(updatedPayload["confirmedByUserId"]).toBe("user-uuid-staff");
-
-    // C1: receipt confirmation creates the physical lot, its authoritative
-    // location balance, and one immutable receiving ledger row together.
-    expect(db.insert).toHaveBeenCalledTimes(3);
-    expect(db._inserted).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        lotNumber: "LOT-001",
-        status: "available",
-        wrrItemId: "item-fully-scanned",
-      }),
-      expect.objectContaining({
-        locationId: "location-storage-uuid",
-        qtyReceived: 10,
-        qtyRemaining: 10,
-      }),
-      expect.objectContaining({
-        movementType: "receiving",
-        toLocationId: "location-storage-uuid",
-        qty: 10,
-        wrrId: "wrr-uuid-existing",
-      }),
-    ]));
-  });
-});
+// commitWrr's mocked-DB coverage was removed along with the function itself
+// (replaced by commitWrrLine — see the import comment above). commitWrrLine's
+// real-transaction/idempotency behavior is exercised against live Postgres in
+// lib/actions/__tests__/receiving.commit-line.integration.test.ts, since its
+// conditional-UPDATE idempotency gate and per-line isolation are not
+// meaningfully verifiable against this file's hand-rolled DB mock.
 
 // ---------------------------------------------------------------------------
 // startReceiving — Authorization
@@ -720,9 +543,8 @@ describe("startReceiving — no receiving.confirm permission (R2.4, R7.1, design
 
     const result = await startReceiving(
       noReceivingResolver(), // no grants at all
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "wrr-uuid-existing",
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -739,9 +561,8 @@ describe("startReceiving — no receiving.confirm permission (R2.4, R7.1, design
 
     const result = await startReceiving(
       scanOnlyResolver(), // scan but not confirm
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "wrr-uuid-existing",
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -763,9 +584,8 @@ describe("startReceiving — WRR not found (R2.4, design.md §4)", () => {
 
     const result = await startReceiving(
       authorizedConfirmResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "non-existent-wrr-uuid",
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -789,9 +609,8 @@ describe("startReceiving — invalid_status when already receiving_in_progress (
 
     const result = await startReceiving(
       authorizedConfirmResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "wrr-uuid-existing",
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -815,9 +634,8 @@ describe("startReceiving — invalid_status when already confirmed (R2.4, design
 
     const result = await startReceiving(
       authorizedConfirmResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "wrr-uuid-existing",
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -840,9 +658,8 @@ describe("startReceiving — success (R2.4, design.md §4)", () => {
 
     const result = await startReceiving(
       authorizedConfirmResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "wrr-uuid-existing",
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(true);

@@ -11,10 +11,9 @@
 //   lib/supabase/server.ts — createClient (SSR-safe)
 
 import { and, eq, gt, isNull, lte, or } from "drizzle-orm";
-import { cookies } from "next/headers";
-import { createClient } from "@/lib/supabase/server";
 import { createRequestAuthorizationResolver } from "@/lib/rbac/session";
 import type { RawAuthorizationRecord } from "@/lib/rbac/session";
+import { getAuthenticatedSession } from "@/lib/auth/get-authenticated-session";
 import { db } from "@/lib/db/client";
 import {
   userProfiles,
@@ -26,29 +25,8 @@ import {
 } from "@/lib/db/schema";
 
 export async function createPageResolver() {
-  const supabase = await createClient();
-
   return createRequestAuthorizationResolver({
-    async getAuthenticatedSession() {
-      const {
-        data: { user },
-        error,
-      } = await supabase.auth.getUser();
-      // 2026-08-08 diagnostic addition, temporary pending root-cause
-      // confirmation: session.ts's own catches never log, so this is the
-      // most direct boundary to see what the server actually received —
-      // cookie names present (never values) and whether Supabase itself
-      // reported an error vs. simply finding no user.
-      if (!user) {
-        const cookieNames = (await cookies()).getAll().map((c) => c.name);
-        console.error("[page-resolver] no user from getUser()", {
-          supabaseError: error?.message ?? null,
-          cookieNames,
-        });
-        return null;
-      }
-      return { userId: user.id };
-    },
+    getAuthenticatedSession,
 
     async loadAuthorizationRecord(
       userId: string,

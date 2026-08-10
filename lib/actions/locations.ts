@@ -21,6 +21,15 @@ import {
   generateLocationLabel,
 } from "@/lib/enrollment/location-schema";
 import { locations } from "@/lib/db/schema/locations";
+import { withRlsTransaction } from "@/lib/db/rls-transaction";
+import type { RlsTransactionDeps } from "@/lib/db/rls-transaction";
+import { rlsPool } from "@/lib/db/rls-pool";
+import { getAuthenticatedSession } from "@/lib/auth/get-authenticated-session";
+
+const defaultRlsDeps: RlsTransactionDeps = {
+  getAuthenticatedSession,
+  pool: rlsPool,
+};
 
 // ---------------------------------------------------------------------------
 // Shared result types
@@ -71,8 +80,8 @@ async function checkPermission(
  */
 export async function createLocation(
   resolver: RequestAuthorizationResolver,
-  db: DbLike,
   input: unknown,
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<ActionCreateLocationResult> {
   const denied = await checkPermission(resolver, "locations.manage");
   if (denied) return denied;
@@ -92,37 +101,49 @@ export async function createLocation(
   // Server-compute the canonical label (design.md §6a Create step 3)
   const label = generateLocationLabel(data.rack, data.level, data.position);
 
-  // Label uniqueness check (design.md §6a Create step 4)
-  const existing = await db
-    .select({ id: locations.id })
-    .from(locations)
-    .where(eq(locations.label, label));
+  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if ((existing as any[]).length > 0) {
+    // Label uniqueness check (design.md §6a Create step 4)
+    const existing = await db
+      .select({ id: locations.id })
+      .from(locations)
+      .where(eq(locations.label, label));
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((existing as any[]).length > 0) {
+      return {
+        ok: false,
+        fieldErrors: { label: "Label already in use" },
+      } satisfies ActionCreateLocationResult;
+    }
+
+    const [inserted] = await db
+      .insert(locations)
+      .values({
+        zone: data.zone,
+        rack: data.rack,
+        level: data.level,
+        position: data.position,
+        label,
+        locationType: data.locationType,
+        maxCbmCapacity: data.maxCbmCapacity,
+        isActive: data.isActive,
+      })
+      .returning({ id: locations.id, label: locations.label });
+
+    const row = inserted as { id: string; label: string };
+
     return {
-      ok: false,
-      fieldErrors: { label: "Label already in use" },
-    };
+      ok: true,
+      data: { id: row.id, label: row.label },
+    } satisfies ActionCreateLocationResult;
+  });
+
+  if (rlsResult.kind === "unauthenticated") {
+    return { ok: false, error: "Forbidden" };
   }
-
-  const [inserted] = await db
-    .insert(locations)
-    .values({
-      zone: data.zone,
-      rack: data.rack,
-      level: data.level,
-      position: data.position,
-      label,
-      locationType: data.locationType,
-      maxCbmCapacity: data.maxCbmCapacity,
-      isActive: data.isActive,
-    })
-    .returning({ id: locations.id, label: locations.label });
-
-  const row = inserted as { id: string; label: string };
-
-  return { ok: true, data: { id: row.id, label: row.label } };
+  return rlsResult.value;
 }
 
 // ---------------------------------------------------------------------------
@@ -137,10 +158,10 @@ export async function createLocation(
  */
 export async function updateLocation(
   resolver: RequestAuthorizationResolver,
-  db: DbLike,
   id: string,
   input: unknown,
   submittedUpdatedAt: string,
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<ActionResult> {
   const denied = await checkPermission(resolver, "locations.manage");
   if (denied) return denied;
@@ -154,63 +175,72 @@ export async function updateLocation(
     return { ok: false, fieldErrors };
   }
 
-  // Fetch current row for stale-edit check (uses created_at as version token)
-  const [currentRow] = await db
-    .select({
-      id: locations.id,
-      label: locations.label,
-      created_at: locations.createdAt,
-    })
-    .from(locations)
-    .where(eq(locations.id, id))
-    .limit(1);
-
-  if (!currentRow) {
-    return { ok: false, error: "Not found" };
-  }
-
-  const row = currentRow as { id: string; label: string; created_at: Date };
-
-  // Stale-edit guard (created_at used as version token for locations)
-  const dbTimestamp = row.created_at.getTime();
-  const submittedTimestamp = new Date(submittedUpdatedAt).getTime();
-  if (dbTimestamp !== submittedTimestamp) {
-    return { ok: false, error: "Conflict" };
-  }
-
   const data = parsed.data;
 
-  // Recompute label and re-validate uniqueness, excluding current row's id
-  const newLabel = generateLocationLabel(data.rack, data.level, data.position);
-  const collision = await db
-    .select({ id: locations.id })
-    .from(locations)
-    .where(and(eq(locations.label, newLabel), ne(locations.id, id)));
+  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if ((collision as any[]).length > 0) {
-    return {
-      ok: false,
-      fieldErrors: { label: "Label already in use" },
-    };
+    // Fetch current row for stale-edit check (uses created_at as version token)
+    const [currentRow] = await db
+      .select({
+        id: locations.id,
+        label: locations.label,
+        created_at: locations.createdAt,
+      })
+      .from(locations)
+      .where(eq(locations.id, id))
+      .limit(1);
+
+    if (!currentRow) {
+      return { ok: false, error: "Not found" } satisfies ActionResult;
+    }
+
+    const row = currentRow as { id: string; label: string; created_at: Date };
+
+    // Stale-edit guard (created_at used as version token for locations)
+    const dbTimestamp = row.created_at.getTime();
+    const submittedTimestamp = new Date(submittedUpdatedAt).getTime();
+    if (dbTimestamp !== submittedTimestamp) {
+      return { ok: false, error: "Conflict" } satisfies ActionResult;
+    }
+
+    // Recompute label and re-validate uniqueness, excluding current row's id
+    const newLabel = generateLocationLabel(data.rack, data.level, data.position);
+    const collision = await db
+      .select({ id: locations.id })
+      .from(locations)
+      .where(and(eq(locations.label, newLabel), ne(locations.id, id)));
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((collision as any[]).length > 0) {
+      return {
+        ok: false,
+        fieldErrors: { label: "Label already in use" },
+      } satisfies ActionResult;
+    }
+
+    await db
+      .update(locations)
+      .set({
+        zone: data.zone,
+        rack: data.rack,
+        level: data.level,
+        position: data.position,
+        label: newLabel,
+        locationType: data.locationType,
+        maxCbmCapacity: data.maxCbmCapacity,
+        isActive: data.isActive,
+      })
+      .where(eq(locations.id, id))
+      .returning({ id: locations.id });
+
+    return { ok: true } satisfies ActionResult;
+  });
+
+  if (rlsResult.kind === "unauthenticated") {
+    return { ok: false, error: "Forbidden" };
   }
-
-  await db
-    .update(locations)
-    .set({
-      zone: data.zone,
-      rack: data.rack,
-      level: data.level,
-      position: data.position,
-      label: newLabel,
-      locationType: data.locationType,
-      maxCbmCapacity: data.maxCbmCapacity,
-      isActive: data.isActive,
-    })
-    .where(eq(locations.id, id))
-    .returning({ id: locations.id });
-
-  return { ok: true };
+  return rlsResult.value;
 }
 
 // ---------------------------------------------------------------------------
@@ -225,7 +255,6 @@ export async function updateLocation(
  */
 export async function deactivateLocation(
   resolver: RequestAuthorizationResolver,
-  db: DbLike,
   id: string,
   deps?: {
     locationHasOperationalRecords?: (
@@ -233,20 +262,30 @@ export async function deactivateLocation(
       locationId: string,
     ) => Promise<boolean>;
   },
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<ActionSimpleResult> {
   const denied = await checkPermission(resolver, "locations.manage");
   if (denied) return denied;
 
-  // Evaluate impact (warn-not-block — result is intentionally unused here)
-  if (deps?.locationHasOperationalRecords) {
-    await deps.locationHasOperationalRecords(db, id);
+  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
+
+    // Evaluate impact (warn-not-block — result is intentionally unused here)
+    if (deps?.locationHasOperationalRecords) {
+      await deps.locationHasOperationalRecords(db, id);
+    }
+
+    await db
+      .update(locations)
+      .set({ isActive: false })
+      .where(eq(locations.id, id))
+      .returning({ id: locations.id });
+
+    return { ok: true } satisfies ActionSimpleResult;
+  });
+
+  if (rlsResult.kind === "unauthenticated") {
+    return { ok: false, error: "Forbidden" };
   }
-
-  await db
-    .update(locations)
-    .set({ isActive: false })
-    .where(eq(locations.id, id))
-    .returning({ id: locations.id });
-
-  return { ok: true };
+  return rlsResult.value;
 }

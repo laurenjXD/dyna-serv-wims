@@ -98,6 +98,7 @@ import {
   dispatchPickList,
   listOutgoingLedger,
 } from "../withdrawals";
+import { mockRlsDeps } from "@/lib/db/__tests__/helpers/mock-rls";
 
 // ---------------------------------------------------------------------------
 // Resolver mock helpers
@@ -252,9 +253,8 @@ describe("commitWithdrawal — unauthorized (R5.1, R10.1, R10.2, design.md §6)"
 
     const result = await commitWithdrawal(
       unauthorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       validCommitInput(),
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -271,9 +271,8 @@ describe("commitWithdrawal — unauthorized (R5.1, R10.1, R10.2, design.md §6)"
 
     const result = await commitWithdrawal(
       warehouseStaffResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       validCommitInput(),
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -295,13 +294,12 @@ describe("commitWithdrawal — validation errors on input (R1.2, design.md §6)"
 
     const result = await commitWithdrawal(
       supervisorResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       {
         // partyId missing, flowType invalid
         flowType: "invalid_type",
         lines: [],
       },
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -324,8 +322,6 @@ describe("commitWithdrawal — provisional item code blocks generation (R1.3, de
 
     const result = await commitWithdrawal(
       supervisorResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       {
         partyId: "party-uuid-customer",
         flowType: "trading",
@@ -339,6 +335,7 @@ describe("commitWithdrawal — provisional item code blocks generation (R1.3, de
           },
         ],
       },
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -354,8 +351,6 @@ describe("commitWithdrawal — provisional item code blocks generation (R1.3, de
 
     const result = await commitWithdrawal(
       supervisorResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       {
         partyId: "party-uuid-customer",
         flowType: "trading",
@@ -376,6 +371,7 @@ describe("commitWithdrawal — provisional item code blocks generation (R1.3, de
           },
         ],
       },
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -397,9 +393,8 @@ describe("commitWithdrawal — success (R5.1, R5.3, design.md §6)", () => {
 
     const result = await commitWithdrawal(
       supervisorResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       validCommitInput(),
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(true);
@@ -422,9 +417,8 @@ describe("dispatchPickList — unauthorized (R7.5, R10.1, R10.2, design.md §7)"
 
     const result = await dispatchPickList(
       unauthorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "pick-list-uuid-existing",
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -449,9 +443,8 @@ describe("dispatchPickList — pick list not found (R7.5, design.md §7)", () =>
 
     const result = await dispatchPickList(
       supervisorResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "non-existent-pick-list-uuid",
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -466,9 +459,8 @@ describe("dispatchPickList — pick list not found (R7.5, design.md §7)", () =>
 
     const result = await dispatchPickList(
       warehouseStaffResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "ghost-pick-list-uuid",
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -490,9 +482,8 @@ describe("dispatchPickList — already dispatched (R7.6, design.md §7)", () => 
 
     const result = await dispatchPickList(
       supervisorResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "pick-list-uuid-existing",
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -517,9 +508,8 @@ describe("dispatchPickList — success (R7.5, design.md §7)", () => {
 
     const result = await dispatchPickList(
       supervisorResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "pick-list-uuid-existing",
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(true);
@@ -531,9 +521,8 @@ describe("dispatchPickList — success (R7.5, design.md §7)", () => {
 
     const result = await dispatchPickList(
       warehouseStaffResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "pick-list-uuid-existing",
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(true);
@@ -551,9 +540,8 @@ describe("listOutgoingLedger — unauthorized (R9.1, R10.1, design.md §9)", () 
 
     const result = await listOutgoingLedger(
       unauthorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       { limit: 10, offset: 0 },
+      mockRlsDeps(db).deps,
     );
 
     expect(result).toHaveProperty("ok", false);
@@ -574,9 +562,8 @@ describe("listOutgoingLedger — success shape (R9.1, R9.2, design.md §9)", () 
 
     const result = await listOutgoingLedger(
       supervisorResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       { limit: 10, offset: 0 },
+      mockRlsDeps(db).deps,
     );
 
     expect(result).toHaveProperty("rows");
@@ -592,9 +579,8 @@ describe("listOutgoingLedger — success shape (R9.1, R9.2, design.md §9)", () 
 
     const result = await listOutgoingLedger(
       warehouseStaffResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       { limit: 20, offset: 0 },
+      mockRlsDeps(db).deps,
     );
 
     expect(result).toHaveProperty("rows");

@@ -89,6 +89,7 @@ import type {
   RequestAuthorizationResolver,
 } from "@/lib/rbac/session";
 import { createLocation, deactivateLocation, updateLocation } from "../locations";
+import { mockRlsDeps } from "@/lib/db/__tests__/helpers/mock-rls";
 
 // ---------------------------------------------------------------------------
 // Resolver mock helpers (same pattern as lib/rbac/__tests__/guard.test.ts)
@@ -185,8 +186,6 @@ describe("createLocation — authorization (R6.7, design.md §4/§8: locations.m
   it("returns { ok: false, error } when unauthenticated", async () => {
     const result = await createLocation(
       unauthenticatedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      {} as any,
       validLocationInput,
     );
     expect(result.ok).toBe(false);
@@ -197,8 +196,6 @@ describe("createLocation — authorization (R6.7, design.md §4/§8: locations.m
     // to create (R6.7, design.md §4, requirements.md §3 Actors).
     const result = await createLocation(
       supervisorResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      {} as any,
       validLocationInput,
     );
     expect(result.ok).toBe(false);
@@ -207,8 +204,6 @@ describe("createLocation — authorization (R6.7, design.md §4/§8: locations.m
   it("returns { ok: false, error } when the resolver is explicitly forbidden", async () => {
     const result = await createLocation(
       forbiddenResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      {} as any,
       validLocationInput,
     );
     expect(result.ok).toBe(false);
@@ -224,9 +219,8 @@ describe("createLocation — validation (R3.1-R3.5, design.md §6a Create)", () 
 
     const result = await createLocation(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       { ...validLocationInput, zone: undefined },
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -243,9 +237,8 @@ describe("createLocation — validation (R3.1-R3.5, design.md §6a Create)", () 
 
     const result = await createLocation(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       { ...validLocationInput, locationType: "loading_dock" }, // not in approved enum
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -262,9 +255,8 @@ describe("createLocation — validation (R3.1-R3.5, design.md §6a Create)", () 
 
     const result = await createLocation(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       { ...validLocationInput, maxCbmCapacity: "0" },
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -281,9 +273,8 @@ describe("createLocation — validation (R3.1-R3.5, design.md §6a Create)", () 
 
     const result = await createLocation(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       { ...validLocationInput, maxCbmCapacity: "-5.0" },
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -310,9 +301,8 @@ describe("createLocation — label uniqueness collision (R3.3, design.md §6a Cr
 
     const result = await createLocation(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       validLocationInput, // rack=A, level=1, position=01 → label A1-01
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -332,9 +322,8 @@ describe("createLocation — success (R3.1-R3.3, design.md §6a Create)", () => 
 
     const result = await createLocation(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       validLocationInput,
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(true);
@@ -356,8 +345,6 @@ describe("createLocation — success (R3.1-R3.3, design.md §6a Create)", () => 
 
     const result = await createLocation(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       {
         ...validLocationInput,
         rack: "B",
@@ -367,6 +354,7 @@ describe("createLocation — success (R3.1-R3.3, design.md §6a Create)", () => 
         // the server-computed one — the action must ignore it.
         label: "FORGED-LABEL",
       },
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(true);
@@ -387,8 +375,6 @@ describe("updateLocation — authorization (R6.7, design.md §4: locations.manag
   it("returns forbidden when unauthenticated", async () => {
     const result = await updateLocation(
       unauthenticatedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      {} as any,
       "loc-1",
       validLocationInput,
       "2024-06-01T00:00:00.000Z",
@@ -399,8 +385,6 @@ describe("updateLocation — authorization (R6.7, design.md §4: locations.manag
   it("returns forbidden when supervisor (locations.read only, not locations.manage — R6.7)", async () => {
     const result = await updateLocation(
       supervisorResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      {} as any,
       "loc-1",
       validLocationInput,
       "2024-06-01T00:00:00.000Z",
@@ -424,11 +408,10 @@ describe("updateLocation — stale-edit conflict (design.md §6a Edit/deactivate
 
     const result = await updateLocation(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "loc-1",
       validLocationInput,
       "2024-01-01T00:00:00.000Z", // stale
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -463,11 +446,10 @@ describe("updateLocation — label uniqueness re-check on rack/level/position ch
 
     const result = await updateLocation(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "loc-1",
       { ...validLocationInput, rack: "B", level: "2", position: "03" }, // new label B2-03
       currentTimestamp,
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(false);
@@ -498,11 +480,10 @@ describe("updateLocation — label uniqueness re-check on rack/level/position ch
 
     const result = await updateLocation(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "loc-1",
       { ...validLocationInput, rack: "B", level: "2", position: "05" },
       currentTimestamp,
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(true);
@@ -517,8 +498,6 @@ describe("deactivateLocation — authorization (R6.7, design.md §4: locations.m
   it("returns forbidden when unauthenticated", async () => {
     const result = await deactivateLocation(
       unauthenticatedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      {} as any,
       "loc-1",
     );
     expect(result.ok).toBe(false);
@@ -527,8 +506,6 @@ describe("deactivateLocation — authorization (R6.7, design.md §4: locations.m
   it("returns forbidden when supervisor (locations.read only — R6.7)", async () => {
     const result = await deactivateLocation(
       supervisorResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      {} as any,
       "loc-1",
     );
     expect(result.ok).toBe(false);
@@ -548,12 +525,11 @@ describe("deactivateLocation — warn-not-block (R3.7, design.md §6a Edit/deact
 
     const result = await deactivateLocation(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "loc-1",
       {
         locationHasOperationalRecords: vi.fn().mockResolvedValue(true),
       },
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(true);
@@ -566,12 +542,11 @@ describe("deactivateLocation — warn-not-block (R3.7, design.md §6a Edit/deact
 
     const result = await deactivateLocation(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "loc-1",
       {
         locationHasOperationalRecords: vi.fn().mockResolvedValue(false),
       },
+      mockRlsDeps(db).deps,
     );
 
     expect(result.ok).toBe(true);

@@ -219,7 +219,7 @@ async function OutgoingLedgerTab({
 }: {
   resolver: Awaited<ReturnType<typeof createPageResolver>>;
 }) {
-  const ledgerResult = await listOutgoingLedger(resolver, db, {
+  const ledgerResult = await listOutgoingLedger(resolver, {
     limit: 100,
     offset: 0,
   });

@@ -72,7 +72,7 @@ export async function createPartyAction(
     isActive: formData.get("isActive") !== "false",
   };
 
-  const result = await createParty(resolver, db, input);
+  const result = await createParty(resolver, input);
 
   if (!result.ok) {
     if ("fieldErrors" in result) {
@@ -87,7 +87,7 @@ export async function createPartyAction(
   const roleValues = formData.getAll("roles");
   for (const role of roleValues) {
     if (typeof role === "string" && role.trim()) {
-      await addPartyRole(resolver, db, partyId, role);
+      await addPartyRole(resolver, partyId, role);
     }
   }
 
@@ -120,7 +120,7 @@ export async function updatePartyAction(
     isActive: formData.get("isActive") !== "false",
   };
 
-  const result = await updateParty(resolver, db, id, input, submittedUpdatedAt);
+  const result = await updateParty(resolver, id, input, submittedUpdatedAt);
 
   if (!result.ok) {
     if ("fieldErrors" in result) {
@@ -151,7 +151,7 @@ export async function deactivatePartyAction(
   const resolver = await createPageResolver();
   const id = formData.get("id") as string;
 
-  const result = await deactivateParty(resolver, db, id);
+  const result = await deactivateParty(resolver, id);
 
   if (!result.ok) {
     return { error: result.error };
@@ -174,7 +174,7 @@ export async function addPartyRoleAction(
   const partyId = formData.get("partyId") as string;
   const role = formData.get("role") as string;
 
-  const result = await addPartyRole(resolver, db, partyId, role);
+  const result = await addPartyRole(resolver, partyId, role);
 
   if (!result.ok) {
     return { error: result.error };
@@ -196,7 +196,7 @@ export async function removePartyRoleAction(
   const partyId = formData.get("partyId") as string;
   const roleRowId = formData.get("roleRowId") as string;
 
-  const result = await removePartyRole(resolver, db, partyId, roleRowId);
+  const result = await removePartyRole(resolver, partyId, roleRowId);
 
   if (!result.ok) {
     return { error: result.error };
@@ -249,7 +249,6 @@ export async function contactPartyAction(
 
   const result = await contactParty(
     resolver,
-    db,
     partyId,
     sendEmailViaResend,
     message,

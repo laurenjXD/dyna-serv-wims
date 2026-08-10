@@ -95,7 +95,6 @@ export default async function TransferDetailPage({
     const actionResolver = await createPageResolver();
     const result = await updateTransferStatus(
       actionResolver,
-      db,
       transferId,
       "in_progress"
     );
@@ -112,7 +111,6 @@ export default async function TransferDetailPage({
     const actionResolver = await createPageResolver();
     const result = await updateTransferStatus(
       actionResolver,
-      db,
       transferId,
       "cancelled"
     );

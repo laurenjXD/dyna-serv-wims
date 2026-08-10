@@ -23,18 +23,30 @@
 // These actions are online-only; scan loop and commit are excluded from the
 // offline queue (two-stage commitment lifecycle per 08-outgoing spec).
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import type { RequestAuthorizationResolver } from "@/lib/rbac/session";
 import { requirePermission } from "@/lib/rbac/guard";
 import { validateCreateWrr } from "@/lib/receiving/wrr-schema";
 import { matchScan } from "@/lib/receiving/scan-matcher";
 import type { WrrLine } from "@/lib/receiving/scan-matcher";
-import { validateCommit } from "@/lib/receiving/commit-validation";
+import { validateLineCommit } from "@/lib/receiving/commit-validation";
+import type { CommitLocation } from "@/lib/receiving/commit-validation";
 import { wrrDocuments, wrrItems } from "@/lib/db/schema/wrr";
 import { lots } from "@/lib/db/schema/lots";
 import { lotLocationBalances } from "@/lib/db/schema/lot_location_balances";
 import { inventoryTransactions } from "@/lib/db/schema/transactions";
 import { locations } from "@/lib/db/schema/locations";
+import { withRlsTransaction } from "@/lib/db/rls-transaction";
+import type { RlsTransactionDeps } from "@/lib/db/rls-transaction";
+import { rlsPool } from "@/lib/db/rls-pool";
+import { getAuthenticatedSession } from "@/lib/auth/get-authenticated-session";
+
+// Every action below binds its DB work to the caller's RLS-claimed
+// transaction (specs/02-rbac-roles/design.md §6.3) rather than an
+// unauthenticated plain connection. `requirePermission()` remains the
+// app-layer capability gate (unchanged); `withRlsTransaction` additionally
+// makes the underlying Postgres RLS policies the real, DB-level backstop.
+const defaultRlsDeps: RlsTransactionDeps = { getAuthenticatedSession, pool: rlsPool };
 
 // Minimal structural type that both the real Drizzle db instance and test
 // stubs satisfy. Uses named method properties (not an index signature) so
@@ -60,7 +72,7 @@ export type RecordScanResult =
   | { ok: true; remainingQty: number; disposition: "store" | "inspect" }
   | { ok: false; reason: string };
 
-export type CommitWrrResult = { ok: true } | { ok: false; errors: string[] };
+export type CommitWrrLineResult = { ok: true } | { ok: false; errors: string[] };
 
 // ---------------------------------------------------------------------------
 // Internal: fetch WRR document with items for action context
@@ -154,8 +166,8 @@ function generateWrrNumber(): string {
  */
 export async function createWrr(
   resolver: RequestAuthorizationResolver,
-  db: DbLike,
   input: unknown,
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<CreateWrrActionResult> {
   // 1. Authorization
   const perm = await requirePermission(resolver, "receiving.confirm");
@@ -175,10 +187,13 @@ export async function createWrr(
   // 3. Generate WRR number
   const wrrNumber = generateWrrNumber();
 
-  // 4. Stage the header and every expected line in one transaction. A WRR
-  // without its line records can never safely reach the confirmation command.
-  return (await db.transaction(async (tx) => {
-    const [inserted] = await tx
+  // 4. Stage the header and every expected line in one RLS-claimed
+  // transaction. A WRR without its line records can never safely reach the
+  // confirmation command.
+  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
+
+    const [inserted] = await db
       .insert(wrrDocuments)
       .values({
         wrrNumber,
@@ -194,7 +209,7 @@ export async function createWrr(
       })
       .returning({ id: wrrDocuments.id });
 
-    await tx.insert(wrrItems).values(
+    await db.insert(wrrItems).values(
       data.lines.map((line) => ({
         wrrId: inserted.id,
         itemId: line.itemId ?? null,
@@ -210,7 +225,12 @@ export async function createWrr(
     );
 
     return { ok: true, wrrId: inserted.id } satisfies CreateWrrActionResult;
-  })) as CreateWrrActionResult;
+  });
+
+  if (rlsResult.kind === "unauthenticated") {
+    return { ok: false, errors: ["forbidden"] };
+  }
+  return rlsResult.value;
 }
 
 // ---------------------------------------------------------------------------
@@ -224,9 +244,9 @@ export async function createWrr(
  */
 export async function recordScan(
   resolver: RequestAuthorizationResolver,
-  db: DbLike,
   wrrId: string,
   barcode: string,
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<RecordScanResult> {
   // 1. Authorization
   const perm = await requirePermission(resolver, "receiving.scan");
@@ -234,37 +254,46 @@ export async function recordScan(
     return { ok: false, reason: "forbidden" };
   }
 
-  // 2. Fetch WRR with items
-  const doc = await fetchWrrForAction(db, wrrId);
-  if (doc === null) {
-    return { ok: false, reason: "not_found" };
+  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
+
+    // 2. Fetch WRR with items
+    const doc = await fetchWrrForAction(db, wrrId);
+    if (doc === null) {
+      return { ok: false, reason: "not_found" } satisfies RecordScanResult;
+    }
+
+    // 3. Status guard
+    if (doc.status !== "receiving_in_progress") {
+      return { ok: false, reason: "invalid_status" } satisfies RecordScanResult;
+    }
+
+    // 4. Match barcode against expected lines
+    const matchResult = matchScan(barcode, doc.items);
+    if (!matchResult.matched) {
+      return { ok: false, reason: matchResult.reason } satisfies RecordScanResult;
+    }
+
+    const line = matchResult.line;
+
+    // 5. Increment scannedQty
+    await db
+      .update(wrrItems)
+      .set({ scannedQty: line.scannedQty + 1 })
+      .where(eq(wrrItems.id, line.id));
+
+    // 6. Return success
+    return {
+      ok: true,
+      remainingQty: matchResult.remainingQty,
+      disposition: line.disposition,
+    } satisfies RecordScanResult;
+  });
+
+  if (rlsResult.kind === "unauthenticated") {
+    return { ok: false, reason: "forbidden" };
   }
-
-  // 3. Status guard
-  if (doc.status !== "receiving_in_progress") {
-    return { ok: false, reason: "invalid_status" };
-  }
-
-  // 4. Match barcode against expected lines
-  const matchResult = matchScan(barcode, doc.items);
-  if (!matchResult.matched) {
-    return { ok: false, reason: matchResult.reason };
-  }
-
-  const line = matchResult.line;
-
-  // 5. Increment scannedQty
-  await db
-    .update(wrrItems)
-    .set({ scannedQty: line.scannedQty + 1 })
-    .where(eq(wrrItems.id, line.id));
-
-  // 6. Return success
-  return {
-    ok: true,
-    remainingQty: matchResult.remainingQty,
-    disposition: line.disposition,
-  };
+  return rlsResult.value;
 }
 
 // ---------------------------------------------------------------------------
@@ -278,8 +307,8 @@ export async function recordScan(
  */
 export async function startReceiving(
   resolver: RequestAuthorizationResolver,
-  db: DbLike,
   wrrId: string,
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<{ ok: true } | { ok: false; errors: string[] }> {
   // 1. Authorization
   const perm = await requirePermission(resolver, "receiving.confirm");
@@ -287,40 +316,59 @@ export async function startReceiving(
     return { ok: false, errors: ["forbidden"] };
   }
 
-  // 2. Fetch WRR
-  const doc = await fetchWrrForAction(db, wrrId);
-  if (doc === null) {
-    return { ok: false, errors: ["not_found"] };
+  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
+
+    // 2. Fetch WRR
+    const doc = await fetchWrrForAction(db, wrrId);
+    if (doc === null) {
+      return { ok: false as const, errors: ["not_found"] };
+    }
+
+    // 3. Status guard — only staged_pending_arrival may transition to in_progress
+    if (doc.status !== "staged_pending_arrival") {
+      return { ok: false as const, errors: ["invalid_status"] };
+    }
+
+    // 4. Transition status
+    await db
+      .update(wrrDocuments)
+      .set({ status: "receiving_in_progress", updatedAt: new Date() })
+      .where(eq(wrrDocuments.id, wrrId));
+
+    return { ok: true as const };
+  });
+
+  if (rlsResult.kind === "unauthenticated") {
+    return { ok: false, errors: ["forbidden"] };
   }
-
-  // 3. Status guard — only staged_pending_arrival may transition to in_progress
-  if (doc.status !== "staged_pending_arrival") {
-    return { ok: false, errors: ["invalid_status"] };
-  }
-
-  // 4. Transition status
-  await db
-    .update(wrrDocuments)
-    .set({ status: "receiving_in_progress", updatedAt: new Date() })
-    .where(eq(wrrDocuments.id, wrrId));
-
-  return { ok: true };
+  return rlsResult.value;
 }
 
 // ---------------------------------------------------------------------------
-// commitWrr
+// commitWrrLine
 // ---------------------------------------------------------------------------
 
 /**
- * Commits a WRR: validates via validateCommit, then sets status='confirmed'.
- * Records confirmedAt and confirmedByUserId.
- * Requires receiving.confirm capability.
+ * Commits a single WRR line: validates via validateLineCommit against the
+ * staff-supplied location, then atomically posts that line's lot, location
+ * balance, and receiving ledger row. Once every line on the WRR has
+ * committed, the WRR transitions to 'confirmed'; until then it remains
+ * 'receiving_in_progress'. Requires receiving.confirm capability.
+ *
+ * Per-line idempotency: wrr_items.committed_at is the gate. A retry on an
+ * already-committed line observes the existing successful outcome instead of
+ * re-inserting lots/balances/transactions (R7.5).
+ *
+ * See specs/07-incoming-receiving/design.md §9 (Reversed 2026-08-10).
  */
-export async function commitWrr(
+export async function commitWrrLine(
   resolver: RequestAuthorizationResolver,
-  db: DbLike,
   wrrId: string,
-): Promise<CommitWrrResult> {
+  wrrItemId: string,
+  params: { locationId: string },
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+): Promise<CommitWrrLineResult> {
   // 1. Authorization
   const perm = await requirePermission(resolver, "receiving.confirm");
   if (perm.kind !== "authorized") {
@@ -329,54 +377,80 @@ export async function commitWrr(
 
   const userId = perm.context.userId;
 
-  // Every read, status transition, and inventory write occurs through one
-  // transaction. The conditional status update is the idempotency gate: only
-  // the transaction that can move an in-progress WRR to confirmed may create
-  // lots or ledger rows; retries receive the existing-state result instead.
-  return (await db.transaction(async (tx) => {
+  // Every read, validation, conditional claim, and inventory write for this
+  // one line occurs through one RLS-claimed transaction. The conditional
+  // UPDATE on committed_at IS NULL is the idempotency gate: only the
+  // transaction that can claim the null-to-timestamp transition may create
+  // this line's inventory rows; retries observe the existing successful
+  // result instead.
+  const rlsResult = await withRlsTransaction(rlsDeps, async (rlsTx) => {
+    const tx = rlsTx.db as DbLike;
     const doc = await fetchWrrForAction(tx, wrrId);
     if (doc === null) {
-      return { ok: false, errors: ["not_found"] } satisfies CommitWrrResult;
+      return { ok: false, errors: ["not_found"] } satisfies CommitWrrLineResult;
     }
 
-    const commitResult = validateCommit(
+    const line = doc.items.find((item) => item.id === wrrItemId);
+    if (!line) {
+      return { ok: false, errors: ["not_found"] } satisfies CommitWrrLineResult;
+    }
+
+    // Idempotency short-circuit (R7.5): once a line has committed, its own
+    // committed_at is authoritative on its own, independent of the WRR's
+    // current status (which may have already advanced to 'confirmed' once
+    // every line committed). Re-validating against the now-'confirmed' WRR
+    // status would incorrectly reject an already-successful retry.
+    const existingRows = await tx
+      .select({ committedAt: wrrItems.committedAt })
+      .from(wrrItems)
+      .where(eq(wrrItems.id, wrrItemId));
+    if (existingRows.length === 1 && existingRows[0].committedAt !== null) {
+      return { ok: true } satisfies CommitWrrLineResult;
+    }
+
+    const locationRows = await tx
+      .select({
+        id: locations.id,
+        isActive: locations.isActive,
+        locationType: locations.locationType,
+      })
+      .from(locations)
+      .where(eq(locations.id, params.locationId));
+    const location: CommitLocation | null =
+      locationRows.length === 1
+        ? {
+            id: locationRows[0].id as string,
+            isActive: locationRows[0].isActive as boolean,
+            locationType: locationRows[0].locationType as string,
+          }
+        : null;
+
+    const validation = validateLineCommit(
       {
         id: doc.id,
         status: doc.status,
         flowType: doc.flowType,
         vendorPartyId: doc.vendorPartyId,
       },
-      doc.items as Parameters<typeof validateCommit>[1],
+      line,
+      location,
     );
-    if (!commitResult.ok) {
-      return { ok: false, errors: commitResult.errors } satisfies CommitWrrResult;
+    if (!validation.ok) {
+      return { ok: false, errors: validation.errors } satisfies CommitWrrLineResult;
     }
 
-    const selectedLocations = await resolveCommitLocations(tx, doc.items);
-    if (!selectedLocations.ok) {
-      return { ok: false, errors: selectedLocations.errors } satisfies CommitWrrResult;
-    }
-
-    const confirmed = await tx
-      .update(wrrDocuments)
+    // Conditional claim: only the caller who flips committed_at from NULL to
+    // now() may post this line's inventory rows below.
+    const claimed = await tx
+      .update(wrrItems)
       .set({
-        status: "confirmed",
-        confirmedAt: new Date(),
-        confirmedByUserId: userId,
-        updatedAt: new Date(),
+        committedAt: new Date(),
+        ...(line.disposition === "store" ? { putawayLocationId: params.locationId } : {}),
       })
-      .where(and(
-        eq(wrrDocuments.id, wrrId),
-        eq(wrrDocuments.status, "receiving_in_progress"),
-      ))
-      .returning({ id: wrrDocuments.id });
+      .where(and(eq(wrrItems.id, wrrItemId), isNull(wrrItems.committedAt)))
+      .returning({ id: wrrItems.id });
 
-    if (confirmed.length !== 1) {
-      return { ok: false, errors: ["already_committed_or_invalid_status"] } satisfies CommitWrrResult;
-    }
-
-    for (const line of doc.items) {
-      const locationId = selectedLocations.byLineId.get(line.id)!;
+    if (claimed.length === 1) {
       const [lot] = await tx
         .insert(lots)
         .values({
@@ -394,7 +468,7 @@ export async function commitWrr(
 
       await tx.insert(lotLocationBalances).values({
         lotId: lot.id,
-        locationId,
+        locationId: params.locationId,
         qtyReceived: line.scannedQty,
         qtyRemaining: line.scannedQty,
         qtyCommitted: 0,
@@ -409,7 +483,7 @@ export async function commitWrr(
         lotId: lot.id,
         itemId: line.itemId!,
         movementType: "receiving",
-        toLocationId: locationId,
+        toLocationId: params.locationId,
         qty: line.scannedQty,
         flowType: doc.flowType as "vmi" | "trading" | "supplies",
         commercialInvoiceNo: doc.commercialInvoiceNo,
@@ -417,50 +491,40 @@ export async function commitWrr(
         performedByUserId: userId,
       });
     }
+    // If claimed.length === 0, this line was already committed by a prior
+    // call — idempotent retry; nothing more to post for this line.
 
-    return { ok: true } satisfies CommitWrrResult;
-  })) as CommitWrrResult;
-}
+    // Re-evaluate WRR-level completion: flip to 'confirmed' only once every
+    // line on this WRR has committed_at set. Left as receiving_in_progress
+    // otherwise (no intermediate status value is introduced).
+    const allLines = await tx
+      .select({ id: wrrItems.id, committedAt: wrrItems.committedAt })
+      .from(wrrItems)
+      .where(eq(wrrItems.wrrId, wrrId));
+    const allCommitted =
+      allLines.length > 0 &&
+      allLines.every((l: { committedAt: Date | null }) => l.committedAt !== null);
 
-async function resolveCommitLocations(
-  db: DbLike,
-  lines: WrrLine[],
-): Promise<{ ok: true; byLineId: Map<string, string> } | { ok: false; errors: string[] }> {
-  const byLineId = new Map<string, string>();
-  const errors: string[] = [];
-
-  for (const line of lines) {
-    if (line.disposition === "store") {
-      if (!line.putawayLocationId) {
-        errors.push(`Line ${line.id} is missing its designated putaway location`);
-        continue;
-      }
-      const rows = await db
-        .select({ id: locations.id })
-        .from(locations)
+    if (allCommitted) {
+      await tx
+        .update(wrrDocuments)
+        .set({
+          status: "confirmed",
+          confirmedAt: new Date(),
+          confirmedByUserId: userId,
+          updatedAt: new Date(),
+        })
         .where(and(
-          eq(locations.id, line.putawayLocationId),
-          eq(locations.locationType, "storage"),
-          eq(locations.isActive, true),
+          eq(wrrDocuments.id, wrrId),
+          eq(wrrDocuments.status, "receiving_in_progress"),
         ));
-      if (rows.length !== 1) {
-        errors.push(`Line ${line.id} references an inactive or non-storage putaway location`);
-      } else {
-        byLineId.set(line.id, rows[0].id as string);
-      }
-      continue;
     }
 
-    const rows = await db
-      .select({ id: locations.id })
-      .from(locations)
-      .where(and(eq(locations.locationType, "inspection"), eq(locations.isActive, true)));
-    if (rows.length !== 1) {
-      errors.push("Exactly one active inspection location is required to commit inspect lines");
-    } else {
-      byLineId.set(line.id, rows[0].id as string);
-    }
+    return { ok: true } satisfies CommitWrrLineResult;
+  });
+
+  if (rlsResult.kind === "unauthenticated") {
+    return { ok: false, errors: ["forbidden"] };
   }
-
-  return errors.length > 0 ? { ok: false, errors } : { ok: true, byLineId };
+  return rlsResult.value;
 }

@@ -232,3 +232,79 @@ describe("validateCreateWrr — disposition defaults to 'store' when omitted fro
     expect(result.data.lines[0].disposition).toBe("store");
   });
 });
+
+// --- 2026-08-10 reversal: putawayLocationId is no longer required at
+// WRR-creation time for `store`-disposition lines ---
+//
+// specs/07-incoming-receiving/design.md §5.1 ("Putaway location" row,
+//   "Reversed 2026-08-10 (supersedes the 2026-08-09 Product Owner decision
+//   — see specs/00-steering/revision-log.md)"): "No longer required, set, or
+//   even meaningfully choosable at WRR-creation time... `store`-disposition
+//   lines carry `putaway_location_id = NULL` from WRR creation through the
+//   start of receiving."
+// specs/07-incoming-receiving/requirements.md R1.4 (amended 2026-08-10,
+//   "supersedes the 2026-08-09 amendment of this clause"): "a
+//   `store`-disposition line SHALL NOT be required to carry a
+//   `putaway_location_id` at WRR creation or staging time... `putaway_location_id`
+//   is instead populated per line at scan/store time, per R3.8/R7.9."
+//
+// The current implementation (lib/receiving/wrr-schema.ts validateLine,
+// lines 161-167) still pushes a validation error when a `store`-disposition
+// line lacks `putawayLocationId`. Test (a) below is expected to FAIL against
+// that current code — that is the point of this RED step.
+//
+// Ambiguity note: design.md §5.1 says a store line "carries
+// putaway_location_id = NULL... from WRR creation through the start of
+// receiving," which could be read as either (i) creation-time input
+// providing a value should be rejected outright, or (ii) creation-time input
+// simply isn't required and a caller-supplied value is not an error (e.g.
+// because the field is simply not required/consulted this early, not because
+// providing it is itself illegal). Per this task's instruction to prefer the
+// more conservative reading when the doc doesn't unambiguously say "reject,"
+// test (b) below asserts the caller-supplied-value case is NOT rejected as a
+// validation error (i.e. `ok: true`), not that it is rejected.
+describe("validateCreateWrr — putawayLocationId is no longer required for store-disposition lines at creation time (design.md §5.1 'Reversed 2026-08-10', requirements.md R1.4 amended 2026-08-10)", () => {
+  it("AC-R1.4: returns { ok: true } for a store-disposition line that OMITS putawayLocationId at creation time", async () => {
+    const { validateCreateWrr } = await import("@/lib/receiving/wrr-schema");
+
+    const storeLineWithoutLocation = { ...VALID_LINE, disposition: "store" as const };
+    delete (storeLineWithoutLocation as Record<string, unknown>)["putawayLocationId"];
+
+    const result = validateCreateWrr({
+      ...VALID_CREATE_WRR,
+      lines: [storeLineWithoutLocation],
+    });
+
+    // This is the RED assertion: the current implementation still requires
+    // putawayLocationId for store disposition and will return { ok: false }.
+    expect(result.ok).toBe(true);
+  });
+
+  it("AC-R1.4: returns { ok: true } for a store-disposition line that explicitly sets putawayLocationId to null at creation time", async () => {
+    const { validateCreateWrr } = await import("@/lib/receiving/wrr-schema");
+
+    const result = validateCreateWrr({
+      ...VALID_CREATE_WRR,
+      lines: [{ ...VALID_LINE, disposition: "store" as const, putawayLocationId: null }],
+    });
+
+    expect(result.ok).toBe(true);
+  });
+
+  it("AC-R1.4 (conservative reading, see ambiguity note above): does NOT reject a store-disposition line that mistakenly supplies a putawayLocationId at creation time — it is simply not required or consulted this early, not treated as an error", async () => {
+    const { validateCreateWrr } = await import("@/lib/receiving/wrr-schema");
+
+    const result = validateCreateWrr({
+      ...VALID_CREATE_WRR,
+      lines: [
+        {
+          ...VALID_LINE,
+          disposition: "store" as const,
+          putawayLocationId: "location-storage-uuid",
+        },
+      ],
+    });
+
+    expect(result.ok).toBe(true);
+  });
+});

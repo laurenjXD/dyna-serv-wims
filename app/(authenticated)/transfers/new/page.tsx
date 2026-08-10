@@ -56,7 +56,7 @@ async function handleCreateTransfer(formData: FormData): Promise<void> {
     requiresApproval: rawRequiresApproval === "on",
   };
 
-  const result = await createTransfer(actionResolver, db, input);
+  const result = await createTransfer(actionResolver, input);
   if (result.ok) {
     redirect(`/transfers/${result.transferId}`);
   }
