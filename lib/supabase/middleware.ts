@@ -7,11 +7,17 @@ import { type NextRequest, NextResponse } from "next/server";
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key =
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !key) {
+    return supabaseResponse;
+  }
+
+  try {
+    const supabase = createServerClient(url, key, {
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -24,11 +30,14 @@ export async function updateSession(request: NextRequest) {
           );
         },
       },
-    },
-  );
+    });
 
-  // Required to keep the session alive — do not remove this call.
-  await supabase.auth.getUser();
+    // Required to keep the session alive — do not remove this call.
+    await supabase.auth.getUser();
+  } catch (err) {
+    // Fail-safe — do not crash middleware with 500 if Supabase is unreachable or env var is invalid
+    console.error("[middleware] updateSession error:", err);
+  }
 
   return supabaseResponse;
 }
