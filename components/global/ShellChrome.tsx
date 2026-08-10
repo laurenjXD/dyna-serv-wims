@@ -44,7 +44,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
           Holds the brand mark, the mobile nav-open toggle, and account
           controls. brand-navy background per brand-design-system.md §9.
           No backdrop-blur — solid surface for both floor and office tiers. */}
-      <header className="fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-white/10 bg-brand-navy px-4 shadow-elevation-2 lg:left-64 lg:h-20 lg:border-outline-variant/30 lg:bg-surface-white lg:px-10 lg:shadow-none">
+      <header className="fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-white/10 bg-brand-navy px-4 shadow-elevation-2 lg:left-72 lg:h-20 lg:border-outline-variant/30 lg:bg-surface-white lg:px-10 lg:shadow-none">
         {/* Mobile hamburger — hidden above lg where the persistent sidebar
             takes over. 64px min touch target (floor primary rules apply
             since this control is present on every surface including floor).
@@ -152,7 +152,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
 
       {/* pb-20 (base) clears the fixed floor bottom tab bar; office tier
           doesn't render that bar, so the extra bottom space is harmless.
-          lg:pl-64 clears the office/party desktop sidebar's fixed width.
+          lg:pl-72 clears the office/party desktop sidebar's fixed width.
           pt-14 clears the fixed AppHeader.
           Office/party tiers get the light `surface-light-grey` dashboard
           backdrop (brand-design-system §6/§9, revised 2026-08-09); floor
@@ -160,7 +160,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
       <main
         id="main-content"
         data-surface={tier}
-        className={`min-h-screen pb-20 pt-14 lg:pb-0 lg:pl-64 lg:pt-20 ${
+        className={`min-h-screen pb-20 pt-14 lg:pb-0 lg:pl-72 lg:pt-20 ${
           tier === "floor" ? "" : "bg-surface-light-grey"
         }`}
       >
