@@ -162,14 +162,21 @@ function makeReceivingDb(
   const inserted: unknown[] = [];
   const updated: unknown[] = [];
 
-  return {
+  const db = {
     _inserted: inserted,
     _updated: updated,
 
     select: vi.fn().mockImplementation(() => {
       // Return wrr rows first, then item rows for subsequent calls.
       const allRows = [...wrrRows, ...wrrItemRows];
-      return makeSelectChain(allRows);
+      const chain = makeSelectChain(allRows);
+      chain.from.mockImplementation((table: Record<PropertyKey, unknown>) => {
+        if (table[Symbol.for("drizzle:Name")] === "locations") {
+          return makeSelectChain([{ id: "location-storage-uuid" }]);
+        }
+        return chain;
+      });
+      return chain;
     }),
 
     insert: vi.fn().mockImplementation(() => ({
@@ -185,11 +192,17 @@ function makeReceivingDb(
       set: vi.fn().mockImplementation((vals: unknown) => {
         updated.push(vals);
         return {
-          where: vi.fn().mockResolvedValue(undefined),
+          where: vi.fn(() => ({
+            returning: vi.fn().mockResolvedValue([{ id: "wrr-uuid-existing" }]),
+          })),
         };
       }),
     })),
   };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (db as any).transaction = vi.fn(async (callback: (tx: typeof db) => Promise<unknown>) => callback(db));
+  return db;
 }
 
 // ---------------------------------------------------------------------------
@@ -208,6 +221,7 @@ function validCreateWrrInput() {
         unitCbm: 0.5,
         uom: "CTN",
         disposition: "store",
+        putawayLocationId: "location-storage-uuid",
         itemId: "item-master-uuid-1",
       },
     ],
@@ -242,6 +256,7 @@ function wrrItemRow(overrides: Partial<AnyRecord> = {}): AnyRecord {
     unitCbm: "0.5000",
     uom: "CTN",
     disposition: "store",
+    putawayLocationId: "location-storage-uuid",
     createdAt: new Date("2026-08-08T10:00:00Z"),
     ...overrides,
   };
@@ -338,7 +353,7 @@ describe("createWrr — invalid input (R1.3, design.md §5.1)", () => {
 // ---------------------------------------------------------------------------
 
 describe("createWrr — success (R1.1, R1.4, design.md §4)", () => {
-  it("(AC: DB insert called once, wrrId returned) returns { ok: true, wrrId } and calls db.insert exactly once for valid input", async () => {
+  it("(AC: staged header and lines are written atomically, wrrId returned) returns { ok: true, wrrId } and writes the WRR plus its expected lines", async () => {
     const db = makeReceivingDb([]);
 
     const result = await createWrr(
@@ -353,8 +368,8 @@ describe("createWrr — success (R1.1, R1.4, design.md §4)", () => {
       expect(typeof result.wrrId).toBe("string");
       expect(result.wrrId.length).toBeGreaterThan(0);
     }
-    // Exactly one insert (the wrr_documents row).
-    expect(db.insert).toHaveBeenCalledTimes(1);
+    // Header and line records are staged together.
+    expect(db.insert).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -669,6 +684,28 @@ describe("commitWrr — success (R3.5, R7.2, design.md §9)", () => {
     expect(updatedPayload["confirmedAt"]).not.toBeNull();
     expect(updatedPayload).toHaveProperty("confirmedByUserId");
     expect(updatedPayload["confirmedByUserId"]).toBe("user-uuid-staff");
+
+    // C1: receipt confirmation creates the physical lot, its authoritative
+    // location balance, and one immutable receiving ledger row together.
+    expect(db.insert).toHaveBeenCalledTimes(3);
+    expect(db._inserted).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        lotNumber: "LOT-001",
+        status: "available",
+        wrrItemId: "item-fully-scanned",
+      }),
+      expect.objectContaining({
+        locationId: "location-storage-uuid",
+        qtyReceived: 10,
+        qtyRemaining: 10,
+      }),
+      expect.objectContaining({
+        movementType: "receiving",
+        toLocationId: "location-storage-uuid",
+        qty: 10,
+        wrrId: "wrr-uuid-existing",
+      }),
+    ]));
   });
 });
 

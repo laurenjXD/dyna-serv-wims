@@ -1,6 +1,9 @@
 # Revision Log — Hyperion 3PL / Dyna-Serv
 
 Every merge conflict and major revision, dated, with the resolution. This is the audit trail for "why does the spec say X" when X isn't obvious from the doc alone.
+## Unapproved `withdrawal.*` capability caught in `0019_document_rls.sql` before it reached production (2026-08-10)
+
+A collaborator preparing to apply pending migrations `0018`–`0020` to production found `0019_document_rls.sql` seeded and referenced `withdrawal.view`/`withdrawal.execute`, blocking the batch before applying anything. This is the same unapproved vocabulary already found and removed from application code on 2026-08-08 (see the "Route-registry/capability reconciliation" entry on `main`) — never seeded before this migration, no backing in `10-pick-list-and-acknowledgement-receipt/design.md` (whose own tasks.md §RLS item is explicitly still open, deferring to `02`'s catalog), and in conflict with `05`'s rule against a withdrawal-request model. `10`'s `generated_documents`/`document_events` tables are exactly the `documents` resource `02-rbac-roles/design.md` §3.2 already defines (`documents.read`/`generate`/`download`, global scope, already seeded to `warehouse_staff`/`supervisor`/`administrator` in `0005_rbac_constraints_and_seed.sql`, plus `documents.read` `assigned_party` for `party_user`) — so `0019` was rewritten to reference the existing `documents.read`/`documents.generate` capabilities via `has_permission`, with the standalone `withdrawal` permission-seed block removed entirely (no new permission rows needed; they already exist). Caught and fixed before `0019` was ever applied to any environment, so no rollback/backfill is needed — `0018`–`0020` can proceed in order once this fix is picked up.
 
 ## Modern restyle extended to every office page, not just dashboard/reports (2026-08-10)
 
@@ -1035,3 +1038,20 @@ The product owner confirmed the WRR document also carries a MAWB/MBL (Master Air
 - `07-incoming-receiving/design.md` §5.3 ("WRR printed fields," Header section): added a "MAWB/MBL (Master Air Waybill / Bill of Lading) number where applicable" bullet directly beneath the existing PEZA/IP number bullet.
 
 No `Status` header was changed on `01` or `07`; both remain `Approved`, with this treated as an additive field addition consistent with the existing header-field set, not a reopening. No application code was written. This field is not added to the Master Inventory expanded row — it is a WRR-level logistics reference tied to receiving, not part of the item-level dimensions/valuation/movement-history/VMI-Trading-extension content already specified there; it can be added to that view later if the product owner asks for it explicitly.
+# `07` receipt commit — explicit per-line putaway location selected (2026-08-09)
+
+The Product Owner selected the previously-presented **option 1** for `07` receipt confirmation: a `store`-disposition WRR line records its designated storage `putaway_location_id` before receiving begins. A `store` commit validates that the referenced location is active and of type `storage`, then atomically creates the available lot, its `lot_location_balances` row, the immutable `receiving` transaction with matching `to_location_id`, and the confirmed WRR state. `inspect` lines do not use this field; their commit resolves the active `inspection` location and creates a quarantined lot there.
+
+This closes the C1 implementation ambiguity without introducing a temporary receiving-bay availability state or an unapproved automatic location-selection engine. The nullable staging column is added by `0020_wrr_item_putaway_location.sql`; the confirmation invariant, rather than a cross-row database CHECK, makes it required specifically for `store` lines. `01` and `07` documentation have been amended to reflect the decision. No `warehouse_id`, new capability string, or duplicate stock ledger is introduced.
+
+# `08` Stock View — read-only standard FIFO/FEFO allocation preview (2026-08-10)
+
+The Inventory hub's Stock View now reads live, pickable `lot_location_balances` joined to lots, items, and locations. It exposes only `lots.status = 'available'` rows with a positive derived quantity (`qty_remaining - qty_committed`) and shows staff a requested-quantity preview using the shared allocation engine: FEFO for perishable items, FIFO for non-perishable items, including the selected lot/location sequence and quantities across dispersed locations. Insufficient stock returns no partial plan.
+
+The preview is intentionally read-only. It neither creates a pick list nor reserves stock; the future Stage 1 commitment command remains responsible for re-querying authoritative state and revalidating the plan in its transaction. This preserves the approved reservation and idempotency boundary in `08` design §6.
+
+# Production migration verification — document/RLS chain and C1 putaway location (2026-08-10)
+
+The linked production Supabase project was migrated in order through `0018_generated_documents.sql`, `0019_document_rls.sql`, and `0020_wrr_item_putaway_location.sql`. Before application, the unapplied `0019` migration was corrected to use the existing canonical capabilities (`documents.read`, `pick_list.generate`, and `pick_list.execute`) rather than seeding an unapproved parallel `withdrawal.*` capability resource.
+
+Production migration history now reports `0001` through `0020` aligned. A direct production catalog check confirms `public.wrr_items.putaway_location_id` is a nullable `uuid`, its foreign key is `REFERENCES locations(id) ON DELETE RESTRICT`, and `wrr_items_putaway_location_id_idx` exists as a btree index on that column. No test data or business rows were created or altered during verification.

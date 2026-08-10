@@ -18,6 +18,7 @@ export type WrrLine = {
   expectedQty: number;
   scannedQty: number;
   disposition: "store" | "inspect";
+  putawayLocationId?: string | null;
 };
 
 export type ScanMatchResult =

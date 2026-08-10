@@ -158,6 +158,13 @@ describe("wrr.ts — wrr_items table (Req 6)", () => {
     const { wrrItems } = await import("../wrr");
     expect(column(wrrItems, "disposition").hasDefault).toBe(true);
   });
+
+  it("has nullable putawayLocationId referencing locations.id (store-line placement selection)", async () => {
+    const { wrrItems } = await import("../wrr");
+    expect(hasColumn(wrrItems, "putawayLocationId")).toBe(true);
+    expect(column(wrrItems, "putawayLocationId").notNull).toBe(false);
+    expect(referencesTable(wrrItems, "putaway_location_id", "locations", "id")).toBe(true);
+  });
 });
 
 describe("wrr.ts — wrr_inspection_logs table", () => {

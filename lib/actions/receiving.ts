@@ -23,7 +23,7 @@
 // These actions are online-only; scan loop and commit are excluded from the
 // offline queue (two-stage commitment lifecycle per 08-outgoing spec).
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { RequestAuthorizationResolver } from "@/lib/rbac/session";
 import { requirePermission } from "@/lib/rbac/guard";
 import { validateCreateWrr } from "@/lib/receiving/wrr-schema";
@@ -31,6 +31,10 @@ import { matchScan } from "@/lib/receiving/scan-matcher";
 import type { WrrLine } from "@/lib/receiving/scan-matcher";
 import { validateCommit } from "@/lib/receiving/commit-validation";
 import { wrrDocuments, wrrItems } from "@/lib/db/schema/wrr";
+import { lots } from "@/lib/db/schema/lots";
+import { lotLocationBalances } from "@/lib/db/schema/lot_location_balances";
+import { inventoryTransactions } from "@/lib/db/schema/transactions";
+import { locations } from "@/lib/db/schema/locations";
 
 // Minimal structural type that both the real Drizzle db instance and test
 // stubs satisfy. Uses named method properties (not an index signature) so
@@ -40,6 +44,7 @@ type DbLike = {
   select: (...args: any[]) => any;
   insert: (...args: any[]) => any;
   update: (...args: any[]) => any;
+  transaction: (callback: (tx: DbLike) => Promise<unknown>) => Promise<unknown>;
 };
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
@@ -61,11 +66,8 @@ export type CommitWrrResult = { ok: true } | { ok: false; errors: string[] };
 // Internal: fetch WRR document with items for action context
 // ---------------------------------------------------------------------------
 //
-// The action test mock returns [wrrDocRow, ...wrrItemRows] from every
-// db.select() call (regardless of the .select() argument shape). The
-// discriminator between a document row and an item row is the presence of
-// the `wrrId` field: wrr_items rows carry a `wrrId` FK to wrr_documents,
-// while wrr_documents rows do not have a `wrrId` column.
+// Drizzle returns nested left-join rows (`{ wrr_documents, wrr_items }`),
+// while the action test double returns flat rows. Normalize both shapes here.
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type AnyRecord = Record<string, any>;
@@ -80,6 +82,9 @@ async function fetchWrrForAction(
   flowType: string;
   vendorPartyId: string;
   stagedByUserId: string;
+  commercialInvoiceNo: string | null;
+  pezaNumber: string | null;
+  ipNumber: string | null;
   items: WrrLine[];
 } | null> {
   const allRows: AnyRecord[] = await db
@@ -90,12 +95,10 @@ async function fetchWrrForAction(
 
   if (allRows.length === 0) return null;
 
-  const first = allRows[0];
+  const first = (allRows[0].wrr_documents ?? allRows[0]) as AnyRecord;
 
-  // Rows that carry a `wrrId` field (the wrr_items FK) are item rows;
-  // doc rows do not have this column. Using != null (loose) also handles
-  // undefined (field absent on doc rows in test mocks).
   const items: WrrLine[] = allRows
+    .map((row: AnyRecord) => (row.wrr_items ?? row) as AnyRecord)
     .filter((row: AnyRecord) => row.wrrId != null)
     .map((row: AnyRecord) => ({
       id: row.id as string,
@@ -107,6 +110,7 @@ async function fetchWrrForAction(
       expectedQty: row.expectedQty as number,
       scannedQty: row.scannedQty as number,
       disposition: row.disposition as "store" | "inspect",
+      putawayLocationId: (row.putawayLocationId ?? null) as string | null,
     }));
 
   return {
@@ -116,6 +120,9 @@ async function fetchWrrForAction(
     flowType: first.flowType as string,
     vendorPartyId: first.vendorPartyId as string,
     stagedByUserId: first.stagedByUserId as string,
+    commercialInvoiceNo: (first.commercialInvoiceNo ?? null) as string | null,
+    pezaNumber: (first.pezaNumber ?? null) as string | null,
+    ipNumber: (first.ipNumber ?? null) as string | null,
     items,
   };
 }
@@ -168,24 +175,42 @@ export async function createWrr(
   // 3. Generate WRR number
   const wrrNumber = generateWrrNumber();
 
-  // 4. INSERT wrr_documents row
-  const [inserted] = await db
-    .insert(wrrDocuments)
-    .values({
-      wrrNumber,
-      vendorPartyId: data.vendorPartyId,
-      flowType: data.flowType,
-      status: "staged_pending_arrival",
-      stagedByUserId: userId,
-      commercialInvoiceNo: data.commercialInvoiceNo ?? null,
-      ciplFileUrl: data.ciplFileUrl ?? null,
-      pezaNumber: data.pezaNumber ?? null,
-      ipNumber: data.ipNumber ?? null,
-      mawbMblNumber: data.mawbMblNumber ?? null,
-    })
-    .returning();
+  // 4. Stage the header and every expected line in one transaction. A WRR
+  // without its line records can never safely reach the confirmation command.
+  return (await db.transaction(async (tx) => {
+    const [inserted] = await tx
+      .insert(wrrDocuments)
+      .values({
+        wrrNumber,
+        vendorPartyId: data.vendorPartyId,
+        flowType: data.flowType,
+        status: "staged_pending_arrival",
+        stagedByUserId: userId,
+        commercialInvoiceNo: data.commercialInvoiceNo ?? null,
+        ciplFileUrl: data.ciplFileUrl ?? null,
+        pezaNumber: data.pezaNumber ?? null,
+        ipNumber: data.ipNumber ?? null,
+        mawbMblNumber: data.mawbMblNumber ?? null,
+      })
+      .returning({ id: wrrDocuments.id });
 
-  return { ok: true, wrrId: (inserted as { id: string }).id };
+    await tx.insert(wrrItems).values(
+      data.lines.map((line) => ({
+        wrrId: inserted.id,
+        itemId: line.itemId ?? null,
+        itemCode: line.itemCode ?? null,
+        customerItemCode: line.customerItemCode ?? null,
+        lotNumber: line.lotNumber,
+        expectedQty: line.expectedQty,
+        unitCbm: String(line.unitCbm),
+        uom: line.uom,
+        disposition: line.disposition,
+        putawayLocationId: line.putawayLocationId ?? null,
+      })),
+    );
+
+    return { ok: true, wrrId: inserted.id } satisfies CreateWrrActionResult;
+  })) as CreateWrrActionResult;
 }
 
 // ---------------------------------------------------------------------------
@@ -304,37 +329,138 @@ export async function commitWrr(
 
   const userId = perm.context.userId;
 
-  // 2. Fetch WRR with items
-  const doc = await fetchWrrForAction(db, wrrId);
-  if (doc === null) {
-    return { ok: false, errors: ["not_found"] };
+  // Every read, status transition, and inventory write occurs through one
+  // transaction. The conditional status update is the idempotency gate: only
+  // the transaction that can move an in-progress WRR to confirmed may create
+  // lots or ledger rows; retries receive the existing-state result instead.
+  return (await db.transaction(async (tx) => {
+    const doc = await fetchWrrForAction(tx, wrrId);
+    if (doc === null) {
+      return { ok: false, errors: ["not_found"] } satisfies CommitWrrResult;
+    }
+
+    const commitResult = validateCommit(
+      {
+        id: doc.id,
+        status: doc.status,
+        flowType: doc.flowType,
+        vendorPartyId: doc.vendorPartyId,
+      },
+      doc.items as Parameters<typeof validateCommit>[1],
+    );
+    if (!commitResult.ok) {
+      return { ok: false, errors: commitResult.errors } satisfies CommitWrrResult;
+    }
+
+    const selectedLocations = await resolveCommitLocations(tx, doc.items);
+    if (!selectedLocations.ok) {
+      return { ok: false, errors: selectedLocations.errors } satisfies CommitWrrResult;
+    }
+
+    const confirmed = await tx
+      .update(wrrDocuments)
+      .set({
+        status: "confirmed",
+        confirmedAt: new Date(),
+        confirmedByUserId: userId,
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(wrrDocuments.id, wrrId),
+        eq(wrrDocuments.status, "receiving_in_progress"),
+      ))
+      .returning({ id: wrrDocuments.id });
+
+    if (confirmed.length !== 1) {
+      return { ok: false, errors: ["already_committed_or_invalid_status"] } satisfies CommitWrrResult;
+    }
+
+    for (const line of doc.items) {
+      const locationId = selectedLocations.byLineId.get(line.id)!;
+      const [lot] = await tx
+        .insert(lots)
+        .values({
+          lotNumber: line.lotNumber,
+          wrrItemId: line.id,
+          itemId: line.itemId!,
+          flowType: doc.flowType as "vmi" | "trading" | "supplies",
+          ownerPartyId: doc.flowType === "vmi" ? doc.vendorPartyId : null,
+          status: line.disposition === "store" ? "available" : "quarantined",
+          pezaNumber: doc.pezaNumber,
+          commercialInvoiceNo: doc.commercialInvoiceNo,
+          ipNumber: doc.ipNumber,
+        })
+        .returning({ id: lots.id });
+
+      await tx.insert(lotLocationBalances).values({
+        lotId: lot.id,
+        locationId,
+        qtyReceived: line.scannedQty,
+        qtyRemaining: line.scannedQty,
+        qtyCommitted: 0,
+      });
+
+      await tx.insert(inventoryTransactions).values({
+        // A WRR item UUID is globally unique and keeps the receipt reference
+        // below the schema's 50-character limit, unlike concatenating two
+        // full UUIDs. It also makes a retried commit deterministically refer
+        // to the same physical line.
+        transactionNumber: `RCV-${line.id}`,
+        lotId: lot.id,
+        itemId: line.itemId!,
+        movementType: "receiving",
+        toLocationId: locationId,
+        qty: line.scannedQty,
+        flowType: doc.flowType as "vmi" | "trading" | "supplies",
+        commercialInvoiceNo: doc.commercialInvoiceNo,
+        wrrId: doc.id,
+        performedByUserId: userId,
+      });
+    }
+
+    return { ok: true } satisfies CommitWrrResult;
+  })) as CommitWrrResult;
+}
+
+async function resolveCommitLocations(
+  db: DbLike,
+  lines: WrrLine[],
+): Promise<{ ok: true; byLineId: Map<string, string> } | { ok: false; errors: string[] }> {
+  const byLineId = new Map<string, string>();
+  const errors: string[] = [];
+
+  for (const line of lines) {
+    if (line.disposition === "store") {
+      if (!line.putawayLocationId) {
+        errors.push(`Line ${line.id} is missing its designated putaway location`);
+        continue;
+      }
+      const rows = await db
+        .select({ id: locations.id })
+        .from(locations)
+        .where(and(
+          eq(locations.id, line.putawayLocationId),
+          eq(locations.locationType, "storage"),
+          eq(locations.isActive, true),
+        ));
+      if (rows.length !== 1) {
+        errors.push(`Line ${line.id} references an inactive or non-storage putaway location`);
+      } else {
+        byLineId.set(line.id, rows[0].id as string);
+      }
+      continue;
+    }
+
+    const rows = await db
+      .select({ id: locations.id })
+      .from(locations)
+      .where(and(eq(locations.locationType, "inspection"), eq(locations.isActive, true)));
+    if (rows.length !== 1) {
+      errors.push("Exactly one active inspection location is required to commit inspect lines");
+    } else {
+      byLineId.set(line.id, rows[0].id as string);
+    }
   }
 
-  // 3. Pre-commit validation (status, scan totals, unresolved items, disposition)
-  const commitResult = validateCommit(
-    {
-      id: doc.id,
-      status: doc.status,
-      flowType: doc.flowType,
-      vendorPartyId: doc.vendorPartyId,
-    },
-    // WrrLine has itemBarcode; validateCommit does not use it — extra fields
-    // are safe via structural subtyping.
-    doc.items as Parameters<typeof validateCommit>[1],
-  );
-  if (!commitResult.ok) {
-    return { ok: false, errors: commitResult.errors };
-  }
-
-  // 4. Update wrr_documents to confirmed
-  await db
-    .update(wrrDocuments)
-    .set({
-      status: "confirmed",
-      confirmedAt: new Date(),
-      confirmedByUserId: userId,
-    })
-    .where(eq(wrrDocuments.id, wrrId));
-
-  return { ok: true };
+  return errors.length > 0 ? { ok: false, errors } : { ok: true, byLineId };
 }

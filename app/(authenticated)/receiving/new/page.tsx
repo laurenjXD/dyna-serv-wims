@@ -46,6 +46,8 @@ async function handleCreateWrr(formData: FormData): Promise<void> {
         ((formData.get(`line_${i}_disposition`) as string | null) ?? "store") as
           | "store"
           | "inspect",
+      putawayLocationId:
+        (formData.get(`line_${i}_putawayLocationId`) as string | null) || null,
       itemCode:
         (formData.get(`line_${i}_itemCode`) as string | null) || null,
       customerItemCode:
@@ -300,7 +302,8 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
           </h2>
           <p className="mt-1 font-body text-body-sm text-text-grey">
             At least one line is required. Each line requires a lot number,
-            expected quantity, unit CBM, UOM, and disposition.
+            expected quantity, unit CBM, UOM, disposition, and a storage
+            location for store lines.
           </p>
           <div className="mt-4">
             {/* WrrLineItems is a client component — handles dynamic add/remove.
