@@ -50,7 +50,7 @@ function ChangePasswordForm() {
 
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
-      <h2 className="font-heading text-headline-md font-semibold text-brand-navy">
+      <h2 className="font-heading text-headline-md font-semibold text-on-surface">
         Change password
       </h2>
 
@@ -204,7 +204,7 @@ function MfaSection() {
 
   return (
     <div className="flex flex-col gap-3 border-t border-outline-variant/30 pt-4">
-      <h2 className="font-heading text-headline-md font-semibold text-brand-navy">
+      <h2 className="font-heading text-headline-md font-semibold text-on-surface">
         Two-factor authentication
       </h2>
 
@@ -307,7 +307,7 @@ function MfaSection() {
 function ActiveSessionsList({ profile }: { profile: OwnProfile }) {
   return (
     <div className="flex flex-col gap-2 border-t border-outline-variant/30 pt-4">
-      <h2 className="font-heading text-headline-md font-semibold text-brand-navy">
+      <h2 className="font-heading text-headline-md font-semibold text-on-surface">
         Active session
       </h2>
       <div className="rounded border border-outline-variant/30 px-3 py-2">

@@ -164,7 +164,7 @@ export default async function PortalInventoryPage({ searchParams }: PageProps) {
       {/* Page header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="font-heading font-bold text-headline-xl text-brand-navy">
+          <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
             My Inventory
           </h1>
           <p className="mt-1 font-body text-body-md text-text-grey">
@@ -229,7 +229,7 @@ export default async function PortalInventoryPage({ searchParams }: PageProps) {
       </div>
 
       {/* ── Inventory table — Level 1 glassmorphism (office/party surface) ─── */}
-      <div className="mt-4 overflow-hidden rounded-2xl border border-outline-variant/30 bg-white/75 shadow-elevation-1 backdrop-blur-md">
+      <div className="mt-4 overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
         {MOCK_INVENTORY_ROWS.length === 0 ? (
           <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
             <Package size={40} className="text-text-grey" aria-hidden="true" />

@@ -15,6 +15,7 @@
 import { BarChart2, Download, TrendingUp, Package } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
+import { MovementChart, type MovementChartDatum } from "@/components/reporting/MovementChart";
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 // TODO: wire to inventory_transactions query
@@ -88,22 +89,25 @@ interface KpiCardProps {
 
 function KpiCard({ label, value, icon, subtext }: KpiCardProps) {
   return (
-    <div className="min-w-[200px] flex-1 rounded-xl border border-outline-variant/30 bg-white/75 p-5 shadow-elevation-1 backdrop-blur-md">
+    <div className="min-w-[200px] flex-1 rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1 transition-shadow hover:shadow-elevation-2">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1">
           <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
             {label}
           </p>
-          <p className="mt-2 font-heading text-data-display font-semibold text-on-surface">
+          <p className="mt-3 font-heading text-headline-lg font-extrabold text-on-surface">
             {value}
           </p>
           {subtext && (
             <p className="mt-1 font-body text-body-sm text-text-grey">{subtext}</p>
           )}
         </div>
-        <div className="text-brand-royal-blue" aria-hidden="true">
+        <span
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-indigo-50 text-accent-indigo-600"
+          aria-hidden="true"
+        >
           {icon}
-        </div>
+        </span>
       </div>
     </div>
   );
@@ -150,11 +154,30 @@ export default async function ReportsPage({ searchParams }: PageProps) {
 
   const activeFilter = filterParam ?? "all";
 
+  // Movements per day, most recent last — derived from the same mock feed
+  // as the table below (TODO: wire to inventory_transactions once the real
+  // aggregation query lands, same as the table).
+  const movementChartData: MovementChartDatum[] = Object.values(
+    MOCK_MOVEMENTS.reduce<Record<string, MovementChartDatum>>((acc, txn) => {
+      const entry = acc[txn.date] ?? {
+        date: txn.date,
+        label: new Date(txn.date).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        }),
+        count: 0,
+      };
+      entry.count += 1;
+      acc[txn.date] = entry;
+      return acc;
+    }, {}),
+  ).sort((a, b) => a.date.localeCompare(b.date));
+
   return (
-    <div className="mx-auto max-w-container">
+    <div className="mx-auto max-w-container px-6 py-8 lg:px-8">
       {/* Page header */}
       <div>
-        <h1 className="font-heading font-bold text-headline-xl text-brand-navy">
+        <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
           Reports &amp; Analytics
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">
@@ -167,31 +190,43 @@ export default async function ReportsPage({ searchParams }: PageProps) {
         <KpiCard
           label="Total Inventory Value (VMI)"
           value="$0.00"
-          icon={<TrendingUp size={24} />}
+          icon={<TrendingUp size={18} />}
           subtext="Period average — not per-document total"
         />
         <KpiCard
           label="Active Lots"
           value="0"
-          icon={<Package size={24} />}
+          icon={<Package size={18} />}
         />
         <KpiCard
           label="Transactions This Month"
           value="0"
-          icon={<BarChart2 size={24} />}
+          icon={<BarChart2 size={18} />}
         />
         <KpiCard
           label="Avg CBM Utilization"
           value="0%"
-          icon={<TrendingUp size={24} />}
+          icon={<TrendingUp size={18} />}
           subtext="Current period"
         />
       </div>
 
+      {/* Movement Trend — real recharts bar chart, most recent day highlighted
+          in brand-red per §9's "one accent, used sparingly" dashboard rule. */}
+      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
+        <h2 className="font-heading font-semibold text-headline-md text-on-surface">
+          Movement Trend
+        </h2>
+        <p className="mt-1 font-body text-body-sm text-text-grey">
+          Transactions per day across all flows
+        </p>
+        <MovementChart data={movementChartData} />
+      </div>
+
       {/* Activity Heatmap */}
-      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-white/75 p-6 shadow-elevation-1 backdrop-blur-md">
+      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-heading font-semibold text-headline-md text-brand-navy">
+          <h2 className="font-heading font-semibold text-headline-md text-on-surface">
             Inventory Activity (52 Weeks)
           </h2>
 
@@ -224,10 +259,10 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       </div>
 
       {/* Movement History table */}
-      <div className="mt-6 overflow-hidden rounded-2xl border border-outline-variant/30 bg-white/75 shadow-elevation-1 backdrop-blur-md">
+      <div className="mt-6 overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
         {/* Table header row with export button */}
         <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
-          <h2 className="font-heading font-semibold text-headline-md text-brand-navy">
+          <h2 className="font-heading font-semibold text-headline-md text-on-surface">
             Movement History
           </h2>
           <button
@@ -307,8 +342,8 @@ export default async function ReportsPage({ searchParams }: PageProps) {
 
       {/* Financial summary — shown only if reporting.financial_read */}
       {hasFinancialAccess && (
-        <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-white/75 p-6 shadow-elevation-1 backdrop-blur-md">
-          <h2 className="font-heading font-semibold text-headline-md text-brand-navy">
+        <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
+          <h2 className="font-heading font-semibold text-headline-md text-on-surface">
             Financial Summary
           </h2>
           <p className="mt-1 font-body text-body-sm text-text-grey">

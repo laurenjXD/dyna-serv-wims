@@ -151,7 +151,7 @@ export default async function TransferDetailPage({
 
       {/* Page heading + status badge */}
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="font-heading font-semibold text-headline-md text-brand-navy">
+        <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
           Transfer Request
         </h1>
         <span
@@ -177,8 +177,8 @@ export default async function TransferDetailPage({
       )}
 
       {/* Transfer summary card — Level 1 office elevation */}
-      <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
-        <h2 className="font-heading font-semibold text-data-display text-brand-navy">
+      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+        <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Transfer Details
         </h2>
         <dl className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -241,8 +241,8 @@ export default async function TransferDetailPage({
 
       {/* Action buttons — conditional on transfer status and execute capability */}
       {canExecute && (
-        <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
-          <h2 className="font-heading font-semibold text-data-display text-brand-navy">
+        <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+          <h2 className="font-heading font-semibold text-data-display text-on-surface">
             Actions
           </h2>
           <div className="mt-4 flex flex-wrap gap-3">
@@ -291,9 +291,9 @@ export default async function TransferDetailPage({
       )}
 
       {/* Lines table — Level 1 office elevation */}
-      <div className="mt-6 overflow-hidden rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1">
+      <div className="mt-6 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
         <div className="px-6 py-4">
-          <h2 className="font-heading font-semibold text-data-display text-brand-navy">
+          <h2 className="font-heading font-semibold text-data-display text-on-surface">
             Transfer Lines ({transfer.lines.length})
           </h2>
         </div>

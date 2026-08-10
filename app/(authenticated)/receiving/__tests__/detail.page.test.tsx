@@ -50,8 +50,8 @@
 //              detail page must surface both commands at the right status.
 //     §5.2  — Scan-line state: matched, under-scanned, over-scanned, exception.
 //   specs/00-steering/brand-design-system.md
-//     §6    — Office surface: glassmorphism Level 1 cards (bg-white/75
-//              backdrop-blur-md), WRR header + status badge, items table.
+//     §6    — Office surface: glassmorphism Level 1 cards (bg-surface-white
+//             ), WRR header + status badge, items table.
 //     §3    — Touch targets h-11 (44 px) for office action buttons.
 //
 // Surface: Office. Permission gate: receiving.confirm (currently; see GAP 1).

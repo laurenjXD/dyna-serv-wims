@@ -187,7 +187,7 @@ export default async function InspectTransferPage({
         </ol>
       </nav>
 
-      <h1 className="font-heading font-semibold text-headline-md text-brand-navy">
+      <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
         Transfer Inspection
       </h1>
       <p className="mt-1 font-body text-body-md text-text-grey">
@@ -245,8 +245,8 @@ export default async function InspectTransferPage({
       )}
 
       {/* Transfer context card — Level 1 office elevation */}
-      <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
-        <h2 className="font-heading font-semibold text-data-display text-brand-navy">
+      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+        <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Transfer Context
         </h2>
         <dl className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -278,8 +278,8 @@ export default async function InspectTransferPage({
       </div>
 
       {/* Open Inspection Case form — Level 1 office elevation */}
-      <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
-        <h2 className="font-heading font-semibold text-data-display text-brand-navy">
+      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+        <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Open Inspection Case
         </h2>
         <p className="mt-1 font-body text-body-sm text-text-grey">
@@ -401,8 +401,8 @@ export default async function InspectTransferPage({
       </div>
 
       {/* Resolve Inspection Case form — Level 1 office elevation */}
-      <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
-        <h2 className="font-heading font-semibold text-data-display text-brand-navy">
+      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+        <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Resolve Inspection Case
         </h2>
         <p className="mt-1 font-body text-body-sm text-text-grey">

@@ -105,7 +105,7 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
         </ol>
       </nav>
 
-      <h1 className="font-heading font-semibold text-headline-md text-brand-navy">
+      <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
         New Transfer Request
       </h1>
       <p className="mt-1 font-body text-body-md text-text-grey">
@@ -134,8 +134,8 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
       {/* Create Transfer form — standard office surface */}
       <form action={handleCreateTransfer} className="mt-6 space-y-6">
         {/* Header section — office card, Level 1 elevation */}
-        <div className="rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
-          <h2 className="font-heading font-semibold text-data-display text-brand-navy">
+        <div className="rounded-md bg-surface-white shadow-elevation-1 p-6">
+          <h2 className="font-heading font-semibold text-data-display text-on-surface">
             Transfer Details
           </h2>
 
@@ -245,8 +245,8 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
         </div>
 
         {/* Transfer lines section */}
-        <div className="rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
-          <h2 className="font-heading font-semibold text-data-display text-brand-navy">
+        <div className="rounded-md bg-surface-white shadow-elevation-1 p-6">
+          <h2 className="font-heading font-semibold text-data-display text-on-surface">
             Transfer Lines
           </h2>
           <p className="mt-1 font-body text-body-sm text-text-grey">

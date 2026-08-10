@@ -7,7 +7,7 @@
 //   specs/09-approval-queue/requirements.md R4 (decision recording), R4.5
 //     (self-approval prohibition), R5 (consumption), R8 (offline: Tier 2 only)
 //   specs/00-steering/brand-design-system.md §6 (office Level 1 elevation:
-//     bg-white/75 backdrop-blur-md), §9 (buttons: h-11 office target, brand-red
+//     bg-surface-white), §9 (buttons: h-11 office target, brand-red
 //     primary, diagonal-cut motif), §10 (motion: motion-safe: prefix always)
 //
 // Surface: Office. Capability gate: fifo_override.approve.
@@ -197,7 +197,7 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
       </nav>
 
       {/* Page heading — Fira Sans SemiBold per §2 type scale */}
-      <h1 className="font-heading font-semibold text-headline-md text-brand-navy">
+      <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
         {request.requestNumber}
       </h1>
 
@@ -222,10 +222,10 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
       )}
 
       {/* Request header card — Level 1 office elevation */}
-      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1 p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="font-heading font-semibold text-data-display text-brand-navy">
+            <h2 className="font-heading font-semibold text-data-display text-on-surface">
               Request Details
             </h2>
             <div className="mt-2 flex items-center gap-2">
@@ -288,8 +288,8 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
       </div>
 
       {/* Requester info — office Level 1 card */}
-      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
-        <h2 className="flex items-center gap-2 font-heading font-semibold text-data-display text-brand-navy">
+      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1 p-6">
+        <h2 className="flex items-center gap-2 font-heading font-semibold text-data-display text-on-surface">
           <User size={20} aria-hidden="true" />
           Requester
         </h2>
@@ -329,8 +329,8 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
       </div>
 
       {/* Item / Lot snapshot — FifoOverrideSnapshot per design.md §3 */}
-      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
-        <h2 className="font-heading font-semibold text-data-display text-brand-navy">
+      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1 p-6">
+        <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Item / Lot Snapshot
         </h2>
         <p className="mt-1 font-body text-body-sm text-text-grey">
@@ -394,8 +394,8 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
       </div>
 
       {/* Reason section — category chip + optional free-text note */}
-      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
-        <h2 className="font-heading font-semibold text-data-display text-brand-navy">
+      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1 p-6">
+        <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Reason
         </h2>
         <div className="mt-3 flex flex-wrap items-start gap-3">
@@ -423,8 +423,8 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
           snapshot.allocation_version for the affected lot/location. The override side
           is fully populated from the snapshot; the system side requires the allocation
           engine query result from 08 (tasks.md §7). */}
-      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
-        <h2 className="font-heading font-semibold text-data-display text-brand-navy">
+      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1 p-6">
+        <h2 className="font-heading font-semibold text-data-display text-on-surface">
           FIFO Allocation Context
         </h2>
         <p className="mt-1 font-body text-body-sm text-text-grey">
@@ -505,8 +505,8 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
       {showDecisionControls && (
         <div className="mt-6 space-y-4">
           {/* Approve form */}
-          <div className="rounded-2xl border border-outline-variant/30 bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
-            <h2 className="font-heading font-semibold text-data-display text-brand-navy">
+          <div className="rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1 p-6">
+            <h2 className="font-heading font-semibold text-data-display text-on-surface">
               Approve Request
             </h2>
             <p className="mt-1 font-body text-body-sm text-text-grey">
@@ -526,7 +526,7 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
           </div>
 
           {/* Reject form */}
-          <div className="rounded-2xl border border-outline-variant/30 bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
+          <div className="rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1 p-6">
             <h2 className="font-heading font-semibold text-data-display text-on-surface">
               Reject Request
             </h2>
@@ -619,8 +619,8 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
       )}
 
       {/* Decision history — append-only per design.md §3 (no update/delete path) */}
-      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
-        <h2 className="font-heading font-semibold text-data-display text-brand-navy">
+      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1 p-6">
+        <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Decision History
         </h2>
         {request.decisions.length === 0 ? (

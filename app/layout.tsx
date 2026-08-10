@@ -1,28 +1,16 @@
 import type { Metadata } from "next";
-import { Fira_Sans, Outfit, Epilogue, Roboto_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
 // Weights scoped to brand-design-system.md §2's type scale only.
-const firaSans = Fira_Sans({
-  variable: "--font-fira-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-  weight: ["600", "700"], // SemiBold, Bold
+  weight: ["400", "500", "600", "700", "800"], // Regular, Medium, SemiBold, Bold, ExtraBold
 });
 
-const outfit = Outfit({
-  variable: "--font-outfit",
-  subsets: ["latin"],
-  weight: ["400"], // Regular
-});
-
-const epilogue = Epilogue({
-  variable: "--font-epilogue",
-  subsets: ["latin"],
-  weight: ["600"], // SemiBold
-});
-
-const robotoMono = Roboto_Mono({
-  variable: "--font-roboto-mono",
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
   subsets: ["latin"],
   weight: ["400", "700"], // Regular, Bold
 });
@@ -40,7 +28,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${firaSans.variable} ${outfit.variable} ${epilogue.variable} ${robotoMono.variable} font-body bg-surface-white text-on-surface antialiased`}
+        className={`${inter.variable} ${jetbrainsMono.variable} font-body bg-surface-white text-on-surface antialiased`}
       >
         {children}
       </body>

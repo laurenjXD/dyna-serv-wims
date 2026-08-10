@@ -79,7 +79,7 @@ export function InviteUserModal({
       <div className="w-full max-w-md rounded-md bg-surface-white p-6 shadow-elevation-2">
         <h2
           id="invite-user-title"
-          className="font-heading text-headline-md font-semibold text-brand-navy"
+          className="font-heading text-headline-md font-semibold text-on-surface"
         >
           Invite User
         </h2>

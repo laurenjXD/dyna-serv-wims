@@ -141,7 +141,7 @@ export function ItemForm({
       <section aria-labelledby="section-identifiers">
         <h2
           id="section-identifiers"
-          className="mb-4 font-heading font-semibold text-data-display text-brand-navy"
+          className="mb-4 font-heading font-semibold text-data-display text-on-surface"
         >
           Identifiers
         </h2>
@@ -306,7 +306,7 @@ export function ItemForm({
       <section aria-labelledby="section-packaging" className="mt-8">
         <h2
           id="section-packaging"
-          className="mb-4 font-heading font-semibold text-data-display text-brand-navy"
+          className="mb-4 font-heading font-semibold text-data-display text-on-surface"
         >
           Packaging &amp; UOM
         </h2>
@@ -409,7 +409,7 @@ export function ItemForm({
       <section aria-labelledby="section-dimensions" className="mt-8">
         <h2
           id="section-dimensions"
-          className="mb-4 font-heading font-semibold text-data-display text-brand-navy"
+          className="mb-4 font-heading font-semibold text-data-display text-on-surface"
         >
           Dimensions &amp; Volume
         </h2>
@@ -519,7 +519,7 @@ export function ItemForm({
       <section aria-labelledby="section-pricing" className="mt-8">
         <h2
           id="section-pricing"
-          className="mb-4 font-heading font-semibold text-data-display text-brand-navy"
+          className="mb-4 font-heading font-semibold text-data-display text-on-surface"
         >
           Reference Prices
         </h2>
@@ -585,7 +585,7 @@ export function ItemForm({
       <section aria-labelledby="section-inventory" className="mt-8">
         <h2
           id="section-inventory"
-          className="mb-4 font-heading font-semibold text-data-display text-brand-navy"
+          className="mb-4 font-heading font-semibold text-data-display text-on-surface"
         >
           Inventory Settings
         </h2>
@@ -703,7 +703,7 @@ export function ItemForm({
         <button
           type="submit"
           disabled={isPending}
-          className="btn-diagonal-cut flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:opacity-50"
+          className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:opacity-50"
         >
           {isPending ? "Saving…" : isEdit ? "Save Changes" : "Create Item"}
         </button>

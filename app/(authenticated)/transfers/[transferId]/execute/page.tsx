@@ -132,7 +132,7 @@ export default async function ExecuteTransferPage({
       <div className="flex flex-1 flex-col px-4 py-4">
         {/* Progress header — solid surface, Level 2 shadow per §6 floor rule */}
         <div className="rounded-md bg-surface-white p-4 shadow-elevation-2">
-          <h1 className="font-heading font-semibold text-headline-md text-brand-navy">
+          <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
             Execute Transfer
           </h1>
           {/* Route — Roboto Mono for location IDs per §9; min 16px on floor per §2 */}

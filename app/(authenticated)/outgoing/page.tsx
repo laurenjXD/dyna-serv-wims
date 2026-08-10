@@ -80,7 +80,7 @@ export default async function OutgoingPage({ searchParams }: PageProps) {
     <div className="mx-auto max-w-container">
       {/* Page header */}
       <div>
-        <h1 className="font-heading font-semibold text-headline-md text-brand-navy">
+        <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
           Outgoing
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">
@@ -131,7 +131,7 @@ async function ActivePicksTab() {
   const { rows } = await listPickLists(db, { limit: 50, offset: 0 });
 
   return (
-    <div className="mt-6 overflow-hidden rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1">
+    <div className="mt-6 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
       {rows.length === 0 ? (
         <div className="px-6 py-12 text-center">
           <p className="font-body text-body-md text-text-grey">
@@ -237,7 +237,7 @@ async function OutgoingLedgerTab({
 
       {/* Ledger table — Level 1 office elevation per brand-design-system.md §6.
           design.md §9: item code is the prominent first field in office review. */}
-      <div className="mt-4 overflow-hidden rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1">
+      <div className="mt-4 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="font-body text-body-md text-text-grey">

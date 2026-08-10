@@ -153,7 +153,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
     <div className="mx-auto max-w-container">
       {/* Page header */}
       <div>
-        <h1 className="font-heading font-bold text-headline-xl text-brand-navy">
+        <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
           Billing &amp; Pricing
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">
@@ -263,8 +263,8 @@ function VmiBillingTab({ selectedMonth, selectedYear }: TabProps) {
       </form>
 
       {/* Summary card */}
-      <div className="rounded-2xl border border-outline-variant/30 bg-white/75 p-6 shadow-elevation-1 backdrop-blur-md">
-        <h2 className="font-heading font-semibold text-headline-md text-brand-navy">
+      <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
+        <h2 className="font-heading font-semibold text-headline-md text-on-surface">
           {MONTHS[selectedMonth]} {selectedYear} — Summary
         </h2>
         <p className="mt-1 font-body text-body-sm text-text-grey">
@@ -305,9 +305,9 @@ function VmiBillingTab({ selectedMonth, selectedYear }: TabProps) {
       </div>
 
       {/* CBM Ledger table */}
-      <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-white/75 shadow-elevation-1 backdrop-blur-md">
+      <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
         <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
-          <h2 className="font-heading font-semibold text-headline-md text-brand-navy">
+          <h2 className="font-heading font-semibold text-headline-md text-on-surface">
             CBM Ledger
           </h2>
           <div className="flex gap-2">
@@ -460,8 +460,8 @@ function TradingMarginTab({ selectedMonth, selectedYear }: TabProps) {
       </form>
 
       {/* Summary card */}
-      <div className="rounded-2xl border border-outline-variant/30 bg-white/75 p-6 shadow-elevation-1 backdrop-blur-md">
-        <h2 className="font-heading font-semibold text-headline-md text-brand-navy">
+      <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
+        <h2 className="font-heading font-semibold text-headline-md text-on-surface">
           {MONTHS[selectedMonth]} {selectedYear} — Summary
         </h2>
         <p className="mt-1 font-body text-body-sm text-text-grey">
@@ -505,9 +505,9 @@ function TradingMarginTab({ selectedMonth, selectedYear }: TabProps) {
       </div>
 
       {/* Margin ledger table */}
-      <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-white/75 shadow-elevation-1 backdrop-blur-md">
+      <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
         <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
-          <h2 className="font-heading font-semibold text-headline-md text-brand-navy">
+          <h2 className="font-heading font-semibold text-headline-md text-on-surface">
             Margin Ledger
           </h2>
           <button

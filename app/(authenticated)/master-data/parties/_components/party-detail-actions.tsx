@@ -158,7 +158,7 @@ function ContactPartyModal({
       <div className="w-full max-w-lg rounded-md bg-surface-white shadow-elevation-2 p-6">
         <h2
           id="contact-party-title"
-          className="font-heading font-semibold text-headline-md text-brand-navy"
+          className="font-heading font-semibold text-headline-md text-on-surface"
         >
           Contact Party
         </h2>
@@ -222,7 +222,7 @@ function ContactPartyModal({
               <button
                 type="submit"
                 disabled={isPending}
-                className="btn-diagonal-cut flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:opacity-50"
+                className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:opacity-50"
               >
                 {isPending ? "Sending…" : "Send Notification"}
               </button>
@@ -260,7 +260,7 @@ export function PartyDetailActions({
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h3
             id="roles-heading"
-            className="font-heading font-semibold text-data-display text-brand-navy"
+            className="font-heading font-semibold text-data-display text-on-surface"
           >
             Business Roles
           </h3>

@@ -6,7 +6,7 @@
 //     §6.3 step 5b (failed entries surfaced to supervisor), §4.5 (outbox
 //     status enum: pending, syncing, failed, quarantined_actor_mismatch).
 //   specs/00-steering/brand-design-system.md §6 (office Level 1 elevation:
-//     bg-white/75 backdrop-blur-md), §2 (typography), §9 (office buttons h-11).
+//     bg-surface-white), §2 (typography), §9 (office buttons h-11).
 //
 // Surface: Office (conflict review is a supervisor/admin surface per design.md
 //   §6.6 — floor users see only the shell banner pointing here).
@@ -109,7 +109,7 @@ export default async function SyncPage({ searchParams }: PageProps) {
     <div className="mx-auto max-w-container">
       {/* Page header — Fira Sans Bold, headline-xl per brand-design-system.md §2 */}
       <div>
-        <h1 className="font-heading font-bold text-headline-xl text-brand-navy">
+        <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
           Sync &amp; Offline Queue
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">
@@ -201,7 +201,7 @@ export default async function SyncPage({ searchParams }: PageProps) {
 function FailedTab({ entries }: { entries: FailedEntry[] }) {
   if (entries.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-white/75 px-6 py-12 text-center shadow-elevation-1 backdrop-blur-md">
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-1">
         <CheckCircle2
           size={40}
           className="text-status-available"
@@ -228,7 +228,7 @@ function FailedTab({ entries }: { entries: FailedEntry[] }) {
 
 function FailedEntryCard({ entry }: { entry: FailedEntry }) {
   return (
-    <div className="rounded-xl border border-outline-variant/30 bg-white/75 p-4 shadow-elevation-1 backdrop-blur-md">
+    <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
       {/* Card header row: operation badge + time */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         {/* Operation type badge — Epilogue SemiBold uppercase */}
@@ -300,7 +300,7 @@ function SyncingTab() {
 
   if (inProgressEntries.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-white/75 px-6 py-12 text-center shadow-elevation-1 backdrop-blur-md">
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-1">
         <Loader2
           size={40}
           className="text-status-neutral"
@@ -338,7 +338,7 @@ function CompletedTab() {
         Completed entries expire after 24 hours.
       </p>
       {completedEntries.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-white/75 px-6 py-12 text-center shadow-elevation-1 backdrop-blur-md">
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-1">
           <CheckCircle2
             size={40}
             className="text-status-available"

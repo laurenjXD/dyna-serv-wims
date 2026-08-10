@@ -83,7 +83,7 @@ export default async function EnrollmentPage({ searchParams }: PageProps) {
     <div className="mx-auto max-w-container">
       {/* Page header */}
       <div>
-        <h1 className="font-heading font-semibold text-headline-md text-brand-navy">
+        <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
           Enrollment
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">
@@ -208,7 +208,7 @@ async function PartiesTab({
         {canManage && (
           <Link
             href="/master-data/parties/new"
-            className="btn-diagonal-cut flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy"
           >
             New Party
           </Link>
@@ -216,7 +216,7 @@ async function PartiesTab({
       </div>
 
       {/* Table */}
-      <div className="mt-4 overflow-hidden rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1">
+      <div className="mt-4 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="font-body text-body-md text-text-grey">
@@ -345,7 +345,7 @@ async function ItemsTab({
 
   if (itemsReadResult.kind !== "authorized") {
     return (
-      <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 px-6 py-12 text-center">
+      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 px-6 py-12 text-center">
         <p className="font-body text-body-md text-text-grey">
           You do not have permission to view items.
         </p>
@@ -393,7 +393,7 @@ async function ItemsTab({
         {canManage && (
           <Link
             href="/master-data/items/new"
-            className="btn-diagonal-cut flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy"
           >
             New Item
           </Link>
@@ -401,7 +401,7 @@ async function ItemsTab({
       </div>
 
       {/* Table */}
-      <div className="mt-4 overflow-hidden rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1">
+      <div className="mt-4 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="font-body text-body-md text-text-grey">
@@ -530,7 +530,7 @@ async function LocationsTab({
 
   if (locReadResult.kind !== "authorized") {
     return (
-      <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 px-6 py-12 text-center">
+      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 px-6 py-12 text-center">
         <p className="font-body text-body-md text-text-grey">
           You do not have permission to view locations.
         </p>
@@ -578,7 +578,7 @@ async function LocationsTab({
         {canManage && (
           <Link
             href="/master-data/locations/new"
-            className="btn-diagonal-cut flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy"
           >
             New Location
           </Link>
@@ -586,7 +586,7 @@ async function LocationsTab({
       </div>
 
       {/* Table */}
-      <div className="mt-4 overflow-hidden rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1">
+      <div className="mt-4 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="font-body text-body-md text-text-grey">

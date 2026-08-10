@@ -211,7 +211,7 @@ export default async function InspectionDetailPage({
             className="mb-4 rounded-xl bg-status-available border border-status-available px-4 py-4"
           >
             {/* WCAG AAA: brand-navy on status-available = high contrast */}
-            <p className="font-heading font-bold text-headline-md text-brand-navy">
+            <p className="font-heading font-bold text-headline-md text-on-surface">
               ✓ Inspection Submitted
             </p>
             <p className="mt-1 font-body text-body-md text-brand-navy/80">
@@ -223,7 +223,7 @@ export default async function InspectionDetailPage({
         {/* Item context card — solid surface, Level 2 shadow, no glassmorphism */}
         <div className="rounded-xl bg-white/10 border border-white/20 p-4">
           {/* Item name — Fira Sans SemiBold, headline-md; floor min 16px §2 */}
-          <h1 className="font-heading font-semibold text-headline-md text-white">
+          <h1 className="font-heading font-extrabold text-headline-md text-white">
             {inspection.itemName}
           </h1>
           {/* Item code — Roboto Mono per §9 */}

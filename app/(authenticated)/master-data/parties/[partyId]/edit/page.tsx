@@ -27,7 +27,7 @@ export default async function EditPartyPage({ params }: PageProps) {
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-6">
-        <h1 className="font-heading font-semibold text-headline-md text-brand-navy">
+        <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
           Edit Party
         </h1>
         <p className="mt-1 font-mono text-mono-md text-text-grey">
@@ -38,7 +38,7 @@ export default async function EditPartyPage({ params }: PageProps) {
         </p>
       </div>
 
-      <div className="rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
+      <div className="rounded-md bg-surface-white shadow-elevation-1 p-6">
         <PartyForm
           action={updatePartyAction}
           party={party}

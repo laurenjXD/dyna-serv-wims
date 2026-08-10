@@ -89,7 +89,7 @@ export default async function PartyDetailPage({
               </li>
             </ol>
           </nav>
-          <h1 className="font-heading font-semibold text-headline-md text-brand-navy">
+          <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
             {party.name}
           </h1>
           <p className="mt-1 font-mono text-mono-md text-text-grey">
@@ -122,8 +122,8 @@ export default async function PartyDetailPage({
       </div>
 
       {/* Master data */}
-      <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
-        <h2 className="font-heading font-semibold text-data-display text-brand-navy">
+      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+        <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Party Information
         </h2>
         <dl className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -185,7 +185,7 @@ export default async function PartyDetailPage({
       </div>
 
       {/* Business roles + Contact Party action (interactive, client component) */}
-      <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
         <PartyDetailActions
           partyId={partyId}
           roles={party.roles}
@@ -196,7 +196,7 @@ export default async function PartyDetailPage({
 
       {/* Deactivation zone — only for active parties that the user can manage */}
       {canManage && party.isActive && (
-        <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
+        <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
           <h2 className="font-heading font-semibold text-data-display text-on-surface">
             Danger Zone
           </h2>
@@ -211,8 +211,8 @@ export default async function PartyDetailPage({
       )}
 
       {/* Transaction Ledger — design.md §5b */}
-      <div className="mt-6 rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1 p-6">
-        <h2 className="font-heading font-semibold text-data-display text-brand-navy">
+      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+        <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Transaction Ledger
         </h2>
         <p className="mt-1 font-body text-body-sm text-text-grey">

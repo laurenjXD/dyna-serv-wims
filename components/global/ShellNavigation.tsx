@@ -123,11 +123,12 @@ function NavLink({
       href={entry.path}
       data-testid={`nav-entry-${entry.id}`}
       aria-current={isActive ? "page" : undefined}
-      className={`flex items-center gap-3 min-h-11 rounded px-3 py-2
+      className={`flex items-center gap-3 min-h-11 rounded-lg px-3 py-2
+        transition-colors duration-150
         focus-visible:ring-2 focus-visible:ring-white focus:outline-none
         ${isActive
-          ? "bg-brand-red text-white"
-          : "text-white/70 hover:bg-brand-royal-blue/40 hover:text-white"}`}
+          ? "bg-accent-indigo-600 text-white shadow-elevation-1"
+          : "text-white/70 hover:bg-white/10 hover:text-white"}`}
     >
       <Icon size={16} aria-hidden="true" />
       <span className="font-label text-label uppercase tracking-wide">{toLabel(entry.id)}</span>
@@ -174,7 +175,7 @@ export function ShellNavigation({
     <nav
       data-testid="desktop-sidebar"
       aria-label="Primary navigation"
-      className="hidden flex-col gap-4 overflow-y-auto bg-brand-navy p-4 lg:fixed lg:left-0 lg:top-14 lg:bottom-0 lg:z-20 lg:flex lg:w-64"
+      className="hidden flex-col gap-5 overflow-y-auto border-r border-black/20 bg-brand-navy p-4 lg:fixed lg:left-0 lg:top-14 lg:bottom-0 lg:z-20 lg:flex lg:w-64"
     >
       {/* Skip-to-content: visually hidden until focused, first element in the
           nav so keyboard users can bypass the sidebar entirely. */}

@@ -30,7 +30,9 @@ let realDb: Db | null = null;
 
 function getDb(): Db {
   if (!realDb) {
-    const connectionString = process.env.DATABASE_URL ?? "";
+    // `POSTGRES_URL` is the name supplied by Vercel's Supabase integration;
+    // local and CI configurations retain the documented DATABASE_URL name.
+    const connectionString = process.env.DATABASE_URL ?? process.env.POSTGRES_URL ?? "";
     // `prepare: false` is required for Supabase's connection pooler
     // (pgbouncer, transaction mode) — see Supabase + Drizzle/postgres-js
     // integration docs.

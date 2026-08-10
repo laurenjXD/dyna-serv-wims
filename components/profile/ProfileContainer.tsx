@@ -35,7 +35,7 @@ export function ProfileContainer({ profile }: { profile: OwnProfile }) {
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 p-floor-padding">
       <div>
-        <h1 className="font-heading text-headline-md font-semibold text-brand-navy">
+        <h1 className="font-heading text-headline-md font-semibold text-on-surface">
           My Profile
         </h1>
         <p className="mt-1 font-body text-body-md text-on-surface">

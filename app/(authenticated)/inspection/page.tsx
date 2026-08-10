@@ -7,7 +7,7 @@
 //   specs/00-steering/brand-design-system.md §3 (floor surface rules —
 //     mobile-first base styles, 64px CTAs, one primary action per screen,
 //     active: not hover:, no dense tables), §6 (floor — solid bg-brand-navy,
-//     no glassmorphism; office — bg-white/75 backdrop-blur-md Level 1),
+//     no glassmorphism; office — bg-surface-white Level 1),
 //     §1.3 (status — always icon+color on floor), §2 (no text <16px on floor)
 //
 // Surface: SHARED — warehouse_staff → floor card list (bg-brand-navy, 64px CTAs);
@@ -136,7 +136,7 @@ export default async function InspectionQueuePage({ searchParams }: PageProps) {
       <div className="flex min-h-screen flex-col bg-brand-navy px-4 py-4">
         {/* Floor top bar */}
         <div className="pb-4">
-          <h1 className="font-heading font-bold text-headline-md text-white">
+          <h1 className="font-heading font-extrabold text-headline-md text-white">
             Daily Inspection
           </h1>
           <p className="mt-1 font-body text-body-md text-white/70">
@@ -241,7 +241,7 @@ export default async function InspectionQueuePage({ searchParams }: PageProps) {
     <div className="mx-auto max-w-container">
       {/* Page header */}
       <div>
-        <h1 className="font-heading font-semibold text-headline-md text-brand-navy">
+        <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
           Inspection Queue
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">
@@ -290,7 +290,7 @@ export default async function InspectionQueuePage({ searchParams }: PageProps) {
       </div>
 
       {/* Office table — Level 1 elevation per brand-design-system.md §6 */}
-      <div className="mt-4 overflow-hidden rounded-md bg-white/75 backdrop-blur-md shadow-elevation-1">
+      <div className="mt-4 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
         {filtered.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <ClipboardList

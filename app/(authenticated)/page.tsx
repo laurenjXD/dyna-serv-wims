@@ -28,7 +28,8 @@
 // Wire each when its owning feature's backend query is available.
 
 import Link from "next/link";
-import { PackageCheck, ListChecks, ArrowLeftRight, Clock } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { PackageCheck, ListChecks, ArrowLeftRight, Clock, CheckSquare } from "lucide-react";
 import { eq } from "drizzle-orm";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { resolveSessionPresentationTier } from "@/lib/shell/surface";
@@ -80,7 +81,7 @@ function FloorLanding({
     <div className="flex min-h-full flex-col gap-6 bg-brand-navy px-4 py-6">
       {/* ── Greeting header ──────────────────────────────────────────────── */}
       <header>
-        <h1 className="font-heading text-headline-lg font-bold text-white">
+        <h1 className="font-heading text-headline-lg font-extrabold text-white">
           Good {greeting}, {firstName}
         </h1>
         <p className="mt-1 font-body text-body-md text-white/70">{dateString}</p>
@@ -172,27 +173,36 @@ function FloorLanding({
 
 // ─── Office surface ────────────────────────────────────────────────────────────
 //
-// brand-design-system.md §6 Level 1 elevation: bg-white/75 backdrop-blur-md
+// brand-design-system.md §6 Level 1 elevation: bg-surface-white
 // for cards. Touch targets h-11 (44px). Hover states permitted.
 
 function QueueCard({
   label,
   openCount,
   todayCount,
+  icon: Icon,
 }: {
   label: string;
   openCount: number;
   todayCount: number;
+  icon: LucideIcon;
 }) {
   return (
-    <div className="min-w-[180px] flex-1 rounded-xl border border-outline-variant/30 bg-white/75 p-4 shadow-elevation-1 backdrop-blur-md">
-      <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
-        {label}
+    <div className="min-w-[200px] flex-1 rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1 transition-shadow hover:shadow-elevation-2">
+      <div className="flex items-center justify-between">
+        <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+          {label}
+        </p>
+        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-indigo-50 text-accent-indigo-600">
+          <Icon size={18} aria-hidden="true" />
+        </span>
+      </div>
+      <p className="mt-3 font-heading text-headline-xl font-extrabold text-on-surface">
+        {openCount}
       </p>
-      <p className="mt-2 font-heading text-headline-md font-semibold text-brand-navy">
-        {openCount} open
+      <p className="font-body text-body-sm text-text-grey">
+        open &middot; {todayCount} today
       </p>
-      <p className="font-body text-body-sm text-text-grey">{todayCount} today</p>
     </div>
   );
 }
@@ -215,10 +225,10 @@ function OfficeLanding({
   hasReportingRead: boolean;
 }) {
   return (
-    <div className="mx-auto max-w-container px-8 py-8">
+    <div className="mx-auto max-w-container px-6 py-8 lg:px-8">
       {/* ── Page header ──────────────────────────────────────────────────── */}
       <header className="mb-8">
-        <h1 className="font-heading text-headline-xl font-bold text-on-surface">
+        <h1 className="font-heading text-headline-xl font-extrabold text-on-surface">
           Dashboard
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">{dateString}</p>
@@ -227,19 +237,21 @@ function OfficeLanding({
       {/* ── Queue summary cards ───────────────────────────────────────────
           Horizontal row that wraps on mobile.  4 cards: Receiving, Picking,
           Transfers, and Approvals (only if fifo_override.approve capability).
-          design.md §3.2: office surface, Level 1 elevation cards. */}
+          design.md §3.2: office surface, Level 1 elevation cards. These are
+          open-task counts, not KPI/financial metrics — R11.5 still applies;
+          real analytics/KPI content lives on /reports (spec 16), not here. */}
       <section
         aria-label="Queue summaries"
         data-testid="landing-queue-cards"
         className="mb-8"
       >
-        <div className="flex flex-wrap gap-4">
-          <QueueCard label="Receiving" openCount={openWrrs} todayCount={0} />
-          <QueueCard label="Picking" openCount={openPickLists} todayCount={0} />
-          <QueueCard label="Transfers" openCount={pendingTransfers} todayCount={0} />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <QueueCard label="Receiving" openCount={openWrrs} todayCount={0} icon={PackageCheck} />
+          <QueueCard label="Picking" openCount={openPickLists} todayCount={0} icon={ListChecks} />
+          <QueueCard label="Transfers" openCount={pendingTransfers} todayCount={0} icon={ArrowLeftRight} />
           {/* Approvals card — gated at widget level by fifo_override.approve */}
           {hasApprovalAccess && (
-            <QueueCard label="Approvals" openCount={pendingApprovals} todayCount={0} />
+            <QueueCard label="Approvals" openCount={pendingApprovals} todayCount={0} icon={CheckSquare} />
           )}
         </div>
       </section>
@@ -251,10 +263,10 @@ function OfficeLanding({
       <section
         aria-label="Recent activity"
         data-testid="landing-recent-activity"
-        className="mb-8 rounded-xl bg-white/75 p-6 shadow-elevation-1 backdrop-blur-md"
+        className="mb-8 rounded-xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1"
       >
-        <h2 className="flex items-center gap-2 font-heading text-headline-md font-semibold text-brand-navy">
-          <Clock size={20} aria-hidden="true" />
+        <h2 className="flex items-center gap-2 font-heading text-headline-md font-semibold text-on-surface">
+          <Clock size={20} className="text-brand-red" aria-hidden="true" />
           Recent Activity
         </h2>
         {/* TODO: wire to real activity feed query (07/08/11 transaction events) */}
@@ -273,9 +285,9 @@ function OfficeLanding({
         <section
           aria-label="Inventory activity heatmap"
           data-testid="landing-activity-heatmap"
-          className="rounded-xl bg-white/75 p-6 shadow-elevation-1 backdrop-blur-md"
+          className="rounded-xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1"
         >
-          <h2 className="font-heading text-headline-md font-semibold text-brand-navy">
+          <h2 className="font-heading text-headline-md font-semibold text-on-surface">
             Inventory Activity (52 weeks)
           </h2>
           <p className="mt-2 font-body text-body-sm text-text-grey">

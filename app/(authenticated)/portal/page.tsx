@@ -26,7 +26,7 @@ import { Package, ListChecks, FileText, Bell } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 
 // ─── Nav card ─────────────────────────────────────────────────────────────────
-// 2×2 grid cards: bg-white/75 backdrop-blur-md, h-44, rounded-2xl.
+// 2×2 grid cards: bg-surface-white, h-44, rounded-2xl.
 // brand-design-system.md §6: Level 1 elevation for office/party surfaces.
 // 44×44px effective touch target on hover-states (office default, §3).
 
@@ -41,7 +41,7 @@ interface NavCardProps {
 function NavCard({ href, icon, label, description, locked }: NavCardProps) {
   if (locked) {
     return (
-      <div className="flex h-44 flex-col justify-between rounded-2xl border border-outline-variant/30 bg-white/75 p-6 opacity-60 shadow-elevation-1 backdrop-blur-md">
+      <div className="flex h-44 flex-col justify-between rounded-2xl border border-outline-variant/30 bg-surface-white p-6 opacity-60 shadow-elevation-1">
         <div className="text-text-grey">{icon}</div>
         <div>
           <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
@@ -58,7 +58,7 @@ function NavCard({ href, icon, label, description, locked }: NavCardProps) {
   return (
     <Link
       href={href}
-      className="flex h-44 flex-col justify-between rounded-2xl border border-outline-variant/30 bg-white/75 p-6 shadow-elevation-1 backdrop-blur-md motion-safe:transition-shadow motion-safe:duration-150 hover:shadow-elevation-2 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+      className="flex h-44 flex-col justify-between rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1 motion-safe:transition-shadow motion-safe:duration-150 hover:shadow-elevation-2 focus:outline-none focus:ring-2 focus:ring-brand-navy"
     >
       <div className="text-brand-navy">{icon}</div>
       <div>
@@ -112,10 +112,10 @@ export default async function PortalPage() {
     <div className="mx-auto max-w-container">
       {/* ── Welcome card ──────────────────────────────────────────────────────
           Level 1 glassmorphism per §6, brand-navy heading per §2. */}
-      <div className="rounded-2xl border border-outline-variant/30 bg-white/75 p-6 shadow-elevation-1 backdrop-blur-md">
+      <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="font-heading font-bold text-headline-xl text-brand-navy">
+            <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
               Welcome, {partyName}
             </h1>
             <p className="mt-1 font-body text-body-md text-text-grey">

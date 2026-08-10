@@ -142,7 +142,7 @@ export default async function WrrPrintPage({ params }: PageProps) {
           <div className="border-b border-outline-variant/30 pb-6">
             <div className="flex items-start justify-between">
               <div>
-                <h1 className="font-heading font-bold text-headline-lg text-brand-navy">
+                <h1 className="font-heading font-extrabold text-headline-lg text-on-surface">
                   Dyna-Serv WIMS
                 </h1>
                 <p className="mt-1 font-label text-label uppercase tracking-[0.05em] text-brand-royal-blue">
@@ -215,7 +215,7 @@ export default async function WrrPrintPage({ params }: PageProps) {
 
           {/* Line items table — §5.3 per-line section */}
           <div className="mt-8">
-            <h2 className="font-heading font-semibold text-data-display text-brand-navy">
+            <h2 className="font-heading font-semibold text-data-display text-on-surface">
               Expected Lines
             </h2>
             {wrr.items.length === 0 ? (

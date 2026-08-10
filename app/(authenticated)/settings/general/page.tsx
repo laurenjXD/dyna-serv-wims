@@ -9,7 +9,7 @@
 export default function SettingsGeneralPage() {
   return (
     <div className="flex flex-col gap-2">
-      <h1 className="font-heading text-headline-md font-semibold text-brand-navy">
+      <h1 className="font-heading text-headline-md font-extrabold text-on-surface">
         General
       </h1>
       <p className="font-body text-body-md text-text-grey">

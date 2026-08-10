@@ -121,7 +121,7 @@ export default async function PortalOrdersPage() {
     <div className="mx-auto max-w-container">
       {/* Page header — Fira Sans Bold headline-xl per §2 */}
       <div>
-        <h1 className="font-heading font-bold text-headline-xl text-brand-navy">
+        <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
           My Orders
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">
@@ -132,7 +132,7 @@ export default async function PortalOrdersPage() {
       {/* ── Orders table — Level 1 glassmorphism (office/party surface) ──────
           Epilogue SemiBold uppercase headers, Outfit Regular body,
           Roboto Mono for codes per §9. */}
-      <div className="mt-6 overflow-hidden rounded-2xl border border-outline-variant/30 bg-white/75 shadow-elevation-1 backdrop-blur-md">
+      <div className="mt-6 overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
         {MOCK_ORDERS.length === 0 ? (
           <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
             <ListChecks

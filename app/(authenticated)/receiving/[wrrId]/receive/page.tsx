@@ -134,40 +134,6 @@ export default async function ReceiveFloorPage({
   ).length;
   const allLinesScanned = totalLines > 0 && fullyScannedLines === totalLines;
 
-  // Lines that are fully scanned but not yet committed need their commit UI.
-  // brand-design-system.md §3 "One primary action per floor screen": only the
-  // FIRST ready line (by wrr.items order) is presented as the primary,
-  // full-width brand-red commit action for this render. Any other ready
-  // lines get a smaller, secondary indicator in their own card instead of a
-  // second equal-weight primary CTA — see the card list below. Once the
-  // primary line commits, the redirect re-renders this page and the next
-  // ready line (by the same order) becomes the new primary action.
-  const readyLines = wrr.items.filter(
-    (item: WrrItemRow) =>
-      item.scannedQty >= item.expectedQty && item.committedAt === null
-  );
-  const primaryReadyLine: WrrItemRow | null = readyLines.length > 0 ? readyLines[0] : null;
-
-  // Fetch putaway suggestions (store) / active inspection locations (inspect)
-  // only for the single primary ready line — no other line's commit UI is
-  // rendered on this pass, so there's nothing else to fetch for.
-  let primaryStoreCandidates: PutawayCandidate[] = [];
-  let inspectionLocations: Array<{ id: string; label: string }> = [];
-  if (primaryReadyLine?.disposition === "store") {
-    primaryStoreCandidates = await suggestPutawayLocations(db, {
-      itemUnitCbm: primaryReadyLine.unitCbm,
-      requestedQty: primaryReadyLine.expectedQty,
-    });
-  } else if (primaryReadyLine?.disposition === "inspect") {
-    inspectionLocations = (await db
-      .select({ id: locations.id, label: locations.label })
-      .from(locations)
-      .where(and(eq(locations.locationType, "inspection"), eq(locations.isActive, true)))) as Array<{
-      id: string;
-      label: string;
-    }>;
-  }
-
   // Inline server action — closes over wrrId from the page component.
   // On success: redirects with scan result encoded in URL.
   // On failure: redirects with error reason encoded in URL.
@@ -269,7 +235,7 @@ export default async function ReceiveFloorPage({
           {/* Back link — h-14 (56px) minimum floor touch target per §3 */}
           <Link
             href={`/receiving/${wrrId}`}
-            className="inline-flex h-14 items-center gap-2 text-body-md font-outfit text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
+            className="inline-flex h-14 items-center gap-2 text-body-md font-body text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
           >
             {/* Left arrow — no icon dependency, pure text/unicode for floor performance */}
             <span aria-hidden="true">&#8592;</span>
@@ -286,7 +252,7 @@ export default async function ReceiveFloorPage({
       <div className="flex flex-1 flex-col px-4 py-4 pb-6">
         {/* Progress header — Fira Sans, large enough for floor visibility */}
         <div className="rounded-md bg-surface-white p-4 shadow-elevation-2">
-          <h1 className="font-heading font-semibold text-headline-md text-brand-navy">
+          <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
             Scan Items
           </h1>
           {/* Progress — no text below 16px (body-md) on floor screens per §2 */}
@@ -334,7 +300,7 @@ export default async function ReceiveFloorPage({
             {dispositionResult && (
               <p className="mt-1 font-body text-body-md text-on-surface">
                 Disposition:{" "}
-                <span className="text-body-md font-outfit uppercase">
+                <span className="text-body-md font-body uppercase">
                   {dispositionResult}
                 </span>
               </p>
@@ -422,15 +388,14 @@ export default async function ReceiveFloorPage({
                     </p>
                     {/* Disposition — label + badge with icon, never color alone per §1.3 floor rule */}
                     <div className="mt-1 flex items-center gap-2">
-                      <span className="text-body-md font-outfit text-on-surface">
+                      <span className="text-body-md font-body text-on-surface">
                         Disposition:
                       </span>
                       <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-body-md font-label uppercase ${
-                          item.disposition === "store"
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-body-md font-body uppercase ${item.disposition === "store"
                             ? "bg-status-available/10 text-on-surface"
                             : "bg-status-pending/10 text-on-surface"
-                        }`}
+                          }`}
                       >
                         {/* Icon paired with color to satisfy §1.3 floor color-blind rule */}
                         <span aria-hidden="true">
@@ -503,133 +468,52 @@ export default async function ReceiveFloorPage({
           height for floor primary actions throughout. */}
       {isReceivable && primaryReadyLine && (
         <div className="sticky bottom-0 bg-brand-navy px-4 pb-6 pt-4 shadow-elevation-2">
-          <form action={handleCommitLine} className="flex flex-col gap-3">
-            <input type="hidden" name="wrrItemId" value={primaryReadyLine.id} />
-            <p className="font-mono text-mono-lg font-bold text-surface-white">
-              {primaryReadyLine.lotNumber}
-            </p>
-            {primaryReadyLine.disposition === "store" ? (
-              <>
-                <label
-                  htmlFor="location-primary"
-                  className="text-body-md font-outfit text-surface-white"
-                >
-                  Putaway location
-                </label>
-                {primaryStoreCandidates.length > 0 ? (
-                  <select
-                    id="location-primary"
-                    name="locationId"
-                    defaultValue={primaryStoreCandidates[0].id}
-                    className="h-16 w-full rounded border-2 border-surface-white bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-4 focus:ring-brand-navy"
-                  >
-                    {primaryStoreCandidates.map((candidate) => (
-                      <option key={candidate.id} value={candidate.id}>
-                        {candidate.label} | {candidate.remainingCbm.toFixed(2)} CBM remaining
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <div role="alert" className="rounded border-l-4 border-status-held bg-white px-3 py-2">
-                    <p className="flex items-center gap-2 font-body text-body-md text-on-surface">
-                      <span aria-hidden="true" className="text-status-held">
-                        &#33;
-                      </span>
-                      No storage location has enough remaining capacity. Contact a supervisor.
-                    </p>
-                  </div>
-                )}
-                <button
-                  type="submit"
-                  disabled={primaryStoreCandidates.length === 0}
-                  className="flex h-16 w-full items-center justify-center rounded bg-brand-red font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white disabled:opacity-50"
-                >
-                  Store
-                </button>
-              </>
-            ) : (
-              <>
-                <label
-                  htmlFor="location-primary"
-                  className="text-body-md font-outfit text-surface-white"
-                >
-                  Inspection location
-                </label>
-                {inspectionLocations.length > 0 ? (
-                  <select
-                    id="location-primary"
-                    name="locationId"
-                    defaultValue={
-                      inspectionLocations.length === 1 ? inspectionLocations[0].id : undefined
-                    }
-                    className="h-16 w-full rounded border-2 border-surface-white bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-4 focus:ring-brand-navy"
-                  >
-                    {inspectionLocations.length > 1 && (
-                      <option value="">Select an inspection location…</option>
-                    )}
-                    {inspectionLocations.map((loc) => (
-                      <option key={loc.id} value={loc.id}>
-                        {loc.label}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <div role="alert" className="rounded border-l-4 border-status-held bg-white px-3 py-2">
-                    <p className="flex items-center gap-2 font-body text-body-md text-on-surface">
-                      <span aria-hidden="true" className="text-status-held">
-                        &#33;
-                      </span>
-                      No active inspection location is configured. Contact a supervisor.
-                    </p>
-                  </div>
-                )}
-                <button
-                  type="submit"
-                  disabled={inspectionLocations.length === 0}
-                  className="flex h-16 w-full items-center justify-center rounded bg-brand-red font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white disabled:opacity-50"
-                >
-                  Hold
-                </button>
-              </>
-            )}
-          </form>
-        </div>
-      )}
-
-      {isReceivable && !primaryReadyLine && !allLinesScanned && (
-        <div className="sticky bottom-0 bg-brand-navy px-4 pb-6 pt-4 shadow-elevation-2">
-          <form action={handleScan} className="flex flex-col gap-3">
-            <label
-              htmlFor="barcode-input"
-              className="text-body-md font-outfit text-surface-white"
-            >
-              Scan or enter barcode
-            </label>
-            <div className="flex gap-2">
-              <input
-                id="barcode-input"
-                name="barcode"
-                type="text"
-                // autoFocus: scanner input focused immediately for scan-first workflow.
-                // brand-design-system.md §3 input priority: scan > tap > type.
-                autoFocus
-                autoComplete="off"
-                inputMode="none"
-                placeholder="Waiting for scan…"
-                // h-16 = 64px — floor primary input touch target per §3
-                className="h-16 flex-1 rounded border-2 border-surface-white bg-surface-white px-4 font-mono text-mono-lg text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-4 focus:ring-brand-navy"
-              />
-              {/* Submit button — 64px minimum, full secondary width alongside input */}
+          {allLinesScanned ? (
+            /* Confirm Receipt CTA — R7.1: one primary floor action, full-width,
+               h-16 (64px) minimum, bg-brand-red per design-system §3 floor CTAs.
+               Solid surface, no glassmorphism, AAA contrast (white on red). */
+            <form action={handleCommit}>
               <button
                 type="submit"
-                // active: press feedback, no hover: (floor screen, §3 §10)
-                className="flex h-16 w-16 shrink-0 items-center justify-center rounded bg-brand-red font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white"
-                aria-label="Submit scan"
+                className="flex h-16 w-full items-center justify-center rounded bg-brand-red font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white"
               >
-                &#8594;
+                Confirm Receipt
               </button>
-            </div>
-          </form>
+            </form>
+          ) : (
+            <form action={handleScan} className="flex flex-col gap-3">
+              <label
+                htmlFor="barcode-input"
+                className="text-body-md font-body text-surface-white"
+              >
+                Scan or enter barcode
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id="barcode-input"
+                  name="barcode"
+                  type="text"
+                  // autoFocus: scanner input focused immediately for scan-first workflow.
+                  // brand-design-system.md §3 input priority: scan > tap > type.
+                  autoFocus
+                  autoComplete="off"
+                  inputMode="none"
+                  placeholder="Waiting for scan…"
+                  // h-16 = 64px — floor primary input touch target per §3
+                  className="h-16 flex-1 rounded border-2 border-surface-white bg-surface-white px-4 font-mono text-mono-lg text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-4 focus:ring-brand-navy"
+                />
+                {/* Submit button — 64px minimum, full secondary width alongside input */}
+                <button
+                  type="submit"
+                  // active: press feedback, no hover: (floor screen, §3 §10)
+                  className="flex h-16 w-16 shrink-0 items-center justify-center rounded bg-brand-red font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white"
+                  aria-label="Submit scan"
+                >
+                  &#8594;
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       )}
     </div>
