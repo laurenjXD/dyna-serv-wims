@@ -31,6 +31,8 @@ import {
   Bell,
   Tag,
   Circle,
+  Box,
+  ChevronLeft,
 } from "lucide-react";
 import type { AuthorizationContext } from "@/lib/rbac/session";
 import type { SessionPresentationTier } from "@/lib/shell/surface";
@@ -175,7 +177,7 @@ export function ShellNavigation({
     <nav
       data-testid="desktop-sidebar"
       aria-label="Primary navigation"
-      className="hidden flex-col gap-5 overflow-y-auto border-r border-black/20 bg-brand-navy p-4 lg:fixed lg:left-0 lg:top-14 lg:bottom-0 lg:z-20 lg:flex lg:w-64"
+      className="hidden flex-col gap-5 overflow-y-auto border-r border-black/20 bg-brand-navy p-4 lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:flex lg:w-64"
     >
       {/* Skip-to-content: visually hidden until focused, first element in the
           nav so keyboard users can bypass the sidebar entirely. */}
@@ -188,8 +190,20 @@ export function ShellNavigation({
         Skip to content
       </a>
 
-      {sections.map((section) => (
-        <div key={section.group} data-testid={`nav-group-${slugify(section.group)}`}>
+      <div className="flex items-center gap-3 px-2 pt-2">
+        <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent-indigo-600/25 text-accent-indigo-300">
+          <Box size={27} aria-hidden="true" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-heading text-body-lg font-extrabold tracking-tight text-white">DYNA-SERV</p>
+          <p className="font-label text-label tracking-wide text-white/45">WIMS</p>
+        </div>
+        <ChevronLeft size={18} className="text-white/40" aria-hidden="true" />
+      </div>
+
+      <div className="flex flex-1 flex-col gap-5">
+        {sections.map((section) => (
+          <div key={section.group} data-testid={`nav-group-${slugify(section.group)}`}>
           {/* Section header — Epilogue label style, dimmer than links so it
               reads as a grouping cue, not another tap target. Not a heading
               element in the a11y tree sense that needs its own landmark;
@@ -209,8 +223,19 @@ export function ShellNavigation({
               <NavLink key={entry.id} entry={entry} isActive={entry.id === activeId} tier={tier} />
             ))}
           </div>
-        </div>
-      ))}
+          </div>
+        ))}
+      </div>
+
+      <aside className="rounded-2xl bg-white/10 p-4">
+        <span className="mb-3 flex gap-1" aria-hidden="true">
+          <span className="h-1.5 w-8 rounded-full bg-accent-indigo-600" />
+          <span className="h-1.5 w-6 rounded-full bg-white/25" />
+          <span className="h-1.5 w-6 rounded-full bg-white/25" />
+        </span>
+        <p className="font-heading text-body-md font-bold text-white">Keep your warehouse running smoothly.</p>
+        <p className="mt-2 font-body text-body-sm text-white/55">Every move matters.</p>
+      </aside>
     </nav>
   );
 }

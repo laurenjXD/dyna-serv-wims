@@ -19,7 +19,9 @@
 "use client";
 
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Bell, Search } from "lucide-react";
 import { resolveSessionPresentationTier } from "@/lib/shell/surface";
 import { useShellSidebar } from "@/lib/shell/state";
 import { useShellAuthorizationContext } from "./AuthenticatedShellBoundary";
@@ -34,6 +36,12 @@ export function ShellChrome({ children }: { children: ReactNode }) {
   // so `context` is non-null in practice; the fallback keeps this
   // component defensively correct without asserting on the boundary.
   const tier = resolveSessionPresentationTier(context?.activeRoleKeys ?? []);
+  const pageTitle =
+    pathname === "/"
+      ? "Overview Dashboard"
+      : pathname.startsWith("/reports")
+        ? "Reports & Analytics"
+        : "Dyna-Serv WIMS";
 
   return (
     <>
@@ -41,7 +49,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
           Holds the brand mark, the mobile nav-open toggle, and account
           controls. brand-navy background per brand-design-system.md §9.
           No backdrop-blur — solid surface for both floor and office tiers. */}
-      <header className="fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-white/10 bg-brand-navy px-4 shadow-elevation-2">
+      <header className="fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-white/10 bg-brand-navy px-4 shadow-elevation-2 lg:left-64 lg:h-20 lg:border-outline-variant/30 lg:bg-surface-white lg:px-10 lg:shadow-none">
         {/* Mobile hamburger — hidden above lg where the persistent sidebar
             takes over. 64px min touch target (floor primary rules apply
             since this control is present on every surface including floor).
@@ -62,7 +70,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
         {/* Brand word-mark. Real letter-mark asset (text stand-in for now —
             see tasks.md deferred item on logo asset wiring). Inter
             SemiBold per brand-design-system §2 / §9 sidebar spec. */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 lg:hidden">
           <span
             aria-hidden="true"
             className="btn-diagonal-cut inline-flex h-7 items-center bg-brand-red px-2 font-heading text-body-sm font-bold tracking-tight text-white"
@@ -72,6 +80,58 @@ export function ShellChrome({ children }: { children: ReactNode }) {
           <span className="font-label text-body-md font-semibold uppercase tracking-wide text-surface-white">
             Dyna-Serv WIMS
           </span>
+        </div>
+
+        {/* Desktop office header. The controls intentionally keep the shell
+            presentational: page-level filtering stays owned by each route. */}
+        <div className="hidden min-w-0 flex-1 items-center gap-6 lg:flex">
+          <div className="min-w-[230px]">
+            <p className="font-heading text-headline-md font-bold text-on-surface">
+              {pageTitle}
+            </p>
+            <p className="font-body text-body-sm text-text-grey">
+              Dyna-Serv Main Warehouse
+            </p>
+          </div>
+          <label className="flex h-12 min-w-0 max-w-md flex-1 items-center gap-3 rounded-xl border border-outline-variant/30 bg-surface-light-grey px-4 text-text-grey">
+            <Search size={20} aria-hidden="true" />
+            <span className="truncate font-body text-body-md">
+              Search item code, lot no., or WRR
+            </span>
+          </label>
+          <nav aria-label="Flow reporting filter" className="flex h-12 items-center rounded-xl border border-outline-variant/30 bg-surface-light-grey p-1">
+            {[
+              ["all", "All"],
+              ["VMI", "VMI"],
+              ["Trading", "Trading"],
+              ["Supplies", "Supplies"],
+            ].map(([filter, label]) => (
+              <Link
+                key={filter}
+                href={`/reports?filter=${filter}`}
+                className={`rounded-lg px-3 py-2 font-label text-label transition-colors ${
+                  filter === "all" ? "bg-brand-navy text-white" : "text-text-grey hover:bg-surface-white hover:text-on-surface"
+                }`}
+              >
+                {label}
+              </Link>
+            ))}
+          </nav>
+          <div className="ml-auto flex items-center gap-5">
+            <span className="flex items-center gap-2 font-label text-label text-status-available">
+              <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-status-available" />
+              Online
+            </span>
+            <span className="relative flex h-11 w-11 items-center justify-center rounded-full text-on-surface">
+              <Bell size={21} aria-hidden="true" />
+              <span className="absolute right-0 top-0 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-red px-1 font-label text-[11px] text-white">
+                5
+              </span>
+            </span>
+            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-navy font-label text-body-md text-white">
+              DS
+            </span>
+          </div>
         </div>
       </header>
 
@@ -103,7 +163,8 @@ export function ShellChrome({ children }: { children: ReactNode }) {
           backdrop (brand-design-system §6/§9, revised 2026-08-09); floor
           keeps a plain white background per §6's AAA-contrast floor rule. */}
       <main
-        className={`min-h-screen pb-20 pt-14 lg:pb-0 lg:pl-64 ${
+        id="main-content"
+        className={`min-h-screen pb-20 pt-14 lg:pb-0 lg:pl-64 lg:pt-20 ${
           tier === "floor" ? "" : "bg-surface-light-grey"
         }`}
       >

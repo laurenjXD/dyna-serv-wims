@@ -28,8 +28,7 @@
 // Wire each when its owning feature's backend query is available.
 
 import Link from "next/link";
-import type { LucideIcon } from "lucide-react";
-import { PackageCheck, ListChecks, ArrowLeftRight, Clock, CheckSquare } from "lucide-react";
+import { PackageCheck, ListChecks, ArrowLeftRight, Clock } from "lucide-react";
 import { eq } from "drizzle-orm";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { resolveSessionPresentationTier } from "@/lib/shell/surface";
@@ -176,37 +175,6 @@ function FloorLanding({
 // brand-design-system.md §6 Level 1 elevation: bg-surface-white
 // for cards. Touch targets h-11 (44px). Hover states permitted.
 
-function QueueCard({
-  label,
-  openCount,
-  todayCount,
-  icon: Icon,
-}: {
-  label: string;
-  openCount: number;
-  todayCount: number;
-  icon: LucideIcon;
-}) {
-  return (
-    <div className="min-w-[200px] flex-1 rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1 transition-shadow hover:shadow-elevation-2">
-      <div className="flex items-center justify-between">
-        <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
-          {label}
-        </p>
-        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-indigo-50 text-accent-indigo-600">
-          <Icon size={18} aria-hidden="true" />
-        </span>
-      </div>
-      <p className="mt-3 font-heading text-headline-xl font-extrabold text-on-surface">
-        {openCount}
-      </p>
-      <p className="font-body text-body-sm text-text-grey">
-        open &middot; {todayCount} today
-      </p>
-    </div>
-  );
-}
-
 function OfficeLanding({
   dateString,
   openWrrs,
@@ -227,9 +195,9 @@ function OfficeLanding({
   return (
     <div className="mx-auto max-w-container px-6 py-8 lg:px-8">
       {/* ── Page header ──────────────────────────────────────────────────── */}
-      <header className="mb-8">
+      <header className="mb-6 lg:hidden">
         <h1 className="font-heading text-headline-xl font-extrabold text-on-surface">
-          Dashboard
+          Overview Dashboard
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">{dateString}</p>
       </header>
@@ -245,14 +213,34 @@ function OfficeLanding({
         data-testid="landing-queue-cards"
         className="mb-8"
       >
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <QueueCard label="Receiving" openCount={openWrrs} todayCount={0} icon={PackageCheck} />
-          <QueueCard label="Picking" openCount={openPickLists} todayCount={0} icon={ListChecks} />
-          <QueueCard label="Transfers" openCount={pendingTransfers} todayCount={0} icon={ArrowLeftRight} />
-          {/* Approvals card — gated at widget level by fifo_override.approve */}
-          {hasApprovalAccess && (
-            <QueueCard label="Approvals" openCount={pendingApprovals} todayCount={0} icon={CheckSquare} />
-          )}
+        <div className="grid gap-6 xl:grid-cols-[1.02fr_1.04fr_1fr]">
+          <article className="rounded-2xl border border-brand-navy/30 bg-brand-navy p-6 shadow-elevation-1">
+            <p className="font-label text-label uppercase tracking-[0.06em] text-white/60">Today&apos;s warehouse operations</p>
+            <p className="mt-5 font-heading text-headline-xl font-extrabold text-white">Ready to move</p>
+            <p className="mt-2 font-body text-body-md text-white/70">Start a receiving, picking, or transfer task from the live queues.</p>
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-white/10 p-4"><p className="font-body text-body-sm text-white/60">Receiving</p><p className="mt-2 font-heading text-data-display font-bold text-white">{openWrrs}</p></div>
+              <div className="rounded-xl bg-white/10 p-4"><p className="font-body text-body-sm text-white/60">Picking</p><p className="mt-2 font-heading text-data-display font-bold text-white">{openPickLists}</p></div>
+            </div>
+          </article>
+
+          <article className="rounded-2xl border border-outline-variant/30 border-l-[7px] border-l-brand-red bg-surface-white p-6 shadow-elevation-1">
+            <p className="font-label text-label uppercase tracking-[0.06em] text-text-grey">Open floor queues</p>
+            <div className="mt-6 space-y-4">
+              <QueueRow label="Pending Receiving WRRs" count={openWrrs} />
+              <QueueRow label="Active Pick Lists to Execute" count={openPickLists} />
+              <QueueRow label="Transfers awaiting action" count={pendingTransfers} />
+            </div>
+          </article>
+
+          <article className="rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
+            <p className="font-label text-label uppercase tracking-[0.06em] text-text-grey">Operations &amp; quality</p>
+            <div className="mt-6 space-y-4">
+              <div className="rounded-xl border border-status-pending/40 bg-status-pending/10 p-4"><p className="font-heading text-body-md font-bold text-on-surface">Inspection queue</p><p className="mt-1 font-body text-body-sm text-text-grey">Review lots waiting for quality control.</p></div>
+              {hasApprovalAccess && <div className="rounded-xl border border-status-held/30 bg-status-held/10 p-4"><p className="font-heading text-body-md font-bold text-on-surface">Approvals awaiting review</p><p className="mt-1 font-body text-body-sm text-text-grey">{pendingApprovals} request{pendingApprovals === 1 ? "" : "s"} ready for your decision.</p></div>}
+              <Link href={hasReportingRead ? "/reports" : "/inventory"} className="flex min-h-11 items-center justify-between rounded-xl border border-status-available/35 bg-status-available/10 px-4 font-heading text-body-md font-bold text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy">{hasReportingRead ? "Open reports & analytics" : "Review inventory"}<span aria-hidden="true">→</span></Link>
+            </div>
+          </article>
         </div>
       </section>
 
@@ -298,6 +286,10 @@ function OfficeLanding({
       )}
     </div>
   );
+}
+
+function QueueRow({ label, count }: { label: string; count: number }) {
+  return <div className="flex items-center justify-between rounded-xl bg-surface-light-grey px-5 py-5"><span className="font-heading text-body-md font-semibold text-on-surface">{label}</span><span className="font-heading text-headline-md font-extrabold text-on-surface">{count}</span></div>;
 }
 
 // ─── Page ──────────────────────────────────────────────────────────────────────

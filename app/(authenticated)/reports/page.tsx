@@ -12,10 +12,12 @@
 // TODO: wire to inventory_transactions query
 // TODO: wire financial section to vmi_cbm_ledger + pick_list_items pricing query
 
-import { BarChart2, Download, TrendingUp, Package } from "lucide-react";
+import { BarChart2, Check, Download, LockKeyhole, TriangleAlert } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { MovementChart, type MovementChartDatum } from "@/components/reporting/MovementChart";
+import { MonthlyFlowChart, type MonthlyFlowDatum } from "@/components/reporting/MonthlyFlowChart";
+import { LocationOccupancyChart } from "@/components/reporting/LocationOccupancyChart";
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 // TODO: wire to inventory_transactions query
@@ -78,40 +80,16 @@ const MOCK_MOVEMENTS = [
   },
 ];
 
-// ─── KPI card ─────────────────────────────────────────────────────────────────
-
-interface KpiCardProps {
-  label: string;
-  value: string;
-  icon: React.ReactNode;
-  subtext?: string;
-}
-
-function KpiCard({ label, value, icon, subtext }: KpiCardProps) {
-  return (
-    <div className="min-w-[200px] flex-1 rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1 transition-shadow hover:shadow-elevation-2">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1">
-          <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
-            {label}
-          </p>
-          <p className="mt-3 font-heading text-headline-lg font-extrabold text-on-surface">
-            {value}
-          </p>
-          {subtext && (
-            <p className="mt-1 font-body text-body-sm text-text-grey">{subtext}</p>
-          )}
-        </div>
-        <span
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-indigo-50 text-accent-indigo-600"
-          aria-hidden="true"
-        >
-          {icon}
-        </span>
-      </div>
-    </div>
-  );
-}
+const MONTHLY_FLOW: MonthlyFlowDatum[] = [
+  { month: "Jan", vmi: 250, trading: 72, supplies: 30 },
+  { month: "Feb", vmi: 190, trading: 118, supplies: 42 },
+  { month: "Mar", vmi: 250, trading: 138, supplies: 64 },
+  { month: "Apr", vmi: 215, trading: 78, supplies: 38 },
+  { month: "May", vmi: 290, trading: 145, supplies: 70 },
+  { month: "Jun", vmi: 235, trading: 155, supplies: 55 },
+  { month: "Jul", vmi: 320, trading: 170, supplies: 88 },
+  { month: "Aug", vmi: 270, trading: 135, supplies: 52 },
+];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -175,41 +153,59 @@ export default async function ReportsPage({ searchParams }: PageProps) {
 
   return (
     <div className="mx-auto max-w-container px-6 py-8 lg:px-8">
-      {/* Page header */}
-      <div>
-        <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
-          Reports &amp; Analytics
-        </h1>
-        <p className="mt-1 font-body text-body-md text-text-grey">
-          Inventory activity, movement history, and KPI overview.
-        </p>
+      <div className="mb-6 lg:hidden">
+        <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">Reports &amp; Analytics</h1>
+        <p className="mt-1 font-body text-body-md text-text-grey">Inventory activity, movement history, and KPI overview.</p>
       </div>
 
-      {/* KPI cards — flex-wrap row per spec */}
-      <div className="mt-6 flex flex-wrap gap-4">
-        <KpiCard
-          label="Total Inventory Value (VMI)"
-          value="$0.00"
-          icon={<TrendingUp size={18} />}
-          subtext="Period average — not per-document total"
-        />
-        <KpiCard
-          label="Active Lots"
-          value="0"
-          icon={<Package size={18} />}
-        />
-        <KpiCard
-          label="Transactions This Month"
-          value="0"
-          icon={<BarChart2 size={18} />}
-        />
-        <KpiCard
-          label="Avg CBM Utilization"
-          value="0%"
-          icon={<TrendingUp size={18} />}
-          subtext="Current period"
-        />
-      </div>
+      {/* Analytics is the financial-accessible surface; the landing page
+          remains limited to operational queues per spec 05 R11.5. */}
+      <section className="grid gap-6 xl:grid-cols-[1.02fr_1.04fr_1fr]">
+        <article className="overflow-hidden rounded-2xl border border-brand-navy/30 bg-brand-navy p-6 shadow-elevation-1">
+          <p className="font-label text-label uppercase tracking-[0.06em] text-white/60">Total inventory valuation</p>
+          <div className="mt-5 flex items-end justify-between gap-3">
+            <p className="font-heading text-headline-xl font-extrabold text-white">
+              {hasFinancialAccess ? "$0.00" : "Restricted"}
+            </p>
+            <span className="rounded-full bg-status-available/20 px-3 py-2 font-label text-label text-status-available">↑ Current</span>
+          </div>
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <div className="rounded-xl bg-white/10 p-4"><p className="font-body text-body-sm text-white/60">VMI</p><p className="mt-2 font-heading text-data-display font-bold text-white">{hasFinancialAccess ? "$0.00" : "—"}</p></div>
+            <div className="rounded-xl bg-white/10 p-4"><p className="font-body text-body-sm text-white/60">Trading</p><p className="mt-2 font-heading text-data-display font-bold text-white">{hasFinancialAccess ? "$0.00" : "—"}</p></div>
+          </div>
+          {!hasFinancialAccess && <p className="mt-4 flex items-center gap-2 font-body text-body-sm text-white/65"><LockKeyhole size={15} aria-hidden="true" />Financial reporting access required.</p>}
+          <div className="mt-6 h-16 rounded-t-full border-t-4 border-brand-red bg-gradient-to-b from-brand-red/20 to-transparent" aria-hidden="true" />
+        </article>
+
+        <article className="rounded-2xl border border-outline-variant/30 border-l-[7px] border-l-brand-red bg-surface-white p-6 shadow-elevation-1">
+          <p className="font-label text-label uppercase tracking-[0.06em] text-text-grey">Open floor queues</p>
+          <div className="mt-6 space-y-4">
+            {[['Pending Receiving WRRs', '0'], ['Active Pick Lists to Execute', '0'], ['Items Pending QC Inspection', '0']].map(([label, count]) => (
+              <div key={label} className="flex items-center justify-between rounded-xl bg-surface-light-grey px-5 py-5">
+                <span className="font-heading text-body-md font-semibold text-on-surface">{label}</span>
+                <span className="font-heading text-headline-md font-extrabold text-on-surface">{count}</span>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
+          <p className="font-label text-label uppercase tracking-[0.06em] text-text-grey">Stock health &amp; quality</p>
+          <div className="mt-6 space-y-4">
+            <HealthRow icon={<TriangleAlert size={23} />} title="Low stock reorder alerts" detail="No items below reorder level" tone="pending" />
+            <HealthRow icon={<LockKeyhole size={23} />} title="Held / quarantined lots" detail="No lots pending release" tone="held" />
+            <HealthRow icon={<Check size={23} />} title="QC pass rate (30d)" detail="No inspections recorded yet" tone="available" />
+          </div>
+        </article>
+      </section>
+
+      <section className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <article className="rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
+          <div className="flex flex-wrap items-start justify-between gap-4"><div><h2 className="font-heading text-headline-md font-bold text-on-surface">Monthly Flow Movement</h2><p className="mt-1 font-body text-body-sm text-text-grey">Inbound receiving vs. outbound dispatch by flow type</p></div><div className="flex gap-4 font-body text-body-sm text-text-grey"><Legend color="bg-brand-navy" label="VMI" /><Legend color="bg-brand-royal-blue" label="Trading" /><Legend color="bg-status-neutral" label="Supplies" /></div></div>
+          <MonthlyFlowChart data={MONTHLY_FLOW} />
+        </article>
+        <article className="rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1"><h2 className="font-heading text-headline-md font-bold text-on-surface">Location Occupancy</h2><LocationOccupancyChart /><div className="space-y-3 font-body text-body-sm text-text-grey"><Legend color="bg-brand-navy" label="Zone A Storage" /><Legend color="bg-brand-royal-blue" label="Zone B Racks" /><Legend color="bg-status-neutral" label="Cold Storage" /><Legend color="bg-brand-red" label="Overflow" /></div></article>
+      </section>
 
       {/* Movement Trend — real recharts bar chart, most recent day highlighted
           in brand-red per §9's "one accent, used sparingly" dashboard rule. */}
@@ -384,4 +380,13 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       )}
     </div>
   );
+}
+
+function Legend({ color, label }: { color: string; label: string }) {
+  return <span className="flex items-center gap-2"><span className={`h-3 w-3 rounded-sm ${color}`} aria-hidden="true" />{label}</span>;
+}
+
+function HealthRow({ icon, title, detail, tone }: { icon: React.ReactNode; title: string; detail: string; tone: "pending" | "held" | "available" }) {
+  const toneClass = { pending: "border-status-pending/45 bg-status-pending/10 text-status-pending", held: "border-status-held/35 bg-status-held/10 text-status-held", available: "border-status-available/35 bg-status-available/10 text-status-available" }[tone];
+  return <div className={`flex items-center gap-4 rounded-xl border p-4 ${toneClass}`}><span aria-hidden="true">{icon}</span><div><p className="font-heading text-body-md font-bold text-on-surface">{title}</p><p className="mt-1 font-body text-body-sm text-text-grey">{detail}</p></div></div>;
 }
