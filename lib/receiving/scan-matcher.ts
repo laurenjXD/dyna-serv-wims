@@ -63,8 +63,32 @@ export function matchScan(
     return { matched: false, reason: "invalid_barcode" };
   }
 
-  // Find all lines whose itemBarcode matches the scanned barcode
-  const matchingLines = lines.filter((l) => l.itemBarcode === barcode);
+  // Parse JSON wrr_item_unit payload if present (Spec 18 §2.2)
+  let parsedWrrItemId: string | null = null;
+  if (barcode.trim().startsWith("{")) {
+    try {
+      const parsed = JSON.parse(barcode.trim());
+      if (parsed?.type === "wrr_item_unit" && typeof parsed?.wrr_item_id === "string") {
+        parsedWrrItemId = parsed.wrr_item_id;
+      }
+    } catch {
+      // Not valid JSON — fall through to standard string matching
+    }
+  }
+
+  // Find matching lines by wrr_item_id (JSON payload), itemBarcode, itemId, id, or lotNumber
+  const matchingLines = lines.filter((l) => {
+    if (parsedWrrItemId) {
+      return l.id === parsedWrrItemId;
+    }
+    return (
+      l.itemBarcode === barcode ||
+      (l as unknown as { itemCode?: string }).itemCode === barcode ||
+      l.itemId === barcode ||
+      l.id === barcode ||
+      l.lotNumber === barcode
+    );
+  });
 
   if (matchingLines.length === 0) {
     return { matched: false, reason: "unknown_item" };
