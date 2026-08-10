@@ -21,6 +21,15 @@ import { checkSelfApproval } from "@/lib/approval/self-approval";
 import { transitionRequest } from "@/lib/approval/state-machine";
 import type { ApprovalEvent } from "@/lib/approval/state-machine";
 import { approvalRequests, approvalDecisions } from "@/lib/db/schema/approvals";
+import { withRlsTransaction } from "@/lib/db/rls-transaction";
+import type { RlsTransactionDeps } from "@/lib/db/rls-transaction";
+import { rlsPool } from "@/lib/db/rls-pool";
+import { getAuthenticatedSession } from "@/lib/auth/get-authenticated-session";
+
+const defaultRlsDeps: RlsTransactionDeps = {
+  getAuthenticatedSession,
+  pool: rlsPool,
+};
 
 // Minimal structural type that both the real Drizzle db instance and test
 // stubs satisfy. Uses named method properties (not an index signature) so that
@@ -153,21 +162,29 @@ async function recordDecision(
  */
 export async function approveRequest(
   resolver: RequestAuthorizationResolver,
-  db: DbLike,
   requestId: string,
   reason: string,
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<ApprovalActionResult> {
   const authResult = await checkApproveCapability(resolver);
   if (!authResult.ok) return authResult;
 
-  return recordDecision(
-    db,
-    requestId,
-    authResult.userId,
-    reason,
-    "approve",
-    "approved",
-  );
+  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
+    return recordDecision(
+      db,
+      requestId,
+      authResult.userId,
+      reason,
+      "approve",
+      "approved",
+    );
+  });
+
+  if (rlsResult.kind === "unauthenticated") {
+    return { ok: false, error: "Forbidden" };
+  }
+  return rlsResult.value;
 }
 
 // ---------------------------------------------------------------------------
@@ -182,19 +199,27 @@ export async function approveRequest(
  */
 export async function rejectRequest(
   resolver: RequestAuthorizationResolver,
-  db: DbLike,
   requestId: string,
   reason: string,
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<ApprovalActionResult> {
   const authResult = await checkApproveCapability(resolver);
   if (!authResult.ok) return authResult;
 
-  return recordDecision(
-    db,
-    requestId,
-    authResult.userId,
-    reason,
-    "reject",
-    "rejected",
-  );
+  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
+    return recordDecision(
+      db,
+      requestId,
+      authResult.userId,
+      reason,
+      "reject",
+      "rejected",
+    );
+  });
+
+  if (rlsResult.kind === "unauthenticated") {
+    return { ok: false, error: "Forbidden" };
+  }
+  return rlsResult.value;
 }

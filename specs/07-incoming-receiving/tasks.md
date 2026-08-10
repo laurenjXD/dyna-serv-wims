@@ -1,7 +1,7 @@
 # Incoming Receiving — Implementation Plan
 
 Status: Approved
-Updated: 2026-08-05
+Updated: 2026-08-10
 
 ## Implementation gate
 
@@ -33,7 +33,8 @@ No receiving route, WRR form, scan queue, inspection mutation, receipt commit, m
 Testing: Documentation/schema review; no implementation tests.
 
 - [x] Reconcile the raw CIPL/WRR input notes with approved `01-core-data-model` requirements/design. — All `wrr_documents`, `wrr_items`, `wrr_inspection_logs`, `lots`, `lot_location_balances`, and `inventory_transactions` fields confirmed from the approved `01` schema. The `disposition` field on `wrr_items` is the only net-new field; a `01` schema amendment is noted.
-- [x] Finalize the WRR status lifecycle and legal transitions, including cancellation and post-start correction behavior. *(Resolved 2026-08-09: supervisor (`receiving.create`) can cancel a WRR at any status, including after scanning has started. Already-confirmed items become a partial receipt — lots and `inventory_transactions` rows are committed; unscanned lines are discarded. WRR closes with `partial` status. See revision-log.md.)*
+- [x] Finalize the WRR status lifecycle and legal transitions, including cancellation and post-start correction behavior. *(Resolved 2026-08-09: supervisor (`receiving.create`) can cancel a WRR at any status, including after scanning has started. Already-confirmed items become a partial receipt — lots and `inventory_transactions` rows are committed; unscanned lines are discarded. ~~WRR closes with `partial` status.~~ **Corrected 2026-08-10: WRR closes with `cancelled` status — `partial` was never an actual enum value; "partial receipt" describes the outcome, not a status. See revision-log.md's 2026-08-10 entry.** See revision-log.md.)*
+- [x] **Reopened 2026-08-10, resolved 2026-08-10**: the 2026-08-09 per-line-immediate-commit generalization (design.md §9) makes "some lines committed, some not" the *normal* mid-flight state, not just a cancellation edge case. Product Owner decided no new `wrr_status` value is needed — `receiving_in_progress` already covers this window; per-line completion is tracked on `wrr_items`, not the parent status. Also corrects the 2026-08-09 entry's stale "`partial` status" wording — no such enum value exists or will be added; a cancelled-with-partial-completion WRR closes as `cancelled`. See revision-log.md's 2026-08-10 entry.
 - [x] Finalize whether CIPL remains an attached reference plus manually encoded `wrr_items`, or whether structured CIPL parsing is required. — Confirmed: CIPL is an attached external reference stored privately; structured parsing is not in scope for v1 (design.md §5).
 - [x] Finalize expected-line fields, scan/reconciliation storage, inspection-log fields, discrepancy states, and lot inheritance rules. — Expected-line field table added (design.md §5.1); discrepancy states defined (§5.2); inspection-log fields confirmed from `01` schema; `lot_number` confirmed as the single canonical identifier inherited verbatim at commit.
 - [x] Define the exact receipt commit invariant: what must be complete before confirmation and what can remain pending for putaway. — Defined in design.md §9: all scan totals, conformance decisions, and disposition values must be valid; putaway is a post-commit handoff, not a commit prerequisite.
@@ -74,11 +75,12 @@ Testing: Unit matcher tests; Playwright simulated scanner/real IndexedDB; integr
 - [ ] Build the floor receiving route at 375px first using card/list presentation, scanner-ready input, full-width primary action, and solid high-contrast surfaces.
 - [ ] Implement start-receiving transition with authorization, current-state validation, and idempotency.
 - [ ] Implement barcode-to-item-to-WRR-line matching and accepted/remaining quantity state.
-- [ ] Reject wrong WRR, wrong item, unknown item, duplicate, over-quantity, invalid UOM, and unresolved lot-context scans visibly and recoverably.
+- [ ] Reject wrong WRR, wrong item, unknown item, duplicate, over-quantity, invalid UOM, unresolved lot-context, and (**added 2026-08-10**) flow-type-mismatch scans visibly and recoverably.
 - [ ] Provide controlled manual-entry recovery using the same server validation path.
 - [ ] Route unknown items to online `06` enrollment or explicit exception; require revalidation after enrollment.
 - [ ] Define and implement the approved Tier 1 scan command policy with `03`; do not queue confirmation or enrollment.
 - [ ] Preserve local scan state honestly through connectivity loss without marking receipt confirmed.
+- [ ] **Added 2026-08-10**: after a `store`-disposition scan matches its expected line, display the system-suggested location (design.md §6.2) before the "Store" action; allow accept-or-override.
 
 ### 5. Implement inbound inspection and discrepancy handling
 
@@ -95,14 +97,17 @@ Testing: Unit state/validation tests; Playwright conformance/non-conformance flo
 
 Testing: Unit commit validation; real-Postgres transaction/idempotency/RLS integration; Playwright confirmation/retry flows.
 
-- [ ] Implement one authoritative confirm-receipt server command.
-- [x] Record the Product Owner's 2026-08-09 decision that `store` lines carry an explicit pre-receiving `putaway_location_id`; `inspect` lines resolve the active inspection location. This is a schema amendment owned by `01`, implemented in migration `0020_wrr_item_putaway_location.sql`.
-- [ ] Recheck WRR state, scan totals, conformance, active references, flow partition, lot metadata, and required prerequisites inside the transaction.
-- [ ] Create approved lots/available state and immutable receiving transactions atomically.
-- [ ] Transition WRR to confirmed exactly once and return the authoritative result for duplicate retries.
-- [ ] Ensure failed commits roll back completely and remain recoverable.
-- [ ] Integrate putaway recommendation/handoff using approved locations/capacity interfaces without duplicating location logic.
+- [ ] **Reopened 2026-08-10, supersedes the single-atomic-commit framing below**: implement one authoritative per-line commit server command ("Store" for `store` lines, "Hold" for `inspect` lines), not one end-of-WRR commit gated on every line being ready.
+- [ ] **Reopened 2026-08-10, reverses the checked item below** — the 2026-08-09 decision that `store` lines carry an explicit pre-receiving `putaway_location_id` is superseded: `store` lines no longer set `putaway_location_id` at WRR creation/staging. The column (already nullable per migration `0020_wrr_item_putaway_location.sql`; no new migration proposed here) is now populated per line at scan/store time, via the suggestion interface in design.md §6.2. `inspect` lines continue to resolve a staff-confirmed active `inspection` location, now selected before scanning rather than only at commit (design.md §6.3).
+- ~~[x] Record the Product Owner's 2026-08-09 decision that `store` lines carry an explicit pre-receiving `putaway_location_id`; `inspect` lines resolve the active inspection location. This is a schema amendment owned by `01`, implemented in migration `0020_wrr_item_putaway_location.sql`.~~ *(Superseded 2026-08-10 — see the reopened item immediately above and `specs/00-steering/revision-log.md`. Struck through rather than deleted so the prior decision stays visible in-line, not just in the revision log.)*
+- [ ] Recheck WRR state, scan totals, conformance, active references, flow partition, lot metadata, and required prerequisites inside the transaction — **per-line**, not per-WRR (2026-08-10).
+- [ ] Create approved lots/available state and immutable receiving transactions atomically, **per line** (2026-08-10).
+- [ ] **Reopened 2026-08-10**: transition each line to a terminal committed state independently; transition the WRR itself to `confirmed` only once every line has reached a terminal committed (or cancelled/discarded) state; return the authoritative result for duplicate retries per line.
+- [ ] Ensure a failed per-line commit rolls back completely for that line and remains recoverable, without affecting any other line's already-committed state (2026-08-10).
+- [ ] **Reopened 2026-08-10, moves earlier in the flow**: integrate the putaway recommendation/suggestion at scan time (before that line's "Store" commit), using approved locations/capacity interfaces without duplicating location logic — not only as a post-commit recommendation.
 - [ ] Record completed putaway through the owning inventory transaction boundary.
+- [ ] **Added 2026-08-10**: implement the flow-type cross-check rejection (design.md §6.1) — a scanned item's `items.flow_type` must match the WRR's `wrr_documents.flow_type`, rejected through the existing wrong-item exception path.
+- [ ] **Added 2026-08-10**: implement the location-first "Hold" sequence for `inspect`-disposition lines (design.md §6.3) — confirm inspection location, then scan, then commit.
 
 ### 7. Implement incoming ledger and review
 

@@ -15,7 +15,6 @@ import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
-import { db } from "@/lib/db/client";
 import { createWrr } from "@/lib/actions/receiving";
 import { WrrLineItems } from "./_components/wrr-line-items";
 
@@ -46,8 +45,6 @@ async function handleCreateWrr(formData: FormData): Promise<void> {
         ((formData.get(`line_${i}_disposition`) as string | null) ?? "store") as
           | "store"
           | "inspect",
-      putawayLocationId:
-        (formData.get(`line_${i}_putawayLocationId`) as string | null) || null,
       itemCode:
         (formData.get(`line_${i}_itemCode`) as string | null) || null,
       customerItemCode:
@@ -73,7 +70,7 @@ async function handleCreateWrr(formData: FormData): Promise<void> {
     lines,
   };
 
-  const result = await createWrr(actionResolver, db, input);
+  const result = await createWrr(actionResolver, input);
   if (result.ok) {
     redirect(`/receiving/${result.wrrId}`);
   }
@@ -302,8 +299,9 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
           </h2>
           <p className="mt-1 font-body text-body-sm text-text-grey">
             At least one line is required. Each line requires a lot number,
-            expected quantity, unit CBM, UOM, disposition, and a storage
-            location for store lines.
+            expected quantity, unit CBM, UOM, and disposition. The putaway
+            location for store-disposition lines is selected on the floor at
+            scan/store time, not here.
           </p>
           <div className="mt-4">
             {/* WrrLineItems is a client component — handles dynamic add/remove.

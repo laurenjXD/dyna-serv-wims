@@ -10,8 +10,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { db as _db } from "@/lib/db/client";
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const db = _db as unknown as { [key: string]: (...args: any[]) => any };
 import { createItem, updateItem, deactivateItem } from "@/lib/actions/items";
 import { getItemOperationalRecords } from "@/lib/db/queries/items";
 
@@ -90,7 +88,7 @@ export async function createItemAction(
   const resolver = await createPageResolver();
   const input = parseItemFormData(formData);
 
-  const result = await createItem(resolver, db, input);
+  const result = await createItem(resolver, input);
 
   if (!result.ok) {
     if ("fieldErrors" in result) {
@@ -116,7 +114,7 @@ export async function updateItemAction(
   const submittedUpdatedAt = formData.get("updatedAt") as string;
   const input = parseItemFormData(formData);
 
-  const result = await updateItem(resolver, db, id, input, submittedUpdatedAt, {
+  const result = await updateItem(resolver, id, input, submittedUpdatedAt, {
     getBarcodeCheckData: async (_actionDb, itemId) =>
       getItemOperationalRecords(_db, itemId),
   });
@@ -150,7 +148,7 @@ export async function deactivateItemAction(
   const resolver = await createPageResolver();
   const id = formData.get("id") as string;
 
-  const result = await deactivateItem(resolver, db, id);
+  const result = await deactivateItem(resolver, id);
 
   if (!result.ok) {
     return { error: result.error };

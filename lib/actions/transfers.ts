@@ -34,6 +34,15 @@ import {
   inspectionDispositions,
 } from "@/lib/db/schema/transfers";
 import { getTransferRequest } from "@/lib/db/queries/transfers";
+import { withRlsTransaction } from "@/lib/db/rls-transaction";
+import type { RlsTransactionDeps } from "@/lib/db/rls-transaction";
+import { rlsPool } from "@/lib/db/rls-pool";
+import { getAuthenticatedSession } from "@/lib/auth/get-authenticated-session";
+
+const defaultRlsDeps: RlsTransactionDeps = {
+  getAuthenticatedSession,
+  pool: rlsPool,
+};
 
 // Minimal structural type that both the real Drizzle db instance and test
 // stubs satisfy. Uses named method properties (not an index signature) so
@@ -94,8 +103,8 @@ function terminalStatusForDisposition(dispositionType: string): "passed" | "fail
  */
 export async function createTransfer(
   resolver: RequestAuthorizationResolver,
-  db: DbLike,
   input: unknown,
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<CreateTransferActionResult> {
   // 1. Authorization
   const perm = await requirePermission(resolver, "transfer.request");
@@ -112,22 +121,31 @@ export async function createTransfer(
   const data = validation.data;
   const userId = perm.context.userId;
 
-  // 3. INSERT into transfer_requests
-  const [inserted] = await db
-    .insert(transferRequests)
-    .values({
-      fromLocationId: data.fromLocationId,
-      toLocationId: data.toLocationId,
-      flowType: data.flowType,
-      status: "staged",
-      reason: data.reason ?? null,
-      requiresApproval: data.requiresApproval ?? false,
-      requestedBy: userId,
-    })
-    .returning();
+  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
 
-  // 4. Return result
-  return { ok: true, transferId: (inserted as { id: string }).id };
+    // 3. INSERT into transfer_requests
+    const [inserted] = await db
+      .insert(transferRequests)
+      .values({
+        fromLocationId: data.fromLocationId,
+        toLocationId: data.toLocationId,
+        flowType: data.flowType,
+        status: "staged",
+        reason: data.reason ?? null,
+        requiresApproval: data.requiresApproval ?? false,
+        requestedBy: userId,
+      })
+      .returning();
+
+    // 4. Return result
+    return { ok: true, transferId: (inserted as { id: string }).id } as const;
+  });
+
+  if (rlsResult.kind === "unauthenticated") {
+    return { ok: false, errors: ["forbidden"] };
+  }
+  return rlsResult.value;
 }
 
 // ---------------------------------------------------------------------------
@@ -141,9 +159,9 @@ export async function createTransfer(
  */
 export async function updateTransferStatus(
   resolver: RequestAuthorizationResolver,
-  db: DbLike,
   transferId: string,
   newStatus: string,
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<UpdateStatusResult> {
   // 1. Authorization
   const perm = await requirePermission(resolver, "transfer.execute");
@@ -151,19 +169,28 @@ export async function updateTransferStatus(
     return { ok: false, reason: "forbidden" };
   }
 
-  // 2. Load transfer
-  const transfer = await getTransferRequest(db, transferId);
-  if (transfer === null) {
-    return { ok: false, reason: "not_found" };
+  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
+
+    // 2. Load transfer
+    const transfer = await getTransferRequest(db, transferId);
+    if (transfer === null) {
+      return { ok: false, reason: "not_found" } as const;
+    }
+
+    // 3. UPDATE status
+    await db
+      .update(transferRequests)
+      .set({ status: newStatus, updatedAt: new Date() })
+      .where(eq(transferRequests.id, transferId));
+
+    return { ok: true } as const;
+  });
+
+  if (rlsResult.kind === "unauthenticated") {
+    return { ok: false, reason: "forbidden" };
   }
-
-  // 3. UPDATE status
-  await db
-    .update(transferRequests)
-    .set({ status: newStatus, updatedAt: new Date() })
-    .where(eq(transferRequests.id, transferId));
-
-  return { ok: true };
+  return rlsResult.value;
 }
 
 // ---------------------------------------------------------------------------
@@ -177,7 +204,6 @@ export async function updateTransferStatus(
  */
 export async function openInspectionCase(
   resolver: RequestAuthorizationResolver,
-  db: DbLike,
   input: {
     sourceRefType: string;
     sourceRefId: string;
@@ -187,6 +213,7 @@ export async function openInspectionCase(
     flowType: string;
     contextType: string;
   },
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<OpenCaseResult> {
   // 1. Authorization
   const perm = await requirePermission(resolver, "inspection.perform");
@@ -197,24 +224,33 @@ export async function openInspectionCase(
   const userId = perm.context.userId;
   const now = new Date();
 
-  // 2. INSERT into inspection_cases
-  const [inserted] = await db
-    .insert(inspectionCases)
-    .values({
-      contextType: input.contextType,
-      sourceRefType: input.sourceRefType,
-      sourceRefId: input.sourceRefId,
-      lotId: input.lotId,
-      itemId: input.itemId,
-      partyId: input.partyId,
-      flowType: input.flowType,
-      status: "open",
-      openedBy: userId,
-      openedAt: now,
-    })
-    .returning();
+  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
 
-  return { ok: true, caseId: (inserted as { id: string }).id };
+    // 2. INSERT into inspection_cases
+    const [inserted] = await db
+      .insert(inspectionCases)
+      .values({
+        contextType: input.contextType,
+        sourceRefType: input.sourceRefType,
+        sourceRefId: input.sourceRefId,
+        lotId: input.lotId,
+        itemId: input.itemId,
+        partyId: input.partyId,
+        flowType: input.flowType,
+        status: "open",
+        openedBy: userId,
+        openedAt: now,
+      })
+      .returning();
+
+    return { ok: true, caseId: (inserted as { id: string }).id } as const;
+  });
+
+  if (rlsResult.kind === "unauthenticated") {
+    return { ok: false, reason: "forbidden" };
+  }
+  return rlsResult.value;
 }
 
 // ---------------------------------------------------------------------------
@@ -230,13 +266,13 @@ export async function openInspectionCase(
  */
 export async function resolveInspectionCase(
   resolver: RequestAuthorizationResolver,
-  db: DbLike,
   caseId: string,
   disposition: {
     dispositionType: string;
     quantityAffected: number;
     notes?: string;
   },
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<ResolveCaseResult> {
   // 1. Authorization — inspection.resolve is supervisor-only (02-rbac-roles §3.2).
   // inspection.perform (warehouse_staff + supervisor) covers opening cases only.
@@ -247,61 +283,70 @@ export async function resolveInspectionCase(
 
   const userId = perm.context.userId;
 
-  // 2. Load inspection case
-  const rows = (await db
-    .select()
-    .from(inspectionCases)
-    .where(eq(inspectionCases.id, caseId))) as AnyRecord[];
+  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
 
-  const caseRow = rows.find((r: AnyRecord) => r.id === caseId) ?? null;
-  if (caseRow === null) {
-    return { ok: false, errors: ["not_found"] };
+    // 2. Load inspection case
+    const rows = (await db
+      .select()
+      .from(inspectionCases)
+      .where(eq(inspectionCases.id, caseId))) as AnyRecord[];
+
+    const caseRow = rows.find((r: AnyRecord) => r.id === caseId) ?? null;
+    if (caseRow === null) {
+      return { ok: false as const, errors: ["not_found"] };
+    }
+
+    // 3. Validate disposition via business logic (checks status === 'open', etc.)
+    const validationResult = validateInspectionDisposition(
+      {
+        id: caseRow.id as string,
+        status: caseRow.status as string,
+        contextType: caseRow.contextType as "inbound" | "transfer",
+        sourceRefType: caseRow.sourceRefType as "wrr_item" | "transfer_line",
+      },
+      {
+        dispositionType: disposition.dispositionType,
+        quantityAffected: disposition.quantityAffected,
+        notes: disposition.notes,
+      },
+    );
+    if (!validationResult.ok) {
+      return { ok: false as const, errors: validationResult.errors };
+    }
+
+    // 4. Determine terminal status
+    const terminalStatus = terminalStatusForDisposition(disposition.dispositionType);
+    const now = new Date();
+
+    // 5. UPDATE inspection_cases to terminal status
+    await db
+      .update(inspectionCases)
+      .set({
+        status: terminalStatus,
+        resolvedBy: userId,
+        resolvedAt: now,
+      })
+      .where(eq(inspectionCases.id, caseId));
+
+    // 6. INSERT inspection disposition record
+    await db
+      .insert(inspectionDispositions)
+      .values({
+        inspectionCaseId: caseId,
+        dispositionType: disposition.dispositionType,
+        quantityAffected: String(disposition.quantityAffected),
+        notes: disposition.notes ?? null,
+        appliedBy: userId,
+        appliedAt: now,
+      })
+      .returning();
+
+    return { ok: true as const };
+  });
+
+  if (rlsResult.kind === "unauthenticated") {
+    return { ok: false, errors: ["forbidden"] };
   }
-
-  // 3. Validate disposition via business logic (checks status === 'open', etc.)
-  const validationResult = validateInspectionDisposition(
-    {
-      id: caseRow.id as string,
-      status: caseRow.status as string,
-      contextType: caseRow.contextType as "inbound" | "transfer",
-      sourceRefType: caseRow.sourceRefType as "wrr_item" | "transfer_line",
-    },
-    {
-      dispositionType: disposition.dispositionType,
-      quantityAffected: disposition.quantityAffected,
-      notes: disposition.notes,
-    },
-  );
-  if (!validationResult.ok) {
-    return { ok: false, errors: validationResult.errors };
-  }
-
-  // 4. Determine terminal status
-  const terminalStatus = terminalStatusForDisposition(disposition.dispositionType);
-  const now = new Date();
-
-  // 5. UPDATE inspection_cases to terminal status
-  await db
-    .update(inspectionCases)
-    .set({
-      status: terminalStatus,
-      resolvedBy: userId,
-      resolvedAt: now,
-    })
-    .where(eq(inspectionCases.id, caseId));
-
-  // 6. INSERT inspection disposition record
-  await db
-    .insert(inspectionDispositions)
-    .values({
-      inspectionCaseId: caseId,
-      dispositionType: disposition.dispositionType,
-      quantityAffected: String(disposition.quantityAffected),
-      notes: disposition.notes ?? null,
-      appliedBy: userId,
-      appliedAt: now,
-    })
-    .returning();
-
-  return { ok: true };
+  return rlsResult.value;
 }

@@ -89,6 +89,7 @@ import type {
   RequestAuthorizationResolver,
 } from "@/lib/rbac/session";
 import { createItem, deactivateItem, updateItem } from "../items";
+import { mockRlsDeps } from "@/lib/db/__tests__/helpers/mock-rls";
 
 // ---------------------------------------------------------------------------
 // Resolver mock helpers (same pattern as lib/rbac/__tests__/guard.test.ts)
@@ -170,22 +171,12 @@ const validItemInput = {
 
 describe("createItem — authorization (R6.1, design.md §4: items.manage required)", () => {
   it("returns { ok: false, error } when the resolver is unauthenticated", async () => {
-    const result = await createItem(
-      unauthenticatedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      {} as any,
-      validItemInput,
-    );
+    const result = await createItem(unauthenticatedResolver(), validItemInput);
     expect(result.ok).toBe(false);
   });
 
   it("returns { ok: false, error } when the resolver lacks items.manage", async () => {
-    const result = await createItem(
-      forbiddenResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      {} as any,
-      validItemInput,
-    );
+    const result = await createItem(forbiddenResolver(), validItemInput);
     expect(result.ok).toBe(false);
   });
 });
@@ -195,12 +186,12 @@ describe("createItem — validation (R4.1-R4.4, design.md §6)", () => {
     const db = {
       insert: vi.fn().mockReturnValue(makeInsertChain("item-new-1")),
     };
+    const { deps } = mockRlsDeps(db);
 
     const result = await createItem(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       { ...validItemInput, code: undefined },
+      deps,
     );
 
     expect(result.ok).toBe(false);
@@ -213,12 +204,12 @@ describe("createItem — validation (R4.1-R4.4, design.md §6)", () => {
     const db = {
       insert: vi.fn().mockReturnValue(makeInsertChain("item-new-1")),
     };
+    const { deps } = mockRlsDeps(db);
 
     const result = await createItem(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       { ...validItemInput, barcode: undefined },
+      deps,
     );
 
     expect(result.ok).toBe(false);
@@ -231,12 +222,12 @@ describe("createItem — validation (R4.1-R4.4, design.md §6)", () => {
     const db = {
       insert: vi.fn().mockReturnValue(makeInsertChain("item-new-1")),
     };
+    const { deps } = mockRlsDeps(db);
 
     const result = await createItem(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       { ...validItemInput, uom: "roll", spqMeter: undefined },
+      deps,
     );
 
     expect(result.ok).toBe(false);
@@ -249,12 +240,12 @@ describe("createItem — validation (R4.1-R4.4, design.md §6)", () => {
     const db = {
       insert: vi.fn().mockReturnValue(makeInsertChain("item-new-1")),
     };
+    const { deps } = mockRlsDeps(db);
 
     const result = await createItem(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       { ...validItemInput, volumeCbm: undefined },
+      deps,
     );
 
     expect(result.ok).toBe(false);
@@ -269,13 +260,9 @@ describe("createItem — success (R4.1, design.md §6)", () => {
     const db = {
       insert: vi.fn().mockReturnValue(makeInsertChain("item-new-uuid")),
     };
+    const { deps } = mockRlsDeps(db);
 
-    const result = await createItem(
-      authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
-      validItemInput,
-    );
+    const result = await createItem(authorizedResolver(), validItemInput, deps);
 
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -295,8 +282,6 @@ describe("updateItem — authorization (R6.1, design.md §4: items.manage requir
   it("returns forbidden when unauthenticated", async () => {
     const result = await updateItem(
       unauthenticatedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      {} as any,
       "item-1",
       validItemInput,
       "2024-01-01T12:00:00.000Z",
@@ -307,8 +292,6 @@ describe("updateItem — authorization (R6.1, design.md §4: items.manage requir
   it("returns forbidden when lacking items.manage", async () => {
     const result = await updateItem(
       forbiddenResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      {} as any,
       "item-1",
       validItemInput,
       "2024-01-01T12:00:00.000Z",
@@ -328,14 +311,15 @@ describe("updateItem — stale-edit conflict (R2.4 pattern, design.md §6)", () 
       select: vi.fn().mockReturnValue(makeSelectChain([dbRow])),
       update: vi.fn().mockReturnValue(makeUpdateChain()),
     };
+    const { deps } = mockRlsDeps(db);
 
     const result = await updateItem(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "item-1",
       validItemInput,
       "2024-01-01T12:00:00.000Z", // stale
+      undefined,
+      deps,
     );
 
     expect(result.ok).toBe(false);
@@ -357,11 +341,10 @@ describe("updateItem — barcode immutability (R4.10, design.md §6 Barcode immu
       select: vi.fn().mockReturnValue(makeSelectChain([dbRow])),
       update: vi.fn().mockReturnValue(makeUpdateChain()),
     };
+    const { deps } = mockRlsDeps(db);
 
     const result = await updateItem(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "item-1",
       { ...validItemInput, barcode: "NEW-BARCODE" }, // barcode changed
       currentUpdatedAt,
@@ -372,6 +355,7 @@ describe("updateItem — barcode immutability (R4.10, design.md §6 Barcode immu
           hasRelatedInventoryTransactions: false,
         }),
       },
+      deps,
     );
 
     // design.md §6 Barcode immutability: "The server must reject a barcode
@@ -395,11 +379,10 @@ describe("updateItem — barcode immutability (R4.10, design.md §6 Barcode immu
       select: vi.fn().mockReturnValue(makeSelectChain([dbRow])),
       update: vi.fn().mockReturnValue(makeUpdateChain()),
     };
+    const { deps } = mockRlsDeps(db);
 
     const result = await updateItem(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "item-1",
       { ...validItemInput, barcode: "NEW-BARCODE" },
       currentUpdatedAt,
@@ -410,6 +393,7 @@ describe("updateItem — barcode immutability (R4.10, design.md §6 Barcode immu
           hasRelatedInventoryTransactions: false,
         }),
       },
+      deps,
     );
 
     expect(result.ok).toBe(false);
@@ -426,11 +410,10 @@ describe("updateItem — barcode immutability (R4.10, design.md §6 Barcode immu
       select: vi.fn().mockReturnValue(makeSelectChain([dbRow])),
       update: vi.fn().mockReturnValue(makeUpdateChain()),
     };
+    const { deps } = mockRlsDeps(db);
 
     const result = await updateItem(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "item-1",
       { ...validItemInput, barcode: "NEW-BARCODE" },
       currentUpdatedAt,
@@ -441,6 +424,7 @@ describe("updateItem — barcode immutability (R4.10, design.md §6 Barcode immu
           hasRelatedInventoryTransactions: false,
         }),
       },
+      deps,
     );
 
     expect(result.ok).toBe(true);
@@ -453,22 +437,12 @@ describe("updateItem — barcode immutability (R4.10, design.md §6 Barcode immu
 
 describe("deactivateItem — authorization (R6.1, design.md §4: items.manage required)", () => {
   it("returns forbidden when unauthenticated", async () => {
-    const result = await deactivateItem(
-      unauthenticatedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      {} as any,
-      "item-1",
-    );
+    const result = await deactivateItem(unauthenticatedResolver(), "item-1");
     expect(result.ok).toBe(false);
   });
 
   it("returns forbidden when lacking items.manage", async () => {
-    const result = await deactivateItem(
-      forbiddenResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      {} as any,
-      "item-1",
-    );
+    const result = await deactivateItem(forbiddenResolver(), "item-1");
     expect(result.ok).toBe(false);
   });
 });
@@ -483,15 +457,15 @@ describe("deactivateItem — warn-not-block (R4.9, design.md §6 Item deactivati
     const db = {
       update: vi.fn().mockReturnValue(makeUpdateChain()),
     };
+    const { deps } = mockRlsDeps(db);
 
     const result = await deactivateItem(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "item-1",
       {
         itemHasOperationalRecords: vi.fn().mockResolvedValue(true),
       },
+      deps,
     );
 
     expect(result.ok).toBe(true);
@@ -501,15 +475,15 @@ describe("deactivateItem — warn-not-block (R4.9, design.md §6 Item deactivati
     const db = {
       update: vi.fn().mockReturnValue(makeUpdateChain()),
     };
+    const { deps } = mockRlsDeps(db);
 
     const result = await deactivateItem(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "item-1",
       {
         itemHasOperationalRecords: vi.fn().mockResolvedValue(false),
       },
+      deps,
     );
 
     expect(result.ok).toBe(true);

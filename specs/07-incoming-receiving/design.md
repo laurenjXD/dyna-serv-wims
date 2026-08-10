@@ -1,7 +1,7 @@
 # Incoming Receiving — Design
 
 Status: Approved
-Updated: 2026-08-06
+Updated: 2026-08-10
 
 ## 1. Design intent
 
@@ -85,6 +85,8 @@ Route names and capability references remain provisional until `05`, `02`, and t
 
 ## 4. State model and command boundaries
 
+**Updated 2026-08-10**: the diagram below reflects per-line immediate commit (§9), replacing the earlier single end-of-WRR "confirm receipt command" gate. Each scanned/held line now commits independently as soon as staff completes it; the WRR only reaches `confirmed` once every line has reached a terminal committed state.
+
 ```text
 Create WRR → staged_pending_arrival
                   │ print/review
@@ -92,18 +94,20 @@ Create WRR → staged_pending_arrival
           start receiving command
                   ▼
          receiving_in_progress
-          ├── scan/reconcile
-          ├── inspect/conformance (wrr_inspection_logs)
+          ├── scan/reconcile (per line, §6)
+          ├── per-line "Store" commit → lots (available) +
+          │     lot_location_balances (putaway) + inventory_transactions (§9)
+          ├── per-line "Hold" commit → lots (quarantined) +
+          │     lot_location_balances (inspection) + inventory_transactions +
+          │     inspection case event for 11 (§9)
           └── exception resolution
-                  │ all required checks pass
-                  ▼
-        confirm receipt command
+                  │ every line reaches a terminal committed
+                  │ (or discarded/cancelled) state — `receiving_in_progress`
+                  │ covers this whole window, whether 0 or N-1 of N lines
+                  │ are committed (resolved 2026-08-10, §9)
                   ▼
                confirmed
-          ├── store lines → lots (available) + lot_location_balances (putaway)
-          ├── inspect lines → lots (quarantined) + lot_location_balances (inspection)
-          ├── inventory_transactions (receiving) for all lines
-          └── putaway recommendation/handoff
+          └── putaway recommendation already surfaced pre-store (§6.2, §10)
 ```
 
 Every mutation is a server action/route-handler command with this sequence:
@@ -114,7 +118,7 @@ session → capability/scope → input/schema → current WRR state
        → safe result + revalidation
 ```
 
-No client command directly updates `lots`, `lot_location_balances`, or `inventory_transactions`. The confirmation command owns one database transaction that checks all prerequisites, writes the resulting domain records, and records the immutable ledger outcome. If the transaction fails, the WRR remains in a safe prior state.
+No client command directly updates `lots`, `lot_location_balances`, or `inventory_transactions`. Each per-line "Store"/"Hold" command owns its own database transaction that checks that line's prerequisites, writes the resulting domain records for that line, and records the immutable ledger outcome for that line. If a line's transaction fails, that line remains in a safe prior state; other lines' already-committed state is unaffected.
 
 ## 5. Pre-receiving WRR design
 
@@ -135,7 +139,7 @@ All fields confirmed from the approved `01-core-data-model` schema, plus the `di
 | Unit CBM | `wrr_items.unit_cbm` | Per-carton CBM for putaway calculations. |
 | UOM | `wrr_items.uom` | Unit of measure. |
 | Disposition | `wrr_items.disposition` | `store` or `inspect`. Determines lot status and posting location at commit. To be added to `01` via schema amendment. |
-| Putaway location | `wrr_items.putaway_location_id` | **Added 2026-08-09 by Product Owner decision.** Required for `store` lines before receiving begins; must reference an active `storage` location and is revalidated in the confirmation transaction. Null for `inspect` lines, which resolve the active `inspection` location instead. |
+| Putaway location | `wrr_items.putaway_location_id` | **Reversed 2026-08-10 (supersedes the 2026-08-09 Product Owner decision — see `specs/00-steering/revision-log.md`).** No longer required, set, or even meaningfully choosable at WRR-creation time — at staging time the system does not yet know what will actually be scanned, so a location cannot be suggested against real item CBM/capacity data. The column (already nullable in `01`'s schema; no migration proposed by this amendment) is now populated per line at scan/store time, per §6. `store`-disposition lines carry `putaway_location_id = NULL` from WRR creation through the start of receiving. |
 
 ### 5.2 Scan-line state and discrepancy
 
@@ -223,13 +227,59 @@ scanned barcode → active item identity → current WRR line(s)
                   → expected quantity/UOM/lot context
 ```
 
-It rejects wrong WRR, wrong item, unknown item, duplicate/over quantity, invalid UOM, and unresolved lot context. A rejected scan does not increment the accepted line count.
+It rejects wrong WRR, wrong item, unknown item, duplicate/over quantity, invalid UOM, unresolved lot context, and — **added 2026-08-10** — flow-type mismatch (below). A rejected scan does not increment the accepted line count.
 
 **Added 2026-08-06**: a `WAN:<uuid>` payload (per `18-barcode-integration` requirements.md FR-2.3) resolves through a distinct lookup path — `wrr_advance_notices.id` → `matched_wrr_item_id` → the linked `wrr_items` line — before the same scanned-vs-expected reconciliation applies. If the advance notice has no `matched_wrr_item_id` (never confirmed), this falls through to the unknown/unmatched exception path below, per §5.5.
 
 If the item is unknown, the screen routes to the online `06` enrollment flow or records an exception. After enrollment, the scan is repeated and revalidated; the original rejected event is not retroactively accepted.
 
 The disposition value for each line is visible on the floor scan screen. A floor supervisor with appropriate capability may change a line's disposition from `store` to `inspect` (or vice versa) before triggering confirmation.
+
+### 6.1 Flow-type cross-check (added 2026-08-10)
+
+**No manual flow-type selection at scan time.** `flow_type` is already required and captured on `wrr_documents` at WRR creation (§2's table, `wrr_documents.flow_type NOT NULL`) and independently on each `items` row at enrollment (`01-core-data-model` design.md §5.7, the unified enrollment form's primary `flow_type` selection). Staff scanning at the receiving bay are never asked to pick a flow — they don't know what's arriving until they scan.
+
+Instead, the matcher adds one more check to the resolution sequence in §6: once a scanned barcode resolves to an active `item`, its own `items.flow_type` is compared against the current WRR's `wrr_documents.flow_type`. A mismatch is rejected through the same exception path as any other wrong-item/wrong-WRR scan (§6, requirements.md R3.3) — this is an additive rejection reason on the existing exception UI, not a new screen or a new UI step.
+
+### 6.2 Store-disposition sequence: scan first, then a suggested location (reversed 2026-08-10)
+
+**Reverses the 2026-08-09 "explicit per-line putaway location selected" decision entirely** (see `specs/00-steering/revision-log.md` for the full superseding entry). The Product Owner's reasoning: a location cannot be meaningfully suggested for an item the system doesn't yet know is arriving, so pre-selecting `putaway_location_id` at WRR-creation time — before anyone has scanned anything — was backwards. This does not invent a new automatic-location-selection engine; it moves the use of the same "approved location/capacity suggestion interface" already referenced in §10 earlier, to pre-store time instead of only as a post-commit recommendation.
+
+Sequence for a `store`-disposition line:
+
+```text
+scan barcode
+   → matches expected WRR line (§6 reconciliation: right WRR, right item,
+     flow-type match §6.1, not over/duplicate-scanned)
+   → system computes and displays a suggested location using the §10
+     location/capacity suggestion interface (remaining CBM vs. candidate
+     `locations`)
+   → staff accepts the suggestion or overrides it with another active
+     `storage` location
+   → staff taps "Store"
+   → immediate per-line commit (§9): lot, lot_location_balances,
+     inventory_transactions row all created for this line alone
+```
+
+`wrr_items.putaway_location_id` is written at this "Store" step, not before. The confirmation-time re-validation of location state/type (requirements.md R1.4) still applies — the suggestion is a recommendation, not a bypass of that check.
+
+### 6.3 Inspect-disposition ("Hold") sequence: location first, then scan (added 2026-08-10)
+
+An `inspect`-disposition line is **not** scan-first, and this is not inconsistent with §6.2: the putaway suggestion in §6.2 needs the item's CBM/quantity to check remaining storage capacity, but the `inspection` location is a real, enrolled `locations` record with `location_type = 'inspection'` (§2's table; `01-core-data-model` `locationTypeEnum`) — typically a small, fixed set of locations, not a capacity-suggestion problem. There is no reason to gate confirming the hold location behind a scan.
+
+Sequence for an `inspect`-disposition line:
+
+```text
+staff selects/confirms the active inspection location
+   → staff scans the item
+   → matches expected WRR line (§6 reconciliation, including §6.1's
+     flow-type check)
+   → staff taps "Hold"
+   → immediate per-line commit (§9): quarantined lot, lot_location_balances
+     at the inspection location, inventory_transactions row, and the
+     inspection case event for `11` (§7.3) — all created for this line
+     alone
+```
 
 ## 7. Inbound receiving disposition
 
@@ -363,26 +413,34 @@ Evidence uses private Supabase Storage and inherits WRR/party scope. Automated e
 
 ## 9. Receipt commit and idempotency
 
-The commit command receives a WRR ID, expected current status, client correlation ID, and idempotency key. It loads authoritative WRR lines/scans, active item/party data, conformance decisions, per-line dispositions, flow type, required lot metadata, and any approved location/capacity prerequisites.
+**Reversed 2026-08-10: per-line immediate commit, not a single end-of-WRR atomic gate.** The prior model — one commit command validating and posting every line of a WRR in a single transaction, gated on all lines being fully scanned/resolved first — is replaced by a per-line commit: each line commits as its own atomic step, immediately when staff taps "Store" (§6.2, `store` lines) or "Hold" (§6.3, `inspect` lines). This generalizes a pattern already accepted elsewhere in this spec set rather than inventing new architecture: the 2026-08-09 "Eight cross-spec PO decisions" WRR-cancellation resolution (revision-log.md) already establishes that a WRR can reach a state where some lines are committed/posted to inventory while others are not (there, as a cancellation edge case; here, as the normal path — every WRR now progresses line-by-line as a matter of course, not only when cancelled mid-stream).
 
-Within one transaction it:
+**Per-line commit command.** Each line's commit receives the WRR ID, the specific `wrr_items.id`, the resolved disposition (`store`/`inspect`), the accepted-or-overridden `putaway_location_id` (for `store`) or the confirmed inspection `location_id` (for `inspect`), a client correlation ID, and an idempotency key. Within one transaction, for that line alone, it:
 
-1. locks or otherwise protects the WRR from concurrent confirmation;
-2. verifies all required quantities, conformance decisions, and disposition values are present and valid;
-3. for each confirmed line, applies the disposition path:
-   - **`store` disposition**: creates the lot with `status = 'available'`, `lot_number` copied from `wrr_items.lot_number` (the single canonical identifier), and `wrr_item_id` set; creates `lot_location_balances` at the designated putaway location with full confirmed quantity as `qty_received` and `qty_remaining`.
-   - **`inspect` disposition**: creates the lot with `status = 'quarantined'`, `lot_number` copied from `wrr_items.lot_number`, and `wrr_item_id` set; creates `lot_location_balances` at the `inspection` location with full confirmed quantity as `qty_received` and `qty_remaining`; emits an inspection case event for `11`.
-4. inserts immutable `inventory_transactions` with `movement_type = 'receiving'` for every committed line, regardless of disposition; `to_location_id` is the putaway location for `store` and the inspection location for `inspect`;
-5. updates WRR status to `confirmed`;
+1. locks or otherwise protects the specific `wrr_items` row from concurrent double-commit;
+2. verifies the line's scanned quantity, conformance decision, disposition value, and (for `store`) the target location's active/`storage` state are present and valid;
+3. applies the disposition path:
+   - **`store` disposition**: creates the lot with `status = 'available'`, `lot_number` copied from `wrr_items.lot_number` (the single canonical identifier), and `wrr_item_id` set; creates `lot_location_balances` at the accepted/overridden putaway location with the confirmed quantity as `qty_received` and `qty_remaining`; sets `wrr_items.putaway_location_id` to the same location.
+   - **`inspect` disposition**: creates the lot with `status = 'quarantined'`, `lot_number` copied from `wrr_items.lot_number`, and `wrr_item_id` set; creates `lot_location_balances` at the confirmed `inspection` location with the confirmed quantity as `qty_received` and `qty_remaining`; emits an inspection case event for `11`.
+4. inserts an immutable `inventory_transactions` row with `movement_type = 'receiving'` for this line, with `to_location_id` set to the putaway location for `store` or the inspection location for `inspect`;
+5. re-evaluates the parent WRR's aggregate line-completion state (see the open item below) and updates `wrr_documents.status` accordingly;
 6. records audit/correlation data according to the approved cross-cutting design.
 
-The `lot_location_balances` rows created by the commit are the authoritative source for `lot_inventory_totals`. No other balance ledger or aggregate table is created or maintained by this feature.
+The `lot_location_balances` rows created by each per-line commit are the authoritative source for `lot_inventory_totals`. No other balance ledger or aggregate table is created or maintained by this feature.
 
-The idempotency mechanism returns the original authoritative result for a duplicate key. It never treats a client-local "confirmed" state as proof of commit. Failed commits roll back completely; the WRR remains in `receiving_in_progress` and the result is a safe recoverable error.
+The idempotency mechanism returns the original authoritative result for a duplicate key, scoped per line rather than per WRR. It never treats a client-local "stored"/"held" state as proof of commit. A failed per-line commit rolls back completely for that line only; the line remains in its pre-commit scanned/pending state and the result is a safe recoverable error. A failure on one line has no effect on any other line's already-committed state — this is a direct consequence of committing per line rather than in one all-or-nothing transaction.
+
+**Resolved 2026-08-10 (Product Owner decision)**: `wrr_status` stays as-is — `staged_pending_arrival`, `receiving_in_progress`, `confirmed`, `cancelled`. No new enum value is added. `receiving_in_progress` covers the entire window from the first line committing through the last, whether 0 or N-1 of N lines are done; which lines are committed and which are pending is already tracked at the `wrr_items` row level (§5.2's scan-line state), not on the parent WRR status, so the parent status doesn't need to distinguish "just started" from "9 of 10 lines committed." `wrr_documents.status` transitions to `confirmed` only once every line on the WRR has reached a terminal committed state.
+
+This also corrects a stale reference: the 2026-08-09 cancellation-resolution entry in `revision-log.md` described a cancelled-with-some-lines-committed WRR as closing with "`partial` status" — that value was never actually added to the schema, and per this decision it never will be. A cancelled WRR with some lines already committed closes with `wrr_status = 'cancelled'`; the already-committed lines' `lots`/`lot_location_balances`/`inventory_transactions` rows stand as posted (nothing about those rows is undone by cancellation). "Partial" describes the *outcome* in prose, not a distinct status value. See `revision-log.md`'s 2026-08-10 entry for the correction.
+
+**Added 2026-08-10 (rbac-rls-reviewer gap fix, `0022_receiving_inventory_insert_policies.sql`)**: two contained gaps in the per-line commit path's DB-layer protection are closed. (1) `lots`, `lot_location_balances`, and `inventory_transactions` previously had SELECT-only RLS policies and grants — `commitWrrLine`'s inserts into all three were relying on no enforced INSERT policy at all. INSERT policies gated on `receiving.confirm` (and, for `inventory_transactions` only, also `dispatch.execute`, since `dispatchPickList` in `08` also inserts there) plus matching narrow `GRANT INSERT` are added. (2) `wrr_items.committed_at` (§9's per-line idempotency gate) had no protection against being reset from a timestamp back to `NULL` by a later UPDATE — a `BEFORE UPDATE` trigger (`wrr_items_protect_committed_at`) now rejects any attempt to change `committed_at` once it is non-NULL, closing the double-post risk without adding a `WITH CHECK` clause to `wrr_items_update` (which deliberately has none, per its own comment in `0012_receiving_disposition_and_policies.sql`).
 
 ## 10. Putaway and incoming ledger
 
 Receiving consumes the approved location/capacity suggestion interface. It may display remaining CBM and candidate `locations`, but it does not create a second capacity calculation or own location enrollment. Putaway recommendations apply only to lots committed with `store` disposition; quarantined lots at the `inspection` location are handed off to `11` for resolution before any putaway recommendation applies.
+
+**Timing reversed 2026-08-10**: this same suggestion interface is now invoked at pre-store time (§6.2), not only as a post-commit recommendation — the sequence is scan → suggested location → accept/override → "Store" → per-line commit (§9), rather than commit first and recommend putaway afterward. This is a change in *when* the existing interface is called, not a new interface or a new capacity calculation; nothing in this section's data contract (remaining CBM vs. candidate `locations`) changes.
 
 The Incoming Ledger is a server-side query/view over `inventory_transactions` filtered by `movement_type IN ('receiving', 'putaway')`, joined through approved relationships for WRR, item, lot, party, user, and location display. It is read-only and scope-filtered. Historical corrections are new domain transactions, never ledger edits.
 
@@ -427,3 +485,5 @@ The Incoming Ledger is a server-side query/view over `inventory_transactions` fi
 - [ ] Confirm inspection case event contract and resolution state transitions with `11-transfer-and-inspection`.
 - [ ] Have `offline-sync-reviewer`, `rbac-rls-reviewer`, and `design-system-auditor` review before approval.
 - [x] **Added 2026-08-06, resolved 2026-08-06**: `01-core-data-model`'s `wrr_advance_notices` schema amendment (design.md §6) has passed three real-Postgres `db-migration-verifier` passes (schema, full RLS policy, remaining test scenarios — all PASS), and `02-rbac-roles`'s `shipment_labels.generate`/`wrr_advance_notices` RLS pattern (design.md §3.2/§7.4/§7.4a) has been through two `rbac-rls-reviewer` rounds with every finding closed and confirmed (see `revision-log.md`'s 2026-08-06 entries). This closes the specific gate this checkbox named — it does not by itself constitute `01`'s or `02`'s own approval process reopening (both remain `Approved` for their prior content), and it does not cover `07`'s own new §5.5/§6 additions, which are a separate, narrower `rbac-rls-reviewer` pass (in progress).
+- [ ] **Added 2026-08-10, not yet resolved**: the per-line-immediate-commit / scan-then-suggest-location reversal (§4, §5.1, §6.1–§6.3, §9, §10) has not been through `db-migration-verifier` or `rbac-rls-reviewer` in this form — the previously-applied production migration and RLS policies reflected the now-superseded 2026-08-09 pre-scan-location/single-atomic-commit model (see `revision-log.md`'s 2026-08-10 entry). This checkbox stays open until the already-shipped `lib/receiving/wrr-schema.ts`, `lib/receiving/scan-matcher.ts`, `lib/receiving/commit-validation.ts`, `lib/actions/receiving.ts`, and `app/(authenticated)/receiving/new/_components/wrr-line-items.tsx` are reworked to this document's current text and re-verified. This document-only pass does not touch any of those files.
+- [x] **Added 2026-08-10, resolved 2026-08-10**: `wrr_status` needs no new value for the per-line-commit normal path — Product Owner decided `receiving_in_progress` already covers "some lines posted, not yet all," since per-line completion is tracked on `wrr_items`, not the parent WRR status. See §9's resolution and `revision-log.md`'s 2026-08-10 entry, which also corrects the 2026-08-09 cancellation entry's stale "`partial` status" wording (no such enum value exists or will be added; a cancelled-with-partial-completion WRR closes as `cancelled`).

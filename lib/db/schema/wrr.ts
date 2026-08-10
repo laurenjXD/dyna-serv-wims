@@ -44,6 +44,11 @@ export const wrrItems = pgTable("wrr_items", {
   // intentionally unused by inspect lines, which always post to the one
   // active inspection location resolved by the confirmation command.
   putawayLocationId: uuid("putaway_location_id").references(() => locations.id),
+  // Added 2026-08-10 (migration 0021): per-line immediate-commit idempotency
+  // gate. Set once, via a conditional UPDATE ... WHERE committed_at IS NULL,
+  // by the transaction that creates this line's lots/lot_location_balances/
+  // inventory_transactions rows. See 07 design.md §9.
+  committedAt: timestamp("committed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

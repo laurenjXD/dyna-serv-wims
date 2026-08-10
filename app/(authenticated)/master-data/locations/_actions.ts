@@ -64,7 +64,7 @@ export async function createLocationAction(
     isActive: formData.get("isActive") !== "false",
   };
 
-  const result = await createLocation(resolver, db, input);
+  const result = await createLocation(resolver, input);
 
   if (!result.ok) {
     if ("fieldErrors" in result) {
@@ -101,7 +101,7 @@ export async function updateLocationAction(
     isActive: formData.get("isActive") !== "false",
   };
 
-  const result = await updateLocation(resolver, db, id, input, submittedUpdatedAt);
+  const result = await updateLocation(resolver, id, input, submittedUpdatedAt);
 
   if (!result.ok) {
     if ("fieldErrors" in result) {
@@ -132,7 +132,7 @@ export async function deactivateLocationAction(
   const resolver = await createPageResolver();
   const id = formData.get("id") as string;
 
-  const result = await deactivateLocation(resolver, db, id);
+  const result = await deactivateLocation(resolver, id);
 
   if (!result.ok) {
     return { error: result.error };

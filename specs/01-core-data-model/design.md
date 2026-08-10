@@ -360,6 +360,17 @@ export const wrrItems = pgTable("wrr_items", {
   // Added 2026-08-09: selected for store lines during staging; confirmation
   // resolves inspection lines to the active inspection location instead.
   putawayLocationId: uuid("putaway_location_id").references(() => locations.id),
+  // Added 2026-08-10 (migration 0021_wrr_item_committed_at.sql): per-line
+  // immediate-commit idempotency gate, per the 07 receiving reversal (design.md
+  // §9) -- each line now commits its own lots/lot_location_balances/
+  // inventory_transactions rows independently, guarded by a conditional
+  // UPDATE ... WHERE committed_at IS NULL rather than one atomic whole-WRR commit.
+  // Protected 2026-08-10 (migration 0022_receiving_inventory_insert_policies.sql):
+  // a BEFORE UPDATE trigger rejects any change to this column once it is
+  // non-NULL (no non-NULL -> NULL or non-NULL -> different-non-NULL
+  // transition permitted), closing a double-post risk the plain column
+  // alone did not prevent.
+  committedAt: timestamp("committed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

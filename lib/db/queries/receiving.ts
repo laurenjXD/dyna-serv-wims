@@ -39,6 +39,9 @@ export type WrrItemRow = {
   scannedQty: number;
   disposition: string;
   itemId: string | null;
+  unitCbm: number;
+  putawayLocationId: string | null;
+  committedAt: Date | null;
 };
 
 export type WrrDocumentWithItems = WrrDocumentRow & {
@@ -65,6 +68,9 @@ type RawJoinRow = {
   itemScannedQty: number | null;
   itemDisposition: string | null;
   itemItemId: string | null;
+  itemUnitCbm: string | number | null;
+  itemPutawayLocationId: string | null;
+  itemCommittedAt: Date | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -153,6 +159,9 @@ export async function getWrrDocument(
       itemScannedQty: wrrItems.scannedQty,
       itemDisposition: wrrItems.disposition,
       itemItemId: wrrItems.itemId,
+      itemUnitCbm: wrrItems.unitCbm,
+      itemPutawayLocationId: wrrItems.putawayLocationId,
+      itemCommittedAt: wrrItems.committedAt,
     })
     .from(wrrDocuments)
     .where(eq(wrrDocuments.id, wrrId))
@@ -175,6 +184,9 @@ export async function getWrrDocument(
       scannedQty: row.itemScannedQty!,
       disposition: row.itemDisposition!,
       itemId: row.itemItemId,
+      unitCbm: Number(row.itemUnitCbm ?? 0),
+      putawayLocationId: row.itemPutawayLocationId,
+      committedAt: row.itemCommittedAt,
     }));
 
   return {

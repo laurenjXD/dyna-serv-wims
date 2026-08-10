@@ -99,7 +99,7 @@ export default async function InspectTransferPage({
     const itemId = (formData.get("itemId") as string | null) ?? "";
     const partyId = (formData.get("partyId") as string | null) ?? "";
 
-    const caseResult = await openInspectionCase(actionResolver, db, {
+    const caseResult = await openInspectionCase(actionResolver, {
       sourceRefType: "transfer_line",
       sourceRefId,
       lotId,
@@ -135,7 +135,6 @@ export default async function InspectTransferPage({
 
     const resolveResult = await resolveInspectionCase(
       actionResolver,
-      db,
       caseIdToResolve,
       { dispositionType, quantityAffected, notes }
     );

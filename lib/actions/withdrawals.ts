@@ -44,6 +44,15 @@ import {
   listOutgoingLedger as queryListOutgoingLedger,
   type OutgoingLedgerRow,
 } from "@/lib/db/queries/withdrawals";
+import { withRlsTransaction } from "@/lib/db/rls-transaction";
+import type { RlsTransactionDeps } from "@/lib/db/rls-transaction";
+import { rlsPool } from "@/lib/db/rls-pool";
+import { getAuthenticatedSession } from "@/lib/auth/get-authenticated-session";
+
+const defaultRlsDeps: RlsTransactionDeps = {
+  getAuthenticatedSession,
+  pool: rlsPool,
+};
 
 // Minimal structural type that both the real Drizzle db instance and test
 // stubs satisfy. Uses named method properties (not an index signature) so
@@ -93,8 +102,8 @@ export type ListOutgoingLedgerResult =
 
 export async function commitWithdrawal(
   resolver: RequestAuthorizationResolver,
-  db: DbLike,
   input: unknown,
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<CommitWithdrawalResult> {
   // Step 1: Authorization — pick_list.generate is required (design.md §6 step 1).
   // 2026-08-08: was "withdrawal.request", an unseeded, unjustified capability
@@ -127,101 +136,110 @@ export async function commitWithdrawal(
     return { ok: false, errors: ["provisional_item_code"] };
   }
 
-  // Step 4: Insert pick_list record (design.md §6 step 6)
-  // TODO: consume pricing snapshot from 13/12 before finalizing pick_list_items.
-  const pickListNumber = `PL-${Date.now()}`;
+  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
 
-  const [insertedPickList] = await db
-    .insert(pickLists)
-    .values({
-      pickListNumber,
-      customerPartyId: data.partyId,
-      flowType: data.flowType,
-      status: "allocated",
-    })
-    .returning();
+    // Step 4: Insert pick_list record (design.md §6 step 6)
+    // TODO: consume pricing snapshot from 13/12 before finalizing pick_list_items.
+    const pickListNumber = `PL-${Date.now()}`;
 
-  const pickListId = (insertedPickList as { id: string }).id;
-
-  // Step 5: Insert pick_list_items — one row per requested line
-  // item_code snapshot: requires item lookup in production; placeholder here
-  // (TODO: resolve item_code and other snapshot fields from items table).
-  for (const line of data.lines) {
-    await db
-      .insert(pickListItems)
+    const [insertedPickList] = await db
+      .insert(pickLists)
       .values({
+        pickListNumber,
+        customerPartyId: data.partyId,
+        flowType: data.flowType,
+        status: "allocated",
+      })
+      .returning();
+
+    const pickListId = (insertedPickList as { id: string }).id;
+
+    // Step 5: Insert pick_list_items — one row per requested line
+    // item_code snapshot: requires item lookup in production; placeholder here
+    // (TODO: resolve item_code and other snapshot fields from items table).
+    for (const line of data.lines) {
+      await db
+        .insert(pickListItems)
+        .values({
+          pickListId,
+          itemId: line.itemId,
+          itemCode: line.itemId, // TODO: snapshot real item_code from items table
+          lotId: line.lotId,
+          lotNumber: line.lotId, // TODO: snapshot real lot_number from lots table
+          locationId: line.locationId,
+          locationLabel: line.locationId, // TODO: snapshot real label from locations table
+          qty: line.qty,
+          spq: 1, // TODO: resolve SPQ from items table; SPQ-multiple enforcement is app-layer per design.md
+          numberOfBoxes: 1, // TODO: calculate from qty / spq
+        })
+        .returning();
+    }
+
+    // Step 6: Insert inventory_commitments header (design.md §6 step 5)
+    const commitmentNumber = `CMT-${Date.now()}`;
+
+    const [insertedCommitment] = await db
+      .insert(inventoryCommitments)
+      .values({
+        commitmentNumber,
         pickListId,
-        itemId: line.itemId,
-        itemCode: line.itemId, // TODO: snapshot real item_code from items table
-        lotId: line.lotId,
-        lotNumber: line.lotId, // TODO: snapshot real lot_number from lots table
-        locationId: line.locationId,
-        locationLabel: line.locationId, // TODO: snapshot real label from locations table
-        qty: line.qty,
-        spq: 1, // TODO: resolve SPQ from items table; SPQ-multiple enforcement is app-layer per design.md
-        numberOfBoxes: 1, // TODO: calculate from qty / spq
-      })
-      .returning();
-  }
-
-  // Step 6: Insert inventory_commitments header (design.md §6 step 5)
-  const commitmentNumber = `CMT-${Date.now()}`;
-
-  const [insertedCommitment] = await db
-    .insert(inventoryCommitments)
-    .values({
-      commitmentNumber,
-      pickListId,
-      status: "active",
-      createdByUserId: userId,
-    })
-    .returning();
-
-  const commitmentId = (insertedCommitment as { id: string }).id;
-
-  // Step 7: Insert inventory_commitment_lines — one row per line
-  // TODO: resolve lot_location_balance_id and pick_list_item_id in production.
-  for (const line of data.lines) {
-    await db
-      .insert(inventoryCommitmentLines)
-      .values({
-        commitmentId,
-        pickListItemId: pickListId, // TODO: resolve real pick_list_item_id from inserted items above
-        lotLocationBalanceId: line.lotId, // TODO: resolve real lot_location_balance_id
-        qtyCommitted: line.qty,
-        qtyExecuted: 0,
         status: "active",
+        createdByUserId: userId,
       })
       .returning();
-  }
 
-  // Step 8: Document generation trigger — spec 10 (design.md §6 step 7).
-  // Intentionally outside the commitment transaction; failure must not roll back
-  // the inventory reservation. generate_document_number acquires a row-level
-  // lock on document_number_sequences so the sequence is atomic.
-  try {
-    const numRows = (await db.execute!(
-      sql`SELECT generate_document_number('pick_list')`,
-    )) as Array<{ generate_document_number: string }>;
-    const documentNumber = numRows[0].generate_document_number;
-    await db
-      .insert(generatedDocuments)
-      .values({
-        documentType: "pick_list",
-        documentNumber,
-        templateVersion: "1.0",
-        sourceType: "inventory_commitment",
-        sourceId: commitmentId,
-        snapshotHash: hashSnapshot({ pickListId, commitmentId, lines: data.lines }),
-        status: "pending",
-        systemExecutor: "commitWithdrawal",
-      });
-  } catch {
-    // Non-fatal — visual/print generation failing does not undo the stock reservation.
-  }
+    const commitmentId = (insertedCommitment as { id: string }).id;
 
-  // Return authoritative pick-list reference (design.md §6 step 7)
-  return { ok: true, pickListId };
+    // Step 7: Insert inventory_commitment_lines — one row per line
+    // TODO: resolve lot_location_balance_id and pick_list_item_id in production.
+    for (const line of data.lines) {
+      await db
+        .insert(inventoryCommitmentLines)
+        .values({
+          commitmentId,
+          pickListItemId: pickListId, // TODO: resolve real pick_list_item_id from inserted items above
+          lotLocationBalanceId: line.lotId, // TODO: resolve real lot_location_balance_id
+          qtyCommitted: line.qty,
+          qtyExecuted: 0,
+          status: "active",
+        })
+        .returning();
+    }
+
+    // Step 8: Document generation trigger — spec 10 (design.md §6 step 7).
+    // Intentionally outside the commitment transaction; failure must not roll back
+    // the inventory reservation. generate_document_number acquires a row-level
+    // lock on document_number_sequences so the sequence is atomic.
+    try {
+      const numRows = (await db.execute!(
+        sql`SELECT generate_document_number('pick_list')`,
+      )) as Array<{ generate_document_number: string }>;
+      const documentNumber = numRows[0].generate_document_number;
+      await db
+        .insert(generatedDocuments)
+        .values({
+          documentType: "pick_list",
+          documentNumber,
+          templateVersion: "1.0",
+          sourceType: "inventory_commitment",
+          sourceId: commitmentId,
+          snapshotHash: hashSnapshot({ pickListId, commitmentId, lines: data.lines }),
+          status: "pending",
+          systemExecutor: "commitWithdrawal",
+        });
+    } catch {
+      // Non-fatal — visual/print generation failing does not undo the stock reservation.
+    }
+
+    // Return authoritative pick-list reference (design.md §6 step 7)
+    return { ok: true, pickListId } as const;
+  });
+
+  if (rlsResult.kind === "unauthenticated") {
+    return { ok: false, errors: ["forbidden"] };
+  }
+  return rlsResult.value;
 }
 
 // ---------------------------------------------------------------------------
@@ -237,8 +255,8 @@ export async function commitWithdrawal(
 
 export async function dispatchPickList(
   resolver: RequestAuthorizationResolver,
-  db: DbLike,
   pickListId: string,
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<DispatchPickListResult> {
   // Step 1: Authorization — dispatch.execute required (design.md §7).
   // 2026-08-08: was "withdrawal.execute" — see commitWithdrawal's note above.
@@ -249,86 +267,95 @@ export async function dispatchPickList(
 
   const userId = perm.context.userId;
 
-  // Step 2: Load pick list — verify it exists (design.md §7 dispatch disposition)
-  const rows = (await db
-    .select({
-      id: pickLists.id,
-      status: pickLists.status,
-      customerPartyId: pickLists.customerPartyId,
-      flowType: pickLists.flowType,
-    })
-    .from(pickLists)
-    .where(eq(pickLists.id, pickListId))
-    .limit(1)) as AnyRecord[];
+  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
 
-  if (rows.length === 0) {
-    return { ok: false, errors: ["not_found"] };
-  }
+    // Step 2: Load pick list — verify it exists (design.md §7 dispatch disposition)
+    const rows = (await db
+      .select({
+        id: pickLists.id,
+        status: pickLists.status,
+        customerPartyId: pickLists.customerPartyId,
+        flowType: pickLists.flowType,
+      })
+      .from(pickLists)
+      .where(eq(pickLists.id, pickListId))
+      .limit(1)) as AnyRecord[];
 
-  const pickList = rows[0];
+    if (rows.length === 0) {
+      return { ok: false as const, errors: ["not_found"] };
+    }
 
-  // Step 3: Idempotency guard — duplicate/lost-response protection (R7.6)
-  if (pickList.status === "dispatched") {
-    return { ok: false, errors: ["already_dispatched"] };
-  }
+    const pickList = rows[0];
 
-  // Step 4: Update pick_list status to 'dispatched' (design.md §7 step 6)
-  await db
-    .update(pickLists)
-    .set({ status: "dispatched", updatedAt: new Date() })
-    .where(eq(pickLists.id, pickListId));
+    // Step 3: Idempotency guard — duplicate/lost-response protection (R7.6)
+    if (pickList.status === "dispatched") {
+      return { ok: false as const, errors: ["already_dispatched"] };
+    }
 
-  // Step 5: Update inventory_commitments to 'executed' (design.md §7 step 4)
-  // TODO: resolve commitment id and update commitment + lines atomically.
-  // Cancellation, expiry, and reversal are deferred (PO decision pending per tasks.md).
-
-  // Step 6: Insert immutable inventory_transactions pick row (design.md §7 step 5)
-  // pick_list_id is the symmetric link to the customer party per design.md §7.
-  // Full field set (lotId, itemId, qty) requires pick_list_items load in production;
-  // TODO: load pick_list_items and iterate per line for multi-line pick lists.
-  const transactionNumber = `TXN-${Date.now()}`;
-
-  const [insertedTransaction] = (await db
-    .insert(inventoryTransactions)
-    .values({
-      transactionNumber,
-      // TODO: resolve lotId, itemId, fromLocationId, qty from pick_list_items
-      lotId: pickList.customerPartyId, // placeholder — must be replaced with actual lot_id from pick_list_items
-      itemId: pickList.customerPartyId, // placeholder — must be replaced with actual item_id from pick_list_items
-      movementType: "pick",
-      qty: 0, // placeholder — must be replaced with actual qty from pick_list_items
-      flowType: pickList.flowType,
-      pickListId,
-      performedByUserId: userId,
-    })
-    .returning()) as AnyRecord[];
-
-  // Step 7: Document generation trigger — spec 10 (design.md §7 step 7).
-  // Intentionally outside the dispatch transaction; failure must not roll back
-  // the stock movement.
-  try {
-    const transactionId = (insertedTransaction as { id: string }).id;
-    const numRows = (await db.execute!(
-      sql`SELECT generate_document_number('acknowledgement_receipt')`,
-    )) as Array<{ generate_document_number: string }>;
-    const documentNumber = numRows[0].generate_document_number;
+    // Step 4: Update pick_list status to 'dispatched' (design.md §7 step 6)
     await db
-      .insert(generatedDocuments)
-      .values({
-        documentType: "acknowledgement_receipt",
-        documentNumber,
-        templateVersion: "1.0",
-        sourceType: "inventory_transaction",
-        sourceId: transactionId,
-        snapshotHash: hashSnapshot({ pickListId, transactionId }),
-        status: "pending",
-        systemExecutor: "dispatchPickList",
-      });
-  } catch {
-    // Non-fatal — document generation failure does not roll back the stock movement.
-  }
+      .update(pickLists)
+      .set({ status: "dispatched", updatedAt: new Date() })
+      .where(eq(pickLists.id, pickListId));
 
-  return { ok: true };
+    // Step 5: Update inventory_commitments to 'executed' (design.md §7 step 4)
+    // TODO: resolve commitment id and update commitment + lines atomically.
+    // Cancellation, expiry, and reversal are deferred (PO decision pending per tasks.md).
+
+    // Step 6: Insert immutable inventory_transactions pick row (design.md §7 step 5)
+    // pick_list_id is the symmetric link to the customer party per design.md §7.
+    // Full field set (lotId, itemId, qty) requires pick_list_items load in production;
+    // TODO: load pick_list_items and iterate per line for multi-line pick lists.
+    const transactionNumber = `TXN-${Date.now()}`;
+
+    const [insertedTransaction] = (await db
+      .insert(inventoryTransactions)
+      .values({
+        transactionNumber,
+        // TODO: resolve lotId, itemId, fromLocationId, qty from pick_list_items
+        lotId: pickList.customerPartyId, // placeholder — must be replaced with actual lot_id from pick_list_items
+        itemId: pickList.customerPartyId, // placeholder — must be replaced with actual item_id from pick_list_items
+        movementType: "pick",
+        qty: 0, // placeholder — must be replaced with actual qty from pick_list_items
+        flowType: pickList.flowType,
+        pickListId,
+        performedByUserId: userId,
+      })
+      .returning()) as AnyRecord[];
+
+    // Step 7: Document generation trigger — spec 10 (design.md §7 step 7).
+    // Intentionally outside the dispatch transaction; failure must not roll back
+    // the stock movement.
+    try {
+      const transactionId = (insertedTransaction as { id: string }).id;
+      const numRows = (await db.execute!(
+        sql`SELECT generate_document_number('acknowledgement_receipt')`,
+      )) as Array<{ generate_document_number: string }>;
+      const documentNumber = numRows[0].generate_document_number;
+      await db
+        .insert(generatedDocuments)
+        .values({
+          documentType: "acknowledgement_receipt",
+          documentNumber,
+          templateVersion: "1.0",
+          sourceType: "inventory_transaction",
+          sourceId: transactionId,
+          snapshotHash: hashSnapshot({ pickListId, transactionId }),
+          status: "pending",
+          systemExecutor: "dispatchPickList",
+        });
+    } catch {
+      // Non-fatal — document generation failure does not roll back the stock movement.
+    }
+
+    return { ok: true as const };
+  });
+
+  if (rlsResult.kind === "unauthenticated") {
+    return { ok: false, errors: ["forbidden"] };
+  }
+  return rlsResult.value;
 }
 
 // ---------------------------------------------------------------------------
@@ -340,8 +367,8 @@ export async function dispatchPickList(
 
 export async function listOutgoingLedger(
   resolver: RequestAuthorizationResolver,
-  db: DbLike,
   opts: { limit: number; offset: number },
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<ListOutgoingLedgerResult> {
   // Authorization — pick_list.read required (R9.1, R10.1).
   // 2026-08-08: was "withdrawal.view" — see commitWithdrawal's note above.
@@ -350,7 +377,15 @@ export async function listOutgoingLedger(
     return { ok: false, errors: ["forbidden"] };
   }
 
-  // Delegate to query layer
-  const { rows, total } = await queryListOutgoingLedger(db, opts);
-  return { rows, total };
+  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
+    // Delegate to query layer
+    const { rows, total } = await queryListOutgoingLedger(db, opts);
+    return { rows, total };
+  });
+
+  if (rlsResult.kind === "unauthenticated") {
+    return { ok: false, errors: ["forbidden"] };
+  }
+  return rlsResult.value;
 }

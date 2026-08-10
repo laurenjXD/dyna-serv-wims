@@ -126,30 +126,25 @@ describe(
       },
     );
 
-    // ── Test 4 (RED — WILL FAIL against current implementation) ─────────────
+    // ── Test 4 (updated 2026-08-10 per §9's per-line-commit reversal) ────────
     // R7.1 — "Confirmation SHALL be an explicit, authorized server command
-    // with one primary floor action."
-    // brand-design-system.md §3 — "one primary action per screen", "primary
-    // action in the bottom third of the viewport, full-width, always visible."
-    //
-    // After all WRR lines reach `scanned_qty >= expected_qty`, the scan page
-    // must surface the Confirm Receipt CTA as the single primary floor action.
-    // The warehouseman should not need to navigate back to a different screen
-    // to confirm — the scan-and-confirm loop belongs on one floor surface.
-    //
-    // Current implementation: the page renders a scan-only form (submit arrow
-    // button with aria-label "Submit scan") with no "Confirm Receipt" button
-    // or text anywhere in the JSX. Test will fail until a confirmation action
-    // is added to the receive page, conditional on all lines being fully scanned.
+    // with one primary floor action [per line]."
+    // design.md §9 (Reversed 2026-08-10): the single end-of-WRR "Confirm
+    // Receipt" gate is replaced by per-line immediate commit — each line
+    // gets its own "Store" (§6.2, store disposition) or "Hold" (§6.3, inspect
+    // disposition) action once it is fully scanned and not yet committed.
+    // There is no longer a single whole-WRR "Confirm Receipt" button on this
+    // screen; asserting for that text would re-encode the superseded model.
     it(
-      "AC R7.1: page surfaces a Confirm Receipt primary CTA when all lines are fully scanned",
+      "AC R7.1/§9: page surfaces per-line Store/Hold commit CTAs, not a whole-WRR Confirm Receipt button",
       () => {
         const source = pageSource();
-        // The text "Confirm Receipt" (or a close variant matching the CTA
-        // wording required by the spec's one-primary-action floor rule) must
-        // appear in the page JSX so the warehouseman can submit the authorised
-        // commit command without leaving the floor scan surface.
-        expect(source).toContain("Confirm Receipt");
+        // Per-line commit actions per §6.2 (store) / §6.3 (inspect).
+        expect(source).toContain("commitWrrLine");
+        expect(source).toContain("Store");
+        expect(source).toContain("Hold");
+        // The superseded whole-WRR gate must not reappear.
+        expect(source).not.toContain("Confirm Receipt");
       },
     );
 
@@ -198,6 +193,131 @@ describe(
         // running reconciliation progress is visible on the floor surface.
         expect(source).toContain("scannedQty");
         expect(source).toContain("expectedQty");
+      },
+    );
+
+    // ── Test 8 (added 2026-08-10, §6.1 flow-type mismatch) ──────────────────
+    // design.md §6.1 — a scanned item whose own flow_type differs from the
+    // WRR's flow_type is rejected through the same exception path as any
+    // other wrong-item scan, with plain-language feedback.
+    it(
+      "AC §6.1: getScanErrorMessage covers flow_type_mismatch with a plain-language, supervisor-pointing message",
+      () => {
+        const source = pageSource();
+        expect(source).toContain("flow_type_mismatch");
+      },
+    );
+
+    // ── Test 9 (added 2026-08-10, §6.2 suggested location) ───────────────────
+    // design.md §6.2 — the store-disposition commit UI calls the location/
+    // capacity suggestion interface and renders "Location Label | Remaining
+    // Box Capacity" per design.md line 623's display format.
+    it(
+      "AC §6.2: store-disposition commit UI calls suggestPutawayLocations and renders remaining CBM alongside the location label",
+      () => {
+        const source = pageSource();
+        expect(source).toContain("suggestPutawayLocations");
+        expect(source).toContain("remainingCbm");
+      },
+    );
+
+    // ── Test 10 (added 2026-08-10, §6.3 inspection location) ─────────────────
+    // design.md §6.3 — the inspect-disposition commit UI resolves the active
+    // set of inspection-type locations.
+    it(
+      "AC §6.3: inspect-disposition commit UI queries active inspection-type locations",
+      () => {
+        const source = pageSource();
+        expect(source).toContain('"inspection"');
+        expect(source).toContain("isActive");
+      },
+    );
+
+    // ── Test 11 (added 2026-08-10, §9 receipt-complete state) ────────────────
+    // design.md §9 — once every line has committed_at set, the WRR is already
+    // 'confirmed' server-side; the scan/commit UI must not be shown further.
+    it(
+      "AC §9: page renders a 'Receipt complete' state once the WRR is confirmed, instead of further scan/commit UI",
+      () => {
+        const source = pageSource();
+        expect(source).toContain("Receipt complete");
+        expect(source).toContain('"confirmed"');
+      },
+    );
+
+    // ── Test 12 (added — design-system-auditor finding 1) ────────────────────
+    // brand-design-system.md §3 "One primary action per floor screen": exactly
+    // one full-width brand-red Store/Hold CTA may be visible at a time. Only
+    // the first ready-but-uncommitted line (by wrr.items order) gets that
+    // primary CTA, anchored in the sticky bottom primary-action area; any
+    // OTHER ready line gets a compact secondary indicator instead of a second
+    // equal-weight primary button rendered inline in the card list.
+    it(
+      "AC brand §3: only the first ready line gets the primary Store/Hold commit form (in the bottom sticky area); other ready lines get a secondary indicator, not a second primary CTA",
+      () => {
+        const source = pageSource();
+
+        // A single "primary ready line" concept drives which line gets the
+        // primary CTA.
+        expect(source).toContain("primaryReadyLine");
+        expect(source).toContain("isPrimaryReady");
+
+        // The Store/Hold commit <form> must NOT be rendered inline per-card
+        // any more (that was the multi-CTA violation) — it must live in the
+        // sticky bottom primary-action area instead. Isolate the card-list
+        // section (between the "Item progress list" and "Primary action"
+        // comments) and assert it contains no <form> tag at all.
+        const cardListStart = source.indexOf("Item progress list");
+        const cardListEnd = source.indexOf("Primary action — bottom third");
+        expect(cardListStart).toBeGreaterThan(-1);
+        expect(cardListEnd).toBeGreaterThan(cardListStart);
+        const cardListSection = source.slice(cardListStart, cardListEnd);
+        expect(cardListSection).not.toContain("<form");
+
+        // Non-primary ready lines get a secondary, non-brand-red indicator.
+        expect(source).toContain("complete the current line first");
+
+        // The bottom sticky primary-action area renders the commit form when
+        // (and only when) a primary ready line exists, ahead of the scan input.
+        expect(source).toContain("isReceivable && primaryReadyLine");
+        expect(source).toContain("isReceivable && !primaryReadyLine && !allLinesScanned");
+      },
+    );
+
+    // ── Test 13 (added — design-system-auditor finding 2) ────────────────────
+    // brand-design-system.md §9: status badges/pills use Epilogue SemiBold
+    // (the `font-label` token), not Outfit body copy.
+    it(
+      "AC brand §9: disposition badge uses font-label (Epilogue SemiBold), not font-outfit",
+      () => {
+        const source = pageSource();
+        expect(source).toContain(
+          'className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-body-md font-label uppercase ${'
+        );
+      },
+    );
+
+    // ── Test 14 (added — design-system-auditor finding 3) ────────────────────
+    // brand-design-system.md §2: no text below 16px anywhere on a floor
+    // screen — text-mono-md (14px) is not permitted.
+    it(
+      "AC brand §2: commit-error line-id feedback uses a 16px+ mono token, not text-mono-md (14px)",
+      () => {
+        const source = pageSource();
+        expect(source).not.toContain("text-mono-md");
+      },
+    );
+
+    // ── Test 15 (added — design-system-auditor finding 4) ────────────────────
+    // brand-design-system.md §1.5: AAA contrast for time-critical floor text
+    // — semantic red must be carried by the border/icon, not paragraph text
+    // color, matching the existing scan-error/commit-error block pattern.
+    it(
+      "AC brand §1.5: 'no capacity'/'no inspection location' messages carry status-held via border/icon, not paragraph text color",
+      () => {
+        const source = pageSource();
+        expect(source).not.toContain("font-body text-body-md text-status-held");
+        expect(source).toContain("border-l-4 border-status-held bg-white");
       },
     );
   },

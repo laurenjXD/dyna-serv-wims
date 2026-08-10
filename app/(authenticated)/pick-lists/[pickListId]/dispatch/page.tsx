@@ -132,7 +132,7 @@ export default async function DispatchConfirmationPage({
   async function handleDispatch(): Promise<void> {
     "use server";
     const actionResolver = await createPageResolver();
-    const dispatchResult = await dispatchPickList(actionResolver, db, pickListId);
+    const dispatchResult = await dispatchPickList(actionResolver, pickListId);
     if (dispatchResult.ok) {
       // Return to outgoing queue — dispatch is complete.
       redirect("/outgoing");

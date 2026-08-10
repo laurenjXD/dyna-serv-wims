@@ -162,7 +162,7 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
     "use server";
     const reason = (formData.get("reason") as string | null) ?? "";
     const actionResolver = await createPageResolver();
-    const result = await approveRequest(actionResolver, db, approvalId, reason);
+    const result = await approveRequest(actionResolver, approvalId, reason);
     if (result.ok) {
       redirect(`/approvals/${approvalId}`);
     }
@@ -177,7 +177,7 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
     // Combine category + optional note into the reason string written to the DB.
     const reason = note ? `${category}: ${note}` : category;
     const actionResolver = await createPageResolver();
-    const result = await rejectRequest(actionResolver, db, approvalId, reason);
+    const result = await rejectRequest(actionResolver, approvalId, reason);
     if (result.ok) {
       redirect(`/approvals/${approvalId}`);
     }

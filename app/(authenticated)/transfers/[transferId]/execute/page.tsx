@@ -85,7 +85,6 @@ export default async function ExecuteTransferPage({
     const actionResolver = await createPageResolver();
     const actionResult = await updateTransferStatus(
       actionResolver,
-      db,
       transferId,
       "completed"
     );

@@ -61,6 +61,7 @@ import type {
   RequestAuthorizationResolver,
 } from "@/lib/rbac/session";
 import { approveRequest, rejectRequest } from "../approvals";
+import { mockRlsDeps } from "@/lib/db/__tests__/helpers/mock-rls";
 
 // ---------------------------------------------------------------------------
 // Resolver mock helpers (same pattern as parties.test.ts)
@@ -200,12 +201,12 @@ describe("approveRequest — authorization: missing fifo_override.approve (R4.4,
   it("(AC: fifo_override.approve required) returns { ok: false } when resolver lacks fifo_override.approve", async () => {
     const db = makeApprovalDb({ "req-1": pendingRequest() });
 
+    const { deps } = mockRlsDeps(db);
     const result = await approveRequest(
       noApproveCapabilityResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "req-uuid-pending",
       "Authorized override",
+      deps,
     );
 
     expect(result.ok).toBe(false);
@@ -218,12 +219,12 @@ describe("approveRequest — authorization: missing fifo_override.approve (R4.4,
   it("(AC: authenticated required) returns { ok: false } when unauthenticated (no user ID)", async () => {
     const db = makeApprovalDb({ "req-1": pendingRequest() });
 
+    const { deps } = mockRlsDeps(db);
     const result = await approveRequest(
       unauthenticatedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "req-uuid-pending",
       "Authorized override",
+      deps,
     );
 
     expect(result.ok).toBe(false);
@@ -241,12 +242,12 @@ describe("approveRequest — not found (R7.5, design.md §6)", () => {
   it("(AC: not found returns error) returns { ok: false } when requestId does not exist in the DB", async () => {
     const db = makeApprovalDb({}); // empty — no rows
 
+    const { deps } = mockRlsDeps(db);
     const result = await approveRequest(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "non-existent-uuid",
       "Approved",
+      deps,
     );
 
     expect(result.ok).toBe(false);
@@ -266,12 +267,12 @@ describe("approveRequest — invalid state transitions (R2.1, R2.2, design.md §
       "req-1": pendingRequest({ status: "approved" }),
     });
 
+    const { deps } = mockRlsDeps(db);
     const result = await approveRequest(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "req-uuid-pending",
       "Approved again",
+      deps,
     );
 
     expect(result.ok).toBe(false);
@@ -285,12 +286,12 @@ describe("approveRequest — invalid state transitions (R2.1, R2.2, design.md §
       "req-1": pendingRequest({ status: "rejected" }),
     });
 
+    const { deps } = mockRlsDeps(db);
     const result = await approveRequest(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "req-uuid-pending",
       "Trying to approve a rejected request",
+      deps,
     );
 
     expect(result.ok).toBe(false);
@@ -310,12 +311,12 @@ describe("approveRequest — expiry check (R2.4, design.md §5)", () => {
       "req-1": pendingRequest({ expiryAt: PAST_EXPIRY }),
     });
 
+    const { deps } = mockRlsDeps(db);
     const result = await approveRequest(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "req-uuid-pending",
       "Trying to approve an expired request",
+      deps,
     );
 
     expect(result.ok).toBe(false);
@@ -337,12 +338,12 @@ describe("approveRequest — self-approval blocked (R4.5, design.md §5)", () =>
       "req-1": pendingRequest({ requesterUserId: "user-uuid-requester" }),
     });
 
+    const { deps } = mockRlsDeps(db);
     const result = await approveRequest(
       selfApprovalResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "req-uuid-pending",
       "Self-approving my own request",
+      deps,
     );
 
     expect(result.ok).toBe(false);
@@ -362,12 +363,12 @@ describe("approveRequest — success (R4.1, R4.2, design.md §5)", () => {
       "req-1": pendingRequest(),
     });
 
+    const { deps } = mockRlsDeps(db);
     const result = await approveRequest(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "req-uuid-pending",
       "Approved after careful review",
+      deps,
     );
 
     expect(result.ok).toBe(true);
@@ -393,12 +394,12 @@ describe("rejectRequest — authorization: missing fifo_override.approve (R4.4, 
   it("(AC: fifo_override.approve required) returns { ok: false } when resolver lacks fifo_override.approve", async () => {
     const db = makeApprovalDb({ "req-1": pendingRequest() });
 
+    const { deps } = mockRlsDeps(db);
     const result = await rejectRequest(
       noApproveCapabilityResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "req-uuid-pending",
       "Should not be allowed",
+      deps,
     );
 
     expect(result.ok).toBe(false);
@@ -418,12 +419,12 @@ describe("rejectRequest — invalid state transitions (R2.2, design.md §5)", ()
       "req-1": pendingRequest({ status: "rejected" }),
     });
 
+    const { deps } = mockRlsDeps(db);
     const result = await rejectRequest(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "req-uuid-pending",
       "Rejecting a rejected request",
+      deps,
     );
 
     expect(result.ok).toBe(false);
@@ -443,12 +444,12 @@ describe("rejectRequest — expiry check (R2.4, design.md §5)", () => {
       "req-1": pendingRequest({ expiryAt: PAST_EXPIRY }),
     });
 
+    const { deps } = mockRlsDeps(db);
     const result = await rejectRequest(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "req-uuid-pending",
       "Trying to reject an expired request",
+      deps,
     );
 
     expect(result.ok).toBe(false);
@@ -468,12 +469,12 @@ describe("rejectRequest — success (R4.1, R4.2, design.md §5)", () => {
       "req-1": pendingRequest(),
     });
 
+    const { deps } = mockRlsDeps(db);
     const result = await rejectRequest(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "req-uuid-pending",
       "Does not meet requirements",
+      deps,
     );
 
     expect(result.ok).toBe(true);
@@ -499,12 +500,12 @@ describe("rejectRequest — not found (R7.5, design.md §6)", () => {
   it("(AC: not found returns error) returns { ok: false } when requestId does not exist", async () => {
     const db = makeApprovalDb({}); // empty — no rows
 
+    const { deps } = mockRlsDeps(db);
     const result = await rejectRequest(
       authorizedResolver(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db as any,
       "non-existent-uuid",
       "Rejected",
+      deps,
     );
 
     expect(result.ok).toBe(false);

@@ -1,7 +1,10 @@
 // Scan interface — floor-priority receiving reconciliation screen.
 //
 // Traceability:
-//   specs/07-incoming-receiving/design.md §3 (route), §6 (floor scan design)
+//   specs/07-incoming-receiving/design.md §3 (route), §6 (floor scan design),
+//     §6.1 (flow-type cross-check), §6.2 (store: scan-first, then suggested
+//     location), §6.3 (inspect: location-first, then scan), §9 (per-line
+//     immediate commit, Reversed 2026-08-10)
 //   specs/07-incoming-receiving/requirements.md R3 (barcode reconciliation),
 //     R2.5 (floor flow shows WRR, expected lines, quantities, exceptions)
 //   specs/00-steering/brand-design-system.md §3 (floor surface rules — mobile-first
@@ -11,20 +14,25 @@
 //     §2 (no text below 16px on floor), §8 (no backdrop-blur, animation constraints)
 //
 // Surface: FLOOR. Designed at 375px viewport first. No glassmorphism.
-// Permission gate: receiving.scan
+// Permission gate: receiving.scan (scan), receiving.confirm (per-line commit)
 //
 // Feedback mechanism: after a scan the server action redirects back to this
 // page with `result=scanned&remaining=N&disposition=D` on success or
-// `result=error&reason=...` on failure. The page reads search params to display
-// the result, then clears them on the next scan.
+// `result=error&reason=...` on failure. Per-line "Store"/"Hold" commits use
+// the same redirect-with-searchParams pattern: `result=committed&line=ID` on
+// success, `result=commit_error&line=ID&reason=...` on failure.
 
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
+import { eq, and } from "drizzle-orm";
+import { locations } from "@/lib/db/schema/locations";
 import { getWrrDocument } from "@/lib/db/queries/receiving";
-import { recordScan, startReceiving, commitWrr } from "@/lib/actions/receiving";
+import { suggestPutawayLocations } from "@/lib/db/queries/locations";
+import type { PutawayCandidate } from "@/lib/db/queries/locations";
+import { recordScan, startReceiving, commitWrrLine } from "@/lib/actions/receiving";
 import type { WrrItemRow } from "@/lib/db/queries/receiving";
 
 // ─── Error reason → plain language ──────────────────────────────────────────
@@ -45,8 +53,21 @@ function getScanErrorMessage(reason: string): string {
       return "Duplicate scan — this barcode has already been counted.";
     case "unknown_item":
       return "Unknown item — barcode is not registered in the system. Contact a supervisor to enroll this item.";
+    case "flow_type_mismatch":
+      return "This item does not belong to this WRR's flow type — contact a supervisor.";
     default:
       return `Scan rejected: ${reason}. Contact a supervisor if this persists.`;
+  }
+}
+
+function getCommitErrorMessage(reason: string): string {
+  switch (reason) {
+    case "forbidden":
+      return "You do not have permission to confirm receipt for this line.";
+    case "not_found":
+      return "This line could not be found.";
+    default:
+      return `Could not complete this line: ${reason}. Contact a supervisor if this persists.`;
   }
 }
 
@@ -59,6 +80,7 @@ interface PageProps {
     remaining?: string;
     disposition?: string;
     reason?: string;
+    line?: string;
   }>;
 }
 
@@ -72,6 +94,7 @@ export default async function ReceiveFloorPage({
     remaining: remainingParam,
     disposition: dispositionParam,
     reason: reasonParam,
+    line: lineParam,
   } = await searchParams;
 
   const resolver = await createPageResolver();
@@ -92,7 +115,7 @@ export default async function ReceiveFloorPage({
   // action returns invalid_status which we ignore). R2.4 requires this to be
   // safe to retry and not require a separate manual step on the floor.
   if (wrr.status === "staged_pending_arrival") {
-    await startReceiving(resolver, db, wrrId);
+    await startReceiving(resolver, wrrId);
     // Re-fetch to get the updated status after the transition.
     const refreshed = await getWrrDocument(db, wrrId);
     if (refreshed) {
@@ -100,8 +123,9 @@ export default async function ReceiveFloorPage({
     }
   }
 
-  // Only allow scan when WRR is in receiving_in_progress.
+  // Only allow scan/commit when WRR is in receiving_in_progress.
   const isReceivable = wrr.status === "receiving_in_progress";
+  const isComplete = wrr.status === "confirmed";
 
   // Compute progress counts from items.
   const totalLines = wrr.items.length;
@@ -109,6 +133,32 @@ export default async function ReceiveFloorPage({
     (item: WrrItemRow) => item.scannedQty >= item.expectedQty
   ).length;
   const allLinesScanned = totalLines > 0 && fullyScannedLines === totalLines;
+
+  // Lines that are fully scanned but not yet committed need their commit UI.
+  const readyLines = wrr.items.filter(
+    (item: WrrItemRow) =>
+      item.scannedQty >= item.expectedQty && item.committedAt === null
+  );
+  const primaryReadyLine: WrrItemRow | null = readyLines.length > 0 ? readyLines[0] : null;
+
+  // Fetch putaway suggestions (store) / active inspection locations (inspect)
+  // only for the single primary ready line.
+  let primaryStoreCandidates: PutawayCandidate[] = [];
+  let inspectionLocations: Array<{ id: string; label: string }> = [];
+  if (primaryReadyLine?.disposition === "store") {
+    primaryStoreCandidates = await suggestPutawayLocations(db, {
+      itemUnitCbm: primaryReadyLine.unitCbm,
+      requestedQty: primaryReadyLine.expectedQty,
+    });
+  } else if (primaryReadyLine?.disposition === "inspect") {
+    inspectionLocations = (await db
+      .select({ id: locations.id, label: locations.label })
+      .from(locations)
+      .where(and(eq(locations.locationType, "inspection"), eq(locations.isActive, true)))) as Array<{
+      id: string;
+      label: string;
+    }>;
+  }
 
   // Inline server action — closes over wrrId from the page component.
   // On success: redirects with scan result encoded in URL.
@@ -122,7 +172,7 @@ export default async function ReceiveFloorPage({
       );
     }
     const actionResolver = await createPageResolver();
-    const scanResult = await recordScan(actionResolver, db, wrrId, barcode);
+    const scanResult = await recordScan(actionResolver, wrrId, barcode);
     if (scanResult.ok) {
       redirect(
         `/receiving/${wrrId}/receive?result=scanned&remaining=${scanResult.remainingQty}&disposition=${scanResult.disposition}`
@@ -134,27 +184,72 @@ export default async function ReceiveFloorPage({
     }
   }
 
-  // Inline server action — commit all scanned lines and confirm the WRR.
-  // R7.1: confirmation is an explicit, authorized server command.
-  async function handleCommit(): Promise<void> {
+  // Inline server action — per-line commit ("Store" or "Hold"). Closes over
+  // wrrId. locationId comes from the line's select input.
+  async function handleCommitLine(formData: FormData): Promise<void> {
     "use server";
-    const actionResolver = await createPageResolver();
-    const commitResult = await commitWrr(actionResolver, db, wrrId);
-    if (commitResult.ok) {
-      redirect(`/receiving/${wrrId}`);
+    const wrrItemId = (formData.get("wrrItemId") as string | null) ?? "";
+    const locationId = (formData.get("locationId") as string | null) ?? "";
+    if (!wrrItemId || !locationId) {
+      redirect(
+        `/receiving/${wrrId}/receive?result=commit_error&line=${encodeURIComponent(wrrItemId)}&reason=${encodeURIComponent("missing_location")}`
+      );
     }
-    // On failure, return to the scan page with an error state.
-    redirect(
-      `/receiving/${wrrId}/receive?result=error&reason=${encodeURIComponent("commit_failed")}`
-    );
+    const actionResolver = await createPageResolver();
+    const commitResult = await commitWrrLine(actionResolver, wrrId, wrrItemId, {
+      locationId,
+    });
+    if (commitResult.ok) {
+      redirect(
+        `/receiving/${wrrId}/receive?result=committed&line=${encodeURIComponent(wrrItemId)}`
+      );
+    } else {
+      redirect(
+        `/receiving/${wrrId}/receive?result=commit_error&line=${encodeURIComponent(wrrItemId)}&reason=${encodeURIComponent(commitResult.errors.join("|"))}`
+      );
+    }
   }
 
   // Determine feedback state from search params.
   const scanSuccess = result === "scanned";
   const scanError = result === "error";
+  const commitSuccess = result === "committed";
+  const commitError = result === "commit_error";
   const remainingQty = remainingParam ? parseInt(remainingParam, 10) : null;
   const dispositionResult = dispositionParam;
   const errorReason = reasonParam ?? "";
+  const feedbackLineId = lineParam ?? null;
+
+  // ─── Receipt complete: all lines committed, WRR already confirmed server-side ───
+  if (isComplete) {
+    return (
+      <div className="flex min-h-screen flex-col bg-brand-navy">
+        <div className="flex flex-1 flex-col items-center justify-center px-4 py-4 text-center">
+          <div className="w-full max-w-md rounded-md bg-surface-white p-6 shadow-elevation-2">
+            <span
+              aria-hidden="true"
+              className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-status-available text-surface-white font-heading font-bold text-headline-md"
+            >
+              &#10003;
+            </span>
+            <h1 className="mt-4 font-heading font-semibold text-headline-md text-brand-navy">
+              Receipt complete
+            </h1>
+            <p className="mt-2 font-body text-body-md text-on-surface">
+              Every line on {wrr.wrrNumber} has been stored or held. This WRR
+              is now confirmed.
+            </p>
+            <Link
+              href={`/receiving/${wrrId}`}
+              className="mt-6 flex h-16 w-full items-center justify-center rounded bg-brand-red font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-brand-navy"
+            >
+              Back to WRR
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     // Floor screen: solid bg-brand-navy, no glassmorphism, 16px padding.
@@ -180,7 +275,7 @@ export default async function ReceiveFloorPage({
       </div>
 
       {/* Main floor content — flex-1, single-column, 16px padding */}
-      <div className="flex flex-1 flex-col px-4 py-4">
+      <div className="flex flex-1 flex-col px-4 py-4 pb-6">
         {/* Progress header — Fira Sans, large enough for floor visibility */}
         <div className="rounded-md bg-surface-white p-4 shadow-elevation-2">
           <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
@@ -256,12 +351,51 @@ export default async function ReceiveFloorPage({
           </div>
         )}
 
+        {commitSuccess && (
+          <div
+            role="status"
+            aria-live="assertive"
+            className="mt-4 rounded-md bg-white border-l-4 border-status-available px-4 py-4 shadow-elevation-2"
+          >
+            <p className="font-heading font-semibold text-headline-md text-on-surface">
+              &#10003; Line committed
+            </p>
+            <p className="mt-1 font-body text-body-md text-on-surface">
+              This line has been posted to inventory.
+            </p>
+          </div>
+        )}
+
+        {commitError && (
+          <div
+            role="alert"
+            aria-live="assertive"
+            className="mt-4 rounded-md bg-white border-l-4 border-status-held px-4 py-4 shadow-elevation-2"
+          >
+            <p className="font-heading font-semibold text-headline-md text-on-surface">
+              &#33; Could not complete line
+            </p>
+            <p className="mt-1 font-body text-body-md text-on-surface">
+              {getCommitErrorMessage(errorReason)}
+            </p>
+            {feedbackLineId && (
+              <p className="mt-1 font-mono text-mono-lg text-status-neutral">
+                Line: {feedbackLineId}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Item progress list — card-based, NOT a dense table.
             brand-design-system.md §9: floor tables are a fail case;
             use card-based list, one item per row. */}
-        <div className="mt-4 space-y-2">
+        <div className="mt-4 space-y-3">
           {wrr.items.map((item: WrrItemRow) => {
             const fullyScanned = item.scannedQty >= item.expectedQty;
+            const isCommitted = item.committedAt !== null;
+            const readyToCommit = fullyScanned && !isCommitted;
+            const isPrimaryReady = primaryReadyLine !== null && item.id === primaryReadyLine.id;
+
             return (
               <div
                 key={item.id}
@@ -284,7 +418,7 @@ export default async function ReceiveFloorPage({
                         Disposition:
                       </span>
                       <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-body-md font-body uppercase ${
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-body-md font-label uppercase ${
                           item.disposition === "store"
                             ? "bg-status-available/10 text-on-surface"
                             : "bg-status-pending/10 text-on-surface"
@@ -298,77 +432,191 @@ export default async function ReceiveFloorPage({
                       </span>
                     </div>
                   </div>
-                  {/* Completion checkmark — visible, accessible indicator */}
-                  {fullyScanned && (
+                  {/* Completion / committed indicator — visible, accessible */}
+                  {isCommitted ? (
                     <span
-                      aria-label="Fully scanned"
+                      aria-label="Committed"
                       className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-status-available text-surface-white font-heading font-bold text-data-display"
                     >
                       &#10003;
                     </span>
+                  ) : (
+                    fullyScanned && (
+                      <span
+                        aria-label="Fully scanned"
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-status-pending text-surface-white font-heading font-bold text-data-display"
+                      >
+                        &#10003;
+                      </span>
+                    )
                   )}
                 </div>
+
+                {/* At most one full-width brand-red primary CTA is ever visible at
+                    a time on this floor screen (brand-design-system.md §3). The
+                    actual Store/Hold commit form for the primary ready line lives
+                    in the sticky bottom primary-action area below, not inline
+                    here. Any OTHER ready-but-not-yet-committed line gets a
+                    compact, secondary-styled indicator instead of a second
+                    equal-weight primary button. design.md §6.2/§6.3. */}
+                {readyToCommit && isPrimaryReady && (
+                  <div className="mt-3 flex items-center gap-2 border-t border-outline-variant/30 pt-3">
+                    <span aria-hidden="true" className="text-brand-navy">
+                      &#8595;
+                    </span>
+                    <p className="font-label text-body-md text-brand-navy">
+                      Ready to {item.disposition === "store" ? "store" : "hold"} — complete below
+                    </p>
+                  </div>
+                )}
+
+                {readyToCommit && !isPrimaryReady && (
+                  <div className="mt-3 flex items-center gap-2 border-t border-outline-variant/30 pt-3">
+                    <span aria-hidden="true" className="text-status-pending">
+                      &#9679;
+                    </span>
+                    <p className="font-label text-body-md text-on-surface">
+                      Ready to {item.disposition === "store" ? "store" : "hold"} — complete the current line first
+                    </p>
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* Primary action — bottom third of screen, full-width.
-          brand-design-system.md §3: primary action in the bottom third of the
-          viewport, full-width, always visible. 64px minimum height for floor
-          primary actions. Autofocus on load so scanner is immediately ready.
-          Input priority: scan > tap > type (§3).
-          When all lines are fully scanned, the primary action switches to
-          "Confirm Receipt" (R7.1: one primary floor action). */}
-      {isReceivable && (
+      {/* Primary action — bottom third of screen, full-width, exactly ONE
+          brand-red CTA at a time (brand-design-system.md §3). Priority:
+          if a line is fully scanned and awaiting commit, THAT line's
+          Store/Hold form is the primary action here (design.md §6.2/§6.3/§9)
+          — scanning resumes once it's resolved. Otherwise, if lines remain
+          unscanned, the scan input is the primary action. 64px minimum
+          height for floor primary actions throughout. */}
+      {isReceivable && primaryReadyLine && (
         <div className="sticky bottom-0 bg-brand-navy px-4 pb-6 pt-4 shadow-elevation-2">
-          {allLinesScanned ? (
-            /* Confirm Receipt CTA — R7.1: one primary floor action, full-width,
-               h-16 (64px) minimum, bg-brand-red per design-system §3 floor CTAs.
-               Solid surface, no glassmorphism, AAA contrast (white on red). */
-            <form action={handleCommit}>
-              <button
-                type="submit"
-                className="flex h-16 w-full items-center justify-center rounded bg-brand-red font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white"
-              >
-                Confirm Receipt
-              </button>
-            </form>
-          ) : (
-            <form action={handleScan} className="flex flex-col gap-3">
-              <label
-                htmlFor="barcode-input"
-                className="text-body-md font-body text-surface-white"
-              >
-                Scan or enter barcode
-              </label>
-              <div className="flex gap-2">
-                <input
-                  id="barcode-input"
-                  name="barcode"
-                  type="text"
-                  // autoFocus: scanner input focused immediately for scan-first workflow.
-                  // brand-design-system.md §3 input priority: scan > tap > type.
-                  autoFocus
-                  autoComplete="off"
-                  inputMode="none"
-                  placeholder="Waiting for scan…"
-                  // h-16 = 64px — floor primary input touch target per §3
-                  className="h-16 flex-1 rounded border-2 border-surface-white bg-surface-white px-4 font-mono text-mono-lg text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-4 focus:ring-brand-navy"
-                />
-                {/* Submit button — 64px minimum, full secondary width alongside input */}
+          <form action={handleCommitLine} className="flex flex-col gap-3">
+            <input type="hidden" name="wrrItemId" value={primaryReadyLine.id} />
+            <p className="font-mono text-mono-lg font-bold text-surface-white">
+              {primaryReadyLine.lotNumber}
+            </p>
+            {primaryReadyLine.disposition === "store" ? (
+              <>
+                <label
+                  htmlFor="location-primary"
+                  className="text-body-md font-body text-surface-white"
+                >
+                  Putaway location
+                </label>
+                {primaryStoreCandidates.length > 0 ? (
+                  <select
+                    id="location-primary"
+                    name="locationId"
+                    defaultValue={primaryStoreCandidates[0].id}
+                    className="h-16 w-full rounded border-2 border-surface-white bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-4 focus:ring-brand-navy"
+                  >
+                    {primaryStoreCandidates.map((candidate) => (
+                      <option key={candidate.id} value={candidate.id}>
+                        {candidate.label} | {candidate.remainingCbm.toFixed(2)} CBM remaining
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div role="alert" className="rounded border-l-4 border-status-held bg-white px-3 py-2">
+                    <p className="flex items-center gap-2 font-body text-body-md text-on-surface">
+                      <span aria-hidden="true" className="text-status-held">
+                        &#33;
+                      </span>
+                      No storage location has enough remaining capacity. Contact a supervisor.
+                    </p>
+                  </div>
+                )}
                 <button
                   type="submit"
-                  // active: press feedback, no hover: (floor screen, §3 §10)
-                  className="flex h-16 w-16 shrink-0 items-center justify-center rounded bg-brand-red font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white"
-                  aria-label="Submit scan"
+                  disabled={primaryStoreCandidates.length === 0}
+                  className="flex h-16 w-full items-center justify-center rounded bg-brand-red font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white disabled:opacity-50"
                 >
-                  &#8594;
+                  Store
                 </button>
-              </div>
-            </form>
-          )}
+              </>
+            ) : (
+              <>
+                <label
+                  htmlFor="location-primary"
+                  className="text-body-md font-body text-surface-white"
+                >
+                  Inspection location
+                </label>
+                {inspectionLocations.length > 0 ? (
+                  <select
+                    id="location-primary"
+                    name="locationId"
+                    defaultValue={
+                      inspectionLocations.length === 1 ? inspectionLocations[0].id : undefined
+                    }
+                    className="h-16 w-full rounded border-2 border-surface-white bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-4 focus:ring-brand-navy"
+                  >
+                    {inspectionLocations.length > 1 && (
+                      <option value="">Select an inspection location…</option>
+                    )}
+                    {inspectionLocations.map((loc) => (
+                      <option key={loc.id} value={loc.id}>
+                        {loc.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div role="alert" className="rounded border-l-4 border-status-held bg-white px-3 py-2">
+                    <p className="flex items-center gap-2 font-body text-body-md text-on-surface">
+                      <span aria-hidden="true" className="text-status-held">
+                        &#33;
+                      </span>
+                      No active inspection location is configured. Contact a supervisor.
+                    </p>
+                  </div>
+                )}
+                <button
+                  type="submit"
+                  disabled={inspectionLocations.length === 0}
+                  className="flex h-16 w-full items-center justify-center rounded bg-brand-red font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white disabled:opacity-50"
+                >
+                  Hold
+                </button>
+              </>
+            )}
+          </form>
+        </div>
+      )}
+
+      {isReceivable && !primaryReadyLine && !allLinesScanned && (
+        <div className="sticky bottom-0 bg-brand-navy px-4 pb-6 pt-4 shadow-elevation-2">
+          <form action={handleScan} className="flex flex-col gap-3">
+            <label
+              htmlFor="barcode-input"
+              className="text-body-md font-body text-surface-white"
+            >
+              Scan or enter barcode
+            </label>
+            <div className="flex gap-2">
+              <input
+                id="barcode-input"
+                name="barcode"
+                type="text"
+                autoFocus
+                autoComplete="off"
+                inputMode="none"
+                placeholder="Waiting for scan…"
+                className="h-16 flex-1 rounded border-2 border-surface-white bg-surface-white px-4 font-mono text-mono-lg text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-4 focus:ring-brand-navy"
+              />
+              <button
+                type="submit"
+                className="flex h-16 w-16 shrink-0 items-center justify-center rounded bg-brand-red font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white"
+                aria-label="Submit scan"
+              >
+                &#8594;
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>
