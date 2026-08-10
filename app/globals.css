@@ -2,9 +2,65 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  body {
+    background: #F2F2F2;
+  }
+
+  ::selection {
+    background: #002060;
+    color: #FFFFFF;
+  }
+
+  /* Every authenticated route sits on the same quiet canvas. Individual
+     floor screens deliberately paint their own navy surface on top of it. */
+  main {
+    min-height: calc(100vh - 3.5rem);
+    background: #F2F2F2;
+  }
+}
+
 @layer utilities {
   /* Brand diagonal-cut shape for office primary CTA buttons (brand-design-system.md §7, §9) */
   .btn-diagonal-cut {
     clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 100%, 0 100%);
+  }
+
+  /* Office reporting and list surfaces share the crisp, compact treatment
+     established by the approved reference dashboard. Floor surfaces retain
+     their own solid, high-contrast styling in their feature components. */
+  .office-panel {
+    @apply rounded-lg border border-outline-variant/30 bg-surface-white shadow-elevation-1;
+  }
+
+  /* Most existing office routes were independently built with the old
+     translucent-card recipe. Normalise those existing utility combinations
+     here so tables, forms, detail views, documents, settings, master data,
+     approvals, portal views, billing, and reports present as one system.
+     Floor cards use white/10 or white/15 instead, so they are unaffected. */
+  main .bg-white\/75 {
+    background-color: #FFFFFF;
+  }
+
+  main .backdrop-blur-md {
+    --tw-backdrop-blur: blur(0);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  main .rounded-2xl.bg-white\/75,
+  main .rounded-2xl.bg-surface-white {
+    border-radius: 12px;
+  }
+}
+
+@media (min-width: 1024px) {
+  @layer utilities {
+    /* The clipped accent is an office-only motif. Keeping it at the desktop
+       breakpoint preserves the full, glove-friendly target on floor flows. */
+    main a.bg-brand-red,
+    main button.bg-brand-red {
+      clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 100%, 0 100%);
+    }
   }
 }

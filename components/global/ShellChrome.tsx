@@ -41,7 +41,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
           Holds the brand mark, the mobile nav-open toggle, and account
           controls. brand-navy background per brand-design-system.md §9.
           No backdrop-blur — solid surface for both floor and office tiers. */}
-      <header className="fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 bg-brand-navy px-4 shadow-elevation-2">
+      <header className="fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-white/10 bg-brand-navy px-4 shadow-elevation-2">
         {/* Mobile hamburger — hidden above lg where the persistent sidebar
             takes over. 64px min touch target (floor primary rules apply
             since this control is present on every surface including floor).
@@ -62,9 +62,17 @@ export function ShellChrome({ children }: { children: ReactNode }) {
         {/* Brand word-mark. Real letter-mark asset (text stand-in for now —
             see tasks.md deferred item on logo asset wiring). Epilogue
             SemiBold per brand-design-system §2 / §9 sidebar spec. */}
-        <span className="font-label text-body-md font-semibold uppercase tracking-wide text-surface-white">
-          Dyna-Serv WIMS
-        </span>
+        <div className="flex items-center gap-3">
+          <span
+            aria-hidden="true"
+            className="btn-diagonal-cut inline-flex h-7 items-center bg-brand-red px-2 font-heading text-body-sm font-bold tracking-tight text-white"
+          >
+            DS
+          </span>
+          <span className="font-label text-body-md font-semibold uppercase tracking-wide text-surface-white">
+            Dyna-Serv WIMS
+          </span>
+        </div>
       </header>
 
       <ShellNavigation

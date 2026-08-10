@@ -88,7 +88,7 @@ interface KpiCardProps {
 
 function KpiCard({ label, value, icon, subtext }: KpiCardProps) {
   return (
-    <div className="min-w-[200px] flex-1 rounded-xl border border-outline-variant/30 bg-white/75 p-5 shadow-elevation-1 backdrop-blur-md">
+    <div className="min-w-[200px] flex-1 rounded-lg border border-outline-variant/30 border-t-4 border-t-brand-navy bg-surface-white p-5 shadow-elevation-1">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1">
           <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
@@ -101,7 +101,7 @@ function KpiCard({ label, value, icon, subtext }: KpiCardProps) {
             <p className="mt-1 font-body text-body-sm text-text-grey">{subtext}</p>
           )}
         </div>
-        <div className="text-brand-royal-blue" aria-hidden="true">
+        <div className="rounded bg-brand-navy/10 p-2 text-brand-navy" aria-hidden="true">
           {icon}
         </div>
       </div>
@@ -151,10 +151,13 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const activeFilter = filterParam ?? "all";
 
   return (
-    <div className="mx-auto max-w-container">
+    <div className="mx-auto max-w-container px-4 py-6 md:px-8 md:py-8">
       {/* Page header */}
-      <div>
-        <h1 className="font-heading font-bold text-headline-xl text-brand-navy">
+      <div className="border-b border-outline-variant/30 pb-6">
+        <p className="font-label text-label uppercase tracking-[0.1em] text-brand-red">
+          Warehouse intelligence
+        </p>
+        <h1 className="mt-2 font-heading font-bold text-headline-xl text-brand-navy">
           Reports &amp; Analytics
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">
@@ -163,7 +166,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       </div>
 
       {/* KPI cards — flex-wrap row per spec */}
-      <div className="mt-6 flex flex-wrap gap-4">
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
           label="Total Inventory Value (VMI)"
           value="$0.00"
@@ -189,22 +192,22 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       </div>
 
       {/* Activity Heatmap */}
-      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-white/75 p-6 shadow-elevation-1 backdrop-blur-md">
+      <div className="office-panel mt-6 p-5 md:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-heading font-semibold text-headline-md text-brand-navy">
             Inventory Activity (52 Weeks)
           </h2>
 
           {/* Filter chips */}
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {(["all", "VMI", "Trading", "Supplies"] as const).map((f) => (
               <a
                 key={f}
                 href={`/reports?filter=${f}`}
-                className={`flex h-11 items-center rounded-full px-4 font-label text-label motion-safe:transition-colors motion-safe:duration-150 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy ${
+                className={`flex h-11 items-center rounded px-4 font-label text-label motion-safe:transition-colors motion-safe:duration-150 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy ${
                   activeFilter === f
                     ? "bg-brand-navy text-surface-white"
-                    : "border border-outline-variant/30 text-text-grey hover:text-on-surface"
+                    : "border border-outline-variant/30 bg-surface-light-grey text-text-grey hover:border-brand-navy hover:text-brand-navy"
                 }`}
               >
                 {f === "all" ? "All" : f}
@@ -214,7 +217,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
         </div>
 
         {/* Heatmap placeholder — wired from inventory_transactions data */}
-        <div className="mt-4 h-32 rounded-xl bg-surface-light-grey" role="img" aria-label="Inventory activity heatmap — not yet wired to data">
+        <div className="mt-4 h-32 rounded-lg border border-dashed border-outline-variant/50 bg-surface-light-grey" role="img" aria-label="Inventory activity heatmap — not yet wired to data">
           <div className="flex h-full items-center justify-center">
             <p className="font-body text-body-sm text-text-grey">
               Heatmap — wired from <span className="font-mono text-mono-md">inventory_transactions</span> data
@@ -224,15 +227,15 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       </div>
 
       {/* Movement History table */}
-      <div className="mt-6 overflow-hidden rounded-2xl border border-outline-variant/30 bg-white/75 shadow-elevation-1 backdrop-blur-md">
+      <div className="office-panel mt-6 overflow-hidden">
         {/* Table header row with export button */}
-        <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-outline-variant/30 px-5 py-4">
           <h2 className="font-heading font-semibold text-headline-md text-brand-navy">
             Movement History
           </h2>
           <button
             type="button"
-            className="flex h-11 items-center gap-2 rounded-xl border border-outline-variant/30 px-4 font-body text-body-md text-on-surface motion-safe:transition-colors motion-safe:duration-150 hover:border-brand-navy hover:text-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="btn-diagonal-cut flex h-11 items-center gap-2 bg-brand-red px-4 font-label text-label text-white shadow-[0_4px_12px_rgba(227,6,19,0.2)] motion-safe:transition-colors motion-safe:duration-150 hover:brightness-110 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
             aria-label="Export movement history"
           >
             <Download size={16} aria-hidden="true" />
@@ -243,7 +246,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
+              <tr className="border-b border-outline-variant/30 bg-brand-navy/[0.04]">
                 <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                   Date
                 </th>
@@ -273,7 +276,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
             <tbody className="divide-y divide-outline-variant/30">
               {/* TODO: wire to inventory_transactions query */}
               {MOCK_MOVEMENTS.map((txn) => (
-                <tr key={txn.id} className="hover:bg-surface-light-grey/50">
+                <tr key={txn.id} className="hover:bg-brand-navy/[0.03]">
                   <td className="px-4 py-3 font-body text-body-md text-text-grey">
                     {txn.date}
                   </td>
@@ -307,7 +310,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
 
       {/* Financial summary — shown only if reporting.financial_read */}
       {hasFinancialAccess && (
-        <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-white/75 p-6 shadow-elevation-1 backdrop-blur-md">
+        <div className="office-panel mt-6 p-6">
           <h2 className="font-heading font-semibold text-headline-md text-brand-navy">
             Financial Summary
           </h2>

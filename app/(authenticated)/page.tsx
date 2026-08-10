@@ -185,7 +185,7 @@ function QueueCard({
   todayCount: number;
 }) {
   return (
-    <div className="min-w-[180px] flex-1 rounded-xl border border-outline-variant/30 bg-white/75 p-4 shadow-elevation-1 backdrop-blur-md">
+    <div className="min-w-[180px] flex-1 rounded-lg border border-outline-variant/30 border-l-4 border-l-brand-navy bg-surface-white p-5 shadow-elevation-1">
       <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
         {label}
       </p>
@@ -215,10 +215,13 @@ function OfficeLanding({
   hasReportingRead: boolean;
 }) {
   return (
-    <div className="mx-auto max-w-container px-8 py-8">
+    <div className="mx-auto max-w-container px-4 py-6 md:px-8 md:py-8">
       {/* ── Page header ──────────────────────────────────────────────────── */}
-      <header className="mb-8">
-        <h1 className="font-heading text-headline-xl font-bold text-on-surface">
+      <header className="mb-8 border-b border-outline-variant/30 pb-6">
+        <p className="font-label text-label uppercase tracking-[0.1em] text-brand-red">
+          Operations overview
+        </p>
+        <h1 className="mt-2 font-heading text-headline-xl font-bold text-brand-navy">
           Dashboard
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">{dateString}</p>
@@ -251,14 +254,14 @@ function OfficeLanding({
       <section
         aria-label="Recent activity"
         data-testid="landing-recent-activity"
-        className="mb-8 rounded-xl bg-white/75 p-6 shadow-elevation-1 backdrop-blur-md"
+        className="office-panel mb-8 overflow-hidden"
       >
-        <h2 className="flex items-center gap-2 font-heading text-headline-md font-semibold text-brand-navy">
-          <Clock size={20} aria-hidden="true" />
-          Recent Activity
-        </h2>
+        <div className="flex items-center gap-2 border-b border-outline-variant/30 bg-surface-light-grey px-6 py-4">
+          <Clock size={20} className="text-brand-navy" aria-hidden="true" />
+          <h2 className="font-heading text-headline-md font-semibold text-brand-navy">Recent Activity</h2>
+        </div>
         {/* TODO: wire to real activity feed query (07/08/11 transaction events) */}
-        <p className="mt-4 font-body text-body-md text-text-grey">
+        <p className="px-6 py-6 font-body text-body-md text-text-grey">
           Recent activity will appear here.
         </p>
       </section>
@@ -273,7 +276,7 @@ function OfficeLanding({
         <section
           aria-label="Inventory activity heatmap"
           data-testid="landing-activity-heatmap"
-          className="rounded-xl bg-white/75 p-6 shadow-elevation-1 backdrop-blur-md"
+          className="office-panel p-6"
         >
           <h2 className="font-heading text-headline-md font-semibold text-brand-navy">
             Inventory Activity (52 weeks)
