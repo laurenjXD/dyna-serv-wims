@@ -2,6 +2,12 @@
 
 Every merge conflict and major revision, dated, with the resolution. This is the audit trail for "why does the spec say X" when X isn't obvious from the doc alone.
 
+## Primary navy and neutral surfaces remapped to the product-owner indigo palette (2026-08-10)
+
+The Product Owner requested that the remaining navy and neutral visual treatment adopt the supplied palette: `#EBEAFF`, `#9694FF`, `#3D3BF3`, and `#FF2929`. The legacy source token names `brand-navy` and `brand-royal-blue` remain in place to avoid a broad, behaviorless class-name migration, but now resolve visually to `#3D3BF3` and `#9694FF`. The office canvas (`surface-light-grey`) resolves to `#EBEAFF`, and the shared outline token resolves to `#9694FF` at its existing 30% opacity.
+
+`text-grey` and `on-surface` remain unchanged: the supplied lavender values are not substituted for readable body text because they do not meet the existing office/floor contrast contract in that role. Semantic status colors also remain unchanged. Elevation shadows now use the primary indigo instead of the retired navy. This is a visual-token remap only; no workflow, access control, or data behavior changes.
+
 ## `wrr_status` open item resolved: no new enum value; corrects a stale `partial`-status reference (2026-08-10)
 
 Closes the open item left by the same-day "`07` receiving reversed" entry below: how `wrr_status` should represent a WRR with some lines committed and others not, now that per-line immediate commit is the normal path. Three options were presented (no schema change reusing `receiving_in_progress`; a new `partial` value scoped only to early-stop/cancellation outcomes; a new `partial` value as the general in-flight state replacing `receiving_in_progress`). **Product Owner chose the first: no schema change.**
