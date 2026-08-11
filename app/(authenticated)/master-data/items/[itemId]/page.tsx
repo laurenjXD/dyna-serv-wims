@@ -40,7 +40,7 @@ export default async function ItemDetailPage({ params }: PageProps) {
           <nav className="mb-2" aria-label="Breadcrumb">
             <ol className="flex items-center gap-1 font-body text-body-sm text-text-grey">
               <li>
-                <Link href="/master-data/items" className="inline-flex h-11 items-center rounded hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy">
+                <Link href="/enrollment?tab=items" className="inline-flex h-11 items-center rounded hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy">
                   Items
                 </Link>
               </li>

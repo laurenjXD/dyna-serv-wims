@@ -74,6 +74,7 @@ export async function createLocationAction(
   }
 
   revalidatePath("/master-data/locations");
+  revalidatePath("/enrollment");
   redirect(`/master-data/locations/${result.data.id}`);
 }
 
@@ -117,6 +118,7 @@ export async function updateLocationAction(
   }
 
   revalidatePath("/master-data/locations");
+  revalidatePath("/enrollment");
   revalidatePath(`/master-data/locations/${id}`);
   redirect(`/master-data/locations/${id}`);
 }
@@ -139,6 +141,7 @@ export async function deactivateLocationAction(
   }
 
   revalidatePath("/master-data/locations");
+  revalidatePath("/enrollment");
   revalidatePath(`/master-data/locations/${id}`);
   return { ok: true };
 }

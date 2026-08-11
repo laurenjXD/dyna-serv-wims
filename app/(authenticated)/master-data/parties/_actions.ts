@@ -92,6 +92,7 @@ export async function createPartyAction(
   }
 
   revalidatePath("/master-data/parties");
+  revalidatePath("/enrollment");
   redirect(`/master-data/parties/${partyId}`);
 }
 
@@ -136,6 +137,7 @@ export async function updatePartyAction(
   }
 
   revalidatePath("/master-data/parties");
+  revalidatePath("/enrollment");
   revalidatePath(`/master-data/parties/${id}`);
   redirect(`/master-data/parties/${id}`);
 }
@@ -158,6 +160,7 @@ export async function deactivatePartyAction(
   }
 
   revalidatePath("/master-data/parties");
+  revalidatePath("/enrollment");
   revalidatePath(`/master-data/parties/${id}`);
   return { ok: true };
 }

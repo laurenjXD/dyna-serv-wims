@@ -68,7 +68,7 @@ export default async function LocationDetailPage({
             <ol className="flex items-center gap-1 font-body text-body-sm text-text-grey">
               <li>
                 <Link
-                  href="/master-data/locations"
+                  href="/enrollment?tab=locations"
                   className="inline-flex h-11 items-center rounded hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 >
                   Locations

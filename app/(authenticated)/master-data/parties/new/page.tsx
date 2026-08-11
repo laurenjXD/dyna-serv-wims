@@ -28,7 +28,7 @@ export default async function NewPartyPage() {
       <div className="rounded-md bg-surface-white shadow-elevation-1 p-6">
         <PartyForm
           action={createPartyAction}
-          cancelHref="/master-data/parties"
+          cancelHref="/enrollment?tab=parties"
         />
       </div>
     </div>

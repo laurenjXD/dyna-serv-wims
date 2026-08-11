@@ -98,6 +98,7 @@ export async function createItemAction(
   }
 
   revalidatePath("/master-data/items");
+  revalidatePath("/enrollment");
   redirect(`/master-data/items/${result.data.id}`);
 }
 
@@ -133,6 +134,7 @@ export async function updateItemAction(
   }
 
   revalidatePath("/master-data/items");
+  revalidatePath("/enrollment");
   revalidatePath(`/master-data/items/${id}`);
   redirect(`/master-data/items/${id}`);
 }
@@ -155,6 +157,7 @@ export async function deactivateItemAction(
   }
 
   revalidatePath("/master-data/items");
+  revalidatePath("/enrollment");
   revalidatePath(`/master-data/items/${id}`);
   return { ok: true };
 }
