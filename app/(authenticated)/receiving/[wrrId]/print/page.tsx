@@ -1,18 +1,32 @@
 // WRR print receipt — complete WRR data for physical document output.
 //
 // Traceability:
-//   specs/07-incoming-receiving/design.md §5.3 (WRR printed fields), §5.4
-//     (print behavior — does not create inventory or change WRR status)
+//   specs/07-incoming-receiving/design.md §5.3 (WRR printed fields — exact
+//     header/per-line/footer field contract), §5.4 (print/reprint behavior —
+//     does not create inventory or change WRR status)
 //   specs/07-incoming-receiving/requirements.md R2.1, R2.2
 //   specs/00-steering/brand-design-system.md §6 (office surface, Level 1),
-//     §9 (tables: Epilogue SemiBold uppercase headers)
+//     §9 (tables: Inter SemiBold uppercase headers)
 //
 // Surface: Office. Permission gate: receiving.view (design.md §5.4 — print-only, no state change).
 //
-// Print behavior: window.print() is triggered from a client-side button.
-// The @media print styles hide nav/sidebar elements for a clean printed output.
-// Design.md §5.4: printing does not create a receipt outcome, does not change
-// WRR status, and does not alter the scan baseline.
+// Print behavior: window.print() is triggered from a client-side button
+// (_components/PrintButton.tsx — a native onClick cannot live directly in
+// this Server Component's own JSX). The @media print styles hide nav/
+// sidebar elements for a clean printed output. Design.md §5.4: printing does
+// not create a receipt outcome, does not change WRR status, and does not
+// alter the scan baseline.
+//
+// KNOWN, FLAGGED GAP (not silently worked around): design.md §5.4 requires a
+// reprint to be visibly watermarked "REPRINT" with who/when. There is
+// currently no persistence anywhere in the schema for WRR print events (no
+// `wrr_documents.printed_at`/count column, no print-event table analogous to
+// `generated_documents`/`document_events` from spec 10's separate document
+// pipeline) — this page has no way to know whether a given render is the
+// first print or a reprint. Implementing this correctly needs a schema
+// migration (through database-builder + db-migration-verifier per CLAUDE.md,
+// not invented here) before the watermark can be built; do not fake this
+// with a client-side/query-param heuristic.
 //
 // Note: confirmedAt and confirmedByUserId are on the wrr_documents schema but
 // are not included in the WrrDocumentWithItems query result. Extend
@@ -25,6 +39,8 @@ import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { getWrrDocument } from "@/lib/db/queries/receiving";
 import type { WrrItemRow } from "@/lib/db/queries/receiving";
+import { PrintButton } from "./_components/PrintButton";
+import { WrrBarcode } from "./_components/WrrBarcode";
 
 const FLOW_LABELS: Record<string, string> = {
   vmi: "VMI",
@@ -118,16 +134,7 @@ export default async function WrrPrintPage({ params }: PageProps) {
         {/* Screen-only print button */}
         <div className="mb-6 flex gap-3 print:hidden print-hide">
           {/* Print button — primary CTA: brand-red per brand-design-system.md §9 */}
-          <button
-            type="button"
-            onClick={() => {
-              if (typeof window !== "undefined") window.print();
-            }}
-            suppressHydrationWarning
-            className="flex h-11 items-center justify-center rounded bg-brand-red px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
-          >
-            Print
-          </button>
+          <PrintButton />
           <Link
             href={`/receiving/${wrrId}`}
             className="flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
@@ -138,9 +145,9 @@ export default async function WrrPrintPage({ params }: PageProps) {
 
         {/* Printable WRR document */}
         <div className="rounded-md bg-surface-white p-8 shadow-elevation-1">
-          {/* Document header */}
+          {/* Document header — design.md §5.3 header section */}
           <div className="border-b border-outline-variant/30 pb-6">
-            <div className="flex items-start justify-between">
+            <div className="flex items-start justify-between gap-4">
               <div>
                 <h1 className="font-heading font-extrabold text-headline-lg text-on-surface">
                   Dyna-Serv WIMS
@@ -148,24 +155,41 @@ export default async function WrrPrintPage({ params }: PageProps) {
                 <p className="mt-1 font-label text-label uppercase tracking-[0.05em] text-brand-royal-blue">
                   Warehouse Receipt Record
                 </p>
+                <p className="mt-3 font-body text-body-sm text-text-grey">
+                  Date of Generation: {new Date().toLocaleString()}
+                </p>
               </div>
-              {/* WRR number — prominent Roboto Mono, large for barcode placeholder */}
-              <div className="text-right">
-                <p className="font-label text-label uppercase text-text-grey">
-                  WRR Number
-                </p>
-                <p className="font-mono text-mono-xl font-bold text-brand-navy">
-                  {wrr.wrrNumber}
-                </p>
-                <p className="mt-1 font-body text-body-sm text-text-grey">
-                  Printed: {new Date().toLocaleString()}
-                </p>
+              {/* WRR number — scannable QR per design.md §5.3, plus the
+                  human-readable number in mono for manual reference. */}
+              <div className="flex items-start gap-3">
+                <div className="text-right">
+                  <p className="font-label text-label uppercase text-text-grey">
+                    WRR Number
+                  </p>
+                  <p className="font-mono text-mono-xl font-bold text-brand-navy">
+                    {wrr.wrrNumber}
+                  </p>
+                </div>
+                <WrrBarcode wrrNumber={wrr.wrrNumber} />
               </div>
             </div>
           </div>
 
           {/* Header fields — design.md §5.3 */}
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                Source Party (Vendor)
+              </p>
+              <p className="mt-1 font-body text-body-md text-on-surface">
+                {wrr.vendorPartyName ?? "—"}
+                {wrr.vendorPartyCode ? (
+                  <span className="ml-1 font-mono text-mono-sm text-text-grey">
+                    ({wrr.vendorPartyCode})
+                  </span>
+                ) : null}
+              </p>
+            </div>
             <div>
               <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
                 Flow Type
@@ -176,33 +200,44 @@ export default async function WrrPrintPage({ params }: PageProps) {
             </div>
             <div>
               <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                Vendor Party ID
+                CIPL / Commercial Invoice Ref.
               </p>
               <p className="mt-1 font-mono text-mono-md text-on-surface">
-                {wrr.vendorPartyId}
+                {wrr.commercialInvoiceNo ?? "—"}
               </p>
             </div>
-            <div>
-              <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                Created At
-              </p>
-              <p className="mt-1 font-body text-body-md text-on-surface">
-                {wrr.createdAt.toLocaleString()}
-              </p>
-            </div>
-            <div>
-              <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                Staged By
-              </p>
-              <p className="mt-1 font-mono text-mono-md text-on-surface">
-                {wrr.stagedByUserId}
-              </p>
-            </div>
-            {/*
-             * Note: confirmedByUserId and confirmedAt are not included in the
-             * current WrrDocumentRow query result (lib/db/queries/receiving.ts).
-             * Extend getWrrDocument to select these columns when updating the query.
-             */}
+            {/* PEZA/IP/MAWB — "where applicable" per design.md §5.3, so only
+                rendered when the WRR actually has a value for them. */}
+            {wrr.pezaNumber && (
+              <div>
+                <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  PEZA Permit Number
+                </p>
+                <p className="mt-1 font-mono text-mono-md text-on-surface">
+                  {wrr.pezaNumber}
+                </p>
+              </div>
+            )}
+            {wrr.ipNumber && (
+              <div>
+                <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  Import Permit (IP) Number
+                </p>
+                <p className="mt-1 font-mono text-mono-md text-on-surface">
+                  {wrr.ipNumber}
+                </p>
+              </div>
+            )}
+            {wrr.mawbMblNumber && (
+              <div>
+                <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  MAWB / MBL Number
+                </p>
+                <p className="mt-1 font-mono text-mono-md text-on-surface">
+                  {wrr.mawbMblNumber}
+                </p>
+              </div>
+            )}
             <div>
               <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
                 Status
@@ -228,21 +263,28 @@ export default async function WrrPrintPage({ params }: PageProps) {
                   <thead>
                     <tr className="bg-surface-light-grey">
                       <th className="border border-outline-variant/30 px-3 py-2 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                        Item Code
+                      </th>
+                      <th className="border border-outline-variant/30 px-3 py-2 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                        Item Name
+                      </th>
+                      <th className="border border-outline-variant/30 px-3 py-2 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                         Lot Number
                       </th>
-                      {/* Note: Item Code and UOM require query extension —
-                          see lib/db/queries/receiving.ts getWrrDocument */}
-                      <th className="border border-outline-variant/30 px-3 py-2 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                        Item ID
+                      <th className="border border-outline-variant/30 px-3 py-2 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                        Expected Qty / UOM
                       </th>
                       <th className="border border-outline-variant/30 px-3 py-2 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                        Expected Qty
-                      </th>
-                      <th className="border border-outline-variant/30 px-3 py-2 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                        Scanned Qty
+                        Unit CBM
                       </th>
                       <th className="border border-outline-variant/30 px-3 py-2 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                         Disposition
+                      </th>
+                      {/* Blank at print time — completed on the floor by hand
+                          per design.md §5.3. Never pre-filled with the live
+                          scannedQty count, even for a mid-cycle reprint. */}
+                      <th className="border border-outline-variant/30 px-3 py-2 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                        Scanned Qty
                       </th>
                     </tr>
                   </thead>
@@ -250,20 +292,26 @@ export default async function WrrPrintPage({ params }: PageProps) {
                     {wrr.items.map((item: WrrItemRow) => (
                       <tr key={item.id} className="border-b border-outline-variant/30">
                         <td className="border border-outline-variant/30 px-3 py-2 font-mono text-mono-md text-on-surface">
-                          {item.lotNumber}
+                          {item.itemCode ?? "—"}
+                        </td>
+                        <td className="border border-outline-variant/30 px-3 py-2 font-body text-body-sm text-on-surface">
+                          {item.itemName ?? "—"}
                         </td>
                         <td className="border border-outline-variant/30 px-3 py-2 font-mono text-mono-md text-on-surface">
-                          {item.itemId ?? "—"}
+                          {item.lotNumber}
                         </td>
                         <td className="border border-outline-variant/30 px-3 py-2 text-right font-mono text-mono-md text-on-surface">
-                          {item.expectedQty}
+                          {item.expectedQty} {item.uom}
                         </td>
                         <td className="border border-outline-variant/30 px-3 py-2 text-right font-mono text-mono-md text-on-surface">
-                          {item.scannedQty}
+                          {item.unitCbm.toFixed(4)}
                         </td>
                         <td className="border border-outline-variant/30 px-3 py-2 font-label text-label uppercase text-on-surface">
                           {DISPOSITION_LABELS[item.disposition] ??
                             item.disposition.toUpperCase()}
+                        </td>
+                        <td className="border border-outline-variant/30 px-3 py-2 text-right font-mono text-mono-md text-on-surface">
+                          {/* Intentionally blank — see design.md §5.3 note above thead. */}
                         </td>
                       </tr>
                     ))}

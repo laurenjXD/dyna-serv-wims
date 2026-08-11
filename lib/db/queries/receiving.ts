@@ -15,6 +15,10 @@ import { wrrDocuments, wrrItems } from "@/lib/db/schema/wrr";
 // result) would otherwise shadow this schema table within the same
 // function scope.
 import { items as itemsTable } from "@/lib/db/schema/items";
+// Aliased for the same shadowing reason as itemsTable above — this file's
+// `parties` local (vendor name/code on the returned document) would
+// otherwise collide with the schema table.
+import { parties as partiesTable } from "@/lib/db/schema/parties";
 
 // Minimal structural type that both the real Drizzle db instance and test
 // stubs satisfy.
@@ -35,6 +39,19 @@ export type WrrDocumentRow = {
   createdAt: Date;
 };
 
+// Extended header fields consumed by getWrrDocument's print-contract callers
+// (design.md §5.3: commercial invoice/CIPL, PEZA/IP/MAWB numbers, resolved
+// vendor party name+code) — kept out of WrrDocumentRow/listWrrDocuments'
+// select on purpose, since the queue/ledger list views never render these.
+export type WrrDocumentDetailFields = {
+  commercialInvoiceNo: string | null;
+  pezaNumber: string | null;
+  ipNumber: string | null;
+  mawbMblNumber: string | null;
+  vendorPartyName: string | null;
+  vendorPartyCode: string | null;
+};
+
 export type WrrItemRow = {
   id: string;
   wrrId: string;
@@ -47,14 +64,20 @@ export type WrrItemRow = {
   // via a join on wrr_items.item_id. Null when the line's item is not yet
   // enrolled, matching the itemId nullability pattern above.
   itemCode: string | null;
+  // items.name — resolved via the same join as itemCode above. Required by
+  // design.md §5.3's printed per-line field contract ("item name/description").
+  itemName: string | null;
+  // wrr_items.uom — not resolved via a join, a native column on this table.
+  uom: string;
   unitCbm: number;
   putawayLocationId: string | null;
   committedAt: Date | null;
 };
 
-export type WrrDocumentWithItems = WrrDocumentRow & {
-  items: WrrItemRow[];
-};
+export type WrrDocumentWithItems = WrrDocumentRow &
+  WrrDocumentDetailFields & {
+    items: WrrItemRow[];
+  };
 
 // ---------------------------------------------------------------------------
 // Internal raw join row type for getWrrDocument
@@ -68,6 +91,12 @@ type RawJoinRow = {
   vendorPartyId: string;
   stagedByUserId: string;
   createdAt: Date;
+  commercialInvoiceNo: string | null;
+  pezaNumber: string | null;
+  ipNumber: string | null;
+  mawbMblNumber: string | null;
+  vendorPartyName: string | null;
+  vendorPartyCode: string | null;
   // Prefixed item fields — null when left join finds no matching wrr_items row
   itemRowId: string | null;
   itemWrrId: string | null;
@@ -77,6 +106,8 @@ type RawJoinRow = {
   itemDisposition: string | null;
   itemItemId: string | null;
   itemItemCode: string | null;
+  itemItemName: string | null;
+  itemUom: string | null;
   itemUnitCbm: string | number | null;
   itemPutawayLocationId: string | null;
   itemCommittedAt: Date | null;
@@ -160,6 +191,13 @@ export async function getWrrDocument(
       vendorPartyId: wrrDocuments.vendorPartyId,
       stagedByUserId: wrrDocuments.stagedByUserId,
       createdAt: wrrDocuments.createdAt,
+      // design.md §5.3 print-contract header fields.
+      commercialInvoiceNo: wrrDocuments.commercialInvoiceNo,
+      pezaNumber: wrrDocuments.pezaNumber,
+      ipNumber: wrrDocuments.ipNumber,
+      mawbMblNumber: wrrDocuments.mawbMblNumber,
+      vendorPartyName: partiesTable.name,
+      vendorPartyCode: partiesTable.code,
       // Item fields — aliased with "item" prefix to avoid collision
       itemRowId: wrrItems.id,
       itemWrrId: wrrItems.wrrId,
@@ -169,12 +207,15 @@ export async function getWrrDocument(
       itemDisposition: wrrItems.disposition,
       itemItemId: wrrItems.itemId,
       itemItemCode: itemsTable.code,
+      itemItemName: itemsTable.name,
+      itemUom: wrrItems.uom,
       itemUnitCbm: wrrItems.unitCbm,
       itemPutawayLocationId: wrrItems.putawayLocationId,
       itemCommittedAt: wrrItems.committedAt,
     })
     .from(wrrDocuments)
     .where(eq(wrrDocuments.id, wrrId))
+    .leftJoin(partiesTable, eq(partiesTable.id, wrrDocuments.vendorPartyId))
     .leftJoin(wrrItems, eq(wrrItems.wrrId, wrrDocuments.id))
     .leftJoin(itemsTable, eq(itemsTable.id, wrrItems.itemId))) as RawJoinRow[];
 
@@ -196,6 +237,8 @@ export async function getWrrDocument(
       disposition: row.itemDisposition!,
       itemId: row.itemItemId,
       itemCode: row.itemItemCode,
+      itemName: row.itemItemName,
+      uom: row.itemUom ?? "",
       unitCbm: Number(row.itemUnitCbm ?? 0),
       putawayLocationId: row.itemPutawayLocationId,
       committedAt: row.itemCommittedAt,
@@ -206,6 +249,12 @@ export async function getWrrDocument(
     wrrNumber: first.wrrNumber,
     status: first.status,
     flowType: first.flowType,
+    commercialInvoiceNo: first.commercialInvoiceNo,
+    pezaNumber: first.pezaNumber,
+    ipNumber: first.ipNumber,
+    mawbMblNumber: first.mawbMblNumber,
+    vendorPartyName: first.vendorPartyName,
+    vendorPartyCode: first.vendorPartyCode,
     vendorPartyId: first.vendorPartyId,
     stagedByUserId: first.stagedByUserId,
     createdAt: first.createdAt,

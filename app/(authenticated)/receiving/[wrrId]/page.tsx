@@ -234,11 +234,8 @@ export default async function WrrDetailPage({ params }: PageProps) {
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                     Lot Number
                   </th>
-                  {/* Note: itemCode and UOM are not available in the current
-                      WrrItemRow query result. Extend getWrrDocument to include
-                      these when the query is updated. */}
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Item ID
+                    Item Code
                   </th>
                   <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
                     Expected Qty
@@ -261,7 +258,7 @@ export default async function WrrDetailPage({ params }: PageProps) {
                       {item.lotNumber}
                     </td>
                     <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {item.itemId ?? (
+                      {item.itemCode ?? (
                         <span className="text-status-neutral">—</span>
                       )}
                     </td>
