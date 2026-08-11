@@ -170,22 +170,27 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
 
   return (
     <div className="mx-auto max-w-container">
-      {/* Page header — "New WRR" button removed from here (moved into WRRs tab) */}
-      <div>
-        <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
-          Receiving / Incoming
-        </h1>
-        <p className="mt-1 font-body text-body-md text-text-grey">
-          Warehouse receipt records — work queue and confirmed-receipt
-          ledger.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
+            Inbound Management
+          </h1>
+          <p className="mt-1 font-body text-body-md text-text-grey">
+            Manage incoming shipments, WRRs, and dock scheduling.
+          </p>
+        </div>
+        {canCreate && (
+          <Link href="/receiving/new" className="inline-flex h-11 items-center justify-center rounded bg-on-surface px-4 font-label text-label font-bold text-surface-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy">
+            + Start New WRR
+          </Link>
+        )}
       </div>
 
       {/* Tab switcher — office pattern per brand-design-system.md §3 */}
       <div
         role="tablist"
         aria-label="Receiving sections"
-        className="mt-6 flex gap-2 overflow-x-auto border-b border-outline-variant/30"
+        className="mt-6 flex gap-6 overflow-x-auto border-b border-outline-variant/30"
       >
         {TABS.map((tab) => {
           const isActive = tab.key === activeTab;
@@ -201,7 +206,7 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
               href={href}
               role="tab"
               aria-selected={isActive}
-              className={`flex h-14 shrink-0 items-center border-b-2 px-4 font-label text-body-md uppercase tracking-[0.05em] focus:outline-none focus:ring-2 focus:ring-brand-navy md:h-11 md:text-label ${
+              className={`flex h-11 shrink-0 items-center border-b-2 px-1 font-label text-label font-semibold focus:outline-none focus:ring-2 focus:ring-brand-navy ${
                 isActive
                   ? "border-brand-red text-brand-navy"
                   : "border-transparent text-text-grey hover:text-brand-navy"

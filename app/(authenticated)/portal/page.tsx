@@ -22,7 +22,7 @@
 // TODO: wire party type badge to actual assigned flow_type from session scope.
 
 import Link from "next/link";
-import { Package, ListChecks, FileText, Bell } from "lucide-react";
+import { Package, ListChecks, FileText } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 
 // ─── Nav card ─────────────────────────────────────────────────────────────────
@@ -98,32 +98,26 @@ export default async function PortalPage() {
   const hasDocumentsRead = context.grants.some(
     (g) => g.resource === "documents" && g.action === "read",
   );
-  const hasNotificationsRead = context.grants.some(
-    (g) => g.resource === "notifications" && g.action === "read",
-  );
 
   // TODO: wire party name to party record from session scope (user_party_scopes →
   //   parties.display_name) — Task 2, authorization/context resolution layer.
-  const partyName = "Your Company"; // TODO: resolve from session party scope
+  const partyName = "Acme Corp"; // TODO: resolve from session party scope
   // TODO: wire flow type badge to actual assigned flow_type (VMI / Trading / Supplies)
   const partyFlowType = "VMI"; // TODO: resolve from session party scope
 
   return (
     <div className="mx-auto max-w-container">
-      {/* ── Welcome card ──────────────────────────────────────────────────────
-          Level 1 glassmorphism per §6, brand-navy heading per §2. */}
-      <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
               Welcome, {partyName}
             </h1>
             <p className="mt-1 font-body text-body-md text-text-grey">
-              Your portal overview. All data shown is scoped to your account.
+              Vendor Management Portal
             </p>
           </div>
-          {/* Party flow type badge — §1.3 status semantics, icon + text per §9 */}
-          <span className="inline-flex items-center rounded-full bg-brand-royal-blue/10 px-3 py-1 font-label text-label uppercase tracking-[0.05em] text-brand-royal-blue">
+          <span className="inline-flex items-center rounded bg-status-available/10 px-3 py-1 font-label text-label text-status-available">
             {partyFlowType}
           </span>
         </div>
@@ -133,35 +127,34 @@ export default async function PortalPage() {
           requirements.md R1: party user can only see surfaces for their
           assigned capabilities. Locked cards shown for missing capabilities.
           brand-design-system.md §9: office cards, Level 1 elevation. */}
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_260px]">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <NavCard
           href="/portal/inventory"
           icon={<Package size={28} aria-hidden="true" />}
-          label="Inventory"
+          label="Portal Inventory"
           description="View your current stock position"
           locked={!hasReportingRead}
         />
         <NavCard
           href="/portal/orders"
           icon={<ListChecks size={28} aria-hidden="true" />}
-          label="Orders"
+          label="Portal Orders"
           description="View your pick lists and orders"
           locked={!hasPickListRead}
         />
         <NavCard
           href="/portal/documents"
           icon={<FileText size={28} aria-hidden="true" />}
-          label="Documents"
+          label="Portal Documents"
           description="Pick lists and acknowledgement receipts"
           locked={!hasDocumentsRead}
         />
-        <NavCard
-          href="/portal/notifications"
-          icon={<Bell size={28} aria-hidden="true" />}
-          label="Notifications"
-          description="Your account alerts and updates"
-          locked={!hasNotificationsRead}
-        />
+      </div>
+      <aside className="rounded border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">
+        <div className="flex items-center justify-between"><h2 className="font-heading text-body-lg font-bold text-on-surface">Recent Alerts</h2><Link href="/portal/notifications" className="font-label text-label font-bold text-on-surface underline">View All</Link></div>
+        <div className="mt-5 space-y-4 font-body text-body-sm text-text-grey"><p><span className="mr-2 text-status-held">●</span><strong className="text-on-surface">Low Stock Alert: SKU-492</strong><br />Inventory for Industrial Bearings has fallen below minimum threshold.</p><p><span className="mr-2 text-on-surface">●</span><strong className="text-on-surface">PO #8824 Approved</strong><br />Purchase order verified and approved.</p><p><span className="mr-2 text-status-neutral">●</span><strong className="text-on-surface">System Maintenance</strong><br />Scheduled later this week.</p></div>
+      </aside>
       </div>
 
       {/* ── Note: Supplies-flow data is never rendered in this portal ─────────

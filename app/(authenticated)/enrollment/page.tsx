@@ -84,10 +84,10 @@ export default async function EnrollmentPage({ searchParams }: PageProps) {
       {/* Page header */}
       <div>
         <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
-          Enrollment
+          Master Data Management
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">
-          Manage parties, items, and locations.
+          Configure and manage core system entities.
         </p>
       </div>
 

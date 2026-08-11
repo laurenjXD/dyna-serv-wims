@@ -187,6 +187,11 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
         </p>
       </div>
 
+      <div role="status" className="mt-6 flex items-start gap-3 rounded border border-status-held/30 bg-status-held/10 px-4 py-4">
+        <span className="font-heading text-body-lg text-status-held" aria-hidden="true">⚖</span>
+        <div><p className="font-label text-label font-bold text-status-held">COMPLIANCE ENFORCEMENT ACTIVE</p><p className="mt-1 font-body text-body-sm text-text-grey">Self-approval of override requests is blocked. Exceptions require the appropriate approval authority.</p></div>
+      </div>
+
       {/* Filter bar */}
       <div className="mt-6">
         <form method="GET" className="flex flex-wrap items-end gap-3">

@@ -81,10 +81,10 @@ export default async function OutgoingPage({ searchParams }: PageProps) {
       {/* Page header */}
       <div>
         <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
-          Outgoing / Withdrawal
+          Outgoing Work Queue
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">
-          Active pick lists awaiting execution and confirmed outgoing ledger.
+          Manage active picks and dispatch ledgers.
         </p>
       </div>
 

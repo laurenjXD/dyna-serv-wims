@@ -81,10 +81,10 @@ export default async function InventoryPage({ searchParams }: PageProps) {
       {/* Page header */}
       <div>
         <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
-          Master Inventory
+          Detailed Stock Audit
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">
-          Stock overview, committed pick lists, and daily inspection initiation.
+          Review inventory by item, lot, location, and inspection status.
         </p>
       </div>
 

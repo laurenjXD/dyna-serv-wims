@@ -253,17 +253,17 @@ export default async function TransferListPage({ searchParams }: PageProps) {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
-            Transfer Queue
+            Internal Transfers
           </h1>
           <p className="mt-1 font-body text-body-md text-text-grey">
-            Internal location-to-location transfer requests.
+            Manage location-to-location movements within the facility.
           </p>
         </div>
         {/* New Transfer button — h-11 (44px) per brand-design-system.md §3 office target */}
         {canRequest && (
           <Link
             href="/transfers/new"
-            className="inline-flex h-11 items-center justify-center rounded bg-brand-red px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="inline-flex h-11 items-center justify-center rounded bg-on-surface px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
           >
             New Transfer
           </Link>

@@ -110,11 +110,10 @@ export default async function SyncPage({ searchParams }: PageProps) {
       {/* Page header — Fira Sans Bold, headline-xl per brand-design-system.md §2 */}
       <div>
         <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
-          Sync &amp; Offline Queue
+          System Sync
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">
-          Review failed and pending offline operations that need manual
-          resolution.
+          Review failed operations and resolve synchronization issues.
         </p>
       </div>
 
@@ -123,15 +122,13 @@ export default async function SyncPage({ searchParams }: PageProps) {
           TODO: wire to OfflineStatus context from lib/offline (ConnectivityStatus,
           SyncStatus per design.md §9.0). Show amber "Offline" state when
           connectivity === "offline", blue spinner when sync === "syncing". */}
-      <div className="mt-6 flex items-center gap-3 rounded-xl border-l-4 border-status-available bg-status-available/10 px-4 py-3">
-        <CheckCircle2
+      <div className="mt-6 flex items-start gap-3 rounded border border-status-held/30 bg-status-held/10 px-4 py-4">
+        <XCircle
           size={20}
-          className="shrink-0 text-status-available"
+          className="mt-0.5 shrink-0 text-status-held"
           aria-hidden="true"
         />
-        <span className="font-body text-body-md text-on-surface">
-          Connected &mdash; all changes synced.
-        </span>
+        <div><p className="font-heading text-body-md font-bold text-status-held">Critical sync failures detected</p><p className="mt-1 font-body text-body-sm text-text-grey">Failed operations require review before data consistency can be restored.</p></div>
       </div>
 
       {/* ── Tab navigation ─────────────────────────────────────────────────────
