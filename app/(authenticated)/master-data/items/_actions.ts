@@ -42,9 +42,14 @@ function nullableInt(value: FormDataEntryValue | null): number | null {
 }
 
 function parseItemFormData(formData: FormData) {
-  const spqRaw = nullableInt(formData.get("spq"));
+  const flowType = formData.get("flowType") as string;
+  const isVmi = flowType === "vmi";
+  const isTrading = flowType === "trading";
+  const isSupplies = flowType === "supplies";
+
+  const spqRaw = isVmi ? nullableInt(formData.get("spq")) : null;
   const boxesPerPalletRaw = nullableInt(formData.get("boxesPerPallet"));
-  const minReorderLevelRaw = nullableInt(formData.get("minReorderLevel"));
+  const minReorderLevelRaw = isSupplies ? nullableInt(formData.get("minReorderLevel")) : null;
 
   return {
     code: formData.get("code"),
@@ -56,13 +61,11 @@ function parseItemFormData(formData: FormData) {
     description: nullableString(formData.get("description")),
     itemType: nullableString(formData.get("itemType")) ?? "standard",
     categoryId: nullableString(formData.get("categoryId")),
-    defaultSupplierPartyId: nullableString(
-      formData.get("defaultSupplierPartyId"),
-    ),
+    defaultSupplierPartyId: isVmi ? nullableString(formData.get("defaultSupplierPartyId")) : null,
     uom: formData.get("uom") ?? "piece",
-    currency: formData.get("currency") ?? "USD",
+    currency: isTrading ? (formData.get("currency") ?? "USD") : "USD",
     spq: spqRaw ?? 1,
-    spqMeter: nullableString(formData.get("spqMeter")),
+    spqMeter: isVmi ? nullableString(formData.get("spqMeter")) : null,
     lengthCm: nullableString(formData.get("lengthCm")),
     widthCm: nullableString(formData.get("widthCm")),
     heightCm: nullableString(formData.get("heightCm")),
@@ -72,8 +75,8 @@ function parseItemFormData(formData: FormData) {
     minReorderLevel: minReorderLevelRaw ?? 0,
     isPerishable: formData.get("isPerishable") === "true",
     isActive: formData.get("isActive") !== "false",
-    buyingPrice: nullableString(formData.get("buyingPrice")),
-    sellingPrice: nullableString(formData.get("sellingPrice")),
+    buyingPrice: isTrading ? nullableString(formData.get("buyingPrice")) : null,
+    sellingPrice: isTrading ? nullableString(formData.get("sellingPrice")) : null,
   };
 }
 

@@ -243,6 +243,30 @@ export function LocationForm({
           {fieldError("maxCbmCapacity")}
         </div>
 
+        {/* Max Weight Capacity */}
+        <div>
+          <label
+            htmlFor="maxWeightCapacity"
+            className="block font-label text-label text-on-surface"
+          >
+            Max Weight Capacity (kg){" "}
+            <span aria-hidden="true" className="text-action-blue">*</span>
+          </label>
+          <input
+            id="maxWeightCapacity"
+            name="maxWeightCapacity"
+            type="number"
+            min="0"
+            step="0.001"
+            required
+            defaultValue={location?.maxWeightCapacity ?? ""}
+            placeholder="e.g. 500.000"
+            className={inputClass("maxWeightCapacity")}
+            {...ariaProps("maxWeightCapacity")}
+          />
+          {fieldError("maxWeightCapacity")}
+        </div>
+
         {/* Active */}
         <div className="flex items-center gap-3">
           <input

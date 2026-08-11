@@ -12,6 +12,7 @@
 // TODO: wire to inventory_transactions query
 // TODO: wire financial section to vmi_cbm_ledger + pick_list_items pricing query
 
+import Link from "next/link";
 import { BarChart2, Check, Download, LockKeyhole, TriangleAlert } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
@@ -197,6 +198,54 @@ export default async function ReportsPage({ searchParams }: PageProps) {
             <HealthRow icon={<Check size={23} />} title="QC pass rate (30d)" detail="No inspections recorded yet" tone="available" />
           </div>
         </article>
+      </section>
+
+      {/* Quick Access panel */}
+      <section className="mt-6 rounded-2xl border border-outline-variant/30 bg-white p-6 shadow-elevation-1">
+        <h2 className="font-heading font-semibold text-headline-md text-on-surface">
+          Quick Access
+        </h2>
+        <p className="mt-1 font-body text-body-sm text-on-surface-variant">
+          Common workflows and operational queues.
+        </p>
+        <div className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-4">
+          <Link
+            href="/receiving/new"
+            className="flex flex-col items-center justify-center gap-3 rounded-xl border border-outline-variant/30 bg-surface-dim p-4 motion-safe:transition-colors hover:border-primary hover:bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Download size={20} aria-hidden="true" />
+            </div>
+            <span className="font-label text-label text-on-surface">Receive WRR</span>
+          </Link>
+          <Link
+            href="/transfers/new"
+            className="flex flex-col items-center justify-center gap-3 rounded-xl border border-outline-variant/30 bg-surface-dim p-4 motion-safe:transition-colors hover:border-primary hover:bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <BarChart2 size={20} aria-hidden="true" />
+            </div>
+            <span className="font-label text-label text-on-surface">New Transfer</span>
+          </Link>
+          <Link
+            href="/outgoing"
+            className="flex flex-col items-center justify-center gap-3 rounded-xl border border-outline-variant/30 bg-surface-dim p-4 motion-safe:transition-colors hover:border-primary hover:bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Check size={20} aria-hidden="true" />
+            </div>
+            <span className="font-label text-label text-on-surface">Pick List Queue</span>
+          </Link>
+          <Link
+            href="/inventory"
+            className="flex flex-col items-center justify-center gap-3 rounded-xl border border-outline-variant/30 bg-surface-dim p-4 motion-safe:transition-colors hover:border-primary hover:bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <BarChart2 size={20} aria-hidden="true" />
+            </div>
+            <span className="font-label text-label text-on-surface">Stock View</span>
+          </Link>
+        </div>
       </section>
 
       <section className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">

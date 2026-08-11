@@ -68,6 +68,10 @@ export function ItemForm({
   const [state, formAction, isPending] = useActionState(action, {});
   const isEdit = !!item;
 
+  const initialCategory = categories.find((c) => c.id === item?.categoryId);
+  const initialFlowType = initialCategory?.flowType ?? "vmi";
+  const [flowType, setFlowType] = useState<string>(initialFlowType);
+
   const [uom, setUom] = useState<string>(item?.uom ?? "piece");
   const [lengthCm, setLengthCm] = useState(item?.lengthCm ?? "");
   const [widthCm, setWidthCm] = useState(item?.widthCm ?? "");
@@ -76,6 +80,8 @@ export function ItemForm({
     cbm: string;
     cm3: string;
   } | null>(null);
+
+  const filteredCategories = categories.filter((cat) => cat.flowType === flowType || !cat.flowType);
 
   useEffect(() => {
     if (lengthCm && widthCm && heightCm) {
@@ -136,6 +142,35 @@ export function ItemForm({
           {state.error}
         </div>
       )}
+
+      {/* Section: Flow Type */}
+      <section aria-labelledby="section-flow-type" className="mb-8">
+        <h2
+          id="section-flow-type"
+          className="mb-4 font-heading font-semibold text-data-display text-on-surface"
+        >
+          Flow Type
+        </h2>
+        <div>
+          <label htmlFor="flowType" className="block font-label text-label text-on-surface">
+            Flow Type <span aria-hidden="true" className="text-action-blue">*</span>
+          </label>
+          <select
+            id="flowType"
+            name="flowType"
+            value={flowType}
+            onChange={(e) => setFlowType(e.target.value)}
+            className="mt-1 block w-full max-w-sm rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <option value="vmi">VMI (Vendor Managed Inventory)</option>
+            <option value="trading">Trading</option>
+            <option value="supplies">Supplies</option>
+          </select>
+          <p className="mt-1 font-body text-body-sm text-on-surface-variant">
+            Determines the available categories and flow-specific fields.
+          </p>
+        </div>
+      </section>
 
       {/* Section: Core identifiers */}
       <section aria-labelledby="section-identifiers">
@@ -278,10 +313,9 @@ export function ItemForm({
               className="mt-1 block w-full rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="">None</option>
-              {categories.map((cat) => (
+              {filteredCategories.map((cat) => (
                 <option key={cat.id} value={cat.id}>
                   {cat.name}
-                  {cat.flowType ? ` (${cat.flowType})` : ""}
                 </option>
               ))}
             </select>
@@ -332,43 +366,47 @@ export function ItemForm({
             {fieldError("uom")}
           </div>
 
-          <div>
-            <label htmlFor="spq" className="block font-label text-label text-on-surface">
-              SPQ (Standard Pkg Qty){" "}
-              <span aria-hidden="true" className="text-action-blue">*</span>
-            </label>
-            <input
-              id="spq"
-              name="spq"
-              type="number"
-              min="1"
-              step="1"
-              required
-              defaultValue={item?.spq ?? 1}
-              className={inputClass("spq")}
-              {...ariaProps("spq")}
-            />
-            {fieldError("spq")}
-          </div>
+          {flowType === "vmi" && (
+            <>
+              <div>
+                <label htmlFor="spq" className="block font-label text-label text-on-surface">
+                  SPQ (Standard Pkg Qty){" "}
+                  <span aria-hidden="true" className="text-action-blue">*</span>
+                </label>
+                <input
+                  id="spq"
+                  name="spq"
+                  type="number"
+                  min="1"
+                  step="1"
+                  required
+                  defaultValue={item?.spq ?? 1}
+                  className={inputClass("spq")}
+                  {...ariaProps("spq")}
+                />
+                {fieldError("spq")}
+              </div>
 
-          {showSpqMeter && (
-            <div>
-              <label htmlFor="spqMeter" className="block font-label text-label text-on-surface">
-                SPQ Meter (m/roll){" "}
-                <span aria-hidden="true" className="text-action-blue">*</span>
-              </label>
-              <input
-                id="spqMeter"
-                name="spqMeter"
-                type="number"
-                min="0.01"
-                step="0.01"
-                defaultValue={item?.spqMeter ?? ""}
-                className={inputClass("spqMeter")}
-                {...ariaProps("spqMeter")}
-              />
-              {fieldError("spqMeter")}
-            </div>
+              {showSpqMeter && (
+                <div>
+                  <label htmlFor="spqMeter" className="block font-label text-label text-on-surface">
+                    SPQ Meter (m/roll){" "}
+                    <span aria-hidden="true" className="text-action-blue">*</span>
+                  </label>
+                  <input
+                    id="spqMeter"
+                    name="spqMeter"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    defaultValue={item?.spqMeter ?? ""}
+                    className={inputClass("spqMeter")}
+                    {...ariaProps("spqMeter")}
+                  />
+                  {fieldError("spqMeter")}
+                </div>
+              )}
+            </>
           )}
 
           <div>
@@ -516,70 +554,72 @@ export function ItemForm({
       </section>
 
       {/* Section: Pricing (reference values) */}
-      <section aria-labelledby="section-pricing" className="mt-8">
-        <h2
-          id="section-pricing"
-          className="mb-4 font-heading font-semibold text-data-display text-on-surface"
-        >
-          Reference Prices
-        </h2>
-        <div className="mb-4 rounded border border-status-warning/30 bg-status-warning/5 px-4 py-3">
-          <p className="font-body text-body-md text-on-surface">
-            <strong>Reference values only.</strong> These prices do not directly
-            determine any Trading document price or VMI billing amount. Final
-            pricing is resolved by the respective workflow (spec 12/13).
-          </p>
-        </div>
-        <div className="grid gap-4 md:grid-cols-3">
-          <div>
-            <label htmlFor="currency" className="block font-label text-label text-on-surface">
-              Currency
-            </label>
-            <select
-              id="currency"
-              name="currency"
-              defaultValue={item?.currency ?? "USD"}
-              className="mt-1 block w-full rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              {CURRENCY_OPTIONS.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+      {flowType === "trading" && (
+        <section aria-labelledby="section-pricing" className="mt-8">
+          <h2
+            id="section-pricing"
+            className="mb-4 font-heading font-semibold text-data-display text-on-surface"
+          >
+            Reference Prices
+          </h2>
+          <div className="mb-4 rounded border border-status-warning/30 bg-status-warning/5 px-4 py-3">
+            <p className="font-body text-body-md text-on-surface">
+              <strong>Reference values only.</strong> These prices do not directly
+              determine any Trading document price or VMI billing amount. Final
+              pricing is resolved by the respective workflow (spec 12/13).
+            </p>
           </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div>
+              <label htmlFor="currency" className="block font-label text-label text-on-surface">
+                Currency
+              </label>
+              <select
+                id="currency"
+                name="currency"
+                defaultValue={item?.currency ?? "USD"}
+                className="mt-1 block w-full rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                {CURRENCY_OPTIONS.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div>
-            <label htmlFor="buyingPrice" className="block font-label text-label text-on-surface">
-              Buying Price (reference)
-            </label>
-            <input
-              id="buyingPrice"
-              name="buyingPrice"
-              type="number"
-              min="0"
-              step="0.0001"
-              defaultValue={item?.buyingPrice ?? ""}
-              className={inputClass("buyingPrice")}
-            />
-          </div>
+            <div>
+              <label htmlFor="buyingPrice" className="block font-label text-label text-on-surface">
+                Buying Price (reference)
+              </label>
+              <input
+                id="buyingPrice"
+                name="buyingPrice"
+                type="number"
+                min="0"
+                step="0.0001"
+                defaultValue={item?.buyingPrice ?? ""}
+                className={inputClass("buyingPrice")}
+              />
+            </div>
 
-          <div>
-            <label htmlFor="sellingPrice" className="block font-label text-label text-on-surface">
-              Selling Price (reference)
-            </label>
-            <input
-              id="sellingPrice"
-              name="sellingPrice"
-              type="number"
-              min="0"
-              step="0.0001"
-              defaultValue={item?.sellingPrice ?? ""}
-              className={inputClass("sellingPrice")}
-            />
+            <div>
+              <label htmlFor="sellingPrice" className="block font-label text-label text-on-surface">
+                Selling Price (reference)
+              </label>
+              <input
+                id="sellingPrice"
+                name="sellingPrice"
+                type="number"
+                min="0"
+                step="0.0001"
+                defaultValue={item?.sellingPrice ?? ""}
+                className={inputClass("sellingPrice")}
+              />
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Section: Inventory settings */}
       <section aria-labelledby="section-inventory" className="mt-8">
@@ -590,44 +630,48 @@ export function ItemForm({
           Inventory Settings
         </h2>
         <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label htmlFor="defaultSupplierPartyId" className="block font-label text-label text-on-surface">
-              Default Supplier Party
-            </label>
-            <select
-              id="defaultSupplierPartyId"
-              name="defaultSupplierPartyId"
-              defaultValue={item?.defaultSupplierPartyId ?? ""}
-              className="mt-1 block w-full rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="">None</option>
-              {supplierParties.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.code} — {p.name}
-                </option>
-              ))}
-            </select>
-            <p className="mt-1 font-body text-body-sm text-on-surface-variant">
-              Active parties with vendor or supplier role only.
-            </p>
-          </div>
+          {flowType === "vmi" && (
+            <div>
+              <label htmlFor="defaultSupplierPartyId" className="block font-label text-label text-on-surface">
+                Default Supplier Party
+              </label>
+              <select
+                id="defaultSupplierPartyId"
+                name="defaultSupplierPartyId"
+                defaultValue={item?.defaultSupplierPartyId ?? ""}
+                className="mt-1 block w-full rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">None</option>
+                {supplierParties.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.code} — {p.name}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 font-body text-body-sm text-on-surface-variant">
+                Active parties with vendor or supplier role only.
+              </p>
+            </div>
+          )}
 
-          <div>
-            <label htmlFor="minReorderLevel" className="block font-label text-label text-on-surface">
-              Min Reorder Level
-            </label>
-            <input
-              id="minReorderLevel"
-              name="minReorderLevel"
-              type="number"
-              min="0"
-              step="1"
-              defaultValue={item?.minReorderLevel ?? 0}
-              className={inputClass("minReorderLevel")}
-              {...ariaProps("minReorderLevel")}
-            />
-            {fieldError("minReorderLevel")}
-          </div>
+          {flowType === "supplies" && (
+            <div>
+              <label htmlFor="minReorderLevel" className="block font-label text-label text-on-surface">
+                Min Reorder Level
+              </label>
+              <input
+                id="minReorderLevel"
+                name="minReorderLevel"
+                type="number"
+                min="0"
+                step="1"
+                defaultValue={item?.minReorderLevel ?? 0}
+                className={inputClass("minReorderLevel")}
+                {...ariaProps("minReorderLevel")}
+              />
+              {fieldError("minReorderLevel")}
+            </div>
+          )}
 
           <div className="flex items-center gap-3">
             <input

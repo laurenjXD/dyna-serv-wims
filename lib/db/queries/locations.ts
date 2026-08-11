@@ -31,6 +31,7 @@ export type LocationListRow = {
   label: string;
   locationType: string;
   maxCbmCapacity: string;
+  maxWeightCapacity: string;
   isActive: boolean;
   createdAt: Date;
 };
@@ -44,6 +45,7 @@ export type LocationDetail = {
   label: string;
   locationType: string;
   maxCbmCapacity: string;
+  maxWeightCapacity: string;
   isActive: boolean;
   createdAt: Date;
 };
@@ -99,6 +101,7 @@ export async function listLocations(
       label: locations.label,
       locationType: locations.locationType,
       maxCbmCapacity: locations.maxCbmCapacity,
+      maxWeightCapacity: locations.maxWeightCapacity,
       isActive: locations.isActive,
       createdAt: locations.createdAt,
     })
@@ -141,6 +144,7 @@ export async function getLocation(
       label: locations.label,
       locationType: locations.locationType,
       maxCbmCapacity: locations.maxCbmCapacity,
+      maxWeightCapacity: locations.maxWeightCapacity,
       isActive: locations.isActive,
       createdAt: locations.createdAt,
     })

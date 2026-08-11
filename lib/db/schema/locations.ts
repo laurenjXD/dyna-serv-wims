@@ -11,6 +11,7 @@ export const locations = pgTable("locations", {
   label: varchar("label", { length: 100 }).notNull().unique(), // Format: Rack+Level-Position (e.g. 'A1-01' for Rack A, Level 1, Position 01)
   locationType: locationTypeEnum("location_type").default("storage").notNull(),
   maxCbmCapacity: decimal("max_cbm_capacity", { precision: 10, scale: 4 }).notNull(),
+  maxWeightCapacity: decimal("max_weight_capacity", { precision: 10, scale: 3 }).default("0").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

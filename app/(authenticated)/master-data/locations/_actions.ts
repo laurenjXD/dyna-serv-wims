@@ -61,6 +61,7 @@ export async function createLocationAction(
     position: formData.get("position"),
     locationType: formData.get("locationType") ?? "storage",
     maxCbmCapacity: nullableString(formData.get("maxCbmCapacity")) ?? "",
+    maxWeightCapacity: nullableString(formData.get("maxWeightCapacity")) ?? "",
     isActive: formData.get("isActive") !== "false",
   };
 
@@ -98,6 +99,7 @@ export async function updateLocationAction(
     position: formData.get("position"),
     locationType: formData.get("locationType") ?? "storage",
     maxCbmCapacity: nullableString(formData.get("maxCbmCapacity")) ?? "",
+    maxWeightCapacity: nullableString(formData.get("maxWeightCapacity")) ?? "",
     isActive: formData.get("isActive") !== "false",
   };
 

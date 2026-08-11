@@ -156,6 +156,14 @@ export default async function LocationDetailPage({
             </dd>
           </div>
           <div>
+            <dt className="font-label text-label text-on-surface-variant">
+              Max Weight Capacity
+            </dt>
+            <dd className="mt-1 font-mono text-mono-md font-bold text-on-surface">
+              {location.maxWeightCapacity} kg
+            </dd>
+          </div>
+          <div>
             <dt className="font-label text-label text-on-surface-variant">Enrolled</dt>
             <dd className="mt-1 font-body text-body-md text-on-surface">
               {location.createdAt.toLocaleDateString()}

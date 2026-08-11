@@ -1,126 +1,12 @@
-// `/billing-pricing` — Billing & Pricing hub.
-//
-// Traceability:
-//   specs/12-vmi-billing/design.md (VMI CBM ledger, period billing, statements)
-//   specs/13-trading-orders-and-pricing/design.md (Trading margin ledger)
-//   specs/00-steering/brand-design-system.md §6 (office Level 1 elevation),
-//     §2 (typography — font-mono for numeric columns per §9)
-//
-// Surface: Office. Capability gate: reporting.financial_read.
-// VMI prices shown are per-release references only — not the final VMI bill.
-// The real VMI bill is always the period average (vmi_cbm_ledger).
-// Trading prices shown are final.
-// Offline: billing data is Tier 2 — online only, never cached.
-// TODO: wire VMI tab to vmi_cbm_ledger table query
-// TODO: wire Trading tab to pick_list_items pricing query
-
 import Link from "next/link";
-import { Download, Printer, Receipt } from "lucide-react";
+import { Receipt } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
-
-// VMI CBM ledger mock rows
-// TODO: wire to vmi_cbm_ledger table query
-const MOCK_VMI_ROWS = [
-  {
-    id: "vmi-001",
-    party: "Acme Logistics Co.",
-    lotsInStorage: 3,
-    avgDailyCbm: 12.4,
-    ratePerCbm: 4.5,
-    subtotal: 55.8,
-  },
-  {
-    id: "vmi-002",
-    party: "Global Parts Inc.",
-    lotsInStorage: 5,
-    avgDailyCbm: 28.7,
-    ratePerCbm: 4.5,
-    subtotal: 129.15,
-  },
-  {
-    id: "vmi-003",
-    party: "Pacific Supply Group",
-    lotsInStorage: 1,
-    avgDailyCbm: 3.2,
-    ratePerCbm: 4.5,
-    subtotal: 14.4,
-  },
-];
-
-// Trading margin ledger mock rows
-// TODO: wire to pick_list_items pricing query
-const MOCK_TRADING_ROWS = [
-  {
-    id: "trd-001",
-    orderNumber: "PL-2026-002",
-    party: "Nexus Distribution Ltd.",
-    item: "Hydraulic Seal Kit 75mm",
-    lot: "LOT-2026-003",
-    qty: 12,
-    sellPrice: 48.0,
-    cogs: 32.0,
-    marginPct: 33.3,
-  },
-  {
-    id: "trd-002",
-    orderNumber: "PL-2026-004",
-    party: "Nexus Distribution Ltd.",
-    item: "Pneumatic Cylinder 50mm",
-    lot: "LOT-2026-002",
-    qty: 5,
-    sellPrice: 210.0,
-    cogs: 145.0,
-    marginPct: 30.95,
-  },
-  {
-    id: "trd-003",
-    orderNumber: "PL-2026-005",
-    party: "Arcadia Industrial",
-    item: "Industrial Grade Bearing 6205",
-    lot: "LOT-2026-001",
-    qty: 50,
-    sellPrice: 12.5,
-    cogs: 8.2,
-    marginPct: 34.4,
-  },
-];
-
-// Months for period selector
-const MONTHS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
-interface PageProps {
-  searchParams: Promise<{
-    tab?: string;
-    month?: string;
-    year?: string;
-  }>;
-}
-
-export default async function BillingPricingPage({ searchParams }: PageProps) {
-  const {
-    tab: tabParam,
-    month: monthParam,
-    year: yearParam,
-  } = await searchParams;
-
+export default async function BillingPricingPage(props: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const { tab: tabParam } = await props.searchParams;
   const resolver = await createPageResolver();
   const permResult = await requirePermission(resolver, "reporting.financial_read");
 
@@ -145,9 +31,6 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
   }
 
   const activeTab = tabParam === "trading" ? "trading" : "vmi";
-  const currentYear = new Date().getFullYear();
-  const selectedMonth = monthParam ? parseInt(monthParam, 10) : new Date().getMonth();
-  const selectedYear = yearParam ? parseInt(yearParam, 10) : currentYear;
 
   return (
     <div className="mx-auto max-w-container">
@@ -157,7 +40,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
           Billing &amp; Pricing
         </h1>
         <p className="mt-1 font-body text-body-md text-on-surface-variant">
-          VMI period billing and Trading margin ledger.
+          Enrollment forms for VMI contract terms and Trading margin policies.
         </p>
       </div>
 
@@ -172,7 +55,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
           }`}
           aria-current={activeTab === "vmi" ? "page" : undefined}
         >
-          VMI Billing
+          VMI Contracts
         </Link>
         <Link
           href="/billing-pricing?tab=trading"
@@ -183,412 +66,202 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
           }`}
           aria-current={activeTab === "trading" ? "page" : undefined}
         >
-          Trading Margin
+          Trading Margin Policies
         </Link>
       </div>
 
       {/* Tab content */}
-      <div className="mt-4">
-        {activeTab === "vmi" ? (
-          <VmiBillingTab selectedMonth={selectedMonth} selectedYear={selectedYear} />
-        ) : (
-          <TradingMarginTab selectedMonth={selectedMonth} selectedYear={selectedYear} />
-        )}
+      <div className="mt-6">
+        {activeTab === "vmi" ? <VmiContractForm /> : <TradingMarginForm />}
       </div>
     </div>
   );
 }
 
-// ─── VMI Billing tab ──────────────────────────────────────────────────────────
+// ─── Mock VMI Contract Form ──────────────────────────────────────────────────
 
-interface TabProps {
-  selectedMonth: number;
-  selectedYear: number;
-}
-
-function VmiBillingTab({ selectedMonth, selectedYear }: TabProps) {
-  const vmiTotal = MOCK_VMI_ROWS.reduce((sum, r) => sum + r.subtotal, 0);
-
+function VmiContractForm() {
   return (
-    <div className="flex flex-col gap-4">
-      {/* Period selector */}
-      <form method="GET" className="flex flex-wrap items-end gap-3">
-        <input type="hidden" name="tab" value="vmi" />
-        <div className="flex flex-col gap-1">
-          <label
-            htmlFor="vmi-month"
-            className="font-label text-label text-on-surface-variant"
-          >
-            Month
-          </label>
-          <select
-            id="vmi-month"
-            name="month"
-            defaultValue={selectedMonth}
-            className="h-11 rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            {MONTHS.map((m, i) => (
-              <option key={m} value={i}>
-                {m}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex flex-col gap-1">
-          <label
-            htmlFor="vmi-year"
-            className="font-label text-label text-on-surface-variant"
-          >
-            Year
-          </label>
-          <select
-            id="vmi-year"
-            name="year"
-            defaultValue={selectedYear}
-            className="h-11 rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            {[selectedYear - 1, selectedYear, selectedYear + 1].map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
-        </div>
-        <button
-          type="submit"
-          className="flex h-11 items-center justify-center rounded bg-primary px-4 font-label text-label text-white motion-safe:transition-opacity motion-safe:duration-150 hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-primary"
-        >
-          Apply
-        </button>
-      </form>
-
-      {/* Summary card */}
-      <div className="rounded-2xl border border-outline-variant/30 bg-white p-6 shadow-elevation-1">
+    <div className="rounded-2xl border border-outline-variant/30 bg-white shadow-elevation-1">
+      <div className="border-b border-outline-variant/30 px-6 py-4">
         <h2 className="font-heading font-semibold text-headline-md text-on-surface">
-          {MONTHS[selectedMonth]} {selectedYear} — Summary
+          VMI Contract Terms
         </h2>
         <p className="mt-1 font-body text-body-sm text-on-surface-variant">
-          VMI amounts are period averages — reference only, not your final bill.
-          The real VMI invoice is the period average from{" "}
-          <span className="font-mono text-mono-md">vmi_cbm_ledger</span>.
+          Placeholder form for VMI billing inputs (Spec 16).
         </p>
-
-        <div className="mt-4 flex flex-wrap gap-6">
-          <div>
-            <p className="font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-              CBM Usage (avg/day)
-            </p>
-            <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
-              {MOCK_VMI_ROWS.reduce((s, r) => s + r.avgDailyCbm, 0).toFixed(1)} m³
-            </p>
-          </div>
-          <div>
-            <p className="font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-              Daily Storage Rate
-            </p>
-            <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
-              $4.50 / m³
-            </p>
-          </div>
-          <div>
-            <p className="font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-              Projected Billing Total
-            </p>
-            <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
-              ${vmiTotal.toFixed(2)}
-            </p>
-            <p className="mt-0.5 font-body text-body-sm text-on-surface-variant">
-              Reference amount, not your final bill
-            </p>
-          </div>
-        </div>
       </div>
+      <form className="p-6">
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Party Selection */}
+          <div className="flex flex-col gap-2 md:col-span-2">
+            <label className="font-label text-label text-on-surface-variant">
+              Party
+            </label>
+            <select className="h-11 rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary">
+              <option value="">Select a party...</option>
+              <option value="party-1">Acme Logistics Co.</option>
+              <option value="party-2">Global Parts Inc.</option>
+              <option value="party-3">Pacific Supply Group</option>
+            </select>
+          </div>
 
-      {/* CBM Ledger table */}
-      <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-white shadow-elevation-1">
-        <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
-          <h2 className="font-heading font-semibold text-headline-md text-on-surface">
-            CBM Ledger
-          </h2>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              aria-label="Export VMI statement"
-              className="flex h-11 items-center gap-2 rounded-xl border border-outline-variant/30 px-4 font-body text-body-md text-on-surface motion-safe:transition-colors motion-safe:duration-150 hover:border-primary hover:text-primary motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <Download size={16} aria-hidden="true" />
-              Export
-            </button>
-            <button
-              type="button"
-              aria-label="Print VMI statement"
-              className="flex h-11 items-center gap-2 rounded-xl border border-outline-variant/30 px-4 font-body text-body-md text-on-surface motion-safe:transition-colors motion-safe:duration-150 hover:border-primary hover:text-primary motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <Printer size={16} aria-hidden="true" />
-              Print
-            </button>
+          <div className="flex flex-col gap-2">
+            <label className="font-label text-label text-on-surface-variant">
+              CBM-day Storage Rate
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              defaultValue="4.50"
+              className="h-11 rounded border border-outline-variant/30 px-3 font-mono text-mono-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+          
+          <div className="flex flex-col gap-2">
+            <label className="font-label text-label text-on-surface-variant">
+              Billing Currency
+            </label>
+            <select className="h-11 rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary">
+              <option value="USD">USD</option>
+              <option value="PHP">PHP</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="font-label text-label text-on-surface-variant">
+              Inbound Handling Fee
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              defaultValue="15.00"
+              className="h-11 rounded border border-outline-variant/30 px-3 font-mono text-mono-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="font-label text-label text-on-surface-variant">
+              Outbound Handling Fee
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              defaultValue="10.00"
+              className="h-11 rounded border border-outline-variant/30 px-3 font-mono text-mono-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="font-label text-label text-on-surface-variant">
+              Contracted CBM Threshold (Before Surcharge)
+            </label>
+            <input
+              type="number"
+              step="1"
+              defaultValue="50"
+              className="h-11 rounded border border-outline-variant/30 px-3 font-mono text-mono-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+            />
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="border-b border-outline-variant/30 bg-surface-dim">
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-                  Party
-                </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-                  Lots in Storage
-                </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-                  Avg Daily CBM (m³)
-                </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-                  Rate ($/m³)
-                </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-                  Subtotal
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline-variant/30">
-              {/* TODO: wire to vmi_cbm_ledger table query */}
-              {MOCK_VMI_ROWS.map((row) => (
-                <tr key={row.id} className="hover:bg-surface-dim/50">
-                  {/* Party name — body font */}
-                  <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                    {row.party}
-                  </td>
-                  {/* Numeric columns — Roboto Mono per §9 */}
-                  <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                    {row.lotsInStorage}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                    {row.avgDailyCbm.toFixed(1)}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                    ${row.ratePerCbm.toFixed(2)}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                    ${row.subtotal.toFixed(2)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="border-t-2 border-outline-variant/30 bg-surface-dim">
-                <td
-                  colSpan={4}
-                  className="px-4 py-3 font-label text-label uppercase tracking-[0.05em] text-on-surface-variant"
-                >
-                  Period Total
-                </td>
-                <td className="px-4 py-3 font-mono text-mono-md font-bold text-on-surface">
-                  ${vmiTotal.toFixed(2)}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Trading Margin tab ───────────────────────────────────────────────────────
-
-function TradingMarginTab({ selectedMonth, selectedYear }: TabProps) {
-  const totalRevenue = MOCK_TRADING_ROWS.reduce(
-    (s, r) => s + r.sellPrice * r.qty,
-    0,
-  );
-  const totalCogs = MOCK_TRADING_ROWS.reduce((s, r) => s + r.cogs * r.qty, 0);
-  const grossMarginPct =
-    totalRevenue > 0 ? ((totalRevenue - totalCogs) / totalRevenue) * 100 : 0;
-
-  return (
-    <div className="flex flex-col gap-4">
-      {/* Period selector */}
-      <form method="GET" className="flex flex-wrap items-end gap-3">
-        <input type="hidden" name="tab" value="trading" />
-        <div className="flex flex-col gap-1">
-          <label
-            htmlFor="trd-month"
-            className="font-label text-label text-on-surface-variant"
-          >
-            Month
-          </label>
-          <select
-            id="trd-month"
-            name="month"
-            defaultValue={selectedMonth}
-            className="h-11 rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            {MONTHS.map((m, i) => (
-              <option key={m} value={i}>
-                {m}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex flex-col gap-1">
-          <label
-            htmlFor="trd-year"
-            className="font-label text-label text-on-surface-variant"
-          >
-            Year
-          </label>
-          <select
-            id="trd-year"
-            name="year"
-            defaultValue={selectedYear}
-            className="h-11 rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            {[selectedYear - 1, selectedYear, selectedYear + 1].map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
-        </div>
-        <button
-          type="submit"
-          className="flex h-11 items-center justify-center rounded bg-primary px-4 font-label text-label text-white motion-safe:transition-opacity motion-safe:duration-150 hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-primary"
-        >
-          Apply
-        </button>
-      </form>
-
-      {/* Summary card */}
-      <div className="rounded-2xl border border-outline-variant/30 bg-white p-6 shadow-elevation-1">
-        <h2 className="font-heading font-semibold text-headline-md text-on-surface">
-          {MONTHS[selectedMonth]} {selectedYear} — Summary
-        </h2>
-        <p className="mt-1 font-body text-body-sm text-on-surface-variant">
-          Trading prices shown are final. Revenue, COGS, and margin are per-order totals.
-        </p>
-
-        <div className="mt-4 flex flex-wrap gap-6">
-          <div>
-            <p className="font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-              Total Orders
-            </p>
-            <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
-              {MOCK_TRADING_ROWS.length}
-            </p>
-          </div>
-          <div>
-            <p className="font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-              Total Revenue
-            </p>
-            <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
-              ${totalRevenue.toFixed(2)}
-            </p>
-          </div>
-          <div>
-            <p className="font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-              Total COGS
-            </p>
-            <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
-              ${totalCogs.toFixed(2)}
-            </p>
-          </div>
-          <div>
-            <p className="font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-              Gross Margin
-            </p>
-            <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
-              {grossMarginPct.toFixed(1)}%
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Margin ledger table */}
-      <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-white shadow-elevation-1">
-        <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
-          <h2 className="font-heading font-semibold text-headline-md text-on-surface">
-            Margin Ledger
-          </h2>
+        <div className="mt-8 flex justify-end gap-3">
           <button
             type="button"
-            aria-label="Export trading margin ledger"
-            className="flex h-11 items-center gap-2 rounded-xl border border-outline-variant/30 px-4 font-body text-body-md text-on-surface motion-safe:transition-colors motion-safe:duration-150 hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+            className="flex h-11 items-center justify-center rounded px-4 font-label text-label text-on-surface-variant hover:bg-surface-dim focus:outline-none focus:ring-2 focus:ring-primary"
           >
-            <Download size={16} aria-hidden="true" />
-            Export
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="flex h-11 items-center justify-center rounded bg-primary px-6 font-label text-label text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            Save Contract
           </button>
         </div>
+      </form>
+    </div>
+  );
+}
 
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="border-b border-outline-variant/30 bg-surface-dim">
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-                  Order #
-                </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-                  Party
-                </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-                  Item
-                </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-                  Lot
-                </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-                  Qty
-                </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-                  Sell Price
-                </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-                  COGS
-                </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-                  Margin %
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline-variant/30">
-              {/* TODO: wire to pick_list_items pricing query */}
-              {MOCK_TRADING_ROWS.map((row) => (
-                <tr key={row.id} className="hover:bg-surface-dim/50">
-                  {/* Order # — Roboto Mono for codes */}
-                  <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                    {row.orderNumber}
-                  </td>
-                  {/* Party — body font */}
-                  <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                    {row.party}
-                  </td>
-                  {/* Item — body font */}
-                  <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                    {row.item}
-                  </td>
-                  {/* Lot — Roboto Mono */}
-                  <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                    {row.lot}
-                  </td>
-                  {/* Numeric columns — Roboto Mono per §9 */}
-                  <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                    {row.qty}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                    ${row.sellPrice.toFixed(2)}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                    ${row.cogs.toFixed(2)}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                    {row.marginPct.toFixed(1)}%
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+// ─── Mock Trading Margin Form ───────────────────────────────────────────────
+
+function TradingMarginForm() {
+  return (
+    <div className="rounded-2xl border border-outline-variant/30 bg-white shadow-elevation-1">
+      <div className="border-b border-outline-variant/30 px-6 py-4">
+        <h2 className="font-heading font-semibold text-headline-md text-on-surface">
+          Trading Pricing/Margin Policy
+        </h2>
+        <p className="mt-1 font-body text-body-sm text-on-surface-variant">
+          Placeholder form for Trading customer margin inputs (Spec 16).
+        </p>
       </div>
+      <form className="p-6">
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Party Selection */}
+          <div className="flex flex-col gap-2 md:col-span-2">
+            <label className="font-label text-label text-on-surface-variant">
+              Customer
+            </label>
+            <select className="h-11 rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary">
+              <option value="">Select a customer...</option>
+              <option value="party-4">Nexus Distribution Ltd.</option>
+              <option value="party-5">Arcadia Industrial</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="font-label text-label text-on-surface-variant">
+              Target Margin (%)
+            </label>
+            <input
+              type="number"
+              step="0.1"
+              defaultValue="30.0"
+              className="h-11 rounded border border-outline-variant/30 px-3 font-mono text-mono-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="font-label text-label text-on-surface-variant">
+              Margin Floor (%)
+            </label>
+            <input
+              type="number"
+              step="0.1"
+              defaultValue="20.0"
+              className="h-11 rounded border border-outline-variant/30 px-3 font-mono text-mono-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
+          <div className="flex flex-col gap-2 md:col-span-2">
+            <label className="font-label text-label text-on-surface-variant">
+              Pricing Strategy
+            </label>
+            <select className="h-11 rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary">
+              <option value="fixed_markup">Fixed Markup on COGS</option>
+              <option value="contract_pricing">Contract Item Pricing</option>
+              <option value="volume_tier">Volume Tiered Discount</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="mt-8 flex justify-end gap-3">
+          <button
+            type="button"
+            className="flex h-11 items-center justify-center rounded px-4 font-label text-label text-on-surface-variant hover:bg-surface-dim focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="flex h-11 items-center justify-center rounded bg-primary px-6 font-label text-label text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            Save Policy
+          </button>
+        </div>
+      </form>
     </div>
   );
 }

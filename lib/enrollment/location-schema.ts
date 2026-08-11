@@ -13,6 +13,7 @@ export type LocationInput = {
   position: string;
   locationType: "receiving_bay" | "inspection" | "storage" | "picking" | "dispatch";
   maxCbmCapacity: string;
+  maxWeightCapacity: string;
   isActive: boolean;
 };
 
@@ -133,6 +134,28 @@ export function parseLocationInput(input: unknown): ParseResult<LocationInput> {
     }
   }
 
+  // maxWeightCapacity — decimal(10,3) NOT NULL, must be positive
+  const maxWeightCapacity = raw["maxWeightCapacity"];
+  if (maxWeightCapacity === undefined || maxWeightCapacity === null || maxWeightCapacity === "") {
+    errors.push({
+      field: "maxWeightCapacity",
+      message: "Maximum weight capacity is required.",
+    });
+  } else if (typeof maxWeightCapacity !== "string") {
+    errors.push({
+      field: "maxWeightCapacity",
+      message: "Maximum weight capacity must be a decimal string.",
+    });
+  } else {
+    const parsed = parseFloat(maxWeightCapacity);
+    if (isNaN(parsed) || parsed < 0) {
+      errors.push({
+        field: "maxWeightCapacity",
+        message: "Maximum weight capacity must be a non-negative decimal value.",
+      });
+    }
+  }
+
   if (errors.length > 0) {
     return { success: false, errors };
   }
@@ -144,6 +167,7 @@ export function parseLocationInput(input: unknown): ParseResult<LocationInput> {
     position: (position as string).trim(),
     locationType: resolvedLocationType,
     maxCbmCapacity: maxCbmCapacity as string,
+    maxWeightCapacity: maxWeightCapacity as string,
     isActive: typeof raw["isActive"] === "boolean" ? raw["isActive"] : true,
   };
 
