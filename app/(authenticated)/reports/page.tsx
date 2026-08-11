@@ -1,94 +1,199 @@
 // `/reports` — Reports & Analytics dashboard.
 //
 // Traceability:
-//   specs/16-reporting-and-analytics/design.md (KPI cards, inventory activity
-//     heatmap, movement history, financial summary)
+//   specs/16-reporting-and-analytics/design.md (KPI cards FR-1.2, activity
+//     heatmap FR-1.3, analytics domains FR-2 through FR-7)
 //   specs/00-steering/brand-design-system.md §6 (office Level 1 elevation),
 //     §2 (typography), §1.3 (status colors)
+//   specs/00-steering/revision-log.md (2026-08-07: /reports owns KPI dashboard,
+//     not /; 2026-08-07: reporting.financial_read added for supervisor + admin)
 //
 // Surface: Office. Capability gate: reporting.read.
 // Financial section gate: reporting.financial_read (supervisor/administrator only).
 // Offline: all analytics are Tier 2 — online only, never cached.
-// TODO: wire to inventory_transactions query
-// TODO: wire financial section to vmi_cbm_ledger + pick_list_items pricing query
+// Aggregate queries MUST read lot_inventory_totals, never raw lot_location_balances.
 
-import { BarChart2, Check, Download, LockKeyhole, TriangleAlert } from "lucide-react";
+import Link from "next/link";
+import {
+  BarChart2,
+  PackageCheck,
+  Truck,
+  Layers,
+  TrendingDown,
+  AlertTriangle,
+  ClipboardCheck,
+  FlaskConical,
+  ClipboardList,
+  Download,
+} from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
+import { db } from "@/lib/db/client";
+import { KpiCard } from "@/components/analytics/KpiCard";
+import { KpiCardGroup } from "@/components/analytics/KpiCardGroup";
 import { MovementChart, type MovementChartDatum } from "@/components/reporting/MovementChart";
 import { MonthlyFlowChart, type MonthlyFlowDatum } from "@/components/reporting/MonthlyFlowChart";
-import { LocationOccupancyChart } from "@/components/reporting/LocationOccupancyChart";
+import { getInventoryKpis } from "@/lib/analytics/queries/inventory";
+import { getWrrVolumeTrend } from "@/lib/analytics/queries/receiving";
+import { getPickListVolumeTrend } from "@/lib/analytics/queries/outbound";
+import { getActivityHeatmap } from "@/lib/analytics/queries/heatmap";
+import { listWrrDocuments } from "@/lib/db/queries/receiving";
+import { listPickLists } from "@/lib/db/queries/withdrawals";
+import { listInspectionCases } from "@/lib/db/queries/transfers";
+import { listPendingApprovalRequests } from "@/lib/db/queries/approvals";
+import { HeatmapSection } from "./_components/HeatmapSection";
+import type { FlowType } from "@/components/analytics/types";
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
-// TODO: wire to inventory_transactions query
+// ─── Flow filter mapping ───────────────────────────────────────────────────────
+//
+// URL filter param is lowercase ('vmi'/'trading'/'supplies'/'all') but the
+// filter chips historically used uppercase labels. We normalise to lowercase
+// for the analytics executor's AnalyticsFlow type.
 
-const MOCK_MOVEMENTS = [
-  {
-    id: "txn-001",
-    date: "2026-08-09",
-    type: "Receiving",
-    item: "Industrial Grade Bearing 6205",
-    lot: "LOT-2026-001",
-    qty: 200,
-    party: "Acme Logistics Co.",
-    flow: "VMI",
-    reference: "WRR-2026-001",
-  },
-  {
-    id: "txn-002",
-    date: "2026-08-08",
-    type: "Picking",
-    item: "Hydraulic Seal Kit 75mm",
-    lot: "LOT-2026-003",
-    qty: 12,
-    party: "Nexus Distribution Ltd.",
-    flow: "Trading",
-    reference: "PL-2026-002",
-  },
-  {
-    id: "txn-003",
-    date: "2026-08-07",
-    type: "Transfer",
-    item: "O-Ring Assortment Pack",
-    lot: "LOT-2026-005",
-    qty: 50,
-    party: "—",
-    flow: "Supplies",
-    reference: "TRF-2026-001",
-  },
-  {
-    id: "txn-004",
-    date: "2026-08-06",
-    type: "Receiving",
-    item: "Pneumatic Cylinder 50mm Bore",
-    lot: "LOT-2026-002",
-    qty: 30,
-    party: "Global Parts Inc.",
-    flow: "VMI",
-    reference: "WRR-2026-002",
-  },
-  {
-    id: "txn-005",
-    date: "2026-08-05",
-    type: "Picking",
-    item: "Industrial Grade Bearing 6205",
-    lot: "LOT-2026-001",
-    qty: 24,
-    party: "Acme Logistics Co.",
-    flow: "VMI",
-    reference: "PL-2026-001",
-  },
-];
+function toAnalyticsFlow(filter: string): FlowType {
+  const lower = filter.toLowerCase();
+  if (lower === "vmi" || lower === "trading" || lower === "supplies") {
+    return lower;
+  }
+  return "all";
+}
 
-const MONTHLY_FLOW: MonthlyFlowDatum[] = [
-  { month: "Jan", vmi: 250, trading: 72, supplies: 30 },
-  { month: "Feb", vmi: 190, trading: 118, supplies: 42 },
-  { month: "Mar", vmi: 250, trading: 138, supplies: 64 },
-  { month: "Apr", vmi: 215, trading: 78, supplies: 38 },
-  { month: "May", vmi: 290, trading: 145, supplies: 70 },
-  { month: "Jun", vmi: 235, trading: 155, supplies: 55 },
-  { month: "Jul", vmi: 320, trading: 170, supplies: 88 },
-  { month: "Aug", vmi: 270, trading: 135, supplies: 52 },
+// ─── Quick Access panel component ─────────────────────────────────────────────
+
+function QuickAccessSection({
+  recentWrrs,
+  openPickLists,
+  openInspections,
+  pendingApprovals,
+  hasApprovalAccess,
+}: {
+  recentWrrs: Array<{ id: string; wrrNumber: string; status: string; vendorPartyName: string | null }>;
+  openPickLists: Array<{ id: string; pickListNumber: string; status: string }>;
+  openInspections: Array<{ id: string; itemCode: string; lotNumber: string }>;
+  pendingApprovals: Array<{ id: string; approvalType: string }>;
+  hasApprovalAccess: boolean;
+}) {
+  return (
+    <section aria-label="Quick access" className="grid gap-6 lg:grid-cols-3">
+      {/* Recent WRRs */}
+      <div className="rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+        <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
+          <h3 className="font-heading text-headline-md font-semibold text-on-surface">Recent WRRs</h3>
+          <Link href="/receiving" className="font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy">
+            View all
+          </Link>
+        </div>
+        {recentWrrs.length === 0 ? (
+          <p className="px-4 py-6 font-body text-body-md text-text-grey">No active WRRs.</p>
+        ) : (
+          <div className="divide-y divide-outline-variant/30">
+            {recentWrrs.map((wrr) => (
+              <div key={wrr.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="font-mono text-mono-md font-bold text-on-surface truncate">{wrr.wrrNumber}</p>
+                  <p className="font-body text-body-sm text-text-grey truncate">{wrr.vendorPartyName ?? "—"}</p>
+                </div>
+                <Link href={`/receiving/${wrr.id}/receive`} className="shrink-0 inline-flex h-9 items-center rounded bg-brand-red px-3 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy">
+                  Receive
+                </Link>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Open Pick Lists */}
+      <div className="rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+        <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
+          <h3 className="font-heading text-headline-md font-semibold text-on-surface">Active Pick Lists</h3>
+          <Link href="/outgoing" className="font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy">
+            View all
+          </Link>
+        </div>
+        {openPickLists.length === 0 ? (
+          <p className="px-4 py-6 font-body text-body-md text-text-grey">No active pick lists.</p>
+        ) : (
+          <div className="divide-y divide-outline-variant/30">
+            {openPickLists.map((pl) => (
+              <div key={pl.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                <p className="font-mono text-mono-md font-bold text-on-surface">{pl.pickListNumber}</p>
+                <Link href={`/pick-lists/${pl.id}/pick`} className="shrink-0 inline-flex h-9 items-center rounded bg-brand-red px-3 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy">
+                  Go to Pick
+                </Link>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Open Inspections + Pending Approvals */}
+      <div className="space-y-4">
+        <div className="rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+          <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
+            <h3 className="font-heading text-headline-md font-semibold text-on-surface">Inspections</h3>
+            <Link href="/inspection" className="font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy">
+              View all
+            </Link>
+          </div>
+          {openInspections.length === 0 ? (
+            <p className="px-4 py-4 font-body text-body-md text-text-grey">No open inspection cases.</p>
+          ) : (
+            <div className="divide-y divide-outline-variant/30">
+              {openInspections.map((c) => (
+                <div key={c.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="font-mono text-mono-md font-bold text-on-surface truncate">{c.itemCode}</p>
+                    <p className="font-body text-body-sm text-text-grey truncate">{c.lotNumber}</p>
+                  </div>
+                  <Link href={`/inspection/${c.id}`} className="shrink-0 inline-flex h-9 items-center rounded border border-outline-variant/30 px-3 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy">
+                    View
+                  </Link>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {hasApprovalAccess && (
+          <div className="rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+            <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
+              <h3 className="font-heading text-headline-md font-semibold text-on-surface">Pending Approvals</h3>
+              <Link href="/approvals" className="font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy">
+                View all
+              </Link>
+            </div>
+            {pendingApprovals.length === 0 ? (
+              <p className="px-4 py-4 font-body text-body-md text-status-available">All clear — no pending approvals.</p>
+            ) : (
+              <div className="divide-y divide-outline-variant/30">
+                {pendingApprovals.map((req) => (
+                  <div key={req.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                    <p className="font-label text-label uppercase text-status-pending truncate">{req.approvalType.replace("_", " ")}</p>
+                    <Link href={`/approvals/${req.id}`} className="shrink-0 inline-flex h-9 items-center rounded bg-brand-red px-3 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy">
+                      Review
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+// ─── Monthly flow data (chart skeleton — trend series) ─────────────────────────
+// These values are a reasonable static seed for the chart while the full
+// time-series aggregation query (FR-2 per-period analytics) is not yet built.
+// Clearly documented as static — not labelled as live data to the user.
+const MONTHLY_FLOW_SEED: MonthlyFlowDatum[] = [
+  { month: "Mar", vmi: 0, trading: 0, supplies: 0 },
+  { month: "Apr", vmi: 0, trading: 0, supplies: 0 },
+  { month: "May", vmi: 0, trading: 0, supplies: 0 },
+  { month: "Jun", vmi: 0, trading: 0, supplies: 0 },
+  { month: "Jul", vmi: 0, trading: 0, supplies: 0 },
+  { month: "Aug", vmi: 0, trading: 0, supplies: 0 },
 ];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -106,11 +211,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   if (permResult.kind !== "authorized") {
     return (
       <div className="mx-auto max-w-container px-8 py-12 text-center">
-        <BarChart2
-          size={40}
-          className="mx-auto mb-3 text-text-grey"
-          aria-hidden="true"
-        />
+        <BarChart2 size={40} className="mx-auto mb-3 text-text-grey" aria-hidden="true" />
         <p className="font-body text-body-md text-text-grey">
           You do not have permission to view reports.
         </p>
@@ -124,269 +225,219 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   }
 
   // Check for financial access — reporting.financial_read (supervisor/administrator)
-  const financialPermResult = await requirePermission(
-    resolver,
-    "reporting.financial_read",
-  );
-  const hasFinancialAccess = financialPermResult.kind === "authorized";
+  const hasFinancialAccess =
+    (await requirePermission(resolver, "reporting.financial_read")).kind === "authorized";
 
-  const activeFilter = filterParam ?? "all";
+  const hasApprovalAccess =
+    (await requirePermission(resolver, "fifo_override.approve")).kind === "authorized";
 
-  // Movements per day, most recent last — derived from the same mock feed
-  // as the table below (TODO: wire to inventory_transactions once the real
-  // aggregation query lands, same as the table).
-  const movementChartData: MovementChartDatum[] = Object.values(
-    MOCK_MOVEMENTS.reduce<Record<string, MovementChartDatum>>((acc, txn) => {
-      const entry = acc[txn.date] ?? {
-        date: txn.date,
-        label: new Date(txn.date).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-        }),
-        count: 0,
-      };
-      entry.count += 1;
-      acc[txn.date] = entry;
-      return acc;
-    }, {}),
-  ).sort((a, b) => a.date.localeCompare(b.date));
+  // Normalize filter for analytics executor
+  const activeFilter = toAnalyticsFlow(filterParam ?? "all");
+
+  // ─── Parallel data fetching ────────────────────────────────────────────────
+
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const mtdRange = { startDate: startOfMonth, endDate: now };
+
+  const [
+    inventoryKpis,
+    mtdReceiptsRaw,
+    mtdDispatchesRaw,
+    { total: pendingInspectionsCount },
+    heatmapData,
+    { rows: recentWrrs },
+    { rows: openPickLists },
+    { rows: openInspections },
+    pendingApprovalsRows,
+  ] = await Promise.all([
+    // Inventory KPIs from lot_inventory_totals (spec 16 NFR — never raw lot_location_balances)
+    getInventoryKpis(),
+    // MTD receiving volume: WRR documents created this month
+    getWrrVolumeTrend(mtdRange, activeFilter, "month"),
+    // MTD dispatch volume: dispatched pick lists this month
+    getPickListVolumeTrend(mtdRange, activeFilter, "month"),
+    // Pending inspections count
+    listInspectionCases(db, { status: "open", limit: 1 }),
+    // 52-week activity heatmap
+    getActivityHeatmap(activeFilter),
+    // Quick Access: in-progress WRRs
+    listWrrDocuments(db, { limit: 3, offset: 0, status: "receiving_in_progress" }),
+    // Quick Access: allocated pick lists
+    listPickLists(db, { limit: 3, offset: 0, status: "allocated" }),
+    // Quick Access: open inspection cases
+    listInspectionCases(db, { status: "open", limit: 3 }),
+    // Quick Access: pending approvals (only if user has access)
+    hasApprovalAccess
+      ? listPendingApprovalRequests(db, { limit: 3, offset: 0 })
+      : Promise.resolve({ rows: [], total: 0 }),
+  ]);
+
+  // MTD counts from aggregation results (rows may be empty when no data yet)
+  const totalReceiptsMtd = mtdReceiptsRaw.length > 0
+    ? Number((mtdReceiptsRaw[0] as Record<string, unknown>).count ?? 0)
+    : 0;
+  const totalDispatchesMtd = mtdDispatchesRaw.length > 0
+    ? Number((mtdDispatchesRaw[0] as Record<string, unknown>).dispatched_count ?? 0)
+    : 0;
+
+  // Movement chart — derived from heatmap data (daily counts, last 8 data points for the chart)
+  const movementChartData: MovementChartDatum[] = heatmapData
+    .slice(-30) // last 30 days
+    .map((point) => ({
+      date: point.date,
+      label: new Date(point.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      count: point.count,
+    }));
 
   return (
     <div className="mx-auto max-w-container px-6 py-8 lg:px-8">
-      <div className="mb-6 lg:hidden">
-        <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">Reports &amp; Analytics</h1>
-        <p className="mt-1 font-body text-body-md text-text-grey">Inventory activity, movement history, and KPI overview.</p>
-      </div>
-
-      {/* Analytics is the financial-accessible surface; the landing page
-          remains limited to operational queues per spec 05 R11.5. */}
-      <section className="grid gap-6 xl:grid-cols-[1.02fr_1.04fr_1fr]">
-        <article className="overflow-hidden rounded-2xl border border-brand-navy/30 bg-brand-navy p-6 shadow-elevation-1">
-          <p className="font-label text-label uppercase tracking-[0.06em] text-white/60">Total inventory valuation</p>
-          <div className="mt-5 flex items-end justify-between gap-3">
-            <p className="font-heading text-headline-xl font-extrabold text-white">
-              {hasFinancialAccess ? "$0.00" : "Restricted"}
-            </p>
-            <span className="rounded-full bg-status-available/20 px-3 py-2 font-label text-label text-status-available">↑ Current</span>
-          </div>
-          <div className="mt-6 grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-white/10 p-4"><p className="font-body text-body-sm text-white/60">VMI</p><p className="mt-2 font-heading text-data-display font-bold text-white">{hasFinancialAccess ? "$0.00" : "—"}</p></div>
-            <div className="rounded-xl bg-white/10 p-4"><p className="font-body text-body-sm text-white/60">Trading</p><p className="mt-2 font-heading text-data-display font-bold text-white">{hasFinancialAccess ? "$0.00" : "—"}</p></div>
-          </div>
-          {!hasFinancialAccess && <p className="mt-4 flex items-center gap-2 font-body text-body-sm text-white/65"><LockKeyhole size={15} aria-hidden="true" />Financial reporting access required.</p>}
-          <div className="mt-6 h-16 rounded-t-full border-t-4 border-brand-red bg-gradient-to-b from-brand-red/20 to-transparent" aria-hidden="true" />
-        </article>
-
-        <article className="rounded-2xl border border-outline-variant/30 border-l-[7px] border-l-brand-red bg-surface-white p-6 shadow-elevation-1">
-          <p className="font-label text-label uppercase tracking-[0.06em] text-text-grey">Open floor queues</p>
-          <div className="mt-6 space-y-4">
-            {[['Pending Receiving WRRs', '0'], ['Active Pick Lists to Execute', '0'], ['Items Pending QC Inspection', '0']].map(([label, count]) => (
-              <div key={label} className="flex items-center justify-between rounded-xl bg-surface-light-grey px-5 py-5">
-                <span className="font-heading text-body-md font-semibold text-on-surface">{label}</span>
-                <span className="font-heading text-headline-md font-extrabold text-on-surface">{count}</span>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
-          <p className="font-label text-label uppercase tracking-[0.06em] text-text-grey">Stock health &amp; quality</p>
-          <div className="mt-6 space-y-4">
-            <HealthRow icon={<TriangleAlert size={23} />} title="Low stock reorder alerts" detail="No items below reorder level" tone="pending" />
-            <HealthRow icon={<LockKeyhole size={23} />} title="Held / quarantined lots" detail="No lots pending release" tone="held" />
-            <HealthRow icon={<Check size={23} />} title="QC pass rate (30d)" detail="No inspections recorded yet" tone="available" />
-          </div>
-        </article>
-      </section>
-
-      <section className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <article className="rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
-          <div className="flex flex-wrap items-start justify-between gap-4"><div><h2 className="font-heading text-headline-md font-bold text-on-surface">Monthly Flow Movement</h2><p className="mt-1 font-body text-body-sm text-text-grey">Inbound receiving vs. outbound dispatch by flow type</p></div><div className="flex gap-4 font-body text-body-sm text-text-grey"><Legend color="bg-brand-navy" label="VMI" /><Legend color="bg-brand-royal-blue" label="Trading" /><Legend color="bg-status-neutral" label="Supplies" /></div></div>
-          <MonthlyFlowChart data={MONTHLY_FLOW} />
-        </article>
-        <article className="rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1"><h2 className="font-heading text-headline-md font-bold text-on-surface">Location Occupancy</h2><LocationOccupancyChart /><div className="space-y-3 font-body text-body-sm text-text-grey"><Legend color="bg-brand-navy" label="Zone A Storage" /><Legend color="bg-brand-royal-blue" label="Zone B Racks" /><Legend color="bg-status-neutral" label="Cold Storage" /><Legend color="bg-brand-red" label="Overflow" /></div></article>
-      </section>
-
-      {/* Movement Trend — real recharts bar chart, most recent day highlighted
-          in brand-red per §9's "one accent, used sparingly" dashboard rule. */}
-      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
-        <h2 className="font-heading font-semibold text-headline-md text-on-surface">
-          Movement Trend
-        </h2>
-        <p className="mt-1 font-body text-body-sm text-text-grey">
-          Transactions per day across all flows
+      <div className="mb-8">
+        <h1 className="font-heading text-headline-xl font-extrabold text-on-surface">
+          Reports &amp; Analytics
+        </h1>
+        <p className="mt-1 font-body text-body-md text-text-grey">
+          Inventory activity, movement history, and KPI overview.
         </p>
-        <MovementChart data={movementChartData} />
       </div>
 
-      {/* Activity Heatmap */}
-      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-heading font-semibold text-headline-md text-on-surface">
-            Inventory Activity (52 Weeks)
-          </h2>
+      {/* ── KPI Cards (FR-1.2: exactly 6 cards) ──────────────────────────────
+          Spec 16 FR-1.2: Total Receipts MTD, Total Dispatches MTD,
+          Total Lots In Stock, Total Committed Qty, Low Stock Items Count,
+          Pending Inspections Count — do not add or drop any. */}
+      <section aria-label="Key performance indicators">
+        <KpiCardGroup>
+          <KpiCard
+            label="Total Receipts MTD"
+            value={totalReceiptsMtd}
+            trend={{ direction: "flat", pct: 0 }}
+            icon={<PackageCheck size={22} />}
+            linkTo="/receiving?tab=ledger"
+          />
+          <KpiCard
+            label="Total Dispatches MTD"
+            value={totalDispatchesMtd}
+            trend={{ direction: "flat", pct: 0 }}
+            icon={<Truck size={22} />}
+            linkTo="/outgoing?tab=ledger"
+          />
+          <KpiCard
+            label="Total Lots In Stock"
+            value={inventoryKpis.totalLotsInStock}
+            trend={{ direction: "flat", pct: 0 }}
+            icon={<Layers size={22} />}
+            linkTo="/inventory"
+          />
+          <KpiCard
+            label="Total Committed Qty"
+            value={inventoryKpis.totalCommittedQty}
+            trend={{ direction: "flat", pct: 0 }}
+            icon={<ClipboardCheck size={22} />}
+            linkTo="/inventory?tab=pick-lists"
+          />
+          <KpiCard
+            label="Low Stock Items"
+            value={inventoryKpis.lowStockItemsCount}
+            trend={{ direction: inventoryKpis.lowStockItemsCount > 0 ? "up" : "flat", pct: 0 }}
+            icon={<TrendingDown size={22} />}
+            statusColor={inventoryKpis.lowStockItemsCount > 0 ? "held" : undefined}
+            linkTo="/inventory"
+          />
+          <KpiCard
+            label="Pending Inspections"
+            value={pendingInspectionsCount}
+            trend={{ direction: pendingInspectionsCount > 0 ? "up" : "flat", pct: 0 }}
+            icon={<FlaskConical size={22} />}
+            statusColor={pendingInspectionsCount > 0 ? "pending" : undefined}
+            linkTo="/inspection"
+          />
+        </KpiCardGroup>
+      </section>
 
-          {/* Filter chips */}
-          <div className="flex gap-2">
-            {(["all", "VMI", "Trading", "Supplies"] as const).map((f) => (
-              <a
-                key={f}
-                href={`/reports?filter=${f}`}
-                className={`flex h-11 items-center rounded-full px-4 font-label text-label motion-safe:transition-colors motion-safe:duration-150 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy ${
-                  activeFilter === f
-                    ? "bg-brand-navy text-surface-white"
-                    : "border border-outline-variant/30 text-text-grey hover:text-on-surface"
-                }`}
+      {/* ── Activity Heatmap (FR-1.3: 52×7 grid, flow-filterable) ──────────
+          Client component — filter changes navigate to /reports?filter=<flow>.
+          Data is fetched server-side per the active filter in the URL. */}
+      <section aria-label="Inventory activity heatmap" className="mt-8">
+        <HeatmapSection data={heatmapData} flowFilter={activeFilter} />
+      </section>
+
+      {/* ── Quick Access Panel ────────────────────────────────────────────── */}
+      <section aria-label="Quick access" className="mt-8">
+        <h2 className="mb-4 font-heading text-headline-md font-semibold text-on-surface">
+          Quick Access
+        </h2>
+        <QuickAccessSection
+          recentWrrs={recentWrrs.map((w) => ({
+            id: w.id,
+            wrrNumber: w.wrrNumber,
+            status: w.status,
+            vendorPartyName: w.vendorPartyName,
+          }))}
+          openPickLists={openPickLists.map((pl) => ({
+            id: pl.id,
+            pickListNumber: pl.pickListNumber,
+            status: pl.status,
+          }))}
+          openInspections={openInspections.map((c) => ({
+            id: c.id,
+            itemCode: c.itemCode,
+            lotNumber: c.lotNumber,
+          }))}
+          pendingApprovals={pendingApprovalsRows.rows.map((r) => ({
+            id: r.id,
+            approvalType: r.approvalType,
+          }))}
+          hasApprovalAccess={hasApprovalAccess}
+        />
+      </section>
+
+      {/* ── Movement Trend ────────────────────────────────────────────────── */}
+      {movementChartData.length > 0 && (
+        <section aria-label="Movement trend chart" className="mt-8">
+          <div className="rounded-md border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="font-heading text-headline-md font-semibold text-on-surface">
+                  Movement Trend
+                </h2>
+                <p className="font-body text-body-sm text-text-grey">
+                  Transactions per day — last 30 days
+                </p>
+              </div>
+              <button
+                type="button"
+                className="flex h-11 items-center gap-2 rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                aria-label="Export movement history"
               >
-                {f === "all" ? "All" : f}
-              </a>
-            ))}
+                <Download size={16} aria-hidden="true" />
+                Export
+              </button>
+            </div>
+            <MovementChart data={movementChartData} />
           </div>
-        </div>
+        </section>
+      )}
 
-        {/* Heatmap placeholder — wired from inventory_transactions data */}
-        <div className="mt-4 h-32 rounded-xl bg-surface-light-grey" role="img" aria-label="Inventory activity heatmap — not yet wired to data">
-          <div className="flex h-full items-center justify-center">
-            <p className="font-body text-body-sm text-text-grey">
-              Heatmap — wired from <span className="font-mono text-mono-md">inventory_transactions</span> data
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Movement History table */}
-      <div className="mt-6 overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
-        {/* Table header row with export button */}
-        <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
-          <h2 className="font-heading font-semibold text-headline-md text-on-surface">
-            Movement History
-          </h2>
-          <button
-            type="button"
-            className="flex h-11 items-center gap-2 rounded-xl border border-outline-variant/30 px-4 font-body text-body-md text-on-surface motion-safe:transition-colors motion-safe:duration-150 hover:border-brand-navy hover:text-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            aria-label="Export movement history"
-          >
-            <Download size={16} aria-hidden="true" />
-            Export
-          </button>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                  Date
-                </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                  Type
-                </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                  Item
-                </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                  Lot
-                </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                  Qty
-                </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                  Party
-                </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                  Flow
-                </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                  Reference
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline-variant/30">
-              {/* TODO: wire to inventory_transactions query */}
-              {MOCK_MOVEMENTS.map((txn) => (
-                <tr key={txn.id} className="hover:bg-surface-light-grey/50">
-                  <td className="px-4 py-3 font-body text-body-md text-text-grey">
-                    {txn.date}
-                  </td>
-                  <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                    {txn.type}
-                  </td>
-                  <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                    {txn.item}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                    {txn.lot}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                    {txn.qty}
-                  </td>
-                  <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                    {txn.party}
-                  </td>
-                  <td className="px-4 py-3 font-body text-body-md text-text-grey">
-                    {txn.flow}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                    {txn.reference}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Financial summary — shown only if reporting.financial_read */}
-      {hasFinancialAccess && (
-        <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
-          <h2 className="font-heading font-semibold text-headline-md text-on-surface">
-            Financial Summary
-          </h2>
+      {/* ── Monthly Flow chart (static seed — FR-2 time-series pending) ──── */}
+      <section aria-label="Monthly flow breakdown" className="mt-8">
+        <div className="rounded-md border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
+          <h2 className="font-heading text-headline-md font-semibold text-on-surface">Monthly Flow</h2>
           <p className="mt-1 font-body text-body-sm text-text-grey">
-            VMI amounts shown are period averages — reference only, not per-document
-            totals. Trading amounts are final invoice figures.
+            Inbound vs. outbound volumes by flow type (FR-2 per-period time-series not yet aggregated — chart shows skeleton).
           </p>
+          <MonthlyFlowChart data={MONTHLY_FLOW_SEED} />
+        </div>
+      </section>
 
-          <div className="mt-4 flex flex-wrap gap-6">
-            {/* VMI billing total */}
-            <div className="flex-1">
-              <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                VMI Billing Total (Period)
-              </p>
-              <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
-                $0.00
-              </p>
-              <p className="mt-0.5 font-body text-body-sm text-text-grey">
-                Reference amount, not your final bill
-              </p>
-              {/* TODO: wire to vmi_cbm_ledger + pick_list_items pricing query */}
-            </div>
-
-            {/* Trading margin total */}
-            <div className="flex-1">
-              <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                Trading Gross Margin (Period)
-              </p>
-              <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
-                $0.00
-              </p>
-              <p className="mt-0.5 font-body text-body-sm text-text-grey">
-                Revenue minus COGS across all Trading orders
-              </p>
-              {/* TODO: wire to pick_list_items pricing query */}
-            </div>
-          </div>
+      {!hasFinancialAccess && (
+        <div className="mt-8 flex items-center gap-3 rounded-md border border-outline-variant/30 bg-surface-light-grey px-4 py-4">
+          <AlertTriangle size={20} className="shrink-0 text-status-pending" aria-hidden="true" />
+          <p className="font-body text-body-md text-text-grey">
+            Financial reporting sections (VMI billing, Trading margin) require{" "}
+            <span className="font-mono text-mono-md">reporting.financial_read</span> access.
+          </p>
         </div>
       )}
     </div>
   );
-}
-
-function Legend({ color, label }: { color: string; label: string }) {
-  return <span className="flex items-center gap-2"><span className={`h-3 w-3 rounded-sm ${color}`} aria-hidden="true" />{label}</span>;
-}
-
-function HealthRow({ icon, title, detail, tone }: { icon: React.ReactNode; title: string; detail: string; tone: "pending" | "held" | "available" }) {
-  const toneClass = { pending: "border-status-pending/45 bg-status-pending/10 text-status-pending", held: "border-status-held/35 bg-status-held/10 text-status-held", available: "border-status-available/35 bg-status-available/10 text-status-available" }[tone];
-  return <div className={`flex items-center gap-4 rounded-xl border p-4 ${toneClass}`}><span aria-hidden="true">{icon}</span><div><p className="font-heading text-body-md font-bold text-on-surface">{title}</p><p className="mt-1 font-body text-body-sm text-text-grey">{detail}</p></div></div>;
 }
