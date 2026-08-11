@@ -452,7 +452,7 @@ async function WrrsTab({
 
   return (
     <div>
-      {/* Tab header with "New WRR" button — gated by receiving.create */}
+      {/* Tab header with "New WRR" button — gated by receiving.confirm */}
       <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-end gap-3">
           <form method="GET" className="flex flex-wrap items-end gap-3">
@@ -493,7 +493,7 @@ async function WrrsTab({
             )}
           </form>
         </div>
-        {/* New WRR button — receiving.create gated, h-11 (44px) office target */}
+        {/* New WRR button — receiving.confirm gated, h-11 (44px) office target */}
         {canCreate && (
           <Link
             href="/receiving/new"
