@@ -17,13 +17,15 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronRight, Download, Search, SlidersHorizontal } from "lucide-react";
+import { ChevronRight, Download, Search, SlidersHorizontal, FlaskConical } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { listStockView, type StockViewRow } from "@/lib/db/queries/inventory";
 import { listPickLists } from "@/lib/db/queries/withdrawals";
 import type { PickListRow } from "@/lib/db/queries/withdrawals";
+import { listInspectionCases } from "@/lib/db/queries/transfers";
+import type { InspectionCaseListRow } from "@/lib/db/queries/transfers";
 
 // ─── Status badge colors ─────────────────────────────────────────────────────
 // brand-design-system.md §1.3 semantic color mapping per task spec:
@@ -168,17 +170,41 @@ async function StockViewTab({ query }: { query?: string }) {
                 <span className="inline-flex w-fit items-center rounded-full bg-on-surface px-3 py-1 font-label text-label tracking-[0.06em] text-surface-white">ON HAND</span>
               </summary>
               <div className="border-t border-outline-variant/30 bg-surface-light-grey/45 px-4 py-4 md:px-6">
-                <p className="font-body text-body-md text-text-grey">
-                  Lots are shown in {item.isPerishable ? "FEFO" : "FIFO"} order. Review the location and lot sequence before creating a pick list.
-                </p>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="font-body text-body-md text-text-grey">
+                    Lots are shown in {item.isPerishable ? "FEFO" : "FIFO"} order.
+                  </p>
+                  {/* Generate Pick List — navigates to /outgoing which is the floor
+                      pick-list hub. A full in-page modal with commitWithdrawal wiring
+                      requires party/qty inputs beyond this static page's scope. */}
+                  <Link
+                    href="/outgoing"
+                    className="inline-flex h-11 items-center gap-2 rounded bg-brand-red px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+                  >
+                    Generate Pick List
+                  </Link>
+                </div>
                 <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   {item.lots.map((lot) => (
-                    <article key={`${lot.lotId}-${lot.locationId}`} className="rounded-md border border-outline-variant/30 bg-surface-white p-4">
-                      <p className="font-mono text-mono-md font-bold text-on-surface">{lot.lotNumber}</p>
-                      <p className="mt-1 font-body text-body-md text-text-grey">Location {lot.locationLabel}</p>
+                    <article key={lot.lotId} className="rounded-md border border-outline-variant/30 bg-surface-white p-4">
+                      {/* FEFO/FIFO priority badge — left accent bar signal */}
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-mono text-mono-md font-bold text-on-surface">{lot.lotNumber}</p>
+                        <span className="inline-flex shrink-0 items-center rounded-full bg-on-surface px-2 py-0.5 font-label text-label text-surface-white">
+                          {item.isPerishable ? "FEFO" : "FIFO"} #{lot.priority}
+                        </span>
+                      </div>
+                      {/* Stacked location tag — all locations this lot spans */}
+                      <p className="mt-1 font-body text-body-md text-text-grey">
+                        {lot.locationLabels.length === 1
+                          ? `Location ${lot.locationLabels[0]}`
+                          : `Locations ${lot.locationLabels.join(", ")}`}
+                      </p>
                       <dl className="mt-3 grid grid-cols-2 gap-3 font-body text-body-md">
                         <div><dt className="font-label text-label uppercase text-text-grey">Available</dt><dd className="mt-1 text-on-surface">{lot.availableQty.toLocaleString()} {item.uom}</dd></div>
                         <div><dt className="font-label text-label uppercase text-text-grey">Expiry</dt><dd className="mt-1 text-on-surface">{lot.expiryDate ?? "Not dated"}</dd></div>
+                        <div><dt className="font-label text-label uppercase text-text-grey">Received</dt><dd className="mt-1 font-body text-body-md text-on-surface">{new Date(lot.receivedAt).toLocaleDateString()}</dd></div>
+                        <div><dt className="font-label text-label uppercase text-text-grey">Status</dt><dd className="mt-1 font-mono text-mono-md text-on-surface">{lot.lotStatus}</dd></div>
                       </dl>
                     </article>
                   ))}
@@ -192,57 +218,135 @@ async function StockViewTab({ query }: { query?: string }) {
   );
 }
 
-function groupStockByItem(rows: StockViewRow[]) {
-  const grouped = new Map<string, {
-    itemId: string; itemCode: string; itemName: string; uom: string; isPerishable: boolean; availableQty: number;
-    lots: Array<StockViewRow & { availableQty: number }>;
+// Aggregated lot shape after stacking multiple location rows for the same lot.
+type AggregatedLot = {
+  lotId: string;
+  lotNumber: string;
+  lotStatus: string;
+  expiryDate: string | null;
+  receivedAt: Date;
+  // Stacked location tag: all locations this lot spans, comma-separated.
+  locationLabels: string[];
+  // Total available qty across all locations for this lot.
+  availableQty: number;
+  // FEFO/FIFO priority within the item (1 = pick first).
+  priority: number;
+};
+
+type GroupedItem = {
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  uom: string;
+  isPerishable: boolean;
+  availableQty: number;
+  lots: AggregatedLot[];
+};
+
+function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
+  // First pass: group rows by itemId, then by lotId within each item.
+  // The query already orders by (items.code, lots.expiry_date, lots.created_at)
+  // so FEFO/FIFO order is preserved by the insertion sequence.
+  const itemMap = new Map<string, {
+    itemId: string; itemCode: string; itemName: string; uom: string; isPerishable: boolean;
+    lotMap: Map<string, { lot: AggregatedLot }>;
+    insertionOrder: string[]; // lot IDs in FEFO/FIFO order
   }>();
 
   for (const row of rows) {
     const availableQty = row.qtyRemaining - row.qtyCommitted;
-    const current = grouped.get(row.itemId);
-    if (current) {
-      current.availableQty += availableQty;
-      current.lots.push({ ...row, availableQty });
-    } else {
-      grouped.set(row.itemId, {
+
+    let itemEntry = itemMap.get(row.itemId);
+    if (!itemEntry) {
+      itemEntry = {
         itemId: row.itemId,
         itemCode: row.itemCode,
         itemName: row.itemName,
         uom: row.uom,
         isPerishable: row.isPerishable,
-        availableQty,
-        lots: [{ ...row, availableQty }],
-      });
+        lotMap: new Map(),
+        insertionOrder: [],
+      };
+      itemMap.set(row.itemId, itemEntry);
     }
+
+    // Aggregate location rows for the same lot (stacked location tag).
+    let lotEntry = itemEntry.lotMap.get(row.lotId);
+    if (!lotEntry) {
+      itemEntry.insertionOrder.push(row.lotId);
+      lotEntry = {
+        lot: {
+          lotId: row.lotId,
+          lotNumber: row.lotNumber,
+          lotStatus: row.lotStatus,
+          expiryDate: row.expiryDate,
+          receivedAt: row.receivedAt,
+          locationLabels: [],
+          availableQty: 0,
+          priority: 0, // assigned in second pass
+        },
+      };
+      itemEntry.lotMap.set(row.lotId, lotEntry);
+    }
+
+    lotEntry.lot.locationLabels.push(row.locationLabel);
+    lotEntry.lot.availableQty += availableQty;
   }
 
-  return [...grouped.values()];
+  // Second pass: flatten into the final shape, assigning FEFO/FIFO priority
+  // index (1-based) based on the insertion order the query already sorted.
+  return [...itemMap.values()].map((entry) => {
+    const lots = entry.insertionOrder.map((lotId, idx) => {
+      const lot = entry.lotMap.get(lotId)!.lot;
+      return { ...lot, priority: idx + 1 };
+    });
+    return {
+      itemId: entry.itemId,
+      itemCode: entry.itemCode,
+      itemName: entry.itemName,
+      uom: entry.uom,
+      isPerishable: entry.isPerishable,
+      availableQty: lots.reduce((sum, l) => sum + l.availableQty, 0),
+      lots,
+    };
+  });
 }
 
 // ─── Pick Lists tab ───────────────────────────────────────────────────────────
 
 async function PickListsTab() {
-  const { rows } = await listPickLists(db, { limit: 50, offset: 0 });
+  // Filter to allocated status — these are the pick lists ready for floor execution.
+  // Dispatched pick lists are in the Outgoing Ledger on /outgoing.
+  const { rows } = await listPickLists(db, { limit: 50, offset: 0, status: "allocated" });
 
   return (
     <div className="mt-6 overflow-hidden rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-1">
       {rows.length === 0 ? (
         <div className="px-6 py-12 text-center">
           <p className="font-body text-body-md text-text-grey">
-            No pick lists yet.
+            No active pick lists.
           </p>
           <p className="mt-2 font-body text-body-sm text-text-grey">
-            Pick lists are generated from the Master Inventory when stock is
-            committed for outgoing withdrawal.
+            Pick lists are generated when stock is committed for outgoing withdrawal.
+            Use &ldquo;Generate Pick List&rdquo; below to create one from current stock.
           </p>
+          <Link
+            href="/outgoing"
+            className="mt-4 inline-flex h-11 items-center justify-center rounded bg-brand-red px-5 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+          >
+            Go to Outgoing
+          </Link>
         </div>
       ) : (
+        <>
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
               <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                {/* Epilogue SemiBold uppercase headers per §9 tables */}
+                {/* Inter SemiBold uppercase headers per §9 tables */}
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  Pick List #
+                </th>
                 <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                   Status
                 </th>
@@ -261,6 +365,10 @@ async function PickListsTab() {
             <tbody className="divide-y divide-outline-variant/30">
               {rows.map((row: PickListRow) => (
                 <tr key={row.id} className="hover:bg-surface-light-grey/50">
+                  {/* Pick list number — Roboto Mono for reference numbers per §9 */}
+                  <td className="px-4 py-3 font-mono text-mono-md font-bold text-on-surface">
+                    {row.pickListNumber}
+                  </td>
                   <td className="px-4 py-3">
                     {/* Status badge — radius-full, §1.3 semantic colors */}
                     <span
@@ -272,7 +380,7 @@ async function PickListsTab() {
                   <td className="px-4 py-3 font-body text-body-md text-on-surface">
                     {FLOW_LABELS[row.flowType] ?? row.flowType}
                   </td>
-                  {/* Roboto Mono for party IDs per §9 */}
+                  {/* Customer party ID — mono for identifier; resolved name not yet joined */}
                   <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
                     {row.customerPartyId}
                   </td>
@@ -280,12 +388,12 @@ async function PickListsTab() {
                     {row.createdAt.toLocaleString()}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {/* Execute link — h-11 (44px) office touch target */}
+                    {/* Go to Pick — h-11 (44px) office touch target */}
                     <Link
                       href={`/pick-lists/${row.id}/pick`}
-                      className="inline-flex h-11 items-center font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                      className="inline-flex h-11 items-center gap-1 rounded bg-brand-red px-3 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
                     >
-                      Execute
+                      Go to Pick
                     </Link>
                   </td>
                 </tr>
@@ -293,24 +401,116 @@ async function PickListsTab() {
             </tbody>
           </table>
         </div>
+        <div className="border-t border-outline-variant/30 px-4 py-3 md:px-5">
+          <p className="font-body text-body-sm text-text-grey">
+            Showing active (allocated) pick lists. Completed and dispatched pick lists are in the{" "}
+            <Link href="/outgoing?tab=ledger" className="font-label text-label font-semibold text-on-surface underline">Outgoing Ledger</Link>.
+          </p>
+        </div>
+        </>
       )}
     </div>
   );
 }
 
-// ─── Daily Inspection tab — placeholder ───────────────────────────────────────
+// ─── Daily Inspection tab — wired with real listInspectionCases ───────────────
+//
+// The Master-Inventory-initiated entry point into the shared inspection queue.
+// Calls listInspectionCases with status: 'open' — the same query function that
+// /inspection uses. Authorization for inspection.perform is assumed from the
+// outer page's pick_list.read gate (supervisors who can view the master inventory
+// also have inspection visibility). The actual resolution action on /inspection/[id]
+// re-checks inspection.resolve server-side.
 
-function DailyInspectionTab() {
+async function DailyInspectionTab() {
+  const { rows: openCases, total } = await listInspectionCases(db, {
+    status: "open",
+    limit: 20,
+  });
+
+  const INSPECTION_STATUS_CLASSES: Record<string, string> = {
+    open: "bg-status-pending/10 text-status-pending",
+    resolved: "bg-status-available/10 text-status-available",
+  };
+
   return (
-    <section className="mt-6 rounded-md border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
-      <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">Quality control</p>
-      <h2 className="mt-2 font-heading text-headline-md font-semibold text-on-surface">Daily Inspection</h2>
-      <p className="mt-2 max-w-2xl font-body text-body-md text-text-grey">
-        Review held and aging lots in the shared inspection queue. Inspection resolution remains restricted to the approved Supervisor capability.
-      </p>
-      <Link href="/inspection" className="mt-6 inline-flex h-11 items-center justify-center rounded bg-brand-red px-5 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2">
-        Open inspection queue
-      </Link>
-    </section>
+    <div className="mt-6">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h2 className="font-heading text-headline-md font-semibold text-on-surface">Daily Inspection Queue</h2>
+          <p className="mt-1 font-body text-body-md text-text-grey">
+            {total === 0
+              ? "No open inspection cases today."
+              : `${total} open inspection case${total !== 1 ? "s" : ""} — resolution requires Supervisor access.`}
+          </p>
+        </div>
+        <Link
+          href="/inspection"
+          className="inline-flex h-11 items-center gap-2 rounded border border-outline-variant/30 px-4 font-label text-label font-semibold text-on-surface hover:bg-surface-light-grey focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+        >
+          <FlaskConical size={16} aria-hidden="true" />
+          View All
+        </Link>
+      </div>
+
+      {openCases.length === 0 ? (
+        <div className="rounded-md border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-1">
+          <p className="font-body text-body-md text-text-grey">No open inspection cases.</p>
+          <p className="mt-2 font-body text-body-sm text-text-grey">
+            Cases are opened when a lot is placed on Hold during receiving or transfer.
+          </p>
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Item Code</th>
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Lot #</th>
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Party</th>
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Location</th>
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Opened</th>
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Status</th>
+                <th className="sr-only px-4 py-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-outline-variant/30">
+              {openCases.map((c: InspectionCaseListRow) => (
+                <tr key={c.id} className="hover:bg-surface-light-grey/50">
+                  <td className="px-4 py-3 font-mono text-mono-md font-bold text-on-surface">{c.itemCode}</td>
+                  <td className="px-4 py-3 font-mono text-mono-md text-on-surface">{c.lotNumber}</td>
+                  <td className="px-4 py-3 font-body text-body-md text-on-surface">{c.partyName}</td>
+                  <td className="px-4 py-3 font-body text-body-md text-text-grey">{c.locationLabel ?? "—"}</td>
+                  <td className="px-4 py-3 font-body text-body-md text-text-grey">{c.openedAt.toLocaleDateString()}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase ${INSPECTION_STATUS_CLASSES[c.status] ?? "bg-status-neutral/10 text-status-neutral"}`}>
+                      {c.status.toUpperCase()}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <Link
+                      href={`/inspection/${c.id}`}
+                      className="inline-flex h-11 items-center font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                    >
+                      View
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {total > 20 && (
+            <div className="border-t border-outline-variant/30 px-4 py-3">
+              <Link
+                href="/inspection"
+                className="font-label text-label font-semibold text-on-surface underline"
+              >
+                View all {total} open cases →
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
