@@ -20,6 +20,7 @@ import { notFound } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
+import { listStockView, type StockViewRow } from "@/lib/db/queries/inventory";
 import { listPickLists } from "@/lib/db/queries/withdrawals";
 import type { PickListRow } from "@/lib/db/queries/withdrawals";
 
@@ -80,7 +81,7 @@ export default async function InventoryPage({ searchParams }: PageProps) {
       {/* Page header */}
       <div>
         <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
-          Inventory
+          Master Inventory
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">
           Stock overview, committed pick lists, and daily inspection initiation.
@@ -91,7 +92,7 @@ export default async function InventoryPage({ searchParams }: PageProps) {
       <div
         role="tablist"
         aria-label="Inventory sections"
-        className="mt-6 flex gap-2 border-b border-outline-variant/30"
+        className="mt-6 flex gap-2 overflow-x-auto border-b border-outline-variant/30"
       >
         {TABS.map((tab) => {
           const isActive = tab.key === activeTab;
@@ -107,7 +108,7 @@ export default async function InventoryPage({ searchParams }: PageProps) {
               href={href}
               role="tab"
               aria-selected={isActive}
-              className={`flex h-11 items-center border-b-2 px-4 font-label text-label uppercase tracking-[0.05em] focus:outline-none focus:ring-2 focus:ring-brand-navy ${
+              className={`flex h-11 shrink-0 items-center border-b-2 px-4 font-label text-label uppercase tracking-[0.05em] focus:outline-none focus:ring-2 focus:ring-brand-navy ${
                 isActive
                   ? "border-brand-red text-brand-navy"
                   : "border-transparent text-text-grey hover:text-brand-navy"
@@ -130,19 +131,91 @@ export default async function InventoryPage({ searchParams }: PageProps) {
   );
 }
 
-// ─── Stock View tab (default) — placeholder ───────────────────────────────────
+// ─── Stock View tab (default) ─────────────────────────────────────────────────
 
-function StockViewTab() {
+async function StockViewTab() {
+  const rows = await listStockView(db);
+  const items = groupStockByItem(rows);
+
   return (
-    <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 px-6 py-12 text-center">
-      <p className="font-body text-body-md text-text-grey">
-        Stock view with FIFO/FEFO pick-list generation is coming in the next implementation cycle.
-      </p>
-      <p className="mt-2 font-body text-body-sm text-text-grey">
-        Select items from live inventory to auto-generate a pick list.
-      </p>
+    <div className="mt-6 overflow-hidden rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+      {items.length === 0 ? (
+        <div className="px-6 py-12 text-center">
+          <p className="font-body text-body-md text-text-grey">
+            No available stock is ready for allocation.
+          </p>
+          <p className="mt-2 font-body text-body-sm text-text-grey">
+            Confirmed receipts appear here when their lots are available for picking.
+          </p>
+        </div>
+      ) : (
+        <div className="divide-y divide-outline-variant/30">
+          {items.map((item) => (
+            <details key={item.itemId} className="group">
+              <summary className="grid cursor-pointer list-none gap-3 px-4 py-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy md:grid-cols-[minmax(140px,0.8fr)_minmax(200px,1.5fr)_100px_1fr_auto] md:items-center md:px-6">
+                <div>
+                  <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey md:hidden">Item code</p>
+                  <p className="font-mono text-mono-md font-bold text-on-surface">{item.itemCode}</p>
+                </div>
+                <div>
+                  <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey md:hidden">Item</p>
+                  <p className="font-heading text-body-md font-semibold text-on-surface">{item.itemName}</p>
+                </div>
+                <p className="font-body text-body-md text-text-grey">{item.uom}</p>
+                <p className="font-heading text-data-display font-semibold text-on-surface">{item.availableQty.toLocaleString()} available</p>
+                <span className="inline-flex w-fit items-center rounded-full bg-status-available/10 px-2 py-1 font-label text-label uppercase text-status-available">Available</span>
+              </summary>
+              <div className="border-t border-outline-variant/30 bg-surface-light-grey/45 px-4 py-4 md:px-6">
+                <p className="font-body text-body-md text-text-grey">
+                  Lots are shown in {item.isPerishable ? "FEFO" : "FIFO"} order. Review the location and lot sequence before creating a pick list.
+                </p>
+                <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {item.lots.map((lot) => (
+                    <article key={`${lot.lotId}-${lot.locationId}`} className="rounded-md border border-outline-variant/30 bg-surface-white p-4">
+                      <p className="font-mono text-mono-md font-bold text-on-surface">{lot.lotNumber}</p>
+                      <p className="mt-1 font-body text-body-md text-text-grey">Location {lot.locationLabel}</p>
+                      <dl className="mt-3 grid grid-cols-2 gap-3 font-body text-body-md">
+                        <div><dt className="font-label text-label uppercase text-text-grey">Available</dt><dd className="mt-1 text-on-surface">{lot.availableQty.toLocaleString()} {item.uom}</dd></div>
+                        <div><dt className="font-label text-label uppercase text-text-grey">Expiry</dt><dd className="mt-1 text-on-surface">{lot.expiryDate ?? "Not dated"}</dd></div>
+                      </dl>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            </details>
+          ))}
+        </div>
+      )}
     </div>
   );
+}
+
+function groupStockByItem(rows: StockViewRow[]) {
+  const grouped = new Map<string, {
+    itemId: string; itemCode: string; itemName: string; uom: string; isPerishable: boolean; availableQty: number;
+    lots: Array<StockViewRow & { availableQty: number }>;
+  }>();
+
+  for (const row of rows) {
+    const availableQty = row.qtyRemaining - row.qtyCommitted;
+    const current = grouped.get(row.itemId);
+    if (current) {
+      current.availableQty += availableQty;
+      current.lots.push({ ...row, availableQty });
+    } else {
+      grouped.set(row.itemId, {
+        itemId: row.itemId,
+        itemCode: row.itemCode,
+        itemName: row.itemName,
+        uom: row.uom,
+        isPerishable: row.isPerishable,
+        availableQty,
+        lots: [{ ...row, availableQty }],
+      });
+    }
+  }
+
+  return [...grouped.values()];
 }
 
 // ─── Pick Lists tab ───────────────────────────────────────────────────────────
@@ -151,7 +224,7 @@ async function PickListsTab() {
   const { rows } = await listPickLists(db, { limit: 50, offset: 0 });
 
   return (
-    <div className="mt-6 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
+    <div className="mt-6 overflow-hidden rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-1">
       {rows.length === 0 ? (
         <div className="px-6 py-12 text-center">
           <p className="font-body text-body-md text-text-grey">
@@ -227,10 +300,15 @@ async function PickListsTab() {
 
 function DailyInspectionTab() {
   return (
-    <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 px-6 py-12 text-center">
-      <p className="font-body text-body-md text-text-grey">
-        Daily Inspection initiation is managed here (Supervisor / Administrator only).
+    <section className="mt-6 rounded-md border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
+      <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">Quality control</p>
+      <h2 className="mt-2 font-heading text-headline-md font-semibold text-on-surface">Daily Inspection</h2>
+      <p className="mt-2 max-w-2xl font-body text-body-md text-text-grey">
+        Review held and aging lots in the shared inspection queue. Inspection resolution remains restricted to the approved Supervisor capability.
       </p>
-    </div>
+      <Link href="/inspection" className="mt-6 inline-flex h-11 items-center justify-center rounded bg-brand-red px-5 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2">
+        Open inspection queue
+      </Link>
+    </section>
   );
 }

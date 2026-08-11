@@ -81,7 +81,7 @@ export default async function OutgoingPage({ searchParams }: PageProps) {
       {/* Page header */}
       <div>
         <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
-          Outgoing
+          Outgoing / Withdrawal
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">
           Active pick lists awaiting execution and confirmed outgoing ledger.
@@ -92,7 +92,7 @@ export default async function OutgoingPage({ searchParams }: PageProps) {
       <div
         role="tablist"
         aria-label="Outgoing sections"
-        className="mt-6 flex gap-2 border-b border-outline-variant/30"
+        className="mt-6 flex gap-2 overflow-x-auto border-b border-outline-variant/30"
       >
         {TABS.map((tab) => {
           const isActive = tab.key === activeTab;
@@ -104,7 +104,7 @@ export default async function OutgoingPage({ searchParams }: PageProps) {
               href={href}
               role="tab"
               aria-selected={isActive}
-              className={`flex h-11 items-center border-b-2 px-4 font-label text-label uppercase tracking-[0.05em] focus:outline-none focus:ring-2 focus:ring-brand-navy ${
+              className={`flex h-14 shrink-0 items-center border-b-2 px-4 font-label text-body-md uppercase tracking-[0.05em] focus:outline-none focus:ring-2 focus:ring-brand-navy md:h-11 md:text-label ${
                 isActive
                   ? "border-brand-red text-brand-navy"
                   : "border-transparent text-text-grey hover:text-brand-navy"
@@ -131,7 +131,7 @@ async function ActivePicksTab() {
   const { rows } = await listPickLists(db, { limit: 50, offset: 0 });
 
   return (
-    <div className="mt-6 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
+    <div className="mt-6 overflow-hidden rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-2 md:shadow-elevation-1">
       {rows.length === 0 ? (
         <div className="px-6 py-12 text-center">
           <p className="font-body text-body-md text-text-grey">
@@ -144,7 +144,37 @@ async function ActivePicksTab() {
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto">
+          <div className="divide-y divide-outline-variant/30 md:hidden">
+            {rows.map((row: PickListRow) => (
+              <article key={row.id} className="space-y-4 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-label text-body-md uppercase tracking-[0.05em] text-text-grey">
+                      {FLOW_LABELS[row.flowType] ?? row.flowType}
+                    </p>
+                    <p className="mt-1 font-mono text-mono-md text-on-surface">
+                      {row.customerPartyId}
+                    </p>
+                  </div>
+                  <span
+                    className={`inline-flex items-center rounded-full px-2 py-1 font-label text-label uppercase ${STATUS_CLASSES[row.status] ?? "bg-status-neutral text-on-surface"}`}
+                  >
+                    {STATUS_LABELS[row.status] ?? row.status.toUpperCase()}
+                  </span>
+                </div>
+                <p className="font-body text-body-md text-text-grey">
+                  Created {row.createdAt.toLocaleString()}
+                </p>
+                <Link
+                  href={`/pick-lists/${row.id}/pick`}
+                  className="flex min-h-16 w-full items-center justify-center rounded bg-brand-red px-4 font-label text-body-md uppercase tracking-wide text-surface-white active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2"
+                >
+                  Start picking
+                </Link>
+              </article>
+            ))}
+          </div>
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full border-collapse">
               <thead>
                 <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
@@ -199,7 +229,7 @@ async function ActivePicksTab() {
               </tbody>
             </table>
           </div>
-          <p className="px-6 py-3 font-body text-body-sm text-text-grey border-t border-outline-variant/30">
+          <p className="border-t border-outline-variant/30 px-4 py-4 font-body text-body-md text-text-grey md:px-6 md:py-3 md:text-body-sm">
             Scan items against each pick list to execute. Acknowledgement receipt
             is generated after dispatch.
           </p>

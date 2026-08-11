@@ -196,7 +196,7 @@ export function ShellNavigation({
     <nav
       data-testid="desktop-sidebar"
       aria-label="Primary navigation"
-      className="hidden flex-col gap-6 overflow-y-auto border-r border-black/20 bg-on-surface px-5 py-8 lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:flex lg:w-72"
+      className="hidden flex-col gap-6 overflow-y-auto border-r border-black/20 bg-brand-navy px-5 py-8 lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:flex lg:w-72"
     >
       {/* Skip-to-content: visually hidden until focused, first element in the
           nav so keyboard users can bypass the sidebar entirely. */}

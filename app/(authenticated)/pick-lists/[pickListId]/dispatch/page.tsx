@@ -100,14 +100,14 @@ export default async function DispatchConfirmationPage({
   const permResult = await requirePermission(resolver, "dispatch.execute");
   if (permResult.kind !== "authorized") {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-brand-navy px-4">
-        <p className="font-heading text-headline-md text-white">Access denied</p>
-        <p className="mt-2 font-body text-body-md text-white/70">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-surface-white px-4">
+        <p className="font-heading text-headline-md text-on-surface">Access denied</p>
+        <p className="mt-2 font-body text-body-md text-text-grey">
           You do not have permission to dispatch pick lists.
         </p>
         <Link
           href="/outgoing"
-          className="mt-6 inline-flex h-14 items-center gap-2 font-body text-body-md text-white/70 focus:outline-none focus:ring-2 focus:ring-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
+          className="mt-6 inline-flex h-14 items-center gap-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
         >
           <ChevronLeft size={24} strokeWidth={2} aria-hidden="true" />
           Return to Outgoing
@@ -158,26 +158,26 @@ export default async function DispatchConfirmationPage({
   return (
     // Floor screen: solid bg-brand-navy, no glassmorphism, 16px padding.
     // brand-design-system.md §4: floor screens use 16px page padding.
-    <div className="flex min-h-screen flex-col bg-brand-navy">
+    <div className="flex min-h-screen flex-col bg-surface-white">
 
       {/* ── Header ───────────────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-10 bg-brand-navy px-4 pt-4 pb-3">
+      <div className="sticky top-0 z-10 border-b border-outline-variant/30 bg-surface-white px-4 pb-3 pt-4">
         <div className="flex items-center gap-3">
           {/* Back link — h-14 (56px) floor touch target per §3 */}
           <Link
             href={`/pick-lists/${pickListId}/pick`}
-            className="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-white/10 text-white focus:outline-none focus:ring-2 focus:ring-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
+            className="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-outline-variant/30 bg-surface-white text-on-surface shadow-elevation-2 focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
             aria-label="Back to pick execution"
           >
             <ChevronLeft size={24} strokeWidth={2} aria-hidden="true" />
           </Link>
           <div className="min-w-0">
             {/* "Dispatch" heading — Fira Sans Bold, text-headline-lg */}
-            <h1 className="font-heading text-headline-lg font-extrabold text-white">
+            <h1 className="font-heading text-headline-lg font-extrabold text-on-surface">
               Dispatch
             </h1>
             {/* Pick list reference — Roboto Mono, secondary text */}
-            <p className="font-mono text-mono-lg text-white/70">
+            <p className="font-mono text-mono-lg text-text-grey">
               {pickList.pickListNumber}
             </p>
           </div>
@@ -194,10 +194,10 @@ export default async function DispatchConfirmationPage({
             aria-live="polite"
             className="mb-3 rounded-xl bg-status-available/20 border border-status-available/40 px-4 py-4"
           >
-            <p className="font-heading text-headline-md font-bold text-white">
+            <p className="font-heading text-headline-md font-bold text-on-surface">
               Already Dispatched
             </p>
-            <p className="mt-1 font-body text-body-md text-white/70">
+            <p className="mt-1 font-body text-body-md text-text-grey">
               This pick list has already been dispatched.
             </p>
           </div>
@@ -217,10 +217,10 @@ export default async function DispatchConfirmationPage({
               className="mt-0.5 shrink-0 text-status-held"
             />
             <div>
-              <p className="font-heading text-headline-md font-bold text-white">
+              <p className="font-heading text-headline-md font-bold text-on-surface">
                 Dispatch Failed
               </p>
-              <p className="mt-1 font-body text-body-md text-white/70">
+              <p className="mt-1 font-body text-body-md text-text-grey">
                 {errorReason === "already_dispatched"
                   ? "This pick list was already dispatched."
                   : errorReason === "not_found"
@@ -233,17 +233,17 @@ export default async function DispatchConfirmationPage({
 
         {/* ── Summary card ─────────────────────────────────────────────── */}
         {/* Floor card: solid bg-white/10 over navy, no glassmorphism.     */}
-        <div className="mb-3 rounded-2xl bg-white/10 border border-white/20 p-6">
+        <div className="mb-3 rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-2">
           {/* Party name — Fira Sans SemiBold heading, floor minimum text */}
           <div className="flex items-start gap-3">
             <Truck
               size={24}
               strokeWidth={2}
               aria-hidden="true"
-              className="mt-0.5 shrink-0 text-white/70"
+              className="mt-0.5 shrink-0 text-text-grey"
             />
             <div className="min-w-0">
-              <p className="font-heading text-headline-md font-semibold text-white">
+              <p className="font-heading text-headline-md font-semibold text-on-surface">
                 {/* TODO: resolve from parties table via pickList.customerPartyId */}
                 {MOCK_PARTY_NAME}
               </p>
@@ -254,7 +254,7 @@ export default async function DispatchConfirmationPage({
                 >
                   {pickList.flowType.toUpperCase()}
                 </span>
-                <span className="font-body text-body-md text-white/70">
+                <span className="font-body text-body-md text-text-grey">
                   {MOCK_DISPATCH_ITEMS.length} items
                 </span>
               </div>
@@ -266,19 +266,19 @@ export default async function DispatchConfirmationPage({
             {MOCK_DISPATCH_ITEMS.map((item, idx) => (
               <div
                 key={idx}
-                className="flex items-start gap-2 rounded-xl bg-white/10 border border-white/10 px-3 py-2"
+                className="flex items-start gap-2 rounded-xl border border-outline-variant/30 bg-surface-light-grey px-3 py-2"
               >
                 <Package
                   size={24}
                   strokeWidth={2}
                   aria-hidden="true"
-                  className="mt-0.5 shrink-0 text-white/50"
+                  className="mt-0.5 shrink-0 text-text-grey"
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="font-body text-body-md text-white/70">
+                  <p className="font-body text-body-md text-text-grey">
                     {item.itemName}
                   </p>
-                  <p className="font-mono text-mono-lg text-white/50">
+                  <p className="font-mono text-mono-lg text-text-grey">
                     {item.lotNumber} — Qty: {item.qty}
                   </p>
                 </div>
@@ -295,32 +295,32 @@ export default async function DispatchConfirmationPage({
             <div>
               <label
                 htmlFor="vehicle-ref"
-                className="mb-1.5 block font-body text-body-md text-white/70"
+                className="mb-1.5 block font-body text-body-md text-text-grey"
               >
                 Vehicle / driver reference{" "}
-                <span className="text-white/40">(optional)</span>
+                <span className="text-status-neutral">(optional)</span>
               </label>
               <input
                 id="vehicle-ref"
                 type="text"
                 name="vehicleRef"
                 autoComplete="off"
-                className="h-14 w-full rounded-xl bg-white/10 border border-white/20 px-4 font-body text-body-md text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white"
+                className="h-14 w-full rounded-xl border border-outline-variant/30 bg-surface-white px-4 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 placeholder="e.g. TRK-221 / John Smith"
               />
             </div>
             <div>
               <label
                 htmlFor="dispatch-notes"
-                className="mb-1.5 block font-body text-body-md text-white/70"
+                className="mb-1.5 block font-body text-body-md text-text-grey"
               >
-                Notes <span className="text-white/40">(optional)</span>
+                Notes <span className="text-status-neutral">(optional)</span>
               </label>
               <textarea
                 id="dispatch-notes"
                 name="notes"
                 rows={2}
-                className="w-full rounded-xl bg-white/10 border border-white/20 px-4 py-3 font-body text-body-md text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white resize-none"
+                className="w-full resize-none rounded-xl border border-outline-variant/30 bg-surface-white px-4 py-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 placeholder="Any handoff notes…"
               />
             </div>
@@ -330,7 +330,7 @@ export default async function DispatchConfirmationPage({
         {/* ── Disclaimer ───────────────────────────────────────────────── */}
         {/* §1.3: status-held (semantic warning) + icon ensures non-color signal */}
         {!alreadyDispatched && (
-          <div className="mb-4 flex items-start gap-2 rounded-xl border border-white/10 px-4 py-3">
+          <div className="mb-4 flex items-start gap-2 rounded-xl border border-status-held/30 bg-status-held/10 px-4 py-3">
             <AlertTriangle
               size={24}
               strokeWidth={2}
@@ -349,12 +349,12 @@ export default async function DispatchConfirmationPage({
           visible in bottom third. No hover: — active: press feedback only.
           R7.9: no quality-check branch — confirmation is the only path forward. */}
       {!alreadyDispatched && (
-        <div className="sticky bottom-0 bg-brand-navy px-4 pb-6 pt-4">
+        <div className="sticky bottom-0 border-t border-outline-variant/30 bg-surface-white px-4 pb-6 pt-4 shadow-elevation-2">
           <form action={handleDispatch}>
             {/* AAA contrast gap: white on brand-red ≈5.7:1 vs 7:1 — tracked design-system open item */}
             <button
               type="submit"
-              className="flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-brand-red font-label text-body-md uppercase tracking-wide text-white focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
+              className="flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-brand-red font-label text-body-md uppercase tracking-wide text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
             >
               <Truck size={24} strokeWidth={2} aria-hidden="true" />
               Confirm Dispatch
@@ -365,10 +365,10 @@ export default async function DispatchConfirmationPage({
 
       {/* Post-dispatch navigation back to queue */}
       {alreadyDispatched && (
-        <div className="sticky bottom-0 bg-brand-navy px-4 pb-6 pt-4">
+        <div className="sticky bottom-0 border-t border-outline-variant/30 bg-surface-white px-4 pb-6 pt-4 shadow-elevation-2">
           <Link
             href="/outgoing"
-            className="flex h-16 w-full items-center justify-center gap-2 rounded-xl border-2 border-white/20 bg-white/10 font-body text-body-md text-white focus:outline-none focus:ring-2 focus:ring-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
+            className="flex h-16 w-full items-center justify-center gap-2 rounded-xl border-2 border-outline-variant/30 bg-surface-white font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
           >
             Return to Outgoing
           </Link>

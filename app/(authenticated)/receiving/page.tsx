@@ -65,6 +65,69 @@ const TABS: Array<{ key: TabKey; label: string }> = [
   { key: "ledger", label: "Incoming Ledger" },
 ];
 
+function WrrMobileCards({
+  rows,
+  actionForRow,
+  secondaryLabel,
+  secondaryValue,
+}: {
+  rows: WrrDocumentRow[];
+  actionForRow: (row: WrrDocumentRow) => { href: string; label: string; primary?: boolean };
+  secondaryLabel: (row: WrrDocumentRow) => string;
+  secondaryValue: (row: WrrDocumentRow) => string;
+}) {
+  return (
+    <div className="divide-y divide-outline-variant/30 md:hidden">
+      {rows.map((row) => {
+        const action = actionForRow(row);
+        return (
+          <article key={row.id} className="space-y-4 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-mono text-mono-md font-bold text-on-surface">
+                  {row.wrrNumber}
+                </p>
+                <p className="mt-1 font-body text-body-md text-text-grey">
+                  {FLOW_LABELS[row.flowType] ?? row.flowType}
+                </p>
+              </div>
+              <span
+                className={`inline-flex shrink-0 items-center rounded-full px-2 py-1 font-label text-label uppercase ${STATUS_CLASSES[row.status] ?? "bg-status-neutral/10 text-status-neutral"}`}
+              >
+                {STATUS_LABELS[row.status] ?? row.status.toUpperCase()}
+              </span>
+            </div>
+            <dl className="grid grid-cols-2 gap-3 border-y border-outline-variant/30 py-3 font-body text-body-md">
+              <div>
+                <dt className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  {secondaryLabel(row)}
+                </dt>
+                <dd className="mt-1 truncate font-mono text-mono-md text-on-surface">
+                  {secondaryValue(row)}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-label text-label uppercase tracking-[0.05em] text-text-grey">Created</dt>
+                <dd className="mt-1 text-on-surface">{row.createdAt.toLocaleString()}</dd>
+              </div>
+            </dl>
+            <Link
+              href={action.href}
+              className={`flex w-full items-center justify-center rounded px-4 font-label text-body-md uppercase tracking-wide focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 active:scale-[0.97] ${
+                action.primary
+                  ? "min-h-16 bg-brand-red text-surface-white"
+                  : "min-h-14 bg-brand-navy text-surface-white"
+              }`}
+            >
+              {action.label}
+            </Link>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 interface PageProps {
@@ -110,7 +173,7 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
       {/* Page header — "New WRR" button removed from here (moved into WRRs tab) */}
       <div>
         <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
-          Receiving
+          Receiving / Incoming
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">
           Warehouse receipt records — work queue and confirmed-receipt
@@ -122,7 +185,7 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
       <div
         role="tablist"
         aria-label="Receiving sections"
-        className="mt-6 flex gap-2 border-b border-outline-variant/30"
+        className="mt-6 flex gap-2 overflow-x-auto border-b border-outline-variant/30"
       >
         {TABS.map((tab) => {
           const isActive = tab.key === activeTab;
@@ -138,7 +201,7 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
               href={href}
               role="tab"
               aria-selected={isActive}
-              className={`flex h-11 items-center border-b-2 px-4 font-label text-label uppercase tracking-[0.05em] focus:outline-none focus:ring-2 focus:ring-brand-navy ${
+              className={`flex h-14 shrink-0 items-center border-b-2 px-4 font-label text-body-md uppercase tracking-[0.05em] focus:outline-none focus:ring-2 focus:ring-brand-navy md:h-11 md:text-label ${
                 isActive
                   ? "border-brand-red text-brand-navy"
                   : "border-transparent text-text-grey hover:text-brand-navy"
@@ -200,7 +263,7 @@ async function ReceiveTab({
               id="status-filter"
               name="status"
               defaultValue={statusFilter ?? ""}
-              className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="h-14 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy md:h-11"
             >
               {STATUS_FILTER_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -211,14 +274,14 @@ async function ReceiveTab({
           </div>
           <button
             type="submit"
-            className="flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-14 items-center justify-center rounded bg-brand-navy px-4 font-label text-body-md text-surface-white active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy md:h-11 md:text-label md:hover:opacity-90"
           >
             Apply
           </button>
           {status && (
             <Link
               href="/receiving"
-              className="flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="flex h-14 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-body-md text-on-surface active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy md:h-11 md:text-label md:hover:bg-surface-light-grey"
             >
               Clear
             </Link>
@@ -227,7 +290,7 @@ async function ReceiveTab({
       </div>
 
       {/* WRR table — Level 1 office elevation per brand-design-system.md §6 */}
-      <div className="mt-4 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
+      <div className="mt-4 overflow-hidden rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-2 md:shadow-elevation-1">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="font-body text-body-md text-text-grey">
@@ -242,7 +305,18 @@ async function ReceiveTab({
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <WrrMobileCards
+            rows={rows}
+            secondaryLabel={() => "Staged by"}
+            secondaryValue={(row) => row.stagedByUserId}
+            actionForRow={(row) =>
+              row.status === "confirmed" || row.status === "cancelled"
+                ? { href: `/receiving/${row.id}`, label: "View WRR" }
+                : { href: `/receiving/${row.id}/receive`, label: "Receive items", primary: true }
+            }
+          />
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full border-collapse">
               <thead>
                 <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
@@ -303,6 +377,7 @@ async function ReceiveTab({
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
 
@@ -413,7 +488,7 @@ async function WrrsTab({
         {canCreate && (
           <Link
             href="/receiving/new"
-            className="inline-flex h-11 items-center justify-center rounded bg-brand-red px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="inline-flex h-14 items-center justify-center rounded bg-brand-red px-4 font-label text-body-md text-surface-white active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy md:h-11 md:text-label md:hover:opacity-90"
           >
             New WRR
           </Link>
@@ -421,7 +496,7 @@ async function WrrsTab({
       </div>
 
       {/* WRR table — Level 1 office elevation */}
-      <div className="mt-4 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
+      <div className="mt-4 overflow-hidden rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-2 md:shadow-elevation-1">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="font-body text-body-md text-text-grey">
@@ -431,7 +506,14 @@ async function WrrsTab({
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <WrrMobileCards
+            rows={rows}
+            secondaryLabel={() => "Staged by"}
+            secondaryValue={(row) => row.stagedByUserId}
+            actionForRow={(row) => ({ href: `/receiving/${row.id}`, label: "View WRR" })}
+          />
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full border-collapse">
               <thead>
                 <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
@@ -488,6 +570,7 @@ async function WrrsTab({
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
 
@@ -556,7 +639,7 @@ async function LedgerTab({ pageParam }: { pageParam?: string }) {
       </p>
 
       {/* Ledger table — Level 1 office elevation per brand-design-system.md §6 */}
-      <div className="mt-4 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
+      <div className="mt-4 overflow-hidden rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-2 md:shadow-elevation-1">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="font-body text-body-md text-text-grey">
@@ -567,7 +650,14 @@ async function LedgerTab({ pageParam }: { pageParam?: string }) {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <WrrMobileCards
+            rows={rows}
+            secondaryLabel={() => "Vendor party"}
+            secondaryValue={(row) => row.vendorPartyId}
+            actionForRow={(row) => ({ href: `/receiving/${row.id}`, label: "View WRR" })}
+          />
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full border-collapse">
               <thead>
                 <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
@@ -623,6 +713,7 @@ async function LedgerTab({ pageParam }: { pageParam?: string }) {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
 

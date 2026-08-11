@@ -118,14 +118,14 @@ export default async function PickExecutionPage({
   if (permResult.kind !== "authorized") {
     // Surface: floor forbidden — dark navy, clear message, no sidebar.
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-brand-navy px-4">
-        <p className="font-heading text-headline-md text-white">Access denied</p>
-        <p className="mt-2 font-body text-body-md text-white/70">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-surface-white px-4">
+        <p className="font-heading text-headline-md text-on-surface">Access denied</p>
+        <p className="mt-2 font-body text-body-md text-text-grey">
           You do not have permission to execute pick lists.
         </p>
         <Link
           href="/outgoing"
-          className="mt-6 inline-flex h-14 items-center gap-2 font-body text-body-md text-white/70 focus:outline-none focus:ring-2 focus:ring-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
+          className="mt-6 inline-flex h-14 items-center gap-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
         >
           <ChevronLeft size={24} strokeWidth={2} aria-hidden="true" />
           Return to Outgoing
@@ -181,35 +181,35 @@ export default async function PickExecutionPage({
     // Floor screen: solid bg-brand-navy, no glassmorphism, 16px padding.
     // brand-design-system.md §4: floor screens use 16px page padding.
     // brand-design-system.md §6: floor — no backdrop-blur, solid surfaces.
-    <div className="flex min-h-screen flex-col bg-brand-navy">
+    <div className="flex min-h-screen flex-col bg-surface-white">
 
       {/* ── Top bar (sticky) ──────────────────────────────────────────────── */}
       {/* brand-design-system.md §3: top bar stays visible during scroll.     */}
-      <div className="sticky top-0 z-10 bg-brand-navy px-4 pt-4 pb-2">
+      <div className="sticky top-0 z-10 border-b border-outline-variant/30 bg-surface-white px-4 pb-2 pt-4">
         <div className="flex items-center justify-between">
           {/* Back link — h-14 (56px) floor touch target per §3 */}
           <Link
             href="/outgoing"
-            className="inline-flex h-14 items-center gap-2 font-body text-body-md text-white focus:outline-none focus:ring-2 focus:ring-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
+            className="inline-flex h-14 items-center gap-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
             aria-label="Back to Outgoing"
           >
             <ChevronLeft size={24} strokeWidth={2} aria-hidden="true" />
             <span>Back</span>
           </Link>
           {/* Pick list reference — Roboto Mono per §2 */}
-          <span className="font-mono text-mono-lg text-white">
+          <span className="font-mono text-mono-lg text-on-surface">
             {pickList.pickListNumber}
           </span>
         </div>
         {/* Item progress — secondary label, text-white/70 ≥5.1:1 against navy */}
-        <p className="mt-1 pb-2 font-body text-body-md text-white/70">
+        <p className="mt-1 pb-2 font-body text-body-md text-text-grey">
           {completedLines} / {totalLines} items scanned
         </p>
         {/* Status warning if pick list is not in pickable state */}
         {!isPickable && (
           <div
             role="alert"
-            className="mb-2 flex items-center gap-2 rounded-xl bg-white/10 border border-white/20 px-4 py-3"
+            className="mb-2 flex items-center gap-2 rounded-xl border border-status-pending/30 bg-status-pending/10 px-4 py-3"
           >
             <AlertTriangle
               size={24}
@@ -218,7 +218,7 @@ export default async function PickExecutionPage({
               className="shrink-0 text-status-pending"
             />
             {/* Icon + color per §1.3 floor color-blind rule */}
-            <p className="font-body text-body-md text-white">
+            <p className="font-body text-body-md text-on-surface">
               Pick list is not in allocated state — current status:{" "}
               <span className="font-mono text-mono-lg">{pickList.status}</span>
             </p>
@@ -236,20 +236,20 @@ export default async function PickExecutionPage({
               key={item.id}
               // Floor card: solid bg-white/10 over navy, no glassmorphism.
               // Level 2 treatment per §6 floor card rule.
-              className="mb-3 rounded-xl bg-white/10 border border-white/20 p-4"
+              className="mb-3 rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-2"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   {/* Item code — Roboto Mono, bold, floor minimum 16px (mono-lg is 18px) */}
-                  <p className="font-mono text-mono-lg font-bold text-white">
+                  <p className="font-mono text-mono-lg font-bold text-on-surface">
                     {item.itemCode}
                   </p>
                   {/* Item name — Outfit Regular, floor minimum text-body-md (16px) */}
-                  <p className="mt-0.5 font-body text-body-md text-white">
+                  <p className="mt-0.5 font-body text-body-md text-on-surface">
                     {item.itemName}
                   </p>
                   {/* Lot number — Roboto Mono, secondary text-white/70 */}
-                  <p className="mt-1 font-mono text-mono-lg text-white/70">
+                  <p className="mt-1 font-mono text-mono-lg text-text-grey">
                     {item.lotNumber}
                   </p>
                   {/* Location — Outfit + MapPin icon per §1.3 floor icon rule */}
@@ -258,20 +258,20 @@ export default async function PickExecutionPage({
                       size={24}
                       strokeWidth={2}
                       aria-hidden="true"
-                      className="shrink-0 text-white/70"
+                      className="shrink-0 text-text-grey"
                     />
-                    <span className="font-body text-body-md text-white/70">
+                    <span className="font-body text-body-md text-text-grey">
                       {item.location}
                     </span>
                   </div>
                   {/* Qty progress */}
                   <div className="mt-2 flex items-center gap-2">
-                    <span className="font-mono text-mono-lg text-white">
+                    <span className="font-mono text-mono-lg text-on-surface">
                       {item.qtyScanned} / {item.qtyNeeded}
                     </span>
                     {/* Progress bar */}
                     <div
-                      className="h-2 flex-1 rounded-full bg-white/20"
+                      className="h-2 flex-1 rounded-full bg-surface-light-grey"
                       role="progressbar"
                       aria-valuenow={item.qtyScanned}
                       aria-valuemin={0}
@@ -284,7 +284,7 @@ export default async function PickExecutionPage({
                             ? "bg-status-available"
                             : status === "partial"
                               ? "bg-status-pending"
-                              : "bg-white/30"
+                              : "bg-status-neutral/30"
                         }`}
                         style={{
                           width: `${Math.min(100, (item.qtyScanned / item.qtyNeeded) * 100)}%`,
@@ -313,7 +313,7 @@ export default async function PickExecutionPage({
                     <Circle
                       size={24}
                       strokeWidth={2}
-                      className="text-white/40"
+                      className="text-status-neutral"
                     />
                   )}
                 </div>
@@ -328,7 +328,7 @@ export default async function PickExecutionPage({
           always visible without scrolling. One primary action per floor screen.
           Input priority: scan > tap > type (§3). */}
       {isPickable && (
-        <div className="sticky bottom-0 bg-brand-navy px-4 pb-6 pt-4">
+        <div className="sticky bottom-0 border-t border-outline-variant/30 bg-surface-white px-4 pb-6 pt-4 shadow-elevation-2">
           {/* Scan input — auto-focused, inputMode="none" suppresses virtual
               keyboard on scanner devices; scanner fires hardware keystrokes.
               h-14 (56px) floor secondary input touch target per §3. */}
@@ -340,7 +340,7 @@ export default async function PickExecutionPage({
               inputMode="none"
               autoComplete="off"
               aria-label="Scan item barcode"
-              className="w-full h-14 rounded-xl bg-white/10 border border-white/20 px-4 font-mono text-mono-lg text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white"
+              className="h-14 w-full rounded-xl border border-outline-variant/30 bg-surface-white px-4 font-mono text-mono-lg text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
               placeholder="Scan barcode..."
             />
           </form>
@@ -358,7 +358,7 @@ export default async function PickExecutionPage({
                 aria-hidden="true"
                 className="shrink-0 text-status-held"
               />
-              <p className="font-body text-body-md text-white">
+              <p className="font-body text-body-md text-on-surface">
                 {errorReason === "empty_barcode"
                   ? "Barcode cannot be empty — aim scanner at the item label."
                   : `Scan rejected: ${errorReason}. Contact a supervisor if this persists.`}
@@ -374,7 +374,7 @@ export default async function PickExecutionPage({
               {/* AAA contrast gap: white on brand-red ≈5.7:1 vs 7:1 — tracked design-system open item */}
               <button
                 type="submit"
-                className="flex h-16 w-full items-center justify-center rounded-xl bg-brand-red font-label text-body-md uppercase tracking-wide text-white focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
+                className="flex h-16 w-full items-center justify-center rounded-xl bg-brand-red font-label text-body-md uppercase tracking-wide text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
               >
                 Complete Pick
               </button>
@@ -385,7 +385,7 @@ export default async function PickExecutionPage({
               type="button"
               disabled
               aria-disabled="true"
-              className="flex h-16 w-full cursor-not-allowed items-center justify-center rounded-xl bg-white/20 font-label text-body-md uppercase tracking-wide text-white/50"
+              className="flex h-16 w-full cursor-not-allowed items-center justify-center rounded-xl bg-surface-light-grey font-label text-body-md uppercase tracking-wide text-status-neutral"
             >
               Complete Pick
             </button>

@@ -135,19 +135,19 @@ export default async function TransferListPage({ searchParams }: PageProps) {
   // bottom third full-width, no dense tables on floor screens.
   if (isFloor) {
     return (
-      <div className="flex min-h-screen flex-col bg-brand-navy px-4 py-4">
+      <div className="flex min-h-screen flex-col bg-surface-white">
         {/* Floor top bar */}
         <div className="flex items-center justify-between pb-4">
-          <h1 className="font-heading font-extrabold text-headline-md text-white">
+          <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
             Transfers
           </h1>
           {/* Daily Inspection shortcut — prominent if inspections exist today */}
           {MOCK_HAS_INSPECTIONS_TODAY && (
             <Link
               href="/inspection"
-              className="inline-flex h-14 items-center gap-2 rounded-xl bg-status-pending/20 border border-status-pending/30 px-4 font-label text-body-md text-status-pending
+              className="inline-flex h-14 items-center gap-2 rounded-xl bg-status-pending/10 border border-status-pending/30 px-4 font-label text-body-md text-on-surface
                          active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100
-                         focus:outline-none focus:ring-2 focus:ring-white"
+                         focus:outline-none focus:ring-2 focus:ring-brand-navy"
             >
               {/* Icon paired with text — §1.3 floor color-blind rule */}
               <AlertTriangle size={20} strokeWidth={2} aria-hidden="true" />
@@ -162,10 +162,10 @@ export default async function TransferListPage({ searchParams }: PageProps) {
         {MOCK_FLOOR_TRANSFERS.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
             <CheckCircle2 size={48} strokeWidth={1.5} className="text-status-available" aria-hidden="true" />
-            <p className="font-heading font-semibold text-headline-md text-white">
+            <p className="font-heading font-semibold text-headline-md text-on-surface">
               All caught up
             </p>
-            <p className="font-body text-body-md text-white/70">
+            <p className="font-body text-body-md text-text-grey">
               No open transfers assigned to you right now.
             </p>
           </div>
@@ -176,12 +176,12 @@ export default async function TransferListPage({ searchParams }: PageProps) {
                 key={transfer.id}
                 href={`/transfers/${transfer.id}`}
                 // Floor card: solid bg-white/10 over navy, no glassmorphism — §6; entire card is tap target
-                className="block rounded-xl bg-white/10 border border-white/20 p-4 h-auto min-h-16 active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-navy"
+                className="block min-h-16 rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-2 active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2"
               >
                 <div className="flex items-start gap-3">
                   <div className="min-w-0 flex-1">
                     {/* Transfer reference — Roboto Mono per §9; text-mono-lg (18px) per floor 16px minimum */}
-                    <p className="font-mono text-mono-lg font-bold text-white">
+                    <p className="font-mono text-mono-lg font-bold text-on-surface">
                       {transfer.reference}
                     </p>
                     {/* Route line — icon + text, never icon alone */}
@@ -189,15 +189,15 @@ export default async function TransferListPage({ searchParams }: PageProps) {
                       <ArrowLeftRight
                         size={16}
                         strokeWidth={2}
-                        className="shrink-0 text-white/70"
+                        className="shrink-0 text-text-grey"
                         aria-hidden="true"
                       />
-                      <span className="font-body text-body-md text-white/70">
+                      <span className="font-body text-body-md text-text-grey">
                         {transfer.fromLocation} → {transfer.toLocation}
                       </span>
                     </div>
                     {/* Item count + flow type */}
-                    <p className="mt-1 font-body text-body-md text-white/70">
+                    <p className="mt-1 font-body text-body-md text-text-grey">
                       {transfer.itemCount}{" "}
                       {transfer.itemCount === 1 ? "item" : "items"} ·{" "}
                       {transfer.flowType}
@@ -208,19 +208,19 @@ export default async function TransferListPage({ searchParams }: PageProps) {
                         className={`inline-flex items-center gap-1 rounded-full px-3 py-1 font-label text-body-md uppercase ${
                           transfer.status === "in_progress"
                             ? "bg-status-pending/20 text-status-pending"
-                            : "bg-status-neutral/20 text-white/70"
+                            : "bg-status-neutral/10 text-status-neutral"
                         }`}
                       >
                         {transfer.status === "in_progress"
                           ? <Activity size={20} strokeWidth={2} aria-hidden="true" className="text-status-available" />
-                          : <Clock size={20} strokeWidth={2} aria-hidden="true" className="text-white/50" />}
+                          : <Clock size={20} strokeWidth={2} aria-hidden="true" className="text-status-neutral" />}
                         {transfer.status === "in_progress"
                           ? "In Progress"
                           : "Staged"}
                       </span>
                     </div>
                   </div>
-                  <ChevronRight size={24} strokeWidth={2} aria-hidden="true" className="shrink-0 text-white/50 self-center" />
+                  <ChevronRight size={24} strokeWidth={2} aria-hidden="true" className="shrink-0 self-center text-text-grey" />
                 </div>
               </Link>
             ))}

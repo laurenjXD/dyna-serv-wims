@@ -19,7 +19,6 @@
 "use client";
 
 import type { ReactNode } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bell, Search } from "lucide-react";
 import { resolveSessionPresentationTier } from "@/lib/shell/surface";
@@ -77,8 +76,8 @@ export function ShellChrome({ children }: { children: ReactNode }) {
           </span>
         </div>
 
-        {/* Desktop office header. The controls intentionally keep the shell
-            presentational: page-level filtering stays owned by each route. */}
+        {/* Desktop office header. Search remains an affordance only; filters and
+            result handling stay owned by the relevant feature route. */}
         <div className="hidden min-w-0 flex-1 items-center gap-6 lg:flex">
           <div className="min-w-[230px]">
             <p className="font-heading text-headline-md font-bold text-on-surface">
@@ -88,30 +87,12 @@ export function ShellChrome({ children }: { children: ReactNode }) {
               Dyna-Serv Main Warehouse
             </p>
           </div>
-          <label className="flex h-12 min-w-0 max-w-md flex-1 items-center gap-3 rounded-xl border border-outline-variant/30 bg-surface-light-grey px-4 text-text-grey">
+          <div className="flex h-12 min-w-0 max-w-md flex-1 items-center gap-3 rounded-xl border border-outline-variant/30 bg-surface-light-grey px-4 text-text-grey">
             <Search size={20} aria-hidden="true" />
             <span className="truncate font-body text-body-md">
               Search item code, lot no., or WRR
             </span>
-          </label>
-          <nav aria-label="Flow reporting filter" className="flex h-12 items-center rounded-xl border border-outline-variant/30 bg-surface-light-grey p-1">
-            {[
-              ["all", "All"],
-              ["VMI", "VMI"],
-              ["Trading", "Trading"],
-              ["Supplies", "Supplies"],
-            ].map(([filter, label]) => (
-              <Link
-                key={filter}
-                href={`/reports?filter=${filter}`}
-                className={`rounded-lg px-3 py-2 font-label text-label transition-colors ${
-                  filter === "all" ? "bg-brand-navy text-white" : "text-text-grey hover:bg-surface-white hover:text-on-surface"
-                }`}
-              >
-                {label}
-              </Link>
-            ))}
-          </nav>
+          </div>
           <div className="ml-auto flex items-center gap-5">
             <span className="flex items-center gap-2 font-label text-label text-status-available">
               <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-status-available" />
@@ -164,7 +145,15 @@ export function ShellChrome({ children }: { children: ReactNode }) {
           tier === "floor" ? "" : "bg-surface-light-grey"
         }`}
       >
-        {children}
+        <div
+          className={
+            tier === "floor"
+              ? "px-floor-padding py-6 lg:px-office-margin lg:py-8"
+              : "px-4 py-6 md:px-6 lg:px-office-margin lg:py-8"
+          }
+        >
+          {children}
+        </div>
       </main>
     </>
   );

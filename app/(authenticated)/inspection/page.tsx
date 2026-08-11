@@ -133,13 +133,13 @@ export default async function InspectionQueuePage({ searchParams }: PageProps) {
   // ── Floor surface ────────────────────────────────────────────────────────────
   if (isFloor) {
     return (
-      <div className="flex min-h-screen flex-col bg-brand-navy px-4 py-4">
+      <div className="flex min-h-screen flex-col bg-surface-white">
         {/* Floor top bar */}
         <div className="pb-4">
-          <h1 className="font-heading font-extrabold text-headline-md text-white">
+          <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
             Daily Inspection
           </h1>
-          <p className="mt-1 font-body text-body-md text-white/70">
+          <p className="mt-1 font-body text-body-md text-text-grey">
             Inspections assigned to you today
           </p>
         </div>
@@ -156,10 +156,10 @@ export default async function InspectionQueuePage({ searchParams }: PageProps) {
               className="text-status-available"
               aria-hidden="true"
             />
-            <p className="font-heading font-semibold text-headline-md text-white">
+            <p className="font-heading font-semibold text-headline-md text-on-surface">
               No inspections assigned today
             </p>
-            <p className="font-body text-body-md text-white/70">
+            <p className="font-body text-body-md text-text-grey">
               Check back later or contact your supervisor.
             </p>
           </div>
@@ -170,24 +170,24 @@ export default async function InspectionQueuePage({ searchParams }: PageProps) {
                 key={inspection.id}
                 href={`/inspection/${inspection.id}`}
                 // Floor card — solid bg-white/10, no glassmorphism per §6; entire card is tap target
-                className="block rounded-xl bg-white/10 border border-white/20 p-4 h-auto min-h-16 active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-navy"
+                className="block min-h-16 rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-2 active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2"
               >
                 <div className="flex items-start gap-3">
                   <div className="min-w-0 flex-1">
                     {/* Item name — Fira Sans, headline-md, text-white; floor min 16px §2 */}
-                    <p className="font-heading font-semibold text-headline-md text-white">
+                    <p className="font-heading font-semibold text-headline-md text-on-surface">
                       {inspection.itemName}
                     </p>
 
                     {/* Lot number — Roboto Mono per §9; text-mono-lg (18px) per floor 16px minimum */}
-                    <p className="mt-1 font-mono text-mono-lg text-white/70">
+                    <p className="mt-1 font-mono text-mono-lg text-text-grey">
                       {inspection.lotNumber}
                     </p>
 
                     {/* Location — MapPin icon paired with text; never text alone */}
                     <div className="mt-2 flex items-center gap-2">
-                      <MapPin size={24} strokeWidth={2} aria-hidden="true" className="text-white/50 shrink-0" />
-                      <span className="font-body text-body-md text-white/70">
+                      <MapPin size={24} strokeWidth={2} aria-hidden="true" className="shrink-0 text-text-grey" />
+                      <span className="font-body text-body-md text-text-grey">
                         {inspection.locationCode}
                       </span>
                     </div>
@@ -197,8 +197,8 @@ export default async function InspectionQueuePage({ searchParams }: PageProps) {
                       <span
                         className={`inline-flex items-center gap-1 rounded-full px-3 py-1 font-label text-body-md uppercase ${
                           inspection.contextType === "transfer"
-                            ? "bg-brand-royal-blue/30 text-white"
-                            : "bg-status-neutral/20 text-white/70"
+                            ? "bg-accent-indigo-50 text-on-surface"
+                            : "bg-status-neutral/10 text-status-neutral"
                         }`}
                       >
                         {/* Icon paired with text — §1.3 */}
@@ -211,7 +211,7 @@ export default async function InspectionQueuePage({ searchParams }: PageProps) {
                       </span>
                     </div>
                   </div>
-                  <ChevronRight size={24} strokeWidth={2} aria-hidden="true" className="shrink-0 text-white/50 self-center" />
+                  <ChevronRight size={24} strokeWidth={2} aria-hidden="true" className="shrink-0 self-center text-text-grey" />
                 </div>
               </Link>
             ))}
