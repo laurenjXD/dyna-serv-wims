@@ -14,6 +14,11 @@ import { AuthenticatedShellBoundary } from "@/components/global/AuthenticatedShe
 import { ShellChrome } from "@/components/global/ShellChrome";
 import { resolveShellAuthorization } from "./actions";
 
+// Every route in this group resolves its authorization from the request's
+// Supabase cookies. Prevent Next from attempting to statically prerender the
+// group at build time, where no request cookie store exists.
+export const dynamic = "force-dynamic";
+
 const resolver: RequestAuthorizationResolver = {
   getContext: resolveShellAuthorization,
 };
