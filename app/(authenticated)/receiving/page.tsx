@@ -233,7 +233,13 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
   );
 }
 
-// ─── Receive tab (default) — staged/in-progress WRRs ready to be received ────
+// ─── Receive tab (default) — in-progress WRRs ready for floor receive ─────────
+//
+// The Receive tab is a floor quick-jump: it defaults to showing only
+// `receiving_in_progress` WRRs (the ones a warehouseman needs to continue
+// receiving right now), not all WRRs (that's the WRRs tab's job).
+// A floor worker never needs to see staged/confirmed/cancelled rows here —
+// they just need to tap "Continue" on their active WRR.
 
 async function ReceiveTab({
   statusFilter,
@@ -244,8 +250,10 @@ async function ReceiveTab({
 }) {
   const currentPage = Math.max(1, Number(pageParam ?? "1") || 1);
   const offset = (currentPage - 1) * QUEUE_PAGE_SIZE;
+  // Default to receiving_in_progress for the quick-jump use case.
+  // The status filter from the URL overrides this when present.
   const status =
-    statusFilter && statusFilter !== "" ? statusFilter : undefined;
+    statusFilter && statusFilter !== "" ? statusFilter : "receiving_in_progress";
 
   const { rows, total } = await listWrrDocuments(db, {
     limit: QUEUE_PAGE_SIZE,
@@ -257,136 +265,66 @@ async function ReceiveTab({
 
   return (
     <div>
-      {/* Status filter bar */}
-      <div className="mt-6">
-        <form method="GET" className="flex flex-wrap items-end gap-3">
-          <input type="hidden" name="tab" value="receive" />
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="status-filter"
-              className="font-label text-label text-text-grey"
-            >
-              Status
-            </label>
-            <select
-              id="status-filter"
-              name="status"
-              defaultValue={statusFilter ?? ""}
-              className="h-14 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy md:h-11"
-            >
-              {STATUS_FILTER_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <button
-            type="submit"
-            className="flex h-14 items-center justify-center rounded bg-brand-navy px-4 font-label text-body-md text-surface-white active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy md:h-11 md:text-label md:hover:opacity-90"
-          >
-            Apply
-          </button>
-          {status && (
-            <Link
-              href="/receiving"
-              className="flex h-14 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-body-md text-on-surface active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy md:h-11 md:text-label md:hover:bg-surface-light-grey"
-            >
-              Clear
-            </Link>
-          )}
-        </form>
-      </div>
+      {/* Intro message for floor workers */}
+      <p className="mt-6 font-body text-body-md text-text-grey">
+        {rows.length === 0
+          ? "No WRRs are currently in progress. Check the WRRs tab for staged shipments."
+          : `${total} WRR${total !== 1 ? "s" : ""} in progress — tap to continue receiving.`}
+      </p>
 
-      {/* WRR table — Level 1 office elevation per brand-design-system.md §6 */}
-      <div className="mt-4 overflow-hidden rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-2 md:shadow-elevation-1">
+      {/* WRR cards — floor-first layout. No dense table here; floor workers
+          need one large CTA per row at 64px (min-h-16), not a multi-column table.
+          brand-design-system.md §3: floor primary actions full-width bottom-of-screen;
+          §9: floor tables are a fail case — card list is correct here. */}
+      <div className="mt-4 space-y-3">
         {rows.length === 0 ? (
-          <div className="px-6 py-12 text-center">
+          <div className="rounded-md border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-2">
             <p className="font-body text-body-md text-text-grey">
-              {status
-                ? "No WRRs match the current filter."
-                : "No warehouse receipt records yet."}
+              No WRRs currently in progress.
             </p>
-            {!status && (
-              <p className="mt-2 font-body text-body-sm text-text-grey">
-                Create a new WRR when a shipment is expected.
-              </p>
-            )}
+            <p className="mt-2 font-body text-body-md text-text-grey">
+              New WRRs staged for your shift will appear here.
+            </p>
           </div>
         ) : (
-          <>
-          <WrrMobileCards
-            rows={rows}
-            secondaryLabel={() => "Staged by"}
-            secondaryValue={(row) => row.stagedByUserId}
-            actionForRow={(row) =>
-              row.status === "confirmed" || row.status === "cancelled"
-                ? { href: `/receiving/${row.id}`, label: "View WRR" }
-                : { href: `/receiving/${row.id}/receive`, label: "Receive items", primary: true }
-            }
-          />
-          <div className="hidden overflow-x-auto md:block">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                  {/* Epilogue SemiBold uppercase headers per §9 tables */}
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    WRR Number
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Flow Type
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Staged By
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Created At
-                  </th>
-                  <th className="sr-only px-4 py-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/30">
-                {rows.map((row: WrrDocumentRow) => (
-                  <tr key={row.id} className="hover:bg-surface-light-grey/50">
-                    {/* Roboto Mono for reference numbers per §9 */}
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
+          rows.map((row: WrrDocumentRow) => (
+            <article
+              key={row.id}
+              className="overflow-hidden rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-2"
+            >
+              {/* Left accent bar — brand-design-system.md §1.1 signature pattern:
+                  in-progress receives the status-pending (amber) accent since they
+                  need attention; staged gets on-surface (neutral). */}
+              <div className={`border-l-4 ${row.status === "receiving_in_progress" ? "border-l-status-pending" : "border-l-on-surface"} p-4`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-mono text-mono-lg font-bold text-on-surface">
                       {row.wrrNumber}
-                    </td>
-                    <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                      {FLOW_LABELS[row.flowType] ?? row.flowType}
-                    </td>
-                    <td className="px-4 py-3">
-                      {/* Status badge — radius-full, §1.3 semantic colors */}
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase ${STATUS_CLASSES[row.status] ?? "bg-status-neutral/10 text-status-neutral"}`}
-                      >
-                        {STATUS_LABELS[row.status] ?? row.status.toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {row.stagedByUserId}
-                    </td>
-                    <td className="px-4 py-3 font-body text-body-md text-text-grey">
-                      {row.createdAt.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {/* View link — h-11 (44px) touch target */}
-                      <Link
-                        href={`/receiving/${row.id}`}
-                        className="inline-flex h-11 items-center font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                      >
-                        View
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          </>
+                    </p>
+                    <p className="mt-1 font-body text-body-md text-text-grey">
+                      {row.vendorPartyName ?? row.vendorPartyId} &middot; {FLOW_LABELS[row.flowType] ?? row.flowType}
+                    </p>
+                    <p className="mt-0.5 font-body text-body-md text-text-grey">
+                      {row.createdAt.toLocaleDateString()}
+                    </p>
+                  </div>
+                  <span
+                    className={`inline-flex shrink-0 items-center rounded-full px-2 py-1 font-label text-label uppercase ${STATUS_CLASSES[row.status] ?? "bg-status-neutral/10 text-status-neutral"}`}
+                  >
+                    {STATUS_LABELS[row.status] ?? row.status.toUpperCase()}
+                  </span>
+                </div>
+                {/* Floor primary CTA: min-h-14 (56px) for non-primary, min-h-16 (64px) for primary.
+                    active: press feedback per brand-design-system.md §10 (no hover). */}
+                <Link
+                  href={`/receiving/${row.id}/receive`}
+                  className="mt-4 flex min-h-16 w-full items-center justify-center rounded bg-brand-red px-4 font-label text-body-md uppercase tracking-wide text-surface-white active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2"
+                >
+                  Continue Receiving
+                </Link>
+              </div>
+            </article>
+          ))
         )}
       </div>
 
@@ -399,22 +337,16 @@ async function ReceiveTab({
           <div className="flex gap-2">
             {currentPage > 1 && (
               <Link
-                href={`/receiving?${new URLSearchParams({
-                  ...(status ? { status } : {}),
-                  page: String(currentPage - 1),
-                })}`}
-                className="inline-flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                href={`/receiving?page=${currentPage - 1}`}
+                className="inline-flex h-14 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-body-md text-on-surface active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy md:h-11 md:text-label md:hover:bg-surface-light-grey"
               >
                 Previous
               </Link>
             )}
             {currentPage < totalPages && (
               <Link
-                href={`/receiving?${new URLSearchParams({
-                  ...(status ? { status } : {}),
-                  page: String(currentPage + 1),
-                })}`}
-                className="inline-flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                href={`/receiving?page=${currentPage + 1}`}
+                className="inline-flex h-14 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-body-md text-on-surface active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy md:h-11 md:text-label md:hover:bg-surface-light-grey"
               >
                 Next
               </Link>
@@ -518,8 +450,8 @@ async function WrrsTab({
           <>
           <WrrMobileCards
             rows={rows}
-            secondaryLabel={() => "Staged by"}
-            secondaryValue={(row) => row.stagedByUserId}
+            secondaryLabel={() => "Vendor"}
+            secondaryValue={(row) => row.vendorPartyName ?? row.vendorPartyId}
             actionForRow={(row) => ({ href: `/receiving/${row.id}`, label: "View WRR" })}
           />
           <div className="hidden overflow-x-auto md:block">
@@ -536,7 +468,7 @@ async function WrrsTab({
                     Status
                   </th>
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Staged By
+                    Vendor
                   </th>
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                     Created At
@@ -560,8 +492,8 @@ async function WrrsTab({
                         {STATUS_LABELS[row.status] ?? row.status.toUpperCase()}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {row.stagedByUserId}
+                    <td className="px-4 py-3 font-body text-body-md text-on-surface">
+                      {row.vendorPartyName ?? <span className="font-mono text-mono-md">{row.vendorPartyId}</span>}
                     </td>
                     <td className="px-4 py-3 font-body text-body-md text-text-grey">
                       {row.createdAt.toLocaleString()}
@@ -662,8 +594,8 @@ async function LedgerTab({ pageParam }: { pageParam?: string }) {
           <>
           <WrrMobileCards
             rows={rows}
-            secondaryLabel={() => "Vendor party"}
-            secondaryValue={(row) => row.vendorPartyId}
+            secondaryLabel={() => "Vendor"}
+            secondaryValue={(row) => row.vendorPartyName ?? row.vendorPartyId}
             actionForRow={(row) => ({ href: `/receiving/${row.id}`, label: "View WRR" })}
           />
           <div className="hidden overflow-x-auto md:block">
@@ -678,7 +610,7 @@ async function LedgerTab({ pageParam }: { pageParam?: string }) {
                     Flow Type
                   </th>
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Vendor Party
+                    Vendor
                   </th>
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                     Confirmed At
@@ -696,9 +628,9 @@ async function LedgerTab({ pageParam }: { pageParam?: string }) {
                     <td className="px-4 py-3 font-body text-body-md text-on-surface">
                       {FLOW_LABELS[row.flowType] ?? row.flowType}
                     </td>
-                    {/* Vendor party ID — Mono for identifiers per §9 */}
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {row.vendorPartyId}
+                    {/* Vendor party name — resolved via join; fallback to ID if not found */}
+                    <td className="px-4 py-3 font-body text-body-md text-on-surface">
+                      {row.vendorPartyName ?? row.vendorPartyId}
                     </td>
                     {/*
                      * Note: confirmedAt is on wrr_documents but not in the

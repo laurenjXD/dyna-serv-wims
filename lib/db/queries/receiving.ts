@@ -35,6 +35,8 @@ export type WrrDocumentRow = {
   status: string;
   flowType: string;
   vendorPartyId: string;
+  // Resolved vendor party name via join — null if vendor party not found (edge case).
+  vendorPartyName: string | null;
   stagedByUserId: string;
   createdAt: Date;
 };
@@ -128,6 +130,8 @@ export async function listWrrDocuments(
   db: DbLike,
   opts: { limit: number; offset: number; status?: string },
 ): Promise<{ rows: WrrDocumentRow[]; total: number }> {
+  // Left-join to parties to resolve the human-readable vendor name for the
+  // list-view display. getWrrDocument uses the same join for the detail view.
   const dataBase = db
     .select({
       id: wrrDocuments.id,
@@ -135,10 +139,12 @@ export async function listWrrDocuments(
       status: wrrDocuments.status,
       flowType: wrrDocuments.flowType,
       vendorPartyId: wrrDocuments.vendorPartyId,
+      vendorPartyName: partiesTable.name,
       stagedByUserId: wrrDocuments.stagedByUserId,
       createdAt: wrrDocuments.createdAt,
     })
-    .from(wrrDocuments);
+    .from(wrrDocuments)
+    .leftJoin(partiesTable, eq(partiesTable.id, wrrDocuments.vendorPartyId));
 
   const countBase = db
     .select({ count: sql<string>`count(*)` })

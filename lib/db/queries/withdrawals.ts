@@ -40,7 +40,6 @@ export type PickListRow = {
   customerPartyId: string;
   flowType: string;
   createdAt: Date;
-  createdBy: string;
 };
 
 export type PickListItemRow = {
@@ -90,6 +89,7 @@ export async function listPickLists(
   const dataBase = db
     .select({
       id: pickLists.id,
+      pickListNumber: pickLists.pickListNumber,
       status: pickLists.status,
       customerPartyId: pickLists.customerPartyId,
       flowType: pickLists.flowType,
