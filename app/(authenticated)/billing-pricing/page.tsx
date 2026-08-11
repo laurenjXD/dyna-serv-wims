@@ -82,7 +82,7 @@ export default async function BillingPricingPage(props: {
 
 function VmiContractForm() {
   return (
-    <div className="rounded-2xl border border-outline-variant/30 bg-white shadow-elevation-1">
+    <div className="rounded-lg-3xl border border-outline-variant/30 bg-white shadow-elevation-1">
       <div className="border-b border-outline-variant/30 px-6 py-4">
         <h2 className="font-heading font-semibold text-headline-md text-on-surface">
           VMI Contract Terms
@@ -98,7 +98,7 @@ function VmiContractForm() {
             <label className="font-label text-label text-on-surface-variant">
               Party
             </label>
-            <select className="h-11 rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary">
+            <select className="h-11 rounded-lg border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary">
               <option value="">Select a party...</option>
               <option value="party-1">Acme Logistics Co.</option>
               <option value="party-2">Global Parts Inc.</option>
@@ -114,7 +114,7 @@ function VmiContractForm() {
               type="number"
               step="0.01"
               defaultValue="4.50"
-              className="h-11 rounded border border-outline-variant/30 px-3 font-mono text-mono-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+              className="h-11 rounded-lg border border-outline-variant/30 px-3 font-mono text-mono-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
           
@@ -122,7 +122,7 @@ function VmiContractForm() {
             <label className="font-label text-label text-on-surface-variant">
               Billing Currency
             </label>
-            <select className="h-11 rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary">
+            <select className="h-11 rounded-lg border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary">
               <option value="USD">USD</option>
               <option value="PHP">PHP</option>
             </select>
@@ -136,7 +136,7 @@ function VmiContractForm() {
               type="number"
               step="0.01"
               defaultValue="15.00"
-              className="h-11 rounded border border-outline-variant/30 px-3 font-mono text-mono-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+              className="h-11 rounded-lg border border-outline-variant/30 px-3 font-mono text-mono-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 
@@ -148,7 +148,7 @@ function VmiContractForm() {
               type="number"
               step="0.01"
               defaultValue="10.00"
-              className="h-11 rounded border border-outline-variant/30 px-3 font-mono text-mono-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+              className="h-11 rounded-lg border border-outline-variant/30 px-3 font-mono text-mono-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 
@@ -160,7 +160,7 @@ function VmiContractForm() {
               type="number"
               step="1"
               defaultValue="50"
-              className="h-11 rounded border border-outline-variant/30 px-3 font-mono text-mono-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+              className="h-11 rounded-lg border border-outline-variant/30 px-3 font-mono text-mono-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
         </div>
@@ -168,13 +168,13 @@ function VmiContractForm() {
         <div className="mt-8 flex justify-end gap-3">
           <button
             type="button"
-            className="flex h-11 items-center justify-center rounded px-4 font-label text-label text-on-surface-variant hover:bg-surface-dim focus:outline-none focus:ring-2 focus:ring-primary"
+            className="flex h-11 items-center justify-center rounded-lg px-4 font-label text-label text-on-surface-variant hover:bg-surface-dim focus:outline-none focus:ring-2 focus:ring-primary"
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="flex h-11 items-center justify-center rounded bg-primary px-6 font-label text-label text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary"
+            className="flex h-11 items-center justify-center rounded-lg bg-primary px-6 font-label text-label text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary"
           >
             Save Contract
           </button>
@@ -188,7 +188,7 @@ function VmiContractForm() {
 
 function TradingMarginForm() {
   return (
-    <div className="rounded-2xl border border-outline-variant/30 bg-white shadow-elevation-1">
+    <div className="rounded-lg-3xl border border-outline-variant/30 bg-white shadow-elevation-1">
       <div className="border-b border-outline-variant/30 px-6 py-4">
         <h2 className="font-heading font-semibold text-headline-md text-on-surface">
           Trading Pricing/Margin Policy
@@ -204,7 +204,7 @@ function TradingMarginForm() {
             <label className="font-label text-label text-on-surface-variant">
               Customer
             </label>
-            <select className="h-11 rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary">
+            <select className="h-11 rounded-lg border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary">
               <option value="">Select a customer...</option>
               <option value="party-4">Nexus Distribution Ltd.</option>
               <option value="party-5">Arcadia Industrial</option>
@@ -219,7 +219,7 @@ function TradingMarginForm() {
               type="number"
               step="0.1"
               defaultValue="30.0"
-              className="h-11 rounded border border-outline-variant/30 px-3 font-mono text-mono-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+              className="h-11 rounded-lg border border-outline-variant/30 px-3 font-mono text-mono-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 
@@ -231,7 +231,7 @@ function TradingMarginForm() {
               type="number"
               step="0.1"
               defaultValue="20.0"
-              className="h-11 rounded border border-outline-variant/30 px-3 font-mono text-mono-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+              className="h-11 rounded-lg border border-outline-variant/30 px-3 font-mono text-mono-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 
@@ -239,7 +239,7 @@ function TradingMarginForm() {
             <label className="font-label text-label text-on-surface-variant">
               Pricing Strategy
             </label>
-            <select className="h-11 rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary">
+            <select className="h-11 rounded-lg border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary">
               <option value="fixed_markup">Fixed Markup on COGS</option>
               <option value="contract_pricing">Contract Item Pricing</option>
               <option value="volume_tier">Volume Tiered Discount</option>
@@ -250,13 +250,13 @@ function TradingMarginForm() {
         <div className="mt-8 flex justify-end gap-3">
           <button
             type="button"
-            className="flex h-11 items-center justify-center rounded px-4 font-label text-label text-on-surface-variant hover:bg-surface-dim focus:outline-none focus:ring-2 focus:ring-primary"
+            className="flex h-11 items-center justify-center rounded-lg px-4 font-label text-label text-on-surface-variant hover:bg-surface-dim focus:outline-none focus:ring-2 focus:ring-primary"
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="flex h-11 items-center justify-center rounded bg-primary px-6 font-label text-label text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary"
+            className="flex h-11 items-center justify-center rounded-lg bg-primary px-6 font-label text-label text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary"
           >
             Save Policy
           </button>

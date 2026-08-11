@@ -24,6 +24,7 @@ const SETTINGS_NAV_ITEMS = [
   { id: "team", label: "Team Members", href: "/settings/team" },
   { id: "security", label: "Security", href: "/settings/security" },
   { id: "general", label: "General", href: "/settings/general" },
+  { id: "audit-log", label: "Audit Log", href: "/settings/audit-log" },
 ] as const;
 
 export function SettingsNav() {

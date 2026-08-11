@@ -217,28 +217,41 @@ export function UserManagementGrid({
                   <StatusBadge status={member.status} />
                 </td>
                 <td className="px-4 py-3">
-                  {member.status === "inactive" ? (
+                  <div className="flex items-center gap-4">
                     <button
                       type="button"
-                      data-testid={`reactivate-${member.id}`}
-                      onClick={() => handleReactivate(member)}
-                      className="font-label text-label uppercase tracking-wide text-status-success hover:underline"
+                      onClick={() => alert("Assign Role dialog placeholder")}
+                      className="font-label text-label uppercase tracking-wide text-action-blue hover:underline"
                     >
-                      Reactivate
+                      Assign Role
                     </button>
-                  ) : (
                     <button
                       type="button"
-                      data-testid={`suspend-${member.id}`}
-                      onClick={() => setSuspendTarget(member)}
-                      // Destructive action -> status-error, not action-blue,
-                      // per brand-design-system.md §9 ("Destructive:
-                      // status-error solid").
-                      className="font-label text-label uppercase tracking-wide text-status-error hover:underline"
+                      onClick={() => alert("Reset Password flow placeholder")}
+                      className="font-label text-label uppercase tracking-wide text-action-blue hover:underline"
                     >
-                      Suspend
+                      Reset Password
                     </button>
-                  )}
+                    {member.status === "inactive" ? (
+                      <button
+                        type="button"
+                        data-testid={`reactivate-${member.id}`}
+                        onClick={() => handleReactivate(member)}
+                        className="font-label text-label uppercase tracking-wide text-status-success hover:underline"
+                      >
+                        Reactivate
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        data-testid={`suspend-${member.id}`}
+                        onClick={() => setSuspendTarget(member)}
+                        className="font-label text-label uppercase tracking-wide text-status-error hover:underline"
+                      >
+                        Suspend
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
