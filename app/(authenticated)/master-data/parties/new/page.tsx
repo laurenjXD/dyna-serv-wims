@@ -20,12 +20,12 @@ export default async function NewPartyPage() {
         <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
           New Party
         </h1>
-        <p className="mt-1 font-body text-body-md text-text-grey">
+        <p className="mt-1 font-body text-body-md text-on-surface-variant">
           Enroll a new vendor, supplier, customer, or other business party.
         </p>
       </div>
 
-      <div className="rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="rounded-md bg-white shadow-elevation-1 p-6">
         <PartyForm
           action={createPartyAction}
           cancelHref="/master-data/parties"

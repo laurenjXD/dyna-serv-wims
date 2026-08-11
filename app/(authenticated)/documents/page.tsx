@@ -4,7 +4,7 @@
 //   specs/10-pick-list-and-acknowledgement-receipt/design.md (document generation,
 //     pick_list + acknowledgement_receipt tables, print view)
 //   specs/00-steering/brand-design-system.md §6 (office Level 1 elevation:
-//     bg-surface-white), §2 (typography), §9 (office table pattern)
+//     bg-white), §2 (typography), §9 (office table pattern)
 //
 // Surface: Office. Capability gate: documents.read.
 // Offline: document listing is Tier 2 — online only, never cached.
@@ -23,14 +23,14 @@ type ARStatus = "pending_signature" | "signed" | "disputed";
 
 // ─── Status helpers — tokens from tailwind.config.ts, no raw hex ──────────────
 // brand-design-system.md §1.3:
-//   committed / pending_signature → status-pending (amber)
-//   dispatched / signed           → status-available (green)
-//   cancelled / disputed          → status-held (red)
+//   committed / pending_signature → status-warning (amber)
+//   dispatched / signed           → status-success (green)
+//   cancelled / disputed          → status-error (red)
 
 const PICK_STATUS_CLASSES: Record<PickListStatus, string> = {
-  committed: "bg-status-pending/10 text-status-pending",
-  dispatched: "bg-status-available/10 text-status-available",
-  cancelled: "bg-status-held/10 text-status-held",
+  committed: "bg-status-warning/10 text-status-warning",
+  dispatched: "bg-status-success/10 text-status-success",
+  cancelled: "bg-status-error/10 text-status-error",
 };
 
 const PICK_STATUS_LABELS: Record<PickListStatus, string> = {
@@ -40,9 +40,9 @@ const PICK_STATUS_LABELS: Record<PickListStatus, string> = {
 };
 
 const AR_STATUS_CLASSES: Record<ARStatus, string> = {
-  pending_signature: "bg-status-pending/10 text-status-pending",
-  signed: "bg-status-available/10 text-status-available",
-  disputed: "bg-status-held/10 text-status-held",
+  pending_signature: "bg-status-warning/10 text-status-warning",
+  signed: "bg-status-success/10 text-status-success",
+  disputed: "bg-status-error/10 text-status-error",
 };
 
 const AR_STATUS_LABELS: Record<ARStatus, string> = {
@@ -52,8 +52,8 @@ const AR_STATUS_LABELS: Record<ARStatus, string> = {
 };
 
 const FLOW_CLASSES: Record<FlowType, string> = {
-  VMI: "bg-brand-royal-blue/10 text-brand-royal-blue",
-  Trading: "bg-brand-navy/10 text-brand-navy",
+  VMI: "bg-secondary/10 text-secondary",
+  Trading: "bg-primary/10 text-primary",
   Supplies: "bg-status-neutral/10 text-status-neutral",
 };
 
@@ -144,13 +144,13 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
       <div className="mx-auto max-w-container px-8 py-12 text-center">
         <FileText
           size={40}
-          className="mx-auto mb-3 text-text-grey"
+          className="mx-auto mb-3 text-on-surface-variant"
           aria-hidden="true"
         />
-        <p className="font-body text-body-md text-text-grey">
+        <p className="font-body text-body-md text-on-surface-variant">
           You do not have permission to view documents.
         </p>
-        <p className="mt-2 font-body text-body-sm text-text-grey">
+        <p className="mt-2 font-body text-body-sm text-on-surface-variant">
           This page requires the{" "}
           <span className="font-mono text-mono-md">documents.read</span>{" "}
           capability.
@@ -168,7 +168,7 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
         <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
           Documents
         </h1>
-        <p className="mt-1 font-body text-body-md text-text-grey">
+        <p className="mt-1 font-body text-body-md text-on-surface-variant">
           Generated pick lists and acknowledgement receipts.
         </p>
       </div>
@@ -180,14 +180,14 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
           <div className="flex flex-col gap-1">
             <label
               htmlFor="type-filter"
-              className="font-label text-label text-text-grey"
+              className="font-label text-label text-on-surface-variant"
             >
               Flow type
             </label>
             <select
               id="type-filter"
               name="type"
-              className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="h-11 rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="all">All types</option>
               <option value="VMI">VMI</option>
@@ -200,14 +200,14 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
           <div className="flex flex-col gap-1">
             <label
               htmlFor="status-filter"
-              className="font-label text-label text-text-grey"
+              className="font-label text-label text-on-surface-variant"
             >
               Status
             </label>
             <select
               id="status-filter"
               name="status"
-              className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="h-11 rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="all">All statuses</option>
               <option value="committed">Committed</option>
@@ -220,7 +220,7 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
           <div className="flex flex-col gap-1">
             <label
               htmlFor="from-date"
-              className="font-label text-label text-text-grey"
+              className="font-label text-label text-on-surface-variant"
             >
               From
             </label>
@@ -228,7 +228,7 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
               type="date"
               id="from-date"
               name="from"
-              className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="h-11 rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 
@@ -236,7 +236,7 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
           <div className="flex flex-col gap-1">
             <label
               htmlFor="to-date"
-              className="font-label text-label text-text-grey"
+              className="font-label text-label text-on-surface-variant"
             >
               To
             </label>
@@ -244,7 +244,7 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
               type="date"
               id="to-date"
               name="to"
-              className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="h-11 rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 
@@ -252,7 +252,7 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
           <div className="flex flex-col gap-1">
             <label
               htmlFor="party-filter"
-              className="font-label text-label text-text-grey"
+              className="font-label text-label text-on-surface-variant"
             >
               Party
             </label>
@@ -261,13 +261,13 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
               id="party-filter"
               name="party"
               placeholder="Search party…"
-              className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-text-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="h-11 rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 
           <button
             type="submit"
-            className="flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white motion-safe:transition-opacity motion-safe:duration-150 hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-11 items-center justify-center rounded bg-primary px-4 font-label text-label text-white motion-safe:transition-opacity motion-safe:duration-150 hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-primary"
           >
             Apply
           </button>
@@ -278,10 +278,10 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
       <div className="mt-6 flex gap-1 border-b border-outline-variant/30">
         <Link
           href="/documents?tab=pick-lists"
-          className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-brand-navy ${
+          className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary ${
             activeTab === "pick-lists"
-              ? "border-b-2 border-brand-navy text-brand-navy"
-              : "text-text-grey hover:text-on-surface"
+              ? "border-b-2 border-primary text-primary"
+              : "text-on-surface-variant hover:text-on-surface"
           }`}
           aria-current={activeTab === "pick-lists" ? "page" : undefined}
         >
@@ -289,10 +289,10 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
         </Link>
         <Link
           href="/documents?tab=acknowledgement-receipts"
-          className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-brand-navy ${
+          className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary ${
             activeTab === "ar"
-              ? "border-b-2 border-brand-navy text-brand-navy"
-              : "text-text-grey hover:text-on-surface"
+              ? "border-b-2 border-primary text-primary"
+              : "text-on-surface-variant hover:text-on-surface"
           }`}
           aria-current={activeTab === "ar" ? "page" : undefined}
         >
@@ -317,10 +317,10 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
 function PickListsTab() {
   if (MOCK_PICK_LISTS.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center">
-        <Package size={40} className="text-text-grey" aria-hidden="true" />
-        <p className="font-body text-body-md text-text-grey">No pick lists yet.</p>
-        <p className="font-body text-body-sm text-text-grey">
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-white px-6 py-12 text-center">
+        <Package size={40} className="text-on-surface-variant" aria-hidden="true" />
+        <p className="font-body text-body-md text-on-surface-variant">No pick lists yet.</p>
+        <p className="font-body text-body-sm text-on-surface-variant">
           Pick lists appear here once outgoing withdrawals are committed.
         </p>
       </div>
@@ -328,28 +328,28 @@ function PickListsTab() {
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+    <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-white shadow-elevation-1">
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
-            <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
+            <tr className="border-b border-outline-variant/30 bg-surface-dim">
               {/* Epilogue SemiBold uppercase headers per brand-design-system.md §9 */}
-              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                 Pick List #
               </th>
-              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                 Party
               </th>
-              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                 Items
               </th>
-              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                 Flow
               </th>
-              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                 Status
               </th>
-              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                 Created
               </th>
               <th className="sr-only px-4 py-3">Actions</th>
@@ -357,7 +357,7 @@ function PickListsTab() {
           </thead>
           <tbody className="divide-y divide-outline-variant/30">
             {MOCK_PICK_LISTS.map((pl) => (
-              <tr key={pl.id} className="hover:bg-surface-light-grey/50">
+              <tr key={pl.id} className="hover:bg-surface-dim/50">
                 {/* Pick list number — Roboto Mono for codes */}
                 <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
                   {pl.number}
@@ -392,7 +392,7 @@ function PickListsTab() {
                 </td>
 
                 {/* Date */}
-                <td className="px-4 py-3 font-body text-body-md text-text-grey">
+                <td className="px-4 py-3 font-body text-body-md text-on-surface-variant">
                   {pl.createdAt}
                 </td>
 
@@ -403,14 +403,14 @@ function PickListsTab() {
                     <button
                       type="button"
                       aria-label={`Print pick list ${pl.number}`}
-                      className="flex h-11 w-11 items-center justify-center rounded border border-outline-variant/30 text-text-grey motion-safe:transition-colors motion-safe:duration-150 hover:border-brand-navy hover:text-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                      className="flex h-11 w-11 items-center justify-center rounded border border-outline-variant/30 text-on-surface-variant motion-safe:transition-colors motion-safe:duration-150 hover:border-primary hover:text-primary motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-primary"
                     >
                       <Printer size={16} aria-hidden="true" />
                     </button>
 
                     <Link
                       href={`/documents/pick-lists/${pl.id}`}
-                      className="inline-flex h-11 items-center rounded bg-brand-navy px-4 font-label text-label text-surface-white motion-safe:transition-opacity motion-safe:duration-150 hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                      className="inline-flex h-11 items-center rounded bg-primary px-4 font-label text-label text-white motion-safe:transition-opacity motion-safe:duration-150 hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-primary"
                     >
                       View
                     </Link>
@@ -430,12 +430,12 @@ function PickListsTab() {
 function AcknowledgementReceiptsTab() {
   if (MOCK_ACKNOWLEDGEMENT_RECEIPTS.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center">
-        <CheckCircle2 size={40} className="text-text-grey" aria-hidden="true" />
-        <p className="font-body text-body-md text-text-grey">
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-white px-6 py-12 text-center">
+        <CheckCircle2 size={40} className="text-on-surface-variant" aria-hidden="true" />
+        <p className="font-body text-body-md text-on-surface-variant">
           No acknowledgement receipts yet.
         </p>
-        <p className="font-body text-body-sm text-text-grey">
+        <p className="font-body text-body-sm text-on-surface-variant">
           Receipts appear here once pick lists are dispatched and signed by the party.
         </p>
       </div>
@@ -443,27 +443,27 @@ function AcknowledgementReceiptsTab() {
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+    <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-white shadow-elevation-1">
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
-            <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+            <tr className="border-b border-outline-variant/30 bg-surface-dim">
+              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                 AR #
               </th>
-              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                 Party
               </th>
-              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                 Pick List #
               </th>
-              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                 Items
               </th>
-              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                 Status
               </th>
-              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                 Date
               </th>
               <th className="sr-only px-4 py-3">Actions</th>
@@ -471,7 +471,7 @@ function AcknowledgementReceiptsTab() {
           </thead>
           <tbody className="divide-y divide-outline-variant/30">
             {MOCK_ACKNOWLEDGEMENT_RECEIPTS.map((ar) => (
-              <tr key={ar.id} className="hover:bg-surface-light-grey/50">
+              <tr key={ar.id} className="hover:bg-surface-dim/50">
                 {/* AR number — Roboto Mono for codes */}
                 <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
                   {ar.number}
@@ -502,7 +502,7 @@ function AcknowledgementReceiptsTab() {
                 </td>
 
                 {/* Date */}
-                <td className="px-4 py-3 font-body text-body-md text-text-grey">
+                <td className="px-4 py-3 font-body text-body-md text-on-surface-variant">
                   {ar.date}
                 </td>
 
@@ -510,7 +510,7 @@ function AcknowledgementReceiptsTab() {
                 <td className="px-4 py-3 text-right">
                   <Link
                     href={`/documents/acknowledgement-receipts/${ar.id}`}
-                    className="inline-flex h-11 items-center rounded bg-brand-navy px-4 font-label text-label text-surface-white motion-safe:transition-opacity motion-safe:duration-150 hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                    className="inline-flex h-11 items-center rounded bg-primary px-4 font-label text-label text-white motion-safe:transition-opacity motion-safe:duration-150 hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     View
                   </Link>

@@ -4,11 +4,11 @@ import type { StatusToken, Trend } from "./types";
 import { trendClass, trendLabel, trendSymbol } from "./utils";
 
 const valueClass: Record<StatusToken, string> = {
-  available: "text-status-available",
-  pending: "text-status-pending",
-  held: "text-status-held",
+  available: "text-status-success",
+  pending: "text-status-warning",
+  held: "text-status-error",
   neutral: "text-status-neutral",
-  expired: "text-brand-royal-blue",
+  expired: "text-secondary",
 };
 
 export type KpiCardProps = {
@@ -25,13 +25,13 @@ export function KpiCard({ label, value, trend, icon, statusColor, linkTo }: KpiC
   const content = (
     <div
       aria-label={ariaLabel}
-      className="group rounded bg-surface-white p-6 shadow-elevation-1 transition-transform duration-150 hover:scale-[1.02] focus-within:ring-2 focus-within:ring-brand-navy"
+      className="group rounded bg-white p-6 shadow-elevation-1 transition-transform duration-150 hover:scale-[1.02] focus-within:ring-2 focus-within:ring-primary"
     >
-      <div className="mb-4 flex items-center text-brand-navy" aria-hidden="true">{icon}</div>
+      <div className="mb-4 flex items-center text-primary" aria-hidden="true">{icon}</div>
       <div className={`font-heading text-data-display font-semibold ${statusColor ? valueClass[statusColor] : "text-on-surface"}`}>
         {value}
       </div>
-      <div className="mt-2 font-label text-label font-semibold uppercase tracking-[0.05em] text-text-grey">{label}</div>
+      <div className="mt-2 font-label text-label font-semibold uppercase tracking-[0.05em] text-on-surface-variant">{label}</div>
       <div className={`mt-4 flex items-center gap-2 font-label text-body-sm font-semibold ${trendClass(trend.direction)}`}>
         <span aria-hidden="true" className="text-body-lg">{trendSymbol(trend.direction)}</span>
         <span>{trend.pct}% {trend.direction === "flat" ? "no change" : trend.direction === "up" ? "increase" : "decrease"}</span>

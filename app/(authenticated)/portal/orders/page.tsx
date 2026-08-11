@@ -43,12 +43,12 @@ interface OrderRow {
 
 // ─── Status helpers — tokens from tailwind.config.ts, no raw hex ──────────────
 // brand-design-system.md §1.3:
-//   committed  → status-pending (amber) — in progress
-//   dispatched → status-available (green) — fulfilled
+//   committed  → status-warning (amber) — in progress
+//   dispatched → status-success (green) — fulfilled
 
 const STATUS_CLASSES: Record<OrderStatus, string> = {
-  committed: "bg-status-pending/10 text-status-pending",
-  dispatched: "bg-status-available/10 text-status-available",
+  committed: "bg-status-warning/10 text-status-warning",
+  dispatched: "bg-status-success/10 text-status-success",
 };
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
@@ -102,13 +102,13 @@ export default async function PortalOrdersPage() {
       <div className="mx-auto max-w-container px-8 py-12 text-center">
         <ListChecks
           size={40}
-          className="mx-auto mb-3 text-text-grey"
+          className="mx-auto mb-3 text-on-surface-variant"
           aria-hidden="true"
         />
-        <p className="font-body text-body-md text-text-grey">
+        <p className="font-body text-body-md text-on-surface-variant">
           You do not have permission to view orders.
         </p>
-        <p className="mt-2 font-body text-body-sm text-text-grey">
+        <p className="mt-2 font-body text-body-sm text-on-surface-variant">
           This page requires the{" "}
           <span className="font-mono text-mono-md">pick_list.read</span>{" "}
           capability.
@@ -124,7 +124,7 @@ export default async function PortalOrdersPage() {
         <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
           My Orders
         </h1>
-        <p className="mt-1 font-body text-body-md text-text-grey">
+        <p className="mt-1 font-body text-body-md text-on-surface-variant">
           Your pick lists and order history. All data scoped to your account.
         </p>
       </div>
@@ -132,18 +132,18 @@ export default async function PortalOrdersPage() {
       {/* ── Orders table — Level 1 glassmorphism (office/party surface) ──────
           Epilogue SemiBold uppercase headers, Outfit Regular body,
           Roboto Mono for codes per §9. */}
-      <div className="mt-6 overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+      <div className="mt-6 overflow-hidden rounded-2xl border border-outline-variant/30 bg-white shadow-elevation-1">
         {MOCK_ORDERS.length === 0 ? (
           <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
             <ListChecks
               size={40}
-              className="text-text-grey"
+              className="text-on-surface-variant"
               aria-hidden="true"
             />
-            <p className="font-body text-body-md text-text-grey">
+            <p className="font-body text-body-md text-on-surface-variant">
               No orders found.
             </p>
-            <p className="font-body text-body-sm text-text-grey">
+            <p className="font-body text-body-sm text-on-surface-variant">
               Orders appear here once pick lists have been committed for your
               account.
             </p>
@@ -152,17 +152,17 @@ export default async function PortalOrdersPage() {
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                <tr className="border-b border-outline-variant/30 bg-surface-dim">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Pick List #
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Date
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Items
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Status
                   </th>
                   <th className="sr-only px-4 py-3">Documents</th>
@@ -172,14 +172,14 @@ export default async function PortalOrdersPage() {
                 {MOCK_ORDERS.map((order) => (
                   <tr
                     key={order.id}
-                    className="hover:bg-surface-light-grey/50"
+                    className="hover:bg-surface-dim/50"
                   >
                     {/* Pick list number — Roboto Mono for codes per §9 */}
                     <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
                       {order.pickListNumber}
                     </td>
                     {/* Date — body text */}
-                    <td className="px-4 py-3 font-body text-body-md text-text-grey">
+                    <td className="px-4 py-3 font-body text-body-md text-on-surface-variant">
                       {order.date}
                     </td>
                     {/* Items count — Roboto Mono for numeric columns */}
@@ -199,13 +199,13 @@ export default async function PortalOrdersPage() {
                       {order.documentId ? (
                         <Link
                           href={`/portal/documents?ref=${order.documentId}`}
-                          className="inline-flex h-11 items-center gap-2 rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:transition-transform motion-safe:duration-100 motion-safe:active:scale-[0.97]"
+                          className="inline-flex h-11 items-center gap-2 rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-dim focus:outline-none focus:ring-2 focus:ring-primary motion-safe:transition-transform motion-safe:duration-100 motion-safe:active:scale-[0.97]"
                         >
                           <FileText size={16} aria-hidden="true" />
                           Documents
                         </Link>
                       ) : (
-                        <span className="font-body text-body-sm text-text-grey">
+                        <span className="font-body text-body-sm text-on-surface-variant">
                           —
                         </span>
                       )}

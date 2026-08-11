@@ -1,8 +1,5 @@
 import type { Config } from "tailwindcss";
 
-// Design tokens sourced from specs/00-steering/brand-design-system.md.
-// Do not add ad-hoc hex values in components — every token lives here.
-// Any new value must be added to brand-design-system.md first (see its §13 Governance).
 const config: Config = {
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
@@ -10,89 +7,103 @@ const config: Config = {
     "./lib/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
-    // §3: mobile-first breakpoints. `base` (unprefixed) is 0-639px by definition —
-    // Tailwind's default `sm/md/lg/xl` values already match brand-design-system.md §3 exactly.
-    screens: {
-      sm: "640px",
-      md: "768px",
-      lg: "1024px",
-      xl: "1280px",
-    },
     extend: {
       colors: {
-        // §1.1 Brand colors
-        // The legacy token names remain for source compatibility, but their
-        // visual roles now resolve to the product-owner-selected indigo scale.
-        "brand-navy": "#3D3BF3",
-        "brand-royal-blue": "#9694FF",
-        "brand-red": "#FF2929",
-        // §1.1a Accent indigo scale (added 2026-08-10, product-owner-supplied
-        // palette) — backgrounds/icons/active-states only, never text color
-        // (§2's text-color rule: headings/body/labels always on-surface/text-grey).
-        "accent-indigo-50": "#EBEAFF",
-        "accent-indigo-300": "#9694FF",
-        "accent-indigo-600": "#3D3BF3",
-        // §1.2 Neutrals
-        "text-grey": "#555555",
-        "surface-white": "#FFFFFF",
-        "surface-light-grey": "#EBEAFF",
-        "on-surface": "#1A1B20",
-        // outline-variant is always used at 30% opacity per §1.2 — consume as
-        // `border-outline-variant/30`, never solid.
-        "outline-variant": "#9694FF",
-        // §1.3 Status colors (semantic — never conflate with brand-red)
-        "status-available": "#10B981",
-        "status-pending": "#F59E0B",
-        "status-held": "#EF4444",
-        "status-neutral": "#64748B",
-      },
-      fontFamily: {
-        // §2 Typography — wired to next/font/google CSS variables in app/layout.tsx.
-        // heading/body/label all resolve to Inter, differentiated by weight, not family.
-        heading: ["var(--font-inter)", "sans-serif"], // headings, data-display numbers
-        body: ["var(--font-inter)", "sans-serif"], // body copy, table cell content
-        label: ["var(--font-inter)", "sans-serif"], // nav items, badges, table headers, button labels
-        mono: ["var(--font-jetbrains-mono)", "monospace"], // codes, IDs, lot numbers, numeric columns
-      },
-      fontSize: {
-        // §2 Type scale — [fontSize, { lineHeight, letterSpacing }]
-        "headline-xl": ["40px", { lineHeight: "48px", letterSpacing: "-0.02em" }],
-        "headline-lg": ["32px", { lineHeight: "40px", letterSpacing: "normal" }],
-        "headline-md": ["24px", { lineHeight: "32px", letterSpacing: "normal" }],
-        "data-display": ["20px", { lineHeight: "24px", letterSpacing: "normal" }],
-        "body-lg": ["18px", { lineHeight: "28px", letterSpacing: "normal" }],
-        "body-md": ["16px", { lineHeight: "24px", letterSpacing: "normal" }],
-        "body-sm": ["14px", { lineHeight: "20px", letterSpacing: "normal" }],
-        label: ["14px", { lineHeight: "16px", letterSpacing: "0.03em" }],
-        // mono is "context-dependent, 11-24px" per §2 — common sizes provided,
-        // line-height fixed at the spec's documented 1.4x.
-        "mono-sm": ["11px", { lineHeight: "15.4px", letterSpacing: "normal" }],
-        "mono-md": ["14px", { lineHeight: "19.6px", letterSpacing: "normal" }],
-        "mono-lg": ["18px", { lineHeight: "25.2px", letterSpacing: "normal" }],
-        "mono-xl": ["24px", { lineHeight: "33.6px", letterSpacing: "normal" }],
-      },
-      spacing: {
-        // §4 Spacing & Layout — base unit 8px, multiples of 8 throughout.
-        "floor-padding": "16px", // floor screen page padding (not the office 32px default)
-        "office-margin": "2rem", // 32px office page margin
-        gutter: "1.5rem", // 24px office gutter
+        "inverse-on-surface": "#eaf1ff",
+        "on-surface-variant": "#45474c",
+        "surface-container-highest": "#d3e4fe",
+        "on-error": "#ffffff",
+        "on-tertiary-fixed": "#001a42",
+        "surface-container-high": "#dce9ff",
+        "surface-variant": "#d3e4fe",
+        "secondary-fixed-dim": "#bec6e0",
+        "secondary": "#565e74",
+        "on-tertiary-container": "#4c8dff",
+        "on-tertiary-fixed-variant": "#004395",
+        "surface-tint": "#545f73",
+        "on-secondary-fixed": "#131b2e",
+        "outline": "#75777d",
+        "primary-fixed": "#d8e3fb",
+        "on-secondary": "#ffffff",
+        "error": "#ba1a1a",
+        "tertiary-fixed-dim": "#adc6ff",
+        "primary-fixed-dim": "#bcc7de",
+        "surface": "#f8f9ff",
+        "background": "#f8f9ff",
+        "primary-container": "#1e293b",
+        "surface-container": "#e5eeff",
+        "secondary-container": "#dae2fd",
+        "surface-bright": "#f8f9ff",
+        "tertiary-fixed": "#d8e2ff",
+        "on-primary-container": "#8590a6",
+        "inverse-primary": "#bcc7de",
+        "tertiary": "#001334",
+        "secondary-fixed": "#dae2fd",
+        "on-primary": "#ffffff",
+        "on-surface": "#0b1c30",
+        "surface-container-low": "#eff4ff",
+        "tertiary-container": "#00275b",
+        "primary": "#091426",
+        "on-secondary-fixed-variant": "#3f465c",
+        "on-primary-fixed-variant": "#3c475a",
+        "inverse-surface": "#213145",
+        "surface-container-lowest": "#ffffff",
+        "on-primary-fixed": "#111c2d",
+        "error-container": "#ffdad6",
+        "on-tertiary": "#ffffff",
+        "on-secondary-container": "#5c647a",
+        "on-background": "#0b1c30",
+        "outline-variant": "#c5c6cd",
+        "on-error-container": "#93000a",
+        "surface-dim": "#cbdbf5"
       },
       borderRadius: {
-        // §5 Shape
-        sm: "4px", // small pills, tags
-        DEFAULT: "8px", // standard cards, buttons, inputs
-        md: "12px", // larger cards, modals
-        lg: "16px", // hero cards, feature panels
-        full: "9999px", // status badges, avatar circles
+        "DEFAULT": "0.125rem",
+        "lg": "0.25rem",
+        "xl": "0.5rem",
+        "full": "0.75rem"
       },
-      maxWidth: {
-        // §4: office container max-width
-        container: "1280px",
+      spacing: {
+        "xl": "32px",
+        "margin-mobile": "16px",
+        "gutter-mobile": "12px",
+        "sm": "8px",
+        "lg": "24px",
+        "margin-desktop": "24px",
+        "gutter-desktop": "16px",
+        "base": "4px",
+        "md": "16px",
+        "xs": "4px"
       },
-      boxShadow: {
-        // §6 Elevation & Surfaces
-        "elevation-1": "0 1px 2px rgba(61,59,243,0.08)", // office/desktop only, Level 1 cards/panels
-        "elevation-2": "0 4px 16px rgba(61,59,243,0.12)", // modals, drawers, dropdowns; also the floor card default
+      fontFamily: {
+        "body-lg": ["var(--font-inter)", "sans-serif"],
+        "display-lg": ["var(--font-inter)", "sans-serif"],
+        "label-md": ["var(--font-inter)", "sans-serif"],
+        "headline-md": ["var(--font-inter)", "sans-serif"],
+        "headline-lg-mobile": ["var(--font-inter)", "sans-serif"],
+        "body-sm": ["var(--font-inter)", "sans-serif"],
+        "mono-md": ["var(--font-jetbrains-mono)", "monospace"],
+        "headline-lg": ["var(--font-inter)", "sans-serif"],
+        "body-lg-mobile": ["var(--font-inter)", "sans-serif"],
+        "body-md": ["var(--font-inter)", "sans-serif"],
+        "label-md-mobile": ["var(--font-inter)", "sans-serif"],
+        heading: ["var(--font-inter)", "sans-serif"],
+        body: ["var(--font-inter)", "sans-serif"],
+        label: ["var(--font-inter)", "sans-serif"],
+        mono: ["var(--font-jetbrains-mono)", "monospace"],
+      },
+      fontSize: {
+        "body-lg": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+        "display-lg": ["36px", { lineHeight: "44px", letterSpacing: "-0.02em", fontWeight: "700" }],
+        "label-md": ["12px", { lineHeight: "12px", letterSpacing: "0.05em", fontWeight: "600" }],
+        "headline-md": ["20px", { lineHeight: "28px", fontWeight: "600" }],
+        "headline-lg-mobile": ["24px", { lineHeight: "30px", fontWeight: "700" }],
+        "body-sm": ["12px", { lineHeight: "16px", fontWeight: "400" }],
+        "mono-md": ["14px", { lineHeight: "20px", fontWeight: "500" }],
+        "headline-lg": ["28px", { lineHeight: "34px", fontWeight: "600" }],
+        "body-lg-mobile": ["18px", { lineHeight: "26px", fontWeight: "400" }],
+        "body-md": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+        "label-md-mobile": ["10px", { lineHeight: "12px", letterSpacing: "0.05em", fontWeight: "600" }]
       },
     },
   },

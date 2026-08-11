@@ -53,8 +53,8 @@ interface ARDoc {
 // ─── Status helpers — tokens from tailwind.config.ts, no raw hex ──────────────
 
 const PL_STATUS_CLASSES: Record<PickListDocStatus, string> = {
-  committed: "bg-status-pending/10 text-status-pending",
-  dispatched: "bg-status-available/10 text-status-available",
+  committed: "bg-status-warning/10 text-status-warning",
+  dispatched: "bg-status-success/10 text-status-success",
 };
 
 const PL_STATUS_LABELS: Record<PickListDocStatus, string> = {
@@ -63,9 +63,9 @@ const PL_STATUS_LABELS: Record<PickListDocStatus, string> = {
 };
 
 const AR_STATUS_CLASSES: Record<ARDocStatus, string> = {
-  pending_signature: "bg-status-pending/10 text-status-pending",
-  signed: "bg-status-available/10 text-status-available",
-  disputed: "bg-status-held/10 text-status-held",
+  pending_signature: "bg-status-warning/10 text-status-warning",
+  signed: "bg-status-success/10 text-status-success",
+  disputed: "bg-status-error/10 text-status-error",
 };
 
 const AR_STATUS_LABELS: Record<ARDocStatus, string> = {
@@ -128,13 +128,13 @@ export default async function PortalDocumentsPage({
       <div className="mx-auto max-w-container px-8 py-12 text-center">
         <FileText
           size={40}
-          className="mx-auto mb-3 text-text-grey"
+          className="mx-auto mb-3 text-on-surface-variant"
           aria-hidden="true"
         />
-        <p className="font-body text-body-md text-text-grey">
+        <p className="font-body text-body-md text-on-surface-variant">
           You do not have permission to view documents.
         </p>
-        <p className="mt-2 font-body text-body-sm text-text-grey">
+        <p className="mt-2 font-body text-body-sm text-on-surface-variant">
           This page requires the{" "}
           <span className="font-mono text-mono-md">documents.read</span>{" "}
           capability.
@@ -152,7 +152,7 @@ export default async function PortalDocumentsPage({
         <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
           My Documents
         </h1>
-        <p className="mt-1 font-body text-body-md text-text-grey">
+        <p className="mt-1 font-body text-body-md text-on-surface-variant">
           Your pick lists and acknowledgement receipts.
         </p>
       </div>
@@ -161,10 +161,10 @@ export default async function PortalDocumentsPage({
       <div className="mt-6 flex gap-1 border-b border-outline-variant/30">
         <Link
           href="/portal/documents?tab=pick-lists"
-          className={`flex h-11 items-center px-4 font-label text-label motion-safe:transition-colors motion-safe:duration-150 focus:outline-none focus:ring-2 focus:ring-brand-navy ${
+          className={`flex h-11 items-center px-4 font-label text-label motion-safe:transition-colors motion-safe:duration-150 focus:outline-none focus:ring-2 focus:ring-primary ${
             activeTab === "pick-lists"
-              ? "border-b-2 border-brand-navy text-brand-navy"
-              : "text-text-grey hover:text-on-surface"
+              ? "border-b-2 border-primary text-primary"
+              : "text-on-surface-variant hover:text-on-surface"
           }`}
           aria-current={activeTab === "pick-lists" ? "page" : undefined}
         >
@@ -172,10 +172,10 @@ export default async function PortalDocumentsPage({
         </Link>
         <Link
           href="/portal/documents?tab=acknowledgement-receipts"
-          className={`flex h-11 items-center px-4 font-label text-label motion-safe:transition-colors motion-safe:duration-150 focus:outline-none focus:ring-2 focus:ring-brand-navy ${
+          className={`flex h-11 items-center px-4 font-label text-label motion-safe:transition-colors motion-safe:duration-150 focus:outline-none focus:ring-2 focus:ring-primary ${
             activeTab === "ar"
-              ? "border-b-2 border-brand-navy text-brand-navy"
-              : "text-text-grey hover:text-on-surface"
+              ? "border-b-2 border-primary text-primary"
+              : "text-on-surface-variant hover:text-on-surface"
           }`}
           aria-current={activeTab === "ar" ? "page" : undefined}
         >
@@ -200,9 +200,9 @@ export default async function PortalDocumentsPage({
 function PickListsTab({ docs }: { docs: PickListDoc[] }) {
   if (docs.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-1">
-        <Package size={40} className="text-text-grey" aria-hidden="true" />
-        <p className="font-body text-body-md text-text-grey">
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-white px-6 py-12 text-center shadow-elevation-1">
+        <Package size={40} className="text-on-surface-variant" aria-hidden="true" />
+        <p className="font-body text-body-md text-on-surface-variant">
           No pick lists yet.
         </p>
       </div>
@@ -210,18 +210,18 @@ function PickListsTab({ docs }: { docs: PickListDoc[] }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+    <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-white shadow-elevation-1">
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
-            <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+            <tr className="border-b border-outline-variant/30 bg-surface-dim">
+              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                 Doc #
               </th>
-              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                 Date
               </th>
-              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                 Status
               </th>
               <th className="sr-only px-4 py-3">Actions</th>
@@ -229,11 +229,11 @@ function PickListsTab({ docs }: { docs: PickListDoc[] }) {
           </thead>
           <tbody className="divide-y divide-outline-variant/30">
             {docs.map((doc) => (
-              <tr key={doc.id} className="hover:bg-surface-light-grey/50">
+              <tr key={doc.id} className="hover:bg-surface-dim/50">
                 <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
                   {doc.docNumber}
                 </td>
-                <td className="px-4 py-3 font-body text-body-md text-text-grey">
+                <td className="px-4 py-3 font-body text-body-md text-on-surface-variant">
                   {doc.date}
                 </td>
                 <td className="px-4 py-3">
@@ -248,7 +248,7 @@ function PickListsTab({ docs }: { docs: PickListDoc[] }) {
                 <td className="px-4 py-3 text-right">
                   <button
                     type="button"
-                    className="inline-flex h-11 items-center gap-2 rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:transition-transform motion-safe:duration-100 motion-safe:active:scale-[0.97]"
+                    className="inline-flex h-11 items-center gap-2 rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-dim focus:outline-none focus:ring-2 focus:ring-primary motion-safe:transition-transform motion-safe:duration-100 motion-safe:active:scale-[0.97]"
                   >
                     <Download size={16} aria-hidden="true" />
                     Download PDF
@@ -273,13 +273,13 @@ function PickListsTab({ docs }: { docs: PickListDoc[] }) {
 function AcknowledgementReceiptsTab({ docs }: { docs: ARDoc[] }) {
   if (docs.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-1">
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-white px-6 py-12 text-center shadow-elevation-1">
         <CheckCircle2
           size={40}
-          className="text-text-grey"
+          className="text-on-surface-variant"
           aria-hidden="true"
         />
-        <p className="font-body text-body-md text-text-grey">
+        <p className="font-body text-body-md text-on-surface-variant">
           No acknowledgement receipts yet.
         </p>
       </div>
@@ -291,7 +291,7 @@ function AcknowledgementReceiptsTab({ docs }: { docs: ARDoc[] }) {
       {/* VMI reference disclaimer — visible before the table.
           requirements.md R4.3 + CLAUDE.md: must not imply the price is
           the authoritative VMI bill. */}
-      <div className="mb-4 rounded-lg border border-status-pending/30 bg-status-pending/10 px-4 py-3">
+      <div className="mb-4 rounded-lg border border-status-warning/30 bg-status-warning/10 px-4 py-3">
         <p className="font-body text-body-sm text-on-surface">
           <strong>VMI reference note:</strong> prices shown on VMI
           acknowledgement receipts are a per-release reference amount only
@@ -301,18 +301,18 @@ function AcknowledgementReceiptsTab({ docs }: { docs: ARDoc[] }) {
         </p>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+      <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-white shadow-elevation-1">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+              <tr className="border-b border-outline-variant/30 bg-surface-dim">
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                   Doc #
                 </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                   Date
                 </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                   Status
                 </th>
                 <th className="sr-only px-4 py-3">Actions</th>
@@ -320,11 +320,11 @@ function AcknowledgementReceiptsTab({ docs }: { docs: ARDoc[] }) {
             </thead>
             <tbody className="divide-y divide-outline-variant/30">
               {docs.map((doc) => (
-                <tr key={doc.id} className="hover:bg-surface-light-grey/50">
+                <tr key={doc.id} className="hover:bg-surface-dim/50">
                   <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
                     {doc.docNumber}
                   </td>
-                  <td className="px-4 py-3 font-body text-body-md text-text-grey">
+                  <td className="px-4 py-3 font-body text-body-md text-on-surface-variant">
                     {doc.date}
                   </td>
                   <td className="px-4 py-3">
@@ -341,7 +341,7 @@ function AcknowledgementReceiptsTab({ docs }: { docs: ARDoc[] }) {
                   <td className="px-4 py-3 text-right">
                     <button
                       type="button"
-                      className="inline-flex h-11 items-center gap-2 rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:transition-transform motion-safe:duration-100 motion-safe:active:scale-[0.97]"
+                      className="inline-flex h-11 items-center gap-2 rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-dim focus:outline-none focus:ring-2 focus:ring-primary motion-safe:transition-transform motion-safe:duration-100 motion-safe:active:scale-[0.97]"
                     >
                       <Download size={16} aria-hidden="true" />
                       Download PDF

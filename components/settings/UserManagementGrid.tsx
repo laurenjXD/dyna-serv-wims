@@ -26,8 +26,8 @@ import type { InviteUserInput } from "@/lib/user-settings/schemas";
 // bg-status-*/15 tints are all near-white — pairing them with the raw
 // text-status-* color (as this badge originally did) fails WCAG AA 4.5:1
 // for every status (measured 1.9:1-3.95:1, design-system-auditor finding,
-// 2026-08-08). Solid bg-status-* + text-surface-white doesn't fix this
-// uniformly either: status-available/held/pending are all too light for
+// 2026-08-08). Solid bg-status-* + text-white doesn't fix this
+// uniformly either: status-success/held/pending are all too light for
 // white text to reach 4.5:1 (2.1-3.8:1), while status-neutral only reaches
 // 4.5:1 that way (4.76:1) and fails with dark text. Rather than branch the
 // pairing per status, `text-on-surface` (near-black) on the existing
@@ -37,14 +37,14 @@ import type { InviteUserInput } from "@/lib/user-settings/schemas";
 // this doesn't fall back to color-only signaling (§1.3/§9).
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    active: "bg-status-available/15",
-    invited: "bg-status-pending/15",
-    inactive: "bg-status-held/15",
+    active: "bg-status-success/15",
+    invited: "bg-status-warning/15",
+    inactive: "bg-status-error/15",
   };
   const iconColor: Record<string, string> = {
-    active: "text-status-available",
-    invited: "text-status-pending",
-    inactive: "text-status-held",
+    active: "text-status-success",
+    invited: "text-status-warning",
+    inactive: "text-status-error",
   };
   const icon: Record<string, string> = {
     active: "●",
@@ -141,7 +141,7 @@ export function UserManagementGrid({
           type="button"
           data-testid="open-invite-user"
           onClick={() => setInviteOpen(true)}
-          className="flex min-h-11 items-center justify-center rounded bg-brand-red px-4 font-label text-label uppercase tracking-wide text-surface-white hover:bg-brand-red/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+          className="flex min-h-11 items-center justify-center rounded bg-action-blue px-4 font-label text-label uppercase tracking-wide text-white hover:bg-action-blue/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           Invite User
         </button>
@@ -154,13 +154,13 @@ export function UserManagementGrid({
           placeholder="Search by name or email"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="min-h-11 flex-1 rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+          className="min-h-11 flex-1 rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         />
         <select
           data-testid="team-status-filter"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="min-h-11 rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+          className="min-h-11 rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           <option value="all">All statuses</option>
           <option value="active">Active</option>
@@ -169,26 +169,26 @@ export function UserManagementGrid({
         </select>
       </div>
 
-      <div className="overflow-x-auto rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+      <div className="overflow-x-auto rounded-md border border-outline-variant/30 bg-white shadow-elevation-1">
         <table className="w-full text-left" data-testid="user-management-table">
           <thead>
             <tr className="border-b border-outline-variant/30">
-              <th className="px-4 py-3 font-label text-label uppercase tracking-wide text-text-grey">
+              <th className="px-4 py-3 font-label text-label uppercase tracking-wide text-on-surface-variant">
                 Name
               </th>
-              <th className="px-4 py-3 font-label text-label uppercase tracking-wide text-text-grey">
+              <th className="px-4 py-3 font-label text-label uppercase tracking-wide text-on-surface-variant">
                 Email
               </th>
-              <th className="px-4 py-3 font-label text-label uppercase tracking-wide text-text-grey">
+              <th className="px-4 py-3 font-label text-label uppercase tracking-wide text-on-surface-variant">
                 Role
               </th>
-              <th className="px-4 py-3 font-label text-label uppercase tracking-wide text-text-grey">
+              <th className="px-4 py-3 font-label text-label uppercase tracking-wide text-on-surface-variant">
                 Party
               </th>
-              <th className="px-4 py-3 font-label text-label uppercase tracking-wide text-text-grey">
+              <th className="px-4 py-3 font-label text-label uppercase tracking-wide text-on-surface-variant">
                 Status
               </th>
-              <th className="px-4 py-3 font-label text-label uppercase tracking-wide text-text-grey">
+              <th className="px-4 py-3 font-label text-label uppercase tracking-wide text-on-surface-variant">
                 Actions
               </th>
             </tr>
@@ -222,7 +222,7 @@ export function UserManagementGrid({
                       type="button"
                       data-testid={`reactivate-${member.id}`}
                       onClick={() => handleReactivate(member)}
-                      className="font-label text-label uppercase tracking-wide text-status-available hover:underline"
+                      className="font-label text-label uppercase tracking-wide text-status-success hover:underline"
                     >
                       Reactivate
                     </button>
@@ -231,10 +231,10 @@ export function UserManagementGrid({
                       type="button"
                       data-testid={`suspend-${member.id}`}
                       onClick={() => setSuspendTarget(member)}
-                      // Destructive action -> status-held, not brand-red,
+                      // Destructive action -> status-error, not action-blue,
                       // per brand-design-system.md §9 ("Destructive:
-                      // status-held solid").
-                      className="font-label text-label uppercase tracking-wide text-status-held hover:underline"
+                      // status-error solid").
+                      className="font-label text-label uppercase tracking-wide text-status-error hover:underline"
                     >
                       Suspend
                     </button>
@@ -246,7 +246,7 @@ export function UserManagementGrid({
               <tr>
                 <td
                   colSpan={6}
-                  className="px-4 py-8 text-center font-body text-body-md text-text-grey"
+                  className="px-4 py-8 text-center font-body text-body-md text-on-surface-variant"
                 >
                   No team members match your search.
                 </td>

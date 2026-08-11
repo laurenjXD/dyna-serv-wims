@@ -16,7 +16,7 @@ export default function SettingsSecurityPage() {
       <h1 className="font-heading text-headline-md font-extrabold text-on-surface">
         Security
       </h1>
-      <p className="font-body text-body-md text-text-grey">
+      <p className="font-body text-body-md text-on-surface-variant">
         Security event review and role/capability reference are not yet built in this pass.
         See `specs/02-rbac-roles/design.md` §8/§9 for the owning admin-UI design once this
         surface is scheduled.

@@ -22,7 +22,7 @@ export function DeactivateLocationSection({
 
   if (state.ok) {
     return (
-      <p className="font-body text-body-md text-status-available">
+      <p className="font-body text-body-md text-status-success">
         Location has been deactivated. Reload the page to see the updated
         status.
       </p>
@@ -35,7 +35,7 @@ export function DeactivateLocationSection({
         <button
           type="button"
           onClick={() => setConfirmed(true)}
-          className="flex h-11 items-center justify-center rounded border border-status-held px-4 font-label text-label text-status-held hover:bg-status-held/5 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-status-held"
+          className="flex h-11 items-center justify-center rounded border border-status-error px-4 font-label text-label text-status-error hover:bg-status-error/5 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-status-error"
         >
           Deactivate Location
         </button>
@@ -49,21 +49,21 @@ export function DeactivateLocationSection({
           <button
             type="button"
             onClick={() => setConfirmed(false)}
-            className="flex h-11 items-center px-2 font-label text-label text-text-grey underline focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-11 items-center px-2 font-label text-label text-on-surface-variant underline focus:outline-none focus:ring-2 focus:ring-primary"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isPending}
-            className="flex h-11 items-center justify-center rounded bg-status-held px-4 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-status-held"
+            className="flex h-11 items-center justify-center rounded bg-status-error px-4 font-label text-label text-white hover:opacity-90 active:scale-[0.97] disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-status-error"
           >
             {isPending ? "Deactivating…" : "Confirm Deactivate"}
           </button>
         </form>
       )}
       {state.error && (
-        <p role="alert" className="mt-2 font-body text-body-sm text-brand-red">
+        <p role="alert" className="mt-2 font-body text-body-sm text-action-blue">
           {state.error}
         </p>
       )}

@@ -1,22 +1,3 @@
-// Inspection Queue — assigned inspections list page.
-//
-// Traceability:
-//   specs/11-transfer-and-inspection/design.md §3 (route: /inspection),
-//     §6.1 (transfer and inbound inspection contexts), §6.2 (context isolation)
-//   specs/11-transfer-and-inspection/requirements.md R3, R3a, §3 (actors)
-//   specs/00-steering/brand-design-system.md §3 (floor surface rules —
-//     mobile-first base styles, 64px CTAs, one primary action per screen,
-//     active: not hover:, no dense tables), §6 (floor — solid bg-brand-navy,
-//     no glassmorphism; office — bg-surface-white Level 1),
-//     §1.3 (status — always icon+color on floor), §2 (no text <16px on floor)
-//
-// Surface: SHARED — warehouse_staff → floor card list (bg-brand-navy, 64px CTAs);
-//   supervisors/admins → office table (glassmorphism, h-11, hover states).
-// Permission gate: inspection.perform
-//
-// All data is mocked. TODO: wire to real inspection_cases query filtered by
-// assigned user and today's date for floor; all cases with filters for office.
-
 import Link from "next/link";
 import { CheckCircle2, ClipboardList, MapPin, ArrowLeftRight, ArrowDown, Circle, XCircle, MinusCircle, ChevronRight } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
@@ -24,9 +5,6 @@ import { requirePermission } from "@/lib/rbac/guard";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-// Status badge labels and classes — brand-design-system.md §1.3 semantic mapping:
-// open → status-pending (amber); passed → status-available (green);
-// failed → status-held (red); cancelled → status-neutral (slate).
 const STATUS_LABELS: Record<string, string> = {
   open: "OPEN",
   passed: "PASSED",
@@ -35,10 +13,10 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_CLASSES: Record<string, string> = {
-  open: "bg-status-pending/10 text-status-pending",
-  passed: "bg-status-available/10 text-status-available",
-  failed: "bg-status-held/10 text-status-held",
-  cancelled: "bg-status-neutral/10 text-status-neutral",
+  open: "bg-tertiary-container text-on-tertiary-container",
+  passed: "bg-primary-container text-on-primary-container",
+  failed: "bg-error-container text-error",
+  cancelled: "bg-surface-container-highest text-on-surface",
 };
 
 
@@ -57,8 +35,6 @@ interface InspectionCaseRow {
   sourceRef?: string;
 }
 
-// TODO: replace with real DB query — inspection_cases where status = 'open'
-// and assigned to today, scoped by party/flow per RLS.
 const MOCK_INSPECTIONS: InspectionCaseRow[] = [
   {
     id: "mock-ic-001",
@@ -109,109 +85,98 @@ export default async function InspectionQueuePage({ searchParams }: PageProps) {
   const permResult = await requirePermission(resolver, "inspection.perform");
   if (permResult.kind !== "authorized") {
     return (
-      <div className="mx-auto max-w-container px-4 py-12 text-center">
-        <p className="font-body text-body-md text-text-grey">
+      <div className="mx-auto w-full max-w-md px-4 py-12 text-center">
+        <p className="font-body text-body-md text-on-surface-variant">
           You do not have permission to view the inspection queue.
         </p>
-        <p className="mt-2 font-body text-body-sm text-text-grey">
+        <p className="mt-xs font-body text-body-sm text-on-surface-variant">
           This page requires the{" "}
-          <span className="font-mono text-mono-md">inspection.perform</span>{" "}
+          <span className="font-mono text-body-md font-semibold">inspection.perform</span>{" "}
           capability.
         </p>
       </div>
     );
   }
 
-  // Surface detection — brand-design-system.md §3:
-  // warehouse_staff → floor (bg-brand-navy, 64px CTAs, no glassmorphism).
-  // supervisors/admins → office (glassmorphism, h-11, hover:).
+  // Surface detection
   const isFloor = permResult.context.activeRoleKeys.includes("warehouse_staff");
 
-  // TODO: wire to real query — for floor, filter to assigned open cases for today.
   const openCases = MOCK_INSPECTIONS.filter((c) => c.status === "open");
 
   // ── Floor surface ────────────────────────────────────────────────────────────
   if (isFloor) {
     return (
-      <div className="flex min-h-screen flex-col bg-brand-navy px-4 py-4">
+      <div className="mx-auto w-full max-w-md animate-in fade-in duration-300 pb-[100px]">
         {/* Floor top bar */}
-        <div className="pb-4">
-          <h1 className="font-heading font-extrabold text-headline-md text-white">
+        <div className="mb-md rounded-xl bg-surface-container-lowest p-md shadow-sm border border-outline-variant">
+          <h1 className="font-heading text-display-sm font-bold text-on-surface tracking-tight">
             Daily Inspection
           </h1>
-          <p className="mt-1 font-body text-body-md text-white/70">
+          <p className="mt-xs font-body text-body-md text-on-surface-variant">
             Inspections assigned to you today
           </p>
         </div>
 
-        {/* Open inspection cards — card list, one item per row.
-            brand-design-system.md §9: floor tables are a fail case;
-            use card-based list, one item per row. */}
         {openCases.length === 0 ? (
-          // Empty state — icon + text, per §1.3 (status never color alone)
-          <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
+          <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-xl text-center shadow-sm">
             <CheckCircle2
-              size={56}
+              size={48}
               strokeWidth={1.5}
-              className="text-status-available"
+              className="text-primary mx-auto mb-sm"
               aria-hidden="true"
             />
-            <p className="font-heading font-semibold text-headline-md text-white">
+            <p className="font-heading text-title-lg font-semibold text-on-surface">
               No inspections assigned today
             </p>
-            <p className="font-body text-body-md text-white/70">
+            <p className="mt-xs font-body text-body-md text-on-surface-variant">
               Check back later or contact your supervisor.
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-sm">
             {openCases.map((inspection) => (
               <Link
                 key={inspection.id}
                 href={`/inspection/${inspection.id}`}
-                // Floor card — solid bg-white/10, no glassmorphism per §6; entire card is tap target
-                className="block rounded-xl bg-white/10 border border-white/20 p-4 h-auto min-h-16 active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-navy"
+                className="block rounded-xl border border-outline-variant bg-surface-container-lowest p-md shadow-sm active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 relative overflow-hidden group"
               >
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-md">
                   <div className="min-w-0 flex-1">
-                    {/* Item name — Fira Sans, headline-md, text-white; floor min 16px §2 */}
-                    <p className="font-heading font-semibold text-headline-md text-white">
+                    <p className="font-heading text-title-md font-semibold text-on-surface">
                       {inspection.itemName}
                     </p>
 
-                    {/* Lot number — Roboto Mono per §9; text-mono-lg (18px) per floor 16px minimum */}
-                    <p className="mt-1 font-mono text-mono-lg text-white/70">
+                    <p className="mt-xs font-mono text-body-md text-on-surface-variant">
                       {inspection.lotNumber}
                     </p>
 
-                    {/* Location — MapPin icon paired with text; never text alone */}
-                    <div className="mt-2 flex items-center gap-2">
-                      <MapPin size={24} strokeWidth={2} aria-hidden="true" className="text-white/50 shrink-0" />
-                      <span className="font-body text-body-md text-white/70">
+                    <div className="mt-sm flex items-center gap-xs">
+                      <MapPin size={20} strokeWidth={2} aria-hidden="true" className="text-primary shrink-0" />
+                      <span className="font-body text-body-md text-on-surface-variant">
                         {inspection.locationCode}
                       </span>
                     </div>
 
-                    {/* Context badge — icon+color per §1.3 floor rule */}
-                    <div className="mt-3 flex items-center gap-3">
+                    <div className="mt-sm flex items-center gap-xs">
                       <span
-                        className={`inline-flex items-center gap-1 rounded-full px-3 py-1 font-label text-body-md uppercase ${
+                        className={`inline-flex items-center gap-xs rounded-full px-3 py-1 font-label text-label-sm uppercase ${
                           inspection.contextType === "transfer"
-                            ? "bg-brand-royal-blue/30 text-white"
-                            : "bg-status-neutral/20 text-white/70"
+                            ? "bg-primary-container text-on-primary-container"
+                            : "bg-surface-container-highest text-on-surface"
                         }`}
                       >
-                        {/* Icon paired with text — §1.3 */}
                         {inspection.contextType === "transfer"
-                          ? <ArrowLeftRight size={20} strokeWidth={2} aria-hidden="true" />
-                          : <ArrowDown size={20} strokeWidth={2} aria-hidden="true" />}
+                          ? <ArrowLeftRight size={16} strokeWidth={2} aria-hidden="true" />
+                          : <ArrowDown size={16} strokeWidth={2} aria-hidden="true" />}
                         {inspection.contextType === "transfer"
                           ? "Transfer"
                           : "Inbound"}
                       </span>
                     </div>
                   </div>
-                  <ChevronRight size={24} strokeWidth={2} aria-hidden="true" className="shrink-0 text-white/50 self-center" />
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-container-highest group-hover:bg-primary/10 transition-colors self-center">
+                    <ChevronRight size={20} strokeWidth={2} aria-hidden="true" className="text-on-surface-variant group-hover:text-primary transition-colors" />
+                  </div>
                 </div>
               </Link>
             ))}
@@ -223,7 +188,6 @@ export default async function InspectionQueuePage({ searchParams }: PageProps) {
 
   // ── Office surface ───────────────────────────────────────────────────────────
 
-  // TODO: wire to real query — office view shows all inspection_cases with filters.
   const filtered =
     statusFilter && statusFilter !== ""
       ? MOCK_INSPECTIONS.filter((c) => c.status === statusFilter)
@@ -238,24 +202,24 @@ export default async function InspectionQueuePage({ searchParams }: PageProps) {
   ];
 
   return (
-    <div className="mx-auto max-w-container">
+    <div className="mx-auto w-full animate-in fade-in duration-300">
       {/* Page header */}
-      <div>
-        <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
+      <div className="mb-lg">
+        <h1 className="font-heading text-display-md font-bold text-on-surface tracking-tight">
           Inspection Queue
         </h1>
-        <p className="mt-1 font-body text-body-md text-text-grey">
+        <p className="mt-xs font-body text-body-lg text-on-surface-variant">
           All inspection cases — inbound and transfer contexts.
         </p>
       </div>
 
       {/* Status filter */}
-      <div className="mt-6">
-        <form method="GET" className="flex flex-wrap items-end gap-3">
-          <div className="flex flex-col gap-1">
+      <div className="mb-md rounded-xl bg-surface-container-lowest p-md shadow-sm border border-outline-variant flex flex-wrap items-end gap-sm">
+        <form method="GET" className="flex flex-wrap items-end gap-sm w-full sm:w-auto">
+          <div className="flex flex-col gap-xs flex-1 sm:flex-initial">
             <label
               htmlFor="status-filter"
-              className="font-label text-label text-text-grey"
+              className="font-label text-label-sm text-on-surface-variant"
             >
               Status
             </label>
@@ -263,7 +227,7 @@ export default async function InspectionQueuePage({ searchParams }: PageProps) {
               id="status-filter"
               name="status"
               defaultValue={statusFilter ?? ""}
-              className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="h-11 w-full sm:w-auto min-w-[200px] rounded-md border border-outline-variant bg-surface-container-highest px-3 font-body text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
             >
               {STATUS_FILTER_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -274,14 +238,14 @@ export default async function InspectionQueuePage({ searchParams }: PageProps) {
           </div>
           <button
             type="submit"
-            className="flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-11 items-center justify-center rounded-md bg-primary px-lg font-label text-label-md text-on-primary shadow-sm hover:opacity-90 active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
           >
             Apply
           </button>
           {statusFilter && (
             <Link
               href="/inspection"
-              className="flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="flex h-11 items-center justify-center rounded-md border border-outline-variant px-lg font-label text-label-md text-on-surface hover:bg-surface-container-highest transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
             >
               Clear
             </Link>
@@ -289,16 +253,16 @@ export default async function InspectionQueuePage({ searchParams }: PageProps) {
         </form>
       </div>
 
-      {/* Office table — Level 1 elevation per brand-design-system.md §6 */}
-      <div className="mt-4 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
+      {/* Office table */}
+      <div className="overflow-hidden rounded-xl bg-surface-container-lowest shadow-sm border border-outline-variant">
         {filtered.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <ClipboardList
-              size={32}
-              className="mx-auto text-text-grey"
+              size={48}
+              className="mx-auto text-on-surface-variant/50 mb-sm"
               aria-hidden="true"
             />
-            <p className="mt-3 font-body text-body-md text-text-grey">
+            <p className="font-body text-body-lg text-on-surface-variant">
               {statusFilter
                 ? "No inspection cases match the current filter."
                 : "No inspection cases yet."}
@@ -308,24 +272,23 @@ export default async function InspectionQueuePage({ searchParams }: PageProps) {
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                  {/* Epilogue SemiBold uppercase headers per §9 */}
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                <tr className="border-b border-outline-variant/50 bg-surface-container-highest">
+                  <th className="px-4 py-3 text-left font-label text-label-sm uppercase tracking-wider text-on-surface-variant">
                     Lot Number
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label-sm uppercase tracking-wider text-on-surface-variant">
                     Item
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label-sm uppercase tracking-wider text-on-surface-variant">
                     Context
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label-sm uppercase tracking-wider text-on-surface-variant">
                     Location
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label-sm uppercase tracking-wider text-on-surface-variant">
                     Status
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label-sm uppercase tracking-wider text-on-surface-variant">
                     Opened At
                   </th>
                   <th className="sr-only px-4 py-3">Actions</th>
@@ -333,40 +296,37 @@ export default async function InspectionQueuePage({ searchParams }: PageProps) {
               </thead>
               <tbody className="divide-y divide-outline-variant/30">
                 {filtered.map((row) => (
-                  <tr key={row.id} className="hover:bg-surface-light-grey/50">
-                    {/* Lot number — Roboto Mono per §9 */}
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
+                  <tr key={row.id} className="hover:bg-surface-container-highest/50 transition-colors group">
+                    <td className="px-4 py-3 font-mono text-body-md text-on-surface">
                       {row.lotNumber}
                     </td>
-                    <td className="px-4 py-3 font-body text-body-md text-on-surface">
+                    <td className="px-4 py-3 font-body text-body-md text-on-surface font-medium">
                       {row.itemName}
                     </td>
                     <td className="px-4 py-3 font-body text-body-md text-on-surface capitalize">
                       {row.contextType}
                     </td>
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
+                    <td className="px-4 py-3 font-mono text-body-md text-on-surface">
                       {row.locationCode}
                     </td>
                     <td className="px-4 py-3">
-                      {/* Status badge — §1.3 semantic colors; icon+color per office badge pattern */}
                       <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-label text-label uppercase ${STATUS_CLASSES[row.status] ?? "bg-status-neutral/10 text-status-neutral"}`}
+                        className={`inline-flex items-center gap-xs rounded-full px-2 py-0.5 font-label text-label-sm uppercase ${STATUS_CLASSES[row.status] ?? "bg-surface-container-highest text-on-surface"}`}
                       >
-                        {row.status === "open" ? <Circle size={16} className="text-status-pending" aria-hidden="true" /> :
-                         row.status === "passed" ? <CheckCircle2 size={16} className="text-status-available" aria-hidden="true" /> :
-                         row.status === "failed" ? <XCircle size={16} className="text-status-held" aria-hidden="true" /> :
-                         <MinusCircle size={16} className="text-text-grey" aria-hidden="true" />}
+                        {row.status === "open" ? <Circle size={14} className="text-tertiary" aria-hidden="true" /> :
+                         row.status === "passed" ? <CheckCircle2 size={14} className="text-primary" aria-hidden="true" /> :
+                         row.status === "failed" ? <XCircle size={14} className="text-error" aria-hidden="true" /> :
+                         <MinusCircle size={14} className="text-on-surface-variant" aria-hidden="true" />}
                         {STATUS_LABELS[row.status] ?? row.status.toUpperCase()}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-body text-body-md text-text-grey">
+                    <td className="px-4 py-3 font-body text-body-md text-on-surface-variant">
                       {new Date(row.openedAt).toLocaleString()}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {/* Inspect link — h-11 (44px) office touch target */}
                       <Link
                         href={`/inspection/${row.id}`}
-                        className="inline-flex h-11 items-center font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                        className="inline-flex h-8 items-center justify-center rounded-full bg-primary/10 px-3 font-label text-label-sm text-primary hover:bg-primary/20 transition-colors focus:outline-none focus:ring-2 focus:ring-primary opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                       >
                         {row.status === "open" ? "Inspect" : "View"}
                       </Link>

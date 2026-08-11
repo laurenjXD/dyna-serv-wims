@@ -129,13 +129,13 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
       <div className="mx-auto max-w-container px-8 py-12 text-center">
         <Receipt
           size={40}
-          className="mx-auto mb-3 text-text-grey"
+          className="mx-auto mb-3 text-on-surface-variant"
           aria-hidden="true"
         />
-        <p className="font-body text-body-md text-text-grey">
+        <p className="font-body text-body-md text-on-surface-variant">
           You do not have permission to view billing and pricing.
         </p>
-        <p className="mt-2 font-body text-body-sm text-text-grey">
+        <p className="mt-2 font-body text-body-sm text-on-surface-variant">
           This page requires the{" "}
           <span className="font-mono text-mono-md">reporting.financial_read</span>{" "}
           capability.
@@ -156,7 +156,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
         <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
           Billing &amp; Pricing
         </h1>
-        <p className="mt-1 font-body text-body-md text-text-grey">
+        <p className="mt-1 font-body text-body-md text-on-surface-variant">
           VMI period billing and Trading margin ledger.
         </p>
       </div>
@@ -165,10 +165,10 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
       <div className="mt-6 flex gap-1 border-b border-outline-variant/30">
         <Link
           href="/billing-pricing?tab=vmi"
-          className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-brand-navy ${
+          className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary ${
             activeTab === "vmi"
-              ? "border-b-2 border-brand-navy text-brand-navy"
-              : "text-text-grey hover:text-on-surface"
+              ? "border-b-2 border-primary text-primary"
+              : "text-on-surface-variant hover:text-on-surface"
           }`}
           aria-current={activeTab === "vmi" ? "page" : undefined}
         >
@@ -176,10 +176,10 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
         </Link>
         <Link
           href="/billing-pricing?tab=trading"
-          className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-brand-navy ${
+          className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary ${
             activeTab === "trading"
-              ? "border-b-2 border-brand-navy text-brand-navy"
-              : "text-text-grey hover:text-on-surface"
+              ? "border-b-2 border-primary text-primary"
+              : "text-on-surface-variant hover:text-on-surface"
           }`}
           aria-current={activeTab === "trading" ? "page" : undefined}
         >
@@ -217,7 +217,7 @@ function VmiBillingTab({ selectedMonth, selectedYear }: TabProps) {
         <div className="flex flex-col gap-1">
           <label
             htmlFor="vmi-month"
-            className="font-label text-label text-text-grey"
+            className="font-label text-label text-on-surface-variant"
           >
             Month
           </label>
@@ -225,7 +225,7 @@ function VmiBillingTab({ selectedMonth, selectedYear }: TabProps) {
             id="vmi-month"
             name="month"
             defaultValue={selectedMonth}
-            className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="h-11 rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {MONTHS.map((m, i) => (
               <option key={m} value={i}>
@@ -237,7 +237,7 @@ function VmiBillingTab({ selectedMonth, selectedYear }: TabProps) {
         <div className="flex flex-col gap-1">
           <label
             htmlFor="vmi-year"
-            className="font-label text-label text-text-grey"
+            className="font-label text-label text-on-surface-variant"
           >
             Year
           </label>
@@ -245,7 +245,7 @@ function VmiBillingTab({ selectedMonth, selectedYear }: TabProps) {
             id="vmi-year"
             name="year"
             defaultValue={selectedYear}
-            className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="h-11 rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {[selectedYear - 1, selectedYear, selectedYear + 1].map((y) => (
               <option key={y} value={y}>
@@ -256,18 +256,18 @@ function VmiBillingTab({ selectedMonth, selectedYear }: TabProps) {
         </div>
         <button
           type="submit"
-          className="flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white motion-safe:transition-opacity motion-safe:duration-150 hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+          className="flex h-11 items-center justify-center rounded bg-primary px-4 font-label text-label text-white motion-safe:transition-opacity motion-safe:duration-150 hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-primary"
         >
           Apply
         </button>
       </form>
 
       {/* Summary card */}
-      <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
+      <div className="rounded-2xl border border-outline-variant/30 bg-white p-6 shadow-elevation-1">
         <h2 className="font-heading font-semibold text-headline-md text-on-surface">
           {MONTHS[selectedMonth]} {selectedYear} — Summary
         </h2>
-        <p className="mt-1 font-body text-body-sm text-text-grey">
+        <p className="mt-1 font-body text-body-sm text-on-surface-variant">
           VMI amounts are period averages — reference only, not your final bill.
           The real VMI invoice is the period average from{" "}
           <span className="font-mono text-mono-md">vmi_cbm_ledger</span>.
@@ -275,7 +275,7 @@ function VmiBillingTab({ selectedMonth, selectedYear }: TabProps) {
 
         <div className="mt-4 flex flex-wrap gap-6">
           <div>
-            <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+            <p className="font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
               CBM Usage (avg/day)
             </p>
             <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
@@ -283,7 +283,7 @@ function VmiBillingTab({ selectedMonth, selectedYear }: TabProps) {
             </p>
           </div>
           <div>
-            <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+            <p className="font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
               Daily Storage Rate
             </p>
             <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
@@ -291,13 +291,13 @@ function VmiBillingTab({ selectedMonth, selectedYear }: TabProps) {
             </p>
           </div>
           <div>
-            <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+            <p className="font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
               Projected Billing Total
             </p>
             <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
               ${vmiTotal.toFixed(2)}
             </p>
-            <p className="mt-0.5 font-body text-body-sm text-text-grey">
+            <p className="mt-0.5 font-body text-body-sm text-on-surface-variant">
               Reference amount, not your final bill
             </p>
           </div>
@@ -305,7 +305,7 @@ function VmiBillingTab({ selectedMonth, selectedYear }: TabProps) {
       </div>
 
       {/* CBM Ledger table */}
-      <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+      <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-white shadow-elevation-1">
         <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
           <h2 className="font-heading font-semibold text-headline-md text-on-surface">
             CBM Ledger
@@ -314,7 +314,7 @@ function VmiBillingTab({ selectedMonth, selectedYear }: TabProps) {
             <button
               type="button"
               aria-label="Export VMI statement"
-              className="flex h-11 items-center gap-2 rounded-xl border border-outline-variant/30 px-4 font-body text-body-md text-on-surface motion-safe:transition-colors motion-safe:duration-150 hover:border-brand-navy hover:text-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="flex h-11 items-center gap-2 rounded-xl border border-outline-variant/30 px-4 font-body text-body-md text-on-surface motion-safe:transition-colors motion-safe:duration-150 hover:border-primary hover:text-primary motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <Download size={16} aria-hidden="true" />
               Export
@@ -322,7 +322,7 @@ function VmiBillingTab({ selectedMonth, selectedYear }: TabProps) {
             <button
               type="button"
               aria-label="Print VMI statement"
-              className="flex h-11 items-center gap-2 rounded-xl border border-outline-variant/30 px-4 font-body text-body-md text-on-surface motion-safe:transition-colors motion-safe:duration-150 hover:border-brand-navy hover:text-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="flex h-11 items-center gap-2 rounded-xl border border-outline-variant/30 px-4 font-body text-body-md text-on-surface motion-safe:transition-colors motion-safe:duration-150 hover:border-primary hover:text-primary motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <Printer size={16} aria-hidden="true" />
               Print
@@ -333,20 +333,20 @@ function VmiBillingTab({ selectedMonth, selectedYear }: TabProps) {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+              <tr className="border-b border-outline-variant/30 bg-surface-dim">
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                   Party
                 </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                   Lots in Storage
                 </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                   Avg Daily CBM (m³)
                 </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                   Rate ($/m³)
                 </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                   Subtotal
                 </th>
               </tr>
@@ -354,7 +354,7 @@ function VmiBillingTab({ selectedMonth, selectedYear }: TabProps) {
             <tbody className="divide-y divide-outline-variant/30">
               {/* TODO: wire to vmi_cbm_ledger table query */}
               {MOCK_VMI_ROWS.map((row) => (
-                <tr key={row.id} className="hover:bg-surface-light-grey/50">
+                <tr key={row.id} className="hover:bg-surface-dim/50">
                   {/* Party name — body font */}
                   <td className="px-4 py-3 font-body text-body-md text-on-surface">
                     {row.party}
@@ -376,10 +376,10 @@ function VmiBillingTab({ selectedMonth, selectedYear }: TabProps) {
               ))}
             </tbody>
             <tfoot>
-              <tr className="border-t-2 border-outline-variant/30 bg-surface-light-grey">
+              <tr className="border-t-2 border-outline-variant/30 bg-surface-dim">
                 <td
                   colSpan={4}
-                  className="px-4 py-3 font-label text-label uppercase tracking-[0.05em] text-text-grey"
+                  className="px-4 py-3 font-label text-label uppercase tracking-[0.05em] text-on-surface-variant"
                 >
                   Period Total
                 </td>
@@ -414,7 +414,7 @@ function TradingMarginTab({ selectedMonth, selectedYear }: TabProps) {
         <div className="flex flex-col gap-1">
           <label
             htmlFor="trd-month"
-            className="font-label text-label text-text-grey"
+            className="font-label text-label text-on-surface-variant"
           >
             Month
           </label>
@@ -422,7 +422,7 @@ function TradingMarginTab({ selectedMonth, selectedYear }: TabProps) {
             id="trd-month"
             name="month"
             defaultValue={selectedMonth}
-            className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="h-11 rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {MONTHS.map((m, i) => (
               <option key={m} value={i}>
@@ -434,7 +434,7 @@ function TradingMarginTab({ selectedMonth, selectedYear }: TabProps) {
         <div className="flex flex-col gap-1">
           <label
             htmlFor="trd-year"
-            className="font-label text-label text-text-grey"
+            className="font-label text-label text-on-surface-variant"
           >
             Year
           </label>
@@ -442,7 +442,7 @@ function TradingMarginTab({ selectedMonth, selectedYear }: TabProps) {
             id="trd-year"
             name="year"
             defaultValue={selectedYear}
-            className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="h-11 rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {[selectedYear - 1, selectedYear, selectedYear + 1].map((y) => (
               <option key={y} value={y}>
@@ -453,24 +453,24 @@ function TradingMarginTab({ selectedMonth, selectedYear }: TabProps) {
         </div>
         <button
           type="submit"
-          className="flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white motion-safe:transition-opacity motion-safe:duration-150 hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+          className="flex h-11 items-center justify-center rounded bg-primary px-4 font-label text-label text-white motion-safe:transition-opacity motion-safe:duration-150 hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-primary"
         >
           Apply
         </button>
       </form>
 
       {/* Summary card */}
-      <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
+      <div className="rounded-2xl border border-outline-variant/30 bg-white p-6 shadow-elevation-1">
         <h2 className="font-heading font-semibold text-headline-md text-on-surface">
           {MONTHS[selectedMonth]} {selectedYear} — Summary
         </h2>
-        <p className="mt-1 font-body text-body-sm text-text-grey">
+        <p className="mt-1 font-body text-body-sm text-on-surface-variant">
           Trading prices shown are final. Revenue, COGS, and margin are per-order totals.
         </p>
 
         <div className="mt-4 flex flex-wrap gap-6">
           <div>
-            <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+            <p className="font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
               Total Orders
             </p>
             <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
@@ -478,7 +478,7 @@ function TradingMarginTab({ selectedMonth, selectedYear }: TabProps) {
             </p>
           </div>
           <div>
-            <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+            <p className="font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
               Total Revenue
             </p>
             <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
@@ -486,7 +486,7 @@ function TradingMarginTab({ selectedMonth, selectedYear }: TabProps) {
             </p>
           </div>
           <div>
-            <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+            <p className="font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
               Total COGS
             </p>
             <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
@@ -494,7 +494,7 @@ function TradingMarginTab({ selectedMonth, selectedYear }: TabProps) {
             </p>
           </div>
           <div>
-            <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+            <p className="font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
               Gross Margin
             </p>
             <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
@@ -505,7 +505,7 @@ function TradingMarginTab({ selectedMonth, selectedYear }: TabProps) {
       </div>
 
       {/* Margin ledger table */}
-      <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+      <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-white shadow-elevation-1">
         <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
           <h2 className="font-heading font-semibold text-headline-md text-on-surface">
             Margin Ledger
@@ -513,7 +513,7 @@ function TradingMarginTab({ selectedMonth, selectedYear }: TabProps) {
           <button
             type="button"
             aria-label="Export trading margin ledger"
-            className="flex h-11 items-center gap-2 rounded-xl border border-outline-variant/30 px-4 font-body text-body-md text-on-surface motion-safe:transition-colors motion-safe:duration-150 hover:border-brand-navy hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-11 items-center gap-2 rounded-xl border border-outline-variant/30 px-4 font-body text-body-md text-on-surface motion-safe:transition-colors motion-safe:duration-150 hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <Download size={16} aria-hidden="true" />
             Export
@@ -523,29 +523,29 @@ function TradingMarginTab({ selectedMonth, selectedYear }: TabProps) {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+              <tr className="border-b border-outline-variant/30 bg-surface-dim">
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                   Order #
                 </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                   Party
                 </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                   Item
                 </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                   Lot
                 </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                   Qty
                 </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                   Sell Price
                 </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                   COGS
                 </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                   Margin %
                 </th>
               </tr>
@@ -553,7 +553,7 @@ function TradingMarginTab({ selectedMonth, selectedYear }: TabProps) {
             <tbody className="divide-y divide-outline-variant/30">
               {/* TODO: wire to pick_list_items pricing query */}
               {MOCK_TRADING_ROWS.map((row) => (
-                <tr key={row.id} className="hover:bg-surface-light-grey/50">
+                <tr key={row.id} className="hover:bg-surface-dim/50">
                   {/* Order # — Roboto Mono for codes */}
                   <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
                     {row.orderNumber}

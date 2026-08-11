@@ -74,11 +74,11 @@ export default async function PartyDetailPage({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <nav className="mb-2" aria-label="Breadcrumb">
-            <ol className="flex items-center gap-1 font-body text-body-sm text-text-grey">
+            <ol className="flex items-center gap-1 font-body text-body-sm text-on-surface-variant">
               <li>
                 <Link
                   href="/master-data/parties"
-                  className="inline-flex h-11 items-center rounded hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  className="inline-flex h-11 items-center rounded hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   Parties
                 </Link>
@@ -92,7 +92,7 @@ export default async function PartyDetailPage({
           <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
             {party.name}
           </h1>
-          <p className="mt-1 font-mono text-mono-md text-text-grey">
+          <p className="mt-1 font-mono text-mono-md text-on-surface-variant">
             {party.code}
           </p>
         </div>
@@ -100,7 +100,7 @@ export default async function PartyDetailPage({
           <div className="flex gap-3">
             <Link
               href={`/master-data/parties/${partyId}/edit`}
-              className="flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-red"
+              className="flex h-11 items-center justify-center rounded bg-primary px-4 font-label text-label text-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-action-blue"
             >
               Edit
             </Link>
@@ -111,7 +111,7 @@ export default async function PartyDetailPage({
       {/* Status badge */}
       <div className="mt-4">
         {party.isActive ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-status-available/10 px-3 py-1 font-label text-label text-status-available">
+          <span className="inline-flex items-center gap-1 rounded-full bg-status-success/10 px-3 py-1 font-label text-label text-status-success">
             Active
           </span>
         ) : (
@@ -122,13 +122,13 @@ export default async function PartyDetailPage({
       </div>
 
       {/* Master data */}
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-md bg-white shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Party Information
         </h2>
         <dl className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
-            <dt className="font-label text-label text-text-grey">
+            <dt className="font-label text-label text-on-surface-variant">
               Contact Person
             </dt>
             <dd className="mt-1 font-body text-body-md text-on-surface">
@@ -136,45 +136,45 @@ export default async function PartyDetailPage({
             </dd>
           </div>
           <div>
-            <dt className="font-label text-label text-text-grey">Email</dt>
+            <dt className="font-label text-label text-on-surface-variant">Email</dt>
             <dd className="mt-1 font-body text-body-md text-on-surface">
               {party.email ?? "—"}
             </dd>
           </div>
           <div>
-            <dt className="font-label text-label text-text-grey">Phone</dt>
+            <dt className="font-label text-label text-on-surface-variant">Phone</dt>
             <dd className="mt-1 font-body text-body-md text-on-surface">
               {party.phone ?? "—"}
             </dd>
           </div>
           <div>
-            <dt className="font-label text-label text-text-grey">Tax ID / TIN</dt>
+            <dt className="font-label text-label text-on-surface-variant">Tax ID / TIN</dt>
             <dd className="mt-1 font-mono text-mono-md text-on-surface">
               {party.taxId ?? "—"}
             </dd>
           </div>
           <div className="sm:col-span-2">
-            <dt className="font-label text-label text-text-grey">Address</dt>
+            <dt className="font-label text-label text-on-surface-variant">Address</dt>
             <dd className="mt-1 font-body text-body-md text-on-surface whitespace-pre-line">
               {party.address ?? "—"}
             </dd>
           </div>
           {party.notes && (
             <div className="sm:col-span-2">
-              <dt className="font-label text-label text-text-grey">Notes</dt>
+              <dt className="font-label text-label text-on-surface-variant">Notes</dt>
               <dd className="mt-1 font-body text-body-md text-on-surface">
                 {party.notes}
               </dd>
             </div>
           )}
           <div>
-            <dt className="font-label text-label text-text-grey">Created</dt>
+            <dt className="font-label text-label text-on-surface-variant">Created</dt>
             <dd className="mt-1 font-body text-body-md text-on-surface">
               {party.createdAt.toLocaleDateString()}
             </dd>
           </div>
           <div>
-            <dt className="font-label text-label text-text-grey">
+            <dt className="font-label text-label text-on-surface-variant">
               Last Updated
             </dt>
             <dd className="mt-1 font-body text-body-md text-on-surface">
@@ -185,7 +185,7 @@ export default async function PartyDetailPage({
       </div>
 
       {/* Business roles + Contact Party action (interactive, client component) */}
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-md bg-white shadow-elevation-1 p-6">
         <PartyDetailActions
           partyId={partyId}
           roles={party.roles}
@@ -196,11 +196,11 @@ export default async function PartyDetailPage({
 
       {/* Deactivation zone — only for active parties that the user can manage */}
       {canManage && party.isActive && (
-        <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+        <div className="mt-6 rounded-md bg-white shadow-elevation-1 p-6">
           <h2 className="font-heading font-semibold text-data-display text-on-surface">
             Danger Zone
           </h2>
-          <p className="mt-1 font-body text-body-sm text-text-grey">
+          <p className="mt-1 font-body text-body-sm text-on-surface-variant">
             Deactivating a party prevents it from being selected in new
             transactions. Existing linked records are not deleted.
           </p>
@@ -211,44 +211,44 @@ export default async function PartyDetailPage({
       )}
 
       {/* Transaction Ledger — design.md §5b */}
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-md bg-white shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Transaction Ledger
         </h2>
-        <p className="mt-1 font-body text-body-sm text-text-grey">
+        <p className="mt-1 font-body text-body-sm text-on-surface-variant">
           All inventory transactions where this party is the vendor, customer, or
           VMI owner.
         </p>
 
         <div className="mt-4 overflow-x-auto">
           {ledger.rows.length === 0 ? (
-            <p className="py-8 text-center font-body text-body-md text-text-grey">
+            <p className="py-8 text-center font-body text-body-md text-on-surface-variant">
               No transactions recorded yet.
             </p>
           ) : (
             <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                <tr className="border-b border-outline-variant/30 bg-surface-dim">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Role
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Reference
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Type
                   </th>
-                  <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Qty
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Timestamp
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/30">
                 {ledger.rows.map((row) => (
-                  <tr key={row.id} className="hover:bg-surface-light-grey/50">
+                  <tr key={row.id} className="hover:bg-surface-dim/50">
                     <td className="px-4 py-3 font-label text-label text-on-surface capitalize">
                       {row.partyRole.replace(/_/g, " ")}
                     </td>
@@ -261,7 +261,7 @@ export default async function PartyDetailPage({
                     <td className="px-4 py-3 text-right font-mono text-mono-md text-on-surface">
                       {row.quantity}
                     </td>
-                    <td className="px-4 py-3 font-body text-body-md text-text-grey">
+                    <td className="px-4 py-3 font-body text-body-md text-on-surface-variant">
                       {row.createdAt.toLocaleString()}
                     </td>
                   </tr>
@@ -277,14 +277,14 @@ export default async function PartyDetailPage({
             aria-label="Transaction ledger pagination"
             className="mt-4 flex items-center justify-between"
           >
-            <p className="font-body text-body-md text-text-grey">
+            <p className="font-body text-body-md text-on-surface-variant">
               Page {currentLedgerPage} of {totalLedgerPages}
             </p>
             <div className="flex gap-2">
               {currentLedgerPage > 1 && (
                 <Link
                   href={`/master-data/parties/${partyId}?ledgerPage=${currentLedgerPage - 1}`}
-                  className="flex h-11 items-center rounded border border-outline-variant/30 px-3 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  className="flex h-11 items-center rounded border border-outline-variant/30 px-3 font-label text-label text-on-surface hover:bg-surface-dim focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   Previous
                 </Link>
@@ -292,7 +292,7 @@ export default async function PartyDetailPage({
               {currentLedgerPage < totalLedgerPages && (
                 <Link
                   href={`/master-data/parties/${partyId}?ledgerPage=${currentLedgerPage + 1}`}
-                  className="flex h-11 items-center rounded border border-outline-variant/30 px-3 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  className="flex h-11 items-center rounded border border-outline-variant/30 px-3 font-label text-label text-on-surface hover:bg-surface-dim focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   Next
                 </Link>

@@ -1,193 +1,83 @@
-// Renders the full shell composition: AppHeader landmark (with mobile nav
-// toggle), ShellNavigation, StatusRegion, and the page content slot.
-//
-// Traceability:
-// - design.md §4 (shell composition tree: AppHeader, DesktopSidebar /
-//   MobileFloorNavigation, MainContent slot, StatusRegion).
-// - requirements.md R5.1 ("Authenticated feature routes SHALL render inside
-//   a shared shell layout").
-// - requirements.md R5.5 ("The shell SHALL provide stable landmarks for
-//   header, navigation, main content, and status/feedback regions").
-// - design.md §6 ("At narrow mobile widths the sidebar collapses to a
-//   hamburger/drawer").
-//
-// This is app-wiring glue for app/(authenticated)/layout.tsx, not a
-// separately spec'd component — it composes already-tested pieces
-// (ShellNavigation, useShellAuthorizationContext) with Next.js'
-// `usePathname()`, which is only available client-side.
-
 "use client";
 
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Search } from "lucide-react";
 import { resolveSessionPresentationTier } from "@/lib/shell/surface";
-import { useShellSidebar } from "@/lib/shell/state";
 import { useShellAuthorizationContext } from "./AuthenticatedShellBoundary";
 import { ShellNavigation } from "./ShellNavigation";
 
 export function ShellChrome({ children }: { children: ReactNode }) {
   const context = useShellAuthorizationContext();
   const pathname = usePathname();
-  const { isOpen, toggle } = useShellSidebar();
 
-  // AuthenticatedShellBoundary only renders this subtree once authorized,
-  // so `context` is non-null in practice; the fallback keeps this
-  // component defensively correct without asserting on the boundary.
   const tier = resolveSessionPresentationTier(context?.activeRoleKeys ?? []);
   const pageTitle = getPageTitle(pathname);
 
+  // We only use the profile image as a placeholder like the Stitch design.
+  const profileImg = "https://lh3.googleusercontent.com/aida-public/AB6AXuCn0x5KZZh2cA4tLyhYvD4p0Trg9-Iu9c6ZBHTzh1PfMfE_lls7ZBvkyFiH4-DbfwyWzAxCoSioAX0VD6Gn2YCTwUpvvzN60bMSa_srcdXLNOdLSM4PCV8jM7FUUETjvc8uBnYkJbGDDdmzsQQOOTp661Sv6rNOo78a_kvyBen2SlP2AzFPjLEyb5Y2mkKPJ8HcHUcZVSxtq6Mi0Jy7AVHAuC7t6VkVj0n76zXhtuOXmcZWJZZ6VTU";
+
   return (
-    <>
-      {/* AppHeader — role="banner" landmark (R5.5, design.md §4).
-          Holds the brand mark, the mobile nav-open toggle, and account
-          controls. brand-navy background per brand-design-system.md §9.
-          No backdrop-blur — solid surface for both floor and office tiers. */}
-      <header className="fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-white/10 bg-brand-navy px-4 shadow-elevation-2 lg:left-72 lg:h-20 lg:border-outline-variant/30 lg:bg-surface-white lg:px-10 lg:shadow-none">
-        {/* Mobile hamburger — hidden above lg where the persistent sidebar
-            takes over. 64px min touch target (floor primary rules apply
-            since this control is present on every surface including floor).
-            active: press feedback only, no hover (brand-design-system §9). */}
-        <button
-          type="button"
-          aria-label="Open navigation"
-          aria-expanded={isOpen}
-          onClick={toggle}
-          className="flex h-16 w-16 items-center justify-center text-surface-white active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-surface-white lg:hidden"
-        >
-          {/* Unicode hamburger — no external icon library (task constraint). */}
-          <span aria-hidden="true" className="text-body-lg">
-            ☰
-          </span>
-        </button>
-
-        {/* Brand word-mark. Real letter-mark asset (text stand-in for now —
-            see tasks.md deferred item on logo asset wiring). Inter
-            SemiBold per brand-design-system §2 / §9 sidebar spec. */}
-        <div className="flex items-center gap-3 lg:hidden">
-          <span
-            aria-hidden="true"
-            className="inline-flex h-8 items-center rounded bg-brand-red px-2 font-heading text-body-sm font-bold tracking-tight text-white"
-          >
-            DS
-          </span>
-          <span className="font-label text-body-md font-semibold uppercase tracking-wide text-surface-white">
-            Dyna-Serv WIMS
-          </span>
-        </div>
-
-        {/* Desktop office header. The controls intentionally keep the shell
-            presentational: page-level filtering stays owned by each route. */}
-        <div className="hidden min-w-0 flex-1 items-center gap-6 lg:flex">
-          <div className="min-w-[230px]">
-            <p className="font-heading text-headline-md font-bold text-on-surface">
-              {pageTitle}
-            </p>
-            <p className="font-body text-body-sm text-text-grey">
-              Dyna-Serv Main Warehouse
-            </p>
-          </div>
-          <label className="flex h-12 min-w-0 max-w-md flex-1 items-center gap-3 rounded-xl border border-outline-variant/30 bg-surface-light-grey px-4 text-text-grey">
-            <Search size={20} aria-hidden="true" />
-            <span className="truncate font-body text-body-md">
-              Search item code, lot no., or WRR
-            </span>
-          </label>
-          <nav aria-label="Flow reporting filter" className="flex h-12 items-center rounded-xl border border-outline-variant/30 bg-surface-light-grey p-1">
-            {[
-              ["all", "All"],
-              ["VMI", "VMI"],
-              ["Trading", "Trading"],
-              ["Supplies", "Supplies"],
-            ].map(([filter, label]) => (
-              <Link
-                key={filter}
-                href={`/reports?filter=${filter}`}
-                className={`rounded-lg px-3 py-2 font-label text-label transition-colors ${
-                  filter === "all" ? "bg-brand-navy text-white" : "text-text-grey hover:bg-surface-white hover:text-on-surface"
-                }`}
-              >
-                {label}
-              </Link>
-            ))}
-          </nav>
-          <div className="ml-auto flex items-center gap-5">
-            <span className="flex items-center gap-2 font-label text-label text-status-available">
-              <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-status-available" />
-              Online
-            </span>
-            <span className="relative flex h-11 w-11 items-center justify-center rounded-full text-on-surface">
-              <Bell size={21} aria-hidden="true" />
-              <span className="absolute right-0 top-0 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-red px-1 font-label text-[11px] text-white">
-                5
-              </span>
-            </span>
-            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-navy font-label text-body-md text-white">
-              DS
-            </span>
-          </div>
-        </div>
+    <div className="h-full flex flex-col md:flex-row bg-surface text-on-surface">
+      
+      {/* Mobile Top Header (only visible on md:hidden) */}
+      <header className="md:hidden bg-surface border-b border-outline-variant px-margin-mobile py-sm flex justify-between items-center sticky top-0 z-40 shadow-sm">
+         <div className="font-headline-lg-mobile text-headline-lg-mobile font-bold text-primary">{pageTitle}</div>
+         <img src={profileImg} alt="User profile" className="w-10 h-10 rounded-full border border-outline-variant object-cover" />
       </header>
 
-      <ShellNavigation
-        tier={tier}
-        context={{ grants: context?.grants ?? [] }}
-        currentPath={pathname}
-      />
+      {/* Nav renders both Desktop SideNav (md:flex) and Mobile BottomNav (md:hidden) */}
+      <ShellNavigation tier={tier} context={{ grants: context?.grants ?? [] }} currentPath={pathname} />
 
-      {/* StatusRegion — role="status" / aria-live="polite" landmark (R5.5,
-          design.md §4/§10). Visually hidden until a feature writes a
-          message into it; the ARIA live region is always present in the
-          accessibility tree so assistive technology can discover it before
-          any announcement fires. Features write scan success/error
-          feedback here only where shell-level announcement is appropriate
-          — feature-owned floor flash behavior is separate (design.md §9). */}
-      <div
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-        className="sr-only"
-      />
+      {/* Main Content Area */}
+      <main id="main-content" data-surface={tier} className="flex-1 overflow-y-auto md:ml-64 md:h-screen md:bg-surface">
+        
+        {/* Desktop TopAppBar */}
+        <header className="hidden md:flex fixed top-0 w-[calc(100%-16rem)] z-30 justify-between items-center px-margin-desktop h-16 bg-surface border-b border-outline-variant">
+          <div className="font-headline-md text-headline-md font-bold text-primary truncate">{pageTitle}</div>
+          <div className="flex items-center gap-md">
+            <button className="p-sm text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors duration-200">
+              <span className="material-symbols-outlined">notifications</span>
+            </button>
+            <button className="p-sm text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors duration-200">
+              <span className="material-symbols-outlined">settings</span>
+            </button>
+            <img src={profileImg} alt="User profile" className="w-8 h-8 rounded-full ml-sm object-cover" />
+          </div>
+        </header>
 
-      {/* pb-20 (base) clears the fixed floor bottom tab bar; office tier
-          doesn't render that bar, so the extra bottom space is harmless.
-          lg:pl-72 clears the office/party desktop sidebar's fixed width.
-          pt-14 clears the fixed AppHeader.
-          Office/party tiers get the light `surface-light-grey` dashboard
-          backdrop (brand-design-system §6/§9, revised 2026-08-09); floor
-          keeps a plain white background per §6's AAA-contrast floor rule. */}
-      <main
-        id="main-content"
-        data-surface={tier}
-        className={`min-h-screen pb-20 pt-14 lg:pb-0 lg:pl-72 lg:pt-20 ${
-          tier === "floor" ? "" : "bg-surface-light-grey"
-        }`}
-      >
-        {children}
+        {/* Content Container */}
+        <div className="md:pt-24 md:px-margin-desktop md:pb-margin-desktop md:max-w-7xl md:mx-auto pt-md px-margin-mobile pb-24 flex flex-col gap-md md:gap-lg">
+          {children}
+        </div>
       </main>
-    </>
+      
+      {/* Status region */}
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only" />
+    </div>
   );
 }
 
 function getPageTitle(pathname: string): string {
-  if (pathname === "/") return "Overview Dashboard";
-  if (pathname.startsWith("/reports")) return "Reports & Analytics";
-  if (pathname.startsWith("/receiving")) return "Incoming Receiving";
-  if (pathname.startsWith("/inventory")) return "Inventory & Pick Lists";
-  if (pathname.startsWith("/outgoing") || pathname.startsWith("/pick-lists")) return "Picking & Dispatch";
-  if (pathname.startsWith("/transfers")) return "Transfers";
+  if (pathname === "/") return "Overview Hub";
+  if (pathname.startsWith("/reports")) return "Reporting: Analytics";
+  if (pathname.startsWith("/receiving")) return "Receiving / Incoming Hub";
+  if (pathname.startsWith("/inventory")) return "Master Inventory Stock View";
+  if (pathname.startsWith("/outgoing") || pathname.startsWith("/pick-lists")) return "Outgoing / Withdrawal Queue";
+  if (pathname.startsWith("/transfers")) return "Transfers Hub";
   if (pathname.startsWith("/inspection")) return "Inspection";
-  if (pathname.startsWith("/approvals")) return "Approvals";
+  if (pathname.startsWith("/approvals")) return "Approval Queue";
   if (pathname.startsWith("/enrollment")) return "Enrollment";
-  if (pathname.startsWith("/master-data/parties")) return "Parties";
-  if (pathname.startsWith("/master-data/items")) return "Items";
-  if (pathname.startsWith("/master-data/locations")) return "Locations";
-  if (pathname.startsWith("/billing-pricing")) return "Billing & Pricing";
+  if (pathname.startsWith("/master-data/parties")) return "Master Data: Parties Enrollment";
+  if (pathname.startsWith("/master-data/items")) return "Master Data: Items Enrollment";
+  if (pathname.startsWith("/master-data/locations")) return "Master Data: Locations Enrollment";
+  if (pathname.startsWith("/billing-pricing")) return "Reporting: Billing & Pricing";
   if (pathname.startsWith("/documents")) return "Documents";
-  if (pathname.startsWith("/portal")) return "Partner Portal";
+  if (pathname.startsWith("/portal/inventory")) return "Party Portal: Inventory Position";
+  if (pathname.startsWith("/portal/orders")) return "Party Portal: Order History";
+  if (pathname.startsWith("/portal")) return "Party Portal: Home Hub";
   if (pathname.startsWith("/settings")) return "Settings";
   if (pathname.startsWith("/profile")) return "Profile";
-  if (pathname.startsWith("/sync")) return "Sync Center";
+  if (pathname.startsWith("/sync")) return "System: Sync Management";
   return "Dyna-Serv WIMS";
 }

@@ -6,7 +6,7 @@
 //   specs/00-steering/brand-design-system.md §3 (floor surface rules — mobile-first
 //     base styles, NO glassmorphism, active: press not hover:, one primary action,
 //     primary action in bottom third full-width, 64px minimum touch targets),
-//     §6 (solid bg-surface-white — no backdrop-blur on floor), §1.5 (AAA contrast
+//     §6 (solid bg-white — no backdrop-blur on floor), §1.5 (AAA contrast
 //     for time-critical text), §2 (no text below 16px on floor),
 //     §8 (no backdrop-blur, animation constraints), §9 (card-based list not table)
 //
@@ -106,16 +106,16 @@ export default async function ExecuteTransferPage({
   ).length;
 
   return (
-    // Floor screen: solid bg-surface-light-grey, no glassmorphism, 16px padding.
+    // Floor screen: solid bg-surface-dim, no glassmorphism, 16px padding.
     // brand-design-system.md §4: floor screens use 16px page padding.
-    <div className="flex min-h-screen flex-col bg-surface-light-grey">
-      {/* Top bar — compact, floor-appropriate, brand-navy background */}
-      <div className="bg-brand-navy px-4 py-3">
+    <div className="flex min-h-screen flex-col bg-surface-dim">
+      {/* Top bar — compact, floor-appropriate, primary background */}
+      <div className="bg-primary px-4 py-3">
         <div className="flex items-center justify-between">
           {/* Back link — h-14 (56px) minimum floor touch target per §3 */}
           <Link
             href={`/transfers/${transferId}`}
-            className="inline-flex h-14 items-center gap-2 font-label text-body-md text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy active:scale-[0.97]"
+            className="inline-flex h-14 items-center gap-2 font-label text-body-md text-white focus:outline-none focus:ring-2 focus:ring-primary active:scale-[0.97]"
           >
             {/* Left arrow — no icon dependency, unicode for floor performance */}
             <span aria-hidden="true">&#8592;</span>
@@ -131,7 +131,7 @@ export default async function ExecuteTransferPage({
       {/* Main floor content — flex-1, single-column, 16px padding */}
       <div className="flex flex-1 flex-col px-4 py-4">
         {/* Progress header — solid surface, Level 2 shadow per §6 floor rule */}
-        <div className="rounded-md bg-surface-white p-4 shadow-elevation-2">
+        <div className="rounded-md bg-white p-4 shadow-elevation-2">
           <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
             Execute Transfer
           </h1>
@@ -151,7 +151,7 @@ export default async function ExecuteTransferPage({
           {!isExecutable && (
             <div
               role="alert"
-              className="mt-3 rounded bg-status-pending px-3 py-2"
+              className="mt-3 rounded bg-status-warning px-3 py-2"
             >
               {/* Icon paired with color per §1.3 floor color-blind rule */}
               <p className="font-body text-body-md text-on-surface">
@@ -167,12 +167,12 @@ export default async function ExecuteTransferPage({
             brand-design-system.md §9 §10: scan feedback is a solid color fill,
             not a gradient or blurred overlay. AAA contrast (7:1) for
             time-critical text per §1.5.
-            text-on-surface (#1A1B20) on status-available (#10B981) → meets AAA. */}
+            text-on-surface (#1A1B20) on status-success (#10B981) → meets AAA. */}
         {transferComplete && (
           <div
             role="status"
             aria-live="assertive"
-            className="mt-4 rounded-md bg-status-available px-4 py-4 shadow-elevation-2"
+            className="mt-4 rounded-md bg-status-success px-4 py-4 shadow-elevation-2"
           >
             {/* Icon paired with color per §1.3 floor color-blind rule */}
             <p className="font-heading font-semibold text-headline-md text-on-surface">
@@ -188,9 +188,9 @@ export default async function ExecuteTransferPage({
           <div
             role="alert"
             aria-live="assertive"
-            // solid status-held — full opacity, no backdrop-blur.
-            // text-on-surface (#1A1B20) on status-held (#EF4444) → meets AAA per §1.5.
-            className="mt-4 rounded-md bg-status-held px-4 py-4 shadow-elevation-2"
+            // solid status-error — full opacity, no backdrop-blur.
+            // text-on-surface (#1A1B20) on status-error (#EF4444) → meets AAA per §1.5.
+            className="mt-4 rounded-md bg-status-error px-4 py-4 shadow-elevation-2"
           >
             {/* Icon paired with color per §1.3 floor color-blind rule */}
             <p className="font-heading font-semibold text-headline-md text-on-surface">
@@ -218,8 +218,8 @@ export default async function ExecuteTransferPage({
             return (
               <div
                 key={line.id}
-                // Floor card: solid surface-white, Level 2 shadow, no glassmorphism per §6
-                className="rounded-md bg-surface-white p-4 shadow-elevation-2"
+                // Floor card: solid white, Level 2 shadow, no glassmorphism per §6
+                className="rounded-md bg-white p-4 shadow-elevation-2"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
@@ -243,10 +243,10 @@ export default async function ExecuteTransferPage({
                       aria-valuemin={0}
                       aria-valuemax={100}
                       aria-label={`${progressPct}% transferred`}
-                      className="mt-2 h-2 w-full overflow-hidden rounded-full bg-surface-light-grey"
+                      className="mt-2 h-2 w-full overflow-hidden rounded-full bg-surface-dim"
                     >
                       <div
-                        className={`h-full rounded-full transition-none ${isCompleted ? "bg-status-available" : "bg-status-pending"}`}
+                        className={`h-full rounded-full transition-none ${isCompleted ? "bg-status-success" : "bg-status-warning"}`}
                         style={{ width: `${progressPct}%` }}
                       />
                     </div>
@@ -255,7 +255,7 @@ export default async function ExecuteTransferPage({
                   {isCompleted && (
                     <span
                       aria-label="Line completed"
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-status-available text-on-surface font-heading font-bold text-data-display"
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-status-success text-on-surface font-heading font-bold text-data-display"
                     >
                       &#10003;
                     </span>
@@ -271,13 +271,13 @@ export default async function ExecuteTransferPage({
           brand-design-system.md §3: primary action in the bottom third of the
           viewport, full-width, always visible. 64px minimum for floor primary actions.
           No hover: on floor — active: press feedback only (§3 §10).
-          focus:ring-brand-navy — NEVER focus:ring-brand-red (§9 forms). */}
+          focus:ring-primary — NEVER focus:ring-action-blue (§9 forms). */}
       {isExecutable && !transferComplete && (
-        <div className="sticky bottom-0 bg-brand-navy px-4 pb-6 pt-4 shadow-elevation-2">
+        <div className="sticky bottom-0 bg-primary px-4 pb-6 pt-4 shadow-elevation-2">
           <form action={handleMarkTransferred} className="flex flex-col gap-3">
             <label
               htmlFor="qty-input"
-              className="font-label text-body-md text-surface-white"
+              className="font-label text-body-md text-white"
             >
               Quantity transferred (all lines)
             </label>
@@ -289,13 +289,13 @@ export default async function ExecuteTransferPage({
               step="0.0001"
               placeholder="Enter transferred quantity…"
               // h-14 = 56px — floor secondary input, min floor default per §3
-              className="h-14 w-full rounded border-2 border-surface-white bg-surface-white px-4 font-mono text-mono-lg text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-4 focus:ring-brand-navy"
+              className="h-14 w-full rounded border-2 border-white bg-white px-4 font-mono text-mono-lg text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-4 focus:ring-primary"
             />
             {/* Mark Transferred — 64px (h-16) full-width primary action per §3 */}
             <button
               type="submit"
               // active: press feedback, no hover: (floor screen per §3 §10)
-              className="flex h-16 w-full items-center justify-center rounded bg-brand-red font-label text-body-md text-surface-white active:scale-[0.97] focus:outline-none focus:ring-4 focus:ring-brand-navy"
+              className="flex h-16 w-full items-center justify-center rounded bg-action-blue font-label text-body-md text-white active:scale-[0.97] focus:outline-none focus:ring-4 focus:ring-primary"
             >
               Mark Transferred
             </button>
@@ -305,10 +305,10 @@ export default async function ExecuteTransferPage({
 
       {/* Post-completion back navigation — shown after successful transfer */}
       {transferComplete && (
-        <div className="sticky bottom-0 bg-brand-navy px-4 pb-6 pt-4 shadow-elevation-2">
+        <div className="sticky bottom-0 bg-primary px-4 pb-6 pt-4 shadow-elevation-2">
           <Link
             href={`/transfers/${transferId}`}
-            className="flex h-16 w-full items-center justify-center rounded bg-brand-navy border-2 border-surface-white font-label text-body-md text-surface-white active:scale-[0.97] focus:outline-none focus:ring-4 focus:ring-brand-navy"
+            className="flex h-16 w-full items-center justify-center rounded bg-primary border-2 border-white font-label text-body-md text-white active:scale-[0.97] focus:outline-none focus:ring-4 focus:ring-primary"
           >
             Return to Transfer
           </Link>

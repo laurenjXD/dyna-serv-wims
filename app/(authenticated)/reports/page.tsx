@@ -108,13 +108,13 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       <div className="mx-auto max-w-container px-8 py-12 text-center">
         <BarChart2
           size={40}
-          className="mx-auto mb-3 text-text-grey"
+          className="mx-auto mb-3 text-on-surface-variant"
           aria-hidden="true"
         />
-        <p className="font-body text-body-md text-text-grey">
+        <p className="font-body text-body-md text-on-surface-variant">
           You do not have permission to view reports.
         </p>
-        <p className="mt-2 font-body text-body-sm text-text-grey">
+        <p className="mt-2 font-body text-body-sm text-on-surface-variant">
           This page requires the{" "}
           <span className="font-mono text-mono-md">reporting.read</span>{" "}
           capability.
@@ -155,33 +155,33 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     <div className="mx-auto max-w-container px-6 py-8 lg:px-8">
       <div className="mb-6 lg:hidden">
         <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">Reports &amp; Analytics</h1>
-        <p className="mt-1 font-body text-body-md text-text-grey">Inventory activity, movement history, and KPI overview.</p>
+        <p className="mt-1 font-body text-body-md text-on-surface-variant">Inventory activity, movement history, and KPI overview.</p>
       </div>
 
       {/* Analytics is the financial-accessible surface; the landing page
           remains limited to operational queues per spec 05 R11.5. */}
       <section className="grid gap-6 xl:grid-cols-[1.02fr_1.04fr_1fr]">
-        <article className="overflow-hidden rounded-2xl border border-brand-navy/30 bg-brand-navy p-6 shadow-elevation-1">
+        <article className="overflow-hidden rounded-2xl border border-primary/30 bg-primary p-6 shadow-elevation-1">
           <p className="font-label text-label uppercase tracking-[0.06em] text-white/60">Total inventory valuation</p>
           <div className="mt-5 flex items-end justify-between gap-3">
             <p className="font-heading text-headline-xl font-extrabold text-white">
               {hasFinancialAccess ? "$0.00" : "Restricted"}
             </p>
-            <span className="rounded-full bg-status-available/20 px-3 py-2 font-label text-label text-status-available">↑ Current</span>
+            <span className="rounded-full bg-status-success/20 px-3 py-2 font-label text-label text-status-success">↑ Current</span>
           </div>
           <div className="mt-6 grid grid-cols-2 gap-3">
             <div className="rounded-xl bg-white/10 p-4"><p className="font-body text-body-sm text-white/60">VMI</p><p className="mt-2 font-heading text-data-display font-bold text-white">{hasFinancialAccess ? "$0.00" : "—"}</p></div>
             <div className="rounded-xl bg-white/10 p-4"><p className="font-body text-body-sm text-white/60">Trading</p><p className="mt-2 font-heading text-data-display font-bold text-white">{hasFinancialAccess ? "$0.00" : "—"}</p></div>
           </div>
           {!hasFinancialAccess && <p className="mt-4 flex items-center gap-2 font-body text-body-sm text-white/65"><LockKeyhole size={15} aria-hidden="true" />Financial reporting access required.</p>}
-          <div className="mt-6 h-16 rounded-t-full border-t-4 border-brand-red bg-gradient-to-b from-brand-red/20 to-transparent" aria-hidden="true" />
+          <div className="mt-6 h-16 rounded-t-full border-t-4 border-action-blue bg-gradient-to-b from-action-blue/20 to-transparent" aria-hidden="true" />
         </article>
 
-        <article className="rounded-2xl border border-outline-variant/30 border-l-[7px] border-l-brand-red bg-surface-white p-6 shadow-elevation-1">
-          <p className="font-label text-label uppercase tracking-[0.06em] text-text-grey">Open floor queues</p>
+        <article className="rounded-2xl border border-outline-variant/30 border-l-[7px] border-l-action-blue bg-white p-6 shadow-elevation-1">
+          <p className="font-label text-label uppercase tracking-[0.06em] text-on-surface-variant">Open floor queues</p>
           <div className="mt-6 space-y-4">
             {[['Pending Receiving WRRs', '0'], ['Active Pick Lists to Execute', '0'], ['Items Pending QC Inspection', '0']].map(([label, count]) => (
-              <div key={label} className="flex items-center justify-between rounded-xl bg-surface-light-grey px-5 py-5">
+              <div key={label} className="flex items-center justify-between rounded-xl bg-surface-dim px-5 py-5">
                 <span className="font-heading text-body-md font-semibold text-on-surface">{label}</span>
                 <span className="font-heading text-headline-md font-extrabold text-on-surface">{count}</span>
               </div>
@@ -189,8 +189,8 @@ export default async function ReportsPage({ searchParams }: PageProps) {
           </div>
         </article>
 
-        <article className="rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
-          <p className="font-label text-label uppercase tracking-[0.06em] text-text-grey">Stock health &amp; quality</p>
+        <article className="rounded-2xl border border-outline-variant/30 bg-white p-6 shadow-elevation-1">
+          <p className="font-label text-label uppercase tracking-[0.06em] text-on-surface-variant">Stock health &amp; quality</p>
           <div className="mt-6 space-y-4">
             <HealthRow icon={<TriangleAlert size={23} />} title="Low stock reorder alerts" detail="No items below reorder level" tone="pending" />
             <HealthRow icon={<LockKeyhole size={23} />} title="Held / quarantined lots" detail="No lots pending release" tone="held" />
@@ -200,27 +200,27 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       </section>
 
       <section className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <article className="rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
-          <div className="flex flex-wrap items-start justify-between gap-4"><div><h2 className="font-heading text-headline-md font-bold text-on-surface">Monthly Flow Movement</h2><p className="mt-1 font-body text-body-sm text-text-grey">Inbound receiving vs. outbound dispatch by flow type</p></div><div className="flex gap-4 font-body text-body-sm text-text-grey"><Legend color="bg-brand-navy" label="VMI" /><Legend color="bg-brand-royal-blue" label="Trading" /><Legend color="bg-status-neutral" label="Supplies" /></div></div>
+        <article className="rounded-2xl border border-outline-variant/30 bg-white p-6 shadow-elevation-1">
+          <div className="flex flex-wrap items-start justify-between gap-4"><div><h2 className="font-heading text-headline-md font-bold text-on-surface">Monthly Flow Movement</h2><p className="mt-1 font-body text-body-sm text-on-surface-variant">Inbound receiving vs. outbound dispatch by flow type</p></div><div className="flex gap-4 font-body text-body-sm text-on-surface-variant"><Legend color="bg-primary" label="VMI" /><Legend color="bg-secondary" label="Trading" /><Legend color="bg-status-neutral" label="Supplies" /></div></div>
           <MonthlyFlowChart data={MONTHLY_FLOW} />
         </article>
-        <article className="rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1"><h2 className="font-heading text-headline-md font-bold text-on-surface">Location Occupancy</h2><LocationOccupancyChart /><div className="space-y-3 font-body text-body-sm text-text-grey"><Legend color="bg-brand-navy" label="Zone A Storage" /><Legend color="bg-brand-royal-blue" label="Zone B Racks" /><Legend color="bg-status-neutral" label="Cold Storage" /><Legend color="bg-brand-red" label="Overflow" /></div></article>
+        <article className="rounded-2xl border border-outline-variant/30 bg-white p-6 shadow-elevation-1"><h2 className="font-heading text-headline-md font-bold text-on-surface">Location Occupancy</h2><LocationOccupancyChart /><div className="space-y-3 font-body text-body-sm text-on-surface-variant"><Legend color="bg-primary" label="Zone A Storage" /><Legend color="bg-secondary" label="Zone B Racks" /><Legend color="bg-status-neutral" label="Cold Storage" /><Legend color="bg-action-blue" label="Overflow" /></div></article>
       </section>
 
       {/* Movement Trend — real recharts bar chart, most recent day highlighted
-          in brand-red per §9's "one accent, used sparingly" dashboard rule. */}
-      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
+          in action-blue per §9's "one accent, used sparingly" dashboard rule. */}
+      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-white p-6 shadow-elevation-1">
         <h2 className="font-heading font-semibold text-headline-md text-on-surface">
           Movement Trend
         </h2>
-        <p className="mt-1 font-body text-body-sm text-text-grey">
+        <p className="mt-1 font-body text-body-sm text-on-surface-variant">
           Transactions per day across all flows
         </p>
         <MovementChart data={movementChartData} />
       </div>
 
       {/* Activity Heatmap */}
-      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
+      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-white p-6 shadow-elevation-1">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-heading font-semibold text-headline-md text-on-surface">
             Inventory Activity (52 Weeks)
@@ -232,10 +232,10 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               <a
                 key={f}
                 href={`/reports?filter=${f}`}
-                className={`flex h-11 items-center rounded-full px-4 font-label text-label motion-safe:transition-colors motion-safe:duration-150 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy ${
+                className={`flex h-11 items-center rounded-full px-4 font-label text-label motion-safe:transition-colors motion-safe:duration-150 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-primary ${
                   activeFilter === f
-                    ? "bg-brand-navy text-surface-white"
-                    : "border border-outline-variant/30 text-text-grey hover:text-on-surface"
+                    ? "bg-primary text-white"
+                    : "border border-outline-variant/30 text-on-surface-variant hover:text-on-surface"
                 }`}
               >
                 {f === "all" ? "All" : f}
@@ -245,9 +245,9 @@ export default async function ReportsPage({ searchParams }: PageProps) {
         </div>
 
         {/* Heatmap placeholder — wired from inventory_transactions data */}
-        <div className="mt-4 h-32 rounded-xl bg-surface-light-grey" role="img" aria-label="Inventory activity heatmap — not yet wired to data">
+        <div className="mt-4 h-32 rounded-xl bg-surface-dim" role="img" aria-label="Inventory activity heatmap — not yet wired to data">
           <div className="flex h-full items-center justify-center">
-            <p className="font-body text-body-sm text-text-grey">
+            <p className="font-body text-body-sm text-on-surface-variant">
               Heatmap — wired from <span className="font-mono text-mono-md">inventory_transactions</span> data
             </p>
           </div>
@@ -255,7 +255,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       </div>
 
       {/* Movement History table */}
-      <div className="mt-6 overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+      <div className="mt-6 overflow-hidden rounded-2xl border border-outline-variant/30 bg-white shadow-elevation-1">
         {/* Table header row with export button */}
         <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
           <h2 className="font-heading font-semibold text-headline-md text-on-surface">
@@ -263,7 +263,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
           </h2>
           <button
             type="button"
-            className="flex h-11 items-center gap-2 rounded-xl border border-outline-variant/30 px-4 font-body text-body-md text-on-surface motion-safe:transition-colors motion-safe:duration-150 hover:border-brand-navy hover:text-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-11 items-center gap-2 rounded-xl border border-outline-variant/30 px-4 font-body text-body-md text-on-surface motion-safe:transition-colors motion-safe:duration-150 hover:border-primary hover:text-primary motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-primary"
             aria-label="Export movement history"
           >
             <Download size={16} aria-hidden="true" />
@@ -274,29 +274,29 @@ export default async function ReportsPage({ searchParams }: PageProps) {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+              <tr className="border-b border-outline-variant/30 bg-surface-dim">
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                   Date
                 </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                   Type
                 </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                   Item
                 </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                   Lot
                 </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                   Qty
                 </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                   Party
                 </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                   Flow
                 </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                   Reference
                 </th>
               </tr>
@@ -304,8 +304,8 @@ export default async function ReportsPage({ searchParams }: PageProps) {
             <tbody className="divide-y divide-outline-variant/30">
               {/* TODO: wire to inventory_transactions query */}
               {MOCK_MOVEMENTS.map((txn) => (
-                <tr key={txn.id} className="hover:bg-surface-light-grey/50">
-                  <td className="px-4 py-3 font-body text-body-md text-text-grey">
+                <tr key={txn.id} className="hover:bg-surface-dim/50">
+                  <td className="px-4 py-3 font-body text-body-md text-on-surface-variant">
                     {txn.date}
                   </td>
                   <td className="px-4 py-3 font-body text-body-md text-on-surface">
@@ -323,7 +323,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                   <td className="px-4 py-3 font-body text-body-md text-on-surface">
                     {txn.party}
                   </td>
-                  <td className="px-4 py-3 font-body text-body-md text-text-grey">
+                  <td className="px-4 py-3 font-body text-body-md text-on-surface-variant">
                     {txn.flow}
                   </td>
                   <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
@@ -338,11 +338,11 @@ export default async function ReportsPage({ searchParams }: PageProps) {
 
       {/* Financial summary — shown only if reporting.financial_read */}
       {hasFinancialAccess && (
-        <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
+        <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-white p-6 shadow-elevation-1">
           <h2 className="font-heading font-semibold text-headline-md text-on-surface">
             Financial Summary
           </h2>
-          <p className="mt-1 font-body text-body-sm text-text-grey">
+          <p className="mt-1 font-body text-body-sm text-on-surface-variant">
             VMI amounts shown are period averages — reference only, not per-document
             totals. Trading amounts are final invoice figures.
           </p>
@@ -350,13 +350,13 @@ export default async function ReportsPage({ searchParams }: PageProps) {
           <div className="mt-4 flex flex-wrap gap-6">
             {/* VMI billing total */}
             <div className="flex-1">
-              <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+              <p className="font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                 VMI Billing Total (Period)
               </p>
               <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
                 $0.00
               </p>
-              <p className="mt-0.5 font-body text-body-sm text-text-grey">
+              <p className="mt-0.5 font-body text-body-sm text-on-surface-variant">
                 Reference amount, not your final bill
               </p>
               {/* TODO: wire to vmi_cbm_ledger + pick_list_items pricing query */}
@@ -364,13 +364,13 @@ export default async function ReportsPage({ searchParams }: PageProps) {
 
             {/* Trading margin total */}
             <div className="flex-1">
-              <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+              <p className="font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                 Trading Gross Margin (Period)
               </p>
               <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
                 $0.00
               </p>
-              <p className="mt-0.5 font-body text-body-sm text-text-grey">
+              <p className="mt-0.5 font-body text-body-sm text-on-surface-variant">
                 Revenue minus COGS across all Trading orders
               </p>
               {/* TODO: wire to pick_list_items pricing query */}
@@ -387,6 +387,6 @@ function Legend({ color, label }: { color: string; label: string }) {
 }
 
 function HealthRow({ icon, title, detail, tone }: { icon: React.ReactNode; title: string; detail: string; tone: "pending" | "held" | "available" }) {
-  const toneClass = { pending: "border-status-pending/45 bg-status-pending/10 text-status-pending", held: "border-status-held/35 bg-status-held/10 text-status-held", available: "border-status-available/35 bg-status-available/10 text-status-available" }[tone];
-  return <div className={`flex items-center gap-4 rounded-xl border p-4 ${toneClass}`}><span aria-hidden="true">{icon}</span><div><p className="font-heading text-body-md font-bold text-on-surface">{title}</p><p className="mt-1 font-body text-body-sm text-text-grey">{detail}</p></div></div>;
+  const toneClass = { pending: "border-status-warning/45 bg-status-warning/10 text-status-warning", held: "border-status-error/35 bg-status-error/10 text-status-error", available: "border-status-success/35 bg-status-success/10 text-status-success" }[tone];
+  return <div className={`flex items-center gap-4 rounded-xl border p-4 ${toneClass}`}><span aria-hidden="true">{icon}</span><div><p className="font-heading text-body-md font-bold text-on-surface">{title}</p><p className="mt-1 font-body text-body-sm text-on-surface-variant">{detail}</p></div></div>;
 }

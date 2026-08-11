@@ -25,12 +25,12 @@ import type { PickListRow } from "@/lib/db/queries/withdrawals";
 
 // ─── Status badge colors ─────────────────────────────────────────────────────
 // brand-design-system.md §1.3 semantic color mapping per task spec:
-// allocated → status-pending (amber); picked → brand-navy; dispatched → status-available.
+// allocated → status-warning (amber); picked → primary; dispatched → status-success.
 
 const STATUS_CLASSES: Record<string, string> = {
-  allocated: "bg-status-pending text-on-surface",
-  picked: "bg-brand-navy text-surface-white",
-  dispatched: "bg-status-available text-on-surface",
+  allocated: "bg-status-warning text-on-surface",
+  picked: "bg-primary text-white",
+  dispatched: "bg-status-success text-on-surface",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -82,7 +82,7 @@ export default async function InventoryPage({ searchParams }: PageProps) {
         <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
           Inventory
         </h1>
-        <p className="mt-1 font-body text-body-md text-text-grey">
+        <p className="mt-1 font-body text-body-md text-on-surface-variant">
           Stock overview, committed pick lists, and daily inspection initiation.
         </p>
       </div>
@@ -107,10 +107,10 @@ export default async function InventoryPage({ searchParams }: PageProps) {
               href={href}
               role="tab"
               aria-selected={isActive}
-              className={`flex h-11 items-center border-b-2 px-4 font-label text-label uppercase tracking-[0.05em] focus:outline-none focus:ring-2 focus:ring-brand-navy ${
+              className={`flex h-11 items-center border-b-2 px-4 font-label text-label uppercase tracking-[0.05em] focus:outline-none focus:ring-2 focus:ring-primary ${
                 isActive
-                  ? "border-brand-red text-brand-navy"
-                  : "border-transparent text-text-grey hover:text-brand-navy"
+                  ? "border-action-blue text-primary"
+                  : "border-transparent text-on-surface-variant hover:text-primary"
               }`}
             >
               {tab.label}
@@ -134,11 +134,11 @@ export default async function InventoryPage({ searchParams }: PageProps) {
 
 function StockViewTab() {
   return (
-    <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 px-6 py-12 text-center">
-      <p className="font-body text-body-md text-text-grey">
+    <div className="mt-6 rounded-md bg-white shadow-elevation-1 px-6 py-12 text-center">
+      <p className="font-body text-body-md text-on-surface-variant">
         Stock view with FIFO/FEFO pick-list generation is coming in the next implementation cycle.
       </p>
-      <p className="mt-2 font-body text-body-sm text-text-grey">
+      <p className="mt-2 font-body text-body-sm text-on-surface-variant">
         Select items from live inventory to auto-generate a pick list.
       </p>
     </div>
@@ -151,13 +151,13 @@ async function PickListsTab() {
   const { rows } = await listPickLists(db, { limit: 50, offset: 0 });
 
   return (
-    <div className="mt-6 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
+    <div className="mt-6 overflow-hidden rounded-md bg-white shadow-elevation-1">
       {rows.length === 0 ? (
         <div className="px-6 py-12 text-center">
-          <p className="font-body text-body-md text-text-grey">
+          <p className="font-body text-body-md text-on-surface-variant">
             No pick lists yet.
           </p>
-          <p className="mt-2 font-body text-body-sm text-text-grey">
+          <p className="mt-2 font-body text-body-sm text-on-surface-variant">
             Pick lists are generated from the Master Inventory when stock is
             committed for outgoing withdrawal.
           </p>
@@ -166,18 +166,18 @@ async function PickListsTab() {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
+              <tr className="border-b border-outline-variant/30 bg-surface-dim">
                 {/* Epilogue SemiBold uppercase headers per §9 tables */}
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                   Status
                 </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                   Flow Type
                 </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                   Customer Party
                 </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                   Created
                 </th>
                 <th className="sr-only px-4 py-3">Actions</th>
@@ -185,7 +185,7 @@ async function PickListsTab() {
             </thead>
             <tbody className="divide-y divide-outline-variant/30">
               {rows.map((row: PickListRow) => (
-                <tr key={row.id} className="hover:bg-surface-light-grey/50">
+                <tr key={row.id} className="hover:bg-surface-dim/50">
                   <td className="px-4 py-3">
                     {/* Status badge — radius-full, §1.3 semantic colors */}
                     <span
@@ -201,14 +201,14 @@ async function PickListsTab() {
                   <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
                     {row.customerPartyId}
                   </td>
-                  <td className="px-4 py-3 font-body text-body-md text-text-grey">
+                  <td className="px-4 py-3 font-body text-body-md text-on-surface-variant">
                     {row.createdAt.toLocaleString()}
                   </td>
                   <td className="px-4 py-3 text-right">
                     {/* Execute link — h-11 (44px) office touch target */}
                     <Link
                       href={`/pick-lists/${row.id}/pick`}
-                      className="inline-flex h-11 items-center font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                      className="inline-flex h-11 items-center font-label text-label text-primary underline hover:text-secondary focus:outline-none focus:ring-2 focus:ring-primary"
                     >
                       Execute
                     </Link>
@@ -227,8 +227,8 @@ async function PickListsTab() {
 
 function DailyInspectionTab() {
   return (
-    <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 px-6 py-12 text-center">
-      <p className="font-body text-body-md text-text-grey">
+    <div className="mt-6 rounded-md bg-white shadow-elevation-1 px-6 py-12 text-center">
+      <p className="font-body text-body-md text-on-surface-variant">
         Daily Inspection initiation is managed here (Supervisor / Administrator only).
       </p>
     </div>

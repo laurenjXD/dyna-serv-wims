@@ -127,12 +127,12 @@ export function MobileQRScanner({
     };
   }, []);
 
-  // Floor surface: solid `surface-white`, no glassmorphism, `shadow-elevation-2`.
+  // Floor surface: solid `white`, no glassmorphism, `shadow-elevation-2`.
   // The scanner library injects the camera feed into this div by id.
   return (
     <div
       id="html5qr-code-full-region"
-      className="w-full max-w-md mx-auto bg-surface-white shadow-elevation-2 rounded overflow-hidden"
+      className="w-full max-w-md mx-auto bg-white shadow-elevation-2 rounded overflow-hidden"
     />
   );
 }

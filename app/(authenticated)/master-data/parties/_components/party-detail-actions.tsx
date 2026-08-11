@@ -47,7 +47,7 @@ function RoleTag({
   );
 
   return (
-    <span className="inline-flex items-center gap-1 rounded-sm bg-surface-light-grey px-3 py-1">
+    <span className="inline-flex items-center gap-1 rounded-sm bg-surface-dim px-3 py-1">
       <span className="font-label text-label text-on-surface capitalize">
         {role.role.replace(/_/g, " ")}
       </span>
@@ -59,7 +59,7 @@ function RoleTag({
             type="submit"
             disabled={isPending}
             aria-label={`Remove ${role.role} role`}
-            className="ml-1 flex h-11 w-11 items-center justify-center rounded text-text-grey hover:text-status-held focus:outline-none focus:ring-2 focus:ring-status-held disabled:opacity-50"
+            className="ml-1 flex h-11 w-11 items-center justify-center rounded text-on-surface-variant hover:text-status-error focus:outline-none focus:ring-2 focus:ring-status-error disabled:opacity-50"
           >
             ×
           </button>
@@ -106,7 +106,7 @@ function AddRoleForm({
           id="role-select"
           name="role"
           required
-          className="mt-1 h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+          className="mt-1 h-11 rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <option value="">Select role…</option>
           {availableRoles.map(({ value, label }) => (
@@ -119,12 +119,12 @@ function AddRoleForm({
       <button
         type="submit"
         disabled={isPending}
-        className="flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-red disabled:opacity-50"
+        className="flex h-11 items-center justify-center rounded bg-primary px-4 font-label text-label text-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-action-blue disabled:opacity-50"
       >
         {isPending ? "Adding…" : "Add"}
       </button>
       {state.error && (
-        <p role="alert" className="font-body text-body-sm text-brand-red">
+        <p role="alert" className="font-body text-body-sm text-action-blue">
           {state.error}
         </p>
       )}
@@ -155,14 +155,14 @@ function ContactPartyModal({
       aria-labelledby="contact-party-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/40 px-4"
     >
-      <div className="w-full max-w-lg rounded-md bg-surface-white shadow-elevation-2 p-6">
+      <div className="w-full max-w-lg rounded-md bg-white shadow-elevation-2 p-6">
         <h2
           id="contact-party-title"
           className="font-heading font-semibold text-headline-md text-on-surface"
         >
           Contact Party
         </h2>
-        <p className="mt-2 font-body text-body-md text-text-grey">
+        <p className="mt-2 font-body text-body-md text-on-surface-variant">
           This will send an operational notification from Dyna-Serv Operations
           to the party&apos;s email address on record. The message is sent from
           the Dyna-Serv system — not from your personal inbox.
@@ -171,7 +171,7 @@ function ContactPartyModal({
         {state.error && (
           <div
             role="alert"
-            className="mt-4 rounded border border-brand-red/30 bg-brand-red/5 px-4 py-3 font-body text-body-md text-brand-red"
+            className="mt-4 rounded border border-action-blue/30 bg-action-blue/5 px-4 py-3 font-body text-body-md text-action-blue"
           >
             {state.error}
           </div>
@@ -179,13 +179,13 @@ function ContactPartyModal({
 
         {state.ok ? (
           <div className="mt-4">
-            <p className="font-body text-body-md text-status-available">
+            <p className="font-body text-body-md text-status-success">
               Notification sent successfully.
             </p>
             <button
               type="button"
               onClick={onClose}
-              className="mt-4 flex h-11 items-center justify-center rounded bg-brand-navy px-6 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-red"
+              className="mt-4 flex h-11 items-center justify-center rounded bg-primary px-6 font-label text-label text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-action-blue"
             >
               Close
             </button>
@@ -199,7 +199,7 @@ function ContactPartyModal({
                 className="block font-label text-label text-on-surface"
               >
                 Additional Message{" "}
-                <span className="font-body text-body-sm text-text-grey">
+                <span className="font-body text-body-sm text-on-surface-variant">
                   (optional)
                 </span>
               </label>
@@ -208,21 +208,21 @@ function ContactPartyModal({
                 name="message"
                 rows={4}
                 placeholder="Add any additional context here…"
-                className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="mt-1 block w-full rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
             <div className="mt-4 flex justify-end gap-3">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex h-11 items-center justify-center rounded bg-brand-navy px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-red"
+                className="flex h-11 items-center justify-center rounded bg-primary px-6 font-label text-label text-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-action-blue"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isPending}
-                className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:opacity-50"
+                className="flex h-11 items-center justify-center rounded bg-action-blue px-6 font-label text-label text-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
               >
                 {isPending ? "Sending…" : "Send Notification"}
               </button>
@@ -268,7 +268,7 @@ export function PartyDetailActions({
             <button
               type="button"
               onClick={() => setShowContactModal(true)}
-              className="flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-red"
+              className="flex h-11 items-center justify-center rounded bg-primary px-4 font-label text-label text-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-action-blue"
             >
               Contact Party
             </button>
@@ -277,7 +277,7 @@ export function PartyDetailActions({
 
         <div className="mt-3 flex flex-wrap gap-2">
           {roles.length === 0 ? (
-            <p className="font-body text-body-md text-text-grey">
+            <p className="font-body text-body-md text-on-surface-variant">
               No business roles assigned.
             </p>
           ) : (
@@ -327,7 +327,7 @@ export function DeactivatePartySection({ partyId }: { partyId: string }) {
 
   if (state.ok) {
     return (
-      <p className="font-body text-body-md text-status-available">
+      <p className="font-body text-body-md text-status-success">
         Party has been deactivated. Reload the page to see the updated status.
       </p>
     );
@@ -339,7 +339,7 @@ export function DeactivatePartySection({ partyId }: { partyId: string }) {
         <button
           type="button"
           onClick={() => setConfirmed(true)}
-          className="flex h-11 items-center justify-center rounded border border-status-held px-4 font-label text-label text-status-held hover:bg-status-held/5 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-status-held"
+          className="flex h-11 items-center justify-center rounded border border-status-error px-4 font-label text-label text-status-error hover:bg-status-error/5 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-status-error"
         >
           Deactivate Party
         </button>
@@ -352,21 +352,21 @@ export function DeactivatePartySection({ partyId }: { partyId: string }) {
           <button
             type="button"
             onClick={() => setConfirmed(false)}
-            className="flex h-11 items-center px-2 font-label text-label text-text-grey underline focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-11 items-center px-2 font-label text-label text-on-surface-variant underline focus:outline-none focus:ring-2 focus:ring-primary"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isPending}
-            className="flex h-11 items-center justify-center rounded bg-status-held px-4 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-status-held"
+            className="flex h-11 items-center justify-center rounded bg-status-error px-4 font-label text-label text-white hover:opacity-90 active:scale-[0.97] disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-status-error"
           >
             {isPending ? "Deactivating…" : "Confirm Deactivate"}
           </button>
         </form>
       )}
       {state.error && (
-        <p role="alert" className="mt-2 font-body text-body-sm text-brand-red">
+        <p role="alert" className="mt-2 font-body text-body-sm text-action-blue">
           {state.error}
         </p>
       )}

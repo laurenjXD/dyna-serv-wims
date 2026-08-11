@@ -1,23 +1,3 @@
-// WRR print receipt — complete WRR data for physical document output.
-//
-// Traceability:
-//   specs/07-incoming-receiving/design.md §5.3 (WRR printed fields), §5.4
-//     (print behavior — does not create inventory or change WRR status)
-//   specs/07-incoming-receiving/requirements.md R2.1, R2.2
-//   specs/00-steering/brand-design-system.md §6 (office surface, Level 1),
-//     §9 (tables: Epilogue SemiBold uppercase headers)
-//
-// Surface: Office. Permission gate: receiving.view (design.md §5.4 — print-only, no state change).
-//
-// Print behavior: window.print() is triggered from a client-side button.
-// The @media print styles hide nav/sidebar elements for a clean printed output.
-// Design.md §5.4: printing does not create a receipt outcome, does not change
-// WRR status, and does not alter the scan baseline.
-//
-// Note: confirmedAt and confirmedByUserId are on the wrr_documents schema but
-// are not included in the WrrDocumentWithItems query result. Extend
-// getWrrDocument to include these fields when the query is updated.
-
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
@@ -45,8 +25,6 @@ export default async function WrrPrintPage({ params }: PageProps) {
   const { wrrId } = await params;
   const resolver = await createPageResolver();
 
-  // Gate: receiving.view per design.md §5.4 — any user who can view WRRs may
-  // reprint at any lifecycle status. Printing does not change WRR state.
   const permResult = await requirePermission(resolver, "receiving.view");
   if (permResult.kind !== "authorized") {
     notFound();
@@ -59,12 +37,6 @@ export default async function WrrPrintPage({ params }: PageProps) {
 
   return (
     <>
-      {/*
-       * Print media styles: hide the authenticated shell sidebar and top nav
-       * so the printed output is clean. The layout.tsx elements use `aside`
-       * and `header` tags; `main` wraps the page content.
-       * brand-design-system.md §12: surface-white is the print background.
-       */}
       <style
         dangerouslySetInnerHTML={{
           __html: `
@@ -74,194 +46,200 @@ export default async function WrrPrintPage({ params }: PageProps) {
               }
               body {
                 background: #FFFFFF !important;
+                color: #000000 !important;
               }
               main {
                 padding: 0 !important;
                 margin: 0 !important;
+                background: none !important;
+              }
+              .print-document {
+                box-shadow: none !important;
+                border: none !important;
+                padding: 0 !important;
+                background: #FFFFFF !important;
+                color: #000000 !important;
+              }
+              .print-table th {
+                background: #F1F3F9 !important;
+                -webkit-print-color-adjust: exact;
+                color-adjust: exact;
               }
             }
           `,
         }}
       />
 
-      <div className="mx-auto max-w-container">
+      <div className="mx-auto w-full max-w-4xl animate-in fade-in duration-300">
         {/* Breadcrumb — hidden on print */}
         <nav
           aria-label="Breadcrumb"
-          className="mb-4 print:hidden print-hide"
+          className="mb-md print-hide"
         >
-          <ol className="flex items-center gap-1 font-body text-body-sm text-text-grey">
+          <ol className="flex items-center gap-xs font-label text-label-md text-on-surface-variant uppercase tracking-wider">
             <li>
               <Link
                 href="/receiving"
-                className="inline-flex h-11 items-center rounded hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="inline-flex h-8 items-center rounded-sm hover:text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 Receiving Queue
               </Link>
             </li>
-            <li aria-hidden="true">/</li>
+            <li aria-hidden="true" className="text-outline-variant">/</li>
             <li>
               <Link
                 href={`/receiving/${wrrId}`}
-                className="inline-flex h-11 items-center rounded hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="inline-flex h-8 items-center rounded-sm hover:text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 {wrr.wrrNumber}
               </Link>
             </li>
-            <li aria-hidden="true">/</li>
-            <li aria-current="page" className="font-body text-body-sm text-on-surface">
+            <li aria-hidden="true" className="text-outline-variant">/</li>
+            <li aria-current="page" className="font-label text-label-md text-on-surface">
               Print
             </li>
           </ol>
         </nav>
 
         {/* Screen-only print button */}
-        <div className="mb-6 flex gap-3 print:hidden print-hide">
-          {/* Print button — primary CTA: brand-red per brand-design-system.md §9 */}
+        <div className="mb-lg flex gap-sm print-hide">
           <button
             type="button"
             onClick={() => {
               if (typeof window !== "undefined") window.print();
             }}
             suppressHydrationWarning
-            className="flex h-11 items-center justify-center rounded bg-brand-red px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-11 items-center justify-center gap-sm rounded-full bg-primary px-lg font-label text-label-lg text-on-primary shadow-sm hover:opacity-90 active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
           >
-            Print
+            <span className="material-symbols-outlined text-[20px]">print</span>
+            Print Document
           </button>
           <Link
             href={`/receiving/${wrrId}`}
-            className="flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-11 items-center justify-center rounded-full border border-outline-variant px-lg font-label text-label-lg text-on-surface hover:bg-surface-container-highest transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
           >
             Back to WRR
           </Link>
         </div>
 
         {/* Printable WRR document */}
-        <div className="rounded-md bg-surface-white p-8 shadow-elevation-1">
+        <div className="print-document rounded-xl bg-white p-xl shadow-md border border-outline-variant/30 text-black">
           {/* Document header */}
-          <div className="border-b border-outline-variant/30 pb-6">
+          <div className="border-b-2 border-black pb-md">
             <div className="flex items-start justify-between">
               <div>
-                <h1 className="font-heading font-extrabold text-headline-lg text-on-surface">
+                <h1 className="font-heading text-display-md font-bold text-black tracking-tight">
                   Dyna-Serv WIMS
                 </h1>
-                <p className="mt-1 font-label text-label uppercase tracking-[0.05em] text-brand-royal-blue">
+                <p className="mt-xs font-label text-label-lg uppercase tracking-wider text-black/70">
                   Warehouse Receipt Record
                 </p>
               </div>
-              {/* WRR number — prominent Roboto Mono, large for barcode placeholder */}
               <div className="text-right">
-                <p className="font-label text-label uppercase text-text-grey">
+                <p className="font-label text-label-md uppercase tracking-wider text-black/70">
                   WRR Number
                 </p>
-                <p className="font-mono text-mono-xl font-bold text-brand-navy">
+                <p className="font-mono text-display-sm font-bold text-black mt-xs">
                   {wrr.wrrNumber}
                 </p>
-                <p className="mt-1 font-body text-body-sm text-text-grey">
+                <p className="mt-xs font-body text-body-sm text-black/70">
                   Printed: {new Date().toLocaleString()}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Header fields — design.md §5.3 */}
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Header fields */}
+          <div className="mt-lg grid gap-md sm:grid-cols-2 lg:grid-cols-4 bg-gray-50/50 rounded-lg p-md border border-gray-200">
             <div>
-              <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+              <p className="font-label text-label-sm uppercase tracking-wider text-black/70">
                 Flow Type
               </p>
-              <p className="mt-1 font-body text-body-md text-on-surface">
+              <p className="mt-xs font-body text-body-lg font-medium text-black">
                 {FLOW_LABELS[wrr.flowType] ?? wrr.flowType}
               </p>
             </div>
             <div>
-              <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+              <p className="font-label text-label-sm uppercase tracking-wider text-black/70">
                 Vendor Party ID
               </p>
-              <p className="mt-1 font-mono text-mono-md text-on-surface">
+              <p className="mt-xs font-mono text-body-lg font-medium text-black">
                 {wrr.vendorPartyId}
               </p>
             </div>
             <div>
-              <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+              <p className="font-label text-label-sm uppercase tracking-wider text-black/70">
                 Created At
               </p>
-              <p className="mt-1 font-body text-body-md text-on-surface">
+              <p className="mt-xs font-body text-body-lg font-medium text-black">
                 {wrr.createdAt.toLocaleString()}
               </p>
             </div>
             <div>
-              <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+              <p className="font-label text-label-sm uppercase tracking-wider text-black/70">
                 Staged By
               </p>
-              <p className="mt-1 font-mono text-mono-md text-on-surface">
+              <p className="mt-xs font-mono text-body-lg font-medium text-black">
                 {wrr.stagedByUserId}
               </p>
             </div>
-            {/*
-             * Note: confirmedByUserId and confirmedAt are not included in the
-             * current WrrDocumentRow query result (lib/db/queries/receiving.ts).
-             * Extend getWrrDocument to select these columns when updating the query.
-             */}
             <div>
-              <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+              <p className="font-label text-label-sm uppercase tracking-wider text-black/70">
                 Status
               </p>
-              <p className="mt-1 font-body text-body-md text-on-surface uppercase">
+              <p className="mt-xs font-label text-label-lg uppercase text-black">
                 {wrr.status.replace(/_/g, " ")}
               </p>
             </div>
           </div>
 
-          {/* Line items table — §5.3 per-line section */}
-          <div className="mt-8">
-            <h2 className="font-heading font-semibold text-data-display text-on-surface">
+          {/* Line items table */}
+          <div className="mt-xl">
+            <h2 className="font-heading text-title-lg font-bold text-black border-b border-gray-200 pb-sm mb-md">
               Expected Lines
             </h2>
             {wrr.items.length === 0 ? (
-              <p className="mt-4 font-body text-body-md text-text-grey">
+              <p className="mt-md font-body text-body-lg text-black/70 italic">
                 No line items.
               </p>
             ) : (
               <div className="mt-4 overflow-x-auto">
-                <table className="w-full border-collapse border border-outline-variant/30">
+                <table className="print-table w-full border-collapse border border-gray-300">
                   <thead>
-                    <tr className="bg-surface-light-grey">
-                      <th className="border border-outline-variant/30 px-3 py-2 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                    <tr className="bg-gray-100">
+                      <th className="border border-gray-300 px-4 py-3 text-left font-label text-label-sm uppercase tracking-wider text-black">
                         Lot Number
                       </th>
-                      {/* Note: Item Code and UOM require query extension —
-                          see lib/db/queries/receiving.ts getWrrDocument */}
-                      <th className="border border-outline-variant/30 px-3 py-2 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                      <th className="border border-gray-300 px-4 py-3 text-left font-label text-label-sm uppercase tracking-wider text-black">
                         Item ID
                       </th>
-                      <th className="border border-outline-variant/30 px-3 py-2 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                      <th className="border border-gray-300 px-4 py-3 text-right font-label text-label-sm uppercase tracking-wider text-black">
                         Expected Qty
                       </th>
-                      <th className="border border-outline-variant/30 px-3 py-2 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                      <th className="border border-gray-300 px-4 py-3 text-right font-label text-label-sm uppercase tracking-wider text-black">
                         Scanned Qty
                       </th>
-                      <th className="border border-outline-variant/30 px-3 py-2 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                      <th className="border border-gray-300 px-4 py-3 text-left font-label text-label-sm uppercase tracking-wider text-black">
                         Disposition
                       </th>
                     </tr>
                   </thead>
                   <tbody>
                     {wrr.items.map((item: WrrItemRow) => (
-                      <tr key={item.id} className="border-b border-outline-variant/30">
-                        <td className="border border-outline-variant/30 px-3 py-2 font-mono text-mono-md text-on-surface">
+                      <tr key={item.id} className="border-b border-gray-300">
+                        <td className="border border-gray-300 px-4 py-3 font-mono text-body-md text-black">
                           {item.lotNumber}
                         </td>
-                        <td className="border border-outline-variant/30 px-3 py-2 font-mono text-mono-md text-on-surface">
+                        <td className="border border-gray-300 px-4 py-3 font-mono text-body-md text-black">
                           {item.itemId ?? "—"}
                         </td>
-                        <td className="border border-outline-variant/30 px-3 py-2 text-right font-mono text-mono-md text-on-surface">
+                        <td className="border border-gray-300 px-4 py-3 text-right font-mono text-body-md text-black">
                           {item.expectedQty}
                         </td>
-                        <td className="border border-outline-variant/30 px-3 py-2 text-right font-mono text-mono-md text-on-surface">
+                        <td className="border border-gray-300 px-4 py-3 text-right font-mono text-body-md text-black">
                           {item.scannedQty}
                         </td>
-                        <td className="border border-outline-variant/30 px-3 py-2 font-label text-label uppercase text-on-surface">
+                        <td className="border border-gray-300 px-4 py-3 font-label text-label-md uppercase text-black font-semibold">
                           {DISPOSITION_LABELS[item.disposition] ??
                             item.disposition.toUpperCase()}
                         </td>
@@ -273,32 +251,32 @@ export default async function WrrPrintPage({ params }: PageProps) {
             )}
           </div>
 
-          {/* Footer — signature lines per design.md §5.3 */}
-          <div className="mt-12 grid gap-8 sm:grid-cols-3">
+          {/* Footer — signature lines */}
+          <div className="mt-24 grid gap-8 sm:grid-cols-3">
             <div>
-              <div className="border-b border-on-surface pb-1" />
-              <p className="mt-2 font-label text-label text-text-grey">
+              <div className="border-b border-black pb-1" />
+              <p className="mt-2 font-label text-label-md uppercase tracking-wider text-black/70">
                 Received By
               </p>
             </div>
             <div>
-              <div className="border-b border-on-surface pb-1" />
-              <p className="mt-2 font-label text-label text-text-grey">
+              <div className="border-b border-black pb-1" />
+              <p className="mt-2 font-label text-label-md uppercase tracking-wider text-black/70">
                 Checked By
               </p>
             </div>
             <div>
-              <div className="border-b border-on-surface pb-1" />
-              <p className="mt-2 font-label text-label text-text-grey">
+              <div className="border-b border-black pb-1" />
+              <p className="mt-2 font-label text-label-md uppercase tracking-wider text-black/70">
                 Supervisor
               </p>
             </div>
           </div>
 
           {/* Warehouse stamp area */}
-          <div className="mt-8">
-            <div className="h-24 w-48 rounded border-2 border-dashed border-outline-variant/30 p-2">
-              <p className="font-label text-label text-text-grey">
+          <div className="mt-12">
+            <div className="h-32 w-64 rounded border-2 border-dashed border-gray-400 p-3 flex items-center justify-center">
+              <p className="font-label text-label-lg uppercase tracking-wider text-gray-400">
                 Warehouse Stamp
               </p>
             </div>

@@ -43,7 +43,7 @@ export function PartyForm({ action, party, cancelHref }: PartyFormProps) {
       <p
         id={`${name}-error`}
         role="alert"
-        className="mt-1 font-body text-body-sm text-brand-red"
+        className="mt-1 font-body text-body-sm text-action-blue"
       >
         {state.fieldErrors[name]}
       </p>
@@ -52,9 +52,9 @@ export function PartyForm({ action, party, cancelHref }: PartyFormProps) {
   const inputClass = (name: string) =>
     `mt-1 block w-full rounded border ${
       state.fieldErrors?.[name]
-        ? "border-brand-red"
+        ? "border-action-blue"
         : "border-outline-variant/30"
-    } bg-surface-white px-3 py-2 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy`;
+    } bg-white px-3 py-2 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-primary`;
 
   const ariaProps = (name: string) =>
     state.fieldErrors?.[name]
@@ -79,7 +79,7 @@ export function PartyForm({ action, party, cancelHref }: PartyFormProps) {
       {state.error && (
         <div
           role="alert"
-          className="mb-6 rounded border border-brand-red/30 bg-brand-red/5 px-4 py-3 font-body text-body-md text-brand-red"
+          className="mb-6 rounded border border-action-blue/30 bg-action-blue/5 px-4 py-3 font-body text-body-md text-action-blue"
         >
           {state.error}
         </div>
@@ -93,7 +93,7 @@ export function PartyForm({ action, party, cancelHref }: PartyFormProps) {
             className="block font-label text-label text-on-surface"
           >
             Party Code{" "}
-            <span aria-hidden="true" className="text-brand-red">
+            <span aria-hidden="true" className="text-action-blue">
               *
             </span>
           </label>
@@ -118,7 +118,7 @@ export function PartyForm({ action, party, cancelHref }: PartyFormProps) {
             className="block font-label text-label text-on-surface"
           >
             Party Name{" "}
-            <span aria-hidden="true" className="text-brand-red">
+            <span aria-hidden="true" className="text-action-blue">
               *
             </span>
           </label>
@@ -266,7 +266,7 @@ export function PartyForm({ action, party, cancelHref }: PartyFormProps) {
                 hiddenInput.value = e.currentTarget.checked ? "true" : "false";
               }
             }}
-            className="h-5 w-5 rounded border-outline-variant/30 text-brand-navy focus:ring-2 focus:ring-brand-navy"
+            className="h-5 w-5 rounded border-outline-variant/30 text-primary focus:ring-2 focus:ring-primary"
           />
           <label
             htmlFor="isActive"
@@ -287,7 +287,7 @@ export function PartyForm({ action, party, cancelHref }: PartyFormProps) {
             <fieldset>
               <legend className="font-label text-label text-on-surface">
                 Business Roles
-                <span className="ml-2 font-body text-body-sm text-text-grey">
+                <span className="ml-2 font-body text-body-sm text-on-surface-variant">
                   (Business classifications only — not application access)
                 </span>
               </legend>
@@ -302,7 +302,7 @@ export function PartyForm({ action, party, cancelHref }: PartyFormProps) {
                       name="roles"
                       value={value}
                       defaultChecked={assignedRoleValues.has(value)}
-                      className="h-5 w-5 rounded border-outline-variant/30 text-brand-navy focus:ring-2 focus:ring-brand-navy"
+                      className="h-5 w-5 rounded border-outline-variant/30 text-primary focus:ring-2 focus:ring-primary"
                     />
                     {label}
                   </label>
@@ -317,14 +317,14 @@ export function PartyForm({ action, party, cancelHref }: PartyFormProps) {
       <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-end">
         <Link
           href={cancelHref}
-          className="flex h-11 items-center justify-center rounded bg-brand-navy px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-red"
+          className="flex h-11 items-center justify-center rounded bg-primary px-6 font-label text-label text-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-action-blue"
         >
           Cancel
         </Link>
         <button
           type="submit"
           disabled={isPending}
-          className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:opacity-50"
+          className="flex h-11 items-center justify-center rounded bg-action-blue px-6 font-label text-label text-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
         >
           {isPending
             ? "Saving…"

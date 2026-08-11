@@ -1,17 +1,5 @@
 "use client";
 
-// WRR line items — dynamic list of expected line inputs.
-//
-// Traceability:
-//   specs/07-incoming-receiving/design.md §5.1 — expected line fields
-//   specs/07-incoming-receiving/requirements.md R1.3 — lotNumber, expectedQty,
-//     UOM, unit_cbm, disposition required per line
-//   specs/00-steering/brand-design-system.md §9 (forms), §3 (touch targets h-11)
-//
-// Manages a stateful array of lines. Each line is rendered as a group of
-// form inputs named `line_N_fieldName`. A hidden `lineCount` input tells the
-// server action how many lines to parse. Fields default to { disposition: "store" }.
-
 import { useState } from "react";
 
 interface LineState {
@@ -54,42 +42,36 @@ export function WrrLineItems() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-md">
       {/* Hidden lineCount — consumed by the server action to know how many lines to parse */}
       <input type="hidden" name="lineCount" value={lines.length} />
 
       {lines.map((line, index) => (
         <div
           key={index}
-          className="rounded-md border border-outline-variant/30 bg-surface-white p-4"
+          className="rounded-xl border border-outline-variant bg-surface p-md shadow-sm"
         >
-          <div className="mb-3 flex items-center justify-between">
-            <span className="font-label text-label text-brand-navy">
+          <div className="mb-md flex items-center justify-between border-b border-outline-variant/50 pb-xs">
+            <span className="font-label text-label-lg font-semibold text-primary">
               Line {index + 1}
             </span>
             {lines.length > 1 && (
               <button
                 type="button"
                 onClick={() => removeLine(index)}
-                className="inline-flex h-11 items-center rounded bg-status-held px-3 font-label text-label text-surface-white hover:opacity-90 active:opacity-70 motion-safe:transition-opacity motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="inline-flex h-8 items-center gap-xs rounded-full bg-error-container/30 px-3 font-label text-label-sm text-error hover:bg-error-container/50 transition-colors focus:outline-none focus:ring-2 focus:ring-error"
               >
+                <span className="material-symbols-outlined text-[16px]">delete</span>
                 Remove
               </button>
             )}
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {/* Lot Number — required */}
+          <div className="grid gap-md sm:grid-cols-2 lg:grid-cols-3">
+            {/* Lot Number */}
             <div>
-              <label
-                htmlFor={`line-${index}-lotNumber`}
-                className="block font-label text-label text-text-grey"
-              >
-                Lot Number{" "}
-                <span aria-hidden="true" className="text-brand-red">
-                  *
-                </span>
-                <span className="sr-only">(required)</span>
+              <label htmlFor={`line-${index}-lotNumber`} className="block font-label text-label-sm text-on-surface-variant mb-xs">
+                Lot Number <span className="text-error">*</span>
               </label>
               <input
                 id={`line-${index}-lotNumber`}
@@ -99,21 +81,14 @@ export function WrrLineItems() {
                 value={line.lotNumber}
                 onChange={(e) => updateLine(index, "lotNumber", e.target.value)}
                 placeholder="e.g. LOT-2026-001"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="h-11 w-full rounded-md border border-outline-variant bg-surface-container-highest px-3 font-mono text-body-md text-on-surface placeholder:font-body placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               />
             </div>
 
-            {/* Expected Qty — required */}
+            {/* Expected Qty */}
             <div>
-              <label
-                htmlFor={`line-${index}-expectedQty`}
-                className="block font-label text-label text-text-grey"
-              >
-                Expected Qty{" "}
-                <span aria-hidden="true" className="text-brand-red">
-                  *
-                </span>
-                <span className="sr-only">(required)</span>
+              <label htmlFor={`line-${index}-expectedQty`} className="block font-label text-label-sm text-on-surface-variant mb-xs">
+                Expected Qty <span className="text-error">*</span>
               </label>
               <input
                 id={`line-${index}-expectedQty`}
@@ -123,25 +98,16 @@ export function WrrLineItems() {
                 min="1"
                 step="1"
                 value={line.expectedQty}
-                onChange={(e) =>
-                  updateLine(index, "expectedQty", e.target.value)
-                }
+                onChange={(e) => updateLine(index, "expectedQty", e.target.value)}
                 placeholder="0"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="h-11 w-full rounded-md border border-outline-variant bg-surface-container-highest px-3 font-mono text-body-md text-on-surface placeholder:font-body placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               />
             </div>
 
-            {/* Unit CBM — required */}
+            {/* Unit CBM */}
             <div>
-              <label
-                htmlFor={`line-${index}-unitCbm`}
-                className="block font-label text-label text-text-grey"
-              >
-                Unit CBM{" "}
-                <span aria-hidden="true" className="text-brand-red">
-                  *
-                </span>
-                <span className="sr-only">(required)</span>
+              <label htmlFor={`line-${index}-unitCbm`} className="block font-label text-label-sm text-on-surface-variant mb-xs">
+                Unit CBM <span className="text-error">*</span>
               </label>
               <input
                 id={`line-${index}-unitCbm`}
@@ -153,21 +119,14 @@ export function WrrLineItems() {
                 value={line.unitCbm}
                 onChange={(e) => updateLine(index, "unitCbm", e.target.value)}
                 placeholder="0.0000"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="h-11 w-full rounded-md border border-outline-variant bg-surface-container-highest px-3 font-mono text-body-md text-on-surface placeholder:font-body placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               />
             </div>
 
-            {/* UOM — required */}
+            {/* UOM */}
             <div>
-              <label
-                htmlFor={`line-${index}-uom`}
-                className="block font-label text-label text-text-grey"
-              >
-                UOM{" "}
-                <span aria-hidden="true" className="text-brand-red">
-                  *
-                </span>
-                <span className="sr-only">(required)</span>
+              <label htmlFor={`line-${index}-uom`} className="block font-label text-label-sm text-on-surface-variant mb-xs">
+                UOM <span className="text-error">*</span>
               </label>
               <input
                 id={`line-${index}-uom`}
@@ -177,21 +136,14 @@ export function WrrLineItems() {
                 value={line.uom}
                 onChange={(e) => updateLine(index, "uom", e.target.value)}
                 placeholder="e.g. CTN, PCS, ROLL"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="h-11 w-full rounded-md border border-outline-variant bg-surface-container-highest px-3 font-body text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               />
             </div>
 
-            {/* Disposition — required, defaults to store per design.md §7.1 */}
+            {/* Disposition */}
             <div>
-              <label
-                htmlFor={`line-${index}-disposition`}
-                className="block font-label text-label text-text-grey"
-              >
-                Disposition{" "}
-                <span aria-hidden="true" className="text-brand-red">
-                  *
-                </span>
-                <span className="sr-only">(required)</span>
+              <label htmlFor={`line-${index}-disposition`} className="block font-label text-label-sm text-on-surface-variant mb-xs">
+                Disposition <span className="text-error">*</span>
               </label>
               <select
                 id={`line-${index}-disposition`}
@@ -205,19 +157,16 @@ export function WrrLineItems() {
                     e.target.value as "store" | "inspect"
                   )
                 }
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="h-11 w-full rounded-md border border-outline-variant bg-surface-container-highest px-3 font-body text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               >
                 <option value="store">Store</option>
                 <option value="inspect">Inspect</option>
               </select>
             </div>
 
-            {/* Item Code (supplier) — optional */}
+            {/* Item Code (supplier) */}
             <div>
-              <label
-                htmlFor={`line-${index}-itemCode`}
-                className="block font-label text-label text-text-grey"
-              >
+              <label htmlFor={`line-${index}-itemCode`} className="block font-label text-label-sm text-on-surface-variant mb-xs">
                 Item Code (Supplier)
               </label>
               <input
@@ -227,16 +176,13 @@ export function WrrLineItems() {
                 value={line.itemCode}
                 onChange={(e) => updateLine(index, "itemCode", e.target.value)}
                 placeholder="Supplier part number"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="h-11 w-full rounded-md border border-outline-variant bg-surface-container-highest px-3 font-body text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               />
             </div>
 
-            {/* Customer Item Code — optional */}
+            {/* Customer Item Code */}
             <div>
-              <label
-                htmlFor={`line-${index}-customerItemCode`}
-                className="block font-label text-label text-text-grey"
-              >
+              <label htmlFor={`line-${index}-customerItemCode`} className="block font-label text-label-sm text-on-surface-variant mb-xs">
                 Customer Item Code
               </label>
               <input
@@ -244,24 +190,23 @@ export function WrrLineItems() {
                 name={`line_${index}_customerItemCode`}
                 type="text"
                 value={line.customerItemCode}
-                onChange={(e) =>
-                  updateLine(index, "customerItemCode", e.target.value)
-                }
+                onChange={(e) => updateLine(index, "customerItemCode", e.target.value)}
                 placeholder="Customer part number"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="h-11 w-full rounded-md border border-outline-variant bg-surface-container-highest px-3 font-body text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               />
             </div>
           </div>
         </div>
       ))}
 
-      {/* Add Line button — §9 secondary button style */}
+      {/* Add Line button */}
       <button
         type="button"
         onClick={addLine}
-        className="inline-flex h-11 items-center justify-center rounded border-2 border-outline-variant/30 px-4 font-label text-label text-brand-navy hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+        className="inline-flex h-11 items-center gap-xs justify-center rounded-full border border-outline-variant px-md font-label text-label-md text-primary hover:bg-primary/10 transition-colors focus:outline-none focus:ring-2 focus:ring-primary mt-sm"
       >
-        + Add Line
+        <span className="material-symbols-outlined text-[20px]">add</span>
+        Add Line
       </button>
     </div>
   );

@@ -12,7 +12,7 @@ export default function SettingsGeneralPage() {
       <h1 className="font-heading text-headline-md font-extrabold text-on-surface">
         General
       </h1>
-      <p className="font-body text-body-md text-text-grey">
+      <p className="font-body text-body-md text-on-surface-variant">
         System-wide configuration (FR-5, e.g. FIFO override approval policy, default currency)
         has no backing table yet in `01-core-data-model`/`02-rbac-roles`. Not implemented in
         this pass — see this file&apos;s header comment.

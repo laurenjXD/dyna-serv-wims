@@ -27,12 +27,12 @@ export default async function NewItemPage() {
         <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
           New Item
         </h1>
-        <p className="mt-1 font-body text-body-md text-text-grey">
+        <p className="mt-1 font-body text-body-md text-on-surface-variant">
           Enroll a new item in the shared master catalog.
         </p>
       </div>
 
-      <div className="rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="rounded-md bg-white shadow-elevation-1 p-6">
         <ItemForm
           action={createItemAction}
           categories={categories}

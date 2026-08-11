@@ -4,11 +4,11 @@
 //   specs/11-transfer-and-inspection/design.md §3 (route), §4 (state model)
 //   specs/11-transfer-and-inspection/requirements.md §3 (actors and surfaces)
 //   specs/00-steering/brand-design-system.md §6 (office surface, Level 1 elevation;
-//     floor — solid bg-brand-navy, no glassmorphism), §1.3 (status badge colors),
+//     floor — solid bg-primary, no glassmorphism), §1.3 (status badge colors),
 //     §3 (floor — mobile-first base styles, 64px CTAs, one primary action,
 //     active: not hover:), §9 (tables — Epilogue headers, Roboto Mono IDs)
 //
-// Surface: SHARED — warehouse_staff see a floor card list (bg-brand-navy, 64px CTAs,
+// Surface: SHARED — warehouse_staff see a floor card list (bg-primary, 64px CTAs,
 //   no glassmorphism); supervisors/admins see the office table view (glassmorphism,
 //   h-11 buttons, hover states).
 // Permission gate: transfer.view
@@ -68,8 +68,8 @@ const MOCK_HAS_INSPECTIONS_TODAY = true;
 const PAGE_SIZE = 20;
 
 // Status badge labels and classes — brand-design-system.md §1.3 semantic color mapping:
-// staged → status-neutral (slate); in_progress → status-pending (amber);
-// completed → status-available (green); cancelled → status-held (red).
+// staged → status-neutral (slate); in_progress → status-warning (amber);
+// completed → status-success (green); cancelled → status-error (red).
 const STATUS_LABELS: Record<string, string> = {
   staged: "STAGED",
   in_progress: "IN PROGRESS",
@@ -79,9 +79,9 @@ const STATUS_LABELS: Record<string, string> = {
 
 const STATUS_CLASSES: Record<string, string> = {
   staged: "bg-status-neutral/10 text-status-neutral",
-  in_progress: "bg-status-pending/10 text-status-pending",
-  completed: "bg-status-available/10 text-status-available",
-  cancelled: "bg-status-held/10 text-status-held",
+  in_progress: "bg-status-warning/10 text-status-warning",
+  completed: "bg-status-success/10 text-status-success",
+  cancelled: "bg-status-error/10 text-status-error",
 };
 
 const FLOW_LABELS: Record<string, string> = {
@@ -113,10 +113,10 @@ export default async function TransferListPage({ searchParams }: PageProps) {
   if (permResult.kind !== "authorized") {
     return (
       <div className="mx-auto max-w-container px-4 py-12 text-center">
-        <p className="font-body text-body-md text-text-grey">
+        <p className="font-body text-body-md text-on-surface-variant">
           You do not have permission to view the transfer queue.
         </p>
-        <p className="mt-2 font-body text-body-sm text-text-grey">
+        <p className="mt-2 font-body text-body-sm text-on-surface-variant">
           This page requires the{" "}
           <span className="font-mono text-mono-md">transfer.view</span>{" "}
           capability.
@@ -126,7 +126,7 @@ export default async function TransferListPage({ searchParams }: PageProps) {
   }
 
   // Surface detection — brand-design-system.md §3: warehouse_staff → floor surface
-  // (bg-brand-navy, no glassmorphism, 64px CTAs, active: not hover:).
+  // (bg-primary, no glassmorphism, 64px CTAs, active: not hover:).
   // supervisors/admins → office surface (glassmorphism, h-11, hover:).
   const isFloor = permResult.context.activeRoleKeys.includes("warehouse_staff");
 
@@ -135,7 +135,7 @@ export default async function TransferListPage({ searchParams }: PageProps) {
   // bottom third full-width, no dense tables on floor screens.
   if (isFloor) {
     return (
-      <div className="flex min-h-screen flex-col bg-brand-navy px-4 py-4">
+      <div className="flex min-h-screen flex-col bg-primary px-4 py-4">
         {/* Floor top bar */}
         <div className="flex items-center justify-between pb-4">
           <h1 className="font-heading font-extrabold text-headline-md text-white">
@@ -145,7 +145,7 @@ export default async function TransferListPage({ searchParams }: PageProps) {
           {MOCK_HAS_INSPECTIONS_TODAY && (
             <Link
               href="/inspection"
-              className="inline-flex h-14 items-center gap-2 rounded-xl bg-status-pending/20 border border-status-pending/30 px-4 font-label text-body-md text-status-pending
+              className="inline-flex h-14 items-center gap-2 rounded-xl bg-status-warning/20 border border-status-warning/30 px-4 font-label text-body-md text-status-warning
                          active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100
                          focus:outline-none focus:ring-2 focus:ring-white"
             >
@@ -161,7 +161,7 @@ export default async function TransferListPage({ searchParams }: PageProps) {
             card-based list per item. */}
         {MOCK_FLOOR_TRANSFERS.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-            <CheckCircle2 size={48} strokeWidth={1.5} className="text-status-available" aria-hidden="true" />
+            <CheckCircle2 size={48} strokeWidth={1.5} className="text-status-success" aria-hidden="true" />
             <p className="font-heading font-semibold text-headline-md text-white">
               All caught up
             </p>
@@ -176,7 +176,7 @@ export default async function TransferListPage({ searchParams }: PageProps) {
                 key={transfer.id}
                 href={`/transfers/${transfer.id}`}
                 // Floor card: solid bg-white/10 over navy, no glassmorphism — §6; entire card is tap target
-                className="block rounded-xl bg-white/10 border border-white/20 p-4 h-auto min-h-16 active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-navy"
+                className="block rounded-xl bg-white/10 border border-white/20 p-4 h-auto min-h-16 active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-primary"
               >
                 <div className="flex items-start gap-3">
                   <div className="min-w-0 flex-1">
@@ -207,12 +207,12 @@ export default async function TransferListPage({ searchParams }: PageProps) {
                       <span
                         className={`inline-flex items-center gap-1 rounded-full px-3 py-1 font-label text-body-md uppercase ${
                           transfer.status === "in_progress"
-                            ? "bg-status-pending/20 text-status-pending"
+                            ? "bg-status-warning/20 text-status-warning"
                             : "bg-status-neutral/20 text-white/70"
                         }`}
                       >
                         {transfer.status === "in_progress"
-                          ? <Activity size={20} strokeWidth={2} aria-hidden="true" className="text-status-available" />
+                          ? <Activity size={20} strokeWidth={2} aria-hidden="true" className="text-status-success" />
                           : <Clock size={20} strokeWidth={2} aria-hidden="true" className="text-white/50" />}
                         {transfer.status === "in_progress"
                           ? "In Progress"
@@ -255,7 +255,7 @@ export default async function TransferListPage({ searchParams }: PageProps) {
           <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
             Transfer Queue
           </h1>
-          <p className="mt-1 font-body text-body-md text-text-grey">
+          <p className="mt-1 font-body text-body-md text-on-surface-variant">
             Internal location-to-location transfer requests.
           </p>
         </div>
@@ -263,7 +263,7 @@ export default async function TransferListPage({ searchParams }: PageProps) {
         {canRequest && (
           <Link
             href="/transfers/new"
-            className="inline-flex h-11 items-center justify-center rounded bg-brand-red px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="inline-flex h-11 items-center justify-center rounded bg-action-blue px-4 font-label text-label text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary"
           >
             New Transfer
           </Link>
@@ -276,7 +276,7 @@ export default async function TransferListPage({ searchParams }: PageProps) {
           <div className="flex flex-col gap-1">
             <label
               htmlFor="status-filter"
-              className="font-label text-label text-text-grey"
+              className="font-label text-label text-on-surface-variant"
             >
               Status
             </label>
@@ -284,7 +284,7 @@ export default async function TransferListPage({ searchParams }: PageProps) {
               id="status-filter"
               name="status"
               defaultValue={statusFilter ?? ""}
-              className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="h-11 rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
             >
               {STATUS_FILTER_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -295,14 +295,14 @@ export default async function TransferListPage({ searchParams }: PageProps) {
           </div>
           <button
             type="submit"
-            className="flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-11 items-center justify-center rounded bg-primary px-4 font-label text-label text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary"
           >
             Apply
           </button>
           {status && (
             <Link
               href="/transfers"
-              className="flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-dim focus:outline-none focus:ring-2 focus:ring-primary"
             >
               Clear
             </Link>
@@ -311,16 +311,16 @@ export default async function TransferListPage({ searchParams }: PageProps) {
       </div>
 
       {/* Transfer table — Level 1 office elevation per brand-design-system.md §6 */}
-      <div className="mt-4 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
+      <div className="mt-4 overflow-hidden rounded-md bg-white shadow-elevation-1">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
-            <p className="font-body text-body-md text-text-grey">
+            <p className="font-body text-body-md text-on-surface-variant">
               {status
                 ? "No transfers match the current filter."
                 : "No transfer requests yet."}
             </p>
             {!status && canRequest && (
-              <p className="mt-2 font-body text-body-sm text-text-grey">
+              <p className="mt-2 font-body text-body-sm text-on-surface-variant">
                 Create a new transfer to move stock between locations.
               </p>
             )}
@@ -329,24 +329,24 @@ export default async function TransferListPage({ searchParams }: PageProps) {
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
+                <tr className="border-b border-outline-variant/30 bg-surface-dim">
                   {/* Epilogue SemiBold uppercase headers per §9 tables */}
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Status
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Flow Type
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     From Location
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     To Location
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Requested By
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Created At
                   </th>
                   <th className="sr-only px-4 py-3">Actions</th>
@@ -354,7 +354,7 @@ export default async function TransferListPage({ searchParams }: PageProps) {
               </thead>
               <tbody className="divide-y divide-outline-variant/30">
                 {rows.map((row: TransferRequestRow) => (
-                  <tr key={row.id} className="hover:bg-surface-light-grey/50">
+                  <tr key={row.id} className="hover:bg-surface-dim/50">
                     <td className="px-4 py-3">
                       {/* Status badge — radius-full, §1.3 semantic colors */}
                       <span
@@ -376,14 +376,14 @@ export default async function TransferListPage({ searchParams }: PageProps) {
                     <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
                       {row.requestedBy}
                     </td>
-                    <td className="px-4 py-3 font-body text-body-md text-text-grey">
+                    <td className="px-4 py-3 font-body text-body-md text-on-surface-variant">
                       {row.createdAt.toLocaleString()}
                     </td>
                     <td className="px-4 py-3 text-right">
                       {/* View link — h-11 (44px) touch target */}
                       <Link
                         href={`/transfers/${row.id}`}
-                        className="inline-flex h-11 items-center font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                        className="inline-flex h-11 items-center font-label text-label text-primary underline hover:text-secondary focus:outline-none focus:ring-2 focus:ring-primary"
                       >
                         View
                       </Link>
@@ -398,7 +398,7 @@ export default async function TransferListPage({ searchParams }: PageProps) {
 
       {/* Pagination controls */}
       {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between font-body text-body-sm text-text-grey">
+        <div className="mt-4 flex items-center justify-between font-body text-body-sm text-on-surface-variant">
           <span>
             Page {currentPage} of {totalPages} ({total} total)
           </span>
@@ -409,7 +409,7 @@ export default async function TransferListPage({ searchParams }: PageProps) {
                   ...(status ? { status } : {}),
                   page: String(currentPage - 1),
                 })}`}
-                className="inline-flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="inline-flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-dim focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 Previous
               </Link>
@@ -420,7 +420,7 @@ export default async function TransferListPage({ searchParams }: PageProps) {
                   ...(status ? { status } : {}),
                   page: String(currentPage + 1),
                 })}`}
-                className="inline-flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="inline-flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-dim focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 Next
               </Link>

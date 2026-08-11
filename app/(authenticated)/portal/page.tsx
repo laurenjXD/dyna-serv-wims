@@ -26,7 +26,7 @@ import { Package, ListChecks, FileText, Bell } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 
 // ─── Nav card ─────────────────────────────────────────────────────────────────
-// 2×2 grid cards: bg-surface-white, h-44, rounded-2xl.
+// 2×2 grid cards: bg-white, h-44, rounded-2xl.
 // brand-design-system.md §6: Level 1 elevation for office/party surfaces.
 // 44×44px effective touch target on hover-states (office default, §3).
 
@@ -41,13 +41,13 @@ interface NavCardProps {
 function NavCard({ href, icon, label, description, locked }: NavCardProps) {
   if (locked) {
     return (
-      <div className="flex h-44 flex-col justify-between rounded-2xl border border-outline-variant/30 bg-surface-white p-6 opacity-60 shadow-elevation-1">
-        <div className="text-text-grey">{icon}</div>
+      <div className="flex h-44 flex-col justify-between rounded-2xl border border-outline-variant/30 bg-white p-6 opacity-60 shadow-elevation-1">
+        <div className="text-on-surface-variant">{icon}</div>
         <div>
-          <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+          <p className="font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
             {label}
           </p>
-          <p className="mt-1 font-body text-body-sm text-text-grey">
+          <p className="mt-1 font-body text-body-sm text-on-surface-variant">
             Requires access
           </p>
         </div>
@@ -58,14 +58,14 @@ function NavCard({ href, icon, label, description, locked }: NavCardProps) {
   return (
     <Link
       href={href}
-      className="flex h-44 flex-col justify-between rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1 motion-safe:transition-shadow motion-safe:duration-150 hover:shadow-elevation-2 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+      className="flex h-44 flex-col justify-between rounded-2xl border border-outline-variant/30 bg-white p-6 shadow-elevation-1 motion-safe:transition-shadow motion-safe:duration-150 hover:shadow-elevation-2 focus:outline-none focus:ring-2 focus:ring-primary"
     >
-      <div className="text-brand-navy">{icon}</div>
+      <div className="text-primary">{icon}</div>
       <div>
-        <p className="font-label text-label uppercase tracking-[0.05em] text-brand-navy">
+        <p className="font-label text-label uppercase tracking-[0.05em] text-primary">
           {label}
         </p>
-        <p className="mt-1 font-body text-body-sm text-text-grey">
+        <p className="mt-1 font-body text-body-sm text-on-surface-variant">
           {description}
         </p>
       </div>
@@ -111,19 +111,19 @@ export default async function PortalPage() {
   return (
     <div className="mx-auto max-w-container">
       {/* ── Welcome card ──────────────────────────────────────────────────────
-          Level 1 glassmorphism per §6, brand-navy heading per §2. */}
-      <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
+          Level 1 glassmorphism per §6, primary heading per §2. */}
+      <div className="rounded-2xl border border-outline-variant/30 bg-white p-6 shadow-elevation-1">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
               Welcome, {partyName}
             </h1>
-            <p className="mt-1 font-body text-body-md text-text-grey">
+            <p className="mt-1 font-body text-body-md text-on-surface-variant">
               Your portal overview. All data shown is scoped to your account.
             </p>
           </div>
           {/* Party flow type badge — §1.3 status semantics, icon + text per §9 */}
-          <span className="inline-flex items-center rounded-full bg-brand-royal-blue/10 px-3 py-1 font-label text-label uppercase tracking-[0.05em] text-brand-royal-blue">
+          <span className="inline-flex items-center rounded-full bg-secondary/10 px-3 py-1 font-label text-label uppercase tracking-[0.05em] text-secondary">
             {partyFlowType}
           </span>
         </div>

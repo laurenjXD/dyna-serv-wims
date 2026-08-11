@@ -46,7 +46,7 @@ export function AccountTab({ profile }: { profile: OwnProfile }) {
       <div className="flex items-center gap-4">
         <div
           aria-hidden="true"
-          className="flex h-16 w-16 items-center justify-center rounded-full bg-brand-royal-blue font-heading text-headline-md font-semibold text-surface-white"
+          className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary font-heading text-headline-md font-semibold text-white"
         >
           {profile.displayName.trim().charAt(0).toUpperCase() || "?"}
         </div>
@@ -76,7 +76,7 @@ export function AccountTab({ profile }: { profile: OwnProfile }) {
             value={profile.email ?? ""}
             disabled
             readOnly
-            className="min-h-14 rounded border border-outline-variant/30 bg-surface-light-grey px-3 py-2 font-body text-body-md text-on-surface"
+            className="min-h-14 rounded border border-outline-variant/30 bg-surface-dim px-3 py-2 font-body text-body-md text-on-surface"
           />
         </div>
 
@@ -96,7 +96,7 @@ export function AccountTab({ profile }: { profile: OwnProfile }) {
               setDisplayName(e.target.value);
               setStatus("idle");
             }}
-            className="min-h-14 rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+            className="min-h-14 rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           />
         </div>
 
@@ -117,17 +117,17 @@ export function AccountTab({ profile }: { profile: OwnProfile }) {
             disabled
             placeholder="Not available yet"
             title="Contact number has no backing column on user_profiles yet (02-rbac-roles schema seam gap)"
-            className="min-h-14 rounded border border-outline-variant/30 bg-surface-light-grey px-3 py-2 font-body text-body-md text-on-surface"
+            className="min-h-14 rounded border border-outline-variant/30 bg-surface-dim px-3 py-2 font-body text-body-md text-on-surface"
           />
         </div>
 
         {error && (
-          <p role="alert" className="font-body text-body-md text-brand-red">
+          <p role="alert" className="font-body text-body-md text-action-blue">
             {error}
           </p>
         )}
         {status === "saved" && (
-          <p role="status" className="font-body text-body-md text-status-available">
+          <p role="status" className="font-body text-body-md text-status-success">
             Saved.
           </p>
         )}
@@ -136,7 +136,7 @@ export function AccountTab({ profile }: { profile: OwnProfile }) {
           type="submit"
           disabled={status === "saving"}
           data-testid="save-display-name"
-          className="mt-2 flex min-h-14 w-full items-center justify-center rounded bg-brand-navy px-4 font-label text-body-md uppercase tracking-wide text-surface-white transition-transform duration-0 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2 disabled:opacity-60"
+          className="mt-2 flex min-h-14 w-full items-center justify-center rounded bg-primary px-4 font-label text-body-md uppercase tracking-wide text-white transition-transform duration-0 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-60"
         >
           {status === "saving" ? "Saving…" : "Save changes"}
         </button>

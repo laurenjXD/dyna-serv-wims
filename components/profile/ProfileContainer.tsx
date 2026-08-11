@@ -43,17 +43,17 @@ export function ProfileContainer({ profile }: { profile: OwnProfile }) {
         </p>
       </div>
 
-      {/* Floor card: solid surface-white, Level 2 elevation, per
+      {/* Floor card: solid white, Level 2 elevation, per
           brand-design-system.md §6 — floor screens never get the
           translucent/backdrop-blur Level 1 office treatment. */}
       <section
         data-testid="profile-section-account"
         aria-labelledby="profile-section-account-heading"
-        className="flex flex-col gap-4 rounded bg-surface-white p-4 shadow-elevation-2"
+        className="flex flex-col gap-4 rounded bg-white p-4 shadow-elevation-2"
       >
         <h2
           id="profile-section-account-heading"
-          className="font-label text-body-md font-semibold uppercase tracking-wide text-brand-navy"
+          className="font-label text-body-md font-semibold uppercase tracking-wide text-primary"
         >
           Account
         </h2>
@@ -63,11 +63,11 @@ export function ProfileContainer({ profile }: { profile: OwnProfile }) {
       <section
         data-testid="profile-section-security"
         aria-labelledby="profile-section-security-heading"
-        className="flex flex-col gap-4 rounded bg-surface-white p-4 shadow-elevation-2"
+        className="flex flex-col gap-4 rounded bg-white p-4 shadow-elevation-2"
       >
         <h2
           id="profile-section-security-heading"
-          className="font-label text-body-md font-semibold uppercase tracking-wide text-brand-navy"
+          className="font-label text-body-md font-semibold uppercase tracking-wide text-primary"
         >
           Security
         </h2>
@@ -77,11 +77,11 @@ export function ProfileContainer({ profile }: { profile: OwnProfile }) {
       <section
         data-testid="profile-section-preferences"
         aria-labelledby="profile-section-preferences-heading"
-        className="flex flex-col gap-4 rounded bg-surface-white p-4 shadow-elevation-2"
+        className="flex flex-col gap-4 rounded bg-white p-4 shadow-elevation-2"
       >
         <h2
           id="profile-section-preferences-heading"
-          className="font-label text-body-md font-semibold uppercase tracking-wide text-brand-navy"
+          className="font-label text-body-md font-semibold uppercase tracking-wide text-primary"
         >
           Preferences
         </h2>

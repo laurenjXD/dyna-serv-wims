@@ -71,7 +71,7 @@ function ChangePasswordForm() {
             setNewPassword(e.target.value);
             setStatus("idle");
           }}
-          className="min-h-14 rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+          className="min-h-14 rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         />
       </div>
 
@@ -92,17 +92,17 @@ function ChangePasswordForm() {
             setConfirmPassword(e.target.value);
             setStatus("idle");
           }}
-          className="min-h-14 rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+          className="min-h-14 rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         />
       </div>
 
       {error && (
-        <p role="alert" className="font-body text-body-md text-brand-red">
+        <p role="alert" className="font-body text-body-md text-action-blue">
           {error}
         </p>
       )}
       {status === "saved" && (
-        <p role="status" className="font-body text-body-md text-status-available">
+        <p role="status" className="font-body text-body-md text-status-success">
           Password updated.
         </p>
       )}
@@ -111,7 +111,7 @@ function ChangePasswordForm() {
         type="submit"
         disabled={status === "saving"}
         data-testid="save-password"
-        className="flex min-h-14 w-full items-center justify-center rounded bg-brand-navy px-4 font-label text-body-md uppercase tracking-wide text-surface-white transition-transform duration-0 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2 disabled:opacity-60"
+        className="flex min-h-14 w-full items-center justify-center rounded bg-primary px-4 font-label text-body-md uppercase tracking-wide text-white transition-transform duration-0 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-60"
       >
         {status === "saving" ? "Updating…" : "Update password"}
       </button>
@@ -222,11 +222,11 @@ function MfaSection() {
                 <button
                   type="button"
                   onClick={() => handleRemove(factor.id)}
-                  // Destructive action -> status-held, not brand-red, per
-                  // brand-design-system.md §9 ("Destructive: status-held
-                  // solid") — brand-red is reserved for primary CTA/active
+                  // Destructive action -> status-error, not action-blue, per
+                  // brand-design-system.md §9 ("Destructive: status-error
+                  // solid") — action-blue is reserved for primary CTA/active
                   // nav, never a destructive/removal action.
-                  className="flex min-h-14 items-center px-2 font-label text-body-md uppercase tracking-wide text-status-held active:opacity-70"
+                  className="flex min-h-14 items-center px-2 font-label text-body-md uppercase tracking-wide text-status-error active:opacity-70"
                 >
                   Remove
                 </button>
@@ -246,7 +246,7 @@ function MfaSection() {
           // avoid outline-only buttons since they're harder to spot at
           // speed, and /profile defaults to floor per the 2026-08-08
           // amendment (design.md §1.1).
-          className="flex min-h-14 w-full items-center justify-center rounded bg-brand-navy px-4 font-label text-body-md uppercase tracking-wide text-surface-white transition-transform duration-0 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2 disabled:opacity-60"
+          className="flex min-h-14 w-full items-center justify-center rounded bg-primary px-4 font-label text-body-md uppercase tracking-wide text-white transition-transform duration-0 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-60"
         >
           {enrolling ? "Starting…" : "Set up two-factor authentication"}
         </button>
@@ -271,12 +271,12 @@ function MfaSection() {
             inputMode="numeric"
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            className="min-h-14 rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-mono text-mono-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+            className="min-h-14 rounded border border-outline-variant/30 bg-white px-3 py-2 font-mono text-mono-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           />
           <button
             type="submit"
             data-testid="mfa-verify"
-            className="flex min-h-14 w-full items-center justify-center rounded bg-brand-navy px-4 font-label text-body-md uppercase tracking-wide text-surface-white transition-transform duration-0 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100"
+            className="flex min-h-14 w-full items-center justify-center rounded bg-primary px-4 font-label text-body-md uppercase tracking-wide text-white transition-transform duration-0 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100"
           >
             Verify and enable
           </button>
@@ -284,12 +284,12 @@ function MfaSection() {
       )}
 
       {verified && (
-        <p role="status" className="font-body text-body-md text-status-available">
+        <p role="status" className="font-body text-body-md text-status-success">
           Two-factor authentication enabled.
         </p>
       )}
       {error && (
-        <p role="alert" className="font-body text-body-md text-brand-red">
+        <p role="alert" className="font-body text-body-md text-action-blue">
           {error}
         </p>
       )}

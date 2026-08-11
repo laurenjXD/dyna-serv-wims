@@ -64,10 +64,10 @@ export default async function EnrollmentPage({ searchParams }: PageProps) {
   if (readResult.kind !== "authorized") {
     return (
       <div className="mx-auto max-w-container px-4 py-12 text-center">
-        <p className="font-body text-body-md text-text-grey">
+        <p className="font-body text-body-md text-on-surface-variant">
           You do not have permission to access the Enrollment hub.
         </p>
-        <p className="mt-2 font-body text-body-sm text-text-grey">
+        <p className="mt-2 font-body text-body-sm text-on-surface-variant">
           This page requires the{" "}
           <span className="font-mono text-mono-md">parties.read</span>{" "}
           capability.
@@ -86,7 +86,7 @@ export default async function EnrollmentPage({ searchParams }: PageProps) {
         <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
           Enrollment
         </h1>
-        <p className="mt-1 font-body text-body-md text-text-grey">
+        <p className="mt-1 font-body text-body-md text-on-surface-variant">
           Manage parties, items, and locations.
         </p>
       </div>
@@ -111,10 +111,10 @@ export default async function EnrollmentPage({ searchParams }: PageProps) {
               href={href}
               role="tab"
               aria-selected={isActive}
-              className={`flex h-11 items-center border-b-2 px-4 font-label text-label uppercase tracking-[0.05em] focus:outline-none focus:ring-2 focus:ring-brand-navy ${
+              className={`flex h-11 items-center border-b-2 px-4 font-label text-label uppercase tracking-[0.05em] focus:outline-none focus:ring-2 focus:ring-primary ${
                 isActive
-                  ? "border-brand-red text-brand-navy"
-                  : "border-transparent text-text-grey hover:text-brand-navy"
+                  ? "border-action-blue text-primary"
+                  : "border-transparent text-on-surface-variant hover:text-primary"
               }`}
             >
               {tab.label}
@@ -188,18 +188,18 @@ async function PartiesTab({
             type="search"
             defaultValue={search ?? ""}
             placeholder="Search by code or name…"
-            className="flex-1 rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex-1 rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-primary"
           />
           <button
             type="submit"
-            className="flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-red"
+            className="flex h-11 items-center justify-center rounded bg-primary px-4 font-label text-label text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-action-blue"
           >
             Search
           </button>
           {search && (
             <Link
               href="/enrollment?tab=parties"
-              className="flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-dim focus:outline-none focus:ring-2 focus:ring-primary"
             >
               Clear
             </Link>
@@ -208,7 +208,7 @@ async function PartiesTab({
         {canManage && (
           <Link
             href="/master-data/parties/new"
-            className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-11 items-center justify-center rounded bg-action-blue px-6 font-label text-label text-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-primary"
           >
             New Party
           </Link>
@@ -216,10 +216,10 @@ async function PartiesTab({
       </div>
 
       {/* Table */}
-      <div className="mt-4 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
+      <div className="mt-4 overflow-hidden rounded-md bg-white shadow-elevation-1">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
-            <p className="font-body text-body-md text-text-grey">
+            <p className="font-body text-body-md text-on-surface-variant">
               {search
                 ? `No parties found for "${search}".`
                 : "No parties enrolled yet."}
@@ -229,20 +229,20 @@ async function PartiesTab({
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                <tr className="border-b border-outline-variant/30 bg-surface-dim">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Code
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Name
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Contact
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Status
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Created
                   </th>
                   <th className="sr-only px-4 py-3">Actions</th>
@@ -250,19 +250,19 @@ async function PartiesTab({
               </thead>
               <tbody className="divide-y divide-outline-variant/30">
                 {rows.map((party: PartyListRow) => (
-                  <tr key={party.id} className="hover:bg-surface-light-grey/50">
+                  <tr key={party.id} className="hover:bg-surface-dim/50">
                     <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
                       {party.code}
                     </td>
                     <td className="px-4 py-3 font-body text-body-md text-on-surface">
                       {party.name}
                     </td>
-                    <td className="px-4 py-3 font-body text-body-md text-text-grey">
+                    <td className="px-4 py-3 font-body text-body-md text-on-surface-variant">
                       {party.contactPerson ?? "—"}
                     </td>
                     <td className="px-4 py-3">
                       {party.isActive ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-status-available/10 px-2 py-0.5 font-label text-label text-status-available">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-status-success/10 px-2 py-0.5 font-label text-label text-status-success">
                           Active
                         </span>
                       ) : (
@@ -271,13 +271,13 @@ async function PartiesTab({
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 font-body text-body-md text-text-grey">
+                    <td className="px-4 py-3 font-body text-body-md text-on-surface-variant">
                       {party.createdAt.toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <Link
                         href={`/master-data/parties/${party.id}`}
-                        className="inline-flex h-11 items-center font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                        className="inline-flex h-11 items-center font-label text-label text-primary underline hover:text-secondary focus:outline-none focus:ring-2 focus:ring-primary"
                       >
                         View
                       </Link>
@@ -296,14 +296,14 @@ async function PartiesTab({
           aria-label="Parties pagination"
           className="mt-4 flex items-center justify-between"
         >
-          <p className="font-body text-body-md text-text-grey">
+          <p className="font-body text-body-md text-on-surface-variant">
             {offset + 1}–{Math.min(offset + PAGE_SIZE, total)} of {total}
           </p>
           <div className="flex gap-2">
             {currentPage > 1 && (
               <Link
                 href={`/enrollment?${new URLSearchParams({ ...Object.fromEntries(searchParams_), page: String(currentPage - 1) })}`}
-                className="flex h-11 items-center justify-center rounded border border-outline-variant/30 px-3 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="flex h-11 items-center justify-center rounded border border-outline-variant/30 px-3 font-label text-label text-on-surface hover:bg-surface-dim focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 Previous
               </Link>
@@ -311,7 +311,7 @@ async function PartiesTab({
             {currentPage < totalPages && (
               <Link
                 href={`/enrollment?${new URLSearchParams({ ...Object.fromEntries(searchParams_), page: String(currentPage + 1) })}`}
-                className="flex h-11 items-center justify-center rounded border border-outline-variant/30 px-3 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="flex h-11 items-center justify-center rounded border border-outline-variant/30 px-3 font-label text-label text-on-surface hover:bg-surface-dim focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 Next
               </Link>
@@ -345,8 +345,8 @@ async function ItemsTab({
 
   if (itemsReadResult.kind !== "authorized") {
     return (
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 px-6 py-12 text-center">
-        <p className="font-body text-body-md text-text-grey">
+      <div className="mt-6 rounded-md bg-white shadow-elevation-1 px-6 py-12 text-center">
+        <p className="font-body text-body-md text-on-surface-variant">
           You do not have permission to view items.
         </p>
       </div>
@@ -373,18 +373,18 @@ async function ItemsTab({
             type="search"
             defaultValue={search ?? ""}
             placeholder="Search by code, name, or barcode…"
-            className="flex-1 rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex-1 rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-primary"
           />
           <button
             type="submit"
-            className="flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-red"
+            className="flex h-11 items-center justify-center rounded bg-primary px-4 font-label text-label text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-action-blue"
           >
             Search
           </button>
           {search && (
             <Link
               href="/enrollment?tab=items"
-              className="flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-dim focus:outline-none focus:ring-2 focus:ring-primary"
             >
               Clear
             </Link>
@@ -393,7 +393,7 @@ async function ItemsTab({
         {canManage && (
           <Link
             href="/master-data/items/new"
-            className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-11 items-center justify-center rounded bg-action-blue px-6 font-label text-label text-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-primary"
           >
             New Item
           </Link>
@@ -401,10 +401,10 @@ async function ItemsTab({
       </div>
 
       {/* Table */}
-      <div className="mt-4 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
+      <div className="mt-4 overflow-hidden rounded-md bg-white shadow-elevation-1">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
-            <p className="font-body text-body-md text-text-grey">
+            <p className="font-body text-body-md text-on-surface-variant">
               {search
                 ? `No items found for "${search}".`
                 : "No items enrolled yet."}
@@ -414,20 +414,20 @@ async function ItemsTab({
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                <tr className="border-b border-outline-variant/30 bg-surface-dim">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Code
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Name
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Barcode
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     UOM
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Status
                   </th>
                   <th className="sr-only px-4 py-3">Actions</th>
@@ -435,22 +435,22 @@ async function ItemsTab({
               </thead>
               <tbody className="divide-y divide-outline-variant/30">
                 {rows.map((item: ItemListRow) => (
-                  <tr key={item.id} className="hover:bg-surface-light-grey/50">
+                  <tr key={item.id} className="hover:bg-surface-dim/50">
                     <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
                       {item.code}
                     </td>
                     <td className="px-4 py-3 font-body text-body-md text-on-surface">
                       {item.name}
                     </td>
-                    <td className="px-4 py-3 font-mono text-mono-md text-text-grey">
+                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface-variant">
                       {item.barcode}
                     </td>
-                    <td className="px-4 py-3 font-body text-body-md text-text-grey uppercase">
+                    <td className="px-4 py-3 font-body text-body-md text-on-surface-variant uppercase">
                       {item.uom}
                     </td>
                     <td className="px-4 py-3">
                       {item.isActive ? (
-                        <span className="inline-flex items-center rounded-full bg-status-available/10 px-2 py-0.5 font-label text-label text-status-available">
+                        <span className="inline-flex items-center rounded-full bg-status-success/10 px-2 py-0.5 font-label text-label text-status-success">
                           Active
                         </span>
                       ) : (
@@ -462,7 +462,7 @@ async function ItemsTab({
                     <td className="px-4 py-3 text-right">
                       <Link
                         href={`/master-data/items/${item.id}`}
-                        className="inline-flex h-11 items-center font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                        className="inline-flex h-11 items-center font-label text-label text-primary underline hover:text-secondary focus:outline-none focus:ring-2 focus:ring-primary"
                       >
                         View
                       </Link>
@@ -481,14 +481,14 @@ async function ItemsTab({
           aria-label="Items pagination"
           className="mt-4 flex items-center justify-between"
         >
-          <p className="font-body text-body-md text-text-grey">
+          <p className="font-body text-body-md text-on-surface-variant">
             {offset + 1}–{Math.min(offset + PAGE_SIZE, total)} of {total}
           </p>
           <div className="flex gap-2">
             {currentPage > 1 && (
               <Link
                 href={`/enrollment?${new URLSearchParams({ ...Object.fromEntries(searchParams_), page: String(currentPage - 1) })}`}
-                className="flex h-11 items-center rounded border border-outline-variant/30 px-3 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="flex h-11 items-center rounded border border-outline-variant/30 px-3 font-label text-label text-on-surface hover:bg-surface-dim focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 Previous
               </Link>
@@ -496,7 +496,7 @@ async function ItemsTab({
             {currentPage < totalPages && (
               <Link
                 href={`/enrollment?${new URLSearchParams({ ...Object.fromEntries(searchParams_), page: String(currentPage + 1) })}`}
-                className="flex h-11 items-center rounded border border-outline-variant/30 px-3 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="flex h-11 items-center rounded border border-outline-variant/30 px-3 font-label text-label text-on-surface hover:bg-surface-dim focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 Next
               </Link>
@@ -530,8 +530,8 @@ async function LocationsTab({
 
   if (locReadResult.kind !== "authorized") {
     return (
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 px-6 py-12 text-center">
-        <p className="font-body text-body-md text-text-grey">
+      <div className="mt-6 rounded-md bg-white shadow-elevation-1 px-6 py-12 text-center">
+        <p className="font-body text-body-md text-on-surface-variant">
           You do not have permission to view locations.
         </p>
       </div>
@@ -558,18 +558,18 @@ async function LocationsTab({
             type="search"
             defaultValue={search ?? ""}
             placeholder="Search by label, zone, or type…"
-            className="flex-1 rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex-1 rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-primary"
           />
           <button
             type="submit"
-            className="flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-red"
+            className="flex h-11 items-center justify-center rounded bg-primary px-4 font-label text-label text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-action-blue"
           >
             Search
           </button>
           {search && (
             <Link
               href="/enrollment?tab=locations"
-              className="flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-dim focus:outline-none focus:ring-2 focus:ring-primary"
             >
               Clear
             </Link>
@@ -578,7 +578,7 @@ async function LocationsTab({
         {canManage && (
           <Link
             href="/master-data/locations/new"
-            className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-11 items-center justify-center rounded bg-action-blue px-6 font-label text-label text-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-primary"
           >
             New Location
           </Link>
@@ -586,10 +586,10 @@ async function LocationsTab({
       </div>
 
       {/* Table */}
-      <div className="mt-4 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
+      <div className="mt-4 overflow-hidden rounded-md bg-white shadow-elevation-1">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
-            <p className="font-body text-body-md text-text-grey">
+            <p className="font-body text-body-md text-on-surface-variant">
               {search
                 ? `No locations found for "${search}".`
                 : "No locations enrolled yet."}
@@ -599,20 +599,20 @@ async function LocationsTab({
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                <tr className="border-b border-outline-variant/30 bg-surface-dim">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Label
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Zone
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Type
                   </th>
-                  <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Max CBM
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Status
                   </th>
                   <th className="sr-only px-4 py-3">Actions</th>
@@ -620,14 +620,14 @@ async function LocationsTab({
               </thead>
               <tbody className="divide-y divide-outline-variant/30">
                 {rows.map((loc: LocationListRow) => (
-                  <tr key={loc.id} className="hover:bg-surface-light-grey/50">
+                  <tr key={loc.id} className="hover:bg-surface-dim/50">
                     <td className="px-4 py-3 font-mono text-mono-md font-bold text-on-surface">
                       {loc.label}
                     </td>
                     <td className="px-4 py-3 font-body text-body-md text-on-surface">
                       {loc.zone}
                     </td>
-                    <td className="px-4 py-3 font-body text-body-md text-text-grey capitalize">
+                    <td className="px-4 py-3 font-body text-body-md text-on-surface-variant capitalize">
                       {loc.locationType.replace(/_/g, " ")}
                     </td>
                     <td className="px-4 py-3 text-right font-mono text-mono-md text-on-surface">
@@ -635,7 +635,7 @@ async function LocationsTab({
                     </td>
                     <td className="px-4 py-3">
                       {loc.isActive ? (
-                        <span className="inline-flex items-center rounded-full bg-status-available/10 px-2 py-0.5 font-label text-label text-status-available">
+                        <span className="inline-flex items-center rounded-full bg-status-success/10 px-2 py-0.5 font-label text-label text-status-success">
                           Active
                         </span>
                       ) : (
@@ -647,7 +647,7 @@ async function LocationsTab({
                     <td className="px-4 py-3 text-right">
                       <Link
                         href={`/master-data/locations/${loc.id}`}
-                        className="inline-flex h-11 items-center font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                        className="inline-flex h-11 items-center font-label text-label text-primary underline hover:text-secondary focus:outline-none focus:ring-2 focus:ring-primary"
                       >
                         View
                       </Link>
@@ -666,14 +666,14 @@ async function LocationsTab({
           aria-label="Locations pagination"
           className="mt-4 flex items-center justify-between"
         >
-          <p className="font-body text-body-md text-text-grey">
+          <p className="font-body text-body-md text-on-surface-variant">
             {offset + 1}–{Math.min(offset + PAGE_SIZE, total)} of {total}
           </p>
           <div className="flex gap-2">
             {currentPage > 1 && (
               <Link
                 href={`/enrollment?${new URLSearchParams({ ...Object.fromEntries(searchParams_), page: String(currentPage - 1) })}`}
-                className="flex h-11 items-center rounded border border-outline-variant/30 px-3 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="flex h-11 items-center rounded border border-outline-variant/30 px-3 font-label text-label text-on-surface hover:bg-surface-dim focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 Previous
               </Link>
@@ -681,7 +681,7 @@ async function LocationsTab({
             {currentPage < totalPages && (
               <Link
                 href={`/enrollment?${new URLSearchParams({ ...Object.fromEntries(searchParams_), page: String(currentPage + 1) })}`}
-                className="flex h-11 items-center rounded border border-outline-variant/30 px-3 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="flex h-11 items-center rounded border border-outline-variant/30 px-3 font-label text-label text-on-surface hover:bg-surface-dim focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 Next
               </Link>

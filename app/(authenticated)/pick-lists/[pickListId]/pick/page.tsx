@@ -12,7 +12,7 @@
 //     §7 (Stage 2 physical execution)
 //   specs/00-steering/brand-design-system.md §3 (floor surface rules: mobile-first
 //     375px base, 64px primary CTAs, active: not hover:, no glassmorphism,
-//     solid bg-brand-navy, one primary action per screen), §6 (no glassmorphism
+//     solid bg-primary, one primary action per screen), §6 (no glassmorphism
 //     on floor — solid surfaces only), §5 (AAA contrast floor rule), §2 (no text
 //     below 16px on floor), §8 (no backdrop-blur, no GPU-heavy animations)
 //   design-system/dyna-serv-wims/MASTER.md — floor scan input pattern,
@@ -118,7 +118,7 @@ export default async function PickExecutionPage({
   if (permResult.kind !== "authorized") {
     // Surface: floor forbidden — dark navy, clear message, no sidebar.
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-brand-navy px-4">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-primary px-4">
         <p className="font-heading text-headline-md text-white">Access denied</p>
         <p className="mt-2 font-body text-body-md text-white/70">
           You do not have permission to execute pick lists.
@@ -178,14 +178,14 @@ export default async function PickExecutionPage({
   }
 
   return (
-    // Floor screen: solid bg-brand-navy, no glassmorphism, 16px padding.
+    // Floor screen: solid bg-primary, no glassmorphism, 16px padding.
     // brand-design-system.md §4: floor screens use 16px page padding.
     // brand-design-system.md §6: floor — no backdrop-blur, solid surfaces.
-    <div className="flex min-h-screen flex-col bg-brand-navy">
+    <div className="flex min-h-screen flex-col bg-primary">
 
       {/* ── Top bar (sticky) ──────────────────────────────────────────────── */}
       {/* brand-design-system.md §3: top bar stays visible during scroll.     */}
-      <div className="sticky top-0 z-10 bg-brand-navy px-4 pt-4 pb-2">
+      <div className="sticky top-0 z-10 bg-primary px-4 pt-4 pb-2">
         <div className="flex items-center justify-between">
           {/* Back link — h-14 (56px) floor touch target per §3 */}
           <Link
@@ -215,7 +215,7 @@ export default async function PickExecutionPage({
               size={24}
               strokeWidth={2}
               aria-hidden="true"
-              className="shrink-0 text-status-pending"
+              className="shrink-0 text-status-warning"
             />
             {/* Icon + color per §1.3 floor color-blind rule */}
             <p className="font-body text-body-md text-white">
@@ -281,9 +281,9 @@ export default async function PickExecutionPage({
                       <div
                         className={`h-full rounded-full ${
                           status === "complete"
-                            ? "bg-status-available"
+                            ? "bg-status-success"
                             : status === "partial"
-                              ? "bg-status-pending"
+                              ? "bg-status-warning"
                               : "bg-white/30"
                         }`}
                         style={{
@@ -299,14 +299,14 @@ export default async function PickExecutionPage({
                     <CheckCircle2
                       size={24}
                       strokeWidth={2}
-                      className="text-status-available"
+                      className="text-status-success"
                     />
                   )}
                   {status === "partial" && (
                     <AlertTriangle
                       size={24}
                       strokeWidth={2}
-                      className="text-status-pending"
+                      className="text-status-warning"
                     />
                   )}
                   {status === "pending" && (
@@ -328,7 +328,7 @@ export default async function PickExecutionPage({
           always visible without scrolling. One primary action per floor screen.
           Input priority: scan > tap > type (§3). */}
       {isPickable && (
-        <div className="sticky bottom-0 bg-brand-navy px-4 pb-6 pt-4">
+        <div className="sticky bottom-0 bg-primary px-4 pb-6 pt-4">
           {/* Scan input — auto-focused, inputMode="none" suppresses virtual
               keyboard on scanner devices; scanner fires hardware keystrokes.
               h-14 (56px) floor secondary input touch target per §3. */}
@@ -350,13 +350,13 @@ export default async function PickExecutionPage({
             <div
               role="alert"
               aria-live="assertive"
-              className="mb-3 flex items-center gap-2 rounded-xl bg-status-held/20 border border-status-held/40 px-4 py-3"
+              className="mb-3 flex items-center gap-2 rounded-xl bg-status-error/20 border border-status-error/40 px-4 py-3"
             >
               <AlertTriangle
                 size={24}
                 strokeWidth={2}
                 aria-hidden="true"
-                className="shrink-0 text-status-held"
+                className="shrink-0 text-status-error"
               />
               <p className="font-body text-body-md text-white">
                 {errorReason === "empty_barcode"
@@ -371,10 +371,10 @@ export default async function PickExecutionPage({
               No hover: on floor — active: press feedback only. */}
           {allItemsPicked ? (
             <form action={handleCompletePick}>
-              {/* AAA contrast gap: white on brand-red ≈5.7:1 vs 7:1 — tracked design-system open item */}
+              {/* AAA contrast gap: white on action-blue ≈5.7:1 vs 7:1 — tracked design-system open item */}
               <button
                 type="submit"
-                className="flex h-16 w-full items-center justify-center rounded-xl bg-brand-red font-label text-body-md uppercase tracking-wide text-white focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
+                className="flex h-16 w-full items-center justify-center rounded-xl bg-action-blue font-label text-body-md uppercase tracking-wide text-white focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-primary motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
               >
                 Complete Pick
               </button>

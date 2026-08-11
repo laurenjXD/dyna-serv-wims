@@ -5,7 +5,7 @@
 //   single sign-in/recovery boundary from 04-services-and-infrastructure)
 //   and §7 (server-validated session; never trust client-supplied identity).
 // - specs/00-steering/brand-design-system.md §9 (office button: 44px height,
-//   brand-navy primary button; form inputs: brand-navy focus ring).
+//   primary primary button; form inputs: primary focus ring).
 //
 // Uses createClient() from @/lib/supabase/client (the SSR browser client)
 // for the auth call only — the server session resolver remains authoritative
@@ -58,16 +58,16 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface-light-grey p-4">
-      <div className="w-full max-w-sm rounded bg-surface-white p-8 shadow-elevation-2">
+    <div className="flex min-h-screen items-center justify-center bg-surface-dim p-4">
+      <div className="w-full max-w-sm rounded bg-white p-8 shadow-elevation-2">
         {/* Brand word-mark */}
         <div className="mb-8 text-center">
-          <span className="font-label text-headline-md font-semibold text-brand-navy">
+          <span className="font-label text-headline-md font-semibold text-primary">
             Dyna-Serv WIMS
           </span>
         </div>
 
-        <h1 className="mb-6 font-heading text-headline-md font-semibold text-brand-navy">
+        <h1 className="mb-6 font-heading text-headline-md font-semibold text-primary">
           Sign in
         </h1>
 
@@ -86,7 +86,7 @@ export default function LoginPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+              className="rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             />
           </div>
 
@@ -104,7 +104,7 @@ export default function LoginPage() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+              className="rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             />
           </div>
 
@@ -112,18 +112,18 @@ export default function LoginPage() {
           {error && (
             <p
               role="alert"
-              className="font-body text-body-md text-status-held"
+              className="font-body text-body-md text-status-error"
             >
               {error}
             </p>
           )}
 
-          {/* Office primary button: brand-navy solid, 44px height min,
+          {/* Office primary button: primary solid, 44px height min,
               Epilogue SemiBold label per brand-design-system §9. */}
           <button
             type="submit"
             disabled={pending}
-            className="mt-2 flex min-h-11 w-full items-center justify-center rounded bg-brand-navy px-4 font-label text-label uppercase tracking-wide text-surface-white hover:bg-brand-royal-blue focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2 disabled:opacity-60"
+            className="mt-2 flex min-h-11 w-full items-center justify-center rounded bg-primary px-4 font-label text-label uppercase tracking-wide text-white hover:bg-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-60"
           >
             {pending ? "Signing in…" : "Sign in"}
           </button>

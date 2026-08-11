@@ -41,7 +41,7 @@
 // specs/07-incoming-receiving/design.md §3 (route), §4 (state model),
 //   §6 (floor scan design)
 // specs/00-steering/brand-design-system.md §3 (floor surface rules —
-//   mobile-first 375px base, bg-brand-navy page wrapper, one primary action,
+//   mobile-first 375px base, bg-primary page wrapper, one primary action,
 //   primary action in bottom third, scan input auto-focused)
 //
 // Surface: FLOOR — scanner-ready WRR reconciliation at 375px viewport.
@@ -247,7 +247,7 @@ describe(
 
     // ── Test 12 (added — design-system-auditor finding 1) ────────────────────
     // brand-design-system.md §3 "One primary action per floor screen": exactly
-    // one full-width brand-red Store/Hold CTA may be visible at a time. Only
+    // one full-width action-blue Store/Hold CTA may be visible at a time. Only
     // the first ready-but-uncommitted line (by wrr.items order) gets that
     // primary CTA, anchored in the sticky bottom primary-action area; any
     // OTHER ready line gets a compact secondary indicator instead of a second
@@ -274,7 +274,7 @@ describe(
         const cardListSection = source.slice(cardListStart, cardListEnd);
         expect(cardListSection).not.toContain("<form");
 
-        // Non-primary ready lines get a secondary, non-brand-red indicator.
+        // Non-primary ready lines get a secondary, non-action-blue indicator.
         expect(source).toContain("complete the current line first");
 
         // The bottom sticky primary-action area renders the commit form when
@@ -313,11 +313,73 @@ describe(
     // — semantic red must be carried by the border/icon, not paragraph text
     // color, matching the existing scan-error/commit-error block pattern.
     it(
-      "AC brand §1.5: 'no capacity'/'no inspection location' messages carry status-held via border/icon, not paragraph text color",
+      "AC brand §1.5: 'no capacity'/'no inspection location' messages carry status-error via border/icon, not paragraph text color",
       () => {
         const source = pageSource();
-        expect(source).not.toContain("font-body text-body-md text-status-held");
-        expect(source).toContain("border-l-4 border-status-held bg-white");
+        expect(source).not.toContain("font-body text-body-md text-status-error");
+        expect(source).toContain("border-l-4 border-status-error bg-white");
+      },
+    );
+
+    // ── Test 16 (RED — Task A, camera scanner wiring) ───────────────────────
+    // specs/18-barcode-integration/requirements.md FR-1.1 — "Every scan-enabled
+    // floor screen SHALL provide a distinct UI button ... to activate the
+    // mobile camera scanner."
+    // specs/18-barcode-integration/requirements.md AC-2 — the camera decode
+    // "passes the payload to the active workflow" (this WRR's recordScan
+    // pipeline, the same one the manual keyboard-scanner-input form feeds).
+    //
+    // Both `MobileQRScanner` and `ReceivingCameraScanner` already exist and
+    // work (components/barcode/MobileQRScanner.tsx,
+    // app/(authenticated)/receiving/[wrrId]/receive/_components/
+    // ReceivingCameraScanner.tsx) but ReceivingCameraScanner is not imported
+    // or rendered anywhere in this page today — confirmed by grep before
+    // writing this test. This is a genuine RED: the floor scan screen
+    // currently only accepts keyboard-emulated scanner input; a phone camera
+    // cannot be used to scan a WRR.
+    //
+    // Expected failure mode: page source contains no reference to
+    // "_components/ReceivingCameraScanner" and no `<ReceivingCameraScanner`
+    // JSX usage.
+    it(
+      "AC 18-FR-1.1: floor scan screen imports and renders ReceivingCameraScanner as a second scan input method feeding the same recordScan pipeline",
+      () => {
+        const source = pageSource();
+        // Import path substring matches both this repo's established
+        // relative "./_components/X" convention (see receiving/new/page.tsx)
+        // and the absolute "@/app/(authenticated)/..." alias precedent
+        // (already used elsewhere in this codebase, e.g.
+        // components/settings/UserManagementGrid.tsx) — either satisfies the
+        // acceptance criterion, since this test pins the *outcome*
+        // (ReceivingCameraScanner is wired in), not the specific import style.
+        expect(source).toContain("_components/ReceivingCameraScanner");
+        expect(source).toContain("<ReceivingCameraScanner");
+      },
+    );
+
+    // ── Test 17 (RED — Task A, one-primary-action floor rule) ───────────────
+    // brand-design-system.md §3 — "one primary action per floor screen." The
+    // existing manual barcode <input autoFocus> is the primary, auto-focused
+    // entry point for hardware-scanner-equipped stations. The camera scanner
+    // must present as a clearly secondary/alternate entry point (e.g. below
+    // the manual input, not competing with it) rather than a second
+    // equal-weight primary action — mirroring the same
+    // primary/secondary-CTA discipline this file already tests for the
+    // Store/Hold commit forms (see Test 12, "AC brand §3").
+    //
+    // Source-content proxy: the ReceivingCameraScanner JSX usage appears
+    // later in the file than the manual barcode input's `id="barcode-input"`
+    // — i.e. structurally after/below the primary input, not before or
+    // interleaved ahead of it.
+    it(
+      "AC brand §3: camera scanner renders as a secondary/alternate entry point, positioned after (below) the primary manual barcode input, not competing with it",
+      () => {
+        const source = pageSource();
+        const manualInputIndex = source.indexOf('id="barcode-input"');
+        const cameraScannerIndex = source.indexOf("<ReceivingCameraScanner");
+        expect(manualInputIndex).toBeGreaterThan(-1);
+        expect(cameraScannerIndex).toBeGreaterThan(-1);
+        expect(cameraScannerIndex).toBeGreaterThan(manualInputIndex);
       },
     );
   },

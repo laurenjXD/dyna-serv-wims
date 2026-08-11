@@ -20,9 +20,9 @@
 //     qty_committed release, commitment → executed, pick transaction insert,
 //     pick_list → dispatched, AR generation trigger)
 //   specs/00-steering/brand-design-system.md §3 (floor surface: 64px primary
-//     CTA, active: press not hover:, no glassmorphism, solid bg-brand-navy,
+//     CTA, active: press not hover:, no glassmorphism, solid bg-primary,
 //     one primary action per screen), §6 (no glassmorphism on floor), §2 (no
-//     text below 16px on floor), §1.3 (status-held for warning text)
+//     text below 16px on floor), §1.3 (status-error for warning text)
 //   design-system/dyna-serv-wims/MASTER.md — floor primary CTA, floor input
 //     pattern, floor status card pattern
 //
@@ -100,7 +100,7 @@ export default async function DispatchConfirmationPage({
   const permResult = await requirePermission(resolver, "dispatch.execute");
   if (permResult.kind !== "authorized") {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-brand-navy px-4">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-primary px-4">
         <p className="font-heading text-headline-md text-white">Access denied</p>
         <p className="mt-2 font-body text-body-md text-white/70">
           You do not have permission to dispatch pick lists.
@@ -150,18 +150,18 @@ export default async function DispatchConfirmationPage({
   // Derive flow type badge color from flowType value.
   const flowTypeBadgeClass =
     pickList.flowType === "vmi"
-      ? "bg-status-pending/20 text-status-pending"
+      ? "bg-status-warning/20 text-status-warning"
       : pickList.flowType === "trading"
-        ? "bg-status-available/20 text-status-available"
+        ? "bg-status-success/20 text-status-success"
         : "bg-status-neutral/20 text-status-neutral";
 
   return (
-    // Floor screen: solid bg-brand-navy, no glassmorphism, 16px padding.
+    // Floor screen: solid bg-primary, no glassmorphism, 16px padding.
     // brand-design-system.md §4: floor screens use 16px page padding.
-    <div className="flex min-h-screen flex-col bg-brand-navy">
+    <div className="flex min-h-screen flex-col bg-primary">
 
       {/* ── Header ───────────────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-10 bg-brand-navy px-4 pt-4 pb-3">
+      <div className="sticky top-0 z-10 bg-primary px-4 pt-4 pb-3">
         <div className="flex items-center gap-3">
           {/* Back link — h-14 (56px) floor touch target per §3 */}
           <Link
@@ -192,7 +192,7 @@ export default async function DispatchConfirmationPage({
           <div
             role="status"
             aria-live="polite"
-            className="mb-3 rounded-xl bg-status-available/20 border border-status-available/40 px-4 py-4"
+            className="mb-3 rounded-xl bg-status-success/20 border border-status-success/40 px-4 py-4"
           >
             <p className="font-heading text-headline-md font-bold text-white">
               Already Dispatched
@@ -208,13 +208,13 @@ export default async function DispatchConfirmationPage({
           <div
             role="alert"
             aria-live="assertive"
-            className="mb-3 flex items-start gap-2 rounded-xl bg-status-held/20 border border-status-held/40 px-4 py-4"
+            className="mb-3 flex items-start gap-2 rounded-xl bg-status-error/20 border border-status-error/40 px-4 py-4"
           >
             <AlertTriangle
               size={24}
               strokeWidth={2}
               aria-hidden="true"
-              className="mt-0.5 shrink-0 text-status-held"
+              className="mt-0.5 shrink-0 text-status-error"
             />
             <div>
               <p className="font-heading text-headline-md font-bold text-white">
@@ -328,16 +328,16 @@ export default async function DispatchConfirmationPage({
         )}
 
         {/* ── Disclaimer ───────────────────────────────────────────────── */}
-        {/* §1.3: status-held (semantic warning) + icon ensures non-color signal */}
+        {/* §1.3: status-error (semantic warning) + icon ensures non-color signal */}
         {!alreadyDispatched && (
           <div className="mb-4 flex items-start gap-2 rounded-xl border border-white/10 px-4 py-3">
             <AlertTriangle
               size={24}
               strokeWidth={2}
               aria-hidden="true"
-              className="mt-0.5 shrink-0 text-status-held"
+              className="mt-0.5 shrink-0 text-status-error"
             />
-            <p className="font-body text-body-md text-status-held">
+            <p className="font-body text-body-md text-status-error">
               Dispatching is final. Verify items before confirming.
             </p>
           </div>
@@ -349,12 +349,12 @@ export default async function DispatchConfirmationPage({
           visible in bottom third. No hover: — active: press feedback only.
           R7.9: no quality-check branch — confirmation is the only path forward. */}
       {!alreadyDispatched && (
-        <div className="sticky bottom-0 bg-brand-navy px-4 pb-6 pt-4">
+        <div className="sticky bottom-0 bg-primary px-4 pb-6 pt-4">
           <form action={handleDispatch}>
-            {/* AAA contrast gap: white on brand-red ≈5.7:1 vs 7:1 — tracked design-system open item */}
+            {/* AAA contrast gap: white on action-blue ≈5.7:1 vs 7:1 — tracked design-system open item */}
             <button
               type="submit"
-              className="flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-brand-red font-label text-body-md uppercase tracking-wide text-white focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
+              className="flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-action-blue font-label text-body-md uppercase tracking-wide text-white focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-primary motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
             >
               <Truck size={24} strokeWidth={2} aria-hidden="true" />
               Confirm Dispatch
@@ -365,7 +365,7 @@ export default async function DispatchConfirmationPage({
 
       {/* Post-dispatch navigation back to queue */}
       {alreadyDispatched && (
-        <div className="sticky bottom-0 bg-brand-navy px-4 pb-6 pt-4">
+        <div className="sticky bottom-0 bg-primary px-4 pb-6 pt-4">
           <Link
             href="/outgoing"
             className="flex h-16 w-full items-center justify-center gap-2 rounded-xl border-2 border-white/20 bg-white/10 font-body text-body-md text-white focus:outline-none focus:ring-2 focus:ring-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"

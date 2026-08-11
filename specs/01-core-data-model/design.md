@@ -713,3 +713,35 @@ export const wrrAdvanceNoticeStatusEnum = pgEnum("wrr_advance_notice_status", [
 - **`submitted_by_user_id` (added 2026-08-06)**: **`db-migration-verifier` pass 4 (2026-08-06)** ran against this column: NOT NULL enforcement PASS; but the column was found genuinely spoofable — the RLS policy as it stood after pass 3 never referenced it, so a client could INSERT an arbitrary UUID (not their own `auth.uid()`) and the self-review check §7.4a exists to enable would silently never fire. **Fixed**: added condition 4 (`submitted_by_user_id = auth.uid()`) to `02` design.md §7.4's WITH CHECK clause. **`db-migration-verifier` pass 5 (2026-08-06)** confirmed the fix: the spoofed insert is now rejected outright (no row ever created), the honest case still succeeds, and a simulated confirm correctly blocks the same dual-role identity from self-reviewing. **This column and its RLS enforcement are now fully verified.**
 - **`db-migration-verifier` pass 1 (2026-08-06)**: real-Postgres run against this literal DDL — every FK (`party_id`, `item_id`, `matched_wrr_item_id`), the `status` enum, required-field NOT NULL constraints, `supplier_lot_number` nullability, and the documented no-uniqueness-on-`(party_id, item_id)` behavior all PASS. RESTRICT-by-default delete behavior on all three FK columns confirmed (no silent orphaning of `matched_wrr_item_id`). One real bug found and fixed: the code block's import line included an unused `text` import (no column uses `text`; `supplier_lot_number` is `varchar`), which fails a literal `tsc --noEmit` compile under `noUnusedLocals` — removed. RLS enforcement itself remains untested here (correctly out of scope for `01`, owned by `02`); a second `db-migration-verifier` pass is still needed once `02`'s corrected RLS pattern (the `rbac-rls-reviewer` fixes below) can be exercised together with this table.
 - No uniqueness constraint is proposed on `(party_id, item_id)` — a party may submit multiple advance notices for the same item across different shipments.
+
+## 7. Schema amendment (2026-08-11): `wrr_item_unit_scans`
+
+**Status of this section**: same convention as §6 above — this addition is separate from `01`'s already-verified §1–§5 schema and requires its own `db-migration-verifier` pass (migration `0025_wrr_item_unit_scans.sql`) before it is treated as implementation-ready.
+
+**Origin**: `docs/superpowers/plans/2026-08-11-barcode-scanner-and-unit-labels-completion.md` Phase 2 Task B, closing a real gap identified in that plan's Phase 0 audit — `WRRUnitLabelGenerator` (`18-barcode-integration` §2.2) already prints one physical label per expected unit, each with its own unique `unit_id` in the scanned `wrr_item_unit` payload, but nothing persisted which `unit_id`s had already been scanned, so a duplicate physical rescan of the same label was indistinguishable from a legitimate second unit (`18` requirements.md FR-3a.3 / AC 6.5; `07-incoming-receiving` requirements.md R3.3's "duplicate carton" rejection).
+
+```typescript
+import { pgTable, uuid, timestamp, index, unique } from "drizzle-orm/pg-core";
+import { wrrItems } from "./wrr";
+
+export const wrrItemUnitScans = pgTable("wrr_item_unit_scans", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  wrrItemId: uuid("wrr_item_id").references(() => wrrItems.id).notNull(),
+  unitId: uuid("unit_id").notNull(), // the label's own unique per-unit identifier, from the wrr_item_unit payload's unit_id field
+  scannedAt: timestamp("scanned_at").defaultNow().notNull(),
+  // scanned_by_user_id references auth.users; Drizzle cannot import the auth
+  // schema directly — FK is declared in the migration.
+  scannedByUserId: uuid("scanned_by_user_id"),
+}, (table) => ({
+  uniqueUnit: unique("wrr_item_unit_scans_unique_unit").on(table.wrrItemId, table.unitId),
+  wrrItemIdx: index("wrr_item_unit_scans_wrr_item_id_idx").on(table.wrrItemId),
+}));
+```
+
+**Invariants (proposed, pending `db-migration-verifier`)**:
+- Why a separate table rather than a column on `wrr_items`: a line has up to `expected_qty` independently scannable units — inherently one-to-many, not a single value.
+- `CONSTRAINT wrr_item_unit_scans_unique_unit UNIQUE (wrr_item_id, unit_id)` is the actual enforcement mechanism — a second INSERT of the same pair fails at the database level, not just in application logic a retry/race could bypass. Scoped to the `(wrr_item_id, unit_id)` pair, not `unit_id` alone: the same `unit_id` value under a different `wrr_item_id` is legitimately distinct (labels are only guaranteed unique within the line they were printed for).
+- RLS gates INSERT and SELECT on `'receiving', 'scan', 'global'` — the same capability `recordScan` (`lib/actions/receiving.ts`) already requires for floor scanning; no new capability string is introduced. No UPDATE or DELETE policy — a recorded unit scan is append-only, matching this schema's existing no-DELETE-by-default convention for scan/inspection records.
+- This is a brand-new table, not covered by `0008_rls_policies.sql`'s blanket RLS enable (which only reaches tables that existed at that point in the migration chain) — `ENABLE`/`FORCE ROW LEVEL SECURITY` is applied in the same migration that creates the table, matching `0013_transfer_and_inspection_tables.sql`'s pattern for its five new tables.
+- `scanned_by_user_id` is nullable and has no `WITH CHECK (scanned_by_user_id = auth.uid())` self-attribution constraint at the RLS layer in this first pass — the calling action (`recordScan`, Task D of the linked plan, not yet implemented as of this amendment) is responsible for always populating it from the authenticated session; flagged here as a candidate follow-up hardening step for a future `rbac-rls-reviewer` pass, matching the pattern that caught the equivalent gap on `wrr_advance_notices.submitted_by_user_id` in §6 above.
+- The matcher logic that reads this table to detect duplicates before insert, and the `recordScan` wiring that writes to it, are separate follow-up work (Tasks C and D of the linked completion plan) — out of scope for this migration, which establishes only the persistence layer and its constraint.

@@ -83,7 +83,7 @@ export function ScanFeedbackProvider({ children }: { children: ReactNode }) {
         brand-design-system.md §9/§10:
         Full-screen flash uses opacity/color transition only (no scale/transform).
         Floor surface: solid color, never translucent — no glassmorphism, no backdrop-blur.
-        status-available for success, status-held for error (§1.3 semantic set).
+        status-success for success, status-error for error (§1.3 semantic set).
         pointer-events-none so the overlay never intercepts touches on floor screens.
       */}
       <div
@@ -91,8 +91,8 @@ export function ScanFeedbackProvider({ children }: { children: ReactNode }) {
         data-state={feedbackState}
         className={[
           "fixed inset-0 z-50 pointer-events-none motion-safe:transition-opacity motion-safe:duration-150",
-          feedbackState === "success" ? "bg-status-available opacity-100" : "",
-          feedbackState === "error" ? "bg-status-held opacity-100" : "",
+          feedbackState === "success" ? "bg-status-success opacity-100" : "",
+          feedbackState === "error" ? "bg-status-error opacity-100" : "",
           feedbackState === "idle" ? "opacity-0" : "",
         ]
           .filter(Boolean)

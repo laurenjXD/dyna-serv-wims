@@ -48,21 +48,21 @@ export function ReceivingCameraScanner({
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className="flex h-14 w-full items-center justify-center gap-2 rounded bg-surface-white font-heading font-semibold text-body-md text-brand-navy shadow-elevation-2 active:scale-[0.98] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+          className="flex h-14 w-full items-center justify-center gap-2 rounded bg-white font-heading font-semibold text-body-lg-mobile text-primary shadow-elevation-2 active:scale-[0.98] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <span aria-hidden="true">&#128247;</span>
           <span>Open Camera Scanner</span>
         </button>
       ) : (
-        <div className="rounded-md bg-surface-white p-3 shadow-elevation-2">
+        <div className="rounded-md bg-white p-3 shadow-elevation-2">
           <div className="mb-2 flex items-center justify-between">
-            <span className="font-heading font-semibold text-body-md text-brand-navy">
+            <span className="font-heading font-semibold text-body-lg-mobile text-primary">
               Camera Scanner Active
             </span>
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="rounded px-2 py-1 font-label text-body-md text-status-held focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="flex h-12 items-center rounded px-3 font-label text-body-lg-mobile text-status-error active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-primary"
             >
               Close Camera
             </button>

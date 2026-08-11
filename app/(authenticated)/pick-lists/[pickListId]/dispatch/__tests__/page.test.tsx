@@ -18,7 +18,7 @@
 //   specs/08-outgoing-withdrawal-and-two-stage-commitment/design.md §3 (route),
 //     §7 (Stage 2 dispatch disposition)
 //   specs/00-steering/brand-design-system.md §3 (floor surface: 64px primary CTA,
-//     active: press, no glassmorphism, solid bg-brand-red for primary action,
+//     active: press, no glassmorphism, solid bg-action-blue for primary action,
 //     one primary action per screen)
 //
 // Surface: FLOOR — final dispatch confirmation at 375px viewport.

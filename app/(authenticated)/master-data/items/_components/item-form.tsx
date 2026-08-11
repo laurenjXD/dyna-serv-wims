@@ -97,7 +97,7 @@ export function ItemForm({
       <p
         id={`${name}-error`}
         role="alert"
-        className="mt-1 font-body text-body-sm text-brand-red"
+        className="mt-1 font-body text-body-sm text-action-blue"
       >
         {state.fieldErrors[name]}
       </p>
@@ -106,9 +106,9 @@ export function ItemForm({
   const inputClass = (name: string) =>
     `mt-1 block w-full rounded border ${
       state.fieldErrors?.[name]
-        ? "border-brand-red"
+        ? "border-action-blue"
         : "border-outline-variant/30"
-    } bg-surface-white px-3 py-2 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy`;
+    } bg-white px-3 py-2 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-primary`;
 
   const ariaProps = (name: string) =>
     state.fieldErrors?.[name]
@@ -131,7 +131,7 @@ export function ItemForm({
       {state.error && (
         <div
           role="alert"
-          className="mb-6 rounded border border-brand-red/30 bg-brand-red/5 px-4 py-3 font-body text-body-md text-brand-red"
+          className="mb-6 rounded border border-action-blue/30 bg-action-blue/5 px-4 py-3 font-body text-body-md text-action-blue"
         >
           {state.error}
         </div>
@@ -149,7 +149,7 @@ export function ItemForm({
           <div>
             <label htmlFor="code" className="block font-label text-label text-on-surface">
               Item Code{" "}
-              <span aria-hidden="true" className="text-brand-red">*</span>
+              <span aria-hidden="true" className="text-action-blue">*</span>
             </label>
             <input
               id="code"
@@ -168,7 +168,7 @@ export function ItemForm({
           <div>
             <label htmlFor="barcode" className="block font-label text-label text-on-surface">
               Barcode{" "}
-              <span aria-hidden="true" className="text-brand-red">*</span>
+              <span aria-hidden="true" className="text-action-blue">*</span>
             </label>
             <input
               id="barcode"
@@ -192,7 +192,7 @@ export function ItemForm({
           <div>
             <label htmlFor="name" className="block font-label text-label text-on-surface">
               Item Name{" "}
-              <span aria-hidden="true" className="text-brand-red">*</span>
+              <span aria-hidden="true" className="text-action-blue">*</span>
             </label>
             <input
               id="name"
@@ -215,7 +215,7 @@ export function ItemForm({
               id="itemType"
               name="itemType"
               defaultValue={item?.itemType ?? "standard"}
-              className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="mt-1 block w-full rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
             >
               {ITEM_TYPES.map((t) => (
                 <option key={t} value={t}>
@@ -275,7 +275,7 @@ export function ItemForm({
               id="categoryId"
               name="categoryId"
               defaultValue={item?.categoryId ?? ""}
-              className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="mt-1 block w-full rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="">None</option>
               {categories.map((cat) => (
@@ -314,14 +314,14 @@ export function ItemForm({
           <div>
             <label htmlFor="uom" className="block font-label text-label text-on-surface">
               Unit of Measure{" "}
-              <span aria-hidden="true" className="text-brand-red">*</span>
+              <span aria-hidden="true" className="text-action-blue">*</span>
             </label>
             <select
               id="uom"
               name="uom"
               value={uom}
               onChange={(e) => setUom(e.target.value)}
-              className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="mt-1 block w-full rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
             >
               {UOM_OPTIONS.map((u) => (
                 <option key={u} value={u}>
@@ -335,7 +335,7 @@ export function ItemForm({
           <div>
             <label htmlFor="spq" className="block font-label text-label text-on-surface">
               SPQ (Standard Pkg Qty){" "}
-              <span aria-hidden="true" className="text-brand-red">*</span>
+              <span aria-hidden="true" className="text-action-blue">*</span>
             </label>
             <input
               id="spq"
@@ -355,7 +355,7 @@ export function ItemForm({
             <div>
               <label htmlFor="spqMeter" className="block font-label text-label text-on-surface">
                 SPQ Meter (m/roll){" "}
-                <span aria-hidden="true" className="text-brand-red">*</span>
+                <span aria-hidden="true" className="text-action-blue">*</span>
               </label>
               <input
                 id="spqMeter"
@@ -413,7 +413,7 @@ export function ItemForm({
         >
           Dimensions &amp; Volume
         </h2>
-        <p className="mb-4 font-body text-body-sm text-text-grey">
+        <p className="mb-4 font-body text-body-sm text-on-surface-variant">
           If you provide any dimension, all three must be provided. Volume CBM
           is auto-computed from dimensions; provide it directly if dimensions
           are not yet known.
@@ -476,8 +476,8 @@ export function ItemForm({
 
         {/* Computed volume preview */}
         {computedVolume ? (
-          <div className="mt-4 rounded border border-outline-variant/30 bg-surface-light-grey px-4 py-3">
-            <p className="font-label text-label text-text-grey">
+          <div className="mt-4 rounded border border-outline-variant/30 bg-surface-dim px-4 py-3">
+            <p className="font-label text-label text-on-surface-variant">
               Computed from dimensions:
             </p>
             <p className="mt-1 font-mono text-mono-md text-on-surface">
@@ -495,8 +495,8 @@ export function ItemForm({
           <div className="mt-4">
             <label htmlFor="volumeCbm" className="block font-label text-label text-on-surface">
               Volume CBM{" "}
-              <span aria-hidden="true" className="text-brand-red">*</span>
-              <span className="ml-1 font-body text-body-sm text-text-grey">
+              <span aria-hidden="true" className="text-action-blue">*</span>
+              <span className="ml-1 font-body text-body-sm text-on-surface-variant">
                 (required when dimensions not provided)
               </span>
             </label>
@@ -523,7 +523,7 @@ export function ItemForm({
         >
           Reference Prices
         </h2>
-        <div className="mb-4 rounded border border-status-pending/30 bg-status-pending/5 px-4 py-3">
+        <div className="mb-4 rounded border border-status-warning/30 bg-status-warning/5 px-4 py-3">
           <p className="font-body text-body-md text-on-surface">
             <strong>Reference values only.</strong> These prices do not directly
             determine any Trading document price or VMI billing amount. Final
@@ -539,7 +539,7 @@ export function ItemForm({
               id="currency"
               name="currency"
               defaultValue={item?.currency ?? "USD"}
-              className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="mt-1 block w-full rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
             >
               {CURRENCY_OPTIONS.map((c) => (
                 <option key={c} value={c}>
@@ -598,7 +598,7 @@ export function ItemForm({
               id="defaultSupplierPartyId"
               name="defaultSupplierPartyId"
               defaultValue={item?.defaultSupplierPartyId ?? ""}
-              className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="mt-1 block w-full rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="">None</option>
               {supplierParties.map((p) => (
@@ -607,7 +607,7 @@ export function ItemForm({
                 </option>
               ))}
             </select>
-            <p className="mt-1 font-body text-body-sm text-text-grey">
+            <p className="mt-1 font-body text-body-sm text-on-surface-variant">
               Active parties with vendor or supplier role only.
             </p>
           </div>
@@ -646,7 +646,7 @@ export function ItemForm({
                   hiddenInput.value = e.currentTarget.checked ? "true" : "false";
                 }
               }}
-              className="h-5 w-5 rounded border-outline-variant/30 text-brand-navy focus:ring-2 focus:ring-brand-navy"
+              className="h-5 w-5 rounded border-outline-variant/30 text-primary focus:ring-2 focus:ring-primary"
             />
             <label htmlFor="isPerishable" className="font-label text-label text-on-surface">
               Perishable
@@ -656,7 +656,7 @@ export function ItemForm({
               name="isPerishable"
               value={item?.isPerishable ? "true" : "false"}
             />
-            <p className="font-body text-body-sm text-text-grey">
+            <p className="font-body text-body-sm text-on-surface-variant">
               Triggers mandatory expiry/manufacture date capture at receiving.
             </p>
           </div>
@@ -678,7 +678,7 @@ export function ItemForm({
                   hiddenInput.value = e.currentTarget.checked ? "true" : "false";
                 }
               }}
-              className="h-5 w-5 rounded border-outline-variant/30 text-brand-navy focus:ring-2 focus:ring-brand-navy"
+              className="h-5 w-5 rounded border-outline-variant/30 text-primary focus:ring-2 focus:ring-primary"
             />
             <label htmlFor="isActive" className="font-label text-label text-on-surface">
               Active
@@ -696,14 +696,14 @@ export function ItemForm({
       <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-end">
         <Link
           href={cancelHref}
-          className="flex h-11 items-center justify-center rounded bg-brand-navy px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-red"
+          className="flex h-11 items-center justify-center rounded bg-primary px-6 font-label text-label text-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-action-blue"
         >
           Cancel
         </Link>
         <button
           type="submit"
           disabled={isPending}
-          className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:opacity-50"
+          className="flex h-11 items-center justify-center rounded bg-action-blue px-6 font-label text-label text-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
         >
           {isPending ? "Saving…" : isEdit ? "Save Changes" : "Create Item"}
         </button>

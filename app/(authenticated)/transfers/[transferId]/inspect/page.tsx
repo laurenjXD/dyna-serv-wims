@@ -5,7 +5,7 @@
 //     §6.3 (disposition table with balance effects)
 //   specs/11-transfer-and-inspection/requirements.md R3.1, R3.4
 //   specs/00-steering/brand-design-system.md §6 (office surface, Level 1 elevation),
-//     §3 (touch targets h-11), §9 (primary CTA bg-brand-red)
+//     §3 (touch targets h-11), §9 (primary CTA bg-action-blue)
 //
 // Surface: Office. Permission gate: inspection.perform.
 //
@@ -162,11 +162,11 @@ export default async function InspectTransferPage({
     <div className="mx-auto max-w-container">
       {/* Breadcrumb */}
       <nav aria-label="Breadcrumb" className="mb-4">
-        <ol className="flex items-center gap-1 font-body text-body-sm text-text-grey">
+        <ol className="flex items-center gap-1 font-body text-body-sm text-on-surface-variant">
           <li>
             <Link
               href="/transfers"
-              className="inline-flex h-11 items-center rounded hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="inline-flex h-11 items-center rounded hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary"
             >
               Transfer Queue
             </Link>
@@ -175,7 +175,7 @@ export default async function InspectTransferPage({
           <li>
             <Link
               href={`/transfers/${transferId}`}
-              className="inline-flex h-11 items-center rounded hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy font-mono text-mono-md"
+              className="inline-flex h-11 items-center rounded hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary font-mono text-mono-md"
             >
               {transferId}
             </Link>
@@ -190,7 +190,7 @@ export default async function InspectTransferPage({
       <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
         Transfer Inspection
       </h1>
-      <p className="mt-1 font-body text-body-md text-text-grey">
+      <p className="mt-1 font-body text-body-md text-on-surface-variant">
         Open or resolve an inspection case for a transfer line.
       </p>
 
@@ -198,9 +198,9 @@ export default async function InspectTransferPage({
       {caseOpened && openedCaseId && (
         <div
           role="status"
-          className="mt-4 rounded-md bg-status-available/10 px-4 py-3"
+          className="mt-4 rounded-md bg-status-success/10 px-4 py-3"
         >
-          <p className="font-label text-label uppercase text-status-available">
+          <p className="font-label text-label uppercase text-status-success">
             Inspection Case Opened
           </p>
           <p className="mt-1 font-body text-body-md text-on-surface">
@@ -214,9 +214,9 @@ export default async function InspectTransferPage({
       {caseResolved && (
         <div
           role="status"
-          className="mt-4 rounded-md bg-status-available/10 px-4 py-3"
+          className="mt-4 rounded-md bg-status-success/10 px-4 py-3"
         >
-          <p className="font-label text-label uppercase text-status-available">
+          <p className="font-label text-label uppercase text-status-success">
             Inspection Case Resolved
           </p>
           <p className="mt-1 font-body text-body-md text-on-surface">
@@ -229,14 +229,14 @@ export default async function InspectTransferPage({
       {actionFailed && errorMessages.length > 0 && (
         <div
           role="alert"
-          className="mt-4 rounded-md bg-status-held/10 px-4 py-3"
+          className="mt-4 rounded-md bg-status-error/10 px-4 py-3"
         >
-          <p className="font-label text-label uppercase text-status-held">
+          <p className="font-label text-label uppercase text-status-error">
             Action Failed
           </p>
           <ul className="mt-2 list-inside list-disc space-y-1">
             {errorMessages.map((msg) => (
-              <li key={msg} className="font-body text-body-md text-status-held">
+              <li key={msg} className="font-body text-body-md text-status-error">
                 {msg}
               </li>
             ))}
@@ -245,31 +245,31 @@ export default async function InspectTransferPage({
       )}
 
       {/* Transfer context card — Level 1 office elevation */}
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-md bg-white shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Transfer Context
         </h2>
         <dl className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
-            <dt className="font-label text-label text-text-grey">Transfer ID</dt>
+            <dt className="font-label text-label text-on-surface-variant">Transfer ID</dt>
             <dd className="mt-1 font-mono text-mono-md text-on-surface">
               {transferId}
             </dd>
           </div>
           <div>
-            <dt className="font-label text-label text-text-grey">Flow Type</dt>
+            <dt className="font-label text-label text-on-surface-variant">Flow Type</dt>
             <dd className="mt-1 font-body text-body-md text-on-surface">
               {transfer.flowType.toUpperCase()}
             </dd>
           </div>
           <div>
-            <dt className="font-label text-label text-text-grey">Status</dt>
+            <dt className="font-label text-label text-on-surface-variant">Status</dt>
             <dd className="mt-1 font-body text-body-md text-on-surface">
               {transfer.status}
             </dd>
           </div>
           <div>
-            <dt className="font-label text-label text-text-grey">Lines</dt>
+            <dt className="font-label text-label text-on-surface-variant">Lines</dt>
             <dd className="mt-1 font-body text-body-md text-on-surface">
               {transfer.lines.length}
             </dd>
@@ -278,11 +278,11 @@ export default async function InspectTransferPage({
       </div>
 
       {/* Open Inspection Case form — Level 1 office elevation */}
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-md bg-white shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Open Inspection Case
         </h2>
-        <p className="mt-1 font-body text-body-sm text-text-grey">
+        <p className="mt-1 font-body text-body-sm text-on-surface-variant">
           Select a transfer line and provide party context to open a new
           inspection case. Context type is always{" "}
           <span className="font-mono text-mono-md">transfer</span>.
@@ -293,10 +293,10 @@ export default async function InspectTransferPage({
           <div>
             <label
               htmlFor="sourceRefId"
-              className="block font-label text-label text-text-grey"
+              className="block font-label text-label text-on-surface-variant"
             >
               Transfer Line{" "}
-              <span aria-hidden="true" className="text-brand-red">
+              <span aria-hidden="true" className="text-action-blue">
                 *
               </span>
               <span className="sr-only">(required)</span>
@@ -310,7 +310,7 @@ export default async function InspectTransferPage({
                 id="sourceRefId"
                 name="sourceRefId"
                 required
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-mono text-mono-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-white px-3 font-mono text-mono-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="">Select a transfer line…</option>
                 {transfer.lines.map((line: TransferLineRow) => (
@@ -326,10 +326,10 @@ export default async function InspectTransferPage({
           <div>
             <label
               htmlFor="open-lotId"
-              className="block font-label text-label text-text-grey"
+              className="block font-label text-label text-on-surface-variant"
             >
               Lot ID{" "}
-              <span aria-hidden="true" className="text-brand-red">
+              <span aria-hidden="true" className="text-action-blue">
                 *
               </span>
               <span className="sr-only">(required)</span>
@@ -340,7 +340,7 @@ export default async function InspectTransferPage({
               type="text"
               required
               placeholder="UUID of the lot being inspected"
-              className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 
@@ -348,10 +348,10 @@ export default async function InspectTransferPage({
           <div>
             <label
               htmlFor="open-itemId"
-              className="block font-label text-label text-text-grey"
+              className="block font-label text-label text-on-surface-variant"
             >
               Item ID{" "}
-              <span aria-hidden="true" className="text-brand-red">
+              <span aria-hidden="true" className="text-action-blue">
                 *
               </span>
               <span className="sr-only">(required)</span>
@@ -362,7 +362,7 @@ export default async function InspectTransferPage({
               type="text"
               required
               placeholder="UUID of the item being inspected"
-              className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 
@@ -370,10 +370,10 @@ export default async function InspectTransferPage({
           <div>
             <label
               htmlFor="open-partyId"
-              className="block font-label text-label text-text-grey"
+              className="block font-label text-label text-on-surface-variant"
             >
               Party ID{" "}
-              <span aria-hidden="true" className="text-brand-red">
+              <span aria-hidden="true" className="text-action-blue">
                 *
               </span>
               <span className="sr-only">(required)</span>
@@ -384,7 +384,7 @@ export default async function InspectTransferPage({
               type="text"
               required
               placeholder="UUID of the associated party"
-              className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 
@@ -393,7 +393,7 @@ export default async function InspectTransferPage({
 
           <button
             type="submit"
-            className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-11 items-center justify-center rounded bg-action-blue px-6 font-label text-label text-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-primary"
           >
             Open Inspection Case
           </button>
@@ -401,11 +401,11 @@ export default async function InspectTransferPage({
       </div>
 
       {/* Resolve Inspection Case form — Level 1 office elevation */}
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-md bg-white shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Resolve Inspection Case
         </h2>
-        <p className="mt-1 font-body text-body-sm text-text-grey">
+        <p className="mt-1 font-body text-body-sm text-on-surface-variant">
           Enter an existing open inspection case ID and apply a disposition to
           close it.
         </p>
@@ -415,10 +415,10 @@ export default async function InspectTransferPage({
           <div>
             <label
               htmlFor="resolve-caseId"
-              className="block font-label text-label text-text-grey"
+              className="block font-label text-label text-on-surface-variant"
             >
               Inspection Case ID{" "}
-              <span aria-hidden="true" className="text-brand-red">
+              <span aria-hidden="true" className="text-action-blue">
                 *
               </span>
               <span className="sr-only">(required)</span>
@@ -431,7 +431,7 @@ export default async function InspectTransferPage({
               // Pre-fill with just-opened case ID if available from searchParams.
               defaultValue={openedCaseId ?? ""}
               placeholder="UUID of the open inspection case"
-              className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 
@@ -439,10 +439,10 @@ export default async function InspectTransferPage({
           <div>
             <label
               htmlFor="dispositionType"
-              className="block font-label text-label text-text-grey"
+              className="block font-label text-label text-on-surface-variant"
             >
               Disposition Type{" "}
-              <span aria-hidden="true" className="text-brand-red">
+              <span aria-hidden="true" className="text-action-blue">
                 *
               </span>
               <span className="sr-only">(required)</span>
@@ -451,7 +451,7 @@ export default async function InspectTransferPage({
               id="dispositionType"
               name="dispositionType"
               required
-              className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="">Select disposition…</option>
               {TRANSFER_DISPOSITIONS.map((d) => (
@@ -466,10 +466,10 @@ export default async function InspectTransferPage({
           <div>
             <label
               htmlFor="quantityAffected"
-              className="block font-label text-label text-text-grey"
+              className="block font-label text-label text-on-surface-variant"
             >
               Quantity Affected{" "}
-              <span aria-hidden="true" className="text-brand-red">
+              <span aria-hidden="true" className="text-action-blue">
                 *
               </span>
               <span className="sr-only">(required)</span>
@@ -482,7 +482,7 @@ export default async function InspectTransferPage({
               min="0.0001"
               step="0.0001"
               placeholder="Quantity subject to this disposition"
-              className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 
@@ -490,7 +490,7 @@ export default async function InspectTransferPage({
           <div>
             <label
               htmlFor="notes"
-              className="block font-label text-label text-text-grey"
+              className="block font-label text-label text-on-surface-variant"
             >
               Notes
             </label>
@@ -499,13 +499,13 @@ export default async function InspectTransferPage({
               name="notes"
               rows={3}
               placeholder="Optional notes or reason for this disposition"
-              className="mt-1 w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy resize-none"
+              className="mt-1 w-full rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-primary resize-none"
             />
           </div>
 
           <button
             type="submit"
-            className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-11 items-center justify-center rounded bg-action-blue px-6 font-label text-label text-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-primary"
           >
             Resolve Inspection Case
           </button>

@@ -53,17 +53,17 @@ export function TransferLineItems() {
       {lines.map((line, index) => (
         <div
           key={index}
-          className="rounded-md border border-outline-variant/30 bg-surface-white p-4"
+          className="rounded-md border border-outline-variant/30 bg-white p-4"
         >
           <div className="mb-3 flex items-center justify-between">
-            <span className="font-label text-label text-brand-navy">
+            <span className="font-label text-label text-primary">
               Line {index + 1}
             </span>
             {lines.length > 1 && (
               <button
                 type="button"
                 onClick={() => removeLine(index)}
-                className="inline-flex h-11 items-center rounded bg-status-held px-3 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="inline-flex h-11 items-center rounded bg-status-error px-3 font-label text-label text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 Remove
               </button>
@@ -75,10 +75,10 @@ export function TransferLineItems() {
             <div>
               <label
                 htmlFor={`line-${index}-lotId`}
-                className="block font-label text-label text-text-grey"
+                className="block font-label text-label text-on-surface-variant"
               >
                 Lot ID{" "}
-                <span aria-hidden="true" className="text-brand-red">
+                <span aria-hidden="true" className="text-action-blue">
                   *
                 </span>
                 <span className="sr-only">(required)</span>
@@ -91,7 +91,7 @@ export function TransferLineItems() {
                 value={line.lotId}
                 onChange={(e) => updateLine(index, "lotId", e.target.value)}
                 placeholder="UUID of the lot"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
 
@@ -99,10 +99,10 @@ export function TransferLineItems() {
             <div>
               <label
                 htmlFor={`line-${index}-itemId`}
-                className="block font-label text-label text-text-grey"
+                className="block font-label text-label text-on-surface-variant"
               >
                 Item ID{" "}
-                <span aria-hidden="true" className="text-brand-red">
+                <span aria-hidden="true" className="text-action-blue">
                   *
                 </span>
                 <span className="sr-only">(required)</span>
@@ -115,7 +115,7 @@ export function TransferLineItems() {
                 value={line.itemId}
                 onChange={(e) => updateLine(index, "itemId", e.target.value)}
                 placeholder="UUID of the item"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
 
@@ -123,10 +123,10 @@ export function TransferLineItems() {
             <div>
               <label
                 htmlFor={`line-${index}-qtyRequested`}
-                className="block font-label text-label text-text-grey"
+                className="block font-label text-label text-on-surface-variant"
               >
                 Qty Requested{" "}
-                <span aria-hidden="true" className="text-brand-red">
+                <span aria-hidden="true" className="text-action-blue">
                   *
                 </span>
                 <span className="sr-only">(required)</span>
@@ -143,7 +143,7 @@ export function TransferLineItems() {
                   updateLine(index, "qtyRequested", e.target.value)
                 }
                 placeholder="0"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
           </div>
@@ -154,7 +154,7 @@ export function TransferLineItems() {
       <button
         type="button"
         onClick={addLine}
-        className="inline-flex h-11 items-center justify-center rounded border-2 border-outline-variant px-4 font-label text-label text-brand-navy hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+        className="inline-flex h-11 items-center justify-center rounded border-2 border-outline-variant px-4 font-label text-label text-primary hover:bg-surface-dim focus:outline-none focus:ring-2 focus:ring-primary"
       >
         + Add Line
       </button>

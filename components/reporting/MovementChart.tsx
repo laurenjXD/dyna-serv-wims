@@ -5,7 +5,7 @@
 // pattern as any other client-only widget in an otherwise server page).
 //
 // brand-design-system.md §9 dashboard pattern: chart colors pull from the
-// existing brand/status/accent palette only, brand-red (#FF2929) used
+// existing brand/status/accent palette only, action-blue (#FF2929) used
 // sparingly as the single highlighted series/bar, accent-indigo-600
 // (#3D3BF3) for the rest.
 //

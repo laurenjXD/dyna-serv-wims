@@ -73,10 +73,10 @@ export function InviteUserModal({
       aria-modal="true"
       aria-labelledby="invite-user-title"
       data-testid="invite-user-modal"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-brand-navy/40 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-primary/40 p-4"
     >
       {/* Modal surface — Level 2 elevation per brand-design-system.md §6. */}
-      <div className="w-full max-w-md rounded-md bg-surface-white p-6 shadow-elevation-2">
+      <div className="w-full max-w-md rounded-md bg-white p-6 shadow-elevation-2">
         <h2
           id="invite-user-title"
           className="font-heading text-headline-md font-semibold text-on-surface"
@@ -98,10 +98,10 @@ export function InviteUserModal({
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+              className="rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             />
             {errors.email && (
-              <p role="alert" className="font-body text-body-sm text-brand-red">
+              <p role="alert" className="font-body text-body-sm text-action-blue">
                 {errors.email}
               </p>
             )}
@@ -120,10 +120,10 @@ export function InviteUserModal({
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              className="rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+              className="rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             />
             {errors.displayName && (
-              <p role="alert" className="font-body text-body-sm text-brand-red">
+              <p role="alert" className="font-body text-body-sm text-action-blue">
                 {errors.displayName}
               </p>
             )}
@@ -141,7 +141,7 @@ export function InviteUserModal({
               data-testid="invite-role-select"
               value={role}
               onChange={(e) => setRole(e.target.value as InviteUserInput["role"])}
-              className="rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+              className="rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               {SYSTEM_ROLE_OPTIONS.map((option) => (
                 <option key={option.key} value={option.key}>
@@ -166,7 +166,7 @@ export function InviteUserModal({
                 data-testid="invite-party-select"
                 value={partyId}
                 onChange={(e) => setPartyId(e.target.value)}
-                className="rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+                className="rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <option value="">Select a party…</option>
                 {parties.map((party) => (
@@ -176,7 +176,7 @@ export function InviteUserModal({
                 ))}
               </select>
               {errors.partyId && (
-                <p role="alert" className="font-body text-body-sm text-brand-red">
+                <p role="alert" className="font-body text-body-sm text-action-blue">
                   {errors.partyId}
                 </p>
               )}
@@ -184,7 +184,7 @@ export function InviteUserModal({
           )}
 
           {serverError && (
-            <p role="alert" className="font-body text-body-md text-brand-red">
+            <p role="alert" className="font-body text-body-md text-action-blue">
               {serverError}
             </p>
           )}
@@ -193,7 +193,7 @@ export function InviteUserModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex min-h-11 items-center rounded border-2 border-outline-variant/30 px-4 font-label text-label uppercase tracking-wide text-on-surface hover:bg-surface-light-grey"
+              className="flex min-h-11 items-center rounded border-2 border-outline-variant/30 px-4 font-label text-label uppercase tracking-wide text-on-surface hover:bg-surface-dim"
             >
               Cancel
             </button>
@@ -201,7 +201,7 @@ export function InviteUserModal({
               type="submit"
               data-testid="invite-submit"
               disabled={submitting}
-              className="flex min-h-11 items-center rounded bg-brand-red px-4 font-label text-label uppercase tracking-wide text-surface-white hover:bg-brand-red/90 disabled:opacity-60"
+              className="flex min-h-11 items-center rounded bg-action-blue px-4 font-label text-label uppercase tracking-wide text-white hover:bg-action-blue/90 disabled:opacity-60"
             >
               {submitting ? "Sending…" : "Send invite"}
             </button>

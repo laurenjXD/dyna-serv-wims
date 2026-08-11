@@ -46,12 +46,12 @@ export default async function EditItemPage({ params }: PageProps) {
         <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
           Edit Item
         </h1>
-        <p className="mt-1 font-mono text-mono-md text-text-grey">
+        <p className="mt-1 font-mono text-mono-md text-on-surface-variant">
           {item.code} — {item.name}
         </p>
       </div>
 
-      <div className="rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="rounded-md bg-white shadow-elevation-1 p-6">
         <ItemForm
           action={updateItemAction}
           item={item}

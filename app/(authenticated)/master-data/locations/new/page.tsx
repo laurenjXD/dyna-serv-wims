@@ -20,13 +20,13 @@ export default async function NewLocationPage() {
         <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
           New Location
         </h1>
-        <p className="mt-1 font-body text-body-md text-text-grey">
+        <p className="mt-1 font-body text-body-md text-on-surface-variant">
           Enroll a new physical storage or staging location. The location label
           is computed by the server from rack, level, and position.
         </p>
       </div>
 
-      <div className="rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="rounded-md bg-white shadow-elevation-1 p-6">
         <LocationForm
           action={createLocationAction}
           cancelHref="/master-data/locations"

@@ -5,7 +5,7 @@
 //     §4 (staged initial status), §5 (request design)
 //   specs/11-transfer-and-inspection/requirements.md R1.1–R1.3
 //   specs/00-steering/brand-design-system.md §6 (office surface, Level 1 elevation),
-//     §3 (touch targets h-11), §9 (primary CTA bg-brand-red)
+//     §3 (touch targets h-11), §9 (primary CTA bg-action-blue)
 //
 // Surface: Office. Permission gate: transfer.request.
 // Lines are encoded as `line_N_fieldName` fields with a `lineCount` summary.
@@ -89,11 +89,11 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
     <div className="mx-auto max-w-container">
       {/* Breadcrumb */}
       <nav aria-label="Breadcrumb" className="mb-4">
-        <ol className="flex items-center gap-1 font-body text-body-sm text-text-grey">
+        <ol className="flex items-center gap-1 font-body text-body-sm text-on-surface-variant">
           <li>
             <Link
               href="/transfers"
-              className="inline-flex h-11 items-center rounded hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="inline-flex h-11 items-center rounded hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary"
             >
               Transfer Queue
             </Link>
@@ -108,7 +108,7 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
       <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
         New Transfer Request
       </h1>
-      <p className="mt-1 font-body text-body-md text-text-grey">
+      <p className="mt-1 font-body text-body-md text-on-surface-variant">
         Request an internal location-to-location stock movement.
       </p>
 
@@ -116,14 +116,14 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
       {errors.length > 0 && (
         <div
           role="alert"
-          className="mt-4 rounded-md bg-status-held/10 px-4 py-3"
+          className="mt-4 rounded-md bg-status-error/10 px-4 py-3"
         >
-          <p className="font-label text-label uppercase text-status-held">
+          <p className="font-label text-label uppercase text-status-error">
             Validation errors
           </p>
           <ul className="mt-2 list-inside list-disc space-y-1">
             {errors.map((err) => (
-              <li key={err} className="font-body text-body-md text-status-held">
+              <li key={err} className="font-body text-body-md text-status-error">
                 {err}
               </li>
             ))}
@@ -134,7 +134,7 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
       {/* Create Transfer form — standard office surface */}
       <form action={handleCreateTransfer} className="mt-6 space-y-6">
         {/* Header section — office card, Level 1 elevation */}
-        <div className="rounded-md bg-surface-white shadow-elevation-1 p-6">
+        <div className="rounded-md bg-white shadow-elevation-1 p-6">
           <h2 className="font-heading font-semibold text-data-display text-on-surface">
             Transfer Details
           </h2>
@@ -144,10 +144,10 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
             <div>
               <label
                 htmlFor="fromLocationId"
-                className="block font-label text-label text-text-grey"
+                className="block font-label text-label text-on-surface-variant"
               >
                 From Location ID{" "}
-                <span aria-hidden="true" className="text-brand-red">
+                <span aria-hidden="true" className="text-action-blue">
                   *
                 </span>
                 <span className="sr-only">(required)</span>
@@ -158,7 +158,7 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
                 type="text"
                 required
                 placeholder="UUID of the source location"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
 
@@ -166,10 +166,10 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
             <div>
               <label
                 htmlFor="toLocationId"
-                className="block font-label text-label text-text-grey"
+                className="block font-label text-label text-on-surface-variant"
               >
                 To Location ID{" "}
-                <span aria-hidden="true" className="text-brand-red">
+                <span aria-hidden="true" className="text-action-blue">
                   *
                 </span>
                 <span className="sr-only">(required)</span>
@@ -180,7 +180,7 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
                 type="text"
                 required
                 placeholder="UUID of the destination location"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
 
@@ -188,10 +188,10 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
             <div>
               <label
                 htmlFor="flowType"
-                className="block font-label text-label text-text-grey"
+                className="block font-label text-label text-on-surface-variant"
               >
                 Flow Type{" "}
-                <span aria-hidden="true" className="text-brand-red">
+                <span aria-hidden="true" className="text-action-blue">
                   *
                 </span>
                 <span className="sr-only">(required)</span>
@@ -200,7 +200,7 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
                 id="flowType"
                 name="flowType"
                 required
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="">Select flow type…</option>
                 <option value="vmi">VMI</option>
@@ -213,7 +213,7 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
             <div>
               <label
                 htmlFor="reason"
-                className="block font-label text-label text-text-grey"
+                className="block font-label text-label text-on-surface-variant"
               >
                 Reason
               </label>
@@ -222,7 +222,7 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
                 name="reason"
                 type="text"
                 placeholder="Optional reason for the transfer"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
 
@@ -232,11 +232,11 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
                 id="requiresApproval"
                 name="requiresApproval"
                 type="checkbox"
-                className="h-5 w-5 rounded border border-outline-variant/30 accent-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="h-5 w-5 rounded border border-outline-variant/30 accent-primary focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <label
                 htmlFor="requiresApproval"
-                className="font-label text-label text-text-grey"
+                className="font-label text-label text-on-surface-variant"
               >
                 Requires approval before execution
               </label>
@@ -245,11 +245,11 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
         </div>
 
         {/* Transfer lines section */}
-        <div className="rounded-md bg-surface-white shadow-elevation-1 p-6">
+        <div className="rounded-md bg-white shadow-elevation-1 p-6">
           <h2 className="font-heading font-semibold text-data-display text-on-surface">
             Transfer Lines
           </h2>
-          <p className="mt-1 font-body text-body-sm text-text-grey">
+          <p className="mt-1 font-body text-body-sm text-on-surface-variant">
             At least one line is required. Each line requires a lot ID, item ID,
             and quantity to transfer.
           </p>
@@ -261,16 +261,16 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
 
         {/* Form actions */}
         <div className="flex flex-wrap gap-3">
-          {/* Primary CTA — brand-red per brand-design-system.md §9, h-11 office touch target */}
+          {/* Primary CTA — action-blue per brand-design-system.md §9, h-11 office touch target */}
           <button
             type="submit"
-            className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-11 items-center justify-center rounded bg-action-blue px-6 font-label text-label text-white hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-primary"
           >
             Create Transfer
           </button>
           <Link
             href="/transfers"
-            className="flex h-11 items-center justify-center rounded border border-outline-variant/30 px-6 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-11 items-center justify-center rounded border border-outline-variant/30 px-6 font-label text-label text-on-surface hover:bg-surface-dim focus:outline-none focus:ring-2 focus:ring-primary"
           >
             Cancel
           </Link>

@@ -15,6 +15,14 @@
 //   specs/07-incoming-receiving/requirements.md R3.3 (amended 2026-08-10) — a scanned item
 //     whose own flow_type does not match the WRR's flow_type SHALL produce immediate
 //     non-success feedback and a recoverable exception state.
+//   specs/18-barcode-integration/design.md §2.2 (added 2026-08-11) — per-unit WRR
+//     labels each carry their own unique unit_id specifically so a duplicate scan
+//     of the exact same physical label can be detected and rejected, distinct from
+//     the fuzzy scannedQty-counter comparison every other barcode type falls back
+//     to. A scan whose unit_id has already been recorded SHALL be rejected through
+//     the same exception path as any other wrong/unknown/duplicate scan, and takes
+//     priority over quantity-state reasons (over_quantity/fully_scanned) since a
+//     duplicate physical label is a rejection independent of the line's quantity.
 
 export type WrrLine = {
   id: string;
@@ -29,7 +37,7 @@ export type WrrLine = {
 };
 
 export type ScanMatchResult =
-  | { matched: true; line: WrrLine; remainingQty: number }
+  | { matched: true; line: WrrLine; remainingQty: number; unitId?: string }
   | {
       matched: false;
       reason:
@@ -37,7 +45,8 @@ export type ScanMatchResult =
         | "unknown_item"
         | "fully_scanned"
         | "over_quantity"
-        | "flow_type_mismatch";
+        | "flow_type_mismatch"
+        | "duplicate_unit_scan";
     };
 
 /**
@@ -47,16 +56,27 @@ export type ScanMatchResult =
  * 1. invalid_barcode — barcode is empty or whitespace-only
  * 2. unknown_item — no line matches the barcode, or matched line has null itemId
  * 3. flow_type_mismatch — matched line's itemFlowType differs from the WRR's flowType
- * 4. over_quantity — matched line's scannedQty already exceeds expectedQty (corrupted state)
- * 5. fully_scanned — matched line's scannedQty equals expectedQty
+ * 4. duplicate_unit_scan — parsed wrr_item_unit payload's unit_id is already present
+ *    in alreadyScannedUnitIds (exact same physical label scanned before)
+ * 5. over_quantity — matched line's scannedQty already exceeds expectedQty (corrupted state)
+ * 6. fully_scanned — matched line's scannedQty equals expectedQty
  *
  * When multiple lines share the same barcode, the first non-exhausted line is selected.
  * The -1 in remainingQty accounts for the current scan being recorded.
+ *
+ * alreadyScannedUnitIds (optional, Spec 18 §2.2) — the set of unit_id values
+ * already recorded as scanned (typically scoped to the matched wrr_item_id by
+ * the caller, which has DB access this pure function does not). Only consulted
+ * when the barcode parses as a wrr_item_unit JSON payload; ordinary barcodes
+ * never populate or check unit_id, regardless of what this set contains. When
+ * omitted, no duplicate-unit check is performed — existing callers that have
+ * not yet been updated to supply this set keep working unchanged.
  */
 export function matchScan(
   barcode: string,
   lines: WrrLine[],
-  wrrFlowType?: "vmi" | "trading" | "supplies"
+  wrrFlowType?: "vmi" | "trading" | "supplies",
+  alreadyScannedUnitIds?: Set<string>
 ): ScanMatchResult {
   // Guard: reject empty or whitespace-only barcodes
   if (barcode.trim() === "") {
@@ -65,11 +85,15 @@ export function matchScan(
 
   // Parse JSON wrr_item_unit payload if present (Spec 18 §2.2)
   let parsedWrrItemId: string | null = null;
+  let parsedUnitId: string | null = null;
   if (barcode.trim().startsWith("{")) {
     try {
       const parsed = JSON.parse(barcode.trim());
       if (parsed?.type === "wrr_item_unit" && typeof parsed?.wrr_item_id === "string") {
         parsedWrrItemId = parsed.wrr_item_id;
+        if (typeof parsed?.unit_id === "string") {
+          parsedUnitId = parsed.unit_id;
+        }
       }
     } catch {
       // Not valid JSON — fall through to standard string matching
@@ -111,6 +135,14 @@ export function matchScan(
       return { matched: false, reason: "flow_type_mismatch" };
     }
 
+    // Exact duplicate-physical-label check (Spec 18 §2.2): only applies to
+    // wrr_item_unit payloads with a parsed unit_id, and only when the caller
+    // supplied a set to check against. Takes priority over quantity-state
+    // reasons since a duplicate label is a rejection independent of them.
+    if (parsedUnitId !== null && alreadyScannedUnitIds?.has(parsedUnitId)) {
+      return { matched: false, reason: "duplicate_unit_scan" };
+    }
+
     // Corrupted/malformed state: scanned already exceeds expected
     if (line.scannedQty > line.expectedQty) {
       return { matched: false, reason: "over_quantity" };
@@ -123,7 +155,9 @@ export function matchScan(
 
     // Line is available for scanning
     const remainingQty = line.expectedQty - line.scannedQty - 1;
-    return { matched: true, line, remainingQty };
+    return parsedUnitId !== null
+      ? { matched: true, line, remainingQty, unitId: parsedUnitId }
+      : { matched: true, line, remainingQty };
   }
 
   // All matching lines are fully scanned

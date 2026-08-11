@@ -69,7 +69,7 @@ export function WRRUnitLabelGenerator({
       <button
         type="button"
         onClick={() => setIsModalOpen(true)}
-        className="inline-flex h-10 items-center justify-center gap-2 rounded border border-outline-variant bg-surface-white px-3 font-heading font-semibold text-body-md text-brand-navy shadow-sm active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-brand-navy"
+        className="inline-flex h-10 items-center justify-center gap-2 rounded border border-outline-variant bg-white px-3 font-heading font-semibold text-body-md text-primary shadow-sm active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary"
       >
         <span aria-hidden="true">&#128424;</span>
         <span>Print Unit Labels ({expectedQty})</span>
@@ -83,13 +83,13 @@ export function WRRUnitLabelGenerator({
           aria-labelledby="print-modal-title"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 print:p-0 print:bg-white print:static"
         >
-          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-lg bg-surface-white p-6 shadow-elevation-2 print:max-h-none print:p-0 print:shadow-none">
+          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-lg bg-white p-6 shadow-elevation-2 print:max-h-none print:p-0 print:shadow-none">
             {/* Header — Screen only */}
             <div className="flex items-center justify-between border-b border-outline-variant pb-4 print:hidden">
               <div>
                 <h2
                   id="print-modal-title"
-                  className="font-heading font-semibold text-headline-md text-brand-navy"
+                  className="font-heading font-semibold text-headline-md text-primary"
                 >
                   Unit Labels ({expectedQty} {expectedQty === 1 ? "label" : "labels"})
                 </h2>
@@ -102,7 +102,7 @@ export function WRRUnitLabelGenerator({
                 <button
                   type="button"
                   onClick={handlePrint}
-                  className="flex h-12 items-center justify-center gap-2 rounded bg-brand-red px-5 font-heading font-bold text-body-md text-surface-white active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  className="flex h-12 items-center justify-center gap-2 rounded bg-action-blue px-5 font-heading font-bold text-body-md text-white active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   <span aria-hidden="true">&#128424;</span>
                   <span>Print Labels</span>
@@ -110,7 +110,7 @@ export function WRRUnitLabelGenerator({
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="flex h-12 w-12 items-center justify-center rounded border border-outline-variant bg-surface-white text-body-md font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  className="flex h-12 w-12 items-center justify-center rounded border border-outline-variant bg-white text-body-md font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
                   aria-label="Close modal"
                 >
                   &#10005;
@@ -124,11 +124,11 @@ export function WRRUnitLabelGenerator({
                 {unitLabels.map((unit) => (
                   <div
                     key={unit.unitId}
-                    className="flex flex-col items-center justify-between rounded border-2 border-brand-navy bg-surface-white p-4 text-center break-inside-avoid print:border-black print:p-3"
+                    className="flex flex-col items-center justify-between rounded border-2 border-primary bg-white p-4 text-center break-inside-avoid print:border-black print:p-3"
                   >
                     {/* Header info */}
                     <div className="mb-2 w-full">
-                      <p className="font-heading text-body-sm uppercase font-bold text-brand-navy">
+                      <p className="font-heading text-body-sm uppercase font-bold text-primary">
                         Dyna-Serv WIMS
                       </p>
                       <p className="font-mono text-mono-md font-bold text-on-surface">

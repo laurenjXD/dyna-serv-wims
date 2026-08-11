@@ -7,7 +7,7 @@
 //   specs/09-approval-queue/requirements.md R4 (decision recording), R4.5
 //     (self-approval prohibition), R5 (consumption), R8 (offline: Tier 2 only)
 //   specs/00-steering/brand-design-system.md §6 (office Level 1 elevation:
-//     bg-surface-white), §9 (buttons: h-11 office target, brand-red
+//     bg-white), §9 (buttons: h-11 office target, action-blue
 //     primary, diagonal-cut motif), §10 (motion: motion-safe: prefix always)
 //
 // Surface: Office. Capability gate: fifo_override.approve.
@@ -67,11 +67,11 @@ const STATUS_LABELS: Record<ApprovalStatus, string> = {
 };
 
 const STATUS_CLASSES: Record<ApprovalStatus, string> = {
-  pending: "bg-status-pending/10 text-status-pending",
-  approved: "bg-status-available/10 text-status-available",
-  rejected: "bg-status-held/10 text-status-held",
-  expired: "bg-status-held/10 text-status-held",
-  cancelled: "bg-status-held/10 text-status-held",
+  pending: "bg-status-warning/10 text-status-warning",
+  approved: "bg-status-success/10 text-status-success",
+  rejected: "bg-status-error/10 text-status-error",
+  expired: "bg-status-error/10 text-status-error",
+  cancelled: "bg-status-error/10 text-status-error",
   consumed: "bg-status-neutral/10 text-status-neutral",
 };
 
@@ -189,7 +189,7 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
       <nav aria-label="Breadcrumb" className="mb-4">
         <Link
           href="/approvals"
-          className="inline-flex h-11 items-center gap-1 rounded font-label text-label text-brand-navy hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
+          className="inline-flex h-11 items-center gap-1 rounded font-label text-label text-primary hover:text-secondary focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <ChevronLeft size={16} aria-hidden="true" />
           Approval Queue
@@ -206,14 +206,14 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
       {isStale && (
         <div
           role="alert"
-          className="mt-4 flex items-start gap-3 rounded-md bg-status-pending/10 px-4 py-3"
+          className="mt-4 flex items-start gap-3 rounded-md bg-status-warning/10 px-4 py-3"
         >
           <AlertTriangle
             size={20}
-            className="mt-0.5 shrink-0 text-status-pending"
+            className="mt-0.5 shrink-0 text-status-warning"
             aria-hidden="true"
           />
-          <p className="font-body text-body-md text-status-pending">
+          <p className="font-body text-body-md text-status-warning">
             <span className="font-label text-label uppercase">Warning — </span>
             target state may have changed since this request was submitted.
             Verify the current lot availability before approving.
@@ -222,7 +222,7 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
       )}
 
       {/* Request header card — Level 1 office elevation */}
-      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-white shadow-elevation-1 p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h2 className="font-heading font-semibold text-data-display text-on-surface">
@@ -235,18 +235,18 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
               >
                 {STATUS_LABELS[status] ?? status.toUpperCase()}
               </span>
-              <span className="inline-flex items-center gap-1 font-body text-body-sm text-text-grey">
+              <span className="inline-flex items-center gap-1 font-body text-body-sm text-on-surface-variant">
                 <Clock size={16} aria-hidden="true" />
                 {relativeTime(request.createdAt, now)}
               </span>
             </div>
           </div>
           <div className="text-right">
-            <p className="font-label text-label text-text-grey">Expiry</p>
+            <p className="font-label text-label text-on-surface-variant">Expiry</p>
             <p
               className={`mt-0.5 font-body text-body-md ${
                 request.expiryAt.getTime() <= now.getTime()
-                  ? "text-status-held"
+                  ? "text-status-error"
                   : "text-on-surface"
               }`}
             >
@@ -257,7 +257,7 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
 
         <dl className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
-            <dt className="font-label text-label text-text-grey">Type</dt>
+            <dt className="font-label text-label text-on-surface-variant">Type</dt>
             <dd className="mt-1 font-body text-body-md text-on-surface">
               {request.approvalType === "fifo_override"
                 ? "FIFO Override"
@@ -265,19 +265,19 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
             </dd>
           </div>
           <div>
-            <dt className="font-label text-label text-text-grey">Created</dt>
+            <dt className="font-label text-label text-on-surface-variant">Created</dt>
             <dd className="mt-1 font-body text-body-md text-on-surface">
               {request.createdAt.toLocaleString()}
             </dd>
           </div>
           <div>
-            <dt className="font-label text-label text-text-grey">Expires</dt>
+            <dt className="font-label text-label text-on-surface-variant">Expires</dt>
             <dd className="mt-1 font-body text-body-md text-on-surface">
               {request.expiryAt.toLocaleString()}
             </dd>
           </div>
           <div>
-            <dt className="font-label text-label text-text-grey">
+            <dt className="font-label text-label text-on-surface-variant">
               Reference #
             </dt>
             <dd className="mt-1 font-mono text-mono-md text-on-surface">
@@ -288,28 +288,28 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
       </div>
 
       {/* Requester info — office Level 1 card */}
-      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-white shadow-elevation-1 p-6">
         <h2 className="flex items-center gap-2 font-heading font-semibold text-data-display text-on-surface">
           <User size={20} aria-hidden="true" />
           Requester
         </h2>
         <dl className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
-            <dt className="font-label text-label text-text-grey">User ID</dt>
+            <dt className="font-label text-label text-on-surface-variant">User ID</dt>
             {/* Roboto Mono for user IDs per §9 */}
             <dd className="mt-1 font-mono text-mono-md text-on-surface">
               {request.requesterUserId}
             </dd>
           </div>
           <div>
-            <dt className="font-label text-label text-text-grey">Requested At</dt>
+            <dt className="font-label text-label text-on-surface-variant">Requested At</dt>
             <dd className="mt-1 font-body text-body-md text-on-surface">
               {request.createdAt.toLocaleString()}
             </dd>
           </div>
           {snapshot?.actor_user_id && (
             <div>
-              <dt className="font-label text-label text-text-grey">
+              <dt className="font-label text-label text-on-surface-variant">
                 Acting User ID
               </dt>
               <dd className="mt-1 font-mono text-mono-md text-on-surface">
@@ -319,7 +319,7 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
           )}
           {snapshot?.flow_type && (
             <div>
-              <dt className="font-label text-label text-text-grey">Flow</dt>
+              <dt className="font-label text-label text-on-surface-variant">Flow</dt>
               <dd className="mt-1 font-body text-body-md text-on-surface capitalize">
                 {snapshot.flow_type}
               </dd>
@@ -329,17 +329,17 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
       </div>
 
       {/* Item / Lot snapshot — FifoOverrideSnapshot per design.md §3 */}
-      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-white shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Item / Lot Snapshot
         </h2>
-        <p className="mt-1 font-body text-body-sm text-text-grey">
+        <p className="mt-1 font-body text-body-sm text-on-surface-variant">
           State captured at submission time. Current lot state may differ.
         </p>
         {snapshot ? (
           <dl className="mt-4 grid gap-4 sm:grid-cols-2">
             <div>
-              <dt className="font-label text-label text-text-grey">
+              <dt className="font-label text-label text-on-surface-variant">
                 Item Code
               </dt>
               <dd className="mt-1 font-mono text-mono-md text-on-surface">
@@ -347,7 +347,7 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
               </dd>
             </div>
             <div>
-              <dt className="font-label text-label text-text-grey">
+              <dt className="font-label text-label text-on-surface-variant">
                 Lot Number
               </dt>
               <dd className="mt-1 font-mono text-mono-md text-on-surface">
@@ -355,13 +355,13 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
               </dd>
             </div>
             <div>
-              <dt className="font-label text-label text-text-grey">Location</dt>
+              <dt className="font-label text-label text-on-surface-variant">Location</dt>
               <dd className="mt-1 font-mono text-mono-md text-on-surface">
                 {snapshot.location_code}
               </dd>
             </div>
             <div>
-              <dt className="font-label text-label text-text-grey">
+              <dt className="font-label text-label text-on-surface-variant">
                 Requested Qty
               </dt>
               <dd className="mt-1 font-mono text-mono-md text-on-surface">
@@ -369,7 +369,7 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
               </dd>
             </div>
             <div>
-              <dt className="font-label text-label text-text-grey">
+              <dt className="font-label text-label text-on-surface-variant">
                 Available Qty at Request
               </dt>
               <dd className="mt-1 font-mono text-mono-md text-on-surface">
@@ -377,7 +377,7 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
               </dd>
             </div>
             <div>
-              <dt className="font-label text-label text-text-grey">
+              <dt className="font-label text-label text-on-surface-variant">
                 Allocation Version
               </dt>
               {/* Mono for numeric version values per §9 */}
@@ -387,14 +387,14 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
             </div>
           </dl>
         ) : (
-          <p className="mt-4 font-body text-body-sm text-text-grey">
+          <p className="mt-4 font-body text-body-sm text-on-surface-variant">
             Snapshot not available.
           </p>
         )}
       </div>
 
       {/* Reason section — category chip + optional free-text note */}
-      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-white shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Reason
         </h2>
@@ -411,7 +411,7 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
           )}
           {/* Fallback: display raw reason if it doesn't match a category key */}
           {!REASON_CATEGORY_LABELS[request.reason] && (
-            <p className="font-body text-body-md text-text-grey">
+            <p className="font-body text-body-md text-on-surface-variant">
               {request.reason}
             </p>
           )}
@@ -423,11 +423,11 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
           snapshot.allocation_version for the affected lot/location. The override side
           is fully populated from the snapshot; the system side requires the allocation
           engine query result from 08 (tasks.md §7). */}
-      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-white shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-on-surface">
           FIFO Allocation Context
         </h2>
-        <p className="mt-1 font-body text-body-sm text-text-grey">
+        <p className="mt-1 font-body text-body-sm text-on-surface-variant">
           What the system would have allocated (FIFO/FEFO order) vs what the
           requester is asking for. Verify before approving.
         </p>
@@ -435,10 +435,10 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           {/* System FIFO recommendation */}
           <div className="rounded-lg border border-outline-variant/30 p-4">
-            <h3 className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+            <h3 className="font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
               System FIFO Order
             </h3>
-            <p className="mt-2 font-body text-body-sm text-text-grey">
+            <p className="mt-2 font-body text-body-sm text-on-surface-variant">
               Standard FIFO/FEFO sequence from{" "}
               <span className="font-mono text-mono-md">
                 lot_location_balances
@@ -452,14 +452,14 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
           </div>
 
           {/* Override request */}
-          <div className="rounded-lg border border-status-pending/40 bg-status-pending/5 p-4">
-            <h3 className="font-label text-label uppercase tracking-[0.05em] text-status-pending">
+          <div className="rounded-lg border border-status-warning/40 bg-status-warning/5 p-4">
+            <h3 className="font-label text-label uppercase tracking-[0.05em] text-status-warning">
               Override Request
             </h3>
             {snapshot ? (
               <dl className="mt-2 space-y-2">
                 <div className="flex items-baseline gap-2">
-                  <dt className="shrink-0 font-label text-label text-text-grey">
+                  <dt className="shrink-0 font-label text-label text-on-surface-variant">
                     Item:
                   </dt>
                   <dd className="font-mono text-mono-md text-on-surface">
@@ -467,7 +467,7 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
                   </dd>
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <dt className="shrink-0 font-label text-label text-text-grey">
+                  <dt className="shrink-0 font-label text-label text-on-surface-variant">
                     Lot:
                   </dt>
                   <dd className="font-mono text-mono-md text-on-surface">
@@ -475,7 +475,7 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
                   </dd>
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <dt className="shrink-0 font-label text-label text-text-grey">
+                  <dt className="shrink-0 font-label text-label text-on-surface-variant">
                     Location:
                   </dt>
                   <dd className="font-mono text-mono-md text-on-surface">
@@ -483,7 +483,7 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
                   </dd>
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <dt className="shrink-0 font-label text-label text-text-grey">
+                  <dt className="shrink-0 font-label text-label text-on-surface-variant">
                     Qty:
                   </dt>
                   <dd className="font-mono text-mono-md text-on-surface">
@@ -492,7 +492,7 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
                 </div>
               </dl>
             ) : (
-              <p className="mt-2 font-body text-body-sm text-text-grey">
+              <p className="mt-2 font-body text-body-sm text-on-surface-variant">
                 Snapshot not available.
               </p>
             )}
@@ -505,20 +505,20 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
       {showDecisionControls && (
         <div className="mt-6 space-y-4">
           {/* Approve form */}
-          <div className="rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1 p-6">
+          <div className="rounded-2xl border border-outline-variant/30 bg-white shadow-elevation-1 p-6">
             <h2 className="font-heading font-semibold text-data-display text-on-surface">
               Approve Request
             </h2>
-            <p className="mt-1 font-body text-body-sm text-text-grey">
+            <p className="mt-1 font-body text-body-sm text-on-surface-variant">
               Verify the snapshot and FIFO context above before approving.
               Approval authorizes a one-time FIFO override for exactly this
               item, lot, location, and quantity.
             </p>
             <form action={handleApprove} className="mt-4">
-              {/* Approve — primary CTA: brand-red h-11 px-6 per task spec */}
+              {/* Approve — primary CTA: action-blue h-11 px-6 per task spec */}
               <button
                 type="submit"
-                className="flex h-11 items-center justify-center rounded-xl bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
+                className="flex h-11 items-center justify-center rounded-xl bg-action-blue px-6 font-label text-label text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
               >
                 Approve
               </button>
@@ -526,11 +526,11 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
           </div>
 
           {/* Reject form */}
-          <div className="rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1 p-6">
+          <div className="rounded-2xl border border-outline-variant/30 bg-white shadow-elevation-1 p-6">
             <h2 className="font-heading font-semibold text-data-display text-on-surface">
               Reject Request
             </h2>
-            <p className="mt-1 font-body text-body-sm text-text-grey">
+            <p className="mt-1 font-body text-body-sm text-on-surface-variant">
               Rejection is recorded and cannot be undone. The requester must
               submit a new override request if needed.
             </p>
@@ -539,10 +539,10 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
               <div>
                 <label
                   htmlFor="reject-reason-category"
-                  className="block font-label text-label text-text-grey"
+                  className="block font-label text-label text-on-surface-variant"
                 >
                   Reason for rejection{" "}
-                  <span aria-hidden="true" className="text-brand-red">*</span>
+                  <span aria-hidden="true" className="text-action-blue">*</span>
                   <span className="sr-only">(required)</span>
                 </label>
                 <select
@@ -550,7 +550,7 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
                   name="reason_category"
                   required
                   defaultValue=""
-                  className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option value="" disabled>
                     Select a reason…
@@ -567,10 +567,10 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
               <div>
                 <label
                   htmlFor="reject-reason-note"
-                  className="block font-label text-label text-text-grey"
+                  className="block font-label text-label text-on-surface-variant"
                 >
                   Additional note{" "}
-                  <span className="text-text-grey font-body text-body-sm">
+                  <span className="text-on-surface-variant font-body text-body-sm">
                     (optional)
                   </span>
                 </label>
@@ -579,14 +579,14 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
                   name="reason_note"
                   rows={2}
                   placeholder="Any additional context for the requester…"
-                  className="mt-1 w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  className="mt-1 w-full rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
 
               {/* Reject — outline secondary button per task spec */}
               <button
                 type="submit"
-                className="flex h-11 items-center justify-center rounded-xl border border-outline-variant/30 px-6 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
+                className="flex h-11 items-center justify-center rounded-xl border border-outline-variant/30 px-6 font-label text-label text-on-surface hover:bg-surface-dim focus:outline-none focus:ring-2 focus:ring-primary motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
               >
                 Reject
               </button>
@@ -597,8 +597,8 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
 
       {/* Self-approval notice — shown when viewer is the requester and status is pending */}
       {request.status === "pending" && isSelfApproval && (
-        <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-surface-light-grey p-6">
-          <p className="font-body text-body-md text-text-grey">
+        <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-surface-dim p-6">
+          <p className="font-body text-body-md text-on-surface-variant">
             You cannot approve your own request. Another supervisor must review
             this request.
           </p>
@@ -607,8 +607,8 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
 
       {/* Non-pending notice — terminal/decided states */}
       {request.status !== "pending" && (
-        <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-surface-light-grey p-6">
-          <p className="font-body text-body-md text-text-grey">
+        <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-surface-dim p-6">
+          <p className="font-body text-body-md text-on-surface-variant">
             This request is{" "}
             <span className="font-label text-label uppercase">
               {STATUS_LABELS[status] ?? status.toUpperCase()}
@@ -619,12 +619,12 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
       )}
 
       {/* Decision history — append-only per design.md §3 (no update/delete path) */}
-      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-white shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Decision History
         </h2>
         {request.decisions.length === 0 ? (
-          <p className="mt-4 font-body text-body-md text-text-grey">
+          <p className="mt-4 font-body text-body-md text-on-surface-variant">
             No decisions recorded yet.
           </p>
         ) : (
@@ -638,8 +638,8 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
                   <span
                     className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase tracking-[0.05em] ${
                       dec.outcome === "approved"
-                        ? "bg-status-available/10 text-status-available"
-                        : "bg-status-held/10 text-status-held"
+                        ? "bg-status-success/10 text-status-success"
+                        : "bg-status-error/10 text-status-error"
                     }`}
                   >
                     {dec.outcome === "approved" ? "APPROVED" : "REJECTED"}
@@ -648,13 +648,13 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
                   <span className="font-mono text-mono-md text-on-surface">
                     {dec.reviewerUserId}
                   </span>
-                  <span className="inline-flex items-center gap-1 font-body text-body-sm text-text-grey">
+                  <span className="inline-flex items-center gap-1 font-body text-body-sm text-on-surface-variant">
                     <Clock size={16} aria-hidden="true" />
                     {dec.decidedAt.toLocaleString()}
                   </span>
                 </div>
                 {dec.reason && (
-                  <p className="mt-2 font-body text-body-md text-text-grey">
+                  <p className="mt-2 font-body text-body-md text-on-surface-variant">
                     {dec.reason}
                   </p>
                 )}

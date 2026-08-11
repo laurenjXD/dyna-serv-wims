@@ -36,7 +36,7 @@
 //              save, explicit transition to staged status).
 //     §5.1  — Expected line fields table (all required WrrLineItems inputs).
 //   specs/00-steering/brand-design-system.md
-//     §6    — Office surface: glassmorphism Level 1 cards (bg-surface-white
+//     §6    — Office surface: glassmorphism Level 1 cards (bg-white
 //             ), not solid dark-navy floor surfaces.
 //     §3    — Touch targets h-11 (44 px) for office; 64 px for floor.
 //

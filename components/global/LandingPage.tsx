@@ -30,7 +30,7 @@ export function LandingPage({
       <div className="flex min-h-screen flex-col gap-6 p-floor-padding pb-24">
         <section
           data-testid="landing-task-counts"
-          className="flex flex-col gap-2 rounded bg-surface-white p-4 shadow-elevation-2"
+          className="flex flex-col gap-2 rounded bg-white p-4 shadow-elevation-2"
         >
           {/* Floor text has a hard 16px minimum (brand-design-system.md
               §2/§11) — the "TODAY" eyebrow and the three count labels below
@@ -64,13 +64,13 @@ export function LandingPage({
 
         <section
           data-testid="landing-quick-actions"
-          className="flex flex-col gap-2 rounded bg-surface-white p-4 shadow-elevation-2"
+          className="flex flex-col gap-2 rounded bg-white p-4 shadow-elevation-2"
         >
           {/* "Quick Actions" is a section eyebrow (Epilogue/label role per
               brand-design-system.md §2), not a headline (Fira Sans) — fixed
               2026-08-08 per design-system-auditor finding. Still floor text,
               so text-body-md (16px) not text-label (14px). */}
-          <h2 className="font-label text-body-md font-semibold uppercase tracking-wide text-brand-navy">
+          <h2 className="font-label text-body-md font-semibold uppercase tracking-wide text-primary">
             Quick Actions
           </h2>
           <ul className="flex flex-col gap-2">
@@ -85,7 +85,7 @@ export function LandingPage({
         <a
           data-testid="landing-work-queue-cta"
           href={content.workQueueCta.href}
-          className="fixed inset-x-0 bottom-0 z-30 flex min-h-16 w-full items-center justify-center bg-brand-red px-floor-padding font-label text-body-md text-surface-white active:scale-[0.97]"
+          className="fixed inset-x-0 bottom-0 z-30 flex min-h-16 w-full items-center justify-center bg-action-blue px-floor-padding font-label text-body-md text-white active:scale-[0.97]"
         >
           {content.workQueueCta.label}
         </a>
@@ -102,27 +102,27 @@ export function LandingPage({
         {content.queueCards.map((card) => (
           <div
             key={card.queue}
-            className="rounded bg-surface-white p-4 shadow-elevation-1"
+            className="rounded bg-white p-4 shadow-elevation-1"
           >
-            <p className="font-label text-label uppercase text-text-grey">{card.queue}</p>
+            <p className="font-label text-label uppercase text-on-surface-variant">{card.queue}</p>
             <p className="font-heading text-headline-md font-semibold text-on-surface">
               {card.openCount} open
             </p>
-            <p className="font-body text-body-sm text-text-grey">{card.todayCount} today</p>
+            <p className="font-body text-body-sm text-on-surface-variant">{card.todayCount} today</p>
           </div>
         ))}
       </section>
 
       <section
         data-testid="landing-recent-activity"
-        className="rounded bg-surface-white p-4 shadow-elevation-1"
+        className="rounded bg-white p-4 shadow-elevation-1"
       >
         <h2 className="font-heading text-headline-md font-semibold text-on-surface">
           Recent Activity
         </h2>
         <ul className="flex flex-col gap-2">
           {content.recentActivity.map((item) => (
-            <li key={item.id} className="font-body text-body-md text-text-grey">
+            <li key={item.id} className="font-body text-body-md text-on-surface-variant">
               {item.description}
             </li>
           ))}

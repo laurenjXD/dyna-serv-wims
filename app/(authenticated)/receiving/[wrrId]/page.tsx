@@ -1,21 +1,3 @@
-// WRR detail — review, action buttons, and item line table.
-//
-// Traceability:
-//   specs/07-incoming-receiving/design.md §3 (route), §4 (state model/commands),
-//     §5.2 (scan-line state), §7 (disposition)
-//   specs/07-incoming-receiving/requirements.md R2, R7
-//   specs/00-steering/brand-design-system.md §6 (office surface, Level 1 elevation)
-//
-// Surface: Office. Permission gate: receiving.confirm.
-//
-// Action buttons are shown conditionally by WRR status:
-//   staged_pending_arrival → "Start Receiving"
-//   receiving_in_progress  → "Scan / Receive Items" link (per-line commit now
-//     happens on the floor scan screen — [wrrId]/receive/page.tsx — per
-//     design.md §9's 2026-08-10 per-line-commit reversal; this detail page no
-//     longer offers a whole-WRR commit action)
-//   confirmed              → "Print Receipt" link
-
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
@@ -36,10 +18,10 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_CLASSES: Record<string, string> = {
-  staged_pending_arrival: "bg-status-pending/10 text-status-pending",
-  receiving_in_progress: "bg-status-pending/10 text-status-pending",
-  confirmed: "bg-status-available/10 text-status-available",
-  cancelled: "bg-status-held/10 text-status-held",
+  staged_pending_arrival: "bg-surface-container-highest text-on-surface",
+  receiving_in_progress: "bg-tertiary-container text-on-tertiary-container",
+  confirmed: "bg-primary-container text-on-primary-container",
+  cancelled: "bg-error-container text-error",
 };
 
 const FLOW_LABELS: Record<string, string> = {
@@ -48,11 +30,10 @@ const FLOW_LABELS: Record<string, string> = {
   supplies: "Supplies",
 };
 
-// Disposition badge: store → status-available tint, inspect → status-pending tint
-// per task specification.
+// Disposition badge: store → status-success tint, inspect → status-warning tint
 const DISPOSITION_CLASSES: Record<string, string> = {
-  store: "bg-status-available/10 text-status-available",
-  inspect: "bg-status-pending/10 text-status-pending",
+  store: "bg-primary-container text-on-primary-container",
+  inspect: "bg-tertiary-container text-on-tertiary-container",
 };
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -65,8 +46,7 @@ export default async function WrrDetailPage({ params }: PageProps) {
   const { wrrId } = await params;
   const resolver = await createPageResolver();
 
-  // Gate: receiving.view — read-only detail/review surface visible to any staff
-  // who can view WRRs, not only those who can confirm.
+  // Gate: receiving.view
   const permResult = await requirePermission(resolver, "receiving.view");
   if (permResult.kind !== "authorized") {
     notFound();
@@ -82,122 +62,143 @@ export default async function WrrDetailPage({ params }: PageProps) {
     "use server";
     const actionResolver = await createPageResolver();
     await startReceiving(actionResolver, wrrId);
-    // Revalidate by redirecting back to this page so the updated status renders.
     redirect(`/receiving/${wrrId}`);
   }
 
   return (
-    <div className="mx-auto max-w-container">
-      {/* Breadcrumb */}
-      <nav aria-label="Breadcrumb" className="mb-4">
-        <ol className="flex items-center gap-1 font-body text-body-sm text-text-grey">
-          <li>
+    <div className="mx-auto w-full max-w-md pb-[100px] animate-in fade-in duration-300">
+      {/* Context Header */}
+      <div className="mb-md rounded-xl bg-surface-container-lowest p-md shadow-sm border border-outline-variant">
+        <div className="flex items-center justify-between mb-sm">
+          <div className="flex items-center gap-2">
             <Link
               href="/receiving"
-              className="inline-flex h-11 items-center rounded hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-surface-container-highest transition-colors"
             >
-              Receiving Queue
+              <span className="material-symbols-outlined text-on-surface-variant text-[20px]">arrow_back</span>
             </Link>
-          </li>
-          <li aria-hidden="true">/</li>
-          <li
-            aria-current="page"
-            className="font-mono text-mono-md text-on-surface"
+            <span className="font-label text-label-md text-on-surface-variant uppercase tracking-wider">
+              {FLOW_LABELS[wrr.flowType] ?? wrr.flowType} RECEIPT
+            </span>
+          </div>
+          <span
+            className={`inline-flex items-center rounded-sm px-2 py-0.5 font-label text-label-sm uppercase ${STATUS_CLASSES[wrr.status] ?? "bg-surface-container-highest text-on-surface"}`}
           >
-            {wrr.wrrNumber}
-          </li>
-        </ol>
-      </nav>
-
-      {/* Page heading + status badge */}
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
+            {STATUS_LABELS[wrr.status] ?? wrr.status.toUpperCase()}
+          </span>
+        </div>
+        
+        <h1 className="font-heading text-display-sm font-bold text-on-surface tracking-tight">
           {wrr.wrrNumber}
         </h1>
-        <span
-          className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase ${STATUS_CLASSES[wrr.status] ?? "bg-status-neutral/10 text-status-neutral"}`}
-        >
-          {STATUS_LABELS[wrr.status] ?? wrr.status.toUpperCase()}
-        </span>
+        
+        <div className="mt-md grid grid-cols-2 gap-sm border-t border-outline-variant/50 pt-md">
+          <div>
+            <p className="font-label text-label-sm text-on-surface-variant">Vendor Party ID</p>
+            <p className="font-mono text-body-md text-on-surface truncate">{wrr.vendorPartyId}</p>
+          </div>
+          <div>
+            <p className="font-label text-label-sm text-on-surface-variant">Created At</p>
+            <p className="font-body text-body-md text-on-surface truncate">{wrr.createdAt.toLocaleDateString()}</p>
+          </div>
+        </div>
       </div>
 
-      {/* WRR summary card — Level 1 office elevation */}
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
-        <h2 className="font-heading font-semibold text-data-display text-on-surface">
-          Document Details
-        </h2>
-        <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-          <div>
-            <dt className="font-label text-label text-text-grey">WRR Number</dt>
-            <dd className="mt-1 font-mono text-mono-md text-on-surface">
-              {wrr.wrrNumber}
-            </dd>
+      {/* Items List (Mobile Cards) */}
+      <div className="space-y-sm">
+        <div className="flex items-center justify-between px-xs">
+          <h2 className="font-heading text-title-md font-semibold text-on-surface">
+            Expected Lines
+          </h2>
+          <span className="font-label text-label-md text-on-surface-variant">
+            {wrr.items.length} items
+          </span>
+        </div>
+
+        {wrr.items.length === 0 ? (
+          <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-xl text-center shadow-sm">
+            <span className="material-symbols-outlined text-on-surface-variant/50 text-[48px] mb-sm">inventory_2</span>
+            <p className="font-body text-body-md text-on-surface-variant">
+              No line items on this WRR.
+            </p>
           </div>
-          <div>
-            <dt className="font-label text-label text-text-grey">Flow Type</dt>
-            <dd className="mt-1 font-body text-body-md text-on-surface">
-              {FLOW_LABELS[wrr.flowType] ?? wrr.flowType}
-            </dd>
+        ) : (
+          <div className="space-y-sm">
+            {wrr.items.map((item: WrrItemRow) => (
+              <div key={item.id} className="rounded-xl border border-outline-variant bg-surface-container-lowest p-md shadow-sm relative overflow-hidden">
+                <div className="flex justify-between items-start mb-sm">
+                  <div>
+                    <span className="font-label text-label-sm text-on-surface-variant uppercase tracking-wider block mb-xs">
+                      Lot Number
+                    </span>
+                    <span className="font-mono text-title-sm text-on-surface font-semibold">
+                      {item.lotNumber}
+                    </span>
+                  </div>
+                  <span
+                    className={`inline-flex items-center rounded-sm px-2 py-0.5 font-label text-label-sm uppercase ${DISPOSITION_CLASSES[item.disposition] ?? "bg-surface-container-highest text-on-surface"}`}
+                  >
+                    {item.disposition === "store" ? "STORE" : "INSPECT"}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-sm mb-md">
+                  <div>
+                    <span className="font-label text-label-sm text-on-surface-variant block">Item ID</span>
+                    <span className="font-mono text-body-md text-on-surface">{item.itemId ?? "—"}</span>
+                  </div>
+                </div>
+
+                {/* Scan Progress Bar */}
+                <div className="mt-sm">
+                  <div className="flex justify-between text-label-sm mb-xs">
+                    <span className="text-on-surface-variant font-label">Scan Progress</span>
+                    <span className="font-mono text-primary font-semibold">{item.scannedQty} / {item.expectedQty}</span>
+                  </div>
+                  <div className="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-500 ${item.scannedQty >= item.expectedQty ? 'bg-primary' : 'bg-tertiary'}`}
+                      style={{ width: `${Math.min(100, (item.scannedQty / item.expectedQty) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+                
+                <div className="mt-md border-t border-outline-variant/50 pt-sm flex justify-end">
+                   <WRRUnitLabelGenerator
+                      wrrItemId={item.id}
+                      wrrNumber={wrr.wrrNumber}
+                      itemCode={item.itemCode ?? item.lotNumber}
+                      lotNumber={item.lotNumber}
+                      expectedQty={item.expectedQty}
+                    />
+                </div>
+              </div>
+            ))}
           </div>
-          <div>
-            <dt className="font-label text-label text-text-grey">
-              Vendor Party ID
-            </dt>
-            <dd className="mt-1 font-mono text-mono-md text-on-surface">
-              {wrr.vendorPartyId}
-            </dd>
-          </div>
-          <div>
-            <dt className="font-label text-label text-text-grey">Staged By</dt>
-            <dd className="mt-1 font-mono text-mono-md text-on-surface">
-              {wrr.stagedByUserId}
-            </dd>
-          </div>
-          <div>
-            <dt className="font-label text-label text-text-grey">Created At</dt>
-            <dd className="mt-1 font-body text-body-md text-on-surface">
-              {wrr.createdAt.toLocaleString()}
-            </dd>
-          </div>
-          <div>
-            <dt className="font-label text-label text-text-grey">Status</dt>
-            <dd className="mt-1">
-              <span
-                className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase ${STATUS_CLASSES[wrr.status] ?? "bg-status-neutral/10 text-status-neutral"}`}
-              >
-                {STATUS_LABELS[wrr.status] ?? wrr.status.toUpperCase()}
-              </span>
-            </dd>
-          </div>
-        </dl>
+        )}
       </div>
 
-      {/* Action buttons — conditional on WRR status */}
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
-        <h2 className="font-heading font-semibold text-data-display text-on-surface">
-          Actions
-        </h2>
-        <div className="mt-4 flex flex-wrap gap-3">
+      {/* Fixed Bottom Action Dock */}
+      <div className="fixed bottom-[80px] left-0 w-full z-40 px-4 md:absolute md:bottom-0 md:px-0">
+        <div className="mx-auto flex max-w-md items-center gap-sm rounded-2xl bg-surface-container-lowest/80 p-sm shadow-elevation-3 backdrop-blur-md border border-outline-variant/50">
           {wrr.status === "staged_pending_arrival" && (
-            <form action={handleStartReceiving}>
+            <form action={handleStartReceiving} className="w-full">
               <button
                 type="submit"
-                className="flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="flex h-12 w-full items-center justify-center gap-sm rounded-xl bg-primary font-label text-label-lg text-on-primary shadow-sm hover:opacity-90 active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
               >
+                <span className="material-symbols-outlined text-[20px]">play_circle</span>
                 Start Receiving
               </button>
             </form>
           )}
 
           {wrr.status === "receiving_in_progress" && (
-            // Scan / Receive — links to the floor scan-and-per-line-commit
-            // interface. Per-line "Store"/"Hold" commits happen there
-            // (design.md §6.2/§6.3/§9); this office detail page does not
-            // offer a whole-WRR commit action.
             <Link
               href={`/receiving/${wrrId}/receive`}
-              className="inline-flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="flex h-12 w-full items-center justify-center gap-sm rounded-xl bg-primary font-label text-label-lg text-on-primary shadow-sm hover:opacity-90 active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
             >
+              <span className="material-symbols-outlined text-[20px]">barcode_scanner</span>
               Scan / Receive Items
             </Link>
           )}
@@ -205,94 +206,13 @@ export default async function WrrDetailPage({ params }: PageProps) {
           {wrr.status === "confirmed" && (
             <Link
               href={`/receiving/${wrrId}/print`}
-              className="inline-flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="flex h-12 w-full items-center justify-center gap-sm rounded-xl bg-primary font-label text-label-lg text-on-primary shadow-sm hover:opacity-90 active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
             >
+              <span className="material-symbols-outlined text-[20px]">print</span>
               Print Receipt
             </Link>
           )}
         </div>
-      </div>
-
-      {/* Items table — Level 1 office elevation */}
-      <div className="mt-6 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
-        <div className="px-6 py-4">
-          <h2 className="font-heading font-semibold text-data-display text-on-surface">
-            Expected Lines ({wrr.items.length})
-          </h2>
-        </div>
-        {wrr.items.length === 0 ? (
-          <div className="px-6 pb-8 text-center">
-            <p className="font-body text-body-md text-text-grey">
-              No line items on this WRR.
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Lot Number
-                  </th>
-                  {/* Note: itemCode and UOM are not available in the current
-                      WrrItemRow query result. Extend getWrrDocument to include
-                      these when the query is updated. */}
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Item ID
-                  </th>
-                  <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Expected Qty
-                  </th>
-                  <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Scanned Qty
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Disposition
-                  </th>
-                  <th className="px-4 py-3 text-center font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Labels
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/30">
-                {wrr.items.map((item: WrrItemRow) => (
-                  <tr key={item.id} className="hover:bg-surface-light-grey/50">
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {item.lotNumber}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {item.itemId ?? (
-                        <span className="text-status-neutral">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono text-mono-md text-on-surface">
-                      {item.expectedQty}
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono text-mono-md text-on-surface">
-                      {item.scannedQty}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase ${DISPOSITION_CLASSES[item.disposition] ?? "bg-status-neutral/10 text-status-neutral"}`}
-                      >
-                        {item.disposition === "store" ? "STORE" : "INSPECT"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <WRRUnitLabelGenerator
-                        wrrItemId={item.id}
-                        wrrNumber={wrr.wrrNumber}
-                        itemCode={item.itemId ?? item.lotNumber}
-                        lotNumber={item.lotNumber}
-                        expectedQty={item.expectedQty}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
     </div>
   );

@@ -50,7 +50,7 @@
 //              detail page must surface both commands at the right status.
 //     §5.2  — Scan-line state: matched, under-scanned, over-scanned, exception.
 //   specs/00-steering/brand-design-system.md
-//     §6    — Office surface: glassmorphism Level 1 cards (bg-surface-white
+//     §6    — Office surface: glassmorphism Level 1 cards (bg-white
 //             ), WRR header + status badge, items table.
 //     §3    — Touch targets h-11 (44 px) for office action buttons.
 //
@@ -58,6 +58,26 @@
 // Expected failure mode if page were absent: "Cannot find module '../[wrrId]/page'".
 
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, resolve } from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// ─── Source content helper ────────────────────────────────────────────────────
+// Mirrors the pageSource() convention already established in
+// app/(authenticated)/receiving/[wrrId]/__tests__/receive.page.test.ts —
+// reading the page source directly lets us assert on a specific JSX prop
+// wiring (which field feeds WRRUnitLabelGenerator's itemCode prop) without
+// needing a DOM environment or a fully-mocked Server Component render tree
+// (this page pulls in createPageResolver/requirePermission/db.select chains
+// that a component-render test would have to mock wholesale just to reach a
+// single prop expression).
+
+function pageSource(): string {
+  return readFileSync(resolve(__dirname, "../[wrrId]/page.tsx"), "utf8");
+}
 
 describe("WrrDetailPage (app/(authenticated)/receiving/[wrrId]/page.tsx)", () => {
   // R2.2 / R10.1 — the page module must exist and export a default Server
@@ -109,4 +129,48 @@ describe("WrrDetailPage (app/(authenticated)/receiving/[wrrId]/page.tsx)", () =>
     const actions = await import("@/lib/actions/receiving");
     expect(typeof actions.recordScan).toBe("function");
   });
+
+  // ── Task E (Phase 3, 2026-08-11 completion plan) — item-code display bug ──
+  //
+  // specs/18-barcode-integration/requirements.md FR-3a.2 — "Every one of the
+  //   N labels for a line SHALL share the same underlying item identity ...
+  //   THE SYSTEM SHALL NOT print N labels carrying an identical [bare-item-
+  //   code] payload for the same line" — the labels are keyed to the line's
+  //   real item identity, not to the item row's internal UUID FK.
+  // specs/18-barcode-integration/design.md §2.2 — "All N labels share the
+  //   same underlying item identity (the line's resolved item_id/item
+  //   CODE)" — the human-readable item code, not the items.id UUID.
+  //
+  // Bug: [wrrId]/page.tsx currently passes `itemCode={item.itemId ??
+  // item.lotNumber}` to WRRUnitLabelGenerator. `item.itemId` is
+  // wrr_items.item_id — the items table's UUID primary-key foreign key
+  // (lib/db/queries/receiving.ts WrrItemRow.itemId), not items.code (the
+  // human-readable Dyna-Serv Item Code, lib/db/schema/items.ts). Whenever a
+  // scanned/staged line resolves to an enrolled item (the common case),
+  // printed unit labels currently show a raw UUID where the item code
+  // belongs.
+  //
+  // getWrrDocument (lib/db/queries/receiving.ts) does not currently select
+  // items.code at all — WrrItemRow only carries itemId (the FK). Fixing this
+  // for real requires extending the query to join `items` and select its
+  // `code` column, threading a new `itemCode` field through WrrItemRow, not
+  // just a one-line swap at the call site.
+  //
+  // This test pins the call-site outcome only (per this repo's existing
+  // source-content testing convention for JSX prop wiring): the itemCode
+  // prop must never be bound to item.itemId, and must instead reference a
+  // real item-code field once one exists on WrrItemRow.
+  //
+  // Expected failure mode against the current bug: the page source literally
+  // contains the string "itemCode={item.itemId", so the `not.toContain`
+  // assertion below fails; and it does not yet contain "itemCode={item.itemCode",
+  // so that assertion fails too.
+  it(
+    "AC 18-FR-3a.2 / design.md §2.2: WRRUnitLabelGenerator's itemCode prop never binds to item.itemId (the items UUID FK) — printed unit labels must never show a raw UUID as the item code",
+    () => {
+      const source = pageSource();
+      expect(source).not.toContain("itemCode={item.itemId");
+      expect(source).toContain("itemCode={item.itemCode");
+    },
+  );
 });

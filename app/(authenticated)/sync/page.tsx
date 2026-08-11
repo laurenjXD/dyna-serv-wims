@@ -6,7 +6,7 @@
 //     §6.3 step 5b (failed entries surfaced to supervisor), §4.5 (outbox
 //     status enum: pending, syncing, failed, quarantined_actor_mismatch).
 //   specs/00-steering/brand-design-system.md §6 (office Level 1 elevation:
-//     bg-surface-white), §2 (typography), §9 (office buttons h-11).
+//     bg-white), §2 (typography), §9 (office buttons h-11).
 //
 // Surface: Office (conflict review is a supervisor/admin surface per design.md
 //   §6.6 — floor users see only the shell banner pointing here).
@@ -46,13 +46,13 @@ interface FailedEntry {
 }
 
 // ─── Reason badge helpers ─────────────────────────────────────────────────────
-// design-system §1.3: status-held (red) for failed/rejected, status-pending
+// design-system §1.3: status-error (red) for failed/rejected, status-warning
 // (amber) for conflict, status-neutral for other.
 
 const REASON_CLASSES: Record<FailedEntryReason, string> = {
-  "Authorization rejected": "bg-status-held/10 text-status-held",
-  Conflict: "bg-status-pending/10 text-status-pending",
-  "Permanent failure": "bg-status-held/10 text-status-held",
+  "Authorization rejected": "bg-status-error/10 text-status-error",
+  Conflict: "bg-status-warning/10 text-status-warning",
+  "Permanent failure": "bg-status-error/10 text-status-error",
 };
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
@@ -112,7 +112,7 @@ export default async function SyncPage({ searchParams }: PageProps) {
         <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
           Sync &amp; Offline Queue
         </h1>
-        <p className="mt-1 font-body text-body-md text-text-grey">
+        <p className="mt-1 font-body text-body-md text-on-surface-variant">
           Review failed and pending offline operations that need manual
           resolution.
         </p>
@@ -123,10 +123,10 @@ export default async function SyncPage({ searchParams }: PageProps) {
           TODO: wire to OfflineStatus context from lib/offline (ConnectivityStatus,
           SyncStatus per design.md §9.0). Show amber "Offline" state when
           connectivity === "offline", blue spinner when sync === "syncing". */}
-      <div className="mt-6 flex items-center gap-3 rounded-xl border-l-4 border-status-available bg-status-available/10 px-4 py-3">
+      <div className="mt-6 flex items-center gap-3 rounded-xl border-l-4 border-status-success bg-status-success/10 px-4 py-3">
         <CheckCircle2
           size={20}
-          className="shrink-0 text-status-available"
+          className="shrink-0 text-status-success"
           aria-hidden="true"
         />
         <span className="font-body text-body-md text-on-surface">
@@ -139,10 +139,10 @@ export default async function SyncPage({ searchParams }: PageProps) {
       <div className="mt-6 flex gap-1 border-b border-outline-variant/30">
         <Link
           href="/sync?tab=failed"
-          className={`flex h-11 items-center gap-2 px-4 font-label text-label motion-safe:transition-colors motion-safe:duration-150 focus:outline-none focus:ring-2 focus:ring-brand-navy ${
+          className={`flex h-11 items-center gap-2 px-4 font-label text-label motion-safe:transition-colors motion-safe:duration-150 focus:outline-none focus:ring-2 focus:ring-primary ${
             activeTab === "failed"
-              ? "border-b-2 border-brand-navy text-brand-navy"
-              : "text-text-grey hover:text-on-surface"
+              ? "border-b-2 border-primary text-primary"
+              : "text-on-surface-variant hover:text-on-surface"
           }`}
           aria-current={activeTab === "failed" ? "page" : undefined}
         >
@@ -150,17 +150,17 @@ export default async function SyncPage({ searchParams }: PageProps) {
           Failed
           {/* Attention count badge — shown when there are failed entries */}
           {MOCK_FAILED_ENTRIES.length > 0 && (
-            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-status-held/10 px-1.5 font-label text-label text-status-held uppercase">
+            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-status-error/10 px-1.5 font-label text-label text-status-error uppercase">
               {MOCK_FAILED_ENTRIES.length}
             </span>
           )}
         </Link>
         <Link
           href="/sync?tab=syncing"
-          className={`flex h-11 items-center gap-2 px-4 font-label text-label motion-safe:transition-colors motion-safe:duration-150 focus:outline-none focus:ring-2 focus:ring-brand-navy ${
+          className={`flex h-11 items-center gap-2 px-4 font-label text-label motion-safe:transition-colors motion-safe:duration-150 focus:outline-none focus:ring-2 focus:ring-primary ${
             activeTab === "syncing"
-              ? "border-b-2 border-brand-navy text-brand-navy"
-              : "text-text-grey hover:text-on-surface"
+              ? "border-b-2 border-primary text-primary"
+              : "text-on-surface-variant hover:text-on-surface"
           }`}
           aria-current={activeTab === "syncing" ? "page" : undefined}
         >
@@ -169,10 +169,10 @@ export default async function SyncPage({ searchParams }: PageProps) {
         </Link>
         <Link
           href="/sync?tab=completed"
-          className={`flex h-11 items-center gap-2 px-4 font-label text-label motion-safe:transition-colors motion-safe:duration-150 focus:outline-none focus:ring-2 focus:ring-brand-navy ${
+          className={`flex h-11 items-center gap-2 px-4 font-label text-label motion-safe:transition-colors motion-safe:duration-150 focus:outline-none focus:ring-2 focus:ring-primary ${
             activeTab === "completed"
-              ? "border-b-2 border-brand-navy text-brand-navy"
-              : "text-text-grey hover:text-on-surface"
+              ? "border-b-2 border-primary text-primary"
+              : "text-on-surface-variant hover:text-on-surface"
           }`}
           aria-current={activeTab === "completed" ? "page" : undefined}
         >
@@ -201,16 +201,16 @@ export default async function SyncPage({ searchParams }: PageProps) {
 function FailedTab({ entries }: { entries: FailedEntry[] }) {
   if (entries.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-1">
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-white px-6 py-12 text-center shadow-elevation-1">
         <CheckCircle2
           size={40}
-          className="text-status-available"
+          className="text-status-success"
           aria-hidden="true"
         />
-        <p className="font-body text-body-md text-status-available">
+        <p className="font-body text-body-md text-status-success">
           No failed operations
         </p>
-        <p className="font-body text-body-sm text-text-grey">
+        <p className="font-body text-body-sm text-on-surface-variant">
           All queued operations have synced successfully.
         </p>
       </div>
@@ -228,15 +228,15 @@ function FailedTab({ entries }: { entries: FailedEntry[] }) {
 
 function FailedEntryCard({ entry }: { entry: FailedEntry }) {
   return (
-    <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
+    <div className="rounded-xl border border-outline-variant/30 bg-white p-4 shadow-elevation-1">
       {/* Card header row: operation badge + time */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         {/* Operation type badge — Epilogue SemiBold uppercase */}
-        <span className="inline-flex items-center rounded-full bg-brand-navy/10 px-3 py-1 font-label text-label uppercase tracking-[0.05em] text-brand-navy">
+        <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 font-label text-label uppercase tracking-[0.05em] text-primary">
           {entry.operationLabel}
         </span>
         {/* Relative time */}
-        <span className="font-body text-body-sm text-text-grey">
+        <span className="font-body text-body-sm text-on-surface-variant">
           Failed {entry.failedAt}
         </span>
       </div>
@@ -245,7 +245,7 @@ function FailedEntryCard({ entry }: { entry: FailedEntry }) {
       <div className="mt-3 flex items-center gap-2">
         <AlertTriangle
           size={16}
-          className="shrink-0 text-status-held"
+          className="shrink-0 text-status-error"
           aria-hidden="true"
         />
         <span
@@ -256,8 +256,8 @@ function FailedEntryCard({ entry }: { entry: FailedEntry }) {
       </div>
 
       {/* Data snapshot — Roboto Mono for codes/IDs per §9 */}
-      <div className="mt-3 rounded-lg bg-surface-light-grey px-3 py-2">
-        <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+      <div className="mt-3 rounded-lg bg-surface-dim px-3 py-2">
+        <p className="font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
           Captured data (truncated)
         </p>
         <p className="mt-1 font-mono text-mono-md text-on-surface">
@@ -273,14 +273,14 @@ function FailedEntryCard({ entry }: { entry: FailedEntry }) {
       <div className="mt-4 flex flex-wrap gap-3">
         <button
           type="button"
-          className="flex h-11 items-center gap-2 rounded bg-brand-navy px-4 font-label text-label text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:transition-transform motion-safe:duration-100 motion-safe:active:scale-[0.97]"
+          className="flex h-11 items-center gap-2 rounded bg-primary px-4 font-label text-label text-white focus:outline-none focus:ring-2 focus:ring-primary motion-safe:transition-transform motion-safe:duration-100 motion-safe:active:scale-[0.97]"
         >
           <RefreshCw size={16} aria-hidden="true" />
           Retry
         </button>
         <button
           type="button"
-          className="flex h-11 items-center gap-2 rounded border border-outline-variant/30 px-4 font-label text-label text-status-held focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:transition-transform motion-safe:duration-100 motion-safe:active:scale-[0.97]"
+          className="flex h-11 items-center gap-2 rounded border border-outline-variant/30 px-4 font-label text-label text-status-error focus:outline-none focus:ring-2 focus:ring-primary motion-safe:transition-transform motion-safe:duration-100 motion-safe:active:scale-[0.97]"
         >
           <XCircle size={16} aria-hidden="true" />
           Discard
@@ -300,16 +300,16 @@ function SyncingTab() {
 
   if (inProgressEntries.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-1">
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-white px-6 py-12 text-center shadow-elevation-1">
         <Loader2
           size={40}
           className="text-status-neutral"
           aria-hidden="true"
         />
-        <p className="font-body text-body-md text-text-grey">
+        <p className="font-body text-body-md text-on-surface-variant">
           Nothing currently syncing.
         </p>
-        <p className="font-body text-body-sm text-text-grey">
+        <p className="font-body text-body-sm text-on-surface-variant">
           In-progress sync operations will appear here.
         </p>
       </div>
@@ -334,20 +334,20 @@ function CompletedTab() {
 
   return (
     <div>
-      <p className="mb-3 font-body text-body-sm text-text-grey">
+      <p className="mb-3 font-body text-body-sm text-on-surface-variant">
         Completed entries expire after 24 hours.
       </p>
       {completedEntries.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-1">
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-white px-6 py-12 text-center shadow-elevation-1">
           <CheckCircle2
             size={40}
-            className="text-status-available"
+            className="text-status-success"
             aria-hidden="true"
           />
-          <p className="font-body text-body-md text-text-grey">
+          <p className="font-body text-body-md text-on-surface-variant">
             No completed operations in this session.
           </p>
-          <p className="font-body text-body-sm text-text-grey">
+          <p className="font-body text-body-sm text-on-surface-variant">
             Successfully synced operations appear here until they expire.
           </p>
         </div>

@@ -33,7 +33,7 @@ export function SettingsNav() {
     <nav
       aria-label="Settings"
       data-testid="settings-nav"
-      className="flex shrink-0 flex-row gap-1 overflow-x-auto border-b border-outline-variant/30 bg-surface-white p-2 md:w-56 md:flex-col md:border-b-0 md:border-r md:p-4"
+      className="flex shrink-0 flex-row gap-1 overflow-x-auto border-b border-outline-variant/30 bg-white p-2 md:w-56 md:flex-col md:border-b-0 md:border-r md:p-4"
     >
       {SETTINGS_NAV_ITEMS.map((item) => {
         const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`);
@@ -43,10 +43,10 @@ export function SettingsNav() {
             href={item.href}
             data-testid={`settings-nav-${item.id}`}
             aria-current={isActive ? "page" : undefined}
-            className={`flex min-h-11 items-center whitespace-nowrap rounded px-4 py-2 font-label text-label uppercase tracking-wide focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
+            className={`flex min-h-11 items-center whitespace-nowrap rounded px-4 py-2 font-label text-label uppercase tracking-wide focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
               isActive
-                ? "bg-brand-red text-surface-white"
-                : "text-brand-navy hover:bg-surface-light-grey"
+                ? "bg-action-blue text-white"
+                : "text-primary hover:bg-surface-dim"
             }`}
           >
             {item.label}

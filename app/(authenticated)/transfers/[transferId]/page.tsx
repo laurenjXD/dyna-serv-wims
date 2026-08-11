@@ -34,9 +34,9 @@ const STATUS_LABELS: Record<string, string> = {
 
 const STATUS_CLASSES: Record<string, string> = {
   staged: "bg-status-neutral/10 text-status-neutral",
-  in_progress: "bg-status-pending/10 text-status-pending",
-  completed: "bg-status-available/10 text-status-available",
-  cancelled: "bg-status-held/10 text-status-held",
+  in_progress: "bg-status-warning/10 text-status-warning",
+  completed: "bg-status-success/10 text-status-success",
+  cancelled: "bg-status-error/10 text-status-error",
 };
 
 const LINE_STATUS_LABELS: Record<string, string> = {
@@ -48,9 +48,9 @@ const LINE_STATUS_LABELS: Record<string, string> = {
 
 const LINE_STATUS_CLASSES: Record<string, string> = {
   pending: "bg-status-neutral/10 text-status-neutral",
-  in_transit: "bg-status-pending/10 text-status-pending",
-  completed: "bg-status-available/10 text-status-available",
-  cancelled: "bg-status-held/10 text-status-held",
+  in_transit: "bg-status-warning/10 text-status-warning",
+  completed: "bg-status-success/10 text-status-success",
+  cancelled: "bg-status-error/10 text-status-error",
 };
 
 const FLOW_LABELS: Record<string, string> = {
@@ -130,11 +130,11 @@ export default async function TransferDetailPage({
     <div className="mx-auto max-w-container">
       {/* Breadcrumb */}
       <nav aria-label="Breadcrumb" className="mb-4">
-        <ol className="flex items-center gap-1 font-body text-body-sm text-text-grey">
+        <ol className="flex items-center gap-1 font-body text-body-sm text-on-surface-variant">
           <li>
             <Link
               href="/transfers"
-              className="inline-flex h-11 items-center rounded hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="inline-flex h-11 items-center rounded hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary"
             >
               Transfer Queue
             </Link>
@@ -165,25 +165,25 @@ export default async function TransferDetailPage({
       {actionErrorMsg && (
         <div
           role="alert"
-          className="mt-4 rounded-md bg-status-held/10 px-4 py-3"
+          className="mt-4 rounded-md bg-status-error/10 px-4 py-3"
         >
-          <p className="font-label text-label uppercase text-status-held">
+          <p className="font-label text-label uppercase text-status-error">
             Action failed
           </p>
-          <p className="mt-1 font-body text-body-md text-status-held">
+          <p className="mt-1 font-body text-body-md text-status-error">
             {actionErrorMsg}
           </p>
         </div>
       )}
 
       {/* Transfer summary card — Level 1 office elevation */}
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-md bg-white shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Transfer Details
         </h2>
         <dl className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
-            <dt className="font-label text-label text-text-grey">Status</dt>
+            <dt className="font-label text-label text-on-surface-variant">Status</dt>
             <dd className="mt-1">
               <span
                 className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase ${STATUS_CLASSES[transfer.status] ?? "bg-status-neutral/10 text-status-neutral"}`}
@@ -193,13 +193,13 @@ export default async function TransferDetailPage({
             </dd>
           </div>
           <div>
-            <dt className="font-label text-label text-text-grey">Flow Type</dt>
+            <dt className="font-label text-label text-on-surface-variant">Flow Type</dt>
             <dd className="mt-1 font-body text-body-md text-on-surface">
               {FLOW_LABELS[transfer.flowType] ?? transfer.flowType}
             </dd>
           </div>
           <div>
-            <dt className="font-label text-label text-text-grey">
+            <dt className="font-label text-label text-on-surface-variant">
               From Location
             </dt>
             <dd className="mt-1 font-mono text-mono-md text-on-surface">
@@ -207,7 +207,7 @@ export default async function TransferDetailPage({
             </dd>
           </div>
           <div>
-            <dt className="font-label text-label text-text-grey">
+            <dt className="font-label text-label text-on-surface-variant">
               To Location
             </dt>
             <dd className="mt-1 font-mono text-mono-md text-on-surface">
@@ -215,7 +215,7 @@ export default async function TransferDetailPage({
             </dd>
           </div>
           <div>
-            <dt className="font-label text-label text-text-grey">
+            <dt className="font-label text-label text-on-surface-variant">
               Requested By
             </dt>
             <dd className="mt-1 font-mono text-mono-md text-on-surface">
@@ -223,13 +223,13 @@ export default async function TransferDetailPage({
             </dd>
           </div>
           <div>
-            <dt className="font-label text-label text-text-grey">Created At</dt>
+            <dt className="font-label text-label text-on-surface-variant">Created At</dt>
             <dd className="mt-1 font-body text-body-md text-on-surface">
               {transfer.createdAt.toLocaleString()}
             </dd>
           </div>
           <div>
-            <dt className="font-label text-label text-text-grey">
+            <dt className="font-label text-label text-on-surface-variant">
               Requires Approval
             </dt>
             <dd className="mt-1 font-body text-body-md text-on-surface">
@@ -241,7 +241,7 @@ export default async function TransferDetailPage({
 
       {/* Action buttons — conditional on transfer status and execute capability */}
       {canExecute && (
-        <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+        <div className="mt-6 rounded-md bg-white shadow-elevation-1 p-6">
           <h2 className="font-heading font-semibold text-data-display text-on-surface">
             Actions
           </h2>
@@ -250,7 +250,7 @@ export default async function TransferDetailPage({
               <form action={handleStartTransfer}>
                 <button
                   type="submit"
-                  className="flex h-11 items-center justify-center rounded bg-brand-red px-4 font-label text-label text-surface-white hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  className="flex h-11 items-center justify-center rounded bg-action-blue px-4 font-label text-label text-white hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   Start Transfer
                 </button>
@@ -262,7 +262,7 @@ export default async function TransferDetailPage({
                 {/* Execute Transfer — links to floor execution interface */}
                 <Link
                   href={`/transfers/${transferId}/execute`}
-                  className="inline-flex h-11 items-center justify-center rounded bg-brand-red px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  className="inline-flex h-11 items-center justify-center rounded bg-action-blue px-4 font-label text-label text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   Execute Transfer
                 </Link>
@@ -270,7 +270,7 @@ export default async function TransferDetailPage({
                 {/* Open Inspection — links to the inspect interface */}
                 <Link
                   href={`/transfers/${transferId}/inspect`}
-                  className="inline-flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  className="inline-flex h-11 items-center justify-center rounded bg-primary px-4 font-label text-label text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   Open Inspection
                 </Link>
@@ -279,7 +279,7 @@ export default async function TransferDetailPage({
                 <form action={handleCancelTransfer}>
                   <button
                     type="submit"
-                    className="flex h-11 items-center justify-center rounded bg-status-held px-4 font-label text-label text-surface-white hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                    className="flex h-11 items-center justify-center rounded bg-status-error px-4 font-label text-label text-white hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     Cancel Transfer
                   </button>
@@ -291,7 +291,7 @@ export default async function TransferDetailPage({
       )}
 
       {/* Lines table — Level 1 office elevation */}
-      <div className="mt-6 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
+      <div className="mt-6 overflow-hidden rounded-md bg-white shadow-elevation-1">
         <div className="px-6 py-4">
           <h2 className="font-heading font-semibold text-data-display text-on-surface">
             Transfer Lines ({transfer.lines.length})
@@ -299,7 +299,7 @@ export default async function TransferDetailPage({
         </div>
         {transfer.lines.length === 0 ? (
           <div className="px-6 pb-8 text-center">
-            <p className="font-body text-body-md text-text-grey">
+            <p className="font-body text-body-md text-on-surface-variant">
               No lines on this transfer.
             </p>
           </div>
@@ -307,28 +307,28 @@ export default async function TransferDetailPage({
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
+                <tr className="border-b border-outline-variant/30 bg-surface-dim">
                   {/* Epilogue SemiBold uppercase headers per §9 tables */}
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Lot ID
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Item ID
                   </th>
-                  <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Qty Requested
                   </th>
-                  <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Qty Transferred
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Status
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/30">
                 {transfer.lines.map((line: TransferLineRow) => (
-                  <tr key={line.id} className="hover:bg-surface-light-grey/50">
+                  <tr key={line.id} className="hover:bg-surface-dim/50">
                     {/* Roboto Mono for lot/item IDs per §9 */}
                     <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
                       {line.lotId}

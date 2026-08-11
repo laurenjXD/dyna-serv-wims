@@ -48,18 +48,18 @@ export default function AcceptInvitePage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface-light-grey p-4">
-      <div className="w-full max-w-sm rounded bg-surface-white p-8 shadow-elevation-2">
+    <div className="flex min-h-screen items-center justify-center bg-surface-dim p-4">
+      <div className="w-full max-w-sm rounded bg-white p-8 shadow-elevation-2">
         <div className="mb-8 text-center">
-          <span className="font-label text-headline-md font-semibold text-brand-navy">
+          <span className="font-label text-headline-md font-semibold text-primary">
             Dyna-Serv WIMS
           </span>
         </div>
 
-        <h1 className="mb-2 font-heading text-headline-md font-semibold text-brand-navy">
+        <h1 className="mb-2 font-heading text-headline-md font-semibold text-primary">
           Welcome
         </h1>
-        <p className="mb-6 font-body text-body-md text-text-grey">
+        <p className="mb-6 font-body text-body-md text-on-surface-variant">
           Set your name and password to finish setting up your account. Your role and access
           were already assigned by an administrator and can&apos;t be changed here.
         </p>
@@ -79,7 +79,7 @@ export default function AcceptInvitePage() {
               required
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              className="rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+              className="rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             />
           </div>
 
@@ -98,7 +98,7 @@ export default function AcceptInvitePage() {
               required
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+              className="rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             />
           </div>
 
@@ -117,12 +117,12 @@ export default function AcceptInvitePage() {
               required
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+              className="rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             />
           </div>
 
           {error && (
-            <p role="alert" className="font-body text-body-md text-brand-red">
+            <p role="alert" className="font-body text-body-md text-action-blue">
               {error}
             </p>
           )}
@@ -131,7 +131,7 @@ export default function AcceptInvitePage() {
             type="submit"
             data-testid="accept-invite-submit"
             disabled={pending}
-            className="mt-2 flex min-h-11 w-full items-center justify-center rounded bg-brand-navy px-4 font-label text-label uppercase tracking-wide text-surface-white hover:bg-brand-royal-blue focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2 disabled:opacity-60"
+            className="mt-2 flex min-h-11 w-full items-center justify-center rounded bg-primary px-4 font-label text-label uppercase tracking-wide text-white hover:bg-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-60"
           >
             {pending ? "Finishing setup…" : "Finish setup"}
           </button>

@@ -11,7 +11,7 @@
 //     FR-4.2 — Auditory feedback: short Web Audio API beep on successful decode
 //
 //   specs/00-steering/brand-design-system.md
-//     §1.3 — status-available (#10B981) for success, status-held (#EF4444) for error
+//     §1.3 — status-success (#10B981) for success, status-error (#EF4444) for error
 //     §9   — Full-screen color flash is functional feedback, highest priority,
 //             must never be delayed or skipped
 //     §10  — Full-screen color flash: opacity/color transition only (no
@@ -142,7 +142,7 @@ describe("ScanFeedbackProvider (specs/18-barcode-integration FR-4.1, FR-4.2, AC-
 
       const overlayHasSuccessClass =
         overlay?.className?.toLowerCase().includes("success") ||
-        overlay?.className?.includes("status-available") ||
+        overlay?.className?.includes("status-success") ||
         overlay?.getAttribute("data-state") === "success";
 
       const liveRegionHasSuccessText =
@@ -171,7 +171,7 @@ describe("ScanFeedbackProvider (specs/18-barcode-integration FR-4.1, FR-4.2, AC-
 
       const overlayHasErrorClass =
         overlay?.className?.toLowerCase().includes("error") ||
-        overlay?.className?.includes("status-held") ||
+        overlay?.className?.includes("status-error") ||
         overlay?.getAttribute("data-state") === "error";
 
       const liveRegionHasErrorText =

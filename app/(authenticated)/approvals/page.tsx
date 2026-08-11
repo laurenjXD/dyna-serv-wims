@@ -4,7 +4,7 @@
 //   specs/09-approval-queue/design.md §7 (queue UI routes, office shell)
 //   specs/09-approval-queue/requirements.md R3 (queue filtering), R7 (audit/security)
 //   specs/00-steering/brand-design-system.md §2 (typography), §6 (office Level 1
-//     elevation: bg-surface-white), §9 (office table pattern)
+//     elevation: bg-white), §9 (office table pattern)
 //
 // Surface: Office. Capability gate: fifo_override.approve (supervisor, global scope).
 // Design.md §4: fifo_override.approve granted to supervisor only.
@@ -26,9 +26,9 @@ const PAGE_SIZE = 20;
 // ─── Status badge helpers ─────────────────────────────────────────────────────
 // Tokens sourced from tailwind.config.ts — no raw hex values.
 // brand-design-system.md §1.3:
-//   pending  → status-pending (amber)
-//   approved → status-available (green)
-//   rejected/expired/cancelled → status-held (red)
+//   pending  → status-warning (amber)
+//   approved → status-success (green)
+//   rejected/expired/cancelled → status-error (red)
 //   consumed → status-neutral
 
 type ApprovalStatus =
@@ -49,11 +49,11 @@ const STATUS_LABELS: Record<ApprovalStatus, string> = {
 };
 
 const STATUS_CLASSES: Record<ApprovalStatus, string> = {
-  pending: "bg-status-pending/10 text-status-pending",
-  approved: "bg-status-available/10 text-status-available",
-  rejected: "bg-status-held/10 text-status-held",
-  expired: "bg-status-held/10 text-status-held",
-  cancelled: "bg-status-held/10 text-status-held",
+  pending: "bg-status-warning/10 text-status-warning",
+  approved: "bg-status-success/10 text-status-success",
+  rejected: "bg-status-error/10 text-status-error",
+  expired: "bg-status-error/10 text-status-error",
+  cancelled: "bg-status-error/10 text-status-error",
   consumed: "bg-status-neutral/10 text-status-neutral",
 };
 
@@ -137,10 +137,10 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
   if (permResult.kind !== "authorized") {
     return (
       <div className="mx-auto max-w-container px-4 py-12 text-center">
-        <p className="font-body text-body-md text-text-grey">
+        <p className="font-body text-body-md text-on-surface-variant">
           You do not have permission to view the approval queue.
         </p>
-        <p className="mt-2 font-body text-body-sm text-text-grey">
+        <p className="mt-2 font-body text-body-sm text-on-surface-variant">
           This page requires the{" "}
           <span className="font-mono text-mono-md">fifo_override.approve</span>{" "}
           capability.
@@ -182,7 +182,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
         <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
           Approval Queue
         </h1>
-        <p className="mt-1 font-body text-body-md text-text-grey">
+        <p className="mt-1 font-body text-body-md text-on-surface-variant">
           Pending FIFO override requests awaiting supervisor review.
         </p>
       </div>
@@ -194,7 +194,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
           <div className="flex flex-col gap-1">
             <label
               htmlFor="type-filter"
-              className="font-label text-label text-text-grey"
+              className="font-label text-label text-on-surface-variant"
             >
               Type
             </label>
@@ -202,7 +202,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
               id="type-filter"
               name="type"
               defaultValue={typeFilter ?? "all"}
-              className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="h-11 rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="all">All types</option>
               <option value="fifo_override">FIFO Override</option>
@@ -213,7 +213,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
           <div className="flex flex-col gap-1">
             <label
               htmlFor="status-filter"
-              className="font-label text-label text-text-grey"
+              className="font-label text-label text-on-surface-variant"
             >
               Status
             </label>
@@ -221,7 +221,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
               id="status-filter"
               name="status"
               defaultValue={statusFilter ?? "pending"}
-              className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="h-11 rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="pending">Pending</option>
               <option value="all">All statuses</option>
@@ -232,7 +232,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
           <div className="flex flex-col gap-1">
             <label
               htmlFor="sort-filter"
-              className="font-label text-label text-text-grey"
+              className="font-label text-label text-on-surface-variant"
             >
               Age Sort
             </label>
@@ -240,7 +240,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
               id="sort-filter"
               name="sort"
               defaultValue={sortParam ?? "oldest"}
-              className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="h-11 rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="oldest">Oldest first</option>
               <option value="newest">Newest first</option>
@@ -249,7 +249,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
 
           <button
             type="submit"
-            className="flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:transition-opacity motion-safe:duration-150"
+            className="flex h-11 items-center justify-center rounded bg-primary px-4 font-label text-label text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary motion-safe:transition-opacity motion-safe:duration-150"
           >
             Apply
           </button>
@@ -257,7 +257,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
           {hasActiveFilter && (
             <Link
               href="/approvals"
-              className="flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-dim focus:outline-none focus:ring-2 focus:ring-primary"
             >
               Clear
             </Link>
@@ -266,29 +266,29 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
       </div>
 
       {/* Queue table — Level 1 office elevation per brand-design-system.md §6:
-          bg-surface-white (glassmorphism, office-only) */}
-      <div className="mt-4 overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+          bg-white (glassmorphism, office-only) */}
+      <div className="mt-4 overflow-hidden rounded-2xl border border-outline-variant/30 bg-white shadow-elevation-1">
         {sortedRows.length === 0 ? (
           /* Empty state — CheckCircle2 icon + copy */
           <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
             <CheckCircle2
               size={40}
-              className="text-status-available"
+              className="text-status-success"
               aria-hidden="true"
             />
-            <p className="font-body text-body-md text-text-grey">
+            <p className="font-body text-body-md text-on-surface-variant">
               {hasActiveFilter
                 ? "No approval requests match the current filters."
                 : "No pending approvals."}
             </p>
             {!hasActiveFilter && (
-              <p className="font-body text-body-sm text-text-grey">
+              <p className="font-body text-body-sm text-on-surface-variant">
                 New requests appear here when warehousemen submit FIFO override
                 requests during picking.
               </p>
             )}
             {hasActiveFilter && (
-              <p className="font-body text-body-sm text-text-grey">
+              <p className="font-body text-body-sm text-on-surface-variant">
                 Try clearing the filters or check back later.
               </p>
             )}
@@ -297,27 +297,27 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
+                <tr className="border-b border-outline-variant/30 bg-surface-dim">
                   {/* Epilogue SemiBold uppercase headers per brand-design-system.md §9 */}
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Type
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Requested By
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Item / Lot
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Reason
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Age
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Expiry
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Status
                   </th>
                   <th className="sr-only px-4 py-3">Actions</th>
@@ -336,7 +336,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
                   return (
                     <tr
                       key={req.id}
-                      className="hover:bg-surface-light-grey/50"
+                      className="hover:bg-surface-dim/50"
                     >
                       {/* Type — body text */}
                       <td className="px-4 py-3 font-body text-body-md text-on-surface">
@@ -362,7 +362,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
 
                       {/* Age — relative time with Clock icon */}
                       <td className="px-4 py-3">
-                        <span className="inline-flex items-center gap-1 font-body text-body-md text-text-grey">
+                        <span className="inline-flex items-center gap-1 font-body text-body-md text-on-surface-variant">
                           <Clock size={16} className="shrink-0" aria-hidden="true" />
                           {age}
                         </span>
@@ -373,8 +373,8 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
                         <span
                           className={
                             isExpired
-                              ? "text-status-held"
-                              : "text-text-grey"
+                              ? "text-status-error"
+                              : "text-on-surface-variant"
                           }
                         >
                           {expiry}
@@ -394,7 +394,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
                       <td className="px-4 py-3 text-right">
                         <Link
                           href={`/approvals/${req.id}`}
-                          className="inline-flex h-11 items-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:transition-opacity motion-safe:duration-150"
+                          className="inline-flex h-11 items-center rounded bg-primary px-4 font-label text-label text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary motion-safe:transition-opacity motion-safe:duration-150"
                         >
                           Review
                         </Link>
@@ -410,7 +410,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
 
       {/* Pagination controls */}
       {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between font-body text-body-sm text-text-grey">
+        <div className="mt-4 flex items-center justify-between font-body text-body-sm text-on-surface-variant">
           <span>
             Page {currentPage} of {totalPages} ({total} total)
           </span>
@@ -422,7 +422,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
                   ...(sortParam ? { sort: sortParam } : {}),
                   page: String(currentPage - 1),
                 })}`}
-                className="inline-flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="inline-flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-dim focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 Previous
               </Link>
@@ -434,7 +434,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
                   ...(sortParam ? { sort: sortParam } : {}),
                   page: String(currentPage + 1),
                 })}`}
-                className="inline-flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="inline-flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-dim focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 Next
               </Link>

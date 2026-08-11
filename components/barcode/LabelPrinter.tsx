@@ -1,7 +1,7 @@
 "use client";
 
 // specs/18-barcode-integration FR-3.1, FR-3.2, AC-3
-// Floor surface component — `bg-surface-white`, solid, no glassmorphism.
+// Floor surface component — `bg-white`, solid, no glassmorphism.
 // Rendered in browser; Admin clicks "Print Label" to invoke print driver (design.md §2.1).
 
 import QRCode from "react-qr-code";
@@ -24,8 +24,8 @@ export function LabelPrinter({
   locationLabel,
 }: LabelPrinterProps) {
   return (
-    // brand-design-system.md §6: floor cards use solid surface-white, shadow-elevation-2.
-    <div className="bg-surface-white shadow-elevation-2 rounded p-4 flex flex-col items-center gap-4 w-full max-w-sm mx-auto">
+    // brand-design-system.md §6: floor cards use solid white, shadow-elevation-2.
+    <div className="bg-white shadow-elevation-2 rounded p-4 flex flex-col items-center gap-4 w-full max-w-sm mx-auto">
       {/*
         FR-3.2: QR payload is exactly the UUID string — "a UUID lookup, not a data blob"
         (design.md §2). No prefix, no JSON wrapping, no transformation.
@@ -46,12 +46,12 @@ export function LabelPrinter({
       {/*
         AC-3: "Print Label" button triggers window.print().
         brand-design-system.md §3: floor primary action, h-16 (64px), full-width,
-        bg-brand-red for CTA, active:scale-[0.97] press feedback, no hover state.
+        bg-action-blue for CTA, active:scale-[0.97] press feedback, no hover state.
       */}
       <button
         type="button"
         onClick={() => window.print()}
-        className="h-16 w-full bg-brand-red text-surface-white font-label text-body-md rounded active:scale-[0.97] motion-safe:transition-transform"
+        className="h-16 w-full bg-action-blue text-white font-label text-body-md rounded active:scale-[0.97] motion-safe:transition-transform"
       >
         Print Label
       </button>

@@ -26,9 +26,7 @@ import type { WrrDocumentRow } from "@/lib/db/queries/receiving";
 const QUEUE_PAGE_SIZE = 20;
 const LEDGER_PAGE_SIZE = 50;
 
-// Status badges — brand-design-system.md §1.3 semantic color mapping:
-// staged/in_progress → status-pending (amber); confirmed → status-available (green);
-// cancelled → status-held (red).
+// Status badges
 const STATUS_LABELS: Record<string, string> = {
   staged_pending_arrival: "STAGED",
   receiving_in_progress: "IN PROGRESS",
@@ -37,10 +35,10 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_CLASSES: Record<string, string> = {
-  staged_pending_arrival: "bg-status-pending/10 text-status-pending",
-  receiving_in_progress: "bg-status-pending/10 text-status-pending",
-  confirmed: "bg-status-available/10 text-status-available",
-  cancelled: "bg-status-held/10 text-status-held",
+  staged_pending_arrival: "bg-secondary-container text-on-secondary-container",
+  receiving_in_progress: "bg-tertiary-container text-on-tertiary-container",
+  confirmed: "bg-primary-container text-on-primary-container",
+  cancelled: "bg-error-container text-on-error-container",
 };
 
 const FLOW_LABELS: Record<string, string> = {
@@ -50,7 +48,7 @@ const FLOW_LABELS: Record<string, string> = {
 };
 
 const STATUS_FILTER_OPTIONS = [
-  { value: "", label: "All" },
+  { value: "", label: "All Statuses" },
   { value: "staged_pending_arrival", label: "Staged" },
   { value: "receiving_in_progress", label: "In Progress" },
   { value: "confirmed", label: "Confirmed" },
@@ -64,6 +62,69 @@ const TABS: Array<{ key: TabKey; label: string }> = [
   { key: "wrrs", label: "WRRs" },
   { key: "ledger", label: "Incoming Ledger" },
 ];
+
+// ─── Shared Components ───────────────────────────────────────────────────────
+
+function SidePanel() {
+  return (
+    <div className="space-y-lg hidden lg:block">
+      {/* Today's Inbound Widget */}
+      <div className="bg-surface-container-lowest border border-outline-variant rounded-lg p-md space-y-md">
+        <h3 className="font-heading text-title-md text-on-surface">Today&apos;s Inbound</h3>
+        <div className="flex justify-between items-end">
+          <div>
+            <p className="font-body text-body-sm text-on-surface-variant">Expected vs Received</p>
+            <p className="font-heading text-display-sm text-on-surface">12 / 8</p>
+          </div>
+          <div className="text-right">
+            <p className="font-body text-body-sm text-on-surface-variant">Pending WRRs</p>
+            <p className="font-heading text-headline-md text-primary">4</p>
+          </div>
+        </div>
+        {/* Progress Bar */}
+        <div className="w-full bg-surface-container-high rounded-full h-2 mt-2">
+          <div className="bg-primary h-2 rounded-full" style={{ width: "66%" }}></div>
+        </div>
+      </div>
+
+      {/* Quick Scan Widget */}
+      <div className="bg-surface-container-lowest border border-outline-variant rounded-lg p-md space-y-sm text-center">
+        <div className="w-12 h-12 bg-primary-container text-on-primary-container rounded-full flex items-center justify-center mx-auto mb-2">
+          <span className="material-symbols-outlined text-[24px]">barcode_scanner</span>
+        </div>
+        <h3 className="font-heading text-title-md text-on-surface">Quick Scan</h3>
+        <p className="font-body text-body-sm text-on-surface-variant">Scan a WRR barcode to jump directly to receiving.</p>
+        <button className="mt-sm w-full bg-primary text-on-primary hover:bg-primary/90 h-10 rounded-full font-label text-label-md transition-colors">
+          Open Scanner
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ActionDropdown({ wrrId }: { wrrId: string }) {
+  // Using a details/summary element for a pure CSS dropdown
+  return (
+    <details className="relative group/dropdown">
+      <summary className="list-none cursor-pointer p-2 rounded-full hover:bg-surface-container-high transition-colors focus:outline-none focus:ring-2 focus:ring-primary inline-flex items-center justify-center">
+        <span className="material-symbols-outlined text-on-surface-variant text-[20px]">more_vert</span>
+      </summary>
+      <div className="absolute right-0 top-full mt-1 w-40 bg-surface-container-lowest border border-outline-variant rounded-md shadow-md z-10 hidden group-open/dropdown:block">
+        <div className="py-1">
+          <Link href={`/receiving/${wrrId}`} className="block px-4 py-2 font-body text-body-md text-on-surface hover:bg-surface-container-high">
+            View Details
+          </Link>
+          <Link href={`/receiving/${wrrId}/print`} className="block px-4 py-2 font-body text-body-md text-on-surface hover:bg-surface-container-high">
+            Print Document
+          </Link>
+          <Link href={`/receiving/${wrrId}/receive`} className="block px-4 py-2 font-body text-body-md text-primary hover:bg-primary-container/50">
+            Start Receiving
+          </Link>
+        </div>
+      </div>
+    </details>
+  );
+}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -89,79 +150,89 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
   const permResult = await requirePermission(resolver, "receiving.confirm");
   if (permResult.kind !== "authorized") {
     return (
-      <div className="mx-auto max-w-container px-4 py-12 text-center">
-        <p className="font-body text-body-md text-text-grey">
+      <div className="mx-auto max-w-7xl px-4 py-12 text-center">
+        <p className="font-body text-body-md text-on-surface-variant">
           You do not have permission to view the receiving queue.
-        </p>
-        <p className="mt-2 font-body text-body-sm text-text-grey">
-          This page requires the{" "}
-          <span className="font-mono text-mono-md">receiving.confirm</span>{" "}
-          capability.
         </p>
       </div>
     );
   }
 
-  // Additional check: can this user create WRRs? Used in WRRs tab.
   const canCreate = (await requirePermission(resolver, "receiving.create")).kind === "authorized";
 
   return (
-    <div className="mx-auto max-w-container">
-      {/* Page header — "New WRR" button removed from here (moved into WRRs tab) */}
-      <div>
-        <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
-          Receiving
-        </h1>
-        <p className="mt-1 font-body text-body-md text-text-grey">
-          Warehouse receipt records — work queue and confirmed-receipt
-          ledger.
-        </p>
+    <div className="max-w-7xl mx-auto space-y-lg animate-in fade-in duration-300">
+      {/* Page header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-md">
+        <div>
+          <h1 className="font-heading text-display-sm text-on-surface tracking-tight">Receiving Hub</h1>
+          <p className="font-body text-body-lg text-on-surface-variant mt-1">
+            Manage incoming shipments, WRRs, and inbound ledger.
+          </p>
+        </div>
+        {canCreate && activeTab === "wrrs" && (
+          <Link
+            href="/receiving/new"
+            className="inline-flex h-10 items-center justify-center rounded-full bg-primary px-6 font-label text-label-lg text-on-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors shadow-sm"
+          >
+            <span className="material-symbols-outlined mr-2 text-[20px]">add</span>
+            New WRR
+          </Link>
+        )}
       </div>
 
-      {/* Tab switcher — office pattern per brand-design-system.md §3 */}
-      <div
-        role="tablist"
-        aria-label="Receiving sections"
-        className="mt-6 flex gap-2 border-b border-outline-variant/30"
-      >
-        {TABS.map((tab) => {
-          const isActive = tab.key === activeTab;
-          const href =
-            tab.key === "receive"
-              ? "/receiving"
-              : tab.key === "wrrs"
-              ? "/receiving?tab=wrrs"
-              : "/receiving?tab=ledger";
-          return (
-            <Link
-              key={tab.key}
-              href={href}
-              role="tab"
-              aria-selected={isActive}
-              className={`flex h-11 items-center border-b-2 px-4 font-label text-label uppercase tracking-[0.05em] focus:outline-none focus:ring-2 focus:ring-brand-navy ${
-                isActive
-                  ? "border-brand-red text-brand-navy"
-                  : "border-transparent text-text-grey hover:text-brand-navy"
-              }`}
-            >
-              {tab.label}
-            </Link>
-          );
-        })}
-      </div>
+      {/* Grid Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-lg">
+        {/* Main Content Area */}
+        <div className="lg:col-span-2 space-y-md">
+          {/* Tabs */}
+          <div className="border-b border-outline-variant flex gap-md overflow-x-auto hide-scrollbar">
+            {TABS.map((tab) => {
+              const isActive = tab.key === activeTab;
+              const href =
+                tab.key === "receive"
+                  ? "/receiving"
+                  : tab.key === "wrrs"
+                  ? "/receiving?tab=wrrs"
+                  : "/receiving?tab=ledger";
+              return (
+                <Link
+                  key={tab.key}
+                  href={href}
+                  className={`pb-sm font-label text-label-md px-1 whitespace-nowrap transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                    isActive
+                      ? "border-b-2 border-primary text-primary"
+                      : "text-on-surface-variant hover:text-on-surface"
+                  }`}
+                >
+                  {tab.label}
+                </Link>
+              );
+            })}
+          </div>
 
-      {activeTab === "receive" ? (
-        <ReceiveTab statusFilter={statusFilter} pageParam={pageParam} />
-      ) : activeTab === "wrrs" ? (
-        <WrrsTab statusFilter={statusFilter} pageParam={pageParam} canCreate={canCreate} />
-      ) : (
-        <LedgerTab pageParam={pageParam} />
-      )}
+          {/* Tab Content */}
+          <div className="pt-sm">
+            {activeTab === "receive" ? (
+              <ReceiveTab statusFilter={statusFilter} pageParam={pageParam} />
+            ) : activeTab === "wrrs" ? (
+              <WrrsTab statusFilter={statusFilter} pageParam={pageParam} />
+            ) : (
+              <LedgerTab pageParam={pageParam} />
+            )}
+          </div>
+        </div>
+
+        {/* Right Side Panel */}
+        <div className="lg:col-span-1">
+          <SidePanel />
+        </div>
+      </div>
     </div>
   );
 }
 
-// ─── Receive tab (default) — staged/in-progress WRRs ready to be received ────
+// ─── Receive tab ─────────────────────────────────────────────────────────────
 
 async function ReceiveTab({
   statusFilter,
@@ -172,165 +243,92 @@ async function ReceiveTab({
 }) {
   const currentPage = Math.max(1, Number(pageParam ?? "1") || 1);
   const offset = (currentPage - 1) * QUEUE_PAGE_SIZE;
-  const status =
-    statusFilter && statusFilter !== "" ? statusFilter : undefined;
+  const status = statusFilter && statusFilter !== "" ? statusFilter : undefined;
 
-  const { rows, total } = await listWrrDocuments(db, {
-    limit: QUEUE_PAGE_SIZE,
-    offset,
-    status,
-  });
-
+  const { rows, total } = await listWrrDocuments(db, { limit: QUEUE_PAGE_SIZE, offset, status });
   const totalPages = Math.ceil(total / QUEUE_PAGE_SIZE);
 
   return (
-    <div>
-      {/* Status filter bar */}
-      <div className="mt-6">
-        <form method="GET" className="flex flex-wrap items-end gap-3">
-          <input type="hidden" name="tab" value="receive" />
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="status-filter"
-              className="font-label text-label text-text-grey"
-            >
-              Status
-            </label>
-            <select
-              id="status-filter"
-              name="status"
-              defaultValue={statusFilter ?? ""}
-              className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            >
-              {STATUS_FILTER_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <button
-            type="submit"
-            className="flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
-          >
-            Apply
-          </button>
-          {status && (
-            <Link
-              href="/receiving"
-              className="flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            >
-              Clear
-            </Link>
-          )}
-        </form>
-      </div>
+    <div className="space-y-md">
+      {/* Filter */}
+      <form method="GET" className="flex flex-wrap items-center gap-sm">
+        <input type="hidden" name="tab" value="receive" />
+        <select
+          name="status"
+          defaultValue={statusFilter ?? ""}
+          className="h-10 rounded-full border border-outline-variant bg-surface px-4 font-body text-body-sm text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+        >
+          {STATUS_FILTER_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+        <button
+          type="submit"
+          className="h-10 rounded-full border border-outline-variant bg-surface px-4 font-label text-label-md text-on-surface hover:bg-surface-container-low transition-colors"
+        >
+          Filter
+        </button>
+      </form>
 
-      {/* WRR table — Level 1 office elevation per brand-design-system.md §6 */}
-      <div className="mt-4 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
-        {rows.length === 0 ? (
-          <div className="px-6 py-12 text-center">
-            <p className="font-body text-body-md text-text-grey">
-              {status
-                ? "No WRRs match the current filter."
-                : "No warehouse receipt records yet."}
-            </p>
-            {!status && (
-              <p className="mt-2 font-body text-body-sm text-text-grey">
-                Create a new WRR when a shipment is expected.
-              </p>
-            )}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                  {/* Epilogue SemiBold uppercase headers per §9 tables */}
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    WRR Number
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Flow Type
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Staged By
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Created At
-                  </th>
-                  <th className="sr-only px-4 py-3">Actions</th>
+      {/* Table */}
+      <div className="bg-surface-container-lowest border border-outline-variant rounded-lg overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left">
+            <thead>
+              <tr className="border-b border-outline-variant bg-surface-container-low/50">
+                <th className="px-md py-sm font-label text-label-sm text-on-surface-variant font-medium">WRR #</th>
+                <th className="px-md py-sm font-label text-label-sm text-on-surface-variant font-medium">Supplier</th>
+                <th className="px-md py-sm font-label text-label-sm text-on-surface-variant font-medium">Flow</th>
+                <th className="px-md py-sm font-label text-label-sm text-on-surface-variant font-medium">Status</th>
+                <th className="px-md py-sm text-right font-label text-label-sm text-on-surface-variant font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-outline-variant">
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-md py-xl text-center text-on-surface-variant font-body text-body-md">
+                    No records found.
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/30">
-                {rows.map((row: WrrDocumentRow) => (
-                  <tr key={row.id} className="hover:bg-surface-light-grey/50">
-                    {/* Roboto Mono for reference numbers per §9 */}
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {row.wrrNumber}
-                    </td>
-                    <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                      {FLOW_LABELS[row.flowType] ?? row.flowType}
-                    </td>
-                    <td className="px-4 py-3">
-                      {/* Status badge — radius-full, §1.3 semantic colors */}
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase ${STATUS_CLASSES[row.status] ?? "bg-status-neutral/10 text-status-neutral"}`}
-                      >
-                        {STATUS_LABELS[row.status] ?? row.status.toUpperCase()}
+              ) : (
+                rows.map((row: WrrDocumentRow) => (
+                  <tr key={row.id} className="hover:bg-surface-container-lowest transition-colors">
+                    <td className="px-md py-3 font-mono text-body-md text-on-surface">{row.wrrNumber}</td>
+                    <td className="px-md py-3 font-body text-body-md text-on-surface">{row.vendorPartyId}</td>
+                    <td className="px-md py-3 font-body text-body-md text-on-surface-variant">{FLOW_LABELS[row.flowType] ?? row.flowType}</td>
+                    <td className="px-md py-3">
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label-sm ${STATUS_CLASSES[row.status] || "bg-surface-variant text-on-surface-variant"}`}>
+                        {STATUS_LABELS[row.status] ?? row.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {row.stagedByUserId}
-                    </td>
-                    <td className="px-4 py-3 font-body text-body-md text-text-grey">
-                      {row.createdAt.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {/* View link — h-11 (44px) touch target */}
-                      <Link
-                        href={`/receiving/${row.id}`}
-                        className="inline-flex h-11 items-center font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                      >
-                        View
-                      </Link>
+                    <td className="px-md py-3 text-right">
+                      <ActionDropdown wrrId={row.id} />
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* Pagination controls */}
+      {/* Pagination */}
       {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between font-body text-body-sm text-text-grey">
-          <span>
-            Page {currentPage} of {totalPages} ({total} total)
-          </span>
+        <div className="flex items-center justify-between mt-4">
+          <span className="font-body text-body-sm text-on-surface-variant">Page {currentPage} of {totalPages}</span>
           <div className="flex gap-2">
             {currentPage > 1 && (
               <Link
-                href={`/receiving?${new URLSearchParams({
-                  ...(status ? { status } : {}),
-                  page: String(currentPage - 1),
-                })}`}
-                className="inline-flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                href={`/receiving?${new URLSearchParams({ ...(status ? { status } : {}), page: String(currentPage - 1) })}`}
+                className="h-8 px-3 inline-flex items-center justify-center rounded-full border border-outline-variant font-label text-label-sm text-on-surface hover:bg-surface-container-low transition-colors"
               >
-                Previous
+                Prev
               </Link>
             )}
             {currentPage < totalPages && (
               <Link
-                href={`/receiving?${new URLSearchParams({
-                  ...(status ? { status } : {}),
-                  page: String(currentPage + 1),
-                })}`}
-                className="inline-flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                href={`/receiving?${new URLSearchParams({ ...(status ? { status } : {}), page: String(currentPage + 1) })}`}
+                className="h-8 px-3 inline-flex items-center justify-center rounded-full border border-outline-variant font-label text-label-sm text-on-surface hover:bg-surface-container-low transition-colors"
               >
                 Next
               </Link>
@@ -342,180 +340,103 @@ async function ReceiveTab({
   );
 }
 
-// ─── WRRs tab — all statuses, "New WRR" button gated by receiving.create ──────
+// ─── WRRs tab ────────────────────────────────────────────────────────────────
 
 async function WrrsTab({
   statusFilter,
   pageParam,
-  canCreate,
 }: {
   statusFilter?: string;
   pageParam?: string;
-  canCreate: boolean;
 }) {
   const currentPage = Math.max(1, Number(pageParam ?? "1") || 1);
   const offset = (currentPage - 1) * QUEUE_PAGE_SIZE;
-  const status =
-    statusFilter && statusFilter !== "" ? statusFilter : undefined;
+  const status = statusFilter && statusFilter !== "" ? statusFilter : undefined;
 
-  const { rows, total } = await listWrrDocuments(db, {
-    limit: QUEUE_PAGE_SIZE,
-    offset,
-    status,
-  });
-
+  const { rows, total } = await listWrrDocuments(db, { limit: QUEUE_PAGE_SIZE, offset, status });
   const totalPages = Math.ceil(total / QUEUE_PAGE_SIZE);
 
   return (
-    <div>
-      {/* Tab header with "New WRR" button — gated by receiving.create */}
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <form method="GET" className="flex flex-wrap items-end gap-3">
-            <input type="hidden" name="tab" value="wrrs" />
-            <div className="flex flex-col gap-1">
-              <label
-                htmlFor="wrrs-status-filter"
-                className="font-label text-label text-text-grey"
-              >
-                Status
-              </label>
-              <select
-                id="wrrs-status-filter"
-                name="status"
-                defaultValue={statusFilter ?? ""}
-                className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              >
-                {STATUS_FILTER_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <button
-              type="submit"
-              className="flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            >
-              Apply
-            </button>
-            {status && (
-              <Link
-                href="/receiving?tab=wrrs"
-                className="flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              >
-                Clear
-              </Link>
-            )}
-          </form>
-        </div>
-        {/* New WRR button — receiving.create gated, h-11 (44px) office target */}
-        {canCreate && (
-          <Link
-            href="/receiving/new"
-            className="inline-flex h-11 items-center justify-center rounded bg-brand-red px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
-          >
-            New WRR
-          </Link>
-        )}
-      </div>
+    <div className="space-y-md">
+      {/* Filter */}
+      <form method="GET" className="flex flex-wrap items-center gap-sm">
+        <input type="hidden" name="tab" value="wrrs" />
+        <select
+          name="status"
+          defaultValue={statusFilter ?? ""}
+          className="h-10 rounded-full border border-outline-variant bg-surface px-4 font-body text-body-sm text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+        >
+          {STATUS_FILTER_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+        <button
+          type="submit"
+          className="h-10 rounded-full border border-outline-variant bg-surface px-4 font-label text-label-md text-on-surface hover:bg-surface-container-low transition-colors"
+        >
+          Filter
+        </button>
+      </form>
 
-      {/* WRR table — Level 1 office elevation */}
-      <div className="mt-4 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
-        {rows.length === 0 ? (
-          <div className="px-6 py-12 text-center">
-            <p className="font-body text-body-md text-text-grey">
-              {status
-                ? "No WRRs match the current filter."
-                : "No warehouse receipt records yet."}
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    WRR Number
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Flow Type
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Staged By
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Created At
-                  </th>
-                  <th className="sr-only px-4 py-3">Actions</th>
+      {/* Table */}
+      <div className="bg-surface-container-lowest border border-outline-variant rounded-lg overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left">
+            <thead>
+              <tr className="border-b border-outline-variant bg-surface-container-low/50">
+                <th className="px-md py-sm font-label text-label-sm text-on-surface-variant font-medium">WRR #</th>
+                <th className="px-md py-sm font-label text-label-sm text-on-surface-variant font-medium">Supplier</th>
+                <th className="px-md py-sm font-label text-label-sm text-on-surface-variant font-medium">Flow</th>
+                <th className="px-md py-sm font-label text-label-sm text-on-surface-variant font-medium">Status</th>
+                <th className="px-md py-sm text-right font-label text-label-sm text-on-surface-variant font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-outline-variant">
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-md py-xl text-center text-on-surface-variant font-body text-body-md">
+                    No records found.
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/30">
-                {rows.map((row: WrrDocumentRow) => (
-                  <tr key={row.id} className="hover:bg-surface-light-grey/50">
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {row.wrrNumber}
-                    </td>
-                    <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                      {FLOW_LABELS[row.flowType] ?? row.flowType}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase ${STATUS_CLASSES[row.status] ?? "bg-status-neutral/10 text-status-neutral"}`}
-                      >
-                        {STATUS_LABELS[row.status] ?? row.status.toUpperCase()}
+              ) : (
+                rows.map((row: WrrDocumentRow) => (
+                  <tr key={row.id} className="hover:bg-surface-container-lowest transition-colors">
+                    <td className="px-md py-3 font-mono text-body-md text-on-surface">{row.wrrNumber}</td>
+                    <td className="px-md py-3 font-body text-body-md text-on-surface">{row.vendorPartyId}</td>
+                    <td className="px-md py-3 font-body text-body-md text-on-surface-variant">{FLOW_LABELS[row.flowType] ?? row.flowType}</td>
+                    <td className="px-md py-3">
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label-sm ${STATUS_CLASSES[row.status] || "bg-surface-variant text-on-surface-variant"}`}>
+                        {STATUS_LABELS[row.status] ?? row.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {row.stagedByUserId}
-                    </td>
-                    <td className="px-4 py-3 font-body text-body-md text-text-grey">
-                      {row.createdAt.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Link
-                        href={`/receiving/${row.id}`}
-                        className="inline-flex h-11 items-center font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                      >
-                        View
-                      </Link>
+                    <td className="px-md py-3 text-right">
+                      <ActionDropdown wrrId={row.id} />
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between font-body text-body-sm text-text-grey">
-          <span>
-            Page {currentPage} of {totalPages} ({total} total)
-          </span>
+        <div className="flex items-center justify-between mt-4">
+          <span className="font-body text-body-sm text-on-surface-variant">Page {currentPage} of {totalPages}</span>
           <div className="flex gap-2">
             {currentPage > 1 && (
               <Link
-                href={`/receiving?tab=wrrs&${new URLSearchParams({
-                  ...(status ? { status } : {}),
-                  page: String(currentPage - 1),
-                })}`}
-                className="inline-flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                href={`/receiving?tab=wrrs&${new URLSearchParams({ ...(status ? { status } : {}), page: String(currentPage - 1) })}`}
+                className="h-8 px-3 inline-flex items-center justify-center rounded-full border border-outline-variant font-label text-label-sm text-on-surface hover:bg-surface-container-low transition-colors"
               >
-                Previous
+                Prev
               </Link>
             )}
             {currentPage < totalPages && (
               <Link
-                href={`/receiving?tab=wrrs&${new URLSearchParams({
-                  ...(status ? { status } : {}),
-                  page: String(currentPage + 1),
-                })}`}
-                className="inline-flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                href={`/receiving?tab=wrrs&${new URLSearchParams({ ...(status ? { status } : {}), page: String(currentPage + 1) })}`}
+                className="h-8 px-3 inline-flex items-center justify-center rounded-full border border-outline-variant font-label text-label-sm text-on-surface hover:bg-surface-container-low transition-colors"
               >
                 Next
               </Link>
@@ -528,123 +449,75 @@ async function WrrsTab({
 }
 
 // ─── Incoming Ledger tab ──────────────────────────────────────────────────────
-//
-// Confirmed-only view, no status filter shown (always confirmed per task
-// spec). The authoritative incoming ledger view is over inventory_transactions
-// (requirements.md R9.1); this queries wrr_documents as a proxy pending full
-// inventory_transactions integration (unchanged from the former standalone
-// incoming-ledger/page.tsx).
 
 async function LedgerTab({ pageParam }: { pageParam?: string }) {
   const currentPage = Math.max(1, Number(pageParam ?? "1") || 1);
   const offset = (currentPage - 1) * LEDGER_PAGE_SIZE;
 
-  // Always confirmed — ledger shows only committed receipts.
-  const { rows, total } = await listWrrDocuments(db, {
-    limit: LEDGER_PAGE_SIZE,
-    offset,
-    status: "confirmed",
-  });
-
+  const { rows, total } = await listWrrDocuments(db, { limit: LEDGER_PAGE_SIZE, offset, status: "confirmed" });
   const totalPages = Math.ceil(total / LEDGER_PAGE_SIZE);
 
   return (
-    <div>
-      <p className="mt-6 font-body text-body-md text-text-grey">
-        Read-only view of confirmed warehouse receipts. Corrections create new
-        transactions; history is immutable per design.md §10.
+    <div className="space-y-md">
+      <p className="font-body text-body-sm text-on-surface-variant">
+        Read-only view of confirmed warehouse receipts. Corrections create new transactions; history is immutable.
       </p>
 
-      {/* Ledger table — Level 1 office elevation per brand-design-system.md §6 */}
-      <div className="mt-4 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
-        {rows.length === 0 ? (
-          <div className="px-6 py-12 text-center">
-            <p className="font-body text-body-md text-text-grey">
-              No confirmed receipts in the ledger yet.
-            </p>
-            <p className="mt-2 font-body text-body-sm text-text-grey">
-              Confirmed WRRs appear here after the receipt commit succeeds.
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                  {/* Epilogue SemiBold uppercase headers per §9 */}
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    WRR Number
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Flow Type
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Vendor Party
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Confirmed At
-                  </th>
-                  <th className="sr-only px-4 py-3">Actions</th>
+      {/* Table */}
+      <div className="bg-surface-container-lowest border border-outline-variant rounded-lg overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left">
+            <thead>
+              <tr className="border-b border-outline-variant bg-surface-container-low/50">
+                <th className="px-md py-sm font-label text-label-sm text-on-surface-variant font-medium">WRR #</th>
+                <th className="px-md py-sm font-label text-label-sm text-on-surface-variant font-medium">Flow Type</th>
+                <th className="px-md py-sm font-label text-label-sm text-on-surface-variant font-medium">Vendor Party</th>
+                <th className="px-md py-sm font-label text-label-sm text-on-surface-variant font-medium">Confirmed At</th>
+                <th className="px-md py-sm text-right font-label text-label-sm text-on-surface-variant font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-outline-variant">
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-md py-xl text-center text-on-surface-variant font-body text-body-md">
+                    No confirmed receipts yet.
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/30">
-                {rows.map((row: WrrDocumentRow) => (
-                  <tr key={row.id} className="hover:bg-surface-light-grey/50">
-                    {/* WRR number — Roboto Mono per §9 */}
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {row.wrrNumber}
-                    </td>
-                    <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                      {FLOW_LABELS[row.flowType] ?? row.flowType}
-                    </td>
-                    {/* Vendor party ID — Mono for identifiers per §9 */}
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {row.vendorPartyId}
-                    </td>
-                    {/*
-                     * Note: confirmedAt is on wrr_documents but not in the
-                     * current WrrDocumentRow query result. Showing createdAt
-                     * as a proxy; extend getWrrDocument/listWrrDocuments to
-                     * include confirmedAt when the query is updated.
-                     */}
-                    <td className="px-4 py-3 font-body text-body-md text-text-grey">
-                      {row.createdAt.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Link
-                        href={`/receiving/${row.id}`}
-                        className="inline-flex h-11 items-center font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                      >
-                        View
-                      </Link>
+              ) : (
+                rows.map((row: WrrDocumentRow) => (
+                  <tr key={row.id} className="hover:bg-surface-container-lowest transition-colors">
+                    <td className="px-md py-3 font-mono text-body-md text-on-surface">{row.wrrNumber}</td>
+                    <td className="px-md py-3 font-body text-body-md text-on-surface-variant">{FLOW_LABELS[row.flowType] ?? row.flowType}</td>
+                    <td className="px-md py-3 font-mono text-body-md text-on-surface">{row.vendorPartyId}</td>
+                    <td className="px-md py-3 font-body text-body-md text-on-surface-variant">{row.createdAt.toLocaleString()}</td>
+                    <td className="px-md py-3 text-right">
+                      <ActionDropdown wrrId={row.id} />
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* Pagination controls */}
+      {/* Pagination */}
       {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between font-body text-body-sm text-text-grey">
-          <span>
-            Page {currentPage} of {totalPages} ({total} total)
-          </span>
+        <div className="flex items-center justify-between mt-4">
+          <span className="font-body text-body-sm text-on-surface-variant">Page {currentPage} of {totalPages}</span>
           <div className="flex gap-2">
             {currentPage > 1 && (
               <Link
                 href={`/receiving?tab=ledger&page=${currentPage - 1}`}
-                className="inline-flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="h-8 px-3 inline-flex items-center justify-center rounded-full border border-outline-variant font-label text-label-sm text-on-surface hover:bg-surface-container-low transition-colors"
               >
-                Previous
+                Prev
               </Link>
             )}
             {currentPage < totalPages && (
               <Link
                 href={`/receiving?tab=ledger&page=${currentPage + 1}`}
-                className="inline-flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="h-8 px-3 inline-flex items-center justify-center rounded-full border border-outline-variant font-label text-label-sm text-on-surface hover:bg-surface-container-low transition-colors"
               >
                 Next
               </Link>
@@ -655,3 +528,4 @@ async function LedgerTab({ pageParam }: { pageParam?: string }) {
     </div>
   );
 }
+

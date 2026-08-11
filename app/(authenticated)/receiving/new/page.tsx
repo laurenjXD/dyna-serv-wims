@@ -20,9 +20,6 @@ import { WrrLineItems } from "./_components/wrr-line-items";
 
 // ─── Inline server action ─────────────────────────────────────────────────────
 
-// Parses FormData from the create-WRR form into the structured input shape
-// required by validateCreateWrr, then delegates to the createWrr server action.
-// Lines are encoded as `line_N_fieldName` fields with a `lineCount` summary.
 async function handleCreateWrr(formData: FormData): Promise<void> {
   "use server";
   const actionResolver = await createPageResolver();
@@ -75,7 +72,6 @@ async function handleCreateWrr(formData: FormData): Promise<void> {
     redirect(`/receiving/${result.wrrId}`);
   }
 
-  // Redirect with encoded errors. The page re-reads them via searchParams.
   const encodedErrors = encodeURIComponent(result.errors.join("|"));
   redirect(`/receiving/new?errors=${encodedErrors}`);
 }
@@ -90,8 +86,6 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
   const { errors: encodedErrors } = await searchParams;
   const resolver = await createPageResolver();
 
-  // Gate: receiving.create — creation surface only requires create capability,
-  // not confirm (confirming is a separate elevated permission).
   const permResult = await requirePermission(resolver, "receiving.create");
   if (permResult.kind !== "authorized") {
     notFound();
@@ -102,73 +96,64 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
     : [];
 
   return (
-    <div className="mx-auto max-w-container">
+    <div className="mx-auto w-full max-w-5xl animate-in fade-in duration-300">
       {/* Breadcrumb */}
-      <nav aria-label="Breadcrumb" className="mb-4">
-        <ol className="flex items-center gap-1 font-body text-body-sm text-text-grey">
+      <nav aria-label="Breadcrumb" className="mb-md">
+        <ol className="flex items-center gap-xs font-label text-label-md text-on-surface-variant uppercase tracking-wider">
           <li>
             <Link
               href="/receiving"
-              className="inline-flex h-11 items-center rounded hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="inline-flex h-8 items-center rounded-sm hover:text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
             >
               Receiving Queue
             </Link>
           </li>
-          <li aria-hidden="true">/</li>
-          <li aria-current="page" className="font-body text-body-sm text-on-surface">
+          <li aria-hidden="true" className="text-outline-variant">/</li>
+          <li aria-current="page" className="font-label text-label-md text-on-surface">
             New WRR
           </li>
         </ol>
       </nav>
 
-      <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
-        New Warehouse Receipt Record
-      </h1>
-      <p className="mt-1 font-body text-body-md text-text-grey">
-        Encode the CIPL/packing-list reference and expected lines before
-        physical receiving begins.
-      </p>
+      <div className="mb-lg">
+        <h1 className="font-heading text-display-sm font-bold text-on-surface tracking-tight">
+          New Warehouse Receipt Record
+        </h1>
+        <p className="mt-xs font-body text-body-lg text-on-surface-variant">
+          Encode the CIPL/packing-list reference and expected lines before physical receiving begins.
+        </p>
+      </div>
 
-      {/* Validation errors — shown when the server action returns errors */}
       {errors.length > 0 && (
-        <div
-          role="alert"
-          className="mt-4 rounded-md bg-status-held/10 px-4 py-3"
-        >
-          <p className="font-label text-label uppercase text-status-held">
-            Validation errors
-          </p>
-          <ul className="mt-2 list-inside list-disc space-y-1">
-            {errors.map((err) => (
-              <li key={err} className="font-body text-body-md text-status-held">
-                {err}
-              </li>
-            ))}
-          </ul>
+        <div role="alert" className="mb-lg rounded-lg bg-error-container/50 border border-error/20 p-md flex items-start gap-sm">
+          <span className="material-symbols-outlined text-error shrink-0">error</span>
+          <div>
+            <p className="font-label text-label-lg font-semibold text-error">Validation errors</p>
+            <ul className="mt-xs list-inside list-disc space-y-1">
+              {errors.map((err) => (
+                <li key={err} className="font-body text-body-sm text-error">
+                  {err}
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       )}
 
-      {/* Create WRR form — standard office surface */}
-      <form action={handleCreateWrr} className="mt-6 space-y-6">
-        {/* Header section — office card, Level 1 elevation */}
-        <div className="rounded-md bg-surface-white shadow-elevation-1 p-6">
-          <h2 className="font-heading font-semibold text-data-display text-on-surface">
-            Header Information
-          </h2>
+      <form action={handleCreateWrr} className="space-y-lg pb-xl">
+        {/* Header section */}
+        <div className="rounded-xl bg-surface-container-lowest border border-outline-variant shadow-sm p-lg">
+          <div className="flex items-center gap-sm mb-md border-b border-outline-variant/50 pb-sm">
+            <span className="material-symbols-outlined text-primary text-[20px]">document_scanner</span>
+            <h2 className="font-heading text-title-md font-semibold text-on-surface">
+              Header Information
+            </h2>
+          </div>
 
-          {/* Full-width on mobile, two-column grid on desktop per task requirements */}
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            {/* Vendor Party ID — required */}
+          <div className="grid gap-md md:grid-cols-2">
             <div>
-              <label
-                htmlFor="vendorPartyId"
-                className="block font-label text-label text-text-grey"
-              >
-                Vendor Party ID{" "}
-                <span aria-hidden="true" className="text-brand-red">
-                  *
-                </span>
-                <span className="sr-only">(required)</span>
+              <label htmlFor="vendorPartyId" className="block font-label text-label-sm text-on-surface-variant mb-xs">
+                Vendor Party ID <span className="text-error">*</span>
               </label>
               <input
                 id="vendorPartyId"
@@ -176,27 +161,19 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
                 type="text"
                 required
                 placeholder="UUID of the vendor party"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="h-11 w-full rounded-md border border-outline-variant bg-surface-container-highest px-3 font-mono text-body-md text-on-surface placeholder:font-body placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               />
             </div>
 
-            {/* Flow Type — required */}
             <div>
-              <label
-                htmlFor="flowType"
-                className="block font-label text-label text-text-grey"
-              >
-                Flow Type{" "}
-                <span aria-hidden="true" className="text-brand-red">
-                  *
-                </span>
-                <span className="sr-only">(required)</span>
+              <label htmlFor="flowType" className="block font-label text-label-sm text-on-surface-variant mb-xs">
+                Flow Type <span className="text-error">*</span>
               </label>
               <select
                 id="flowType"
                 name="flowType"
                 required
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="h-11 w-full rounded-md border border-outline-variant bg-surface-container-highest px-3 font-body text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               >
                 <option value="">Select flow type…</option>
                 <option value="vmi">VMI</option>
@@ -205,12 +182,8 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
               </select>
             </div>
 
-            {/* Commercial Invoice No — optional */}
             <div>
-              <label
-                htmlFor="commercialInvoiceNo"
-                className="block font-label text-label text-text-grey"
-              >
+              <label htmlFor="commercialInvoiceNo" className="block font-label text-label-sm text-on-surface-variant mb-xs">
                 Commercial Invoice No.
               </label>
               <input
@@ -218,16 +191,12 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
                 name="commercialInvoiceNo"
                 type="text"
                 placeholder="CIPL / commercial invoice reference"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="h-11 w-full rounded-md border border-outline-variant bg-surface-container-highest px-3 font-body text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               />
             </div>
 
-            {/* CIPL File URL — optional */}
             <div>
-              <label
-                htmlFor="ciplFileUrl"
-                className="block font-label text-label text-text-grey"
-              >
+              <label htmlFor="ciplFileUrl" className="block font-label text-label-sm text-on-surface-variant mb-xs">
                 CIPL File URL
               </label>
               <input
@@ -235,16 +204,12 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
                 name="ciplFileUrl"
                 type="text"
                 placeholder="Storage URL of the attached CIPL document"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="h-11 w-full rounded-md border border-outline-variant bg-surface-container-highest px-3 font-body text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               />
             </div>
 
-            {/* PEZA Number — optional */}
             <div>
-              <label
-                htmlFor="pezaNumber"
-                className="block font-label text-label text-text-grey"
-              >
+              <label htmlFor="pezaNumber" className="block font-label text-label-sm text-on-surface-variant mb-xs">
                 PEZA Number
               </label>
               <input
@@ -252,16 +217,12 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
                 name="pezaNumber"
                 type="text"
                 placeholder="PEZA permit number"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="h-11 w-full rounded-md border border-outline-variant bg-surface-container-highest px-3 font-body text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               />
             </div>
 
-            {/* IP Number — optional */}
             <div>
-              <label
-                htmlFor="ipNumber"
-                className="block font-label text-label text-text-grey"
-              >
+              <label htmlFor="ipNumber" className="block font-label text-label-sm text-on-surface-variant mb-xs">
                 IP Number
               </label>
               <input
@@ -269,16 +230,12 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
                 name="ipNumber"
                 type="text"
                 placeholder="Import permit number"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="h-11 w-full rounded-md border border-outline-variant bg-surface-container-highest px-3 font-body text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               />
             </div>
 
-            {/* MAWB/MBL Number — optional */}
             <div className="md:col-span-2">
-              <label
-                htmlFor="mawbMblNumber"
-                className="block font-label text-label text-text-grey"
-              >
+              <label htmlFor="mawbMblNumber" className="block font-label text-label-sm text-on-surface-variant mb-xs">
                 MAWB / MBL Number
               </label>
               <input
@@ -286,42 +243,39 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
                 name="mawbMblNumber"
                 type="text"
                 placeholder="Master Air Waybill / Bill of Lading number"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="h-11 w-full rounded-md border border-outline-variant bg-surface-container-highest px-3 font-body text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               />
             </div>
           </div>
         </div>
 
         {/* Expected lines section */}
-        <div className="rounded-md bg-surface-white shadow-elevation-1 p-6">
-          <h2 className="font-heading font-semibold text-data-display text-on-surface">
-            Expected Lines
-          </h2>
-          <p className="mt-1 font-body text-body-sm text-text-grey">
-            At least one line is required. Each line requires a lot number,
-            expected quantity, unit CBM, UOM, and disposition. The putaway
-            location for store-disposition lines is selected on the floor at
-            scan/store time, not here.
-          </p>
-          <div className="mt-4">
-            {/* WrrLineItems is a client component — handles dynamic add/remove.
-                All line inputs are rendered within this form and submitted with it. */}
-            <WrrLineItems />
+        <div className="rounded-xl bg-surface-container-lowest border border-outline-variant shadow-sm p-lg">
+          <div className="flex items-center gap-sm mb-sm border-b border-outline-variant/50 pb-sm">
+            <span className="material-symbols-outlined text-primary text-[20px]">list_alt</span>
+            <h2 className="font-heading text-title-md font-semibold text-on-surface">
+              Expected Lines
+            </h2>
           </div>
+          <p className="mb-md font-body text-body-sm text-on-surface-variant">
+            At least one line is required. Each line requires a lot number, expected quantity, unit CBM, UOM, and disposition.
+          </p>
+          
+          <WrrLineItems />
         </div>
 
         {/* Form actions */}
-        <div className="flex flex-wrap gap-3">
-          {/* Primary CTA — brand-red per brand-design-system.md §9, h-11 office touch target */}
+        <div className="flex flex-wrap items-center gap-md pt-sm">
           <button
             type="submit"
-            className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-11 items-center justify-center gap-sm rounded-full bg-primary px-lg font-label text-label-lg text-on-primary shadow-sm hover:opacity-90 active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
           >
+            <span className="material-symbols-outlined text-[20px]">add_circle</span>
             Create WRR
           </button>
           <Link
             href="/receiving"
-            className="flex h-11 items-center justify-center rounded border border-outline-variant/30 px-6 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-11 items-center justify-center rounded-full border border-outline-variant px-lg font-label text-label-lg text-on-surface hover:bg-surface-container-highest transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
           >
             Cancel
           </Link>

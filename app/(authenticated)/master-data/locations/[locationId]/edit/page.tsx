@@ -30,16 +30,16 @@ export default async function EditLocationPage({ params }: PageProps) {
         <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
           Edit Location
         </h1>
-        <p className="mt-1 font-mono text-mono-md text-text-grey">
+        <p className="mt-1 font-mono text-mono-md text-on-surface-variant">
           {location.label}
         </p>
-        <p className="mt-1 font-body text-body-sm text-text-grey">
+        <p className="mt-1 font-body text-body-sm text-on-surface-variant">
           Changing rack, level, or position will recompute the label
           server-side and validate its uniqueness before saving.
         </p>
       </div>
 
-      <div className="rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="rounded-md bg-white shadow-elevation-1 p-6">
         <LocationForm
           action={updateLocationAction}
           location={location}

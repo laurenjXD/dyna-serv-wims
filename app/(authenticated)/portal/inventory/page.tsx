@@ -48,8 +48,8 @@ interface InventoryRow {
 // brand-design-system.md §1.3 semantic colors — never raw hex.
 
 const STATUS_CLASSES: Record<LotStatus, string> = {
-  available: "bg-status-available/10 text-status-available",
-  held: "bg-status-held/10 text-status-held",
+  available: "bg-status-success/10 text-status-success",
+  held: "bg-status-error/10 text-status-error",
   depleted: "bg-status-neutral/10 text-status-neutral",
 };
 
@@ -60,8 +60,8 @@ const STATUS_LABELS: Record<LotStatus, string> = {
 };
 
 const FLOW_CLASSES: Record<FlowType, string> = {
-  VMI: "bg-brand-royal-blue/10 text-brand-royal-blue",
-  Trading: "bg-brand-navy/10 text-brand-navy",
+  VMI: "bg-secondary/10 text-secondary",
+  Trading: "bg-primary/10 text-primary",
 };
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
@@ -144,13 +144,13 @@ export default async function PortalInventoryPage({ searchParams }: PageProps) {
       <div className="mx-auto max-w-container px-8 py-12 text-center">
         <Package
           size={40}
-          className="mx-auto mb-3 text-text-grey"
+          className="mx-auto mb-3 text-on-surface-variant"
           aria-hidden="true"
         />
-        <p className="font-body text-body-md text-text-grey">
+        <p className="font-body text-body-md text-on-surface-variant">
           You do not have permission to view inventory.
         </p>
-        <p className="mt-2 font-body text-body-sm text-text-grey">
+        <p className="mt-2 font-body text-body-sm text-on-surface-variant">
           This page requires the{" "}
           <span className="font-mono text-mono-md">reporting.read</span>{" "}
           capability.
@@ -167,7 +167,7 @@ export default async function PortalInventoryPage({ searchParams }: PageProps) {
           <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
             My Inventory
           </h1>
-          <p className="mt-1 font-body text-body-md text-text-grey">
+          <p className="mt-1 font-body text-body-md text-on-surface-variant">
             Your current stock position. All data scoped to your account.
           </p>
         </div>
@@ -176,7 +176,7 @@ export default async function PortalInventoryPage({ searchParams }: PageProps) {
         {/* TODO: wire to CSV export server action scoped to session party */}
         <button
           type="button"
-          className="flex h-11 items-center gap-2 rounded bg-brand-navy px-4 font-label text-label text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:transition-transform motion-safe:duration-100 motion-safe:active:scale-[0.97] hover:opacity-90"
+          className="flex h-11 items-center gap-2 rounded bg-primary px-4 font-label text-label text-white focus:outline-none focus:ring-2 focus:ring-primary motion-safe:transition-transform motion-safe:duration-100 motion-safe:active:scale-[0.97] hover:opacity-90"
         >
           <Download size={16} aria-hidden="true" />
           Export CSV
@@ -190,14 +190,14 @@ export default async function PortalInventoryPage({ searchParams }: PageProps) {
           <div className="flex flex-col gap-1">
             <label
               htmlFor="location-filter"
-              className="font-label text-label text-text-grey"
+              className="font-label text-label text-on-surface-variant"
             >
               Location
             </label>
             <select
               id="location-filter"
               name="location"
-              className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="h-11 rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="">All locations</option>
               {/* TODO: wire to locations query */}
@@ -206,14 +206,14 @@ export default async function PortalInventoryPage({ searchParams }: PageProps) {
           <div className="flex flex-col gap-1">
             <label
               htmlFor="category-filter"
-              className="font-label text-label text-text-grey"
+              className="font-label text-label text-on-surface-variant"
             >
               Item category
             </label>
             <select
               id="category-filter"
               name="category"
-              className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="h-11 rounded border border-outline-variant/30 bg-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="">All categories</option>
               {/* TODO: wire to item categories via party_visible_items */}
@@ -221,7 +221,7 @@ export default async function PortalInventoryPage({ searchParams }: PageProps) {
           </div>
           <button
             type="submit"
-            className="flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:transition-transform motion-safe:duration-100 motion-safe:active:scale-[0.97] hover:opacity-90"
+            className="flex h-11 items-center justify-center rounded bg-primary px-4 font-label text-label text-white focus:outline-none focus:ring-2 focus:ring-primary motion-safe:transition-transform motion-safe:duration-100 motion-safe:active:scale-[0.97] hover:opacity-90"
           >
             Apply
           </button>
@@ -229,11 +229,11 @@ export default async function PortalInventoryPage({ searchParams }: PageProps) {
       </div>
 
       {/* ── Inventory table — Level 1 glassmorphism (office/party surface) ─── */}
-      <div className="mt-4 overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+      <div className="mt-4 overflow-hidden rounded-2xl border border-outline-variant/30 bg-white shadow-elevation-1">
         {MOCK_INVENTORY_ROWS.length === 0 ? (
           <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
-            <Package size={40} className="text-text-grey" aria-hidden="true" />
-            <p className="font-body text-body-md text-text-grey">
+            <Package size={40} className="text-on-surface-variant" aria-hidden="true" />
+            <p className="font-body text-body-md text-on-surface-variant">
               No inventory items found.
             </p>
           </div>
@@ -241,34 +241,34 @@ export default async function PortalInventoryPage({ searchParams }: PageProps) {
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
+                <tr className="border-b border-outline-variant/30 bg-surface-dim">
                   {/* Epilogue SemiBold uppercase headers per §9 */}
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Item Code
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Item Name
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Lot #
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Location
                   </th>
-                  <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Qty on Hand
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Flow
                   </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Status
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/30">
                 {MOCK_INVENTORY_ROWS.map((row) => (
-                  <tr key={row.id} className="hover:bg-surface-light-grey/50">
+                  <tr key={row.id} className="hover:bg-surface-dim/50">
                     {/* Item code — Roboto Mono for codes */}
                     <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
                       {row.itemCode}
@@ -317,7 +317,7 @@ export default async function PortalInventoryPage({ searchParams }: PageProps) {
           VMI prices shown are a per-release reference only — NOT the
           authoritative bill. The real VMI bill is always the period average.
           NOTE: NO price columns are rendered in this table by design. */}
-      <p className="mt-3 font-body text-body-sm text-text-grey">
+      <p className="mt-3 font-body text-body-sm text-on-surface-variant">
         Quantities shown are live on-hand balances. VMI billing is based on the
         period-average consumption rate, not this snapshot.
       </p>

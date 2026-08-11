@@ -10,7 +10,7 @@ describe("analytics component helpers", () => {
     expect(trendLabel({ direction: "down", pct: 12 })).toBe("down 12% from prior period");
   });
   it("maps every status to a semantic token class", () => {
-    expect(statusClass("available")).toContain("status-available");
-    expect(statusClass("expired")).toContain("brand-royal-blue");
+    expect(statusClass("available")).toContain("status-success");
+    expect(statusClass("expired")).toContain("secondary");
   });
 });

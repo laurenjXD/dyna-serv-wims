@@ -1,39 +1,4 @@
-// Shell navigation — one navigation registry, two alternate presentations.
-//
-// Traceability: specs/05-ui-shell-and-navigation/design.md §4
-// (`DesktopSidebar` and `MobileFloorNavigation` are alternate presentations
-// of the same navigation registry, never both at once) and §3.3 (floor
-// routes never render the persistent desktop sidebar; "party" sessions use
-// the identical office-shape sidebar). requirements.md R3.4 (visibility
-// derived from server-provided capability context, hidden not disabled),
-// R3.6 (dynamic-segment active matching), R3.7 (active destination carries
-// a non-color `aria-current` signal), R4.1/R4.2.
-
 import Link from "next/link";
-import type { LucideIcon } from "lucide-react";
-import {
-  Layers,
-  Users,
-  ArrowLeftRight,
-  CheckSquare,
-  FileText,
-  BarChart2,
-  Receipt,
-  RefreshCw,
-  UserCircle,
-  Settings,
-  Globe,
-  Package,
-  ShoppingCart,
-  Bell,
-  Tag,
-  Circle,
-  Box,
-  ChevronLeft,
-  House,
-  Inbox,
-  Shield,
-} from "lucide-react";
 import type { AuthorizationContext } from "@/lib/rbac/session";
 import type { SessionPresentationTier } from "@/lib/shell/surface";
 import {
@@ -44,28 +9,27 @@ import {
 import { resolveActiveRouteId } from "@/lib/shell/active-route";
 import type { RouteRegistryEntry } from "@/lib/shell/registry";
 
-// Icon map keyed by route id. Any id not present falls back to Circle.
-const ROUTE_ICON_MAP: Record<string, LucideIcon> = {
-  root: House,
-  receiving: Inbox,
-  inventory: Layers,
-  outgoing: ShoppingCart,
-  enrollment: Users,
-  transfers: ArrowLeftRight,
-  inspection: Shield,
-  approvals: CheckSquare,
-  documents: FileText,
-  reports: BarChart2,
-  "billing-pricing": Receipt,
-  sync: RefreshCw,
-  profile: UserCircle,
-  settings: Settings,
-  portal: Globe,
-  "portal-inventory": Package,
-  "portal-orders": ShoppingCart,
-  "portal-documents": FileText,
-  "portal-notifications": Bell,
-  "portal-labels": Tag,
+const ROUTE_ICON_MAP: Record<string, string> = {
+  root: "dashboard",
+  receiving: "input",
+  inventory: "inventory_2",
+  outgoing: "local_shipping",
+  enrollment: "person_add",
+  transfers: "swap_horiz",
+  inspection: "shield",
+  approvals: "fact_check",
+  documents: "description",
+  reports: "bar_chart",
+  "billing-pricing": "receipt",
+  sync: "sync",
+  profile: "account_circle",
+  settings: "settings",
+  portal: "hub",
+  "portal-inventory": "inventory_2",
+  "portal-orders": "shopping_cart",
+  "portal-documents": "description",
+  "portal-notifications": "notifications",
+  "portal-labels": "label",
 };
 
 const OFFICE_SIDEBAR_ROUTE_IDS = new Set([
@@ -81,12 +45,16 @@ const OFFICE_SIDEBAR_ROUTE_IDS = new Set([
   "settings",
 ]);
 
-function routeIcon(id: string): LucideIcon {
-  return ROUTE_ICON_MAP[id] ?? Circle;
+function routeIcon(id: string): string {
+  return ROUTE_ICON_MAP[id] ?? "circle";
 }
 
 function toLabel(id: string): string {
-  const labels: Record<string, string> = { root: "Dashboard", outgoing: "Picking" };
+  const labels: Record<string, string> = { 
+    root: "Overview", 
+    outgoing: "Outgoing",
+    "master-data": "Master Data"
+  };
   if (labels[id]) return labels[id];
 
   return id
@@ -95,10 +63,6 @@ function toLabel(id: string): string {
     .join(" ");
 }
 
-// Dynamic-segment routes (e.g. "/receiving/[wrr_id]") are reached by
-// drilling into a list/detail item, not from the persistent nav — the nav
-// registry still declares them (for capability/surface bookkeeping and
-// active-route matching), but they are not rendered as standalone nav links.
 function isNavigableEntry(entry: RouteRegistryEntry): boolean {
   return !entry.path.includes("[");
 }
@@ -112,45 +76,40 @@ function NavLink({
   isActive: boolean;
   tier: SessionPresentationTier;
 }) {
-  const Icon = routeIcon(entry.id);
+  const iconName = routeIcon(entry.id);
+  const label = toLabel(entry.id);
 
   if (tier === "floor") {
-    // Floor text has a hard 16px minimum (brand-design-system.md §2/§11) —
-    // the type scale's own `label` row is 14px, so floor nav labels use
-    // font-label + text-body-md. No hover states on floor; press feedback
-    // via active:scale-[0.97] + active:opacity-75.
+    // Floor mobile icon styles
     return (
       <Link
         href={entry.path}
         data-testid={`nav-entry-${entry.id}`}
         aria-current={isActive ? "page" : undefined}
-        className={`flex min-h-14 flex-1 flex-col items-center justify-center gap-1 px-2
-          font-label uppercase tracking-wide
-          active:scale-[0.97] active:opacity-75
-          focus:outline-none focus-visible:ring-2 focus-visible:ring-white
-          ${isActive ? "bg-brand-red/10 text-brand-red" : "text-white/70"}`}
+        className={`flex flex-col items-center justify-center rounded-full px-4 py-1 active:bg-surface-container-highest transition-all duration-200 ${
+          isActive ? "bg-primary-container text-on-primary-container" : "text-on-surface-variant"
+        }`}
       >
-        <Icon size={24} aria-hidden="true" />
-        <span className="text-body-md font-label">{toLabel(entry.id)}</span>
+        <span className={`material-symbols-outlined ${isActive ? "filled" : ""}`}>{iconName}</span>
+        <span className="font-label-md-mobile text-label-md mt-1">{label}</span>
       </Link>
     );
   }
 
-  // Office / party sidebar: icon (16px) inline left of label.
+  // Desktop side nav styles
   return (
     <Link
       href={entry.path}
       data-testid={`nav-entry-${entry.id}`}
       aria-current={isActive ? "page" : undefined}
-      className={`flex min-h-14 items-center gap-4 rounded-2xl px-5 py-3
-        transition-colors duration-150
-        focus-visible:ring-2 focus-visible:ring-white focus:outline-none
-        ${isActive
-          ? "bg-accent-indigo-600 text-white shadow-elevation-1"
-          : "text-white/70 hover:bg-white/10 hover:text-white"}`}
+      className={`flex items-center gap-md px-md py-sm font-label-md text-label-md rounded-lg transition-transform scale-95 active:scale-90 ${
+        isActive
+          ? "bg-primary-container text-on-primary-container"
+          : "text-on-surface-variant hover:bg-surface-variant hover:bg-surface-container-high"
+      }`}
     >
-      <Icon size={24} aria-hidden="true" />
-      <span className="font-heading text-body-lg font-semibold tracking-tight">{toLabel(entry.id)}</span>
+      <span className={`material-symbols-outlined ${isActive ? "filled" : ""}`}>{iconName}</span>
+      {label}
     </Link>
   );
 }
@@ -165,104 +124,77 @@ export function ShellNavigation({
   currentPath: string;
 }) {
   const visible = filterVisibleRoutes(context).filter(
-    // "planned" routes never render as a live link (design.md §5's
-    // registry rule).
     (entry) => entry.launchStatus !== "planned",
   );
   const presented = selectRoutesForPresentation(visible, tier).filter(isNavigableEntry);
   const activeId = resolveActiveRouteId(currentPath);
 
-  if (tier === "floor") {
-    // Skip link omitted for floor tab bar: content is already above the nav,
-    // so no "skip" is needed — users are not trapped below it.
-    return (
-      <nav
-        data-testid="floor-tab-bar"
-        aria-label="Primary navigation"
-        className="fixed inset-x-0 bottom-0 z-40 flex items-stretch justify-around border-t border-outline-variant/30 bg-brand-navy shadow-elevation-2"
-      >
-        {presented.map((entry) => (
-          <NavLink key={entry.id} entry={entry} isActive={entry.id === activeId} tier={tier} />
-        ))}
-      </nav>
-    );
-  }
+  // Note: mobile view on office still uses the bottom nav per responsive design guidelines
+  const profileImg = "https://lh3.googleusercontent.com/aida-public/AB6AXuCn0x5KZZh2cA4tLyhYvD4p0Trg9-Iu9c6ZBHTzh1PfMfE_lls7ZBvkyFiH4-DbfwyWzAxCoSioAX0VD6Gn2YCTwUpvvzN60bMSa_srcdXLNOdLSM4PCV8jM7FUUETjvc8uBnYkJbGDDdmzsQQOOTp661Sv6rNOo78a_kvyBen2SlP2AzFPjLEyb5Y2mkKPJ8HcHUcZVSxtq6Mi0Jy7AVHAuC7t6VkVj0n76zXhtuOXmcZWJZZ6VTU";
 
-  const sections = groupRoutesForSidebar(
-    presented.filter((entry) => OFFICE_SIDEBAR_ROUTE_IDS.has(entry.id)),
-  );
+  // Desktop Sidebar items (main vs bottom section)
+  // Stitch design has "Documents" and "Account" at the bottom
+  const bottomRouteIds = new Set(["documents", "profile", "settings"]);
+  const mainDesktopRoutes = presented.filter(e => !bottomRouteIds.has(e.id));
+  const bottomDesktopRoutes = presented.filter(e => bottomRouteIds.has(e.id));
 
   return (
-    <nav
-      data-testid="desktop-sidebar"
-      aria-label="Primary navigation"
-      className="hidden flex-col gap-6 overflow-y-auto border-r border-black/20 bg-on-surface px-5 py-8 lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:flex lg:w-72"
-    >
-      {/* Skip-to-content: visually hidden until focused, first element in the
-          nav so keyboard users can bypass the sidebar entirely. */}
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50
-                   focus:rounded focus:bg-brand-red focus:px-4 focus:py-2 focus:text-white
-                   focus:font-label focus:text-body-md focus:shadow-lg"
+    <>
+      {/* Desktop Sidebar */}
+      <nav
+        data-testid="desktop-sidebar"
+        aria-label="Primary navigation"
+        className="hidden md:flex flex-col h-screen p-sm fixed left-0 top-0 w-64 bg-surface-container-low border-r border-outline-variant z-40"
       >
-        Skip to content
-      </a>
-
-      <div className="flex items-center gap-4 px-2 pt-1">
-        <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-accent-indigo-600/25 text-accent-indigo-300">
-          <Box size={31} aria-hidden="true" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="font-heading text-headline-md font-extrabold tracking-tight text-white">DYNA-SERV</p>
-          <p className="mt-1 font-label text-body-md tracking-[0.1em] text-white/45">WIMS</p>
+        <div className="px-md py-lg">
+          <div className="font-headline-md text-headline-md font-black text-primary truncate">Dyna-Serv WIMS</div>
+          <div className="flex items-center gap-sm mt-md">
+            <img src={profileImg} alt="User Account" className="w-10 h-10 rounded-full object-cover" />
+            <div className="flex flex-col">
+              <span className="font-label-md text-label-md text-on-surface">Admin User</span>
+              <span className="font-body-sm text-body-sm text-on-surface-variant">Warehouse Admin</span>
+            </div>
+          </div>
         </div>
-        <ChevronLeft size={18} className="text-white/40" aria-hidden="true" />
-      </div>
 
-      <div className="flex flex-1 flex-col gap-7">
-        {sections.map((section) => (
-          <div key={section.group} data-testid={`nav-group-${slugify(section.group)}`}>
-          {/* Section header — Epilogue label style, dimmer than links so it
-              reads as a grouping cue, not another tap target. Not a heading
-              element in the a11y tree sense that needs its own landmark;
-              this is a visual/structural grouping within the single
-              `nav aria-label="Primary navigation"` landmark, per design.md §4's
-              "one navigation landmark" shell composition. aria-hidden because
-              it is a visual grouping cue only — the landmark + link text
-              already provides the accessible context. */}
-          <p
-            aria-hidden="true"
-            className="px-3 pb-2 pt-2 font-label text-body-md font-bold uppercase tracking-[0.08em] text-surface-white/40"
-          >
-            {section.group}
-          </p>
-          <div className="flex flex-col gap-1">
-            {section.entries.map((entry) => (
-              <NavLink key={entry.id} entry={entry} isActive={entry.id === activeId} tier={tier} />
-            ))}
-          </div>
-          </div>
+        <button className="mx-md mb-md bg-primary text-on-primary font-label-md text-label-md py-sm px-md rounded-lg flex items-center justify-center gap-sm hover:bg-tertiary-container transition-colors">
+          <span className="material-symbols-outlined">qr_code_scanner</span>
+          Quick Scan
+        </button>
+
+        <div className="flex-1 overflow-y-auto px-xs flex flex-col gap-xs">
+          {mainDesktopRoutes.map((entry) => (
+            <NavLink key={entry.id} entry={entry} isActive={entry.id === activeId} tier="office" />
+          ))}
+        </div>
+
+        <div className="mt-auto px-xs pb-md pt-sm border-t border-outline-variant flex flex-col gap-xs">
+          {bottomDesktopRoutes.map((entry) => (
+            <NavLink key={entry.id} entry={entry} isActive={entry.id === activeId} tier="office" />
+          ))}
+        </div>
+      </nav>
+
+      {/* Mobile Bottom Navigation */}
+      <nav
+        data-testid="mobile-tab-bar"
+        aria-label="Mobile navigation"
+        className="md:hidden fixed bottom-0 w-full z-50 flex justify-around items-center px-4 h-20 pb-safe bg-surface shadow-[0_-4px_12px_rgba(0,0,0,0.08)] rounded-t-xl transition-all duration-200"
+      >
+        {/* We limit the mobile nav to 4 primary routes + Scan button */}
+        {presented.slice(0, 4).map((entry) => (
+          <NavLink key={entry.id} entry={entry} isActive={entry.id === activeId} tier="floor" />
         ))}
-      </div>
-
-      <aside className="rounded-3xl bg-white/5 p-6">
-        <span className="mb-3 flex gap-1" aria-hidden="true">
-          <span className="h-1.5 w-8 rounded-full bg-accent-indigo-600" />
-          <span className="h-1.5 w-6 rounded-full bg-white/25" />
-          <span className="h-1.5 w-6 rounded-full bg-white/25" />
-        </span>
-        <p className="font-heading text-body-lg font-bold text-white">Keep your warehouse running smoothly.</p>
-        <p className="mt-2 font-body text-body-md text-white/55">Every move matters.</p>
-      </aside>
-    </nav>
+        {tier === "floor" && (
+          <Link
+            href="/scan"
+            className="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-container-highest rounded-full px-4 py-1"
+          >
+            <span className="material-symbols-outlined text-primary">barcode_scanner</span>
+            <span className="font-label-md-mobile text-label-md mt-1 text-primary">Scan</span>
+          </Link>
+        )}
+      </nav>
+    </>
   );
-}
-
-function slugify(label: string): string {
-  return label
-    .toLowerCase()
-    .replace(/&/g, "and")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
 }

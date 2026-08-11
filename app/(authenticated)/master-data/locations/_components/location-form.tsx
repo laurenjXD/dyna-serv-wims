@@ -58,7 +58,7 @@ export function LocationForm({
       <p
         id={`${name}-error`}
         role="alert"
-        className="mt-1 font-body text-body-sm text-brand-red"
+        className="mt-1 font-body text-body-sm text-action-blue"
       >
         {state.fieldErrors[name]}
       </p>
@@ -67,9 +67,9 @@ export function LocationForm({
   const inputClass = (name: string) =>
     `mt-1 block w-full rounded border ${
       state.fieldErrors?.[name]
-        ? "border-brand-red"
+        ? "border-action-blue"
         : "border-outline-variant/30"
-    } bg-surface-white px-3 py-2 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy`;
+    } bg-white px-3 py-2 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-primary`;
 
   const ariaProps = (name: string) =>
     state.fieldErrors?.[name]
@@ -93,7 +93,7 @@ export function LocationForm({
       {state.error && (
         <div
           role="alert"
-          className="mb-6 rounded border border-brand-red/30 bg-brand-red/5 px-4 py-3 font-body text-body-md text-brand-red"
+          className="mb-6 rounded border border-action-blue/30 bg-action-blue/5 px-4 py-3 font-body text-body-md text-action-blue"
         >
           {state.error}
         </div>
@@ -107,7 +107,7 @@ export function LocationForm({
             className="block font-label text-label text-on-surface"
           >
             Zone{" "}
-            <span aria-hidden="true" className="text-brand-red">*</span>
+            <span aria-hidden="true" className="text-action-blue">*</span>
           </label>
           <input
             id="zone"
@@ -130,13 +130,13 @@ export function LocationForm({
             className="block font-label text-label text-on-surface"
           >
             Location Type{" "}
-            <span aria-hidden="true" className="text-brand-red">*</span>
+            <span aria-hidden="true" className="text-action-blue">*</span>
           </label>
           <select
             id="locationType"
             name="locationType"
             defaultValue={location?.locationType ?? "storage"}
-            className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="mt-1 block w-full rounded border border-outline-variant/30 bg-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {LOCATION_TYPES.map(({ value, label }) => (
               <option key={value} value={value}>
@@ -154,7 +154,7 @@ export function LocationForm({
             className="block font-label text-label text-on-surface"
           >
             Rack{" "}
-            <span aria-hidden="true" className="text-brand-red">*</span>
+            <span aria-hidden="true" className="text-action-blue">*</span>
           </label>
           <input
             id="rack"
@@ -178,7 +178,7 @@ export function LocationForm({
             className="block font-label text-label text-on-surface"
           >
             Level{" "}
-            <span aria-hidden="true" className="text-brand-red">*</span>
+            <span aria-hidden="true" className="text-action-blue">*</span>
           </label>
           <input
             id="level"
@@ -202,7 +202,7 @@ export function LocationForm({
             className="block font-label text-label text-on-surface"
           >
             Position{" "}
-            <span aria-hidden="true" className="text-brand-red">*</span>
+            <span aria-hidden="true" className="text-action-blue">*</span>
           </label>
           <input
             id="position"
@@ -226,7 +226,7 @@ export function LocationForm({
             className="block font-label text-label text-on-surface"
           >
             Max CBM Capacity{" "}
-            <span aria-hidden="true" className="text-brand-red">*</span>
+            <span aria-hidden="true" className="text-action-blue">*</span>
           </label>
           <input
             id="maxCbmCapacity"
@@ -261,7 +261,7 @@ export function LocationForm({
                 hiddenInput.value = e.currentTarget.checked ? "true" : "false";
               }
             }}
-            className="h-5 w-5 rounded border-outline-variant/30 text-brand-navy focus:ring-2 focus:ring-brand-navy"
+            className="h-5 w-5 rounded border-outline-variant/30 text-primary focus:ring-2 focus:ring-primary"
           />
           <label
             htmlFor="isActive"
@@ -278,15 +278,15 @@ export function LocationForm({
       </div>
 
       {/* Label preview */}
-      <div className="mt-6 rounded border border-outline-variant/30 bg-surface-light-grey px-4 py-3">
-        <p className="font-label text-label text-text-grey">
+      <div className="mt-6 rounded border border-outline-variant/30 bg-surface-dim px-4 py-3">
+        <p className="font-label text-label text-on-surface-variant">
           Generated Location Label{" "}
-          <span className="font-body text-body-sm text-text-grey">
+          <span className="font-body text-body-sm text-on-surface-variant">
             (server-computed, shown for confirmation)
           </span>
         </p>
         {labelPreview ? (
-          <p className="mt-1 font-mono text-mono-md font-bold text-brand-navy">
+          <p className="mt-1 font-mono text-mono-md font-bold text-primary">
             {labelPreview}
           </p>
         ) : (
@@ -295,11 +295,11 @@ export function LocationForm({
           </p>
         )}
         {state.fieldErrors?.label && (
-          <p role="alert" className="mt-1 font-body text-body-sm text-brand-red">
+          <p role="alert" className="mt-1 font-body text-body-sm text-action-blue">
             {state.fieldErrors.label}
           </p>
         )}
-        <p className="mt-2 font-body text-body-sm text-text-grey">
+        <p className="mt-2 font-body text-body-sm text-on-surface-variant">
           Format: Rack + Level + &quot;-&quot; + Position (e.g. rack A, level 1,
           position 01 → <span className="font-mono">A1-01</span>). The server
           always re-computes and re-validates this value at write time.
@@ -310,14 +310,14 @@ export function LocationForm({
       <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-end">
         <Link
           href={cancelHref}
-          className="flex h-11 items-center justify-center rounded bg-brand-navy px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-red"
+          className="flex h-11 items-center justify-center rounded bg-primary px-6 font-label text-label text-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-action-blue"
         >
           Cancel
         </Link>
         <button
           type="submit"
           disabled={isPending}
-          className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:opacity-50"
+          className="flex h-11 items-center justify-center rounded bg-action-blue px-6 font-label text-label text-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
         >
           {isPending
             ? "Saving…"

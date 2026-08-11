@@ -160,15 +160,28 @@ function makeSelectChain(rows: unknown[]) {
 }
 
 // Minimal DB that records inserted rows and supports update.
+//
+// `unitScanRows` (Task D, added 2026-08-11): the mock's stand-in for
+// `wrr_item_unit_scans` rows already recorded for whatever wrr_item_id
+// recordScan's new duplicate-unit lookup queries. Distinguished from the
+// wrrDocuments/wrrItems join query and the "locations" lookup the same way
+// "locations" already is — by the queried table's Drizzle name symbol — so
+// this stays a pure additive extension of the existing mock shape rather
+// than a new mocking approach.
 function makeReceivingDb(
   wrrRows: AnyRecord[],
   wrrItemRows: AnyRecord[] = [],
+  unitScanRows: AnyRecord[] = [],
 ) {
   const inserted: unknown[] = [];
+  const insertedByTable: Array<{ tableName: string; row: AnyRecord }> = [];
+  const selectedTables: string[] = [];
   const updated: unknown[] = [];
 
   const db = {
     _inserted: inserted,
+    _insertedByTable: insertedByTable,
+    _selectedTables: selectedTables,
     _updated: updated,
 
     select: vi.fn().mockImplementation(() => {
@@ -176,17 +189,27 @@ function makeReceivingDb(
       const allRows = [...wrrRows, ...wrrItemRows];
       const chain = makeSelectChain(allRows);
       chain.from.mockImplementation((table: Record<PropertyKey, unknown>) => {
-        if (table[Symbol.for("drizzle:Name")] === "locations") {
+        const tableName = table[Symbol.for("drizzle:Name")] as string | undefined;
+        if (tableName) selectedTables.push(tableName);
+        if (tableName === "locations") {
           return makeSelectChain([{ id: "location-storage-uuid" }]);
+        }
+        // Task D: recordScan's new pre-matchScan lookup of already-recorded
+        // unit_ids for the parsed wrr_item_id, queried against
+        // wrr_item_unit_scans (lib/db/schema/wrr.ts's `wrrItemUnitScans`).
+        if (tableName === "wrr_item_unit_scans") {
+          return makeSelectChain(unitScanRows);
         }
         return chain;
       });
       return chain;
     }),
 
-    insert: vi.fn().mockImplementation(() => ({
-      values: vi.fn().mockImplementation((row: unknown) => {
+    insert: vi.fn().mockImplementation((table: Record<PropertyKey, unknown>) => ({
+      values: vi.fn().mockImplementation((row: AnyRecord) => {
         inserted.push(row);
+        const tableName = (table?.[Symbol.for("drizzle:Name")] as string) ?? "unknown";
+        insertedByTable.push({ tableName, row });
         return {
           returning: vi.fn().mockResolvedValue([{ id: "new-wrr-uuid" }]),
         };
@@ -208,6 +231,12 @@ function makeReceivingDb(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (db as any).transaction = vi.fn(async (callback: (tx: typeof db) => Promise<unknown>) => callback(db));
   return db;
+}
+
+// Builds a wrr_item_unit JSON payload matching WRRUnitLabelGenerator's
+// printed label format (specs/18-barcode-integration/design.md §2.2).
+function unitPayload(wrrItemId: string, unitId: string): string {
+  return JSON.stringify({ type: "wrr_item_unit", wrr_item_id: wrrItemId, unit_id: unitId });
 }
 
 // ---------------------------------------------------------------------------
@@ -522,6 +551,144 @@ describe("recordScan — valid scan (R3.1, R3.2, design.md §5.2, §6)", () => {
     }
     // scannedQty must have been updated in the DB.
     expect(db.update).toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// recordScan — per-unit duplicate detection via wrr_item_unit_scans
+// (Task D, docs/superpowers/plans/2026-08-11-barcode-scanner-and-unit-labels-completion.md
+//  Phase 2 Task D; specs/18-barcode-integration/requirements.md FR-3a.3 /
+//  AC 6.5; specs/07-incoming-receiving/requirements.md R3.3 "duplicate
+//  carton"; lib/receiving/scan-matcher.ts's already-implemented
+//  duplicate_unit_scan reason + alreadyScannedUnitIds/unitId contract,
+//  Task C)
+// ---------------------------------------------------------------------------
+//
+// None of this exists yet in lib/actions/receiving.ts's recordScan: it
+// currently calls `matchScan(barcode, doc.items)` with no 4th argument, so
+// alreadyScannedUnitIds is always undefined and no duplicate-unit check is
+// ever performed; and it only ever calls `db.update(wrrItems)`, never
+// `db.insert` — no wrr_item_unit_scans row is ever written. This is the RED
+// step: every assertion below that depends on either of those behaviors
+// existing MUST fail until backend-builder implements them, strictly
+// against these tests.
+//
+// Expected recordScan contract addition (for backend-builder):
+//   1. Before calling matchScan, if `barcode` parses as a `{"type":
+//      "wrr_item_unit", "wrr_item_id": "...", "unit_id": "..."}` payload,
+//      query wrr_item_unit_scans for that wrr_item_id's already-recorded
+//      unit_ids (e.g. `db.select({ unitId: wrrItemUnitScans.unitId })
+//      .from(wrrItemUnitScans).where(eq(wrrItemUnitScans.wrrItemId,
+//      parsedWrrItemId))`), and pass the resulting Set as matchScan's 4th
+//      argument.
+//   2. On a successful, non-duplicate wrr_item_unit match (matchResult.unitId
+//      is present), INSERT `{ wrrItemId: line.id, unitId: matchResult.unitId,
+//      scannedByUserId: userId }` into wrr_item_unit_scans in the SAME
+//      transaction as the existing scannedQty increment.
+//   3. On a `duplicate_unit_scan` rejection from matchScan, return
+//      `{ ok: false, reason: "duplicate_unit_scan" }` unchanged — no new
+//      response shape.
+describe("recordScan — per-unit duplicate detection via wrr_item_unit_scans (FR-3a.3/AC 6.5, spec 18 §2.2, Task D)", () => {
+  it("(AC 6.5) a fresh wrr_item_unit scan (unit_id not previously recorded) succeeds, inserts a wrr_item_unit_scans row, and increments scannedQty", async () => {
+    const item = wrrItemRow({
+      id: "wrr-item-uuid-1",
+      expectedQty: 10,
+      scannedQty: 5,
+      disposition: "store",
+    });
+    // No pre-existing unit scans for this wrr_item_id.
+    const db = makeReceivingDb([wrrDocRow()], [item], []);
+    const barcode = unitPayload("wrr-item-uuid-1", "unit-fresh-001");
+
+    const result = await recordScan(
+      scanOnlyResolver(),
+      "wrr-uuid-existing",
+      barcode,
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.remainingQty).toBe(4);
+      expect(result.disposition).toBe("store");
+    }
+
+    // Existing behavior preserved: scannedQty is still incremented.
+    expect(db.update).toHaveBeenCalled();
+
+    // NEW: a wrr_item_unit_scans row must be inserted, in the same
+    // transaction, recording exactly this (wrr_item_id, unit_id) pair.
+    const unitScanInsert = db._insertedByTable.find(
+      (i) => i.tableName === "wrr_item_unit_scans",
+    );
+    expect(unitScanInsert).toBeDefined();
+    expect(unitScanInsert?.row.wrrItemId).toBe("wrr-item-uuid-1");
+    expect(unitScanInsert?.row.unitId).toBe("unit-fresh-001");
+  });
+
+  it("(AC 6.5) a repeat unit_id already recorded in wrr_item_unit_scans is rejected with { ok: false, reason: 'duplicate_unit_scan' }, and neither scannedQty nor a new wrr_item_unit_scans row is written", async () => {
+    const item = wrrItemRow({
+      id: "wrr-item-uuid-1",
+      expectedQty: 10,
+      scannedQty: 5,
+      disposition: "store",
+    });
+    // This unit_id was already recorded against this wrr_item_id.
+    const existingUnitScanRows = [{ unitId: "unit-dup-001" }];
+    const db = makeReceivingDb([wrrDocRow()], [item], existingUnitScanRows);
+    const barcode = unitPayload("wrr-item-uuid-1", "unit-dup-001");
+
+    const result = await recordScan(
+      scanOnlyResolver(),
+      "wrr-uuid-existing",
+      barcode,
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.reason).toBe("duplicate_unit_scan");
+    }
+
+    // Rejected scans must not increment scannedQty...
+    expect(db.update).not.toHaveBeenCalled();
+    // ...and must not post a second wrr_item_unit_scans row.
+    const unitScanInsert = db._insertedByTable.find(
+      (i) => i.tableName === "wrr_item_unit_scans",
+    );
+    expect(unitScanInsert).toBeUndefined();
+  });
+
+  it("(AC 6.5) an ordinary plain-string-barcode scan is entirely unaffected — no wrr_item_unit_scans query or insert is attempted for it at all", async () => {
+    const item = wrrItemRow({
+      barcode: "MATCH-BARCODE-001",
+      expectedQty: 10,
+      scannedQty: 5,
+      disposition: "store",
+    });
+    // Deliberately non-empty and overlapping-looking, to prove the
+    // duplicate-unit lookup is genuinely never even queried for a
+    // non-wrr_item_unit barcode — not merely that it returns no match.
+    const db = makeReceivingDb([wrrDocRow()], [item], [{ unitId: "irrelevant" }]);
+
+    const result = await recordScan(
+      scanOnlyResolver(),
+      "wrr-uuid-existing",
+      "MATCH-BARCODE-001",
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result.ok).toBe(true);
+    // Existing plain-barcode behavior preserved.
+    expect(db.update).toHaveBeenCalled();
+
+    // No select against wrr_item_unit_scans was ever issued...
+    expect(db._selectedTables).not.toContain("wrr_item_unit_scans");
+    // ...and no insert into it either.
+    const unitScanInsert = db._insertedByTable.find(
+      (i) => i.tableName === "wrr_item_unit_scans",
+    );
+    expect(unitScanInsert).toBeUndefined();
   });
 });
 

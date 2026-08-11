@@ -1,24 +1,3 @@
-// Inspection Detail — floor inspection flow for a single inspection case.
-//
-// Traceability:
-//   specs/11-transfer-and-inspection/design.md §6.1 (inspection contexts),
-//     §6.2 (context isolation), §6.3 (disposition table with balance effects)
-//   specs/11-transfer-and-inspection/requirements.md R3, R3.1–R3.4
-//   specs/00-steering/brand-design-system.md §3 (floor — mobile-first base
-//     styles at 375px, 64px CTAs full-width, one primary action per screen,
-//     active: not hover:, input priority scan>tap>type), §6 (solid bg-brand-navy,
-//     no glassmorphism on floor, Level 2 for solid cards), §1.5 (WCAG AAA for
-//     time-critical floor text), §2 (no text <16px on floor)
-//
-// Surface: FLOOR (bg-brand-navy). Permission gate: inspection.perform.
-//
-// Disposition options correspond to inspection_dispositions.disposition_type —
-// design.md §6.3: store | inspect_further (→ quarantine/further review) |
-// flag_for_review (→ hold). Final backend action is a placeholder server
-// action with redirect.
-//
-// All data is mocked. TODO: wire to real inspection_cases query by id.
-
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
@@ -41,8 +20,6 @@ interface InspectionCaseDetail {
   openedAt: string;
 }
 
-// TODO: replace with real DB query — SELECT from inspection_cases JOIN items,
-// lots, locations WHERE id = $1 AND (RLS enforces party/flow scope).
 function getMockInspectionCase(id: string): InspectionCaseDetail | null {
   const cases: InspectionCaseDetail[] = [
     {
@@ -75,7 +52,7 @@ function getMockInspectionCase(id: string): InspectionCaseDetail | null {
   return cases.find((c) => c.id === id) ?? null;
 }
 
-// ─── Disposition options — design.md §6.3 ────────────────────────────────────
+// ─── Disposition options ──────────────────────────────────────────────────────
 
 type DispositionType = "store_as_is" | "inspect_further" | "flag_for_review";
 
@@ -83,7 +60,6 @@ interface DispositionOption {
   value: DispositionType;
   label: string;
   description: string;
-  // Tailwind classes for the selection card background/border
   selectedClasses: string;
   unselectedClasses: string;
 }
@@ -93,24 +69,24 @@ const DISPOSITION_OPTIONS: DispositionOption[] = [
     value: "store_as_is",
     label: "Store as-is",
     description: "Item passes inspection — return to standard storage location.",
-    selectedClasses: "bg-status-available/10 border-status-available",
-    unselectedClasses: "bg-white/5 border-white/20",
+    selectedClasses: "bg-primary-container border-primary shadow-sm",
+    unselectedClasses: "bg-surface-container-highest border-transparent opacity-80",
   },
   {
     value: "inspect_further",
     label: "Inspect Further",
     description:
       "Hold for additional inspection — item remains at current location.",
-    selectedClasses: "bg-status-pending/10 border-status-pending",
-    unselectedClasses: "bg-white/5 border-white/20",
+    selectedClasses: "bg-tertiary-container border-tertiary shadow-sm",
+    unselectedClasses: "bg-surface-container-highest border-transparent opacity-80",
   },
   {
     value: "flag_for_review",
     label: "Flag for Review",
     description:
       "Non-conformance detected — route to supervisor for resolution.",
-    selectedClasses: "bg-status-held/10 border-status-held",
-    unselectedClasses: "bg-white/5 border-white/20",
+    selectedClasses: "bg-error-container border-error shadow-sm",
+    unselectedClasses: "bg-surface-container-highest border-transparent opacity-80",
   },
 ];
 
@@ -136,7 +112,6 @@ export default async function InspectionDetailPage({
     notFound();
   }
 
-  // TODO: replace mock lookup with real DB query + notFound() on miss.
   const inspection = getMockInspectionCase(id);
   if (!inspection) {
     notFound();
@@ -146,8 +121,6 @@ export default async function InspectionDetailPage({
   const isOpen = inspection.status === "open";
 
   // ─── Placeholder server action ─────────────────────────────────────────────
-  // TODO: wire to resolveInspectionCase(resolver, db, id, { disposition, ... })
-  // which updates inspection_cases.status and inserts inspection_dispositions.
   async function handleSubmitInspection(formData: FormData): Promise<void> {
     "use server";
     const disposition = formData.get("disposition") as string | null;
@@ -165,109 +138,88 @@ export default async function InspectionDetailPage({
     );
     const notes = (formData.get("notes") as string | null) ?? "";
 
-    // TODO: call real server action here once inspection_cases tables and
-    // resolveInspectionCase action are implemented per design.md §6.3.
-    // Placeholder — redirect back with result for now.
     void { disposition, inspectedQty, passedQty, failedQty, notes };
     redirect(`/inspection/${id}?result=submitted`);
   }
 
-  // Submission success flash — brand-design-system.md §9: scan/result feedback
-  // is a solid color block, not a gradient. Full-screen style for high-priority
-  // floor feedback.
   const showSuccess = result === "submitted";
 
   return (
-    // Floor screen — solid bg-brand-navy, no glassmorphism, 16px padding.
-    // brand-design-system.md §6: floor never gets Level 1 glassmorphism.
-    <div className="flex min-h-screen flex-col bg-brand-navy">
-      {/* Top bar — back link + inspection reference */}
-      <div className="bg-brand-navy px-4 py-3">
-        <div className="flex items-center justify-between">
-          {/* Back link — h-14 (56px) floor touch target per §3 */}
-          <Link
-            href="/inspection"
-            className="inline-flex h-14 items-center gap-2 font-body text-body-md text-white
-                       active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100
-                       focus:outline-none focus:ring-2 focus:ring-white"
-          >
-            <ChevronLeft size={20} strokeWidth={2} aria-hidden="true" />
-            <span>Inspections</span>
-          </Link>
-          {/* Inspection reference — Roboto Mono per §9 */}
-          <span className="font-mono text-mono-lg text-white/70">
-            {inspection.sourceRef}
-          </span>
-        </div>
+    <div className="mx-auto w-full max-w-md animate-in fade-in duration-300 pb-[100px]">
+      {/* Top bar */}
+      <div className="mb-md rounded-xl bg-surface-container-lowest p-sm shadow-sm border border-outline-variant flex items-center justify-between">
+        <Link
+          href="/inspection"
+          className="flex h-11 items-center gap-xs rounded-full px-sm hover:bg-surface-container-highest transition-colors font-label text-label-md text-on-surface"
+        >
+          <ChevronLeft size={20} strokeWidth={2} aria-hidden="true" />
+          <span>Queue</span>
+        </Link>
+        <span className="font-mono text-label-lg font-semibold text-primary px-sm">
+          {inspection.sourceRef}
+        </span>
       </div>
 
-      {/* Main content — flex-1, single-column, 16px padding */}
-      <div className="flex flex-1 flex-col px-4 pb-4">
-        {/* Success feedback — solid color block per §9 full-screen flash pattern */}
+      <div className="flex flex-1 flex-col">
+        {/* Success feedback */}
         {showSuccess && (
           <div
             role="status"
             aria-live="assertive"
-            className="mb-4 rounded-xl bg-status-available border border-status-available px-4 py-4"
+            className="mb-md rounded-xl bg-primary-container border border-primary p-md shadow-sm"
           >
-            {/* WCAG AAA: brand-navy on status-available = high contrast */}
-            <p className="font-heading font-bold text-headline-md text-on-surface">
-              ✓ Inspection Submitted
+            <p className="font-heading text-title-md font-semibold text-on-primary-container flex items-center gap-xs">
+              <span className="material-symbols-outlined text-[24px]">check_circle</span>
+              Inspection Submitted
             </p>
-            <p className="mt-1 font-body text-body-md text-brand-navy/80">
+            <p className="mt-xs font-body text-body-md text-on-primary-container/80">
               The inspection case has been recorded. Redirecting…
             </p>
           </div>
         )}
 
-        {/* Item context card — solid surface, Level 2 shadow, no glassmorphism */}
-        <div className="rounded-xl bg-white/10 border border-white/20 p-4">
-          {/* Item name — Fira Sans SemiBold, headline-md; floor min 16px §2 */}
-          <h1 className="font-heading font-extrabold text-headline-md text-white">
+        {/* Item context card */}
+        <div className="rounded-xl bg-surface-container-lowest border border-outline-variant p-md shadow-sm mb-md">
+          <h1 className="font-heading text-display-sm font-bold text-on-surface tracking-tight leading-tight">
             {inspection.itemName}
           </h1>
-          {/* Item code — Roboto Mono per §9 */}
-          <p className="mt-1 font-mono text-mono-lg text-white/70">
+          <p className="mt-xs font-mono text-body-lg text-on-surface-variant font-medium">
             {inspection.itemCode}
           </p>
-          {/* Lot + location context — body-md (16px) per §2 floor minimum */}
-          <div className="mt-3 grid grid-cols-2 gap-3">
+          
+          <div className="mt-md grid grid-cols-2 gap-md border-t border-outline-variant/50 pt-md">
             <div>
-              <p className="font-label text-body-md text-white/50">Lot</p>
-              <p className="font-mono text-mono-lg text-white">
-                {inspection.lotNumber}
-              </p>
+              <p className="font-label text-label-sm text-on-surface-variant">Lot Number</p>
+              <p className="font-mono text-body-md text-on-surface mt-xs">{inspection.lotNumber}</p>
             </div>
             <div>
-              <p className="font-label text-body-md text-white/50">Location</p>
-              <p className="font-mono text-mono-lg text-white">
-                {inspection.locationCode}
-              </p>
+              <p className="font-label text-label-sm text-on-surface-variant">Location</p>
+              <p className="font-mono text-body-md text-on-surface mt-xs">{inspection.locationCode}</p>
             </div>
             <div>
-              <p className="font-label text-body-md text-white/50">Qty to Inspect</p>
-              <p className="font-mono text-mono-lg text-white">
+              <p className="font-label text-label-sm text-on-surface-variant">Qty to Inspect</p>
+              <p className="font-mono text-body-md text-on-surface mt-xs font-semibold">
                 {inspection.qtyToInspect} {inspection.unit}
               </p>
             </div>
             <div>
-              <p className="font-label text-body-md text-white/50">Context</p>
-              <p className="font-body text-body-md text-white capitalize">
+              <p className="font-label text-label-sm text-on-surface-variant">Context</p>
+              <p className="font-body text-body-md text-on-surface mt-xs capitalize">
                 {inspection.contextType}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Inspection form — only shown when case is open */}
+        {/* Inspection form */}
         {isOpen ? (
-          <form action={handleSubmitInspection} className="mt-4 flex flex-col gap-4">
-            {/* ── Disposition selection — large tap targets per §3 ───────────── */}
-            <fieldset>
-              <legend className="font-label text-body-md text-white/70">
+          <form action={handleSubmitInspection} className="flex flex-col gap-md">
+            {/* Disposition selection */}
+            <fieldset className="rounded-xl bg-surface-container-lowest border border-outline-variant p-md shadow-sm">
+              <legend className="font-heading text-title-md font-semibold text-on-surface mb-md">
                 Disposition
               </legend>
-              <div className="mt-2 space-y-2">
+              <div className="space-y-sm">
                 {DISPOSITION_OPTIONS.map((option) => {
                   const isSelected =
                     selectedDisposition === option.value ||
@@ -275,10 +227,9 @@ export default async function InspectionDetailPage({
                   return (
                     <label
                       key={option.value}
-                      // h-16 (64px) minimum floor tap target per §3 — radio-style card
-                      className={`flex h-16 cursor-pointer items-center gap-4 rounded-xl border-2 px-4
-                                  active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100
-                                  ${isSelected ? option.selectedClasses : option.unselectedClasses}`}
+                      className={`flex cursor-pointer items-start gap-md rounded-xl border-2 p-md transition-all active:scale-[0.99] ${
+                        isSelected ? option.selectedClasses : option.unselectedClasses
+                      }`}
                     >
                       <input
                         type="radio"
@@ -287,13 +238,12 @@ export default async function InspectionDetailPage({
                         defaultChecked={isSelected}
                         className="sr-only"
                       />
-                      {/* Visual radio indicator — visible circle, accessible label */}
                       <span
                         aria-hidden="true"
-                        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${
+                        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 mt-0.5 ${
                           isSelected
                             ? "border-current bg-current/20"
-                            : "border-white/40"
+                            : "border-outline-variant"
                         }`}
                       >
                         {isSelected && (
@@ -301,11 +251,10 @@ export default async function InspectionDetailPage({
                         )}
                       </span>
                       <div className="min-w-0">
-                        {/* Label — body-md minimum per floor §2 rule */}
-                        <p className="font-label text-body-md text-white">
+                        <p className={`font-label text-label-lg ${isSelected ? 'text-on-surface font-semibold' : 'text-on-surface'}`}>
                           {option.label}
                         </p>
-                        <p className="font-body text-body-md text-white/60 truncate">
+                        <p className={`mt-xs font-body text-body-md ${isSelected ? 'text-on-surface/80' : 'text-on-surface-variant'}`}>
                           {option.description}
                         </p>
                       </div>
@@ -315,18 +264,14 @@ export default async function InspectionDetailPage({
               </div>
             </fieldset>
 
-            {/* ── Quantity fields ─────────────────────────────────────────────── */}
-            <div className="rounded-xl bg-white/10 border border-white/20 p-4">
-              <p className="font-label text-body-md text-white/70 mb-3">
+            {/* Quantity fields */}
+            <div className="rounded-xl bg-surface-container-lowest border border-outline-variant p-md shadow-sm">
+              <p className="font-heading text-title-md font-semibold text-on-surface mb-md">
                 Quantities
               </p>
-              <div className="grid grid-cols-3 gap-3">
-                {/* Inspected Qty */}
+              <div className="grid grid-cols-3 gap-sm">
                 <div>
-                  <label
-                    htmlFor="inspectedQty"
-                    className="block font-label text-body-md text-white/70"
-                  >
+                  <label htmlFor="inspectedQty" className="block font-label text-label-sm text-on-surface-variant mb-xs">
                     Inspected
                   </label>
                   <input
@@ -337,19 +282,12 @@ export default async function InspectionDetailPage({
                     min={0}
                     max={inspection.qtyToInspect}
                     defaultValue={inspection.qtyToInspect}
-                    // h-14 (56px) floor default touch target — §3
-                    className="mt-1 h-14 w-full rounded-xl border border-white/20 bg-white/15 px-3 font-mono text-mono-lg text-white
-                               focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-transparent
-                               placeholder:text-white/40"
+                    className="h-14 w-full rounded-md border border-outline-variant bg-surface-container-highest px-3 font-mono text-title-sm text-on-surface text-center focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                     aria-label="Inspected quantity"
                   />
                 </div>
-                {/* Passed Qty */}
                 <div>
-                  <label
-                    htmlFor="passedQty"
-                    className="block font-label text-body-md text-white/70"
-                  >
+                  <label htmlFor="passedQty" className="block font-label text-label-sm text-on-surface-variant mb-xs">
                     Passed
                   </label>
                   <input
@@ -359,18 +297,12 @@ export default async function InspectionDetailPage({
                     inputMode="numeric"
                     min={0}
                     defaultValue={0}
-                    className="mt-1 h-14 w-full rounded-xl border border-white/20 bg-white/15 px-3 font-mono text-mono-lg text-white
-                               focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-transparent
-                               placeholder:text-white/40"
+                    className="h-14 w-full rounded-md border border-outline-variant bg-surface-container-highest px-3 font-mono text-title-sm text-on-surface text-center focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                     aria-label="Passed quantity"
                   />
                 </div>
-                {/* Failed Qty */}
                 <div>
-                  <label
-                    htmlFor="failedQty"
-                    className="block font-label text-body-md text-white/70"
-                  >
+                  <label htmlFor="failedQty" className="block font-label text-label-sm text-on-surface-variant mb-xs">
                     Failed
                   </label>
                   <input
@@ -380,70 +312,50 @@ export default async function InspectionDetailPage({
                     inputMode="numeric"
                     min={0}
                     defaultValue={0}
-                    className="mt-1 h-14 w-full rounded-xl border border-white/20 bg-white/15 px-3 font-mono text-mono-lg text-white
-                               focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-transparent
-                               placeholder:text-white/40"
+                    className="h-14 w-full rounded-md border border-outline-variant bg-surface-container-highest px-3 font-mono text-title-sm text-on-surface text-center focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                     aria-label="Failed quantity"
                   />
                 </div>
               </div>
             </div>
 
-            {/* ── Notes field ─────────────────────────────────────────────────── */}
-            <div>
-              <label
-                htmlFor="notes"
-                className="block font-label text-body-md text-white/70"
-              >
-                Notes{" "}
-                <span className="font-body text-body-md text-white/40">
-                  (optional)
-                </span>
+            {/* Notes field */}
+            <div className="rounded-xl bg-surface-container-lowest border border-outline-variant p-md shadow-sm">
+              <label htmlFor="notes" className="block font-heading text-title-md font-semibold text-on-surface mb-xs">
+                Notes <span className="font-body text-body-sm text-on-surface-variant font-normal">(optional)</span>
               </label>
               <textarea
                 id="notes"
                 name="notes"
                 rows={3}
                 placeholder="Add any observations, remarks, or exception notes…"
-                className="mt-1 w-full rounded-xl border border-white/20 bg-white/15 px-4 py-3 font-body text-body-md text-white
-                           focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-transparent
-                           placeholder:text-white/40 resize-none"
+                className="mt-sm w-full rounded-md border border-outline-variant bg-surface-container-highest px-4 py-3 font-body text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all resize-none"
               />
             </div>
 
-            {/* ── Submit CTA — bottom, full-width, h-16 (64px) ───────────────── */}
-            {/* brand-design-system.md §3: primary action in bottom third,
-                full-width, always visible without scrolling. bg-brand-red,
-                text-white, active: scale not hover:. WCAG AAA (7:1 white on
-                brand-red ≈ 5.7:1 — boosted by font-bold). */}
-            {/* AAA contrast gap: white on brand-red ≈5.7:1 vs 7:1 required — tracked as design-system open item, pending MASTER.md resolution */}
-            <button
-              type="submit"
-              className="mt-2 flex h-16 w-full items-center justify-center rounded-xl bg-brand-red font-label text-body-md uppercase tracking-wide text-white
-                         active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100
-                         focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-navy"
-            >
-              Submit Inspection
-            </button>
+            {/* Submit CTA */}
+            <div className="fixed bottom-[80px] left-0 w-full z-40 px-4 md:absolute md:bottom-0 md:px-0">
+              <div className="mx-auto flex max-w-md items-center gap-sm rounded-2xl bg-surface-container-lowest/80 p-sm shadow-elevation-3 backdrop-blur-md border border-outline-variant/50">
+                <button
+                  type="submit"
+                  className="flex h-12 w-full items-center justify-center gap-xs rounded-xl bg-primary font-label text-label-lg text-on-primary shadow-sm hover:opacity-90 active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                >
+                  <span className="material-symbols-outlined text-[20px]">check_circle</span>
+                  Submit Inspection
+                </button>
+              </div>
+            </div>
           </form>
         ) : (
-          // Non-open case — read-only view
-          <div className="mt-4 rounded-xl bg-white/10 border border-white/20 p-4">
-            <p className="font-body text-body-md text-white/70">
+          <div className="rounded-xl bg-surface-container-lowest border border-outline-variant p-md shadow-sm text-center">
+            <span className="material-symbols-outlined text-[48px] text-on-surface-variant/50 mb-sm block">inventory_2</span>
+            <p className="font-body text-body-md text-on-surface-variant">
               This inspection case is{" "}
-              <span className="font-label text-body-md text-white uppercase">
+              <span className="font-label text-label-md text-on-surface uppercase font-semibold">
                 {inspection.status}
               </span>{" "}
               and cannot be edited.
             </p>
-            <Link
-              href="/inspection"
-              className="mt-4 flex h-16 w-full items-center justify-center rounded-xl bg-brand-navy border border-white/20 font-label text-body-md uppercase text-white
-                         active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100
-                         focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-navy"
-            >
-              Back to Queue
-            </Link>
           </div>
         )}
       </div>
