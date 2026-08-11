@@ -90,10 +90,19 @@
 // guard, not RLS), so the stub only needs to make CREATE POLICY's function
 // resolution succeed, not behave correctly.
 //
-// commitWrrLine itself does not exist yet, so every test below is expected
-// to fail with "commitWrrLine is not exported" / "is not a function" --
-// NOT a migration/fixture/connectivity error. That is the RED this file
-// proves.
+// 2026-08-11 UPDATE: commitWrrLine now runs through withRlsTransaction (see
+// lib/db/rls-transaction.ts / rls-pool.ts) rather than a plain injected
+// `db`, per the app-wide RLS session-binding rollout recorded in
+// specs/00-steering/revision-log.md. This file's auth.uid() stub is
+// therefore now the REAL claim-reading definition (matching
+// lib/db/__tests__/rls-pool.drizzle.integration.test.ts's pattern, not a
+// NULL-returning stand-in) and every commitWrrLine call passes an explicit
+// RlsTransactionDeps override: the real rlsPool bound to this test's own
+// connection string, plus a stub getAuthenticatedSession resolving to the
+// fixture's own userId. Real user_profiles/user_roles rows are seeded for
+// that userId so the actual RLS policies (rbac_internal.has_permission)
+// genuinely authorize the writes, not just the app-layer requirePermission
+// mock resolver.
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
@@ -105,10 +114,18 @@ import type {
   AuthorizationResolution,
   RequestAuthorizationResolver,
 } from "@/lib/rbac/session";
+import type { RlsTransactionDeps } from "@/lib/db/rls-transaction";
 import * as schema from "@/lib/db/schema";
 
 const connectionString = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL ?? "";
 const hasLiveDb = connectionString.length > 0;
+
+// rls-pool.ts reads DATABASE_URL at module-load time; bridge TEST_DATABASE_URL
+// into it before any dynamic import of rls-pool/receiving below, matching
+// lib/db/__tests__/rls-pool.drizzle.integration.test.ts's established pattern.
+if (process.env.TEST_DATABASE_URL && !process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
+}
 
 const MIGRATIONS_DIR = path.resolve(__dirname, "../../../supabase/migrations");
 
@@ -161,16 +178,24 @@ describe.skipIf(!hasLiveDb)(
       await sql.unsafe(`DROP SCHEMA IF EXISTS rbac_internal CASCADE`);
       await sql.unsafe(`CREATE SCHEMA public`);
 
-      // Minimal Supabase auth stub so RLS-policy migrations (auth.jwt()/
-      // auth.uid()-based, Supabase-specific per db-migration-verifier's own
-      // documented caveat) apply cleanly on vanilla Postgres. This test does
-      // not rely on RLS behavior at all.
+      // Real auth.uid()/auth.jwt() definitions — resolves from the
+      // request.jwt.claims GUC's "sub" claim, exactly like Supabase's actual
+      // implementation, matching rls-pool.drizzle.integration.test.ts's
+      // pattern. commitWrrLine's writes are now genuinely RLS-enforced (see
+      // the 2026-08-11 header note above), so a NULL-returning stub would
+      // make every write fail RLS regardless of the seeded grants below.
       await sql.unsafe(`CREATE SCHEMA IF NOT EXISTS auth`);
+      await sql.unsafe(`
+        CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid
+        LANGUAGE sql STABLE AS $$
+          SELECT nullif(
+            nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub',
+            ''
+          )::uuid
+        $$
+      `);
       await sql.unsafe(
-        `CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT NULL::uuid $$`,
-      );
-      await sql.unsafe(
-        `CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS $$ SELECT '{}'::jsonb $$`,
+        `CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS $$ SELECT coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb $$`,
       );
       // Some migrations (e.g. 0018_generated_documents.sql) reference
       // auth.users(id) as an FK target -- Supabase provisions this table
@@ -202,7 +227,42 @@ describe.skipIf(!hasLiveDb)(
 
       const client = postgres(connectionString, { prepare: false, max: 5 });
       db = drizzle(client, { schema });
+
+      // Real RBAC rows for confirmContext.userId so the actual RLS policies
+      // (rbac_internal.has_permission) genuinely authorize commitWrrLine's
+      // writes, not just the app-layer requirePermission mock resolver.
+      // warehouse_staff already holds receiving.confirm per
+      // 0005_rbac_constraints_and_seed.sql's role_permissions seed -- no new
+      // grant needed, just linking this test's fixed userId to that role.
+      await sql`
+        INSERT INTO user_profiles (id, display_name, status)
+        VALUES (${confirmContext.userId}, 'Test Confirm User', 'active')
+        ON CONFLICT (id) DO NOTHING
+      `;
+      await sql`
+        INSERT INTO user_roles (user_id, role_id)
+        SELECT ${confirmContext.userId}, id FROM roles WHERE key = 'warehouse_staff'
+      `;
     }, 60_000);
+
+    // Real RlsPool bound to this test's own connection string (rls-pool.ts's
+    // module-level rlsPool reads DATABASE_URL, which is bridged from
+    // TEST_DATABASE_URL above) plus a stub getAuthenticatedSession resolving
+    // to the fixture's own userId -- the real Supabase-cookie-based default
+    // getAuthenticatedSession has no request context to read in this test
+    // environment, so every commitWrrLine call below passes this explicitly.
+    async function rlsDepsFor(userId: string): Promise<RlsTransactionDeps> {
+      // Dynamic import, not a static one: rls-pool.ts reads DATABASE_URL at
+      // module-load time, and a static top-level import would be hoisted
+      // ahead of this file's DATABASE_URL bridge above (ES module semantics
+      // evaluate import statements before other top-level code) — matching
+      // rls-pool.drizzle.integration.test.ts's established pattern.
+      const { rlsPool } = await import("@/lib/db/rls-pool");
+      return {
+        getAuthenticatedSession: async () => ({ userId }),
+        pool: rlsPool,
+      };
+    }
 
     afterAll(async () => {
       await sql.end({ timeout: 5 });
@@ -304,6 +364,7 @@ describe.skipIf(!hasLiveDb)(
         wrrId,
         lineIds[0],
         { locationId: storageLocationId },
+        await rlsDepsFor(confirmContext.userId),
       );
 
       expect(result.ok).toBe(true);
@@ -348,6 +409,7 @@ describe.skipIf(!hasLiveDb)(
         wrrId,
         lineIds[0],
         { locationId: inspectionLocationId },
+        await rlsDepsFor(confirmContext.userId),
       );
 
       expect(result.ok).toBe(true);
@@ -378,6 +440,7 @@ describe.skipIf(!hasLiveDb)(
         wrrId,
         lineIds[0],
         { locationId: storageLocationId },
+        await rlsDepsFor(confirmContext.userId),
       );
       expect(first.ok).toBe(true);
 
@@ -389,6 +452,7 @@ describe.skipIf(!hasLiveDb)(
         wrrId,
         lineIds[1],
         { locationId: storageLocationId },
+        await rlsDepsFor(confirmContext.userId),
       );
       expect(second.ok).toBe(true);
 
@@ -411,6 +475,7 @@ describe.skipIf(!hasLiveDb)(
         wrrId,
         lineIds[0],
         { locationId: storageLocationId },
+        await rlsDepsFor(confirmContext.userId),
       );
       expect(first.ok).toBe(true);
 
@@ -419,6 +484,7 @@ describe.skipIf(!hasLiveDb)(
         wrrId,
         lineIds[0],
         { locationId: storageLocationId },
+        await rlsDepsFor(confirmContext.userId),
       );
       expect(second.ok).toBe(true);
 
@@ -449,6 +515,7 @@ describe.skipIf(!hasLiveDb)(
         wrrId,
         lineIds[0],
         { locationId: storageLocationId },
+        await rlsDepsFor(confirmContext.userId),
       );
       expect(validResult.ok).toBe(true);
 
@@ -457,6 +524,7 @@ describe.skipIf(!hasLiveDb)(
         wrrId,
         lineIds[1],
         { locationId: storageLocationId },
+        await rlsDepsFor(confirmContext.userId),
       );
       expect(invalidResult.ok).toBe(false);
 
@@ -489,6 +557,7 @@ describe.skipIf(!hasLiveDb)(
           wrrId,
           lineIds[0],
           { locationId: inactiveLocationId },
+          await rlsDepsFor(confirmContext.userId),
         );
 
         expect(result.ok).toBe(false);
@@ -510,6 +579,7 @@ describe.skipIf(!hasLiveDb)(
           wrrId,
           lineIds[0],
           { locationId: storageLocationId },
+          await rlsDepsFor(confirmContext.userId),
         );
 
         expect(result.ok).toBe(false);
@@ -530,6 +600,7 @@ describe.skipIf(!hasLiveDb)(
           wrrId,
           lineIds[0],
           { locationId: storageLocationId },
+          await rlsDepsFor(confirmContext.userId),
         );
 
         expect(result.ok).toBe(false);
@@ -553,6 +624,7 @@ describe.skipIf(!hasLiveDb)(
         wrrId,
         lineIds[0],
         { locationId: storageLocationId },
+        await rlsDepsFor(confirmContext.userId),
       );
 
       expect(result.ok).toBe(false);

@@ -116,14 +116,12 @@ const staffContext: Pick<AuthorizationContext, "grants"> = {
 const zeroGrantContext: Pick<AuthorizationContext, "grants"> = { grants: [] };
 
 describe("lib/shell/navigation — filterVisibleRoutes (R3.4, R3.5)", () => {
-  it("a warehouse_staff context can reach /master-data/parties, /master-data/items, and /master-data/locations via the .read capability (proves the 2026-08-07 route-gate fix)", async () => {
+  it("a warehouse_staff context can reach /enrollment via the parties.read capability (2026-08-11: sole Master Data nav entry, replacing the former separate /master-data/parties|items|locations rows)", async () => {
     const { filterVisibleRoutes } = await import("../navigation");
     const visible = filterVisibleRoutes(staffContext);
     const visiblePaths = visible.map((row) => row.path);
 
-    expect(visiblePaths).toContain("/master-data/parties");
-    expect(visiblePaths).toContain("/master-data/items");
-    expect(visiblePaths).toContain("/master-data/locations");
+    expect(visiblePaths).toContain("/enrollment");
   });
 
   it("a warehouse_staff context cannot reach /approvals, /reports, or /portal/labels (capabilities it never holds)", async () => {
@@ -187,13 +185,13 @@ describe("lib/shell/navigation — filterVisibleRoutes (R3.4, R3.5)", () => {
 describe("lib/shell/navigation — selectRoutesForPresentation (design.md §3.3 surface routing rules)", () => {
   it("floor presentation includes 'floor' and 'shared' surface routes but never 'office'-only or 'party' routes, even when capability-visible", async () => {
     const { filterVisibleRoutes, selectRoutesForPresentation } = await import("../navigation");
-    const visible = filterVisibleRoutes(staffContext); // includes /master-data/parties (office-only surface)
+    const visible = filterVisibleRoutes(staffContext); // includes /enrollment (office-only surface)
     const floorNav = selectRoutesForPresentation(visible, "floor");
     const floorPaths = floorNav.map((row) => row.path);
 
     expect(floorPaths).toContain("/receiving"); // floor surface
     expect(floorPaths).toContain("/inspection"); // shared surface
-    expect(floorPaths).not.toContain("/master-data/parties"); // office-only surface, even though capability-visible
+    expect(floorPaths).not.toContain("/enrollment"); // office-only surface, even though capability-visible
     expect(floorPaths).not.toContain("/inventory"); // office-only surface
   });
 
@@ -203,7 +201,7 @@ describe("lib/shell/navigation — selectRoutesForPresentation (design.md §3.3 
     const officeNav = selectRoutesForPresentation(visible, "office");
     const officePaths = officeNav.map((row) => row.path);
 
-    expect(officePaths).toContain("/master-data/parties");
+    expect(officePaths).toContain("/enrollment");
     expect(officePaths).toContain("/inspection"); // shared surface
     expect(officePaths).not.toContain("/receiving/[wrr_id]"); // floor-only surface
   });
@@ -237,13 +235,13 @@ describe("lib/shell/navigation — groupRoutesForSidebar (2026-08-09, sidebar se
       { id: "settings", group: "Account" },
       { id: "root", group: "Overview" },
       { id: "profile", group: "Account" },
-      { id: "receiving", group: "Receiving" },
+      { id: "receiving", group: "Receiving / Incoming" },
     ] as unknown as RouteRegistryEntry[];
 
     const sections = groupRoutesForSidebar(routes);
     const groupOrder = sections.map((s) => s.group);
 
-    expect(groupOrder).toEqual(["Overview", "Receiving", "Account"]);
+    expect(groupOrder).toEqual(["Overview", "Receiving / Incoming", "Account"]);
     const accountSection = sections.find((s) => s.group === "Account")!;
     expect(accountSection.entries.map((e) => e.id)).toEqual(["settings", "profile"]);
     // Sanity: the three groups present are all real NAV_GROUP_ORDER members.

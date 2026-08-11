@@ -1,3 +1,4 @@
+"use server";
 // Item server actions — create, update, deactivate.
 //
 // Traceability:

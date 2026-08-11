@@ -1,3 +1,4 @@
+"use server";
 // Location server actions — create, update, deactivate.
 //
 // Traceability:

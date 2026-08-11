@@ -24,8 +24,9 @@ export type RouteLaunchStatus = "launch" | "planned";
 // their existing relative order from ROUTE_REGISTRY.
 export type NavGroup =
   | "Overview"
-  | "Receiving"
-  | "Outbound"
+  | "Receiving / Incoming"
+  | "Master Inventory"
+  | "Outgoing / Withdrawal"
   | "Transfers & Inspection"
   | "Approvals"
   | "Master Data"
@@ -35,10 +36,18 @@ export type NavGroup =
   | "Account"
   | "Party Portal";
 
+// 2026-08-11 PO correction: "Receiving" -> "Receiving / Incoming" and
+// "Outbound" -> "Outgoing / Withdrawal" (clearer operational naming); Master
+// Inventory split into its own group -- it is the Inventory Controller's
+// table-with-expandable-rows audit/research page (owned by
+// 01-core-data-model, see design.md's "Master Inventory UI Pattern"
+// section), not part of the outbound pick/dispatch workflow it used to sit
+// alongside. See specs/00-steering/revision-log.md.
 export const NAV_GROUP_ORDER: readonly NavGroup[] = [
   "Overview",
-  "Receiving",
-  "Outbound",
+  "Receiving / Incoming",
+  "Master Inventory",
+  "Outgoing / Withdrawal",
   "Transfers & Inspection",
   "Approvals",
   "Master Data",
@@ -77,7 +86,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "receiving.view",
     featureSpecs: ["07-incoming-receiving"],
     launchStatus: "launch",
-    group: "Receiving",
+    group: "Receiving / Incoming",
   },
   {
     id: "receiving-detail",
@@ -86,22 +95,22 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "receiving.view",
     featureSpecs: ["07-incoming-receiving"],
     launchStatus: "launch",
-    group: "Receiving",
+    group: "Receiving / Incoming",
   },
   {
-    // 2026-08-09: registry corrected back to `/inventory` — the standalone
-    // `/pick-lists` and `/outgoing-ledger` routes were merged into
-    // `inventory/page.tsx` (Pick Lists + Ledger tabs), matching `08` design.md
-    // §3's originally-approved route block. The 2026-08-08 note this replaces
-    // ("corrected from /inventory to /pick-lists") is superseded, not
-    // re-litigated — see revision-log.md.
+    // 2026-08-11: split out of "Outbound" into its own "Master Inventory"
+    // group — this is the Inventory Controller's table-with-expandable-rows
+    // audit/research page (owned by 01-core-data-model, not by outbound
+    // pick/dispatch workflow), distinct from the /outgoing floor flow below
+    // even though it's the page that generates the pick list /outgoing then
+    // executes. See specs/00-steering/revision-log.md.
     id: "inventory",
     path: "/inventory",
     surface: "office",
     capability: "pick_list.read",
     featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"],
     launchStatus: "launch",
-    group: "Outbound",
+    group: "Master Inventory",
   },
   {
     id: "outgoing",
@@ -110,7 +119,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "pick_list.execute",
     featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"],
     launchStatus: "launch",
-    group: "Outbound",
+    group: "Outgoing / Withdrawal",
   },
   {
     id: "inventory-pick-list-execute",
@@ -119,16 +128,18 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "pick_list.execute",
     featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"],
     launchStatus: "launch",
-    group: "Outbound",
+    group: "Outgoing / Withdrawal",
   },
   {
+    // 2026-08-11: dispatch (the scan-out-and-generate-AR step) is the one
+    // genuinely floor-only stage of outbound withdrawal — see revision-log.md.
     id: "inventory-pick-list-dispatch",
     path: "/pick-lists/[pickListId]/dispatch",
     surface: "floor",
     capability: "dispatch.execute",
     featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"],
     launchStatus: "launch",
-    group: "Outbound",
+    group: "Outgoing / Withdrawal",
   },
   {
     // launchStatus updated to "launch" 2026-08-09 — /inspection page and
@@ -210,39 +221,19 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     group: "Transfers & Inspection",
   },
   {
+    // 2026-08-11: this is now the SOLE Master Data nav entry. The separate
+    // "parties"/"items"/"locations" registry rows that used to point at
+    // /master-data/parties|items|locations as their own sidebar links were
+    // removed — those list pages duplicated exactly what this hub's three
+    // tabs already show. The underlying /master-data/parties|items|locations
+    // detail, /new, and /[id]/edit routes are unchanged and still reachable
+    // — enrollment/page.tsx links directly into them from each tab (e.g.
+    // "New Party" -> /master-data/parties/new) — they simply no longer have
+    // their own top-level sidebar entry. See specs/00-steering/revision-log.md.
     id: "enrollment",
     path: "/enrollment",
     surface: "office",
     capability: "parties.read",
-    featureSpecs: ["06-party-and-item-enrollment"],
-    launchStatus: "launch",
-    group: "Master Data",
-  },
-  {
-    // 2026-08-08: corrected from `/parties` to the actually-built
-    // `/master-data/parties` — see revision-log.md.
-    id: "parties",
-    path: "/master-data/parties",
-    surface: "office",
-    capability: "parties.read",
-    featureSpecs: ["06-party-and-item-enrollment"],
-    launchStatus: "launch",
-    group: "Master Data",
-  },
-  {
-    id: "items",
-    path: "/master-data/items",
-    surface: "office",
-    capability: "items.read",
-    featureSpecs: ["06-party-and-item-enrollment"],
-    launchStatus: "launch",
-    group: "Master Data",
-  },
-  {
-    id: "locations",
-    path: "/master-data/locations",
-    surface: "office",
-    capability: "locations.read",
     featureSpecs: ["06-party-and-item-enrollment"],
     launchStatus: "launch",
     group: "Master Data",

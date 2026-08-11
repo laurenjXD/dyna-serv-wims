@@ -81,10 +81,16 @@ describe("lib/shell/surface — resolveRouteSurface (design.md §3.2/§5, regist
     expect(resolveRouteSurface("/receiving")).toBe("shared");
   });
 
-  it("returns 'office' for an office-declared route, including the corrected /master-data/parties/.read row", async () => {
+  it("returns 'office' for an office-declared route", async () => {
     const { resolveRouteSurface } = await import("../surface");
-    expect(resolveRouteSurface("/master-data/parties")).toBe("office");
-    expect(resolveRouteSurface("/master-data/locations")).toBe("office");
+    expect(resolveRouteSurface("/enrollment")).toBe("office");
+    expect(resolveRouteSurface("/approvals")).toBe("office");
+  });
+
+  it("returns null for /master-data/parties and /master-data/locations — 2026-08-11 consolidation removed their standalone registry rows in favor of the single /enrollment hub entry; these paths were never registered as their own surface anyway (only exact-path matches resolve, and the detail/new/edit sub-paths under /master-data/* were already unregistered before this change)", async () => {
+    const { resolveRouteSurface } = await import("../surface");
+    expect(resolveRouteSurface("/master-data/parties")).toBeNull();
+    expect(resolveRouteSurface("/master-data/locations")).toBeNull();
   });
 
   it("returns 'shared' for the general landing page '/'", async () => {

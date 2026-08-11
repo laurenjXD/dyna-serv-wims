@@ -147,12 +147,13 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
     render(
       <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" />,
     );
-    // officeContext holds pick_list.read (-> "Outbound" group) and
-    // documents.read (route is launchStatus:"planned", so it never
+    // officeContext holds pick_list.read (-> "Master Inventory" group, since
+    // /inventory was split out of "Outbound" into its own group 2026-08-11)
+    // and documents.read (route is launchStatus:"planned", so it never
     // contributes a visible entry or a group) -- exactly one group header
-    // should render: "Outbound".
-    expect(screen.getByTestId("nav-group-outbound")).toBeInTheDocument();
-    expect(screen.getByText("Outbound")).toBeInTheDocument();
+    // should render: "Master Inventory".
+    expect(screen.getByTestId("nav-group-master-inventory")).toBeInTheDocument();
+    expect(screen.getByText("Master Inventory")).toBeInTheDocument();
     // No empty-group headers for capabilities this context doesn't hold.
     expect(screen.queryByTestId("nav-group-master-data")).not.toBeInTheDocument();
     expect(screen.queryByTestId("nav-group-approvals")).not.toBeInTheDocument();

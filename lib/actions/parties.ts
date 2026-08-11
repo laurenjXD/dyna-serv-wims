@@ -1,3 +1,4 @@
+"use server";
 // Party server actions — create, update, deactivate, role management, contact.
 //
 // Traceability:

@@ -100,10 +100,15 @@ const EXPECTED_ROUTES: Array<{
   { id: "transfers", path: "/transfers", surface: "shared", capability: "transfer.view", featureSpecs: ["11-transfer-and-inspection"], launchStatus: "launch" },
   // 2026-08-09 PO amendment: /enrollment added as office Master Data hub
   // (Parties / Items / Locations tabs). See revision-log.md.
+  // 2026-08-11: this is now the SOLE Master Data nav entry — the separate
+  // "parties"/"items"/"locations" rows that used to sit here (each pointing
+  // at /master-data/parties|items|locations as its own sidebar link) were
+  // removed, since those list pages duplicated exactly what this hub's three
+  // tabs already show. The underlying /master-data/parties|items|locations
+  // detail/new/edit routes are unchanged and still reachable via direct
+  // links from within this hub's tabs — they just no longer have their own
+  // top-level registry row. See revision-log.md.
   { id: "enrollment", path: "/enrollment", surface: "office", capability: "parties.read", featureSpecs: ["06-party-and-item-enrollment"], launchStatus: "launch" },
-  { id: "parties", path: "/master-data/parties", surface: "office", capability: "parties.read", featureSpecs: ["06-party-and-item-enrollment"], launchStatus: "launch" },
-  { id: "items", path: "/master-data/items", surface: "office", capability: "items.read", featureSpecs: ["06-party-and-item-enrollment"], launchStatus: "launch" },
-  { id: "locations", path: "/master-data/locations", surface: "office", capability: "locations.read", featureSpecs: ["06-party-and-item-enrollment"], launchStatus: "launch" },
   // 2026-08-09: added — was already in 05's design.md route table (Planned)
   // but had never been added to this registry. See revision-log.md.
   { id: "billing-pricing", path: "/billing-pricing", surface: "office", capability: "reporting.financial_read", featureSpecs: ["12-vmi-billing", "13-trading-orders-and-pricing"], launchStatus: "planned" },
@@ -119,7 +124,7 @@ const EXPECTED_ROUTES: Array<{
 ];
 
 describe("lib/shell/registry — route catalog matches design.md §3.2 exactly (R3.1, R3.2)", () => {
-  it("exports ROUTE_REGISTRY with exactly the current 27 rows (no stale /dashboard, no extra/missing rows; 2026-08-09 PO amendment adds /outgoing floor pick-execution hub and /enrollment office master-data hub, changes /receiving surface to shared)", async () => {
+  it("exports ROUTE_REGISTRY with exactly the current 24 rows (no stale /dashboard, no extra/missing rows; 2026-08-11 consolidates Master Data nav down to the single /enrollment entry)", async () => {
     const { ROUTE_REGISTRY } = await import("../registry");
     expect(Array.isArray(ROUTE_REGISTRY)).toBe(true);
     expect(ROUTE_REGISTRY).toHaveLength(EXPECTED_ROUTES.length);
@@ -143,20 +148,15 @@ describe("lib/shell/registry — route catalog matches design.md §3.2 exactly (
     expect(ROUTE_REGISTRY.some((row) => row.path === "/dashboard")).toBe(false);
   });
 
-  it("gates /master-data/parties, /master-data/items, and /master-data/locations by the .read capability, never .manage (2026-08-07 route-gate fix)", async () => {
+  it("no longer registers standalone /master-data/parties, /master-data/items, or /master-data/locations rows — /enrollment is the sole Master Data nav entry (2026-08-11 consolidation)", async () => {
     const { ROUTE_REGISTRY } = await import("../registry");
-    const parties = ROUTE_REGISTRY.find((row) => row.path === "/master-data/parties");
-    const items = ROUTE_REGISTRY.find((row) => row.path === "/master-data/items");
-    const locations = ROUTE_REGISTRY.find((row) => row.path === "/master-data/locations");
+    expect(ROUTE_REGISTRY.some((row) => row.path === "/master-data/parties")).toBe(false);
+    expect(ROUTE_REGISTRY.some((row) => row.path === "/master-data/items")).toBe(false);
+    expect(ROUTE_REGISTRY.some((row) => row.path === "/master-data/locations")).toBe(false);
 
-    expect(parties?.capability).toBe("parties.read");
-    expect(items?.capability).toBe("items.read");
-    expect(locations?.capability).toBe("locations.read");
-
-    // Explicitly assert the bug this fix corrected is NOT present.
-    expect(parties?.capability).not.toBe("parties.manage");
-    expect(items?.capability).not.toBe("items.manage");
-    expect(locations?.capability).not.toBe("locations.manage");
+    const enrollment = ROUTE_REGISTRY.find((row) => row.path === "/enrollment");
+    expect(enrollment?.capability).toBe("parties.read");
+    expect(enrollment?.group).toBe("Master Data");
   });
 
   it("marks '/sync' as offline-feature-gated rather than capability-gated (design.md §3.2 rule: not a data-access gate)", async () => {
