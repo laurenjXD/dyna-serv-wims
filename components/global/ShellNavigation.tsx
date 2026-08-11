@@ -28,17 +28,22 @@ import {
   Bell,
   Tag,
   Circle,
-  Box,
-  ChevronLeft,
   House,
   Inbox,
   Shield,
+  QrCode,
+  LayoutDashboard,
+  LogIn,
+  Archive,
+  Truck,
+  Database,
+  Network,
+  CircleUserRound,
 } from "lucide-react";
 import type { AuthorizationContext } from "@/lib/rbac/session";
 import type { SessionPresentationTier } from "@/lib/shell/surface";
 import {
   filterVisibleRoutes,
-  groupRoutesForSidebar,
   selectRoutesForPresentation,
 } from "@/lib/shell/navigation";
 import { resolveActiveRouteId } from "@/lib/shell/active-route";
@@ -68,18 +73,24 @@ const ROUTE_ICON_MAP: Record<string, LucideIcon> = {
   "portal-labels": Tag,
 };
 
-const OFFICE_SIDEBAR_ROUTE_IDS = new Set([
-  "root",
-  "receiving",
-  "outgoing",
-  "transfers",
-  "inventory",
-  "inspection",
-  "approvals",
-  "enrollment",
-  "profile",
-  "settings",
-]);
+const STITCH_SIDEBAR_ITEMS: Array<{
+  id: string;
+  href: string;
+  label: string;
+  icon: LucideIcon;
+}> = [
+  { id: "root", href: "/", label: "Overview", icon: LayoutDashboard },
+  { id: "receiving", href: "/receiving", label: "Receiving", icon: LogIn },
+  { id: "inventory", href: "/inventory", label: "Inventory", icon: Archive },
+  { id: "outgoing", href: "/outgoing", label: "Outgoing", icon: Truck },
+  { id: "transfers", href: "/transfers", label: "Transfers", icon: ArrowLeftRight },
+  { id: "approvals", href: "/approvals", label: "Approvals", icon: CheckSquare },
+  { id: "enrollment", href: "/enrollment", label: "Master Data", icon: Database },
+  { id: "settings", href: "/settings", label: "System", icon: Settings },
+  { id: "portal", href: "/portal", label: "Party Portal", icon: Network },
+  { id: "documents", href: "/documents", label: "Documents", icon: FileText },
+  { id: "profile", href: "/profile", label: "Account", icon: CircleUserRound },
+];
 
 function routeIcon(id: string): LucideIcon {
   return ROUTE_ICON_MAP[id] ?? Circle;
@@ -188,81 +199,72 @@ export function ShellNavigation({
     );
   }
 
-  const sections = groupRoutesForSidebar(
-    presented.filter((entry) => OFFICE_SIDEBAR_ROUTE_IDS.has(entry.id)),
-  );
-
   return (
     <nav
       data-testid="desktop-sidebar"
       aria-label="Primary navigation"
-      className="hidden flex-col gap-6 overflow-y-auto border-r border-black/20 bg-brand-navy px-5 py-8 lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:flex lg:w-72"
+      className="hidden flex-col overflow-y-auto border-r border-outline-variant/30 bg-surface-light-grey p-4 lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:flex lg:w-[306px]"
     >
       {/* Skip-to-content: visually hidden until focused, first element in the
           nav so keyboard users can bypass the sidebar entirely. */}
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50
-                   focus:rounded focus:bg-brand-red focus:px-4 focus:py-2 focus:text-white
+                   focus:rounded focus:bg-brand-navy focus:px-4 focus:py-2 focus:text-white
                    focus:font-label focus:text-body-md focus:shadow-lg"
       >
         Skip to content
       </a>
 
-      <div className="flex items-center gap-4 px-2 pt-1">
-        <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-accent-indigo-600/25 text-accent-indigo-300">
-          <Box size={31} aria-hidden="true" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="font-heading text-headline-md font-extrabold tracking-tight text-white">DYNA-SERV</p>
-          <p className="mt-1 font-label text-body-md tracking-[0.1em] text-white/45">WIMS</p>
+      <div className="px-2 pt-1">
+        <p className="font-heading text-headline-md font-extrabold tracking-tight text-on-surface">Dyna-Serv WIMS</p>
+      </div>
+
+      <div className="mt-6 rounded-lg border border-outline-variant/30 bg-surface-white p-3">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-indigo-300 font-label text-label font-bold text-on-surface">AU</span>
+          <div>
+            <p className="font-heading text-body-md font-bold text-on-surface">Admin User</p>
+            <p className="font-body text-body-sm text-text-grey">Warehouse Admin</p>
+          </div>
         </div>
-        <ChevronLeft size={18} className="text-white/40" aria-hidden="true" />
       </div>
 
-      <div className="flex flex-1 flex-col gap-7">
-        {sections.map((section) => (
-          <div key={section.group} data-testid={`nav-group-${slugify(section.group)}`}>
-          {/* Section header — Epilogue label style, dimmer than links so it
-              reads as a grouping cue, not another tap target. Not a heading
-              element in the a11y tree sense that needs its own landmark;
-              this is a visual/structural grouping within the single
-              `nav aria-label="Primary navigation"` landmark, per design.md §4's
-              "one navigation landmark" shell composition. aria-hidden because
-              it is a visual grouping cue only — the landmark + link text
-              already provides the accessible context. */}
-          <p
-            aria-hidden="true"
-            className="px-3 pb-2 pt-2 font-label text-body-md font-bold uppercase tracking-[0.08em] text-surface-white/40"
-          >
-            {section.group}
-          </p>
-          <div className="flex flex-col gap-1">
-            {section.entries.map((entry) => (
-              <NavLink key={entry.id} entry={entry} isActive={entry.id === activeId} tier={tier} />
-            ))}
-          </div>
-          </div>
-        ))}
+      <Link
+        href="/receiving"
+        className="mt-7 flex h-12 items-center justify-center gap-3 rounded bg-on-surface font-label text-label font-bold text-surface-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+      >
+        <QrCode size={20} aria-hidden="true" />
+        Quick Scan
+      </Link>
+
+      <div className="mt-5 flex flex-1 flex-col gap-1">
+        {STITCH_SIDEBAR_ITEMS.slice(0, 9).map((item) => {
+          const Icon = item.icon;
+          const isActive = item.id === activeId;
+          return (
+            <Link key={item.id} href={item.href} data-testid={`nav-entry-${item.id}`} aria-current={isActive ? "page" : undefined}
+              className={`flex h-12 items-center gap-4 rounded px-4 font-label text-label font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${isActive ? "bg-on-surface text-surface-white" : "text-text-grey hover:bg-surface-white hover:text-on-surface"}`}>
+              <Icon size={22} aria-hidden="true" />
+              {item.label}
+            </Link>
+          );
+        })}
       </div>
 
-      <aside className="rounded-3xl bg-white/5 p-6">
-        <span className="mb-3 flex gap-1" aria-hidden="true">
-          <span className="h-1.5 w-8 rounded-full bg-accent-indigo-600" />
-          <span className="h-1.5 w-6 rounded-full bg-white/25" />
-          <span className="h-1.5 w-6 rounded-full bg-white/25" />
-        </span>
-        <p className="font-heading text-body-lg font-bold text-white">Keep your warehouse running smoothly.</p>
-        <p className="mt-2 font-body text-body-md text-white/55">Every move matters.</p>
-      </aside>
+      <div className="border-t border-outline-variant/30 pt-4">
+        {STITCH_SIDEBAR_ITEMS.slice(9).map((item) => {
+          const Icon = item.icon;
+          const isActive = item.id === activeId;
+          return (
+            <Link key={item.id} href={item.href} data-testid={`nav-entry-${item.id}`} aria-current={isActive ? "page" : undefined}
+              className={`flex h-12 items-center gap-4 rounded px-4 font-label text-label font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${isActive ? "bg-on-surface text-surface-white" : "text-text-grey hover:bg-surface-white hover:text-on-surface"}`}>
+              <Icon size={22} aria-hidden="true" />
+              {item.label}
+            </Link>
+          );
+        })}
+      </div>
     </nav>
   );
-}
-
-function slugify(label: string): string {
-  return label
-    .toLowerCase()
-    .replace(/&/g, "and")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
 }

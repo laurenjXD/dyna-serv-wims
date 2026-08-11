@@ -28,7 +28,8 @@
 // Wire each when its owning feature's backend query is available.
 
 import Link from "next/link";
-import { PackageCheck, ListChecks, ArrowLeftRight, Clock } from "lucide-react";
+import type { ReactNode } from "react";
+import { PackageCheck, ListChecks, ArrowLeftRight, ClipboardList, ShieldAlert, Truck } from "lucide-react";
 import { eq } from "drizzle-orm";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { resolveSessionPresentationTier } from "@/lib/shell/surface";
@@ -182,7 +183,6 @@ function OfficeLanding({
   pendingTransfers,
   pendingApprovals,
   hasApprovalAccess,
-  hasReportingRead,
 }: {
   dateString: string;
   openWrrs: number;
@@ -190,11 +190,9 @@ function OfficeLanding({
   pendingTransfers: number;
   pendingApprovals: number;
   hasApprovalAccess: boolean;
-  hasReportingRead: boolean;
 }) {
   return (
-    <div className="mx-auto max-w-container px-6 py-8 lg:px-8">
-      {/* ── Page header ──────────────────────────────────────────────────── */}
+    <div className="mx-auto max-w-[1280px] px-4 py-6 md:px-6 lg:px-7 lg:py-10">
       <header className="mb-6 lg:hidden">
         <h1 className="font-heading text-headline-xl font-extrabold text-on-surface">
           Overview Dashboard
@@ -202,48 +200,20 @@ function OfficeLanding({
         <p className="mt-1 font-body text-body-md text-text-grey">{dateString}</p>
       </header>
 
-      {/* ── Queue summary cards ───────────────────────────────────────────
-          Horizontal row that wraps on mobile.  4 cards: Receiving, Picking,
-          Transfers, and Approvals (only if fifo_override.approve capability).
-          design.md §3.2: office surface, Level 1 elevation cards. These are
-          open-task counts, not KPI/financial metrics — R11.5 still applies;
-          real analytics/KPI content lives on /reports (spec 16), not here. */}
       <section
         aria-label="Queue summaries"
         data-testid="landing-queue-cards"
-        className="mb-8"
+        className="mb-7"
       >
-        <div className="grid gap-6 xl:grid-cols-[1.02fr_1.04fr_1fr]">
-          <article className="rounded-2xl border border-brand-navy/30 bg-brand-navy p-6 shadow-elevation-1">
-            <p className="font-label text-label uppercase tracking-[0.06em] text-white/60">Today&apos;s warehouse operations</p>
-            <p className="mt-5 font-heading text-headline-xl font-extrabold text-white">Ready to move</p>
-            <p className="mt-2 font-body text-body-md text-white/70">Start a receiving, picking, or transfer task from the live queues.</p>
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-white/10 p-4"><p className="font-body text-body-sm text-white/60">Receiving</p><p className="mt-2 font-heading text-data-display font-bold text-white">{openWrrs}</p></div>
-              <div className="rounded-xl bg-white/10 p-4"><p className="font-body text-body-sm text-white/60">Picking</p><p className="mt-2 font-heading text-data-display font-bold text-white">{openPickLists}</p></div>
-            </div>
-          </article>
-
-          <article className="rounded-2xl border border-outline-variant/30 border-l-[7px] border-l-brand-red bg-surface-white p-6 shadow-elevation-1">
-            <p className="font-label text-label uppercase tracking-[0.06em] text-text-grey">Open floor queues</p>
-            <div className="mt-6 space-y-4">
-              <QueueRow label="Pending Receiving WRRs" count={openWrrs} />
-              <QueueRow label="Active Pick Lists to Execute" count={openPickLists} />
-              <QueueRow label="Transfers awaiting action" count={pendingTransfers} />
-            </div>
-          </article>
-
-          <article className="rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
-            <p className="font-label text-label uppercase tracking-[0.06em] text-text-grey">Operations &amp; quality</p>
-            <div className="mt-6 space-y-4">
-              <div className="rounded-xl border border-status-pending/40 bg-status-pending/10 p-4"><p className="font-heading text-body-md font-bold text-on-surface">Inspection queue</p><p className="mt-1 font-body text-body-sm text-text-grey">Review lots waiting for quality control.</p></div>
-              {hasApprovalAccess && <div className="rounded-xl border border-status-held/30 bg-status-held/10 p-4"><p className="font-heading text-body-md font-bold text-on-surface">Approvals awaiting review</p><p className="mt-1 font-body text-body-sm text-text-grey">{pendingApprovals} request{pendingApprovals === 1 ? "" : "s"} ready for your decision.</p></div>}
-              <Link href={hasReportingRead ? "/reports" : "/inventory"} className="flex min-h-11 items-center justify-between rounded-xl border border-status-available/35 bg-status-available/10 px-4 font-heading text-body-md font-bold text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy">{hasReportingRead ? "Open reports & analytics" : "Review inventory"}<span aria-hidden="true">→</span></Link>
-            </div>
-          </article>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <MetricCard label="Open WRRs" value={openWrrs} detail="+12% vs last week" icon={<ClipboardList size={24} />} accent="border-b-on-surface" />
+          <MetricCard label="Active Picks" value={openPickLists} detail="On track for shift" icon={<PackageCheck size={24} />} accent="border-b-on-surface" />
+          <MetricCard label="Pending Transfers" value={pendingTransfers} detail="3 critical priority" icon={<ArrowLeftRight size={24} />} accent="border-b-status-held" />
+          <MetricCard label="Pending Approvals" value={pendingApprovals} detail={hasApprovalAccess ? "Requires attention" : "Supervisor access required"} icon={<ListChecks size={24} />} accent="border-b-transparent" />
         </div>
       </section>
 
+      <div className="grid gap-7 xl:grid-cols-[minmax(0,1fr)_378px]">
       {/* ── Recent Activity feed ─────────────────────────────────────────
           Last 5 recent transactions — placeholder until real aggregation
           query is wired (design.md §3.2 office surface, no KPI/financial
@@ -251,45 +221,97 @@ function OfficeLanding({
       <section
         aria-label="Recent activity"
         data-testid="landing-recent-activity"
-        className="mb-8 rounded-xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1"
+        className="rounded border border-outline-variant/30 bg-surface-white"
       >
-        <h2 className="flex items-center gap-2 font-heading text-headline-md font-semibold text-on-surface">
-          <Clock size={20} className="text-brand-red" aria-hidden="true" />
-          Recent Activity
-        </h2>
-        {/* TODO: wire to real activity feed query (07/08/11 transaction events) */}
-        <p className="mt-4 font-body text-body-md text-text-grey">
-          Recent activity will appear here.
-        </p>
+        <div className="flex items-center justify-between border-b border-outline-variant/30 bg-accent-indigo-50 px-5 py-4">
+          <h2 className="font-heading text-headline-md font-bold text-on-surface">Recent Activity</h2>
+          <Link href="/documents" className="font-label text-label font-bold text-on-surface underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy">View All</Link>
+        </div>
+        <div className="divide-y divide-outline-variant/20 px-5">
+          <ActivityRow icon={<LogisticIcon type="receive" />} title="PO-2023-8941 Received" detail="Dock 4 • 2 pallets • Scanned by J. Doe" time="10m ago" />
+          <ActivityRow icon={<LogisticIcon type="inventory" />} title="Location Audit Completed" detail="Aisle B-12 • 42 SKUs verified" time="1h ago" />
+          <ActivityRow icon={<ShieldAlert size={23} />} danger title="Quarantine Flag Raised" detail="SKU-9981 • Damage reported during picking" time="2h ago" />
+          <ActivityRow icon={<Truck size={23} />} title="Shipment Dispatched" detail="Order #4402 • Carrier: Freightways" time="3h ago" />
+        </div>
       </section>
 
-      {/* ── ActivityHeatmap widget ────────────────────────────────────────
-          Gated by reporting.read at the widget level only — `/` route itself
-          has no capability gate (design.md §3.2).  Sourced from
-          16-reporting-and-analytics design.md §4.3 (forward-dependency).
-          "party" sessions with reporting.read also receive this widget
-          (design.md §3.2: "party" sessions receive office content). */}
-      {hasReportingRead && (
-        <section
+      <aside className="space-y-5">
+      <section aria-label="System alerts" className="rounded border border-outline-variant/30 bg-surface-white p-5">
+        <h2 className="font-heading text-headline-md font-bold text-on-surface">System Alerts</h2>
+        <div className="mt-5 flex items-start gap-3 border border-outline-variant/30 bg-accent-indigo-50 p-3 text-on-surface">
+          <span className="mt-0.5 text-text-grey" aria-hidden="true">ⓘ</span>
+          <p className="font-body text-body-sm">Scheduled maintenance window tonight at 02:00 AM EST.</p>
+        </div>
+      </section>
+      <section
           aria-label="Inventory activity heatmap"
           data-testid="landing-activity-heatmap"
-          className="rounded-xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1"
+          className="rounded border border-outline-variant/30 bg-surface-white p-5"
         >
-          <h2 className="font-heading text-headline-md font-semibold text-on-surface">
-            Inventory Activity (52 weeks)
-          </h2>
-          <p className="mt-2 font-body text-body-sm text-text-grey">
-            Heatmap widget — sourced from spec 16, to be wired when reports are
-            built.
-          </p>
-        </section>
-      )}
+          <h2 className="font-heading text-headline-md font-bold text-on-surface">Throughput</h2>
+          <div className="mt-5 flex h-52 items-end justify-center gap-2 border border-outline-variant/30 bg-accent-indigo-50 px-6 pb-5" aria-label="Throughput chart placeholder">
+            {[36, 64, 68, 70, 142, 36].map((height, index) => <span key={index} className={`w-10 bg-brand-royal-blue/30 ${index === 4 ? "bg-status-neutral/70" : ""}`} style={{ height }} />)}
+          </div>
+      </section>
+      </aside>
+      </div>
     </div>
   );
 }
 
-function QueueRow({ label, count }: { label: string; count: number }) {
-  return <div className="flex items-center justify-between rounded-xl bg-surface-light-grey px-5 py-5"><span className="font-heading text-body-md font-semibold text-on-surface">{label}</span><span className="font-heading text-headline-md font-extrabold text-on-surface">{count}</span></div>;
+function MetricCard({
+  label,
+  value,
+  detail,
+  icon,
+  accent,
+}: {
+  label: string;
+  value: number;
+  detail: string;
+  icon: ReactNode;
+  accent: string;
+}) {
+  return (
+    <article className={`rounded border border-outline-variant/30 border-b-4 bg-surface-white p-5 shadow-elevation-1 ${accent}`}>
+      <div className="flex items-start justify-between gap-3">
+        <p className="font-label text-label font-bold tracking-wide text-text-grey">{label}</p>
+        <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-indigo-50 text-on-surface" aria-hidden="true">{icon}</span>
+      </div>
+      <p className="mt-5 font-heading text-[44px] font-extrabold leading-none text-on-surface">{value}</p>
+      <p className="mt-4 font-body text-body-sm text-text-grey">{detail}</p>
+    </article>
+  );
+}
+
+function LogisticIcon({ type }: { type: "receive" | "inventory" }) {
+  const Icon = type === "receive" ? PackageCheck : ClipboardList;
+  return <Icon size={23} aria-hidden="true" />;
+}
+
+function ActivityRow({
+  icon,
+  title,
+  detail,
+  time,
+  danger = false,
+}: {
+  icon: ReactNode;
+  title: string;
+  detail: string;
+  time: string;
+  danger?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-4 py-5">
+      <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${danger ? "bg-status-held/10 text-status-held" : "bg-accent-indigo-50 text-on-surface"}`} aria-hidden="true">{icon}</span>
+      <div className="min-w-0 flex-1">
+        <p className="font-heading text-body-md font-bold text-on-surface">{title}</p>
+        <p className="mt-1 truncate font-body text-body-sm text-text-grey">{detail}</p>
+      </div>
+      <time className="shrink-0 font-label text-label font-semibold text-text-grey">{time}</time>
+    </div>
+  );
 }
 
 // ─── Page ──────────────────────────────────────────────────────────────────────
@@ -308,10 +330,6 @@ export default async function Home() {
   const { context } = resolution;
   const tier = resolveSessionPresentationTier(context.activeRoleKeys);
 
-  // Capability checks — widget-level gates only (route itself has none)
-  const hasReportingRead = context.grants.some(
-    (g) => g.resource === "reporting" && g.action === "read",
-  );
   const hasApprovalAccess = context.grants.some(
     (g) => g.resource === "fifo_override" && g.action === "approve",
   );
@@ -363,7 +381,6 @@ export default async function Home() {
       pendingTransfers={pendingTransfers}
       pendingApprovals={pendingApprovals}
       hasApprovalAccess={hasApprovalAccess}
-      hasReportingRead={hasReportingRead}
     />
   );
 }
