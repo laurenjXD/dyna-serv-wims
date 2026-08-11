@@ -162,7 +162,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       {/* Analytics is the financial-accessible surface; the landing page
           remains limited to operational queues per spec 05 R11.5. */}
       <section className="grid gap-6 xl:grid-cols-[1.02fr_1.04fr_1fr]">
-        <article className="overflow-hidden rounded-2xl border border-primary/30 bg-primary p-6 shadow-elevation-1">
+        <article className="overflow-hidden rounded-3xl border border-primary/30 bg-primary p-6 shadow-elevation-1">
           <p className="font-label text-label uppercase tracking-[0.06em] text-white/60">Total inventory valuation</p>
           <div className="mt-5 flex items-end justify-between gap-3">
             <p className="font-heading text-headline-xl font-extrabold text-white">
@@ -171,18 +171,18 @@ export default async function ReportsPage({ searchParams }: PageProps) {
             <span className="rounded-full bg-status-success/20 px-3 py-2 font-label text-label text-status-success">↑ Current</span>
           </div>
           <div className="mt-6 grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-white/10 p-4"><p className="font-body text-body-sm text-white/60">VMI</p><p className="mt-2 font-heading text-data-display font-bold text-white">{hasFinancialAccess ? "$0.00" : "—"}</p></div>
-            <div className="rounded-xl bg-white/10 p-4"><p className="font-body text-body-sm text-white/60">Trading</p><p className="mt-2 font-heading text-data-display font-bold text-white">{hasFinancialAccess ? "$0.00" : "—"}</p></div>
+            <div className="rounded-2xl bg-white/10 p-4"><p className="font-body text-body-sm text-white/60">VMI</p><p className="mt-2 font-heading text-data-display font-bold text-white">{hasFinancialAccess ? "$0.00" : "—"}</p></div>
+            <div className="rounded-2xl bg-white/10 p-4"><p className="font-body text-body-sm text-white/60">Trading</p><p className="mt-2 font-heading text-data-display font-bold text-white">{hasFinancialAccess ? "$0.00" : "—"}</p></div>
           </div>
           {!hasFinancialAccess && <p className="mt-4 flex items-center gap-2 font-body text-body-sm text-white/65"><LockKeyhole size={15} aria-hidden="true" />Financial reporting access required.</p>}
           <div className="mt-6 h-16 rounded-t-full border-t-4 border-action-blue bg-gradient-to-b from-action-blue/20 to-transparent" aria-hidden="true" />
         </article>
 
-        <article className="rounded-2xl border border-outline-variant/30 border-l-[7px] border-l-action-blue bg-white p-6 shadow-elevation-1">
+        <article className="rounded-3xl border border-outline-variant/30 border-l-[7px] border-l-action-blue bg-white p-6 shadow-elevation-1">
           <p className="font-label text-label uppercase tracking-[0.06em] text-on-surface-variant">Open floor queues</p>
           <div className="mt-6 space-y-4">
             {[['Pending Receiving WRRs', '0'], ['Active Pick Lists to Execute', '0'], ['Items Pending QC Inspection', '0']].map(([label, count]) => (
-              <div key={label} className="flex items-center justify-between rounded-xl bg-surface-dim px-5 py-5">
+              <div key={label} className="flex items-center justify-between rounded-2xl bg-surface-dim px-5 py-5">
                 <span className="font-heading text-body-md font-semibold text-on-surface">{label}</span>
                 <span className="font-heading text-headline-md font-extrabold text-on-surface">{count}</span>
               </div>
@@ -190,7 +190,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
           </div>
         </article>
 
-        <article className="rounded-2xl border border-outline-variant/30 bg-white p-6 shadow-elevation-1">
+        <article className="rounded-3xl border border-outline-variant/30 bg-white p-6 shadow-elevation-1">
           <p className="font-label text-label uppercase tracking-[0.06em] text-on-surface-variant">Stock health &amp; quality</p>
           <div className="mt-6 space-y-4">
             <HealthRow icon={<TriangleAlert size={23} />} title="Low stock reorder alerts" detail="No items below reorder level" tone="pending" />
@@ -201,7 +201,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       </section>
 
       {/* Quick Access panel */}
-      <section className="mt-6 rounded-2xl border border-outline-variant/30 bg-white p-6 shadow-elevation-1">
+      <section className="mt-6 rounded-3xl border border-outline-variant/30 bg-white p-6 shadow-elevation-1">
         <h2 className="font-heading font-semibold text-headline-md text-on-surface">
           Quick Access
         </h2>
@@ -211,7 +211,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
         <div className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-4">
           <Link
             href="/receiving/new"
-            className="flex flex-col items-center justify-center gap-3 rounded-xl border border-outline-variant/30 bg-surface-dim p-4 motion-safe:transition-colors hover:border-primary hover:bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+            className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-dim p-4 motion-safe:transition-colors hover:border-primary hover:bg-white focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
               <Download size={20} aria-hidden="true" />
@@ -220,7 +220,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
           </Link>
           <Link
             href="/transfers/new"
-            className="flex flex-col items-center justify-center gap-3 rounded-xl border border-outline-variant/30 bg-surface-dim p-4 motion-safe:transition-colors hover:border-primary hover:bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+            className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-dim p-4 motion-safe:transition-colors hover:border-primary hover:bg-white focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
               <BarChart2 size={20} aria-hidden="true" />
@@ -229,7 +229,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
           </Link>
           <Link
             href="/outgoing"
-            className="flex flex-col items-center justify-center gap-3 rounded-xl border border-outline-variant/30 bg-surface-dim p-4 motion-safe:transition-colors hover:border-primary hover:bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+            className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-dim p-4 motion-safe:transition-colors hover:border-primary hover:bg-white focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
               <Check size={20} aria-hidden="true" />
@@ -238,7 +238,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
           </Link>
           <Link
             href="/inventory"
-            className="flex flex-col items-center justify-center gap-3 rounded-xl border border-outline-variant/30 bg-surface-dim p-4 motion-safe:transition-colors hover:border-primary hover:bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+            className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-dim p-4 motion-safe:transition-colors hover:border-primary hover:bg-white focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
               <BarChart2 size={20} aria-hidden="true" />
@@ -249,16 +249,16 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       </section>
 
       <section className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <article className="rounded-2xl border border-outline-variant/30 bg-white p-6 shadow-elevation-1">
+        <article className="rounded-3xl border border-outline-variant/30 bg-white p-6 shadow-elevation-1">
           <div className="flex flex-wrap items-start justify-between gap-4"><div><h2 className="font-heading text-headline-md font-bold text-on-surface">Monthly Flow Movement</h2><p className="mt-1 font-body text-body-sm text-on-surface-variant">Inbound receiving vs. outbound dispatch by flow type</p></div><div className="flex gap-4 font-body text-body-sm text-on-surface-variant"><Legend color="bg-primary" label="VMI" /><Legend color="bg-secondary" label="Trading" /><Legend color="bg-status-neutral" label="Supplies" /></div></div>
           <MonthlyFlowChart data={MONTHLY_FLOW} />
         </article>
-        <article className="rounded-2xl border border-outline-variant/30 bg-white p-6 shadow-elevation-1"><h2 className="font-heading text-headline-md font-bold text-on-surface">Location Occupancy</h2><LocationOccupancyChart /><div className="space-y-3 font-body text-body-sm text-on-surface-variant"><Legend color="bg-primary" label="Zone A Storage" /><Legend color="bg-secondary" label="Zone B Racks" /><Legend color="bg-status-neutral" label="Cold Storage" /><Legend color="bg-action-blue" label="Overflow" /></div></article>
+        <article className="rounded-3xl border border-outline-variant/30 bg-white p-6 shadow-elevation-1"><h2 className="font-heading text-headline-md font-bold text-on-surface">Location Occupancy</h2><LocationOccupancyChart /><div className="space-y-3 font-body text-body-sm text-on-surface-variant"><Legend color="bg-primary" label="Zone A Storage" /><Legend color="bg-secondary" label="Zone B Racks" /><Legend color="bg-status-neutral" label="Cold Storage" /><Legend color="bg-action-blue" label="Overflow" /></div></article>
       </section>
 
       {/* Movement Trend — real recharts bar chart, most recent day highlighted
           in action-blue per §9's "one accent, used sparingly" dashboard rule. */}
-      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-white p-6 shadow-elevation-1">
+      <div className="mt-6 rounded-3xl border border-outline-variant/30 bg-white p-6 shadow-elevation-1">
         <h2 className="font-heading font-semibold text-headline-md text-on-surface">
           Movement Trend
         </h2>
@@ -269,7 +269,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       </div>
 
       {/* Activity Heatmap */}
-      <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-white p-6 shadow-elevation-1">
+      <div className="mt-6 rounded-3xl border border-outline-variant/30 bg-white p-6 shadow-elevation-1">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-heading font-semibold text-headline-md text-on-surface">
             Inventory Activity (52 Weeks)
@@ -294,7 +294,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
         </div>
 
         {/* Heatmap placeholder — wired from inventory_transactions data */}
-        <div className="mt-4 h-32 rounded-xl bg-surface-dim" role="img" aria-label="Inventory activity heatmap — not yet wired to data">
+        <div className="mt-4 h-32 rounded-2xl bg-surface-dim" role="img" aria-label="Inventory activity heatmap — not yet wired to data">
           <div className="flex h-full items-center justify-center">
             <p className="font-body text-body-sm text-on-surface-variant">
               Heatmap — wired from <span className="font-mono text-mono-md">inventory_transactions</span> data
@@ -304,7 +304,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       </div>
 
       {/* Movement History table */}
-      <div className="mt-6 overflow-hidden rounded-2xl border border-outline-variant/30 bg-white shadow-elevation-1">
+      <div className="mt-6 overflow-hidden rounded-3xl border border-outline-variant/30 bg-white shadow-elevation-1">
         {/* Table header row with export button */}
         <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
           <h2 className="font-heading font-semibold text-headline-md text-on-surface">
@@ -312,7 +312,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
           </h2>
           <button
             type="button"
-            className="flex h-11 items-center gap-2 rounded-xl border border-outline-variant/30 px-4 font-body text-body-md text-on-surface motion-safe:transition-colors motion-safe:duration-150 hover:border-primary hover:text-primary motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-primary"
+            className="flex h-11 items-center gap-2 rounded-2xl border border-outline-variant/30 px-4 font-body text-body-md text-on-surface motion-safe:transition-colors motion-safe:duration-150 hover:border-primary hover:text-primary motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-primary"
             aria-label="Export movement history"
           >
             <Download size={16} aria-hidden="true" />
@@ -387,7 +387,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
 
       {/* Financial summary — shown only if reporting.financial_read */}
       {hasFinancialAccess && (
-        <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-white p-6 shadow-elevation-1">
+        <div className="mt-6 rounded-3xl border border-outline-variant/30 bg-white p-6 shadow-elevation-1">
           <h2 className="font-heading font-semibold text-headline-md text-on-surface">
             Financial Summary
           </h2>
@@ -437,5 +437,5 @@ function Legend({ color, label }: { color: string; label: string }) {
 
 function HealthRow({ icon, title, detail, tone }: { icon: React.ReactNode; title: string; detail: string; tone: "pending" | "held" | "available" }) {
   const toneClass = { pending: "border-status-warning/45 bg-status-warning/10 text-status-warning", held: "border-status-error/35 bg-status-error/10 text-status-error", available: "border-status-success/35 bg-status-success/10 text-status-success" }[tone];
-  return <div className={`flex items-center gap-4 rounded-xl border p-4 ${toneClass}`}><span aria-hidden="true">{icon}</span><div><p className="font-heading text-body-md font-bold text-on-surface">{title}</p><p className="mt-1 font-body text-body-sm text-on-surface-variant">{detail}</p></div></div>;
+  return <div className={`flex items-center gap-4 rounded-2xl border p-4 ${toneClass}`}><span aria-hidden="true">{icon}</span><div><p className="font-heading text-body-md font-bold text-on-surface">{title}</p><p className="mt-1 font-body text-body-sm text-on-surface-variant">{detail}</p></div></div>;
 }
