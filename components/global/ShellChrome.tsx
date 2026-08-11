@@ -151,7 +151,7 @@ function getPageTitle(pathname: string): string {
   if (pathname === "/") return "Overview Dashboard";
   if (pathname.startsWith("/reports")) return "Reports & Analytics";
   if (pathname.startsWith("/receiving")) return "Incoming Receiving";
-  if (pathname.startsWith("/inventory")) return "Inventory & Pick Lists";
+  if (pathname.startsWith("/inventory")) return "Detailed Stock Audit";
   if (pathname.startsWith("/outgoing") || pathname.startsWith("/pick-lists")) return "Picking & Dispatch";
   if (pathname.startsWith("/transfers")) return "Transfers";
   if (pathname.startsWith("/inspection")) return "Inspection";

@@ -17,6 +17,7 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ChevronRight, Download, Search, SlidersHorizontal } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
@@ -57,11 +58,11 @@ const TABS: Array<{ key: TabKey; label: string }> = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 interface PageProps {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; q?: string }>;
 }
 
 export default async function InventoryPage({ searchParams }: PageProps) {
-  const { tab: tabParam } = await searchParams;
+  const { tab: tabParam, q } = await searchParams;
 
   const activeTab: TabKey =
     tabParam === "pick-lists" ? "pick-lists" :
@@ -78,22 +79,12 @@ export default async function InventoryPage({ searchParams }: PageProps) {
 
   return (
     <div className="mx-auto max-w-container">
-      {/* Page header */}
-      <div>
-        <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
-          Detailed Stock Audit
-        </h1>
-        <p className="mt-1 font-body text-body-md text-text-grey">
-          Review inventory by item, lot, location, and inspection status.
-        </p>
-      </div>
-
-      {/* Tab switcher — office pattern per brand-design-system.md §3 */}
       <div
         role="tablist"
         aria-label="Inventory sections"
-        className="mt-6 flex gap-2 overflow-x-auto border-b border-outline-variant/30"
+        className="flex flex-wrap items-center justify-between gap-3 border-b border-outline-variant/30"
       >
+        <div className="flex gap-6 overflow-x-auto">
         {TABS.map((tab) => {
           const isActive = tab.key === activeTab;
           const href =
@@ -108,20 +99,31 @@ export default async function InventoryPage({ searchParams }: PageProps) {
               href={href}
               role="tab"
               aria-selected={isActive}
-              className={`flex h-11 shrink-0 items-center border-b-2 px-4 font-label text-label uppercase tracking-[0.05em] focus:outline-none focus:ring-2 focus:ring-brand-navy ${
+              className={`flex h-12 shrink-0 items-center border-b-2 px-1 font-label text-label font-semibold tracking-[0.03em] focus:outline-none focus:ring-2 focus:ring-brand-navy ${
                 isActive
-                  ? "border-brand-red text-brand-navy"
-                  : "border-transparent text-text-grey hover:text-brand-navy"
+                  ? "border-on-surface text-on-surface"
+                  : "border-transparent text-text-grey hover:text-on-surface"
               }`}
             >
               {tab.label}
             </Link>
           );
         })}
+        </div>
+        <form method="GET" className="flex items-center gap-2 pb-2">
+          <input type="hidden" name="tab" value={activeTab} />
+          <label htmlFor="inventory-search" className="sr-only">Search inventory</label>
+          <div className="hidden h-10 items-center gap-2 rounded-full border border-outline-variant/30 bg-surface-light-grey px-3 md:flex">
+            <Search size={18} aria-hidden="true" className="text-text-grey" />
+            <input id="inventory-search" name="q" type="search" defaultValue={q ?? ""} placeholder="Search SKU, Lot..." className="w-40 bg-transparent font-body text-body-sm text-on-surface placeholder:text-status-neutral focus:outline-none" />
+          </div>
+          <button type="submit" className="inline-flex h-11 items-center gap-2 rounded border border-outline-variant/30 bg-surface-white px-4 font-label text-label font-semibold text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"><SlidersHorizontal size={16} aria-hidden="true" />Filters</button>
+          <button type="button" className="inline-flex h-11 items-center gap-2 rounded bg-on-surface px-4 font-label text-label font-semibold text-surface-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"><Download size={16} aria-hidden="true" />Export</button>
+        </form>
       </div>
 
       {activeTab === "stock-view" ? (
-        <StockViewTab />
+        <StockViewTab query={q} />
       ) : activeTab === "pick-lists" ? (
         <PickListsTab />
       ) : (
@@ -133,12 +135,13 @@ export default async function InventoryPage({ searchParams }: PageProps) {
 
 // ─── Stock View tab (default) ─────────────────────────────────────────────────
 
-async function StockViewTab() {
+async function StockViewTab({ query }: { query?: string }) {
   const rows = await listStockView(db);
-  const items = groupStockByItem(rows);
+  const normalizedQuery = query?.trim().toLowerCase() ?? "";
+  const items = groupStockByItem(rows).filter((item) => !normalizedQuery || `${item.itemCode} ${item.itemName} ${item.lots.map((lot) => lot.lotNumber).join(" ")}`.toLowerCase().includes(normalizedQuery));
 
   return (
-    <div className="mt-6 overflow-hidden rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+    <div className="mt-4 min-h-[680px] overflow-x-auto rounded-lg border border-outline-variant/30 bg-surface-white shadow-elevation-1">
       {items.length === 0 ? (
         <div className="px-6 py-12 text-center">
           <p className="font-body text-body-md text-text-grey">
@@ -149,21 +152,20 @@ async function StockViewTab() {
           </p>
         </div>
       ) : (
-        <div className="divide-y divide-outline-variant/30">
+        <div className="min-w-[760px] divide-y divide-outline-variant/30">
+          <div className="grid grid-cols-[40px_210px_minmax(220px,1fr)_120px_140px_160px] items-center bg-accent-indigo-50 px-5 py-3 font-label text-label font-semibold tracking-[0.04em] text-text-grey">
+            <span aria-hidden="true" />
+            <span>Item Code</span><span>Name</span><span>UOM</span><span className="text-right">Stock Level</span><span>Status</span>
+          </div>
           {items.map((item) => (
             <details key={item.itemId} className="group">
-              <summary className="grid cursor-pointer list-none gap-3 px-4 py-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy md:grid-cols-[minmax(140px,0.8fr)_minmax(200px,1.5fr)_100px_1fr_auto] md:items-center md:px-6">
-                <div>
-                  <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey md:hidden">Item code</p>
-                  <p className="font-mono text-mono-md font-bold text-on-surface">{item.itemCode}</p>
-                </div>
-                <div>
-                  <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey md:hidden">Item</p>
-                  <p className="font-heading text-body-md font-semibold text-on-surface">{item.itemName}</p>
-                </div>
+              <summary className="grid cursor-pointer list-none grid-cols-[40px_210px_minmax(220px,1fr)_120px_140px_160px] items-center px-5 py-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy hover:bg-surface-light-grey/40">
+                <ChevronRight size={22} aria-hidden="true" className="text-text-grey transition-transform group-open:rotate-90" />
+                <p className="font-mono text-mono-md font-bold text-on-surface">{item.itemCode}</p>
+                <p className="font-body text-body-md text-on-surface">{item.itemName}</p>
                 <p className="font-body text-body-md text-text-grey">{item.uom}</p>
-                <p className="font-heading text-data-display font-semibold text-on-surface">{item.availableQty.toLocaleString()} available</p>
-                <span className="inline-flex w-fit items-center rounded-full bg-status-available/10 px-2 py-1 font-label text-label uppercase text-status-available">Available</span>
+                <p className="text-right font-mono text-mono-lg font-bold text-on-surface">{item.availableQty.toLocaleString()}</p>
+                <span className="inline-flex w-fit items-center rounded-full bg-on-surface px-3 py-1 font-label text-label tracking-[0.06em] text-surface-white">ON HAND</span>
               </summary>
               <div className="border-t border-outline-variant/30 bg-surface-light-grey/45 px-4 py-4 md:px-6">
                 <p className="font-body text-body-md text-text-grey">
