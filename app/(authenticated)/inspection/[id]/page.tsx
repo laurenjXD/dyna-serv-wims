@@ -457,7 +457,7 @@ export default async function InspectionDetailPage({
                 full-width, always visible without scrolling. bg-brand-red,
                 text-white, active: scale not hover:. WCAG AAA (7:1 white on
                 brand-red ≈ 5.7:1 — boosted by font-bold). */}
-            {/* AAA contrast gap: white on brand-red ≈5.7:1 vs 7:1 required — tracked as design-system open item, pending MASTER.md resolution */}
+            {/* White on brand-red: 7.31:1 (AAA) — resolved 2026-08-12 by darkening brand-red to #9A3412; see brand-design-system.md §1.1. */}
             <button
               type="submit"
               className="mt-2 flex h-16 w-full items-center justify-center rounded-xl bg-brand-red font-label text-body-md uppercase tracking-wide text-white

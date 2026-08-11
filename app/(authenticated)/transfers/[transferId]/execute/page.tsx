@@ -167,7 +167,7 @@ export default async function ExecuteTransferPage({
             brand-design-system.md §9 §10: scan feedback is a solid color fill,
             not a gradient or blurred overlay. AAA contrast (7:1) for
             time-critical text per §1.5.
-            text-on-surface (#1A1B20) on status-available (#10B981) → meets AAA. */}
+            text-on-surface (#0F172A) on status-available (#10B981) → 7.04:1, meets AAA. */}
         {transferComplete && (
           <div
             role="status"
@@ -189,7 +189,8 @@ export default async function ExecuteTransferPage({
             role="alert"
             aria-live="assertive"
             // solid status-held — full opacity, no backdrop-blur.
-            // text-on-surface (#1A1B20) on status-held (#EF4444) → meets AAA per §1.5.
+            // text-on-surface (#0F172A) on status-held (#EF4444) → 4.74:1, meets AA
+            // (not AAA — a documented known gap, see brand-design-system.md §1.3).
             className="mt-4 rounded-md bg-status-held px-4 py-4 shadow-elevation-2"
           >
             {/* Icon paired with color per §1.3 floor color-blind rule */}

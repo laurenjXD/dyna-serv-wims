@@ -2,7 +2,7 @@
 
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
-const COLORS = ["#002060", "#2E4094", "#64748B", "#FF2929"];
+const COLORS = ["#1E293B", "#475569", "#64748B", "#9A3412"];
 
 export function LocationOccupancyChart() {
   const data = [

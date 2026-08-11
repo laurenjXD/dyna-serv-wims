@@ -9,48 +9,53 @@ This replaces all prior brand documents. Where anything else conflicts with this
 
 ## 1. Color System
 
-### 1.1 Brand colors
-| Token | Hex | Usage |
-|---|---|---|
-| `brand-navy` | `#002060` | Primary brand color — sidebars, logo, page headers, icon accents. **Reverted 2026-08-11**: the 2026-08-10 indigo experiment (`#3D3BF3`) is superseded; this is the reference navy identity — see `revision-log.md`. |
-| `brand-royal-blue` | `#2E4094` | Secondary structural treatment for secondary nav elements and chart series. |
-| `brand-red` | `#E30613` | Accent/CTA only. Primary buttons, key highlights. **Reverted 2026-08-11** back to this value (the 2026-08-10 change to `#FF2929` is superseded). **Never used for status/semantic meaning** — see §1.3. |
+### 1.1 Brand colors — "Steel & Hazard" (adopted 2026-08-12)
 
-### 1.1a Accent scale (reverted 2026-08-11)
-
-Backgrounds/icons/active-states only — **never text color** (see the text-color rule at the end of this section). Aliases of the reverted navy/royal-blue values, not a separate indigo scale.
+**Superseded 2026-08-12**: both the 2026-08-10 indigo experiment and the 2026-08-11 navy/red reversion are retired. This is a from-scratch identity — see `revision-log.md`. The direction: industrial steel structure (the racking, the equipment, the building) carries the interface; a single warehouse-authentic accent — safety orange, the color of hazard tape, forklifts, and high-vis vests — marks the one thing on any screen that actually needs to be pressed. It is never used for status, because status already has its own vocabulary (§1.3) and doubling up would make "press this" and "this is pending" mean the same color.
 
 | Token | Hex | Usage |
 |---|---|---|
-| `accent-indigo-50` | `#F2F2F2` | Lightest tint — icon-badge backgrounds on KPI/dashboard cards, subtle highlight fills. |
-| `accent-indigo-300` | `#2E4094` | Mid tone — secondary accents, hover states, chart secondary series. |
-| `accent-indigo-600` | `#002060` | Primary accent — sidebar active-nav-item background, icon-badge foreground, primary chart bars. |
+| `brand-navy` | `#1E293B` | Primary structural color — sidebars, headers, footer bars, primary icon fills. (Token name kept for source continuity; the value is now slate-800, not a navy blue.) |
+| `brand-royal-blue` | `#475569` | Secondary structural treatment — secondary nav elements, chart series, subordinate structural fills. (slate-600) |
+| `brand-red` | `#9A3412` | **Accent/CTA only.** Primary buttons, the one primary action per screen, key highlights. Burnt safety-orange, not a red — token name kept for source continuity with the RBAC/spec cross-references that predate this palette. **Contrast note**: the first choice for this role was a brighter `#EA580C` (Tailwind orange-600), which reads more like genuine hazard-tape orange — but white button text on it measures only 3.56:1, worse than either prior palette's red ever achieved (old `#E30613`: 4.88:1). This darker value gives white text 7.31:1 (AAA), verified 2026-08-12 — an accessibility improvement over both previous iterations, not just a lateral color swap, and the real reason this token is a "burnt"/rust orange rather than the brighter hazard-orange the name evokes. **Never used for status/semantic meaning** — see §1.3. |
+
+### 1.1a Accent scale
+
+Backgrounds/icons/active-states only — **never text color** (see the text-color rule below). Aliases of the structural slate values, not a separate scale.
+
+| Token | Hex | Usage |
+|---|---|---|
+| `accent-indigo-50` | `#F1F5F9` | Lightest tint — icon-badge backgrounds on KPI/dashboard cards, subtle highlight fills. (slate-100) |
+| `accent-indigo-300` | `#475569` | Mid tone — secondary accents, hover states, chart secondary series. (slate-600) |
+| `accent-indigo-600` | `#1E293B` | Primary structural accent — sidebar active-nav-item background, icon-badge foreground, primary chart bars. (slate-800) |
 
 **Text-color rule (reaffirmed): headings, labels, and body copy are always `on-surface` or `text-grey` — never `brand-navy`, `brand-red`, `brand-royal-blue`, or any `accent-indigo-*` value.** Those colors are for backgrounds, icons, borders, active-state fills, and chart marks only. This keeps every page's actual reading text black/near-black regardless of how many accent colors a given screen uses elsewhere.
+
+**Signature pattern — the colored left-accent bar.** The one recurring, deliberate visual device this system uses (see the frontend-design principle of spending boldness in one consistent place, not scattering it): a card or alert that needs to draw the eye carries a 4px solid left border in the color that explains *why* it matters — `border-status-held` for an exception, `border-brand-red` for the one primary action context on a card, `border-status-available` for a completed/passed state. This is not decoration; the color on the edge is the same token driving the icon/badge inside, so the border and the content never disagree. Already used on the receiving floor scan screen's exception cards — this makes it the house pattern, not a one-off.
 
 ### 1.2 Neutrals
 | Token | Hex | Usage |
 |---|---|---|
-| `text-grey` | `#555555` | Standard body copy — office/desktop contexts only. Floor/mobile screens use `on-surface` (§1.2 below) or pure black instead; see §5's contrast escalation. |
+| `text-grey` | `#475569` | Standard body copy — office/desktop contexts only. Floor/mobile screens use `on-surface` (below) or pure black instead; see §5's contrast escalation. (slate-600) |
 | `surface-white` | `#FFFFFF` | Primary content backgrounds, and any surface that needs full opacity (modals, drawers, printed documents). |
-| `surface-light-grey` | `#F2F2F2` | Light neutral canvas for secondary content blocks and subtle section division. **Reverted 2026-08-11** from the lavender `#EBEAFF`. |
-| `on-surface` | `#1A1B20` | Default text color where higher contrast than `text-grey` is needed — the default for all floor/mobile screens. |
-| `outline-variant` | `#C5C6D2` | Card borders and dividers — always at 30% opacity, never solid. **Reverted 2026-08-11** from the lavender `#9694FF`. |
+| `surface-light-grey` | `#F8FAFC` | Light neutral canvas for secondary content blocks and subtle section division — the office dashboard backdrop. (slate-50) |
+| `on-surface` | `#0F172A` | Default text color where higher contrast than `text-grey` is needed — the default for all floor/mobile screens. (slate-900) |
+| `outline-variant` | `#E2E8F0` | Card borders and dividers — always at 30% opacity, never solid. (slate-200) |
 
-### 1.3 Status colors (semantic — distinct from brand red)
-| Token | Hex | Meaning |
-|---|---|---|
-| `status-available` | `#10B981` | Available, passed inspection, approved, fulfilled |
-| `status-pending` | `#F59E0B` | Pending, in-transit, under inspection |
-| `status-held` | `#EF4444` | Held, failed, rejected, written off |
-| `status-neutral` | `#64748B` | Depleted, on-hold, draft |
+### 1.3 Status colors (semantic — distinct from the brand accent)
+| Token | Hex | Meaning | Contrast vs. on-surface text |
+|---|---|---|---|
+| `status-available` | `#10B981` | Available, passed inspection, approved, fulfilled | 7.04:1 — AAA |
+| `status-pending` | `#EAB308` | Pending, in-transit, under inspection — a true yellow, deliberately far from `brand-red`'s orange on the color wheel so the two are never confusable at a glance | 9.31:1 — AAA |
+| `status-held` | `#EF4444` | Held, failed, rejected, written off | 4.74:1 — AA. **Known gap, not silently claimed as more than it is**: this is the one status color that does not reach the §1.5 AAA floor for time-critical floor text. Verified 2026-08-12; no color in the red family reaches 7:1 against `on-surface` without reading as pink rather than "held." Until this is revisited, floor screens using this as a solid flash background should pair it with the icon+text redundancy §1.3's floor rule already requires, not rely on the color/text contrast alone. |
+| `status-neutral` | `#64748B` | Depleted, on-hold, draft | — (never used as a solid full-screen flash background) |
 
-**Why `status-held` and `brand-red` are two different reds, on purpose:** a red *button* means "do this action" (brand red); a red *badge* means "this lot is held" (status red). Conflating them makes a "Confirm" button and a "Held" pill indistinguishable in meaning.
+**Why `status-held` and `brand-red` are visually distinct on purpose:** a *button* using `brand-red` (safety orange) means "do this action"; a *badge* using `status-held` (true red) means "this lot is held." The two aren't even the same hue family here, which makes the old collision risk (an orange CTA next to a red status pill both reading as "important" with no further distinction) structurally impossible rather than just documented against.
 
 **Floor-specific rule:** status color alone is never the only signal on a floor screen — every status also carries an icon or full-screen flash pattern (§9), because color-only differentiation fails outdoors under variable warehouse lighting and for colorblind staff. See §5.
 
 ### 1.4 Form validation
-Reuses `brand-red` for error borders/text — not a third red.
+Reuses `status-held` (`#DC2626`) for error borders/text — not `brand-red`, since a validation error is a status condition, not a call to action.
 
 ### 1.5 Contrast — two tiers, not one
 - **Office/desktop screens**: WCAG AA. Body text 4.5:1, large text/UI 3:1.
@@ -60,27 +65,28 @@ Reuses `brand-red` for error borders/text — not a third red.
 
 ## 2. Typography
 
-**Revised 2026-08-09** — consolidated from four families to two, moving to a modern dashboard-style type system. See `revision-log.md` for rationale. `Fira Sans` / `Outfit` / `Epilogue` / `Roboto Mono` are retired; do not introduce new usages of them.
+**Revised 2026-08-12** — a display face is reintroduced for headings/section titles only; body copy, data tables, and functional labels stay on Inter exactly as before. See `revision-log.md` for rationale. `Fira Sans` / `Outfit` / `Epilogue` / `Roboto Mono` remain retired; do not introduce new usages of them.
 
 | Family | Role | Weights used |
 |---|---|---|
-| **Inter** | Everything except mono content: headings, data-display numbers, body copy, functional labels (nav items, badges, table headers, button labels) — differentiated by weight, not by switching families | ExtraBold (800), Bold (700), SemiBold (600), Medium (500), Regular (400) |
+| **Space Grotesk** | Headings and section titles only (`headline-*`) — the page's visual personality, used with restraint | Bold (700), SemiBold (600), Medium (500) |
+| **Inter** | Everything else: data-display numbers, body copy, functional labels (nav items, badges, table headers, button labels) — differentiated by weight, not by switching families | ExtraBold (800), Bold (700), SemiBold (600), Medium (500), Regular (400) |
 | **JetBrains Mono** | Codes, IDs, lot numbers, table numeric columns | Regular (400), Bold (700) |
 
 ### Type scale
 | Style | Family/Weight | Size | Line height | Tracking |
 |---|---|---|---|---|
-| headline-xl | Inter ExtraBold | 40px | 48px | -0.02em |
-| headline-lg | Inter Bold | 32px | 40px | -0.01em |
-| headline-md | Inter SemiBold | 24px | 32px | normal |
-| data-display | Inter SemiBold | 20px | 24px | normal |
+| headline-xl | Space Grotesk Bold | 40px | 48px | -0.02em |
+| headline-lg | Space Grotesk Bold | 32px | 40px | -0.01em |
+| headline-md | Space Grotesk SemiBold | 24px | 32px | normal |
+| data-display | Space Grotesk SemiBold | 20px | 24px | normal |
 | body-lg | Inter Regular | 18px | 28px | normal |
 | body-md | Inter Regular | 16px | 24px | normal |
 | body-sm | Inter Regular | 14px | 20px | normal |
 | label | Inter SemiBold | 14px | 16px | 0.03em |
 | mono | JetBrains Mono Regular/Bold | context-dependent, 11-24px | 1.4x size | normal |
 
-**Why one family instead of four:** Inter's weight range (400-800) is wide enough to carry heading/body/label roles on its own without visually competing typefaces, and it stays extremely legible at small sizes — relevant since floor screens enforce a 16px minimum (below). Fewer families also means fewer next/font subsets to load and less risk of the kind of file-wide font-substitution drift already caught once in this project by `design-system-auditor`.
+**Why a second family only for headings:** a page built entirely from one weight-varying family (the 2026-08-09 decision) is legible but has no personality of its own — every screen reads like every other enterprise dashboard. Space Grotesk's geometric, slightly technical character gives section titles and page headers real presence without touching anything legibility-critical: body copy, dense tables, and floor screens (where the 16px minimum below is the load-bearing rule, not typeface choice) stay on Inter exactly as before. This is the one typographic risk this system takes, confined to headings only so it can never compromise a floor worker's ability to read a scan result at a glance.
 
 **Floor-specific minimum:** no text below 16px (`body-md`) anywhere on a floor screen, even for secondary labels — `body-sm` (14px) is office-only. Small text that's easy to read on a desk-height monitor is not easy to read on a handheld scanner in motion.
 
@@ -219,7 +225,7 @@ Floor devices are rugged mid-tier Android hardware (Zebra/Honeywell-class scanne
 
 ## 12. Implementation (Next.js + Tailwind — Option A stack)
 
-- All tokens defined in `tailwind.config.ts` — components consume Tailwind classes, never inline hex values. **Narrow exception, added 2026-08-09**: SVG-based charting libraries (e.g. recharts) take raw prop values (`fill`, `stroke`, `tick.fill`, tooltip `contentStyle`), not Tailwind classes, so a chart component may pass hex literals directly — but only values that are an exact, traceable match to an already-documented token in §1 (e.g. `#002060` for `brand-navy`, `#E30613` for `brand-red`). No chart may introduce a hex value that isn't already named in §1. This is the only sanctioned inline-hex path in the codebase.
+- All tokens defined in `tailwind.config.ts` — components consume Tailwind classes, never inline hex values. **Narrow exception, added 2026-08-09**: SVG-based charting libraries (e.g. recharts) take raw prop values (`fill`, `stroke`, `tick.fill`, tooltip `contentStyle`), not Tailwind classes, so a chart component may pass hex literals directly — but only values that are an exact, traceable match to an already-documented token in §1 (e.g. `#1E293B` for `brand-navy`, `#9A3412` for `brand-red`). No chart may introduce a hex value that isn't already named in §1. This is the only sanctioned inline-hex path in the codebase.
 - Mobile-first Tailwind usage is structural, not optional: base (unprefixed) classes are the floor/mobile styles; `md:`/`lg:` prefixes layer on office/desktop enhancements. Writing desktop styles unprefixed and mobile as an override is backwards and not permitted per §3.
 - Fonts loaded via `next/font/google`, scoped to weights actually used (§2).
 - Floor-screen components should be built and tested first at the 375px breakpoint, not designed at desktop width and shrunk down — matches §3's actual priority, not just its stated intent.

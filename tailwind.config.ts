@@ -20,38 +20,41 @@ const config: Config = {
     },
     extend: {
       colors: {
-        // §1.1 Brand colors (reverted 2026-08-11: the 2026-08-10 indigo
-        // experiment is superseded by the reference navy/red identity —
-        // see specs/00-steering/revision-log.md).
-        "brand-navy": "#002060",
-        "brand-royal-blue": "#2E4094",
-        "brand-red": "#E30613",
-        // §1.1a Accent scale — kept as distinct tokens (backgrounds/icons/
-        // active-states only, never text color per §2's text-color rule)
-        // but now aliases of the reverted navy/royal-blue values rather than
-        // the retired indigo scale.
-        "accent-indigo-50": "#F2F2F2",
-        "accent-indigo-300": "#2E4094",
-        "accent-indigo-600": "#002060",
+        // §1.1 Brand colors — "Steel & Hazard" (adopted 2026-08-12).
+        // Both the 2026-08-10 indigo experiment and the 2026-08-11 navy/red
+        // reversion are superseded — see specs/00-steering/revision-log.md.
+        "brand-navy": "#1E293B", // slate-800, structural
+        "brand-royal-blue": "#475569", // slate-600, secondary structural
+        "brand-red": "#9A3412", // burnt safety-orange — accent/CTA only, never status. White-text contrast 7.31:1 (AAA), verified 2026-08-12 — see §1.1's note on why a brighter orange was tried and rejected.
+        // §1.1a Accent scale — backgrounds/icons/active-states only, never
+        // text color per §2's text-color rule. Aliases of the structural
+        // slate values.
+        "accent-indigo-50": "#F1F5F9",
+        "accent-indigo-300": "#475569",
+        "accent-indigo-600": "#1E293B",
         // §1.2 Neutrals
-        "text-grey": "#555555",
+        "text-grey": "#475569",
         "surface-white": "#FFFFFF",
-        "surface-light-grey": "#F2F2F2",
-        "on-surface": "#1A1B20",
+        "surface-light-grey": "#F8FAFC",
+        "on-surface": "#0F172A",
         // outline-variant is always used at 30% opacity per §1.2 — consume as
         // `border-outline-variant/30`, never solid.
-        "outline-variant": "#C5C6D2",
-        // §1.3 Status colors (semantic — never conflate with brand-red)
+        "outline-variant": "#E2E8F0",
+        // §1.3 Status colors (semantic — never conflate with brand-red).
+        // Contrast-verified against on-surface (#0F172A) 2026-08-12:
+        // available 7.04:1 (AAA), pending 9.31:1 (AAA), held 4.74:1 (AA —
+        // see §1.5's note on this one known gap).
         "status-available": "#10B981",
-        "status-pending": "#F59E0B",
+        "status-pending": "#EAB308",
         "status-held": "#EF4444",
         "status-neutral": "#64748B",
       },
       fontFamily: {
         // §2 Typography — wired to next/font/google CSS variables in app/layout.tsx.
-        // heading/body/label all resolve to Inter, differentiated by weight, not family.
-        heading: ["var(--font-inter)", "sans-serif"], // headings, data-display numbers
-        body: ["var(--font-inter)", "sans-serif"], // body copy, table cell content
+        // heading is Space Grotesk (headings/section titles only); body/label/
+        // data-display stay on Inter.
+        heading: ["var(--font-space-grotesk)", "sans-serif"], // headings only
+        body: ["var(--font-inter)", "sans-serif"], // body copy, table cell content, data-display numbers
         label: ["var(--font-inter)", "sans-serif"], // nav items, badges, table headers, button labels
         mono: ["var(--font-jetbrains-mono)", "monospace"], // codes, IDs, lot numbers, numeric columns
       },
@@ -92,8 +95,8 @@ const config: Config = {
       },
       boxShadow: {
         // §6 Elevation & Surfaces
-        "elevation-1": "0 1px 2px rgba(0,32,96,0.08)", // office/desktop only, Level 1 cards/panels
-        "elevation-2": "0 4px 16px rgba(0,32,96,0.12)", // modals, drawers, dropdowns; also the floor card default
+        "elevation-1": "0 1px 2px rgba(15,23,42,0.08)", // office/desktop only, Level 1 cards/panels
+        "elevation-2": "0 4px 16px rgba(15,23,42,0.12)", // modals, drawers, dropdowns; also the floor card default
       },
     },
   },

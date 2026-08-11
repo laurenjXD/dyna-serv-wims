@@ -1,7 +1,7 @@
 export type TrendPoint = { date: string; value: number };
 export type Period = "day" | "week" | "month";
 
-export function TrendLineChart({ data, period, onPeriodChange, label, title, color = "#2E4094" }: {
+export function TrendLineChart({ data, period, onPeriodChange, label, title, color = "#475569" }: {
   data: TrendPoint[]; period: Period; onPeriodChange: (period: Period) => void; label: string; title: string; color?: string;
 }) {
   const width = 720; const height = 240; const pad = 32;

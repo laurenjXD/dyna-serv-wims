@@ -377,7 +377,7 @@ export default async function PickExecutionPage({
               No hover: on floor — active: press feedback only. */}
           {allItemsPicked ? (
             <form action={handleCompletePick}>
-              {/* AAA contrast gap: white on brand-red ≈5.7:1 vs 7:1 — tracked design-system open item */}
+              {/* White on brand-red: 7.31:1 (AAA) — resolved 2026-08-12 by darkening brand-red to #9A3412; see brand-design-system.md §1.1. */}
               <button
                 type="submit"
                 className="flex h-16 w-full items-center justify-center rounded-xl bg-brand-red font-label text-body-md uppercase tracking-wide text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
