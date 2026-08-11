@@ -9,7 +9,7 @@
 //   specs/00-steering/revision-log.md (2026-08-09 restructuring — merge the
 //     standalone /incoming-ledger route into this page; 2026-08-09 PO change —
 //     three-tab layout: Receive / WRRs / Incoming Ledger; New WRR moved inside
-//     WRRs tab gated by receiving.create)
+//     WRRs tab gated by receiving.confirm)
 //
 // Surface: Shared (floor staff see Receive tab; supervisors see WRRs tab with
 // New WRR button). Permission gate: receiving.confirm for all tabs.
@@ -148,8 +148,10 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
 
   const resolver = await createPageResolver();
 
-  // Gate: receiving.confirm required to view any tab.
-  const permResult = await requirePermission(resolver, "receiving.confirm");
+  // Gate: receiving.view — matches lib/shell/registry.ts's "receiving" route
+  // entry (the read/review capability; receiving.confirm is a separate,
+  // stricter capability reserved for the mutating create/commit actions).
+  const permResult = await requirePermission(resolver, "receiving.view");
   if (permResult.kind !== "authorized") {
     return (
       <div className="mx-auto max-w-container px-4 py-12 text-center">
@@ -158,15 +160,17 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
         </p>
         <p className="mt-2 font-body text-body-sm text-text-grey">
           This page requires the{" "}
-          <span className="font-mono text-mono-md">receiving.confirm</span>{" "}
+          <span className="font-mono text-mono-md">receiving.view</span>{" "}
           capability.
         </p>
       </div>
     );
   }
 
-  // Additional check: can this user create WRRs? Used in WRRs tab.
-  const canCreate = (await requirePermission(resolver, "receiving.create")).kind === "authorized";
+  // Additional check: can this user create WRRs? Used in WRRs tab. Matches
+  // /receiving/new's own gate and the createWrr action's real requirement —
+  // "receiving.create" is not a capability that exists in the RBAC seed.
+  const canCreate = (await requirePermission(resolver, "receiving.confirm")).kind === "authorized";
 
   return (
     <div className="mx-auto max-w-container">
@@ -422,7 +426,7 @@ async function ReceiveTab({
   );
 }
 
-// ─── WRRs tab — all statuses, "New WRR" button gated by receiving.create ──────
+// ─── WRRs tab — all statuses, "New WRR" button gated by receiving.confirm ─────
 
 async function WrrsTab({
   statusFilter,

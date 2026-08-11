@@ -90,9 +90,14 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
   const { errors: encodedErrors } = await searchParams;
   const resolver = await createPageResolver();
 
-  // Gate: receiving.create — creation surface only requires create capability,
-  // not confirm (confirming is a separate elevated permission).
-  const permResult = await requirePermission(resolver, "receiving.create");
+  // Gate: receiving.confirm — matches specs/00-steering revision-log's
+  // resolved decision (02-rbac-roles design.md §3.2) and the RBAC seed
+  // (supabase/migrations/0005_rbac_constraints_and_seed.sql), which never
+  // grants a "receiving.create" capability to any role. Gating on that
+  // nonexistent string silently blocked every session from ever reaching
+  // this form — the underlying createWrr action itself already requires
+  // receiving.confirm (lib/actions/receiving.ts), so this now matches.
+  const permResult = await requirePermission(resolver, "receiving.confirm");
   if (permResult.kind !== "authorized") {
     notFound();
   }
