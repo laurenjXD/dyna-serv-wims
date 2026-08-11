@@ -172,7 +172,11 @@ export default async function ExecuteTransferPage({
           <div
             role="status"
             aria-live="assertive"
-            className="mt-4 rounded-md bg-status-available px-4 py-4 shadow-elevation-2"
+            // White background + status-available left border — text-on-surface (#0F172A)
+            // on white (#FFFFFF) → >15:1, meets AAA (7:1 floor requirement per
+            // brand-design-system.md §1.5). Left border + icon carry the semantic
+            // color signal per §1.3 floor color-blind rule.
+            className="mt-4 rounded-md border-l-4 border-status-available bg-white px-4 py-4 shadow-elevation-2"
           >
             {/* Icon paired with color per §1.3 floor color-blind rule */}
             <p className="font-heading font-semibold text-headline-md text-on-surface">
@@ -188,10 +192,11 @@ export default async function ExecuteTransferPage({
           <div
             role="alert"
             aria-live="assertive"
-            // solid status-held — full opacity, no backdrop-blur.
-            // text-on-surface (#0F172A) on status-held (#EF4444) → 4.74:1, meets AA
-            // (not AAA — a documented known gap, see brand-design-system.md §1.3).
-            className="mt-4 rounded-md bg-status-held px-4 py-4 shadow-elevation-2"
+            // White background + status-held left border — text-on-surface (#0F172A)
+            // on white (#FFFFFF) → >15:1, meets AAA (7:1 floor requirement per
+            // brand-design-system.md §1.5). The left border + icon carry the
+            // color-semantic signal per §1.3 floor color-blind rule.
+            className="mt-4 rounded-md border-l-4 border-status-held bg-white px-4 py-4 shadow-elevation-2"
           >
             {/* Icon paired with color per §1.3 floor color-blind rule */}
             <p className="font-heading font-semibold text-headline-md text-on-surface">

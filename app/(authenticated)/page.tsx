@@ -214,10 +214,10 @@ function OfficeLanding({
         className="mb-7"
       >
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <MetricCard label="Open WRRs" value={openWrrs} detail="+12% vs last week" icon={<ClipboardList size={24} />} accent="border-b-on-surface" />
-          <MetricCard label="Active Picks" value={openPickLists} detail="On track for shift" icon={<PackageCheck size={24} />} accent="border-b-on-surface" />
-          <MetricCard label="Pending Transfers" value={pendingTransfers} detail="3 critical priority" icon={<ArrowLeftRight size={24} />} accent="border-b-status-held" />
-          <MetricCard label="Pending Approvals" value={pendingApprovals} detail={hasApprovalAccess ? "Requires attention" : "Supervisor access required"} icon={<ListChecks size={24} />} accent="border-b-transparent" />
+          <MetricCard label="Open WRRs" value={openWrrs} detail="Active receiving sessions" icon={<ClipboardList size={24} />} accent="border-b-transparent" />
+          <MetricCard label="Active Picks" value={openPickLists} detail="Allocated, awaiting execution" icon={<PackageCheck size={24} />} accent="border-b-transparent" />
+          <MetricCard label="Pending Transfers" value={pendingTransfers} detail="Staged for movement" icon={<ArrowLeftRight size={24} />} accent={pendingTransfers > 0 ? "border-b-status-held" : "border-b-transparent"} />
+          <MetricCard label="Pending Approvals" value={pendingApprovals} detail={hasApprovalAccess ? "Requires attention" : "Supervisor access required"} icon={<ListChecks size={24} />} accent={pendingApprovals > 0 ? "border-b-status-pending" : "border-b-transparent"} />
         </div>
       </section>
 
