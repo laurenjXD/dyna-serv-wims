@@ -12,8 +12,8 @@ This replaces all prior brand documents. Where anything else conflicts with this
 ### 1.1 Brand colors
 | Token | Hex | Usage |
 |---|---|---|
-| `brand-navy` | `#002060` | Primary brand color. Sidebar background, logo, page headers, icon accents. |
-| `brand-royal-blue` | `#2E4094` | Secondary structural color. Secondary nav elements, chart series. |
+| `brand-navy` | `#3D3BF3` | Legacy token name retained in source; now the primary indigo visual treatment for sidebars, logo, page headers, and icon accents. |
+| `brand-royal-blue` | `#9694FF` | Legacy token name retained in source; now the secondary lavender structural treatment for secondary nav elements and chart series. |
 | `brand-red` | `#FF2929` | Accent/CTA only. Primary buttons, key highlights. Updated 2026-08-10 from `#E30613` to the product-owner-supplied palette below — same role, brighter red. **Never used for status/semantic meaning** — see §1.3. |
 
 ### 1.1a Accent indigo scale (added 2026-08-10)
@@ -33,9 +33,9 @@ Product-owner-supplied palette, backgrounds/icons/active-states only — **never
 |---|---|---|
 | `text-grey` | `#555555` | Standard body copy — office/desktop contexts only. Floor/mobile screens use `on-surface` (§1.2 below) or pure black instead; see §5's contrast escalation. |
 | `surface-white` | `#FFFFFF` | Primary content backgrounds, and any surface that needs full opacity (modals, drawers, printed documents). |
-| `surface-light-grey` | `#F2F2F2` | Secondary content blocks, subtle section division. |
+| `surface-light-grey` | `#EBEAFF` | Light lavender canvas for secondary content blocks and subtle section division. |
 | `on-surface` | `#1A1B20` | Default text color where higher contrast than `text-grey` is needed — the default for all floor/mobile screens. |
-| `outline-variant` | `#C5C6D2` | Card borders, dividers — always at 30% opacity, never solid. |
+| `outline-variant` | `#9694FF` | Lavender card borders and dividers — always at 30% opacity, never solid. |
 
 ### 1.3 Status colors (semantic — distinct from brand red)
 | Token | Hex | Meaning |
@@ -147,8 +147,8 @@ Portrait is the primary, supported orientation for all floor screens — most ru
 | Level | Surface | Shadow | Used for |
 |---|---|---|---|
 | 0 | Page background — `surface-light-grey` (office), `surface-white` (floor, per §8 contrast) | none | Base page |
-| 1 | Solid `surface-white`, `border` `outline-variant/30` | `0 1px 2px rgba(0,32,96,0.08)` | Cards, panels — office and floor alike |
-| 2 | Solid `surface-white` | `0 4px 16px rgba(0,32,96,0.12)` | Modals, drawers, dropdowns |
+| 1 | Solid `surface-white`, `border` `outline-variant/30` | `0 1px 2px rgba(61,59,243,0.08)` | Cards, panels — office and floor alike |
+| 2 | Solid `surface-white` | `0 4px 16px rgba(61,59,243,0.12)` | Modals, drawers, dropdowns |
 
 **Floor-specific note (retained): no glassmorphism (translucent/blurred surfaces) on floor screens.** Backdrop blur reduces effective contrast exactly where AAA contrast is required (§1.5), and costs real rendering performance on the mid-tier rugged Android hardware floor devices actually run (§8). Floor cards use solid `surface-white` at full opacity, Level 2 treatment, even though that's nominally the "modal" level elsewhere — floor screens don't get a Level 1 option.
 

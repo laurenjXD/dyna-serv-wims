@@ -36,12 +36,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
   // so `context` is non-null in practice; the fallback keeps this
   // component defensively correct without asserting on the boundary.
   const tier = resolveSessionPresentationTier(context?.activeRoleKeys ?? []);
-  const pageTitle =
-    pathname === "/"
-      ? "Overview Dashboard"
-      : pathname.startsWith("/reports")
-        ? "Reports & Analytics"
-        : "Dyna-Serv WIMS";
+  const pageTitle = getPageTitle(pathname);
 
   return (
     <>
@@ -49,7 +44,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
           Holds the brand mark, the mobile nav-open toggle, and account
           controls. brand-navy background per brand-design-system.md §9.
           No backdrop-blur — solid surface for both floor and office tiers. */}
-      <header className="fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-white/10 bg-brand-navy px-4 shadow-elevation-2 lg:left-64 lg:h-20 lg:border-outline-variant/30 lg:bg-surface-white lg:px-10 lg:shadow-none">
+      <header className="fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-white/10 bg-brand-navy px-4 shadow-elevation-2 lg:left-72 lg:h-20 lg:border-outline-variant/30 lg:bg-surface-white lg:px-10 lg:shadow-none">
         {/* Mobile hamburger — hidden above lg where the persistent sidebar
             takes over. 64px min touch target (floor primary rules apply
             since this control is present on every surface including floor).
@@ -73,7 +68,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
         <div className="flex items-center gap-3 lg:hidden">
           <span
             aria-hidden="true"
-            className="btn-diagonal-cut inline-flex h-7 items-center bg-brand-red px-2 font-heading text-body-sm font-bold tracking-tight text-white"
+            className="inline-flex h-8 items-center rounded bg-brand-red px-2 font-heading text-body-sm font-bold tracking-tight text-white"
           >
             DS
           </span>
@@ -157,14 +152,15 @@ export function ShellChrome({ children }: { children: ReactNode }) {
 
       {/* pb-20 (base) clears the fixed floor bottom tab bar; office tier
           doesn't render that bar, so the extra bottom space is harmless.
-          lg:pl-64 clears the office/party desktop sidebar's fixed width.
+          lg:pl-72 clears the office/party desktop sidebar's fixed width.
           pt-14 clears the fixed AppHeader.
           Office/party tiers get the light `surface-light-grey` dashboard
           backdrop (brand-design-system §6/§9, revised 2026-08-09); floor
           keeps a plain white background per §6's AAA-contrast floor rule. */}
       <main
         id="main-content"
-        className={`min-h-screen pb-20 pt-14 lg:pb-0 lg:pl-64 lg:pt-20 ${
+        data-surface={tier}
+        className={`min-h-screen pb-20 pt-14 lg:pb-0 lg:pl-72 lg:pt-20 ${
           tier === "floor" ? "" : "bg-surface-light-grey"
         }`}
       >
@@ -172,4 +168,26 @@ export function ShellChrome({ children }: { children: ReactNode }) {
       </main>
     </>
   );
+}
+
+function getPageTitle(pathname: string): string {
+  if (pathname === "/") return "Overview Dashboard";
+  if (pathname.startsWith("/reports")) return "Reports & Analytics";
+  if (pathname.startsWith("/receiving")) return "Incoming Receiving";
+  if (pathname.startsWith("/inventory")) return "Inventory & Pick Lists";
+  if (pathname.startsWith("/outgoing") || pathname.startsWith("/pick-lists")) return "Picking & Dispatch";
+  if (pathname.startsWith("/transfers")) return "Transfers";
+  if (pathname.startsWith("/inspection")) return "Inspection";
+  if (pathname.startsWith("/approvals")) return "Approvals";
+  if (pathname.startsWith("/enrollment")) return "Enrollment";
+  if (pathname.startsWith("/master-data/parties")) return "Parties";
+  if (pathname.startsWith("/master-data/items")) return "Items";
+  if (pathname.startsWith("/master-data/locations")) return "Locations";
+  if (pathname.startsWith("/billing-pricing")) return "Billing & Pricing";
+  if (pathname.startsWith("/documents")) return "Documents";
+  if (pathname.startsWith("/portal")) return "Partner Portal";
+  if (pathname.startsWith("/settings")) return "Settings";
+  if (pathname.startsWith("/profile")) return "Profile";
+  if (pathname.startsWith("/sync")) return "Sync Center";
+  return "Dyna-Serv WIMS";
 }

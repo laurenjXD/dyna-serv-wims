@@ -12,10 +12,7 @@
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import {
-  LayoutDashboard,
-  PackageCheck,
   Layers,
-  PackageMinus,
   Users,
   ArrowLeftRight,
   CheckSquare,
@@ -33,6 +30,9 @@ import {
   Circle,
   Box,
   ChevronLeft,
+  House,
+  Inbox,
+  Shield,
 } from "lucide-react";
 import type { AuthorizationContext } from "@/lib/rbac/session";
 import type { SessionPresentationTier } from "@/lib/shell/surface";
@@ -46,12 +46,13 @@ import type { RouteRegistryEntry } from "@/lib/shell/registry";
 
 // Icon map keyed by route id. Any id not present falls back to Circle.
 const ROUTE_ICON_MAP: Record<string, LucideIcon> = {
-  root: LayoutDashboard,
-  receiving: PackageCheck,
+  root: House,
+  receiving: Inbox,
   inventory: Layers,
-  outgoing: PackageMinus,
+  outgoing: ShoppingCart,
   enrollment: Users,
   transfers: ArrowLeftRight,
+  inspection: Shield,
   approvals: CheckSquare,
   documents: FileText,
   reports: BarChart2,
@@ -67,11 +68,27 @@ const ROUTE_ICON_MAP: Record<string, LucideIcon> = {
   "portal-labels": Tag,
 };
 
+const OFFICE_SIDEBAR_ROUTE_IDS = new Set([
+  "root",
+  "receiving",
+  "outgoing",
+  "transfers",
+  "inventory",
+  "inspection",
+  "approvals",
+  "enrollment",
+  "profile",
+  "settings",
+]);
+
 function routeIcon(id: string): LucideIcon {
   return ROUTE_ICON_MAP[id] ?? Circle;
 }
 
 function toLabel(id: string): string {
+  const labels: Record<string, string> = { root: "Dashboard", outgoing: "Picking" };
+  if (labels[id]) return labels[id];
+
   return id
     .split("-")
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
@@ -125,15 +142,15 @@ function NavLink({
       href={entry.path}
       data-testid={`nav-entry-${entry.id}`}
       aria-current={isActive ? "page" : undefined}
-      className={`flex items-center gap-3 min-h-11 rounded-lg px-3 py-2
+      className={`flex min-h-14 items-center gap-4 rounded-2xl px-5 py-3
         transition-colors duration-150
         focus-visible:ring-2 focus-visible:ring-white focus:outline-none
         ${isActive
           ? "bg-accent-indigo-600 text-white shadow-elevation-1"
           : "text-white/70 hover:bg-white/10 hover:text-white"}`}
     >
-      <Icon size={16} aria-hidden="true" />
-      <span className="font-label text-label uppercase tracking-wide">{toLabel(entry.id)}</span>
+      <Icon size={24} aria-hidden="true" />
+      <span className="font-heading text-body-lg font-semibold tracking-tight">{toLabel(entry.id)}</span>
     </Link>
   );
 }
@@ -171,13 +188,15 @@ export function ShellNavigation({
     );
   }
 
-  const sections = groupRoutesForSidebar(presented);
+  const sections = groupRoutesForSidebar(
+    presented.filter((entry) => OFFICE_SIDEBAR_ROUTE_IDS.has(entry.id)),
+  );
 
   return (
     <nav
       data-testid="desktop-sidebar"
       aria-label="Primary navigation"
-      className="hidden flex-col gap-5 overflow-y-auto border-r border-black/20 bg-brand-navy p-4 lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:flex lg:w-64"
+      className="hidden flex-col gap-6 overflow-y-auto border-r border-black/20 bg-on-surface px-5 py-8 lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:flex lg:w-72"
     >
       {/* Skip-to-content: visually hidden until focused, first element in the
           nav so keyboard users can bypass the sidebar entirely. */}
@@ -190,18 +209,18 @@ export function ShellNavigation({
         Skip to content
       </a>
 
-      <div className="flex items-center gap-3 px-2 pt-2">
-        <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent-indigo-600/25 text-accent-indigo-300">
-          <Box size={27} aria-hidden="true" />
+      <div className="flex items-center gap-4 px-2 pt-1">
+        <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-accent-indigo-600/25 text-accent-indigo-300">
+          <Box size={31} aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="font-heading text-body-lg font-extrabold tracking-tight text-white">DYNA-SERV</p>
-          <p className="font-label text-label tracking-wide text-white/45">WIMS</p>
+          <p className="font-heading text-headline-md font-extrabold tracking-tight text-white">DYNA-SERV</p>
+          <p className="mt-1 font-label text-body-md tracking-[0.1em] text-white/45">WIMS</p>
         </div>
         <ChevronLeft size={18} className="text-white/40" aria-hidden="true" />
       </div>
 
-      <div className="flex flex-1 flex-col gap-5">
+      <div className="flex flex-1 flex-col gap-7">
         {sections.map((section) => (
           <div key={section.group} data-testid={`nav-group-${slugify(section.group)}`}>
           {/* Section header — Epilogue label style, dimmer than links so it
@@ -214,7 +233,7 @@ export function ShellNavigation({
               already provides the accessible context. */}
           <p
             aria-hidden="true"
-            className="px-4 pb-1 pt-2 font-label text-label uppercase tracking-wide text-surface-white/40"
+            className="px-3 pb-2 pt-2 font-label text-body-md font-bold uppercase tracking-[0.08em] text-surface-white/40"
           >
             {section.group}
           </p>
@@ -227,14 +246,14 @@ export function ShellNavigation({
         ))}
       </div>
 
-      <aside className="rounded-2xl bg-white/10 p-4">
+      <aside className="rounded-3xl bg-white/5 p-6">
         <span className="mb-3 flex gap-1" aria-hidden="true">
           <span className="h-1.5 w-8 rounded-full bg-accent-indigo-600" />
           <span className="h-1.5 w-6 rounded-full bg-white/25" />
           <span className="h-1.5 w-6 rounded-full bg-white/25" />
         </span>
-        <p className="font-heading text-body-md font-bold text-white">Keep your warehouse running smoothly.</p>
-        <p className="mt-2 font-body text-body-sm text-white/55">Every move matters.</p>
+        <p className="font-heading text-body-lg font-bold text-white">Keep your warehouse running smoothly.</p>
+        <p className="mt-2 font-body text-body-md text-white/55">Every move matters.</p>
       </aside>
     </nav>
   );
