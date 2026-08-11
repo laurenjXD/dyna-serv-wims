@@ -9,18 +9,13 @@
 //     (office surface, Level 1 elevation)
 //   lib/shell/registry.ts — id: "outgoing", surface: "floor",
 //     capability: "pick_list.execute"
-//   specs/00-steering/revision-log.md (2026-08-09 PO restructuring — outgoing
-//     ledger content moved here from /inventory; new /outgoing route added to
-//     registry for floor pick execution)
 //
 // Surface: Floor (primary) / Office (secondary review).
 // Permission gate: pick_list.read — notFound if not authorized.
-//
-// R9.4: the Outgoing Ledger tab's content is read-only; this module exports
-// ONLY the default component (no mutation side-exports).
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CheckCircle2, ChevronRight, Activity, Clock } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
@@ -31,8 +26,6 @@ import type { OutgoingLedgerRow } from "@/lib/db/queries/withdrawals";
 
 // ─── Status badge colors ─────────────────────────────────────────────────────
 // brand-design-system.md §1.3 semantic color mapping:
-// allocated → status-warning (amber); picked → primary; dispatched → status-success.
-
 const STATUS_CLASSES: Record<string, string> = {
   allocated: "bg-status-warning text-on-surface",
   picked: "bg-primary text-white",
@@ -70,12 +63,84 @@ export default async function OutgoingPage({ searchParams }: PageProps) {
 
   const resolver = await createPageResolver();
 
-  // Gate: pick_list.read required for both tabs.
+  // Gate: pick_list.read required
   const permResult = await requirePermission(resolver, "pick_list.read");
   if (permResult.kind !== "authorized") {
     notFound();
   }
 
+  const isFloor = permResult.context.activeRoleKeys.includes("warehouse_staff");
+
+  if (isFloor) {
+    const { rows } = await listPickLists(db, { limit: 50, offset: 0 });
+    // Filter to active picks
+    const floorRows = rows.filter(r => r.status === "allocated" || r.status === "picked");
+
+    return (
+      <div className="flex min-h-screen flex-col bg-primary px-4 py-4">
+        {/* Floor top bar */}
+        <div className="flex items-center justify-between pb-4">
+          <h1 className="font-heading font-extrabold text-headline-md text-white">
+            Active Picks
+          </h1>
+        </div>
+
+        {floorRows.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+            <CheckCircle2 size={48} strokeWidth={1.5} className="text-status-success" aria-hidden="true" />
+            <p className="font-heading font-semibold text-headline-md text-white">
+              All caught up
+            </p>
+            <p className="font-body text-body-md text-white/70">
+              No open pick lists right now.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {floorRows.map((pickList) => {
+              const isPicked = pickList.status === "picked";
+              const nextRoute = isPicked ? "dispatch" : "pick";
+              return (
+                <Link
+                  key={pickList.id}
+                  href={`/pick-lists/${pickList.id}/${nextRoute}`}
+                  className="block rounded-xl bg-white/10 border border-white/20 p-4 h-auto min-h-16 active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-primary"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-mono text-mono-lg font-bold text-white">
+                        {pickList.pickListNumber}
+                      </p>
+                      <p className="mt-1 font-body text-body-md text-white/70">
+                        {FLOW_LABELS[pickList.flowType] ?? pickList.flowType} — Party: <span className="font-mono">{pickList.customerPartyId.split('-')[0]}</span>
+                      </p>
+                      <div className="mt-2">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-3 py-1 font-label text-body-md uppercase ${
+                            isPicked
+                              ? "bg-status-success/20 text-status-success"
+                              : "bg-status-warning/20 text-status-warning"
+                          }`}
+                        >
+                          {isPicked
+                            ? <CheckCircle2 size={20} strokeWidth={2} aria-hidden="true" className="text-status-success" />
+                            : <Activity size={20} strokeWidth={2} aria-hidden="true" className="text-status-warning" />}
+                          {STATUS_LABELS[pickList.status] ?? pickList.status}
+                        </span>
+                      </div>
+                    </div>
+                    <ChevronRight size={24} strokeWidth={2} aria-hidden="true" className="shrink-0 text-white/50 self-center" />
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // --- Office View ---
   return (
     <div className="mx-auto max-w-container">
       {/* Page header */}
@@ -148,12 +213,14 @@ async function ActivePicksTab() {
             <table className="w-full border-collapse">
               <thead>
                 <tr className="border-b border-outline-variant/30 bg-surface-dim">
-                  {/* Epilogue SemiBold uppercase headers per §9 tables */}
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Status
                   </th>
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Flow Type
+                  </th>
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
+                    Pick List #
                   </th>
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
                     Customer Party
@@ -168,7 +235,6 @@ async function ActivePicksTab() {
                 {rows.map((row: PickListRow) => (
                   <tr key={row.id} className="hover:bg-surface-dim/50">
                     <td className="px-4 py-3">
-                      {/* Status badge — radius-full, §1.3 semantic colors */}
                       <span
                         className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase ${STATUS_CLASSES[row.status] ?? "bg-status-neutral text-on-surface"}`}
                       >
@@ -178,7 +244,9 @@ async function ActivePicksTab() {
                     <td className="px-4 py-3 font-body text-body-md text-on-surface">
                       {FLOW_LABELS[row.flowType] ?? row.flowType}
                     </td>
-                    {/* Roboto Mono for party IDs per §9 */}
+                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
+                      {row.pickListNumber}
+                    </td>
                     <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
                       {row.customerPartyId}
                     </td>
@@ -186,9 +254,8 @@ async function ActivePicksTab() {
                       {row.createdAt.toLocaleString()}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {/* Execute link — h-11 (44px) office touch target */}
                       <Link
-                        href={`/pick-lists/${row.id}/pick`}
+                        href={`/pick-lists/${row.id}/${row.status === "picked" ? "dispatch" : "pick"}`}
                         className="inline-flex h-11 items-center font-label text-label text-primary underline hover:text-secondary focus:outline-none focus:ring-2 focus:ring-primary"
                       >
                         Execute
@@ -210,9 +277,6 @@ async function ActivePicksTab() {
 }
 
 // ─── Outgoing Ledger tab ──────────────────────────────────────────────────────
-//
-// Read-only record of outgoing inventory transactions. Moved here from
-// /inventory per 2026-08-09 PO restructuring.
 
 async function OutgoingLedgerTab({
   resolver,
@@ -224,7 +288,6 @@ async function OutgoingLedgerTab({
     offset: 0,
   });
 
-  // listOutgoingLedger returns { rows, total } on success or { ok: false } on error.
   const rows: OutgoingLedgerRow[] =
     "rows" in ledgerResult ? ledgerResult.rows : [];
 
@@ -235,8 +298,6 @@ async function OutgoingLedgerTab({
         or deletions — corrections use new approved transactions.
       </p>
 
-      {/* Ledger table — Level 1 office elevation per brand-design-system.md §6.
-          design.md §9: item code is the prominent first field in office review. */}
       <div className="mt-4 overflow-hidden rounded-md bg-white shadow-elevation-1">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
@@ -249,82 +310,33 @@ async function OutgoingLedgerTab({
             <table className="w-full border-collapse">
               <thead>
                 <tr className="border-b border-outline-variant/30 bg-surface-dim">
-                  {/* design.md §9 column list — Epilogue SemiBold uppercase headers per §9 */}
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-                    Date/Time
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-                    Transaction #
-                  </th>
-                  {/* Item code — prominent first data column per design.md §9 */}
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-                    Item Code
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-                    Item Name
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-                    Lot Number
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-                    Qty
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-                    From Location
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-                    Pick List #
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-                    Customer Party
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-                    Acknowledgement Receipt #
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">
-                    Performed By
-                  </th>
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">Date/Time</th>
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">Transaction #</th>
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">Item Code</th>
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">Item Name</th>
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">Lot Number</th>
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">Qty</th>
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">From Location</th>
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">Pick List #</th>
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">Customer Party</th>
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">Receipt #</th>
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-on-surface-variant">Performed By</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/30">
                 {rows.map((row: OutgoingLedgerRow) => (
                   <tr key={row.transactionId} className="hover:bg-surface-dim/50">
-                    <td className="px-4 py-3 font-body text-body-md text-on-surface-variant">
-                      {row.createdAt.toLocaleString()}
-                    </td>
-                    {/* Roboto Mono for reference/code numbers per §9 */}
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {row.transactionNumber}
-                    </td>
-                    {/* Item code — prominent first per design.md §9 */}
-                    <td className="px-4 py-3 font-mono text-mono-md font-bold text-on-surface">
-                      {row.itemCode}
-                    </td>
-                    <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                      {row.itemName}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {row.lotNumber}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {row.qty}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {row.fromLocationLabel}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {row.pickListNumber ?? "—"}
-                    </td>
-                    <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                      {row.customerPartyName ?? "—"}
-                    </td>
-                    {/* Acknowledgement receipt — v1 not yet joined; placeholder */}
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      —
-                    </td>
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {row.performedByUserId}
-                    </td>
+                    <td className="px-4 py-3 font-body text-body-md text-on-surface-variant">{row.createdAt.toLocaleString()}</td>
+                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">{row.transactionNumber}</td>
+                    <td className="px-4 py-3 font-mono text-mono-md font-bold text-on-surface">{row.itemCode}</td>
+                    <td className="px-4 py-3 font-body text-body-md text-on-surface">{row.itemName}</td>
+                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">{row.lotNumber}</td>
+                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">{row.qty}</td>
+                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">{row.fromLocationLabel}</td>
+                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">{row.pickListNumber ?? "—"}</td>
+                    <td className="px-4 py-3 font-body text-body-md text-on-surface">{row.customerPartyName ?? "—"}</td>
+                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">—</td>
+                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">{row.performedByUserId}</td>
                   </tr>
                 ))}
               </tbody>

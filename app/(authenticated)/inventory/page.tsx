@@ -22,6 +22,8 @@ import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { listPickLists } from "@/lib/db/queries/withdrawals";
 import type { PickListRow } from "@/lib/db/queries/withdrawals";
+import { listStockView } from "@/lib/db/queries/inventory";
+import { MasterInventoryTable } from "./_components/master-inventory-table";
 
 // ─── Status badge colors ─────────────────────────────────────────────────────
 // brand-design-system.md §1.3 semantic color mapping per task spec:
@@ -91,7 +93,7 @@ export default async function InventoryPage({ searchParams }: PageProps) {
       <div
         role="tablist"
         aria-label="Inventory sections"
-        className="mt-6 flex gap-2 border-b border-outline-variant/30"
+        className="mt-6 flex gap-2 border-b border-outline-variant/30 overflow-x-auto whitespace-nowrap"
       >
         {TABS.map((tab) => {
           const isActive = tab.key === activeTab;
@@ -130,19 +132,11 @@ export default async function InventoryPage({ searchParams }: PageProps) {
   );
 }
 
-// ─── Stock View tab (default) — placeholder ───────────────────────────────────
+// ─── Stock View tab (default) ─────────────────────────────────────────────────
 
-function StockViewTab() {
-  return (
-    <div className="mt-6 rounded-md bg-white shadow-elevation-1 px-6 py-12 text-center">
-      <p className="font-body text-body-md text-on-surface-variant">
-        Stock view with FIFO/FEFO pick-list generation is coming in the next implementation cycle.
-      </p>
-      <p className="mt-2 font-body text-body-sm text-on-surface-variant">
-        Select items from live inventory to auto-generate a pick list.
-      </p>
-    </div>
-  );
+async function StockViewTab() {
+  const rows = await listStockView(db);
+  return <MasterInventoryTable rows={rows} />;
 }
 
 // ─── Pick Lists tab ───────────────────────────────────────────────────────────

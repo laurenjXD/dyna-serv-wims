@@ -3,7 +3,9 @@ import { buildStockAllocationPreview, type StockViewRow } from "../inventory";
 
 const baseRow: StockViewRow = {
   itemId: "item-1", itemCode: "ITEM-1", itemName: "Test item", uom: "piece",
-  isPerishable: false, lotId: "lot-1", lotNumber: "LOT-1", lotStatus: "available",
+  isPerishable: false, minReorderLevel: 5, spq: 1, volumeCbm: 0.1,
+  lotId: "lot-1", lotNumber: "LOT-1", lotStatus: "available",
+  flowType: "trading", unitCost: "10.00",
   expiryDate: null, receivedAt: new Date("2026-01-01T00:00:00Z"),
   locationId: "loc-1", locationLabel: "A-01", qtyRemaining: 10, qtyCommitted: 0,
 };

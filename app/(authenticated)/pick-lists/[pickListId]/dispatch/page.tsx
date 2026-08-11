@@ -47,37 +47,7 @@ import { dispatchPickList } from "@/lib/actions/withdrawals";
 // When live, resolve partyName from parties table via pickList.customerPartyId,
 // and items from pick_list_items where pick_list_id = pickListId.
 
-interface MockDispatchItem {
-  itemName: string;
-  lotNumber: string;
-  qty: number;
-}
-
-const MOCK_DISPATCH_ITEMS: MockDispatchItem[] = [
-  {
-    itemName: "Wire Marine 4 AWG x 6 ft",
-    lotNumber: "LOT-20260801-001",
-    qty: 4,
-  },
-  {
-    itemName: 'Hydraulic Coupling 3/4"',
-    lotNumber: "LOT-20260731-008",
-    qty: 5,
-  },
-  {
-    itemName: "Gate Valve 1 Inch",
-    lotNumber: "LOT-20260728-012",
-    qty: 3,
-  },
-  {
-    itemName: "Elbow Fitting 90 Degree",
-    lotNumber: "LOT-20260715-003",
-    qty: 2,
-  },
-];
-
-// TODO: resolve from parties table via pickList.customerPartyId
-const MOCK_PARTY_NAME = "Gulf Petroleum Services LLC";
+// We will use pickList.lines and pickList.customerPartyId dynamically in the page component.
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -245,7 +215,7 @@ export default async function DispatchConfirmationPage({
             <div className="min-w-0">
               <p className="font-heading text-headline-md font-semibold text-white">
                 {/* TODO: resolve from parties table via pickList.customerPartyId */}
-                {MOCK_PARTY_NAME}
+                Party: <span className="font-mono">{pickList.customerPartyId.split('-')[0]}</span>
               </p>
               <div className="mt-1 flex items-center gap-2">
                 {/* Flow type badge — color + text per §1.3, icon ensures non-color signal */}
@@ -255,7 +225,7 @@ export default async function DispatchConfirmationPage({
                   {pickList.flowType.toUpperCase()}
                 </span>
                 <span className="font-body text-body-md text-white/70">
-                  {MOCK_DISPATCH_ITEMS.length} items
+                  {pickList.lines.length} items
                 </span>
               </div>
             </div>
@@ -263,7 +233,7 @@ export default async function DispatchConfirmationPage({
 
           {/* Items list — one per line, card-based not a table (§9 floor rule) */}
           <div className="mt-4 space-y-2">
-            {MOCK_DISPATCH_ITEMS.map((item, idx) => (
+            {pickList.lines.map((item, idx) => (
               <div
                 key={idx}
                 className="flex items-start gap-2 rounded-xl bg-white/10 border border-white/10 px-3 py-2"
@@ -276,7 +246,7 @@ export default async function DispatchConfirmationPage({
                 />
                 <div className="min-w-0 flex-1">
                   <p className="font-body text-body-md text-white/70">
-                    {item.itemName}
+                    {item.itemDescription || item.itemCode}
                   </p>
                   <p className="font-mono text-mono-lg text-white/50">
                     {item.lotNumber} — Qty: {item.qty}

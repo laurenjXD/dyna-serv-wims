@@ -20,7 +20,7 @@
 // Outgoing Ledger — only movement_type = 'pick' rows are included.
 
 import { eq, asc, sql } from "drizzle-orm";
-import { pickLists } from "@/lib/db/schema/pick_lists";
+import { pickLists, pickListItems } from "@/lib/db/schema/pick_lists";
 import { inventoryTransactions } from "@/lib/db/schema/transactions";
 
 // Minimal structural type that both the real Drizzle db instance and test
@@ -40,7 +40,50 @@ export type PickListRow = {
   customerPartyId: string;
   flowType: string;
   createdAt: Date;
-  createdBy: string;
+};
+
+export type PickListItemRow = {
+  id: string;
+  pickListId: string;
+  itemId: string;
+  itemCode: string;
+  customerItemCode: string | null;
+  itemDescription: string | null;
+  lotId: string;
+  lotNumber: string;
+  locationId: string;
+  locationLabel: string;
+  qty: number;
+  spq: number;
+  numberOfBoxes: number;
+  unitPrice: string | null;
+};
+
+export type PickListWithLines = PickListRow & {
+  lines: PickListItemRow[];
+};
+
+type RawPickListJoinRow = {
+  id: string;
+  pickListNumber: string;
+  status: string;
+  customerPartyId: string;
+  flowType: string;
+  createdAt: Date;
+  lineId: string | null;
+  linePickListId: string | null;
+  lineItemId: string | null;
+  lineItemCode: string | null;
+  lineCustomerItemCode: string | null;
+  lineItemDescription: string | null;
+  lineLotId: string | null;
+  lineLotNumber: string | null;
+  lineLocationId: string | null;
+  lineLocationLabel: string | null;
+  lineQty: number | null;
+  lineSpq: number | null;
+  lineNumberOfBoxes: number | null;
+  lineUnitPrice: string | null;
 };
 
 export type OutgoingLedgerRow = {
@@ -74,6 +117,7 @@ export async function listPickLists(
   const dataBase = db
     .select({
       id: pickLists.id,
+      pickListNumber: pickLists.pickListNumber,
       status: pickLists.status,
       customerPartyId: pickLists.customerPartyId,
       flowType: pickLists.flowType,
@@ -121,8 +165,8 @@ export async function listPickLists(
 export async function getPickList(
   db: DbLike,
   pickListId: string,
-): Promise<PickListRow | null> {
-  const rows = (await db
+): Promise<PickListWithLines | null> {
+  const joinedRows = (await db
     .select({
       id: pickLists.id,
       pickListNumber: pickLists.pickListNumber,
@@ -130,12 +174,60 @@ export async function getPickList(
       customerPartyId: pickLists.customerPartyId,
       flowType: pickLists.flowType,
       createdAt: pickLists.createdAt,
+      lineId: pickListItems.id,
+      linePickListId: pickListItems.pickListId,
+      lineItemId: pickListItems.itemId,
+      lineItemCode: pickListItems.itemCode,
+      lineCustomerItemCode: pickListItems.customerItemCode,
+      lineItemDescription: pickListItems.itemDescription,
+      lineLotId: pickListItems.lotId,
+      lineLotNumber: pickListItems.lotNumber,
+      lineLocationId: pickListItems.locationId,
+      lineLocationLabel: pickListItems.locationLabel,
+      lineQty: pickListItems.qty,
+      lineSpq: pickListItems.spq,
+      lineNumberOfBoxes: pickListItems.numberOfBoxes,
+      lineUnitPrice: pickListItems.unitPrice,
     })
     .from(pickLists)
     .where(eq(pickLists.id, pickListId))
-    .limit(1)) as PickListRow[];
+    .leftJoin(
+      pickListItems,
+      eq(pickListItems.pickListId, pickLists.id),
+    )) as RawPickListJoinRow[];
 
-  return rows.length > 0 ? rows[0] : null;
+  if (joinedRows.length === 0) return null;
+
+  const first = joinedRows[0];
+
+  const lines: PickListItemRow[] = joinedRows
+    .filter((row) => row.lineId != null)
+    .map((row) => ({
+      id: row.lineId!,
+      pickListId: row.linePickListId!,
+      itemId: row.lineItemId!,
+      itemCode: row.lineItemCode!,
+      customerItemCode: row.lineCustomerItemCode,
+      itemDescription: row.lineItemDescription,
+      lotId: row.lineLotId!,
+      lotNumber: row.lineLotNumber!,
+      locationId: row.lineLocationId!,
+      locationLabel: row.lineLocationLabel!,
+      qty: row.lineQty!,
+      spq: row.lineSpq!,
+      numberOfBoxes: row.lineNumberOfBoxes!,
+      unitPrice: row.lineUnitPrice,
+    }));
+
+  return {
+    id: first.id,
+    pickListNumber: first.pickListNumber,
+    status: first.status,
+    customerPartyId: first.customerPartyId,
+    flowType: first.flowType,
+    createdAt: first.createdAt,
+    lines,
+  };
 }
 
 // ---------------------------------------------------------------------------

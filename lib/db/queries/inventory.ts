@@ -20,9 +20,14 @@ export type StockViewRow = {
   itemName: string;
   uom: string;
   isPerishable: boolean;
+  minReorderLevel: number;
+  spq: number;
+  volumeCbm: number;
   lotId: string;
   lotNumber: string;
   lotStatus: string;
+  flowType: string;
+  unitCost: string | null;
   expiryDate: string | null;
   receivedAt: Date;
   locationId: string;
@@ -48,9 +53,14 @@ export async function listStockView(db: DbLike): Promise<StockViewRow[]> {
       itemName: items.name,
       uom: items.uom,
       isPerishable: items.isPerishable,
+      minReorderLevel: items.minReorderLevel,
+      spq: items.spq,
+      volumeCbm: items.volumeCbm,
       lotId: lots.id,
       lotNumber: lots.lotNumber,
       lotStatus: lots.status,
+      flowType: lots.flowType,
+      unitCost: lots.unitCost,
       expiryDate: lots.expiryDate,
       receivedAt: lots.createdAt,
       locationId: locations.id,

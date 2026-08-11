@@ -25,6 +25,7 @@ export type DbLike = { select: (...args: any[]) => any };
 
 export type TransferRequestRow = {
   id: string;
+  reference: string | null;
   status: string;
   flowType: string;
   fromLocationId: string;
@@ -54,6 +55,7 @@ export type TransferRequestWithLines = TransferRequestRow & {
 
 type RawJoinRow = {
   id: string;
+  reference: string | null;
   status: string;
   flowType: string;
   fromLocationId: string;
@@ -89,6 +91,7 @@ export async function listTransferRequests(
   const dataBase = db
     .select({
       id: transferRequests.id,
+      reference: transferRequests.reference,
       status: transferRequests.status,
       flowType: transferRequests.flowType,
       fromLocationId: transferRequests.fromLocationId,
@@ -144,6 +147,7 @@ export async function getTransferRequest(
     .select({
       // Request fields
       id: transferRequests.id,
+      reference: transferRequests.reference,
       status: transferRequests.status,
       flowType: transferRequests.flowType,
       fromLocationId: transferRequests.fromLocationId,
@@ -188,6 +192,7 @@ export async function getTransferRequest(
 
   return {
     id: first.id,
+    reference: first.reference,
     status: first.status,
     flowType: first.flowType,
     fromLocationId: first.fromLocationId,

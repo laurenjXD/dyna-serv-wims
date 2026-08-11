@@ -24,42 +24,7 @@ import { db } from "@/lib/db/client";
 import { listTransferRequests } from "@/lib/db/queries/transfers";
 import type { TransferRequestRow } from "@/lib/db/queries/transfers";
 
-// ─── Floor mock data (TODO: wire to real staff-scoped query) ─────────────────
-
-interface FloorTransferCard {
-  id: string;
-  reference: string;
-  flowType: string;
-  fromLocation: string;
-  toLocation: string;
-  itemCount: number;
-  status: "staged" | "in_progress";
-}
-
-// TODO: replace with real query filtered to the current warehouse_staff user's
-// assigned transfers (staged and in_progress only).
-const MOCK_FLOOR_TRANSFERS: FloorTransferCard[] = [
-  {
-    id: "mock-tr-001",
-    reference: "TRF-2026-001",
-    flowType: "VMI",
-    fromLocation: "LOC-A01",
-    toLocation: "LOC-B02",
-    itemCount: 3,
-    status: "staged",
-  },
-  {
-    id: "mock-tr-002",
-    reference: "TRF-2026-002",
-    flowType: "Trading",
-    fromLocation: "LOC-C03",
-    toLocation: "LOC-D04",
-    itemCount: 1,
-    status: "in_progress",
-  },
-];
-
-// TODO: replace with real query — check if any inspections are assigned to
+// TODO: wire to real query — check if any inspections are assigned to
 // this warehouse_staff member for today.
 const MOCK_HAS_INSPECTIONS_TODAY = true;
 
@@ -125,6 +90,23 @@ export default async function TransferListPage({ searchParams }: PageProps) {
     );
   }
 
+  // Gate: check transfer.request capability for "New Transfer" button visibility.
+  const canRequest =
+    (await requirePermission(resolver, "transfer.request")).kind === "authorized";
+
+  const currentPage = Math.max(1, Number(pageParam ?? "1") || 1);
+  const offset = (currentPage - 1) * PAGE_SIZE;
+  const status =
+    statusFilter && statusFilter !== "" ? statusFilter : undefined;
+
+  const { rows, total } = await listTransferRequests(db, {
+    limit: PAGE_SIZE,
+    offset,
+    status,
+  });
+
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+
   // Surface detection — brand-design-system.md §3: warehouse_staff → floor surface
   // (bg-primary, no glassmorphism, 64px CTAs, active: not hover:).
   // supervisors/admins → office surface (glassmorphism, h-11, hover:).
@@ -134,6 +116,8 @@ export default async function TransferListPage({ searchParams }: PageProps) {
   // brand-design-system.md §3: one primary action per screen, primary action in
   // bottom third full-width, no dense tables on floor screens.
   if (isFloor) {
+    const floorRows = rows.filter(r => r.status === "staged" || r.status === "in_progress");
+
     return (
       <div className="flex min-h-screen flex-col bg-primary px-4 py-4">
         {/* Floor top bar */}
@@ -141,25 +125,19 @@ export default async function TransferListPage({ searchParams }: PageProps) {
           <h1 className="font-heading font-extrabold text-headline-md text-white">
             Transfers
           </h1>
-          {/* Daily Inspection shortcut — prominent if inspections exist today */}
-          {MOCK_HAS_INSPECTIONS_TODAY && (
-            <Link
-              href="/inspection"
-              className="inline-flex h-14 items-center gap-2 rounded-xl bg-status-warning/20 border border-status-warning/30 px-4 font-label text-body-md text-status-warning
-                         active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100
-                         focus:outline-none focus:ring-2 focus:ring-white"
-            >
-              {/* Icon paired with text — §1.3 floor color-blind rule */}
-              <AlertTriangle size={20} strokeWidth={2} aria-hidden="true" />
-              <span>Daily Inspection</span>
-            </Link>
-          )}
+          {/* Daily Inspection shortcut */}
+          <Link
+            href="/inspection"
+            className="inline-flex h-14 items-center gap-2 rounded-xl bg-status-warning/20 border border-status-warning/30 px-4 font-label text-body-md text-status-warning
+                        active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100
+                        focus:outline-none focus:ring-2 focus:ring-white"
+          >
+            <AlertTriangle size={20} strokeWidth={2} aria-hidden="true" />
+            <span>Daily Inspection</span>
+          </Link>
         </div>
 
-        {/* Open transfers — card list, one item per row.
-            brand-design-system.md §9: floor tables are a fail case;
-            card-based list per item. */}
-        {MOCK_FLOOR_TRANSFERS.length === 0 ? (
+        {floorRows.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
             <CheckCircle2 size={48} strokeWidth={1.5} className="text-status-success" aria-hidden="true" />
             <p className="font-heading font-semibold text-headline-md text-white">
@@ -171,20 +149,17 @@ export default async function TransferListPage({ searchParams }: PageProps) {
           </div>
         ) : (
           <div className="space-y-3">
-            {MOCK_FLOOR_TRANSFERS.map((transfer) => (
+            {floorRows.map((transfer) => (
               <Link
                 key={transfer.id}
-                href={`/transfers/${transfer.id}`}
-                // Floor card: solid bg-white/10 over navy, no glassmorphism — §6; entire card is tap target
+                href={`/transfers/${transfer.id}/execute`}
                 className="block rounded-xl bg-white/10 border border-white/20 p-4 h-auto min-h-16 active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-primary"
               >
                 <div className="flex items-start gap-3">
                   <div className="min-w-0 flex-1">
-                    {/* Transfer reference — Roboto Mono per §9; text-mono-lg (18px) per floor 16px minimum */}
                     <p className="font-mono text-mono-lg font-bold text-white">
-                      {transfer.reference}
+                      {transfer.reference ?? transfer.id.split('-')[0].toUpperCase()}
                     </p>
-                    {/* Route line — icon + text, never icon alone */}
                     <div className="mt-2 flex items-center gap-2">
                       <ArrowLeftRight
                         size={16}
@@ -193,16 +168,12 @@ export default async function TransferListPage({ searchParams }: PageProps) {
                         aria-hidden="true"
                       />
                       <span className="font-body text-body-md text-white/70">
-                        {transfer.fromLocation} → {transfer.toLocation}
+                        {transfer.fromLocationId} → {transfer.toLocationId}
                       </span>
                     </div>
-                    {/* Item count + flow type */}
                     <p className="mt-1 font-body text-body-md text-white/70">
-                      {transfer.itemCount}{" "}
-                      {transfer.itemCount === 1 ? "item" : "items"} ·{" "}
-                      {transfer.flowType}
+                      {FLOW_LABELS[transfer.flowType] ?? transfer.flowType}
                     </p>
-                    {/* Status badge — always icon + color per §1.3 floor rule */}
                     <div className="mt-2">
                       <span
                         className={`inline-flex items-center gap-1 rounded-full px-3 py-1 font-label text-body-md uppercase ${
@@ -230,22 +201,7 @@ export default async function TransferListPage({ searchParams }: PageProps) {
     );
   }
 
-  // Gate: check transfer.request capability for "New Transfer" button visibility.
-  const canRequest =
-    (await requirePermission(resolver, "transfer.request")).kind === "authorized";
 
-  const currentPage = Math.max(1, Number(pageParam ?? "1") || 1);
-  const offset = (currentPage - 1) * PAGE_SIZE;
-  const status =
-    statusFilter && statusFilter !== "" ? statusFilter : undefined;
-
-  const { rows, total } = await listTransferRequests(db, {
-    limit: PAGE_SIZE,
-    offset,
-    status,
-  });
-
-  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
     <div className="mx-auto max-w-container">
