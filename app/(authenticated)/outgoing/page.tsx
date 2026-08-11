@@ -76,6 +76,12 @@ export default async function OutgoingPage({ searchParams }: PageProps) {
     notFound();
   }
 
+  // Separate permission check for the execute action — used to show/hide the
+  // "Start picking" CTA. pick_list.read already gate the page; pick_list.execute
+  // gates the action button itself.
+  const canExecutePick =
+    (await requirePermission(resolver, "pick_list.execute")).kind === "authorized";
+
   return (
     <div className="mx-auto max-w-container">
       {/* Page header */}
@@ -117,7 +123,7 @@ export default async function OutgoingPage({ searchParams }: PageProps) {
       </div>
 
       {activeTab === "active-picks" ? (
-        <ActivePicksTab />
+        <ActivePicksTab canExecute={canExecutePick} />
       ) : (
         <OutgoingLedgerTab resolver={resolver} />
       )}
@@ -127,8 +133,10 @@ export default async function OutgoingPage({ searchParams }: PageProps) {
 
 // ─── Active Picks tab (default) ───────────────────────────────────────────────
 
-async function ActivePicksTab() {
-  const { rows } = await listPickLists(db, { limit: 50, offset: 0 });
+async function ActivePicksTab({ canExecute }: { canExecute: boolean }) {
+  // Only show allocated pick lists — status=allocated is the "active" state that
+  // the floor warehouseman needs to act on. picked/dispatched rows belong in the ledger.
+  const { rows } = await listPickLists(db, { limit: 50, offset: 0, status: "allocated" });
 
   return (
     <div className="mt-6 overflow-hidden rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-2 md:shadow-elevation-1">
@@ -165,12 +173,18 @@ async function ActivePicksTab() {
                 <p className="font-body text-body-md text-text-grey">
                   Created {row.createdAt.toLocaleString()}
                 </p>
-                <Link
-                  href={`/pick-lists/${row.id}/pick`}
-                  className="flex min-h-16 w-full items-center justify-center rounded bg-brand-red px-4 font-label text-body-md uppercase tracking-wide text-surface-white active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2"
-                >
-                  Start picking
-                </Link>
+                {canExecute ? (
+                  <Link
+                    href={`/pick-lists/${row.id}/pick`}
+                    className="flex min-h-16 w-full items-center justify-center rounded bg-brand-red px-4 font-label text-body-md uppercase tracking-wide text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2"
+                  >
+                    Start picking
+                  </Link>
+                ) : (
+                  <p className="font-body text-body-md text-text-grey">
+                    View only — you do not have permission to execute picks.
+                  </p>
+                )}
               </article>
             ))}
           </div>
@@ -216,13 +230,17 @@ async function ActivePicksTab() {
                       {row.createdAt.toLocaleString()}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {/* Execute link — h-11 (44px) office touch target */}
-                      <Link
-                        href={`/pick-lists/${row.id}/pick`}
-                        className="inline-flex h-11 items-center font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                      >
-                        Execute
-                      </Link>
+                      {/* Execute link — h-11 (44px) office touch target, gated pick_list.execute */}
+                      {canExecute ? (
+                        <Link
+                          href={`/pick-lists/${row.id}/pick`}
+                          className="inline-flex h-11 items-center font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                        >
+                          Execute
+                        </Link>
+                      ) : (
+                        <span className="font-label text-label text-text-grey">View only</span>
+                      )}
                     </td>
                   </tr>
                 ))}
