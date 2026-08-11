@@ -12,30 +12,30 @@ This replaces all prior brand documents. Where anything else conflicts with this
 ### 1.1 Brand colors
 | Token | Hex | Usage |
 |---|---|---|
-| `brand-navy` | `#3D3BF3` | Legacy token name retained in source; now the primary indigo visual treatment for sidebars, logo, page headers, and icon accents. |
-| `brand-royal-blue` | `#9694FF` | Legacy token name retained in source; now the secondary lavender structural treatment for secondary nav elements and chart series. |
-| `brand-red` | `#FF2929` | Accent/CTA only. Primary buttons, key highlights. Updated 2026-08-10 from `#E30613` to the product-owner-supplied palette below — same role, brighter red. **Never used for status/semantic meaning** — see §1.3. |
+| `brand-navy` | `#002060` | Primary brand color — sidebars, logo, page headers, icon accents. **Reverted 2026-08-11**: the 2026-08-10 indigo experiment (`#3D3BF3`) is superseded; this is the reference navy identity — see `revision-log.md`. |
+| `brand-royal-blue` | `#2E4094` | Secondary structural treatment for secondary nav elements and chart series. |
+| `brand-red` | `#E30613` | Accent/CTA only. Primary buttons, key highlights. **Reverted 2026-08-11** back to this value (the 2026-08-10 change to `#FF2929` is superseded). **Never used for status/semantic meaning** — see §1.3. |
 
-### 1.1a Accent indigo scale (added 2026-08-10)
+### 1.1a Accent scale (reverted 2026-08-11)
 
-Product-owner-supplied palette, backgrounds/icons/active-states only — **never text color** (see the text-color rule at the end of this section).
+Backgrounds/icons/active-states only — **never text color** (see the text-color rule at the end of this section). Aliases of the reverted navy/royal-blue values, not a separate indigo scale.
 
 | Token | Hex | Usage |
 |---|---|---|
-| `accent-indigo-50` | `#EBEAFF` | Lightest tint — icon-badge backgrounds on KPI/dashboard cards, subtle highlight fills. |
-| `accent-indigo-300` | `#9694FF` | Mid tone — secondary accents, hover states on indigo elements, chart secondary series. |
-| `accent-indigo-600` | `#3D3BF3` | Primary indigo accent — sidebar active-nav-item background (replaces `brand-red` there, giving the active state a distinct identity from CTA red), icon-badge foreground, primary chart bars. |
+| `accent-indigo-50` | `#F2F2F2` | Lightest tint — icon-badge backgrounds on KPI/dashboard cards, subtle highlight fills. |
+| `accent-indigo-300` | `#2E4094` | Mid tone — secondary accents, hover states, chart secondary series. |
+| `accent-indigo-600` | `#002060` | Primary accent — sidebar active-nav-item background, icon-badge foreground, primary chart bars. |
 
-**Text-color rule (reaffirmed 2026-08-10): headings, labels, and body copy are always `on-surface` or `text-grey` — never `brand-navy`, `brand-red`, `brand-royal-blue`, or any `accent-indigo-*` value.** Those colors are for backgrounds, icons, borders, active-state fills, and chart marks only. This keeps every page's actual reading text black/near-black regardless of how many accent colors a given screen uses elsewhere.
+**Text-color rule (reaffirmed): headings, labels, and body copy are always `on-surface` or `text-grey` — never `brand-navy`, `brand-red`, `brand-royal-blue`, or any `accent-indigo-*` value.** Those colors are for backgrounds, icons, borders, active-state fills, and chart marks only. This keeps every page's actual reading text black/near-black regardless of how many accent colors a given screen uses elsewhere.
 
 ### 1.2 Neutrals
 | Token | Hex | Usage |
 |---|---|---|
 | `text-grey` | `#555555` | Standard body copy — office/desktop contexts only. Floor/mobile screens use `on-surface` (§1.2 below) or pure black instead; see §5's contrast escalation. |
 | `surface-white` | `#FFFFFF` | Primary content backgrounds, and any surface that needs full opacity (modals, drawers, printed documents). |
-| `surface-light-grey` | `#EBEAFF` | Light lavender canvas for secondary content blocks and subtle section division. |
+| `surface-light-grey` | `#F2F2F2` | Light neutral canvas for secondary content blocks and subtle section division. **Reverted 2026-08-11** from the lavender `#EBEAFF`. |
 | `on-surface` | `#1A1B20` | Default text color where higher contrast than `text-grey` is needed — the default for all floor/mobile screens. |
-| `outline-variant` | `#9694FF` | Lavender card borders and dividers — always at 30% opacity, never solid. |
+| `outline-variant` | `#C5C6D2` | Card borders and dividers — always at 30% opacity, never solid. **Reverted 2026-08-11** from the lavender `#9694FF`. |
 
 ### 1.3 Status colors (semantic — distinct from brand red)
 | Token | Hex | Meaning |

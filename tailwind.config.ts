@@ -20,26 +20,27 @@ const config: Config = {
     },
     extend: {
       colors: {
-        // §1.1 Brand colors
-        // The legacy token names remain for source compatibility, but their
-        // visual roles now resolve to the product-owner-selected indigo scale.
-        "brand-navy": "#3D3BF3",
-        "brand-royal-blue": "#9694FF",
-        "brand-red": "#FF2929",
-        // §1.1a Accent indigo scale (added 2026-08-10, product-owner-supplied
-        // palette) — backgrounds/icons/active-states only, never text color
-        // (§2's text-color rule: headings/body/labels always on-surface/text-grey).
-        "accent-indigo-50": "#EBEAFF",
-        "accent-indigo-300": "#9694FF",
-        "accent-indigo-600": "#3D3BF3",
+        // §1.1 Brand colors (reverted 2026-08-11: the 2026-08-10 indigo
+        // experiment is superseded by the reference navy/red identity —
+        // see specs/00-steering/revision-log.md).
+        "brand-navy": "#002060",
+        "brand-royal-blue": "#2E4094",
+        "brand-red": "#E30613",
+        // §1.1a Accent scale — kept as distinct tokens (backgrounds/icons/
+        // active-states only, never text color per §2's text-color rule)
+        // but now aliases of the reverted navy/royal-blue values rather than
+        // the retired indigo scale.
+        "accent-indigo-50": "#F2F2F2",
+        "accent-indigo-300": "#2E4094",
+        "accent-indigo-600": "#002060",
         // §1.2 Neutrals
         "text-grey": "#555555",
         "surface-white": "#FFFFFF",
-        "surface-light-grey": "#EBEAFF",
+        "surface-light-grey": "#F2F2F2",
         "on-surface": "#1A1B20",
         // outline-variant is always used at 30% opacity per §1.2 — consume as
         // `border-outline-variant/30`, never solid.
-        "outline-variant": "#9694FF",
+        "outline-variant": "#C5C6D2",
         // §1.3 Status colors (semantic — never conflate with brand-red)
         "status-available": "#10B981",
         "status-pending": "#F59E0B",
@@ -91,8 +92,8 @@ const config: Config = {
       },
       boxShadow: {
         // §6 Elevation & Surfaces
-        "elevation-1": "0 1px 2px rgba(61,59,243,0.08)", // office/desktop only, Level 1 cards/panels
-        "elevation-2": "0 4px 16px rgba(61,59,243,0.12)", // modals, drawers, dropdowns; also the floor card default
+        "elevation-1": "0 1px 2px rgba(0,32,96,0.08)", // office/desktop only, Level 1 cards/panels
+        "elevation-2": "0 4px 16px rgba(0,32,96,0.12)", // modals, drawers, dropdowns; also the floor card default
       },
     },
   },

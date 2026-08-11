@@ -15,97 +15,78 @@
 //     on any document are a per-release reference only").
 //
 // Surface: Party (office-style glassmorphism per design.md §3.3).
-// Capability gate: documents.read.
-//   NOTE: party users hold documents.read with assigned_party scope; full scope
-//   resolution (Task 2) pending — requirePermission called without scope.
+// Capability gate: documents.read, scoped to the caller's own party. This
+//   view spans both VMI and Trading flows (both use pick_list/
+//   acknowledgement_receipt documents), so no single flowType is required —
+//   the party scope itself is enough once matched against the caller's own
+//   partyId.
 // Offline: no offline caching (Task 8, requirements.md R8).
 // VMI disclaimer: acknowledgement receipt artifact rendered unmodified with
 //   disclaimer text present — requirements.md R4.3.
 //
-// TODO: wire to generated_documents scoped to session party via
-//   documents.read (assigned_party) RLS pattern (Task 5).
-// TODO: download button to request a fresh ≤60-minute signed URL per Task 5.
+// generated_documents scoping is resolved via lib/db/queries/documents.ts's
+// source-chain join (the table itself carries no party_id column — see that
+// file's header comment). Party scope is resolved from lib/rbac/session.ts's
+// AuthorizationContext.partyScopes via lib/portal/resolve-party-scope.ts —
+// never from a client-supplied party_id.
+//
+// Download button: no signed-URL request infrastructure exists yet in this
+// codebase for generated_documents artifacts. Wiring "Download PDF" to a
+// real ≤60-minute signed URL remains a follow-up (tasks.md Task 5), same
+// category of deliberate, named, out-of-scope limitation as the VMI
+// billing-statement gate below — not something silently faked here.
 
 import Link from "next/link";
 import { FileText, Download, CheckCircle2, Package } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
+import { resolveActivePartyScope } from "@/lib/portal/resolve-party-scope";
+import { db } from "@/lib/db/client";
+import {
+  listPartyPickListDocuments,
+  listPartyAcknowledgementReceiptDocuments,
+  type PartyDocumentRow,
+} from "@/lib/db/queries/documents";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+// Status values mirror generated_documents.status exactly (lib/db/schema/documents.ts):
+// 'pending' | 'generating' | 'ready' | 'failed' | 'voided'.
 
-type PickListDocStatus = "committed" | "dispatched";
-type ARDocStatus = "pending_signature" | "signed" | "disputed";
+type DocStatus = "pending" | "generating" | "ready" | "failed" | "voided";
 
-interface PickListDoc {
+interface DocRow {
   id: string;
   docNumber: string;
   date: string;
-  status: PickListDocStatus;
-}
-
-interface ARDoc {
-  id: string;
-  docNumber: string;
-  date: string;
-  status: ARDocStatus;
+  status: DocStatus;
 }
 
 // ─── Status helpers — tokens from tailwind.config.ts, no raw hex ──────────────
 
-const PL_STATUS_CLASSES: Record<PickListDocStatus, string> = {
-  committed: "bg-status-pending/10 text-status-pending",
-  dispatched: "bg-status-available/10 text-status-available",
+const DOC_STATUS_CLASSES: Record<DocStatus, string> = {
+  pending: "bg-status-pending/10 text-status-pending",
+  generating: "bg-status-pending/10 text-status-pending",
+  ready: "bg-status-available/10 text-status-available",
+  failed: "bg-status-held/10 text-status-held",
+  voided: "bg-status-neutral/10 text-status-neutral",
 };
 
-const PL_STATUS_LABELS: Record<PickListDocStatus, string> = {
-  committed: "COMMITTED",
-  dispatched: "DISPATCHED",
+const DOC_STATUS_LABELS: Record<DocStatus, string> = {
+  pending: "PENDING",
+  generating: "GENERATING",
+  ready: "READY",
+  failed: "FAILED",
+  voided: "VOIDED",
 };
 
-const AR_STATUS_CLASSES: Record<ARDocStatus, string> = {
-  pending_signature: "bg-status-pending/10 text-status-pending",
-  signed: "bg-status-available/10 text-status-available",
-  disputed: "bg-status-held/10 text-status-held",
-};
-
-const AR_STATUS_LABELS: Record<ARDocStatus, string> = {
-  pending_signature: "PENDING SIGNATURE",
-  signed: "SIGNED",
-  disputed: "DISPUTED",
-};
-
-// ─── Mock data ────────────────────────────────────────────────────────────────
-// TODO: replace with real generated_documents query scoped to session party.
-
-const MOCK_PICK_LIST_DOCS: PickListDoc[] = [
-  {
-    id: "pld-001",
-    docNumber: "PL-2026-011",
-    date: "2026-08-07",
-    status: "dispatched",
-  },
-  {
-    id: "pld-002",
-    docNumber: "PL-2026-019",
-    date: "2026-08-08",
-    status: "committed",
-  },
-];
-
-const MOCK_AR_DOCS: ARDoc[] = [
-  {
-    id: "ard-001",
-    docNumber: "AR-2026-008",
-    date: "2026-08-07",
-    status: "signed",
-  },
-  {
-    id: "ard-002",
-    docNumber: "AR-2026-011",
-    date: "2026-08-08",
-    status: "pending_signature",
-  },
-];
+function toDocRow(row: PartyDocumentRow): DocRow {
+  return {
+    id: row.id,
+    docNumber: row.documentNumber,
+    date: (row.generatedAt ?? row.createdAt).toISOString().slice(0, 10),
+    status: (row.status as DocStatus) ?? "pending",
+  };
+}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -119,31 +100,36 @@ export default async function PortalDocumentsPage({
   const { tab: tabParam } = await searchParams;
 
   const resolver = await createPageResolver();
-  // TODO: once Task 2 party-scope resolution is built, pass scope:
-  //   { partyId: sessionPartyId, flowType: sessionFlowType }
-  const permResult = await requirePermission(resolver, "documents.read");
+  const resolution = await resolver.getContext();
+
+  if (resolution.kind !== "authorized") {
+    return <PermissionDenied />;
+  }
+
+  const partyScope = resolveActivePartyScope(resolution.context);
+  if (!partyScope) {
+    return <NoPartyScope />;
+  }
+
+  // Documents span both VMI and Trading flows for the same party; a null
+  // scope flowType matches either (session.ts partyScopeMatchesFlow), and a
+  // narrowed scope's own flowType is passed straight through so a
+  // VMI-only or Trading-only assignment is still validated correctly.
+  const permResult = await requirePermission(resolver, "documents.read", {
+    partyId: partyScope.partyId,
+    flowType: partyScope.flowType ?? "vmi",
+  });
 
   if (permResult.kind !== "authorized") {
-    return (
-      <div className="mx-auto max-w-container px-8 py-12 text-center">
-        <FileText
-          size={40}
-          className="mx-auto mb-3 text-text-grey"
-          aria-hidden="true"
-        />
-        <p className="font-body text-body-md text-text-grey">
-          You do not have permission to view documents.
-        </p>
-        <p className="mt-2 font-body text-body-sm text-text-grey">
-          This page requires the{" "}
-          <span className="font-mono text-mono-md">documents.read</span>{" "}
-          capability.
-        </p>
-      </div>
-    );
+    return <PermissionDenied />;
   }
 
   const activeTab = tabParam === "acknowledgement-receipts" ? "ar" : "pick-lists";
+
+  const [pickListDocs, arDocs] = await Promise.all([
+    listPartyPickListDocuments(db, partyScope.partyId),
+    listPartyAcknowledgementReceiptDocuments(db, partyScope.partyId),
+  ]);
 
   return (
     <div className="mx-auto max-w-container">
@@ -186,18 +172,60 @@ export default async function PortalDocumentsPage({
       {/* ── Tab content ────────────────────────────────────────────────────── */}
       <div className="mt-4">
         {activeTab === "pick-lists" ? (
-          <PickListsTab docs={MOCK_PICK_LIST_DOCS} />
+          <PickListsTab docs={pickListDocs.map(toDocRow)} />
         ) : (
-          <AcknowledgementReceiptsTab docs={MOCK_AR_DOCS} />
+          <AcknowledgementReceiptsTab docs={arDocs.map(toDocRow)} />
         )}
       </div>
     </div>
   );
 }
 
+// ─── Denial states ──────────────────────────────────────────────────────────
+
+function PermissionDenied() {
+  return (
+    <div className="mx-auto max-w-container px-8 py-12 text-center">
+      <FileText
+        size={40}
+        className="mx-auto mb-3 text-text-grey"
+        aria-hidden="true"
+      />
+      <p className="font-body text-body-md text-text-grey">
+        You do not have permission to view documents.
+      </p>
+      <p className="mt-2 font-body text-body-sm text-text-grey">
+        This page requires the{" "}
+        <span className="font-mono text-mono-md">documents.read</span>{" "}
+        capability.
+      </p>
+    </div>
+  );
+}
+
+// Fail-safe empty state: no active party scope resolved for this session —
+// never falls through to an unscoped query (see resolve-party-scope.ts).
+function NoPartyScope() {
+  return (
+    <div className="mx-auto max-w-container px-8 py-12 text-center">
+      <FileText
+        size={40}
+        className="mx-auto mb-3 text-text-grey"
+        aria-hidden="true"
+      />
+      <p className="font-body text-body-md text-text-grey">
+        No party assignment is linked to your account.
+      </p>
+      <p className="mt-2 font-body text-body-sm text-text-grey">
+        Contact your administrator to request portal access.
+      </p>
+    </div>
+  );
+}
+
 // ─── Pick Lists tab ───────────────────────────────────────────────────────────
 
-function PickListsTab({ docs }: { docs: PickListDoc[] }) {
+function PickListsTab({ docs }: { docs: DocRow[] }) {
   if (docs.length === 0) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-1">
@@ -238,17 +266,19 @@ function PickListsTab({ docs }: { docs: PickListDoc[] }) {
                 </td>
                 <td className="px-4 py-3">
                   <span
-                    className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase tracking-[0.05em] ${PL_STATUS_CLASSES[doc.status]}`}
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase tracking-[0.05em] ${DOC_STATUS_CLASSES[doc.status]}`}
                   >
-                    {PL_STATUS_LABELS[doc.status]}
+                    {DOC_STATUS_LABELS[doc.status]}
                   </span>
                 </td>
                 {/* Download PDF — h-11 (44px) office touch target.
-                    TODO: wire to signed URL request (≤60-min TTL) per Task 5. */}
+                    TODO: wire to signed URL request (≤60-min TTL) per Task 5 —
+                    no signed-URL infra exists in this codebase yet. */}
                 <td className="px-4 py-3 text-right">
                   <button
                     type="button"
-                    className="inline-flex h-11 items-center gap-2 rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:transition-transform motion-safe:duration-100 motion-safe:active:scale-[0.97]"
+                    disabled={doc.status !== "ready"}
+                    className="inline-flex h-11 items-center gap-2 rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:transition-transform motion-safe:duration-100 motion-safe:active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <Download size={16} aria-hidden="true" />
                     Download PDF
@@ -270,7 +300,7 @@ function PickListsTab({ docs }: { docs: PickListDoc[] }) {
 // only — if you're building a VMI-flow document view, it needs the
 // 'reference amount, not your final bill' distinction visible."
 
-function AcknowledgementReceiptsTab({ docs }: { docs: ARDoc[] }) {
+function AcknowledgementReceiptsTab({ docs }: { docs: DocRow[] }) {
   if (docs.length === 0) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-1">
@@ -329,9 +359,9 @@ function AcknowledgementReceiptsTab({ docs }: { docs: ARDoc[] }) {
                   </td>
                   <td className="px-4 py-3">
                     <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase tracking-[0.05em] ${AR_STATUS_CLASSES[doc.status]}`}
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase tracking-[0.05em] ${DOC_STATUS_CLASSES[doc.status]}`}
                     >
-                      {AR_STATUS_LABELS[doc.status]}
+                      {DOC_STATUS_LABELS[doc.status]}
                     </span>
                   </td>
                   {/* Download PDF — h-11 (44px) office touch target.
@@ -341,7 +371,8 @@ function AcknowledgementReceiptsTab({ docs }: { docs: ARDoc[] }) {
                   <td className="px-4 py-3 text-right">
                     <button
                       type="button"
-                      className="inline-flex h-11 items-center gap-2 rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:transition-transform motion-safe:duration-100 motion-safe:active:scale-[0.97]"
+                      disabled={doc.status !== "ready"}
+                      className="inline-flex h-11 items-center gap-2 rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:transition-transform motion-safe:duration-100 motion-safe:active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <Download size={16} aria-hidden="true" />
                       Download PDF

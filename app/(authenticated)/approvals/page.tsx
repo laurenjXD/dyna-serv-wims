@@ -16,8 +16,6 @@ import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { listPendingApprovalRequests } from "@/lib/db/queries/approvals";
-// TODO: wire to real query from approval_requests table (listPendingApprovalRequests
-// already implemented — integration under specs/09-approval-queue tasks.md §6)
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 

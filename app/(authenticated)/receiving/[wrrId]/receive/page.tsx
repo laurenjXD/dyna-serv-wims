@@ -34,6 +34,7 @@ import { suggestPutawayLocations } from "@/lib/db/queries/locations";
 import type { PutawayCandidate } from "@/lib/db/queries/locations";
 import { recordScan, startReceiving, commitWrrLine } from "@/lib/actions/receiving";
 import type { WrrItemRow } from "@/lib/db/queries/receiving";
+import { CameraScanBridge } from "./_components/CameraScanBridge";
 
 // ─── Error reason → plain language ──────────────────────────────────────────
 
@@ -55,6 +56,8 @@ function getScanErrorMessage(reason: string): string {
       return "Unknown item — barcode is not registered in the system. Contact a supervisor to enroll this item.";
     case "flow_type_mismatch":
       return "This item does not belong to this WRR's flow type — contact a supervisor.";
+    case "duplicate_unit_scan":
+      return "This exact label has already been scanned — if this carton is genuinely new, check for a duplicate printed label.";
     default:
       return `Scan rejected: ${reason}. Contact a supervisor if this persists.`;
   }
@@ -617,6 +620,11 @@ export default async function ReceiveFloorPage({
               </button>
             </div>
           </form>
+          {/* Camera scanner — secondary/alternate scan input, below the
+              primary auto-focused manual input, feeding the exact same
+              handleScan action. brand-design-system.md §3 one-primary-
+              action rule: this must never compete with the manual input. */}
+          <CameraScanBridge action={handleScan} />
         </div>
       )}
     </div>

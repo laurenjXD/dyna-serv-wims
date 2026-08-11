@@ -14,13 +14,18 @@
 //   supervisors/admins → office table (glassmorphism, h-11, hover states).
 // Permission gate: inspection.perform
 //
-// All data is mocked. TODO: wire to real inspection_cases query filtered by
-// assigned user and today's date for floor; all cases with filters for office.
+// Wired to lib/db/queries/transfers.ts's listInspectionCases. inspection_cases
+// has no per-user assignment column (see that query's doc comment), so the
+// floor surface shows all open cases rather than "assigned to me today" —
+// there is no schema-backed way to scope further than status = 'open'.
 
 import Link from "next/link";
 import { CheckCircle2, ClipboardList, MapPin, ArrowLeftRight, ArrowDown, Circle, XCircle, MinusCircle, ChevronRight } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
+import { db } from "@/lib/db/client";
+import { listInspectionCases } from "@/lib/db/queries/transfers";
+import type { InspectionCaseListRow } from "@/lib/db/queries/transfers";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -41,59 +46,6 @@ const STATUS_CLASSES: Record<string, string> = {
   cancelled: "bg-status-neutral/10 text-status-neutral",
 };
 
-
-// ─── Mock data (TODO: wire to real inspection_cases query) ────────────────────
-
-interface InspectionCaseRow {
-  id: string;
-  contextType: "inbound" | "transfer";
-  lotNumber: string;
-  itemName: string;
-  locationCode: string;
-  status: "open" | "passed" | "failed" | "cancelled";
-  openedAt: string;
-  // Office-only fields
-  openedBy?: string;
-  sourceRef?: string;
-}
-
-// TODO: replace with real DB query — inspection_cases where status = 'open'
-// and assigned to today, scoped by party/flow per RLS.
-const MOCK_INSPECTIONS: InspectionCaseRow[] = [
-  {
-    id: "mock-ic-001",
-    contextType: "transfer",
-    lotNumber: "LOT-2026-0042",
-    itemName: "Hydraulic Coupling Assembly",
-    locationCode: "LOC-A03",
-    status: "open",
-    openedAt: new Date().toISOString(),
-    openedBy: "sys-auto",
-    sourceRef: "TRF-2026-001",
-  },
-  {
-    id: "mock-ic-002",
-    contextType: "inbound",
-    lotNumber: "LOT-2026-0031",
-    itemName: "Pressure Sensor Unit",
-    locationCode: "INSPECT-01",
-    status: "open",
-    openedAt: new Date().toISOString(),
-    openedBy: "sys-auto",
-    sourceRef: "WRR-2026-008",
-  },
-  {
-    id: "mock-ic-003",
-    contextType: "transfer",
-    lotNumber: "LOT-2026-0019",
-    itemName: "Valve Seal Kit (VMI)",
-    locationCode: "LOC-B07",
-    status: "passed",
-    openedAt: new Date(Date.now() - 3_600_000).toISOString(),
-    openedBy: "warehouse-user-1",
-    sourceRef: "TRF-2026-009",
-  },
-];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -127,11 +79,12 @@ export default async function InspectionQueuePage({ searchParams }: PageProps) {
   // supervisors/admins → office (glassmorphism, h-11, hover:).
   const isFloor = permResult.context.activeRoleKeys.includes("warehouse_staff");
 
-  // TODO: wire to real query — for floor, filter to assigned open cases for today.
-  const openCases = MOCK_INSPECTIONS.filter((c) => c.status === "open");
-
   // ── Floor surface ────────────────────────────────────────────────────────────
   if (isFloor) {
+    // All open inspection cases (no per-user assignment column exists — see
+    // listInspectionCases' doc comment).
+    const { rows: openCases } = await listInspectionCases(db, { status: "open" });
+
     return (
       <div className="flex min-h-screen flex-col bg-surface-white">
         {/* Floor top bar */}
@@ -188,7 +141,7 @@ export default async function InspectionQueuePage({ searchParams }: PageProps) {
                     <div className="mt-2 flex items-center gap-2">
                       <MapPin size={24} strokeWidth={2} aria-hidden="true" className="shrink-0 text-text-grey" />
                       <span className="font-body text-body-md text-text-grey">
-                        {inspection.locationCode}
+                        {inspection.locationLabel ?? "Location unavailable"}
                       </span>
                     </div>
 
@@ -223,11 +176,10 @@ export default async function InspectionQueuePage({ searchParams }: PageProps) {
 
   // ── Office surface ───────────────────────────────────────────────────────────
 
-  // TODO: wire to real query — office view shows all inspection_cases with filters.
-  const filtered =
-    statusFilter && statusFilter !== ""
-      ? MOCK_INSPECTIONS.filter((c) => c.status === statusFilter)
-      : MOCK_INSPECTIONS;
+  // Office view shows all inspection_cases, optionally filtered by status.
+  const { rows: filtered } = await listInspectionCases(db, {
+    status: statusFilter && statusFilter !== "" ? statusFilter : undefined,
+  });
 
   const STATUS_FILTER_OPTIONS = [
     { value: "", label: "All" },
@@ -332,7 +284,7 @@ export default async function InspectionQueuePage({ searchParams }: PageProps) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/30">
-                {filtered.map((row) => (
+                {filtered.map((row: InspectionCaseListRow) => (
                   <tr key={row.id} className="hover:bg-surface-light-grey/50">
                     {/* Lot number — Roboto Mono per §9 */}
                     <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
@@ -345,7 +297,7 @@ export default async function InspectionQueuePage({ searchParams }: PageProps) {
                       {row.contextType}
                     </td>
                     <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {row.locationCode}
+                      {row.locationLabel ?? "—"}
                     </td>
                     <td className="px-4 py-3">
                       {/* Status badge — §1.3 semantic colors; icon+color per office badge pattern */}
@@ -360,7 +312,7 @@ export default async function InspectionQueuePage({ searchParams }: PageProps) {
                       </span>
                     </td>
                     <td className="px-4 py-3 font-body text-body-md text-text-grey">
-                      {new Date(row.openedAt).toLocaleString()}
+                      {row.openedAt.toLocaleString()}
                     </td>
                     <td className="px-4 py-3 text-right">
                       {/* Inspect link — h-11 (44px) office touch target */}

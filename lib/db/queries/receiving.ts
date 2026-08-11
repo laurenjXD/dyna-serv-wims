@@ -11,6 +11,10 @@
 
 import { eq, asc, sql } from "drizzle-orm";
 import { wrrDocuments, wrrItems } from "@/lib/db/schema/wrr";
+// Aliased: getWrrDocument's own `items` local (the mapped WrrItemRow[]
+// result) would otherwise shadow this schema table within the same
+// function scope.
+import { items as itemsTable } from "@/lib/db/schema/items";
 
 // Minimal structural type that both the real Drizzle db instance and test
 // stubs satisfy.
@@ -39,6 +43,10 @@ export type WrrItemRow = {
   scannedQty: number;
   disposition: string;
   itemId: string | null;
+  // The item's human-readable Dyna-Serv Item Code (items.code) — resolved
+  // via a join on wrr_items.item_id. Null when the line's item is not yet
+  // enrolled, matching the itemId nullability pattern above.
+  itemCode: string | null;
   unitCbm: number;
   putawayLocationId: string | null;
   committedAt: Date | null;
@@ -68,6 +76,7 @@ type RawJoinRow = {
   itemScannedQty: number | null;
   itemDisposition: string | null;
   itemItemId: string | null;
+  itemItemCode: string | null;
   itemUnitCbm: string | number | null;
   itemPutawayLocationId: string | null;
   itemCommittedAt: Date | null;
@@ -159,13 +168,15 @@ export async function getWrrDocument(
       itemScannedQty: wrrItems.scannedQty,
       itemDisposition: wrrItems.disposition,
       itemItemId: wrrItems.itemId,
+      itemItemCode: itemsTable.code,
       itemUnitCbm: wrrItems.unitCbm,
       itemPutawayLocationId: wrrItems.putawayLocationId,
       itemCommittedAt: wrrItems.committedAt,
     })
     .from(wrrDocuments)
     .where(eq(wrrDocuments.id, wrrId))
-    .leftJoin(wrrItems, eq(wrrItems.wrrId, wrrDocuments.id))) as RawJoinRow[];
+    .leftJoin(wrrItems, eq(wrrItems.wrrId, wrrDocuments.id))
+    .leftJoin(itemsTable, eq(itemsTable.id, wrrItems.itemId))) as RawJoinRow[];
 
   if (joinedRows.length === 0) return null;
 
@@ -184,6 +195,7 @@ export async function getWrrDocument(
       scannedQty: row.itemScannedQty!,
       disposition: row.itemDisposition!,
       itemId: row.itemItemId,
+      itemCode: row.itemItemCode,
       unitCbm: Number(row.itemUnitCbm ?? 0),
       putawayLocationId: row.itemPutawayLocationId,
       committedAt: row.itemCommittedAt,

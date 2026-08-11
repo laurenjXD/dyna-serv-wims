@@ -13,55 +13,28 @@
 //   h-11 buttons, hover states).
 // Permission gate: transfer.view
 //
-// Floor mock data: TODO — wire to a staff-scoped transfer query that returns only
-//   transfers assigned to the current warehouse_staff member.
+// Floor list is scoped to the current warehouse_staff user's own requests
+// (transfer_requests.requestedBy — the closest available scoping column;
+// transfer_requests has no separate "assignee" field) with status staged or
+// in_progress. Filtering happens in application code after a single
+// listTransferRequests(db, { limit, offset }) call rather than in SQL,
+// since listTransferRequests only supports a single equality status filter,
+// not an IN-list or a requestedBy filter — see lib/db/queries/transfers.ts.
 
 import Link from "next/link";
 import { CheckCircle2, AlertTriangle, ArrowLeftRight, Activity, Clock, ChevronRight } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
-import { listTransferRequests } from "@/lib/db/queries/transfers";
+import { listTransferRequests, listInspectionCases } from "@/lib/db/queries/transfers";
 import type { TransferRequestRow } from "@/lib/db/queries/transfers";
 
-// ─── Floor mock data (TODO: wire to real staff-scoped query) ─────────────────
+// Floor open-status set — matches STATUS_LABELS/STATUS_CLASSES below.
+const FLOOR_OPEN_STATUSES = new Set(["staged", "in_progress"]);
 
-interface FloorTransferCard {
-  id: string;
-  reference: string;
-  flowType: string;
-  fromLocation: string;
-  toLocation: string;
-  itemCount: number;
-  status: "staged" | "in_progress";
-}
-
-// TODO: replace with real query filtered to the current warehouse_staff user's
-// assigned transfers (staged and in_progress only).
-const MOCK_FLOOR_TRANSFERS: FloorTransferCard[] = [
-  {
-    id: "mock-tr-001",
-    reference: "TRF-2026-001",
-    flowType: "VMI",
-    fromLocation: "LOC-A01",
-    toLocation: "LOC-B02",
-    itemCount: 3,
-    status: "staged",
-  },
-  {
-    id: "mock-tr-002",
-    reference: "TRF-2026-002",
-    flowType: "Trading",
-    fromLocation: "LOC-C03",
-    toLocation: "LOC-D04",
-    itemCount: 1,
-    status: "in_progress",
-  },
-];
-
-// TODO: replace with real query — check if any inspections are assigned to
-// this warehouse_staff member for today.
-const MOCK_HAS_INSPECTIONS_TODAY = true;
+// A reasonably-sized fetch window for one user's own open floor work queue.
+// Not true pagination — floor screens intentionally show a single flat list.
+const FLOOR_FETCH_LIMIT = 100;
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -134,6 +107,26 @@ export default async function TransferListPage({ searchParams }: PageProps) {
   // brand-design-system.md §3: one primary action per screen, primary action in
   // bottom third full-width, no dense tables on floor screens.
   if (isFloor) {
+    const userId = permResult.context.userId;
+
+    const { rows: floorTransferRows } = await listTransferRequests(db, {
+      limit: FLOOR_FETCH_LIMIT,
+      offset: 0,
+    });
+    const floorTransfers = floorTransferRows.filter(
+      (row) => row.requestedBy === userId && FLOOR_OPEN_STATUSES.has(row.status),
+    );
+
+    // Any open inspection case surfaces the Daily Inspection shortcut.
+    // inspection_cases has no per-user assignment column either, so this is
+    // "any open case exists" rather than "assigned to this user" — see
+    // getInspectionCase/listInspectionCases doc comments.
+    const { rows: openInspectionRows } = await listInspectionCases(db, {
+      status: "open",
+      limit: 1,
+    });
+    const hasInspectionsToday = openInspectionRows.length > 0;
+
     return (
       <div className="flex min-h-screen flex-col bg-surface-white">
         {/* Floor top bar */}
@@ -141,8 +134,8 @@ export default async function TransferListPage({ searchParams }: PageProps) {
           <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
             Transfers
           </h1>
-          {/* Daily Inspection shortcut — prominent if inspections exist today */}
-          {MOCK_HAS_INSPECTIONS_TODAY && (
+          {/* Daily Inspection shortcut — prominent if any inspection cases are open */}
+          {hasInspectionsToday && (
             <Link
               href="/inspection"
               className="inline-flex h-14 items-center gap-2 rounded-xl bg-status-pending/10 border border-status-pending/30 px-4 font-label text-body-md text-on-surface
@@ -159,7 +152,7 @@ export default async function TransferListPage({ searchParams }: PageProps) {
         {/* Open transfers — card list, one item per row.
             brand-design-system.md §9: floor tables are a fail case;
             card-based list per item. */}
-        {MOCK_FLOOR_TRANSFERS.length === 0 ? (
+        {floorTransfers.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
             <CheckCircle2 size={48} strokeWidth={1.5} className="text-status-available" aria-hidden="true" />
             <p className="font-heading font-semibold text-headline-md text-on-surface">
@@ -171,7 +164,7 @@ export default async function TransferListPage({ searchParams }: PageProps) {
           </div>
         ) : (
           <div className="space-y-3">
-            {MOCK_FLOOR_TRANSFERS.map((transfer) => (
+            {floorTransfers.map((transfer) => (
               <Link
                 key={transfer.id}
                 href={`/transfers/${transfer.id}`}
@@ -180,9 +173,9 @@ export default async function TransferListPage({ searchParams }: PageProps) {
               >
                 <div className="flex items-start gap-3">
                   <div className="min-w-0 flex-1">
-                    {/* Transfer reference — Roboto Mono per §9; text-mono-lg (18px) per floor 16px minimum */}
+                    {/* Transfer id — Roboto Mono per §9; text-mono-lg (18px) per floor 16px minimum */}
                     <p className="font-mono text-mono-lg font-bold text-on-surface">
-                      {transfer.reference}
+                      {transfer.id}
                     </p>
                     {/* Route line — icon + text, never icon alone */}
                     <div className="mt-2 flex items-center gap-2">
@@ -192,15 +185,13 @@ export default async function TransferListPage({ searchParams }: PageProps) {
                         className="shrink-0 text-text-grey"
                         aria-hidden="true"
                       />
-                      <span className="font-body text-body-md text-text-grey">
-                        {transfer.fromLocation} → {transfer.toLocation}
+                      <span className="font-mono text-mono-md text-text-grey">
+                        {transfer.fromLocationId} → {transfer.toLocationId}
                       </span>
                     </div>
-                    {/* Item count + flow type */}
+                    {/* Flow type */}
                     <p className="mt-1 font-body text-body-md text-text-grey">
-                      {transfer.itemCount}{" "}
-                      {transfer.itemCount === 1 ? "item" : "items"} ·{" "}
-                      {transfer.flowType}
+                      {FLOW_LABELS[transfer.flowType] ?? transfer.flowType}
                     </p>
                     {/* Status badge — always icon + color per §1.3 floor rule */}
                     <div className="mt-2">

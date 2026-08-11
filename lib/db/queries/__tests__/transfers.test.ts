@@ -78,6 +78,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
   listTransferRequests,
   getTransferRequest,
+  listInspectionCases,
+  getInspectionCase,
 } from "../transfers";
 
 // ---------------------------------------------------------------------------
@@ -531,5 +533,233 @@ describe("getTransferRequest — known ID with lines (R7.1, R1.2, design.md §2)
     expect(l).toHaveProperty("qtyRequested");
     expect(l).toHaveProperty("qtyTransferred");
     expect(l).toHaveProperty("status");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// listInspectionCases / getInspectionCase
+//
+// Traceability:
+//   specs/11-transfer-and-inspection/design.md §6.1 — shared inspection_cases
+//     record model, inbound/transfer context isolation.
+//   specs/11-transfer-and-inspection/design.md §2 — table shapes.
+// ---------------------------------------------------------------------------
+
+// Data chain for listInspectionCases: three innerJoins before an optional
+// where(), then orderBy/limit/offset (offset resolves).
+function makeInspectionDataChain(resolvedRows: unknown[]) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const chain: Record<string, any> = {};
+  for (const method of ["from", "innerJoin", "leftJoin", "where", "orderBy", "limit"]) {
+    chain[method] = vi.fn(() => chain);
+  }
+  chain["offset"] = vi.fn().mockResolvedValue(resolvedRows);
+  return chain;
+}
+
+function makeInspectionListDb(dataRows: unknown[], total: number) {
+  return {
+    select: vi
+      .fn()
+      .mockReturnValueOnce(makeInspectionDataChain(dataRows))
+      .mockReturnValueOnce(makeCountChain(total)),
+  };
+}
+
+// getInspectionCase: single select with three innerJoins + where(), thenable.
+function makeInspectionGetChain(rows: unknown[]) {
+  const resolved = Promise.resolve(rows);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const chain: Record<string, any> = {};
+  for (const method of ["from", "innerJoin", "leftJoin", "where", "orderBy"]) {
+    chain[method] = vi.fn(() => chain);
+  }
+  chain["then"] = resolved.then.bind(resolved) as AnyFn;
+  chain["catch"] = resolved.catch.bind(resolved) as AnyFn;
+  chain["finally"] = resolved.finally.bind(resolved) as AnyFn;
+  return chain;
+}
+
+function rawInspectionCaseRow(overrides: Partial<{
+  id: string;
+  contextType: string;
+  sourceRefType: string;
+  sourceRefId: string;
+  lotNumber: string;
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  itemUom: string;
+  partyId: string;
+  partyName: string;
+  flowType: string;
+  status: string;
+  openedBy: string;
+  openedAt: Date;
+  resolvedBy: string | null;
+  resolvedAt: Date | null;
+  locationLabel: string | null;
+  qtyToInspect: string | number | null;
+}> = {}) {
+  return {
+    id: "case-uuid-1",
+    contextType: "transfer",
+    sourceRefType: "transfer_line",
+    sourceRefId: "line-uuid-1",
+    lotNumber: "LOT-2026-0042",
+    itemId: "item-uuid-1",
+    itemCode: "HYD-CUP-001",
+    itemName: "Hydraulic Coupling Assembly",
+    itemUom: "piece",
+    partyId: "party-uuid-1",
+    partyName: "Acme Vendor",
+    flowType: "vmi",
+    status: "open",
+    openedBy: "user-uuid-staff",
+    openedAt: NOW,
+    resolvedBy: null,
+    resolvedAt: null,
+    locationLabel: "A1-01",
+    ...overrides,
+  };
+}
+
+describe("listInspectionCases — empty database (design.md §6.1)", () => {
+  it("(AC: list with pagination) returns { rows: [], total: 0 } when no inspection cases exist", async () => {
+    const db = makeInspectionListDb([], 0);
+
+    const result = await listInspectionCases(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      {},
+    );
+
+    expect(result.rows).toHaveLength(0);
+    expect(result.total).toBe(0);
+  });
+});
+
+describe("listInspectionCases — status filter (design.md §6.1)", () => {
+  it("(AC: status filter applied) calls where() and returns only matching rows", async () => {
+    const openRow = rawInspectionCaseRow({ id: "case-open", status: "open" });
+    const db = makeInspectionListDb([openRow], 1);
+
+    const result = await listInspectionCases(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      { status: "open" },
+    );
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0].status).toBe("open");
+    expect(result.total).toBe(1);
+  });
+
+  it("(AC: where() invoked on status filter) calls where() on the data chain when a status filter is supplied", async () => {
+    const dataChain = makeInspectionDataChain([]);
+    const db = {
+      select: vi
+        .fn()
+        .mockReturnValueOnce(dataChain)
+        .mockReturnValueOnce(makeCountChain(0)),
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await listInspectionCases(db as any, { status: "open" });
+
+    const whereFn = dataChain["where"] as ReturnType<typeof vi.fn>;
+    expect(whereFn).toHaveBeenCalled();
+  });
+
+  it("(AC: no status filter returns all) returns all statuses when no status filter is provided", async () => {
+    const rows = [
+      rawInspectionCaseRow({ id: "case-1", status: "open" }),
+      rawInspectionCaseRow({ id: "case-2", status: "passed" }),
+    ];
+    const db = makeInspectionListDb(rows, 2);
+
+    const result = await listInspectionCases(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      {},
+    );
+
+    expect(result.rows).toHaveLength(2);
+    expect(result.total).toBe(2);
+  });
+});
+
+describe("listInspectionCases — row shape (design.md §2)", () => {
+  it("(AC: row fields present) each returned row includes id, contextType, lotNumber, itemName, partyName, locationLabel, status, openedAt", async () => {
+    const row = rawInspectionCaseRow({});
+    const db = makeInspectionListDb([row], 1);
+
+    const result = await listInspectionCases(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      {},
+    );
+
+    const r = result.rows[0];
+    expect(r).toHaveProperty("id");
+    expect(r).toHaveProperty("contextType");
+    expect(r).toHaveProperty("lotNumber");
+    expect(r).toHaveProperty("itemName");
+    expect(r).toHaveProperty("partyName");
+    expect(r).toHaveProperty("locationLabel");
+    expect(r).toHaveProperty("status");
+    expect(r).toHaveProperty("openedAt");
+  });
+});
+
+describe("getInspectionCase — not found (design.md §2)", () => {
+  it("(AC: unknown ID returns null) returns null when the caseId does not match any inspection case", async () => {
+    const db = {
+      select: vi.fn().mockReturnValue(makeInspectionGetChain([])),
+    };
+
+    const result = await getInspectionCase(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      "non-existent-uuid",
+    );
+
+    expect(result).toBeNull();
+  });
+});
+
+describe("getInspectionCase — known ID (design.md §2, §6.1)", () => {
+  it("(AC: row shape + numeric qtyToInspect) returns the case with itemUom and a numeric qtyToInspect derived from the polymorphic subquery", async () => {
+    const row = rawInspectionCaseRow({ id: "case-known", qtyToInspect: "10" });
+    const db = {
+      select: vi.fn().mockReturnValue(makeInspectionGetChain([row])),
+    };
+
+    const result = await getInspectionCase(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      "case-known",
+    );
+
+    expect(result).not.toBeNull();
+    expect(result!.id).toBe("case-known");
+    expect(result!.itemUom).toBe("piece");
+    expect(result!.qtyToInspect).toBe(10);
+    expect(typeof result!.qtyToInspect).toBe("number");
+  });
+
+  it("(AC: null qtyToInspect defaults to 0) returns qtyToInspect: 0 when the subquery resolves to null", async () => {
+    const row = rawInspectionCaseRow({ id: "case-null-qty", qtyToInspect: null });
+    const db = {
+      select: vi.fn().mockReturnValue(makeInspectionGetChain([row])),
+    };
+
+    const result = await getInspectionCase(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      "case-null-qty",
+    );
+
+    expect(result!.qtyToInspect).toBe(0);
   });
 });

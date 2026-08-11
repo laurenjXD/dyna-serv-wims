@@ -29,7 +29,7 @@ export type WrrLine = {
 };
 
 export type ScanMatchResult =
-  | { matched: true; line: WrrLine; remainingQty: number }
+  | { matched: true; line: WrrLine; remainingQty: number; unitId?: string }
   | {
       matched: false;
       reason:
@@ -37,7 +37,8 @@ export type ScanMatchResult =
         | "unknown_item"
         | "fully_scanned"
         | "over_quantity"
-        | "flow_type_mismatch";
+        | "flow_type_mismatch"
+        | "duplicate_unit_scan";
     };
 
 /**
@@ -47,16 +48,26 @@ export type ScanMatchResult =
  * 1. invalid_barcode — barcode is empty or whitespace-only
  * 2. unknown_item — no line matches the barcode, or matched line has null itemId
  * 3. flow_type_mismatch — matched line's itemFlowType differs from the WRR's flowType
- * 4. over_quantity — matched line's scannedQty already exceeds expectedQty (corrupted state)
- * 5. fully_scanned — matched line's scannedQty equals expectedQty
+ * 4. duplicate_unit_scan — the wrr_item_unit payload's unit_id was already scanned (Spec 18 §2.2)
+ * 5. over_quantity — matched line's scannedQty already exceeds expectedQty (corrupted state)
+ * 6. fully_scanned — matched line's scannedQty equals expectedQty
  *
  * When multiple lines share the same barcode, the first non-exhausted line is selected.
  * The -1 in remainingQty accounts for the current scan being recorded.
+ *
+ * `alreadyScannedUnitIds` (added for Spec 18 §2.2's per-unit duplicate
+ * detection): when the barcode parses as a `wrr_item_unit` payload and its
+ * `unit_id` is present in this set, the scan is rejected as
+ * `duplicate_unit_scan` before quantity-state checks run — an *exact*
+ * duplicate-label check, not the fuzzy running-count comparison every other
+ * barcode type falls back to. On a successful match, the parsed `unit_id` is
+ * returned on the result so the caller can persist it.
  */
 export function matchScan(
   barcode: string,
   lines: WrrLine[],
-  wrrFlowType?: "vmi" | "trading" | "supplies"
+  wrrFlowType?: "vmi" | "trading" | "supplies",
+  alreadyScannedUnitIds?: Set<string>
 ): ScanMatchResult {
   // Guard: reject empty or whitespace-only barcodes
   if (barcode.trim() === "") {
@@ -65,11 +76,15 @@ export function matchScan(
 
   // Parse JSON wrr_item_unit payload if present (Spec 18 §2.2)
   let parsedWrrItemId: string | null = null;
+  let parsedUnitId: string | null = null;
   if (barcode.trim().startsWith("{")) {
     try {
       const parsed = JSON.parse(barcode.trim());
       if (parsed?.type === "wrr_item_unit" && typeof parsed?.wrr_item_id === "string") {
         parsedWrrItemId = parsed.wrr_item_id;
+        if (typeof parsed?.unit_id === "string") {
+          parsedUnitId = parsed.unit_id;
+        }
       }
     } catch {
       // Not valid JSON — fall through to standard string matching
@@ -111,6 +126,13 @@ export function matchScan(
       return { matched: false, reason: "flow_type_mismatch" };
     }
 
+    // Exact duplicate-label check (§2.2): takes priority over quantity-state
+    // checks, since a duplicate physical label is a rejection independent of
+    // the line's quantity state, not a consequence of it.
+    if (parsedUnitId !== null && alreadyScannedUnitIds?.has(parsedUnitId)) {
+      return { matched: false, reason: "duplicate_unit_scan" };
+    }
+
     // Corrupted/malformed state: scanned already exceeds expected
     if (line.scannedQty > line.expectedQty) {
       return { matched: false, reason: "over_quantity" };
@@ -123,7 +145,12 @@ export function matchScan(
 
     // Line is available for scanning
     const remainingQty = line.expectedQty - line.scannedQty - 1;
-    return { matched: true, line, remainingQty };
+    return {
+      matched: true,
+      line,
+      remainingQty,
+      ...(parsedUnitId !== null ? { unitId: parsedUnitId } : {}),
+    };
   }
 
   // All matching lines are fully scanned

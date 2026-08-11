@@ -14,17 +14,18 @@
 // Self-approval: blocked both here (UX) and in approveRequest/rejectRequest
 //   server actions (authoritative — design.md §5).
 // Offline: Tier 2 — all approval actions are online-only, never queued.
-// TODO: wire to approval_requests + approval_decisions query (getApprovalRequest
-//   already implemented — integration under specs/09-approval-queue tasks.md §6)
 
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ChevronLeft, User, Clock, AlertTriangle } from "lucide-react";
+import { eq, and } from "drizzle-orm";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { getApprovalRequest } from "@/lib/db/queries/approvals";
 import { approveRequest, rejectRequest } from "@/lib/actions/approvals";
+import { listStockView, buildStockAllocationPreview } from "@/lib/db/queries/inventory";
+import { lotLocationBalances } from "@/lib/db/schema/lot_location_balances";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -112,14 +113,39 @@ function expiryCountdown(expiryAt: Date, now: Date = new Date()): string {
   return `Expires in ${diffHours}h`;
 }
 
+// ─── Decision-error helper ─────────────────────────────────────────────────
+// Maps ApprovalActionResult error strings (approveRequest/rejectRequest,
+// self-approval.ts, state-machine.ts) to reviewer-facing copy. Falls back to
+// the raw server message so nothing returned by the action is ever silently
+// dropped.
+
+function getDecisionErrorMessage(reason: string): string {
+  switch (reason) {
+    case "Forbidden":
+      return "You do not have permission to decide on this request.";
+    case "Not found":
+      return "This request could not be found.";
+    case "Request has expired":
+      return "This request has expired and can no longer be decided.";
+    case "self-approval":
+      return "You cannot approve your own request. Another supervisor must review it.";
+    case "missing-actor":
+      return "Could not identify the reviewing user. Please sign in again.";
+    default:
+      return reason;
+  }
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 interface PageProps {
   params: Promise<{ approvalId: string }>;
+  searchParams: Promise<{ error?: string }>;
 }
 
-export default async function ApprovalDetailPage({ params }: PageProps) {
+export default async function ApprovalDetailPage({ params, searchParams }: PageProps) {
   const { approvalId } = await params;
+  const { error: decisionError } = await searchParams;
   const resolver = await createPageResolver();
 
   // Gate on fifo_override.approve — reviewers only.
@@ -150,9 +176,62 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
   // Show decision controls only for pending requests where viewer is not requester.
   const showDecisionControls = request.status === "pending" && !isSelfApproval;
 
-  // Stale indicator — shown when status is pending (snapshot may have diverged).
-  // TODO: query lot_location_balances.version and compare to snapshot.allocation_version.
-  const isStale = request.status === "pending";
+  // Stale indicator — shown when the target's current lot_location_balances
+  // version has moved on from the version captured in the snapshot at
+  // submission time (design.md §5). If the request is pending but we can't
+  // establish the current version (no snapshot, or the balance row no longer
+  // exists), we fail toward "stale" so a reviewer is never shown a false
+  // all-clear.
+  let isStale = request.status === "pending";
+  if (snapshot && request.status === "pending") {
+    const [balanceRow] = await db
+      .select({ version: lotLocationBalances.version })
+      .from(lotLocationBalances)
+      .where(
+        and(
+          eq(lotLocationBalances.lotId, snapshot.lot_id),
+          eq(lotLocationBalances.locationId, snapshot.location_id),
+        ),
+      )
+      .limit(1);
+    isStale = !balanceRow || balanceRow.version !== snapshot.allocation_version;
+  }
+
+  // System FIFO/FEFO recommendation — what the allocation engine (08) would
+  // have picked for this item/qty, for side-by-side comparison against the
+  // override snapshot. Read-only preview; does not reserve anything.
+  type SystemRecommendationLine = {
+    lotNumber: string;
+    locationLabel: string;
+    qtyAllocated: number;
+  };
+  let systemRecommendation: SystemRecommendationLine[] = [];
+  let systemRecommendationStrategy: "FIFO" | "FEFO" | null = null;
+  let systemRecommendationUnavailable = false;
+  if (snapshot) {
+    const stockRows = await listStockView(db);
+    const requestedQtyNum = Number(snapshot.requested_qty);
+    const preview = buildStockAllocationPreview(
+      stockRows,
+      snapshot.item_id,
+      requestedQtyNum,
+    );
+    systemRecommendationStrategy = preview.strategy;
+    if (preview.ok) {
+      systemRecommendation = preview.lines.map((line) => {
+        const match = stockRows.find(
+          (row) => row.lotId === line.lotId && row.locationId === line.locationId,
+        );
+        return {
+          lotNumber: match?.lotNumber ?? line.lotId,
+          locationLabel: match?.locationLabel ?? line.locationId,
+          qtyAllocated: line.qtyAllocated,
+        };
+      });
+    } else {
+      systemRecommendationUnavailable = true;
+    }
+  }
 
   const now = new Date();
 
@@ -165,9 +244,9 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
     const result = await approveRequest(actionResolver, approvalId, reason);
     if (result.ok) {
       redirect(`/approvals/${approvalId}`);
+    } else {
+      redirect(`/approvals/${approvalId}?error=${encodeURIComponent(result.error)}`);
     }
-    // On error the redirect doesn't fire; page re-renders with current state.
-    // Full error surface deferred to Realtime/notification integration (tasks.md §8).
   }
 
   async function handleReject(formData: FormData) {
@@ -180,6 +259,8 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
     const result = await rejectRequest(actionResolver, approvalId, reason);
     if (result.ok) {
       redirect(`/approvals/${approvalId}`);
+    } else {
+      redirect(`/approvals/${approvalId}?error=${encodeURIComponent(result.error)}`);
     }
   }
 
@@ -200,6 +281,27 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
       <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
         {request.requestNumber}
       </h1>
+
+      {/* Decision error — surfaced from approveRequest/rejectRequest via the
+          redirect's ?error= param. Never suppressed: whatever the server
+          action returned is shown verbatim (mapped to friendlier copy for
+          known codes via getDecisionErrorMessage). */}
+      {decisionError && (
+        <div
+          role="alert"
+          className="mt-4 flex items-start gap-3 rounded-md bg-status-held/10 px-4 py-3"
+        >
+          <AlertTriangle
+            size={20}
+            className="mt-0.5 shrink-0 text-status-held"
+            aria-hidden="true"
+          />
+          <p className="font-body text-body-md text-status-held">
+            <span className="font-label text-label uppercase">Error — </span>
+            {getDecisionErrorMessage(decisionError)}
+          </p>
+        </div>
+      )}
 
       {/* Stale indicator — amber warning when target may have changed.
           design.md §5: stale requests should not present an approvable state without warning. */}
@@ -419,10 +521,6 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
       </div>
 
       {/* FIFO allocation context — side-by-side comparison (system recommendation vs override) */}
-      {/* TODO: populate system FIFO recommendation by querying lot_location_balances at
-          snapshot.allocation_version for the affected lot/location. The override side
-          is fully populated from the snapshot; the system side requires the allocation
-          engine query result from 08 (tasks.md §7). */}
       <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-on-surface">
           FIFO Allocation Context
@@ -433,10 +531,12 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
         </p>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          {/* System FIFO recommendation */}
+          {/* System FIFO recommendation — read-only allocation preview from the
+              shared 08 allocation engine (lib/db/queries/inventory.ts), never
+              a duplicate implementation. */}
           <div className="rounded-lg border border-outline-variant/30 p-4">
             <h3 className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
-              System FIFO Order
+              System {systemRecommendationStrategy ?? "FIFO"} Order
             </h3>
             <p className="mt-2 font-body text-body-sm text-text-grey">
               Standard FIFO/FEFO sequence from{" "}
@@ -445,10 +545,34 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
               </span>
               . Lot and quantity determined by earliest expiry/receipt date.
             </p>
-            <p className="mt-2 font-body text-body-sm text-status-neutral italic">
-              {/* TODO: populate from lot_location_balances query at allocation_version */}
-              Recommendation requires allocation engine query — see tasks.md §7.
-            </p>
+            {!snapshot ? (
+              <p className="mt-2 font-body text-body-sm text-status-neutral italic">
+                Snapshot not available — cannot compute recommendation.
+              </p>
+            ) : systemRecommendationUnavailable ? (
+              <p className="mt-2 font-body text-body-sm text-status-held italic">
+                Insufficient available stock for this item to fill the
+                requested quantity via standard {systemRecommendationStrategy}{" "}
+                order.
+              </p>
+            ) : (
+              <dl className="mt-2 space-y-2">
+                {systemRecommendation.map((line, idx) => (
+                  <div
+                    key={`${line.lotNumber}-${line.locationLabel}-${idx}`}
+                    className="flex items-baseline gap-2"
+                  >
+                    <dt className="shrink-0 font-label text-label text-text-grey">
+                      {idx + 1}.
+                    </dt>
+                    <dd className="font-mono text-mono-md text-on-surface">
+                      {line.lotNumber} @ {line.locationLabel} —{" "}
+                      {line.qtyAllocated}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            )}
           </div>
 
           {/* Override request */}

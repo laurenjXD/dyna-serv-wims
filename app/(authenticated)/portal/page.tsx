@@ -17,13 +17,20 @@
 // Offline: no offline caching — every load is a fresh authoritative read
 //   (design.md Task 8, requirements.md R8).
 //
-// TODO: wire to party record from session scope (Task 2 — authorization/context
-//   resolution layer, user_party_scopes assignment resolution).
-// TODO: wire party type badge to actual assigned flow_type from session scope.
+// Party name/flow badge are resolved from the caller's own session party
+// scope (lib/rbac/session.ts AuthorizationContext.partyScopes), never a
+// client-supplied value. Task 2 (specs/22-parties-portal tasks.md — full
+// multi-assignment switcher) is not yet built; until then this (and every
+// other portal route) uses lib/portal/resolve-party-scope.ts's first-active-
+// scope resolution and fails safe (renders nothing) when no scope exists.
 
 import Link from "next/link";
 import { Package, ListChecks, FileText } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
+import { partyScopeMatchesFlow } from "@/lib/rbac/session";
+import { resolveActivePartyScope } from "@/lib/portal/resolve-party-scope";
+import { db } from "@/lib/db/client";
+import { getPartyWithRoles } from "@/lib/db/queries/parties";
 
 // ─── Nav card ─────────────────────────────────────────────────────────────────
 // 2×2 grid cards: bg-surface-white, h-44, rounded-2xl.
@@ -85,25 +92,49 @@ export default async function PortalPage() {
   }
 
   const { context } = resolution;
+  const partyScope = resolveActivePartyScope(context);
 
-  // Per-card capability checks — widget-level gates only (route itself has none).
-  // Checks grants for either global or assigned_party scope; full party-scope
-  // resolution (Task 2) is wired when the authorization layer is built.
-  const hasReportingRead = context.grants.some(
-    (g) => g.resource === "reporting" && g.action === "read",
-  );
-  const hasPickListRead = context.grants.some(
-    (g) => g.resource === "pick_list" && g.action === "read",
-  );
+  // Fail safe: no active party assignment resolves to an explicit empty
+  // state, never a fallback to unscoped/hardcoded data (CLAUDE.md RBAC
+  // principle; requirements.md R1 — party users only see their own scope).
+  if (!partyScope) {
+    return (
+      <div className="mx-auto max-w-container px-8 py-12 text-center">
+        <p className="font-body text-body-md text-text-grey">
+          No party assignment is linked to your account.
+        </p>
+        <p className="mt-2 font-body text-body-sm text-text-grey">
+          Contact your administrator to request portal access.
+        </p>
+      </div>
+    );
+  }
+
+  const party = await getPartyWithRoles(db, partyScope.partyId);
+  const partyName = party?.name ?? "Your Account";
+  const partyFlowType =
+    partyScope.flowType === "vmi"
+      ? "VMI"
+      : partyScope.flowType === "trading"
+        ? "Trading"
+        : null;
+
+  // Per-card capability checks — grant presence AND the flow that matches
+  // this card's surface (design.md §5 VMI-only, §6 Trading-only, §7 either
+  // flow). A null partyScope.flowType matches every non-Supplies flow
+  // (session.ts partyScopeMatchesFlow), consistent with the RLS-side
+  // has_party_scope() semantics this mirrors.
+  const hasReportingRead =
+    context.grants.some(
+      (g) => g.resource === "reporting" && g.action === "read",
+    ) && partyScopeMatchesFlow(partyScope, "vmi");
+  const hasPickListRead =
+    context.grants.some(
+      (g) => g.resource === "pick_list" && g.action === "read",
+    ) && partyScopeMatchesFlow(partyScope, "trading");
   const hasDocumentsRead = context.grants.some(
     (g) => g.resource === "documents" && g.action === "read",
   );
-
-  // TODO: wire party name to party record from session scope (user_party_scopes →
-  //   parties.display_name) — Task 2, authorization/context resolution layer.
-  const partyName = "Acme Corp"; // TODO: resolve from session party scope
-  // TODO: wire flow type badge to actual assigned flow_type (VMI / Trading / Supplies)
-  const partyFlowType = "VMI"; // TODO: resolve from session party scope
 
   return (
     <div className="mx-auto max-w-container">
@@ -117,9 +148,11 @@ export default async function PortalPage() {
               Vendor Management Portal
             </p>
           </div>
-          <span className="inline-flex items-center rounded bg-status-available/10 px-3 py-1 font-label text-label text-status-available">
-            {partyFlowType}
-          </span>
+          {partyFlowType ? (
+            <span className="inline-flex items-center rounded bg-status-available/10 px-3 py-1 font-label text-label text-status-available">
+              {partyFlowType}
+            </span>
+          ) : null}
         </div>
       </div>
 

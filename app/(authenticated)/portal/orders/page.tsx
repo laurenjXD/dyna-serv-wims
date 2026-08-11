@@ -11,26 +11,28 @@
 //     §2 (typography), §9 (office table pattern, Roboto Mono for codes).
 //
 // Surface: Party (office-style glassmorphism per design.md §3.3).
-// Capability gate: pick_list.read.
-//   NOTE: party users hold pick_list.read with assigned_party scope; full
-//   scope resolution (Task 2) pending — requirePermission called without scope.
+// Capability gate: pick_list.read, scoped to the caller's own party + the
+//   'trading' flow (this view is Trading-only per design.md §6).
 // Offline: no offline caching (design.md Task 8, requirements.md R8).
 // Pricing: Trading prices shown on pick list items are FINAL (brand-design-system.md
 //   "Trading/3PL" note). Margin, buying_price, and cost fields are NEVER
 //   rendered — requirements.md R3.4, tasks.md Task 4 query-shape assertion.
 //
-// TODO: wire to pick_lists scoped to session party via
-//   can_access_party_resource('pick_list', 'read', customer_party_id, flow_type)
-//   RLS pattern (resource key is 'pick_list' singular per tasks.md Task 4).
+// Party scope is resolved from lib/rbac/session.ts's
+// AuthorizationContext.partyScopes via lib/portal/resolve-party-scope.ts —
+// never from a client-supplied party_id/flow_type.
 
 import Link from "next/link";
 import { ListChecks, FileText } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
+import { resolveActivePartyScope } from "@/lib/portal/resolve-party-scope";
+import { db } from "@/lib/db/client";
+import { listPartyPickLists } from "@/lib/db/queries/withdrawals";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type OrderStatus = "committed" | "dispatched";
+type OrderStatus = "allocated" | "picked" | "dispatched";
 
 interface OrderRow {
   id: string;
@@ -38,84 +40,56 @@ interface OrderRow {
   date: string;
   itemsCount: number;
   status: OrderStatus;
-  documentId: string | null;
 }
 
 // ─── Status helpers — tokens from tailwind.config.ts, no raw hex ──────────────
-// brand-design-system.md §1.3:
-//   committed  → status-pending (amber) — in progress
-//   dispatched → status-available (green) — fulfilled
+// brand-design-system.md §1.3. Values mirror lib/db/schema/enums.ts's
+// pickListStatusEnum exactly.
 
 const STATUS_CLASSES: Record<OrderStatus, string> = {
-  committed: "bg-status-pending/10 text-status-pending",
+  allocated: "bg-status-pending/10 text-status-pending",
+  picked: "bg-status-pending/10 text-status-pending",
   dispatched: "bg-status-available/10 text-status-available",
 };
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
-  committed: "COMMITTED",
+  allocated: "ALLOCATED",
+  picked: "PICKED",
   dispatched: "DISPATCHED",
 };
-
-// ─── Mock data ────────────────────────────────────────────────────────────────
-// TODO: replace with real pick_lists query scoped to session party.
-// ASSERT: margin, buying_price, selling_price, and inventory_commitments are
-//   NEVER queried or rendered from this view (requirements.md R3.4,
-//   tasks.md Task 4). Items sourced from snapshot fields only — no live lots join.
-
-const MOCK_ORDERS: OrderRow[] = [
-  {
-    id: "order-001",
-    pickListNumber: "PL-2026-011",
-    date: "2026-08-07",
-    itemsCount: 4,
-    status: "dispatched",
-    documentId: "pl-doc-011",
-  },
-  {
-    id: "order-002",
-    pickListNumber: "PL-2026-019",
-    date: "2026-08-08",
-    itemsCount: 7,
-    status: "committed",
-    documentId: null,
-  },
-  {
-    id: "order-003",
-    pickListNumber: "PL-2026-023",
-    date: "2026-08-09",
-    itemsCount: 2,
-    status: "committed",
-    documentId: null,
-  },
-];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function PortalOrdersPage() {
   const resolver = await createPageResolver();
-  // TODO: once Task 2 party-scope resolution is built, pass scope:
-  //   { partyId: sessionPartyId, flowType: sessionFlowType }
-  const permResult = await requirePermission(resolver, "pick_list.read");
+  const resolution = await resolver.getContext();
+
+  if (resolution.kind !== "authorized") {
+    return <PermissionDenied />;
+  }
+
+  const partyScope = resolveActivePartyScope(resolution.context);
+  if (!partyScope) {
+    return <NoPartyScope />;
+  }
+
+  const permResult = await requirePermission(resolver, "pick_list.read", {
+    partyId: partyScope.partyId,
+    flowType: "trading",
+  });
 
   if (permResult.kind !== "authorized") {
-    return (
-      <div className="mx-auto max-w-container px-8 py-12 text-center">
-        <ListChecks
-          size={40}
-          className="mx-auto mb-3 text-text-grey"
-          aria-hidden="true"
-        />
-        <p className="font-body text-body-md text-text-grey">
-          You do not have permission to view orders.
-        </p>
-        <p className="mt-2 font-body text-body-sm text-text-grey">
-          This page requires the{" "}
-          <span className="font-mono text-mono-md">pick_list.read</span>{" "}
-          capability.
-        </p>
-      </div>
-    );
+    return <PermissionDenied />;
   }
+
+  const rawRows = await listPartyPickLists(db, partyScope.partyId);
+  const orders: OrderRow[] = rawRows.map((row) => ({
+    id: row.id,
+    pickListNumber: row.pickListNumber,
+    date: row.createdAt.toISOString().slice(0, 10),
+    itemsCount: row.itemsCount,
+    status: (row.status as OrderStatus) ?? "allocated",
+  }));
 
   return (
     <div className="mx-auto max-w-container">
@@ -133,7 +107,7 @@ export default async function PortalOrdersPage() {
           Epilogue SemiBold uppercase headers, Outfit Regular body,
           Roboto Mono for codes per §9. */}
       <div className="mt-6 overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
-        {MOCK_ORDERS.length === 0 ? (
+        {orders.length === 0 ? (
           <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
             <ListChecks
               size={40}
@@ -169,7 +143,7 @@ export default async function PortalOrdersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/30">
-                {MOCK_ORDERS.map((order) => (
+                {orders.map((order) => (
                   <tr
                     key={order.id}
                     className="hover:bg-surface-light-grey/50"
@@ -194,11 +168,13 @@ export default async function PortalOrdersPage() {
                         {STATUS_LABELS[order.status]}
                       </span>
                     </td>
-                    {/* Documents link — only shown when dispatched and document exists */}
+                    {/* Documents link — shown once dispatched; the documents
+                        list itself is independently party-scoped, so no
+                        document id needs to be threaded through here. */}
                     <td className="px-4 py-3 text-right">
-                      {order.documentId ? (
+                      {order.status === "dispatched" ? (
                         <Link
-                          href={`/portal/documents?ref=${order.documentId}`}
+                          href="/portal/documents"
                           className="inline-flex h-11 items-center gap-2 rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:transition-transform motion-safe:duration-100 motion-safe:active:scale-[0.97]"
                         >
                           <FileText size={16} aria-hidden="true" />
@@ -221,6 +197,48 @@ export default async function PortalOrdersPage() {
       {/* Trading price note — PRODUCT/2026-08-09: Trading prices shown on
           pick list documents are FINAL. No price/cost columns are rendered
           in this orders table — prices live in the document view only. */}
+    </div>
+  );
+}
+
+// ─── Denial states ──────────────────────────────────────────────────────────
+
+function PermissionDenied() {
+  return (
+    <div className="mx-auto max-w-container px-8 py-12 text-center">
+      <ListChecks
+        size={40}
+        className="mx-auto mb-3 text-text-grey"
+        aria-hidden="true"
+      />
+      <p className="font-body text-body-md text-text-grey">
+        You do not have permission to view orders.
+      </p>
+      <p className="mt-2 font-body text-body-sm text-text-grey">
+        This page requires the{" "}
+        <span className="font-mono text-mono-md">pick_list.read</span>{" "}
+        capability.
+      </p>
+    </div>
+  );
+}
+
+// Fail-safe empty state: no active party scope resolved for this session —
+// never falls through to an unscoped query (see resolve-party-scope.ts).
+function NoPartyScope() {
+  return (
+    <div className="mx-auto max-w-container px-8 py-12 text-center">
+      <ListChecks
+        size={40}
+        className="mx-auto mb-3 text-text-grey"
+        aria-hidden="true"
+      />
+      <p className="font-body text-body-md text-text-grey">
+        No party assignment is linked to your account.
+      </p>
+      <p className="mt-2 font-body text-body-sm text-text-grey">
+        Contact your administrator to request portal access.
+      </p>
     </div>
   );
 }

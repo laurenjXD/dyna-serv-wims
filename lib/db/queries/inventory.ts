@@ -69,6 +69,56 @@ export async function listStockView(db: DbLike): Promise<StockViewRow[]> {
     .orderBy(asc(items.code), asc(lots.expiryDate), asc(lots.createdAt))) as StockViewRow[];
 }
 
+export type PartyVmiInventoryRow = {
+  id: string;
+  itemCode: string;
+  itemName: string;
+  lotNumber: string;
+  locationLabel: string;
+  qtyOnHand: number;
+  lotStatus: string;
+};
+
+/**
+ * Party Portal — VMI inventory-position read, scoped to the caller's own
+ * party.
+ *
+ * Traceability: specs/22-parties-portal/design.md §5, tasks.md Task 3 —
+ * "Build the scoped lot_location_balances read joined to parent lots,
+ * using exactly the can_access_party_resource('lot_location_balances',
+ * 'read', lots.owner_party_id, 'vmi') RLS pattern." `flow_type = 'vmi'`
+ * and `owner_party_id = partyId` are both applied here at the query-shape
+ * level; the caller MUST have already authorized `reporting.read` scoped
+ * to this exact partyId via requirePermission before invoking this.
+ *
+ * Never selects buying_price, selling_price, default_supplier_party_id, or
+ * min_reorder_level (requirements.md R2), and never queries
+ * inventory_transactions (requirements.md R2.4).
+ */
+export async function listPartyVmiInventory(
+  db: DbLike,
+  partyId: string,
+): Promise<PartyVmiInventoryRow[]> {
+  return (await db
+    .select({
+      id: lotLocationBalances.id,
+      itemCode: items.code,
+      itemName: items.name,
+      lotNumber: lots.lotNumber,
+      locationLabel: locations.label,
+      qtyOnHand: lotLocationBalances.qtyRemaining,
+      lotStatus: lots.status,
+    })
+    .from(lotLocationBalances)
+    .innerJoin(lots, eq(lotLocationBalances.lotId, lots.id))
+    .innerJoin(items, eq(lots.itemId, items.id))
+    .innerJoin(locations, eq(lotLocationBalances.locationId, locations.id))
+    .where(
+      and(eq(lots.flowType, "vmi"), eq(lots.ownerPartyId, partyId)),
+    )
+    .orderBy(asc(items.code), asc(lots.lotNumber))) as PartyVmiInventoryRow[];
+}
+
 /**
  * Derives the standard allocation plan for one item without reserving stock.
  * Commitment must always re-query and revalidate this plan inside its own

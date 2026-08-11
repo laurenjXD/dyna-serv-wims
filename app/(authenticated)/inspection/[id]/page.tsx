@@ -10,74 +10,54 @@
 //     no glassmorphism on floor, Level 2 for solid cards), §1.5 (WCAG AAA for
 //     time-critical floor text), §2 (no text <16px on floor)
 //
-// Surface: FLOOR (bg-brand-navy). Permission gate: inspection.perform.
+// Surface: FLOOR (bg-brand-navy). Permission gate: inspection.perform (view);
+// inspection.resolve (submit a disposition — supervisor-only two-person
+// separation per 02-rbac-roles §3.2 and lib/actions/transfers.ts's
+// resolveInspectionCase doc comment). A warehouse_staff session holding only
+// inspection.perform can view case details but the disposition form below is
+// hidden entirely for it — it never reaches the DOM, since fail-closed
+// enforcement here is not just "disable the button."
 //
-// Disposition options correspond to inspection_dispositions.disposition_type —
-// design.md §6.3: store | inspect_further (→ quarantine/further review) |
-// flag_for_review (→ hold). Final backend action is a placeholder server
-// action with redirect.
-//
-// All data is mocked. TODO: wire to real inspection_cases query by id.
+// Disposition options correspond to inspection_dispositions.disposition_type
+// (design.md §6.1, §6.3). The three UI options resolve to a context-specific
+// DB value via resolveDispositionType below, since "store"/"return_to_stock"
+// and "return_to_party"/"reject" are not interchangeable between the inbound
+// and transfer contexts (lib/transfer/inspection-state.ts's
+// validateInspectionDisposition rejects the wrong-context pairing):
+//   store_as_is     → inbound: 'store'      | transfer: 'return_to_stock'
+//   inspect_further → 'hold' (valid for both contexts)
+//   flag_for_review → inbound: 'quarantine' | transfer: 'reject'
 
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
-
-// ─── Mock data (TODO: wire to real inspection_cases query) ───────────────────
-
-interface InspectionCaseDetail {
-  id: string;
-  contextType: "inbound" | "transfer";
-  lotNumber: string;
-  itemName: string;
-  itemCode: string;
-  locationCode: string;
-  qtyToInspect: number;
-  unit: string;
-  sourceRef: string;
-  status: "open" | "passed" | "failed" | "cancelled";
-  openedAt: string;
-}
-
-// TODO: replace with real DB query — SELECT from inspection_cases JOIN items,
-// lots, locations WHERE id = $1 AND (RLS enforces party/flow scope).
-function getMockInspectionCase(id: string): InspectionCaseDetail | null {
-  const cases: InspectionCaseDetail[] = [
-    {
-      id: "mock-ic-001",
-      contextType: "transfer",
-      lotNumber: "LOT-2026-0042",
-      itemName: "Hydraulic Coupling Assembly",
-      itemCode: "HYD-CUP-001",
-      locationCode: "LOC-A03",
-      qtyToInspect: 12,
-      unit: "PCS",
-      sourceRef: "TRF-2026-001",
-      status: "open",
-      openedAt: new Date().toISOString(),
-    },
-    {
-      id: "mock-ic-002",
-      contextType: "inbound",
-      lotNumber: "LOT-2026-0031",
-      itemName: "Pressure Sensor Unit",
-      itemCode: "PRE-SEN-007",
-      locationCode: "INSPECT-01",
-      qtyToInspect: 5,
-      unit: "PCS",
-      sourceRef: "WRR-2026-008",
-      status: "open",
-      openedAt: new Date().toISOString(),
-    },
-  ];
-  return cases.find((c) => c.id === id) ?? null;
-}
+import { db } from "@/lib/db/client";
+import { getInspectionCase } from "@/lib/db/queries/transfers";
+import { resolveInspectionCase } from "@/lib/actions/transfers";
 
 // ─── Disposition options — design.md §6.3 ────────────────────────────────────
 
 type DispositionType = "store_as_is" | "inspect_further" | "flag_for_review";
+
+// Maps the floor's three simplified disposition choices to the real
+// inspection_dispositions.disposition_type value for this case's context.
+function resolveDispositionType(
+  contextType: string,
+  uiValue: DispositionType,
+): string {
+  switch (uiValue) {
+    case "store_as_is":
+      return contextType === "inbound" ? "store" : "return_to_stock";
+    case "inspect_further":
+      return "hold";
+    case "flag_for_review":
+      return contextType === "inbound" ? "quarantine" : "reject";
+    default:
+      return "hold";
+  }
+}
 
 interface DispositionOption {
   value: DispositionType;
@@ -118,7 +98,7 @@ const DISPOSITION_OPTIONS: DispositionOption[] = [
 
 interface PageProps {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ disposition?: string; result?: string }>;
+  searchParams: Promise<{ disposition?: string; result?: string; reason?: string }>;
 }
 
 export default async function InspectionDetailPage({
@@ -126,31 +106,37 @@ export default async function InspectionDetailPage({
   searchParams,
 }: PageProps) {
   const { id } = await params;
-  const { disposition: selectedDisposition, result } = await searchParams;
+  const { disposition: selectedDisposition, result, reason: errorReason } = await searchParams;
 
   const resolver = await createPageResolver();
 
-  // Gate: inspection.perform required.
+  // Gate: inspection.perform required to view.
   const permResult = await requirePermission(resolver, "inspection.perform");
   if (permResult.kind !== "authorized") {
     notFound();
   }
 
-  // TODO: replace mock lookup with real DB query + notFound() on miss.
-  const inspection = getMockInspectionCase(id);
+  // Gate: inspection.resolve required to submit a disposition — two-person
+  // separation (02-rbac-roles §3.2). warehouse_staff (inspection.perform
+  // only) can view but not resolve; supervisors hold inspection.resolve.
+  const canResolve =
+    (await requirePermission(resolver, "inspection.resolve")).kind === "authorized";
+
+  const inspection = await getInspectionCase(db, id);
   if (!inspection) {
     notFound();
   }
 
-  // Only allow submission when case is open.
+  // Only allow submission when case is open (and the session can resolve it).
   const isOpen = inspection.status === "open";
 
-  // ─── Placeholder server action ─────────────────────────────────────────────
-  // TODO: wire to resolveInspectionCase(resolver, db, id, { disposition, ... })
-  // which updates inspection_cases.status and inserts inspection_dispositions.
+  // ─── Server action — resolveInspectionCase(resolver, id, { disposition }) ──
+  // Re-checks inspection.resolve itself (fail-closed even if a client somehow
+  // POSTs directly to this action with the form hidden).
   async function handleSubmitInspection(formData: FormData): Promise<void> {
     "use server";
-    const disposition = formData.get("disposition") as string | null;
+    const dispositionValue = ((formData.get("disposition") as string | null) ??
+      "store_as_is") as DispositionType;
     const inspectedQty = parseInt(
       (formData.get("inspectedQty") as string | null) ?? "0",
       10
@@ -163,19 +149,37 @@ export default async function InspectionDetailPage({
       (formData.get("failedQty") as string | null) ?? "0",
       10
     );
-    const notes = (formData.get("notes") as string | null) ?? "";
+    const notesInput = (formData.get("notes") as string | null) ?? "";
 
-    // TODO: call real server action here once inspection_cases tables and
-    // resolveInspectionCase action are implemented per design.md §6.3.
-    // Placeholder — redirect back with result for now.
-    void { disposition, inspectedQty, passedQty, failedQty, notes };
-    redirect(`/inspection/${id}?result=submitted`);
+    const actionResolver = await createPageResolver();
+    const dispositionType = resolveDispositionType(
+      inspection!.contextType,
+      dispositionValue,
+    );
+    const combinedNotes =
+      `Passed: ${passedQty}, Failed: ${failedQty}` +
+      (notesInput ? ` — ${notesInput}` : "");
+
+    const submitResult = await resolveInspectionCase(actionResolver, id, {
+      dispositionType,
+      quantityAffected: inspectedQty,
+      notes: combinedNotes,
+    });
+
+    if (submitResult.ok) {
+      redirect(`/inspection/${id}?result=submitted`);
+    } else {
+      redirect(
+        `/inspection/${id}?result=error&reason=${encodeURIComponent(submitResult.errors.join(", "))}`
+      );
+    }
   }
 
   // Submission success flash — brand-design-system.md §9: scan/result feedback
   // is a solid color block, not a gradient. Full-screen style for high-priority
   // floor feedback.
   const showSuccess = result === "submitted";
+  const showError = result === "error";
 
   return (
     // Floor screen — solid bg-brand-navy, no glassmorphism, 16px padding.
@@ -194,9 +198,11 @@ export default async function InspectionDetailPage({
             <ChevronLeft size={20} strokeWidth={2} aria-hidden="true" />
             <span>Inspections</span>
           </Link>
-          {/* Inspection reference — Roboto Mono per §9 */}
+          {/* Source reference — Roboto Mono per §9. Raw sourceRefType/sourceRefId;
+              inspection_cases.source_ref_id is a polymorphic reference (design.md §2)
+              with no formatted business document number resolved here. */}
           <span className="font-mono text-mono-lg text-white/70">
-            {inspection.sourceRef}
+            {inspection.sourceRefType}:{inspection.sourceRefId.slice(0, 8)}
           </span>
         </div>
       </div>
@@ -220,6 +226,22 @@ export default async function InspectionDetailPage({
           </div>
         )}
 
+        {/* Error feedback — mirrors success block styling with held-status color */}
+        {showError && (
+          <div
+            role="alert"
+            aria-live="assertive"
+            className="mb-4 rounded-xl bg-status-held border border-status-held px-4 py-4"
+          >
+            <p className="font-heading font-bold text-headline-md text-white">
+              Submission failed
+            </p>
+            <p className="mt-1 font-body text-body-md text-white/80">
+              {errorReason ?? "Could not record this inspection. Try again."}
+            </p>
+          </div>
+        )}
+
         {/* Item context card — solid surface, Level 2 shadow, no glassmorphism */}
         <div className="rounded-xl bg-white/10 border border-white/20 p-4">
           {/* Item name — Fira Sans SemiBold, headline-md; floor min 16px §2 */}
@@ -229,6 +251,10 @@ export default async function InspectionDetailPage({
           {/* Item code — Roboto Mono per §9 */}
           <p className="mt-1 font-mono text-mono-lg text-white/70">
             {inspection.itemCode}
+          </p>
+          {/* Party — VMI cases carry an owner party; Trading/Supplies too (partyId is required) */}
+          <p className="mt-1 font-body text-body-md text-white/70">
+            {inspection.partyName}
           </p>
           {/* Lot + location context — body-md (16px) per §2 floor minimum */}
           <div className="mt-3 grid grid-cols-2 gap-3">
@@ -241,13 +267,13 @@ export default async function InspectionDetailPage({
             <div>
               <p className="font-label text-body-md text-white/50">Location</p>
               <p className="font-mono text-mono-lg text-white">
-                {inspection.locationCode}
+                {inspection.locationLabel ?? "Unavailable"}
               </p>
             </div>
             <div>
               <p className="font-label text-body-md text-white/50">Qty to Inspect</p>
               <p className="font-mono text-mono-lg text-white">
-                {inspection.qtyToInspect} {inspection.unit}
+                {inspection.qtyToInspect} {inspection.itemUom}
               </p>
             </div>
             <div>
@@ -259,8 +285,23 @@ export default async function InspectionDetailPage({
           </div>
         </div>
 
-        {/* Inspection form — only shown when case is open */}
-        {isOpen ? (
+        {/* Inspection form — only shown when case is open AND this session
+            holds inspection.resolve (two-person separation — see top-of-file
+            comment). A warehouse_staff session that opened this case never
+            gets the resolve form, even while the case is open. */}
+        {isOpen && !canResolve && (
+          <div className="mt-4 rounded-xl bg-white/10 border border-white/20 p-4">
+            <p className="font-body text-body-md text-white/70">
+              This case is open and awaiting a supervisor&apos;s resolution.
+              You do not have the{" "}
+              <span className="font-mono text-mono-md text-white">
+                inspection.resolve
+              </span>{" "}
+              capability required to record a disposition.
+            </p>
+          </div>
+        )}
+        {isOpen && canResolve ? (
           <form action={handleSubmitInspection} className="mt-4 flex flex-col gap-4">
             {/* ── Disposition selection — large tap targets per §3 ───────────── */}
             <fieldset>
@@ -426,7 +467,7 @@ export default async function InspectionDetailPage({
               Submit Inspection
             </button>
           </form>
-        ) : (
+        ) : !isOpen ? (
           // Non-open case — read-only view
           <div className="mt-4 rounded-xl bg-white/10 border border-white/20 p-4">
             <p className="font-body text-body-md text-white/70">
@@ -445,7 +486,7 @@ export default async function InspectionDetailPage({
               Back to Queue
             </Link>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

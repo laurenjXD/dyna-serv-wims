@@ -84,6 +84,10 @@ export type DispatchPickListResult =
   | { ok: true }
   | { ok: false; errors: string[] };
 
+export type MarkPickListPickedResult =
+  | { ok: true }
+  | { ok: false; errors: string[] };
+
 export type ListOutgoingLedgerResult =
   | { rows: OutgoingLedgerRow[]; total: number }
   | { ok: false; errors: string[] };
@@ -234,6 +238,64 @@ export async function commitWithdrawal(
 
     // Return authoritative pick-list reference (design.md §6 step 7)
     return { ok: true, pickListId } as const;
+  });
+
+  if (rlsResult.kind === "unauthenticated") {
+    return { ok: false, errors: ["forbidden"] };
+  }
+  return rlsResult.value;
+}
+
+// ---------------------------------------------------------------------------
+// markPickListPicked — Stage 1 floor completion marker
+//
+// Transitions a pick_list from 'allocated' to 'picked' once the floor user
+// has confirmed all committed lines against the physical shelf. This is a
+// UX/tracking transition only — design.md §7 and dispatchPickList's own
+// idempotency guard intentionally do not require 'picked' as a precondition
+// for dispatch (R7.8: dispatch proceeds directly once scans are accepted),
+// so a pick list may still be dispatched directly from 'allocated'.
+//
+// Requires pick_list.execute capability (same gate as the floor pick page).
+// Returns { ok: false, errors: ['not_found'] } when the pick list is missing.
+// Returns { ok: false, errors: ['invalid_status'] } when not currently
+// 'allocated' (idempotency / stale-state guard).
+// ---------------------------------------------------------------------------
+
+export async function markPickListPicked(
+  resolver: RequestAuthorizationResolver,
+  pickListId: string,
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+): Promise<MarkPickListPickedResult> {
+  const perm = await requirePermission(resolver, "pick_list.execute");
+  if (perm.kind !== "authorized") {
+    return { ok: false, errors: ["forbidden"] };
+  }
+
+  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
+
+    const rows = (await db
+      .select({ id: pickLists.id, status: pickLists.status })
+      .from(pickLists)
+      .where(eq(pickLists.id, pickListId))
+      .limit(1)) as AnyRecord[];
+
+    if (rows.length === 0) {
+      return { ok: false as const, errors: ["not_found"] };
+    }
+
+    const current = rows[0];
+    if (current.status !== "allocated") {
+      return { ok: false as const, errors: ["invalid_status"] };
+    }
+
+    await db
+      .update(pickLists)
+      .set({ status: "picked", updatedAt: new Date() })
+      .where(eq(pickLists.id, pickListId));
+
+    return { ok: true as const };
   });
 
   if (rlsResult.kind === "unauthenticated") {

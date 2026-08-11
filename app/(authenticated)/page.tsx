@@ -19,22 +19,30 @@
 // This is a Server Component: it resolves the session and user's display
 // name server-side, following the same pattern as app/(authenticated)/receiving/page.tsx.
 //
-// KNOWN SEAM GAP (flag for integration-reviewer): all count data below is
-// zeroed placeholder. Real aggregation queries are owned by:
-//   openWrrs         → 07-incoming-receiving
-//   openPickLists    → 08-outgoing-withdrawal-and-two-stage-commitment
-//   pendingTransfers → 11-transfer-and-inspection
-//   pendingApprovals → 09-approval-queue
-// Wire each when its owning feature's backend query is available.
+// Task-count aggregates below are a read-only aggregate pulled from those
+// features' own capability-gated queries — this page invents no data or
+// capability of its own. Each count is computed only when the session holds
+// the matching capability (mirroring the gate each query's own list-page
+// call site already uses), so a user without e.g. fifo_override.approve
+// never even triggers listPendingApprovalRequests:
+//   openWrrs         → receiving.view       → lib/db/queries/receiving.ts
+//   openPickLists    → pick_list.read       → lib/db/queries/withdrawals.ts
+//   pendingTransfers → transfer.view        → lib/db/queries/transfers.ts
+//   pendingApprovals → fifo_override.approve → lib/db/queries/approvals.ts
 
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { PackageCheck, ListChecks, ArrowLeftRight, ClipboardList, ShieldAlert, Truck } from "lucide-react";
 import { eq } from "drizzle-orm";
 import { createPageResolver } from "@/lib/auth/page-resolver";
+import { requirePermission } from "@/lib/rbac/guard";
 import { resolveSessionPresentationTier } from "@/lib/shell/surface";
 import { db } from "@/lib/db/client";
 import { userProfiles } from "@/lib/db/schema";
+import { listWrrDocuments } from "@/lib/db/queries/receiving";
+import { listPickLists } from "@/lib/db/queries/withdrawals";
+import { listTransferRequests } from "@/lib/db/queries/transfers";
+import { listPendingApprovalRequests } from "@/lib/db/queries/approvals";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -352,11 +360,49 @@ export default async function Home() {
   const greeting = getGreetingPeriod(now.getHours());
   const dateString = getTodayString();
 
-  // Placeholder counts — TODO: wire to real aggregation queries
-  const openWrrs = 0; // TODO: wire to real query (07-incoming-receiving)
-  const openPickLists = 0; // TODO: wire to real query (08-outgoing-withdrawal)
-  const pendingTransfers = 0; // TODO: wire to real query (11-transfer-and-inspection)
-  const pendingApprovals = 0; // TODO: wire to real query (09-approval-queue)
+  // Task-count aggregates — capability-gated per-feature queries. Each count
+  // is computed only when the session holds the matching capability; the
+  // query itself is never invoked otherwise (not just hidden in the UI).
+  // `limit: 1` since only `total` is needed, not the row list.
+
+  const openWrrs =
+    (await requirePermission(resolver, "receiving.view")).kind === "authorized"
+      ? (
+          await listWrrDocuments(db, {
+            limit: 1,
+            offset: 0,
+            status: "receiving_in_progress",
+          })
+        ).total
+      : 0;
+
+  const openPickLists =
+    (await requirePermission(resolver, "pick_list.read")).kind === "authorized"
+      ? (
+          await listPickLists(db, {
+            limit: 1,
+            offset: 0,
+            status: "allocated",
+          })
+        ).total
+      : 0;
+
+  const pendingTransfers =
+    (await requirePermission(resolver, "transfer.view")).kind === "authorized"
+      ? (
+          await listTransferRequests(db, {
+            limit: 1,
+            offset: 0,
+            status: "staged",
+          })
+        ).total
+      : 0;
+
+  // Reuses hasApprovalAccess (already resolved above from the same session
+  // context) rather than re-deriving the fifo_override.approve check.
+  const pendingApprovals = hasApprovalAccess
+    ? (await listPendingApprovalRequests(db, { limit: 1, offset: 0 })).total
+    : 0;
 
   if (tier === "floor") {
     return (

@@ -282,7 +282,7 @@ export default async function WrrDetailPage({ params }: PageProps) {
                       <WRRUnitLabelGenerator
                         wrrItemId={item.id}
                         wrrNumber={wrr.wrrNumber}
-                        itemCode={item.itemId ?? item.lotNumber}
+                        itemCode={item.itemCode ?? item.lotNumber}
                         lotNumber={item.lotNumber}
                         expectedQty={item.expectedQty}
                       />

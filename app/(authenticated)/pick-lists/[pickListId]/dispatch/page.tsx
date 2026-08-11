@@ -29,55 +29,29 @@
 // Surface: FLOOR. Designed at 375px viewport first. No glassmorphism.
 // Permission gate: dispatch.execute
 //
-// Mock data: summary items are hardcoded with // TODO markers.
+// Data source: lib/db/queries/withdrawals.ts getPickList + getPickListItems
+// for line items, and a minimal direct parties lookup (id/name only) for the
+// customer party name — no mock data. The party name lookup is a raw,
+// unfiltered select rather than the fully-gated getPartyWithRoles helper
+// (which requires its own parties.read capability check per its doc
+// comment): this page is already permission-gated on dispatch.execute for
+// this exact pick list, and only exposes the single related party's display
+// name, mirroring the pattern already used by floor pages elsewhere (e.g.
+// receiving's floor page does its own direct location lookups rather than
+// re-invoking a separately-gated query helper).
 // The actual dispatch command (dispatchPickList) is wired. On success the
 // user is returned to /outgoing so the next pick can begin immediately.
 
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
 import { ChevronLeft, AlertTriangle, Truck, Package } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
-import { getPickList } from "@/lib/db/queries/withdrawals";
+import { parties } from "@/lib/db/schema/parties";
+import { getPickList, getPickListItems } from "@/lib/db/queries/withdrawals";
 import { dispatchPickList } from "@/lib/actions/withdrawals";
-
-// ─── Mock summary data ────────────────────────────────────────────────────────
-// TODO: wire to pick_list + pick_list_items query
-// When live, resolve partyName from parties table via pickList.customerPartyId,
-// and items from pick_list_items where pick_list_id = pickListId.
-
-interface MockDispatchItem {
-  itemName: string;
-  lotNumber: string;
-  qty: number;
-}
-
-const MOCK_DISPATCH_ITEMS: MockDispatchItem[] = [
-  {
-    itemName: "Wire Marine 4 AWG x 6 ft",
-    lotNumber: "LOT-20260801-001",
-    qty: 4,
-  },
-  {
-    itemName: 'Hydraulic Coupling 3/4"',
-    lotNumber: "LOT-20260731-008",
-    qty: 5,
-  },
-  {
-    itemName: "Gate Valve 1 Inch",
-    lotNumber: "LOT-20260728-012",
-    qty: 3,
-  },
-  {
-    itemName: "Elbow Fitting 90 Degree",
-    lotNumber: "LOT-20260715-003",
-    qty: 2,
-  },
-];
-
-// TODO: resolve from parties table via pickList.customerPartyId
-const MOCK_PARTY_NAME = "Gulf Petroleum Services LLC";
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -120,6 +94,15 @@ export default async function DispatchConfirmationPage({
   if (!pickList) {
     notFound();
   }
+
+  const items = await getPickListItems(db, pickListId);
+
+  const partyRows = (await db
+    .select({ id: parties.id, name: parties.name })
+    .from(parties)
+    .where(eq(parties.id, pickList.customerPartyId))
+    .limit(1)) as Array<{ id: string; name: string }>;
+  const partyName = partyRows[0]?.name ?? "Unknown Party";
 
   const alreadyDispatched = pickList.status === "dispatched";
 
@@ -244,8 +227,7 @@ export default async function DispatchConfirmationPage({
             />
             <div className="min-w-0">
               <p className="font-heading text-headline-md font-semibold text-on-surface">
-                {/* TODO: resolve from parties table via pickList.customerPartyId */}
-                {MOCK_PARTY_NAME}
+                {partyName}
               </p>
               <div className="mt-1 flex items-center gap-2">
                 {/* Flow type badge — color + text per §1.3, icon ensures non-color signal */}
@@ -255,7 +237,7 @@ export default async function DispatchConfirmationPage({
                   {pickList.flowType.toUpperCase()}
                 </span>
                 <span className="font-body text-body-md text-text-grey">
-                  {MOCK_DISPATCH_ITEMS.length} items
+                  {items.length} items
                 </span>
               </div>
             </div>
@@ -263,9 +245,14 @@ export default async function DispatchConfirmationPage({
 
           {/* Items list — one per line, card-based not a table (§9 floor rule) */}
           <div className="mt-4 space-y-2">
-            {MOCK_DISPATCH_ITEMS.map((item, idx) => (
+            {items.length === 0 && (
+              <p className="font-body text-body-md text-text-grey">
+                No committed lines were found for this pick list.
+              </p>
+            )}
+            {items.map((item) => (
               <div
-                key={idx}
+                key={item.id}
                 className="flex items-start gap-2 rounded-xl border border-outline-variant/30 bg-surface-light-grey px-3 py-2"
               >
                 <Package
@@ -276,7 +263,7 @@ export default async function DispatchConfirmationPage({
                 />
                 <div className="min-w-0 flex-1">
                   <p className="font-body text-body-md text-text-grey">
-                    {item.itemName}
+                    {item.itemDescription ?? item.itemCode}
                   </p>
                   <p className="font-mono text-mono-lg text-text-grey">
                     {item.lotNumber} — Qty: {item.qty}

@@ -19,8 +19,8 @@
 // v1 resolution (tasks.md 2026-08-08): transfer rows are excluded from the
 // Outgoing Ledger — only movement_type = 'pick' rows are included.
 
-import { eq, asc, sql } from "drizzle-orm";
-import { pickLists } from "@/lib/db/schema/pick_lists";
+import { eq, asc, desc, sql } from "drizzle-orm";
+import { pickLists, pickListItems } from "@/lib/db/schema/pick_lists";
 import { inventoryTransactions } from "@/lib/db/schema/transactions";
 
 // Minimal structural type that both the real Drizzle db instance and test
@@ -41,6 +41,22 @@ export type PickListRow = {
   flowType: string;
   createdAt: Date;
   createdBy: string;
+};
+
+export type PickListItemRow = {
+  id: string;
+  itemId: string;
+  itemCode: string;
+  customerItemCode: string | null;
+  itemDescription: string | null;
+  lotId: string;
+  lotNumber: string;
+  locationId: string;
+  locationLabel: string;
+  qty: number;
+  spq: number;
+  numberOfBoxes: number;
+  unitPrice: string | null;
 };
 
 export type OutgoingLedgerRow = {
@@ -111,6 +127,61 @@ export async function listPickLists(
 }
 
 // ---------------------------------------------------------------------------
+// listPartyPickLists
+//
+// Party Portal — pick_lists read scoped to the caller's own party.
+//
+// Traceability: specs/22-parties-portal/design.md §6, tasks.md Task 4 —
+// "Build the pick_lists read filtered to customer_party_id, using
+// can_access_party_resource('pick_list', 'read', customer_party_id,
+// flow_type)." The caller MUST have already authorized `pick_list.read`
+// scoped to this exact partyId/flowType via requirePermission before
+// invoking this; this function applies the customer_party_id filter at the
+// query-shape level as the data-access-side half of that same boundary.
+//
+// itemsCount is derived from a count of pick_list_items — never a live
+// join to lots (requirements.md R3.3: snapshot fields only).
+// ---------------------------------------------------------------------------
+
+export type PartyPickListRow = {
+  id: string;
+  pickListNumber: string;
+  status: string;
+  createdAt: Date;
+  itemsCount: number;
+};
+
+export async function listPartyPickLists(
+  db: DbLike,
+  customerPartyId: string,
+): Promise<PartyPickListRow[]> {
+  const rows = (await db
+    .select({
+      id: pickLists.id,
+      pickListNumber: pickLists.pickListNumber,
+      status: pickLists.status,
+      createdAt: pickLists.createdAt,
+      itemsCount: sql<string>`count(${pickListItems.id})`,
+    })
+    .from(pickLists)
+    .leftJoin(pickListItems, eq(pickListItems.pickListId, pickLists.id))
+    .where(eq(pickLists.customerPartyId, customerPartyId))
+    .groupBy(pickLists.id)
+    .orderBy(desc(pickLists.createdAt))) as Array<{
+    id: string;
+    pickListNumber: string;
+    status: string;
+    createdAt: Date;
+    itemsCount: string;
+  }>;
+
+  return rows.map((row) => ({
+    ...row,
+    itemsCount: Number(row.itemsCount),
+  }));
+}
+
+// ---------------------------------------------------------------------------
 // getPickList
 //
 // Fetches one pick_list by id.
@@ -136,6 +207,44 @@ export async function getPickList(
     .limit(1)) as PickListRow[];
 
   return rows.length > 0 ? rows[0] : null;
+}
+
+// ---------------------------------------------------------------------------
+// getPickListItems
+//
+// Fetches the committed line items for one pick_list, ordered by createdAt
+// ASC (insertion order from Stage 1 commitWithdrawal). Used by the Stage 1
+// pick-execution floor screen and the Stage 2 dispatch confirmation screen
+// as the real data source for line items — replaces prior hardcoded mocks.
+//
+// Authorization is enforced at the call site — not re-checked here.
+// ---------------------------------------------------------------------------
+
+export async function getPickListItems(
+  db: DbLike,
+  pickListId: string,
+): Promise<PickListItemRow[]> {
+  const rows = (await db
+    .select({
+      id: pickListItems.id,
+      itemId: pickListItems.itemId,
+      itemCode: pickListItems.itemCode,
+      customerItemCode: pickListItems.customerItemCode,
+      itemDescription: pickListItems.itemDescription,
+      lotId: pickListItems.lotId,
+      lotNumber: pickListItems.lotNumber,
+      locationId: pickListItems.locationId,
+      locationLabel: pickListItems.locationLabel,
+      qty: pickListItems.qty,
+      spq: pickListItems.spq,
+      numberOfBoxes: pickListItems.numberOfBoxes,
+      unitPrice: pickListItems.unitPrice,
+    })
+    .from(pickListItems)
+    .where(eq(pickListItems.pickListId, pickListId))
+    .orderBy(asc(pickListItems.createdAt))) as PickListItemRow[];
+
+  return rows;
 }
 
 // ---------------------------------------------------------------------------

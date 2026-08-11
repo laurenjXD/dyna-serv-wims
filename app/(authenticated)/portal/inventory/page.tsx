@@ -11,27 +11,29 @@
 //     §2 (typography), §9 (office table pattern, Roboto Mono for numeric cols).
 //
 // Surface: Party (office-style glassmorphism per design.md §3.3).
-// Capability gate: reporting.read.
-//   NOTE: party users hold reporting.read with assigned_party scope; full
-//   scope resolution (user_party_scopes → partyId + flowType) is Task 2 of
-//   spec 22 — requirePermission is called without scope as a starting point
-//   pending that layer.
+// Capability gate: reporting.read, scoped to the caller's own party + the
+//   'vmi' flow (this view is VMI-only per design.md §5).
 // Offline: no offline caching (design.md Task 8, requirements.md R8).
 // Supplies-flow: NEVER rendered — design.md constraints, requirements.md R1.
 //
-// TODO: wire to lot_location_balances scoped to session party via
-//   can_access_party_resource('lot_location_balances', 'read', lots.owner_party_id, 'vmi')
-//   RLS pattern per design.md §5 (Task 3).
-// TODO: wire Export CSV button to server action scoped to session party.
+// Party scope is resolved from lib/rbac/session.ts's
+// AuthorizationContext.partyScopes via lib/portal/resolve-party-scope.ts —
+// never from a client-supplied party_id/flow_type. Task 2's full
+// multi-assignment switcher is not yet built; see that helper's docstring.
 
 import { Package, Download } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
+import { resolveActivePartyScope } from "@/lib/portal/resolve-party-scope";
+import { db } from "@/lib/db/client";
+import {
+  listPartyVmiInventory,
+  type PartyVmiInventoryRow,
+} from "@/lib/db/queries/inventory";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type FlowType = "VMI" | "Trading";
-type LotStatus = "available" | "held" | "depleted";
+type LotStatus = "staged" | "available" | "quarantined" | "depleted" | "expired";
 
 interface InventoryRow {
   id: string;
@@ -40,90 +42,40 @@ interface InventoryRow {
   lotNumber: string;
   location: string;
   qtyOnHand: number;
-  flowType: FlowType;
   status: LotStatus;
 }
 
 // ─── Status helpers ───────────────────────────────────────────────────────────
 // brand-design-system.md §1.3 semantic colors — never raw hex.
+// Values mirror lib/db/schema/enums.ts's lotStatusEnum exactly.
 
 const STATUS_CLASSES: Record<LotStatus, string> = {
+  staged: "bg-status-pending/10 text-status-pending",
   available: "bg-status-available/10 text-status-available",
-  held: "bg-status-held/10 text-status-held",
+  quarantined: "bg-status-held/10 text-status-held",
   depleted: "bg-status-neutral/10 text-status-neutral",
+  expired: "bg-status-held/10 text-status-held",
 };
 
 const STATUS_LABELS: Record<LotStatus, string> = {
+  staged: "STAGED",
   available: "AVAILABLE",
-  held: "HELD",
+  quarantined: "QUARANTINED",
   depleted: "DEPLETED",
+  expired: "EXPIRED",
 };
 
-const FLOW_CLASSES: Record<FlowType, string> = {
-  VMI: "bg-brand-royal-blue/10 text-brand-royal-blue",
-  Trading: "bg-brand-navy/10 text-brand-navy",
-};
-
-// ─── Mock data ────────────────────────────────────────────────────────────────
-// TODO: replace with real lot_location_balances query scoped to session party
-//   via RLS pattern: can_access_party_resource('lot_location_balances', 'read',
-//   lots.owner_party_id, 'vmi') per design.md §5.
-// NOTE: buying_price, selling_price, default_supplier_party_id, min_reorder_level
-//   are NEVER selected — design.md §5 / tasks.md Task 3 assertion.
-// NOTE: inventory_transactions is NEVER queried from this view — requirements.md R2.4.
-
-const MOCK_INVENTORY_ROWS: InventoryRow[] = [
-  {
-    id: "inv-001",
-    itemCode: "ITM-0042",
-    itemName: "Hydraulic Valve Assembly",
-    lotNumber: "LOT-2026-0001",
-    location: "A-03-02",
-    qtyOnHand: 240,
-    flowType: "VMI",
-    status: "available",
-  },
-  {
-    id: "inv-002",
-    itemCode: "ITM-0107",
-    itemName: "Pressure Seal Ring (M20)",
-    lotNumber: "LOT-2026-0012",
-    location: "A-04-01",
-    qtyOnHand: 1200,
-    flowType: "VMI",
-    status: "available",
-  },
-  {
-    id: "inv-003",
-    itemCode: "ITM-0089",
-    itemName: "Control Module XR-5",
-    lotNumber: "LOT-2025-0088",
-    location: "B-01-03",
-    qtyOnHand: 45,
-    flowType: "Trading",
-    status: "held",
-  },
-  {
-    id: "inv-004",
-    itemCode: "ITM-0215",
-    itemName: "Pneumatic Actuator (Linear)",
-    lotNumber: "LOT-2026-0034",
-    location: "A-07-05",
-    qtyOnHand: 18,
-    flowType: "VMI",
-    status: "available",
-  },
-  {
-    id: "inv-005",
-    itemCode: "ITM-0061",
-    itemName: "Filter Element 10-Micron",
-    lotNumber: "LOT-2025-0199",
-    location: "C-02-01",
-    qtyOnHand: 0,
-    flowType: "VMI",
-    status: "depleted",
-  },
-];
+function toInventoryRow(row: PartyVmiInventoryRow): InventoryRow {
+  return {
+    id: row.id,
+    itemCode: row.itemCode,
+    itemName: row.itemName,
+    lotNumber: row.lotNumber,
+    location: row.locationLabel,
+    qtyOnHand: row.qtyOnHand,
+    status: (row.lotStatus as LotStatus) ?? "staged",
+  };
+}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -135,29 +87,29 @@ export default async function PortalInventoryPage({ searchParams }: PageProps) {
   await searchParams; // consumed for future filter wiring — TODO
 
   const resolver = await createPageResolver();
-  // TODO: once Task 2 party-scope resolution is built, pass scope:
-  //   { partyId: sessionPartyId, flowType: sessionFlowType }
-  const permResult = await requirePermission(resolver, "reporting.read");
+  const resolution = await resolver.getContext();
+
+  if (resolution.kind !== "authorized") {
+    return <PermissionDenied />;
+  }
+
+  const partyScope = resolveActivePartyScope(resolution.context);
+  if (!partyScope) {
+    return <NoPartyScope />;
+  }
+
+  const permResult = await requirePermission(resolver, "reporting.read", {
+    partyId: partyScope.partyId,
+    flowType: "vmi",
+  });
 
   if (permResult.kind !== "authorized") {
-    return (
-      <div className="mx-auto max-w-container px-8 py-12 text-center">
-        <Package
-          size={40}
-          className="mx-auto mb-3 text-text-grey"
-          aria-hidden="true"
-        />
-        <p className="font-body text-body-md text-text-grey">
-          You do not have permission to view inventory.
-        </p>
-        <p className="mt-2 font-body text-body-sm text-text-grey">
-          This page requires the{" "}
-          <span className="font-mono text-mono-md">reporting.read</span>{" "}
-          capability.
-        </p>
-      </div>
-    );
+    return <PermissionDenied />;
   }
+
+  const rows = (await listPartyVmiInventory(db, partyScope.partyId)).map(
+    toInventoryRow,
+  );
 
   return (
     <div className="mx-auto max-w-container">
@@ -230,7 +182,7 @@ export default async function PortalInventoryPage({ searchParams }: PageProps) {
 
       {/* ── Inventory table — Level 1 glassmorphism (office/party surface) ─── */}
       <div className="mt-4 overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
-        {MOCK_INVENTORY_ROWS.length === 0 ? (
+        {rows.length === 0 ? (
           <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
             <Package size={40} className="text-text-grey" aria-hidden="true" />
             <p className="font-body text-body-md text-text-grey">
@@ -267,7 +219,7 @@ export default async function PortalInventoryPage({ searchParams }: PageProps) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/30">
-                {MOCK_INVENTORY_ROWS.map((row) => (
+                {rows.map((row) => (
                   <tr key={row.id} className="hover:bg-surface-light-grey/50">
                     {/* Item code — Roboto Mono for codes */}
                     <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
@@ -289,12 +241,11 @@ export default async function PortalInventoryPage({ searchParams }: PageProps) {
                     <td className="px-4 py-3 text-right font-mono text-mono-md text-on-surface">
                       {row.qtyOnHand.toLocaleString()}
                     </td>
-                    {/* Flow type badge */}
+                    {/* Flow type badge — this view is VMI-only by query
+                        construction (lots.flow_type = 'vmi'), design.md §5 */}
                     <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase tracking-[0.05em] ${FLOW_CLASSES[row.flowType]}`}
-                      >
-                        {row.flowType}
+                      <span className="inline-flex items-center rounded-full bg-brand-royal-blue/10 px-2 py-0.5 font-label text-label uppercase tracking-[0.05em] text-brand-royal-blue">
+                        VMI
                       </span>
                     </td>
                     {/* Status badge — §1.3 semantic colors */}
@@ -320,6 +271,48 @@ export default async function PortalInventoryPage({ searchParams }: PageProps) {
       <p className="mt-3 font-body text-body-sm text-text-grey">
         Quantities shown are live on-hand balances. VMI billing is based on the
         period-average consumption rate, not this snapshot.
+      </p>
+    </div>
+  );
+}
+
+// ─── Denial states ──────────────────────────────────────────────────────────
+
+function PermissionDenied() {
+  return (
+    <div className="mx-auto max-w-container px-8 py-12 text-center">
+      <Package
+        size={40}
+        className="mx-auto mb-3 text-text-grey"
+        aria-hidden="true"
+      />
+      <p className="font-body text-body-md text-text-grey">
+        You do not have permission to view inventory.
+      </p>
+      <p className="mt-2 font-body text-body-sm text-text-grey">
+        This page requires the{" "}
+        <span className="font-mono text-mono-md">reporting.read</span>{" "}
+        capability.
+      </p>
+    </div>
+  );
+}
+
+// Fail-safe empty state: no active party scope resolved for this session —
+// never falls through to an unscoped query (see resolve-party-scope.ts).
+function NoPartyScope() {
+  return (
+    <div className="mx-auto max-w-container px-8 py-12 text-center">
+      <Package
+        size={40}
+        className="mx-auto mb-3 text-text-grey"
+        aria-hidden="true"
+      />
+      <p className="font-body text-body-md text-text-grey">
+        No party assignment is linked to your account.
+      </p>
+      <p className="mt-2 font-body text-body-sm text-text-grey">
+        Contact your administrator to request portal access.
       </p>
     </div>
   );

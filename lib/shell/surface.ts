@@ -35,3 +35,23 @@ export function resolveSessionPresentationTier(
   }
   return "floor";
 }
+
+// Human-readable role labels for shell chrome (account card, etc.), per
+// specs/00-steering/page-role-map.md's "Who sees what" naming. Roles are
+// additive (a session can hold more than one, e.g. the bootstrap admin
+// account also holds Supervisor) — displayed in this fixed precedence order,
+// most-privileged first, joined with " / " when more than one is active.
+const ROLE_LABELS: Record<string, string> = {
+  administrator: "Administrator",
+  supervisor: "Supervisor",
+  warehouse_staff: "Warehouse Staff",
+  party_user: "Party User",
+};
+const ROLE_PRECEDENCE = ["administrator", "supervisor", "warehouse_staff", "party_user"];
+
+export function roleDisplayLabel(activeRoleKeys: readonly string[]): string {
+  const labels = ROLE_PRECEDENCE.filter((role) => activeRoleKeys.includes(role)).map(
+    (role) => ROLE_LABELS[role],
+  );
+  return labels.length > 0 ? labels.join(" / ") : "Signed in";
+}

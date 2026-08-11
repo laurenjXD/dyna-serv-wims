@@ -31,7 +31,7 @@ import { matchScan } from "@/lib/receiving/scan-matcher";
 import type { WrrLine } from "@/lib/receiving/scan-matcher";
 import { validateLineCommit } from "@/lib/receiving/commit-validation";
 import type { CommitLocation } from "@/lib/receiving/commit-validation";
-import { wrrDocuments, wrrItems } from "@/lib/db/schema/wrr";
+import { wrrDocuments, wrrItems, wrrItemUnitScans } from "@/lib/db/schema/wrr";
 import { lots } from "@/lib/db/schema/lots";
 import { lotLocationBalances } from "@/lib/db/schema/lot_location_balances";
 import { inventoryTransactions } from "@/lib/db/schema/transactions";
@@ -237,6 +237,27 @@ export async function createWrr(
 // recordScan
 // ---------------------------------------------------------------------------
 
+// Cheaply peeks at whether `barcode` parses as a wrr_item_unit JSON payload
+// (Spec 18 §2.2), returning its wrr_item_id when so. Deliberately narrow/
+// duplicated from scan-matcher.ts's own parsing rather than exported from
+// there: matchScan stays a pure function with no DB access, while this
+// action is the one place that needs to know *whether to query at all*
+// before calling it — an ordinary (non-JSON) barcode must never trigger a
+// wrr_item_unit_scans lookup.
+function peekWrrItemUnitId(barcode: string): string | null {
+  const trimmed = barcode.trim();
+  if (!trimmed.startsWith("{")) return null;
+  try {
+    const parsed = JSON.parse(trimmed) as { type?: unknown; wrr_item_id?: unknown };
+    if (parsed?.type === "wrr_item_unit" && typeof parsed?.wrr_item_id === "string") {
+      return parsed.wrr_item_id;
+    }
+  } catch {
+    // Not valid JSON — not a wrr_item_unit payload.
+  }
+  return null;
+}
+
 /**
  * Records a single barcode scan against a receiving_in_progress WRR.
  * Requires receiving.scan capability.
@@ -253,6 +274,7 @@ export async function recordScan(
   if (perm.kind !== "authorized") {
     return { ok: false, reason: "forbidden" };
   }
+  const userId = perm.context.userId;
 
   const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
     const db = tx.db as DbLike;
@@ -268,8 +290,21 @@ export async function recordScan(
       return { ok: false, reason: "invalid_status" } satisfies RecordScanResult;
     }
 
+    // 3a. Per-unit duplicate detection (Spec 18 §2.2): only when the barcode
+    // itself parses as a wrr_item_unit payload do we even query
+    // wrr_item_unit_scans — an ordinary barcode never triggers this lookup.
+    let alreadyScannedUnitIds: Set<string> | undefined;
+    const peekedWrrItemId = peekWrrItemUnitId(barcode);
+    if (peekedWrrItemId !== null) {
+      const unitScanRows = (await db
+        .select({ unitId: wrrItemUnitScans.unitId })
+        .from(wrrItemUnitScans)
+        .where(eq(wrrItemUnitScans.wrrItemId, peekedWrrItemId))) as Array<{ unitId: string }>;
+      alreadyScannedUnitIds = new Set(unitScanRows.map((row) => row.unitId));
+    }
+
     // 4. Match barcode against expected lines
-    const matchResult = matchScan(barcode, doc.items);
+    const matchResult = matchScan(barcode, doc.items, undefined, alreadyScannedUnitIds);
     if (!matchResult.matched) {
       return { ok: false, reason: matchResult.reason } satisfies RecordScanResult;
     }
@@ -281,6 +316,17 @@ export async function recordScan(
       .update(wrrItems)
       .set({ scannedQty: line.scannedQty + 1 })
       .where(eq(wrrItems.id, line.id));
+
+    // 5a. Persist the per-unit scan record for a successful wrr_item_unit
+    // match, in the same transaction as the scannedQty increment above —
+    // both succeed or both roll back together.
+    if (matchResult.unitId) {
+      await db.insert(wrrItemUnitScans).values({
+        wrrItemId: line.id,
+        unitId: matchResult.unitId,
+        scannedByUserId: userId,
+      });
+    }
 
     // 6. Return success
     return {

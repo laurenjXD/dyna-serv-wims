@@ -21,10 +21,20 @@
 // Surface: FLOOR. Designed at 375px viewport first. No glassmorphism.
 // Permission gate: pick_list.execute
 //
-// Mock data: line items are hardcoded with // TODO markers.
-// Real scan matching is deferred — the scan input collects the barcode
-// but full item/lot/location/qty matching against pick_list_items is not
-// yet implemented.
+// Data source: lib/db/queries/withdrawals.ts getPickList + getPickListItems —
+// the real Stage 1 committed pick_list_items rows, no mock data.
+//
+// Scan-progress note: pick_list_items has no persisted per-scan-progress
+// column (confirmed with db-migration-verifier's schema — 01's pick_list_items
+// table stores only the committed qty snapshot, not a scanned-qty counter).
+// Real scan matching therefore runs against the real committed line data
+// (itemCode / lotNumber / locationLabel), and "which lines have been
+// confirmed this session" is tracked via the `confirmed` searchParam —
+// the same redirect-with-searchParams feedback mechanism already used by
+// app/(authenticated)/receiving/[wrrId]/receive/page.tsx — rather than a
+// DB column that does not exist. This is a UI/session-scoped confirmation
+// aid, not an authoritative persisted state; the authoritative state
+// dispatchPickList relies on is the committed pick_list_items themselves.
 
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -32,75 +42,28 @@ import { ChevronLeft, MapPin, CheckCircle2, Circle, AlertTriangle } from "lucide
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
-import { getPickList } from "@/lib/db/queries/withdrawals";
+import { getPickList, getPickListItems } from "@/lib/db/queries/withdrawals";
+import type { PickListItemRow } from "@/lib/db/queries/withdrawals";
+import { markPickListPicked } from "@/lib/actions/withdrawals";
 
-// ─── Mock line data ───────────────────────────────────────────────────────────
-// TODO: wire to pick_list_items query (getPickListItems(db, pickListId))
-// When live, replace MOCK_PICK_ITEMS with query results and derive
-// qtyScanned from scan observations stored server-side or via Tier 1 queue.
+// ─── Error messaging ──────────────────────────────────────────────────────────
 
-type PickItemStatus = "complete" | "partial" | "pending";
-
-interface PickItem {
-  id: string;
-  itemCode: string;
-  itemName: string;
-  lotNumber: string;
-  location: string;
-  qtyNeeded: number;
-  qtyScanned: number;
-}
-
-const MOCK_PICK_ITEMS: PickItem[] = [
-  {
-    id: "mock-1",
-    itemCode: "WIRE-M-4X6",
-    itemName: "Wire Marine 4 AWG x 6 ft",
-    lotNumber: "LOT-20260801-001",
-    location: "A-14-3",
-    qtyNeeded: 4,
-    qtyScanned: 4,
-  },
-  {
-    id: "mock-2",
-    itemCode: "HYD-COUP-34",
-    itemName: 'Hydraulic Coupling 3/4"',
-    lotNumber: "LOT-20260731-008",
-    location: "B-02-1",
-    qtyNeeded: 5,
-    qtyScanned: 2,
-  },
-  {
-    id: "mock-3",
-    itemCode: "VALVE-GT-1",
-    itemName: "Gate Valve 1 Inch",
-    lotNumber: "LOT-20260728-012",
-    location: "C-07-2",
-    qtyNeeded: 3,
-    qtyScanned: 0,
-  },
-  {
-    id: "mock-4",
-    itemCode: "FTNG-ELB90",
-    itemName: "Elbow Fitting 90 Degree",
-    lotNumber: "LOT-20260715-003",
-    location: "A-09-5",
-    qtyNeeded: 2,
-    qtyScanned: 0,
-  },
-];
-
-function getItemStatus(item: PickItem): PickItemStatus {
-  if (item.qtyScanned >= item.qtyNeeded) return "complete";
-  if (item.qtyScanned > 0) return "partial";
-  return "pending";
+function getPickScanErrorMessage(reason: string): string {
+  switch (reason) {
+    case "empty_barcode":
+      return "Barcode cannot be empty — aim scanner at the item, lot, or location label.";
+    case "no_match":
+      return "Scan does not match any remaining line on this pick list — check item, lot, and location.";
+    default:
+      return `Scan rejected: ${reason}. Contact a supervisor if this persists.`;
+  }
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 interface PageProps {
   params: Promise<{ pickListId: string }>;
-  searchParams: Promise<{ result?: string; reason?: string }>;
+  searchParams: Promise<{ result?: string; reason?: string; confirmed?: string }>;
 }
 
 export default async function PickExecutionPage({
@@ -108,7 +71,7 @@ export default async function PickExecutionPage({
   searchParams,
 }: PageProps) {
   const { pickListId } = await params;
-  const { result, reason: reasonParam } = await searchParams;
+  const { result, reason: reasonParam, confirmed: confirmedParam } = await searchParams;
 
   const resolver = await createPageResolver();
 
@@ -139,41 +102,88 @@ export default async function PickExecutionPage({
     notFound();
   }
 
+  const lines = await getPickListItems(db, pickListId);
+
   // Only allow picking when status is allocated.
   const isPickable = pickList.status === "allocated";
+  // Once the pick list has advanced past 'allocated' (picked/dispatched), the
+  // committed lines are, by definition, already picked — display them as
+  // complete regardless of this session's confirmed set (e.g. after a
+  // Back-navigation from dispatch, or a fresh page load on a later visit).
+  const alreadyAdvanced = pickList.status !== "allocated";
 
-  // Derive progress from mock items.
-  // TODO: replace with real scan observation counts from pick_list_items query.
-  const items = MOCK_PICK_ITEMS;
+  const confirmedIds = new Set(
+    confirmedParam ? confirmedParam.split(",").filter(Boolean) : [],
+  );
+
+  const items = lines.map((line) => ({
+    ...line,
+    qtyScanned: alreadyAdvanced || confirmedIds.has(line.id) ? line.qty : 0,
+  }));
+
+  function getItemStatus(item: PickListItemRow & { qtyScanned: number }): "complete" | "pending" {
+    return item.qtyScanned >= item.qty ? "complete" : "pending";
+  }
+
   const completedLines = items.filter((i) => getItemStatus(i) === "complete").length;
   const totalLines = items.length;
-  const allItemsPicked = completedLines === totalLines;
+  const allItemsPicked = totalLines > 0 && completedLines === totalLines;
 
   const scanError = result === "error";
   const errorReason = reasonParam ?? "";
+  const confirmedQueryValue = Array.from(confirmedIds).join(",");
 
-  // Inline server action — placeholder scan handler.
-  // TODO: implement real barcode matching against pick_list_items (lot, location,
-  // item, qty) and update scan observation state. For now, accepts any scan and
-  // redirects back to this page.
+  // Inline server action — verifies a scan against the real committed
+  // pick_list_items for this pick list (itemCode, lotNumber, or
+  // locationLabel — R7.2). On match, adds the line to this session's
+  // confirmed set via the `confirmed` searchParam and redirects back.
   async function handleScan(formData: FormData): Promise<void> {
     "use server";
     const barcode = ((formData.get("barcode") as string | null) ?? "").trim();
+    const confirmedRaw = ((formData.get("confirmed") as string | null) ?? "").trim();
+
     if (!barcode) {
       redirect(
-        `/pick-lists/${pickListId}/pick?result=error&reason=${encodeURIComponent("empty_barcode")}`
+        `/pick-lists/${pickListId}/pick?result=error&reason=${encodeURIComponent("empty_barcode")}&confirmed=${encodeURIComponent(confirmedRaw)}`,
       );
     }
-    // TODO: match barcode against committed pick_list_items — lot, location, item, qty.
-    // Reject: wrong item, wrong lot/location, duplicate, over-pick, stale.
-    redirect(`/pick-lists/${pickListId}/pick`);
+
+    const currentlyConfirmed = new Set(
+      confirmedRaw ? confirmedRaw.split(",").filter(Boolean) : [],
+    );
+
+    const currentLines = await getPickListItems(db, pickListId);
+    const match = currentLines.find(
+      (line) =>
+        !currentlyConfirmed.has(line.id) &&
+        (line.itemCode === barcode ||
+          line.lotNumber === barcode ||
+          line.locationLabel === barcode),
+    );
+
+    if (!match) {
+      redirect(
+        `/pick-lists/${pickListId}/pick?result=error&reason=${encodeURIComponent("no_match")}&confirmed=${encodeURIComponent(confirmedRaw)}`,
+      );
+    } else {
+      currentlyConfirmed.add(match.id);
+      redirect(
+        `/pick-lists/${pickListId}/pick?result=scanned&confirmed=${encodeURIComponent(Array.from(currentlyConfirmed).join(","))}`,
+      );
+    }
   }
 
-  // Inline server action — marks pick complete and advances to dispatch.
-  // TODO: validate all lines are fully confirmed before allowing advance.
+  // Inline server action — marks pick complete (allocated → picked) and
+  // advances to dispatch. Calls the real markPickListPicked Server Action.
   async function handleCompletePick(_formData: FormData): Promise<void> {
     "use server";
-    // TODO: call server command to transition pick_list status from allocated → picked.
+    const actionResolver = await createPageResolver();
+    const pickResult = await markPickListPicked(actionResolver, pickListId);
+    if (!pickResult.ok) {
+      redirect(
+        `/pick-lists/${pickListId}/pick?result=error&reason=${encodeURIComponent(pickResult.errors[0] ?? "complete_pick_failed")}&confirmed=${encodeURIComponent(confirmedQueryValue)}`,
+      );
+    }
     redirect(`/pick-lists/${pickListId}/dispatch`);
   }
 
@@ -229,6 +239,13 @@ export default async function PickExecutionPage({
       {/* ── Items to pick (scrollable middle) ────────────────────────────── */}
       {/* brand-design-system.md §9: floor tables are a fail case — card list */}
       <div className="flex-1 overflow-y-auto px-4 py-2">
+        {totalLines === 0 && (
+          <div className="mb-3 rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-2">
+            <p className="font-body text-body-md text-text-grey">
+              No committed lines were found for this pick list.
+            </p>
+          </div>
+        )}
         {items.map((item) => {
           const status = getItemStatus(item);
           return (
@@ -246,7 +263,7 @@ export default async function PickExecutionPage({
                   </p>
                   {/* Item name — Outfit Regular, floor minimum text-body-md (16px) */}
                   <p className="mt-0.5 font-body text-body-md text-on-surface">
-                    {item.itemName}
+                    {item.itemDescription ?? item.itemCode}
                   </p>
                   {/* Lot number — Roboto Mono, secondary text-white/70 */}
                   <p className="mt-1 font-mono text-mono-lg text-text-grey">
@@ -261,13 +278,13 @@ export default async function PickExecutionPage({
                       className="shrink-0 text-text-grey"
                     />
                     <span className="font-body text-body-md text-text-grey">
-                      {item.location}
+                      {item.locationLabel}
                     </span>
                   </div>
                   {/* Qty progress */}
                   <div className="mt-2 flex items-center gap-2">
                     <span className="font-mono text-mono-lg text-on-surface">
-                      {item.qtyScanned} / {item.qtyNeeded}
+                      {item.qtyScanned} / {item.qty}
                     </span>
                     {/* Progress bar */}
                     <div
@@ -275,19 +292,17 @@ export default async function PickExecutionPage({
                       role="progressbar"
                       aria-valuenow={item.qtyScanned}
                       aria-valuemin={0}
-                      aria-valuemax={item.qtyNeeded}
+                      aria-valuemax={item.qty}
                       aria-label={`${item.itemCode} progress`}
                     >
                       <div
                         className={`h-full rounded-full ${
                           status === "complete"
                             ? "bg-status-available"
-                            : status === "partial"
-                              ? "bg-status-pending"
-                              : "bg-status-neutral/30"
+                            : "bg-status-neutral/30"
                         }`}
                         style={{
-                          width: `${Math.min(100, (item.qtyScanned / item.qtyNeeded) * 100)}%`,
+                          width: `${Math.min(100, (item.qtyScanned / item.qty) * 100)}%`,
                         }}
                       />
                     </div>
@@ -295,21 +310,13 @@ export default async function PickExecutionPage({
                 </div>
                 {/* Status icon — color + icon per §1.3 floor color-blind rule */}
                 <div className="shrink-0 pt-1" aria-hidden="true">
-                  {status === "complete" && (
+                  {status === "complete" ? (
                     <CheckCircle2
                       size={24}
                       strokeWidth={2}
                       className="text-status-available"
                     />
-                  )}
-                  {status === "partial" && (
-                    <AlertTriangle
-                      size={24}
-                      strokeWidth={2}
-                      className="text-status-pending"
-                    />
-                  )}
-                  {status === "pending" && (
+                  ) : (
                     <Circle
                       size={24}
                       strokeWidth={2}
@@ -333,6 +340,7 @@ export default async function PickExecutionPage({
               keyboard on scanner devices; scanner fires hardware keystrokes.
               h-14 (56px) floor secondary input touch target per §3. */}
           <form action={handleScan} className="mb-3">
+            <input type="hidden" name="confirmed" value={confirmedQueryValue} />
             <input
               autoFocus
               type="text"
@@ -359,9 +367,7 @@ export default async function PickExecutionPage({
                 className="shrink-0 text-status-held"
               />
               <p className="font-body text-body-md text-on-surface">
-                {errorReason === "empty_barcode"
-                  ? "Barcode cannot be empty — aim scanner at the item label."
-                  : `Scan rejected: ${errorReason}. Contact a supervisor if this persists.`}
+                {getPickScanErrorMessage(errorReason)}
               </p>
             </div>
           )}
@@ -390,6 +396,18 @@ export default async function PickExecutionPage({
               Complete Pick
             </button>
           )}
+        </div>
+      )}
+
+      {/* Pick already completed for this list — wayfinding to Stage 2. */}
+      {pickList.status === "picked" && (
+        <div className="sticky bottom-0 border-t border-outline-variant/30 bg-surface-white px-4 pb-6 pt-4 shadow-elevation-2">
+          <Link
+            href={`/pick-lists/${pickListId}/dispatch`}
+            className="flex h-16 w-full items-center justify-center rounded-xl bg-brand-red font-label text-body-md uppercase tracking-wide text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
+          >
+            Continue to Dispatch
+          </Link>
         </div>
       )}
     </div>

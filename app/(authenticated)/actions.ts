@@ -29,3 +29,32 @@ export async function resolveShellAuthorization(): Promise<AuthorizationResoluti
   const resolver = await createPageResolver();
   return resolver.getContext();
 }
+
+// Backs the sidebar/tab-bar identity card (real display name + role label
+// instead of a hardcoded "Admin User" placeholder). Deliberately reuses the
+// same resolver as resolveShellAuthorization rather than adding a second
+// user_profiles query path — this call is cheap (one resolver instance is
+// memoized per request) and keeps display name and role derivation from
+// ever disagreeing with the actual authorization context.
+export async function resolveShellUserDisplay(): Promise<{
+  displayName: string | null;
+  activeRoleKeys: string[];
+}> {
+  const resolver = await createPageResolver();
+  const resolution = await resolver.getContext();
+  if (resolution.kind !== "authorized") {
+    return { displayName: null, activeRoleKeys: [] };
+  }
+  const { userProfiles } = await import("@/lib/db/schema");
+  const { db } = await import("@/lib/db/client");
+  const { eq } = await import("drizzle-orm");
+  const rows = await db
+    .select({ displayName: userProfiles.displayName })
+    .from(userProfiles)
+    .where(eq(userProfiles.id, resolution.context.userId))
+    .limit(1);
+  return {
+    displayName: rows[0]?.displayName ?? null,
+    activeRoleKeys: resolution.context.activeRoleKeys,
+  };
+}

@@ -18,24 +18,52 @@
 
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Settings } from "lucide-react";
+import { Settings } from "lucide-react";
 import { resolveSessionPresentationTier } from "@/lib/shell/surface";
 import { useShellSidebar } from "@/lib/shell/state";
 import { useShellAuthorizationContext } from "./AuthenticatedShellBoundary";
 import { ShellNavigation } from "./ShellNavigation";
+import { resolveShellUserDisplay } from "@/app/(authenticated)/actions";
+
+function initials(name: string | null): string {
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
 export function ShellChrome({ children }: { children: ReactNode }) {
   const context = useShellAuthorizationContext();
   const pathname = usePathname();
   const { isOpen, toggle } = useShellSidebar();
+  const [displayName, setDisplayName] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    resolveShellUserDisplay()
+      .then((result) => {
+        if (active) setDisplayName(result.displayName);
+      })
+      .catch(() => {
+        if (active) setDisplayName(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // AuthenticatedShellBoundary only renders this subtree once authorized,
   // so `context` is non-null in practice; the fallback keeps this
   // component defensively correct without asserting on the boundary.
   const tier = resolveSessionPresentationTier(context?.activeRoleKeys ?? []);
   const pageTitle = getPageTitle(pathname);
+  const canManageAccess = context?.grants.some(
+    (grant) => grant.resource === "users" && grant.action === "read",
+  );
 
   return (
     <>
@@ -86,15 +114,22 @@ export function ShellChrome({ children }: { children: ReactNode }) {
             </p>
           </div>
           <div className="ml-auto flex items-center gap-7">
-            <span className="relative flex h-11 w-11 items-center justify-center rounded-full text-text-grey">
-              <Bell size={21} aria-hidden="true" />
-            </span>
-            <span className="flex h-11 w-11 items-center justify-center rounded-full text-text-grey">
-              <Settings size={22} aria-hidden="true" />
-            </span>
-            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-accent-indigo-300 font-label text-body-md text-on-surface">
-              AU
-            </span>
+            {canManageAccess && (
+              <Link
+                href="/settings"
+                aria-label="Settings"
+                className="flex h-11 w-11 items-center justify-center rounded-full text-text-grey hover:bg-surface-light-grey focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+              >
+                <Settings size={22} aria-hidden="true" />
+              </Link>
+            )}
+            <Link
+              href="/profile"
+              aria-label="Profile"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-accent-indigo-300 font-label text-body-md text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+            >
+              {initials(displayName)}
+            </Link>
           </div>
         </div>
       </header>

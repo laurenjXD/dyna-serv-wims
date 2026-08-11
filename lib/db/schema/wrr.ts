@@ -4,7 +4,7 @@
 // independently `db-migration-verifier`-verified schema amendment and is
 // intentionally NOT scaffolded here — it is added once its own
 // verification pass is complete.
-import { pgTable, uuid, varchar, text, integer, decimal, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, text, integer, decimal, timestamp, index, unique } from "drizzle-orm/pg-core";
 import { flowTypeEnum, wrrStatusEnum, conformanceStatusEnum, nonConformanceReasonEnum } from "./enums";
 import { parties } from "./parties";
 import { items } from "./items";
@@ -66,3 +66,23 @@ export const wrrInspectionLogs = pgTable("wrr_inspection_logs", {
   actionTaken: varchar("action_taken", { length: 50 }), // 'accepted_with_variance', 'quarantined', 'returned_to_vendor'
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// Migration 0025_wrr_item_unit_scans.sql — specs/18-barcode-integration
+// design.md §2.2: tracks which per-unit printed labels (WRRUnitLabelGenerator's
+// `wrr_item_unit` payload, one unique unit_id per physical label) have
+// already been scanned against a given wrr_items line, so a repeat scan of
+// the exact same label can be rejected as a duplicate rather than silently
+// counted as a second, distinct unit. The UNIQUE (wrr_item_id, unit_id)
+// constraint is the real enforcement mechanism, not application logic.
+export const wrrItemUnitScans = pgTable("wrr_item_unit_scans", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  wrrItemId: uuid("wrr_item_id").references(() => wrrItems.id).notNull(),
+  unitId: uuid("unit_id").notNull(), // the label's own unique per-unit identifier
+  scannedAt: timestamp("scanned_at").defaultNow().notNull(),
+  // References auth.users; Drizzle cannot import the auth schema directly —
+  // FK is declared in the migration.
+  scannedByUserId: uuid("scanned_by_user_id"),
+}, (table) => ({
+  uniqueUnit: unique("wrr_item_unit_scans_unique_unit").on(table.wrrItemId, table.unitId),
+  wrrItemIdx: index("wrr_item_unit_scans_wrr_item_id_idx").on(table.wrrItemId),
+}));
