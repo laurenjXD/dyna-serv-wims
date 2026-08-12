@@ -39,8 +39,9 @@
 //     capability the context does not grant are omitted entirely (never
 //     disabled-and-visible), per lib/shell/navigation.ts#filterVisibleRoutes.
 
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { AuthorizationContext } from "@/lib/rbac/session";
 import { ShellNavigation } from "@/components/global/ShellNavigation";
 
@@ -168,5 +169,99 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
     // `nav-group-*` section-header wrapper around it.
     expect(screen.queryByTestId("nav-group-receiving")).not.toBeInTheDocument();
     expect(document.querySelector('[data-testid^="nav-group-"]')).toBeNull();
+  });
+
+  // ---------------------------------------------------------------------
+  // Mobile drawer (office/party tiers) — design.md §6: "At narrow mobile
+  // widths the sidebar collapses to a hamburger/drawer." ShellChrome owns
+  // the open/close state (its header hamburger) and passes it down as
+  // `mobileNavOpen`/`onCloseMobileNav`; previously nothing consumed this
+  // state at all, so office/party users had no way to reach navigation
+  // below the `lg` breakpoint. Fixed 2026-08-12.
+  // ---------------------------------------------------------------------
+
+  it("renders no drawer dialog for tier='office' when mobileNavOpen is false or omitted", () => {
+    render(
+      <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" />,
+    );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("renders the grouped nav inside a dialog drawer for tier='office' when mobileNavOpen is true", () => {
+    render(
+      <ShellNavigation
+        tier="office"
+        context={officeContext}
+        currentPath="/inventory"
+        mobileNavOpen
+        onCloseMobileNav={() => {}}
+      />,
+    );
+    const dialog = screen.getByRole("dialog", { name: /navigation menu/i });
+    expect(dialog).toBeInTheDocument();
+    // Same grouped content the desktop sidebar shows -- nothing reachable
+    // on desktop is unreachable in the mobile drawer. (The desktop sidebar
+    // itself stays mounted -- CSS `hidden` below `lg`, not removed from the
+    // DOM -- so this assertion is scoped to inside the dialog specifically.)
+    expect(within(dialog).getByTestId("nav-group-master-inventory")).toBeInTheDocument();
+  });
+
+  it("renders the drawer for tier='party' too, since party uses the office-shape sidebar (design.md §3.3)", () => {
+    render(
+      <ShellNavigation
+        tier="party"
+        context={{ grants: [{ resource: "documents", action: "read", scopeKind: "global" }] }}
+        currentPath="/portal/documents"
+        mobileNavOpen
+        onCloseMobileNav={() => {}}
+      />,
+    );
+    expect(screen.getByRole("dialog", { name: /navigation menu/i })).toBeInTheDocument();
+  });
+
+  it("calls onCloseMobileNav when the drawer's close button is activated", async () => {
+    const onCloseMobileNav = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <ShellNavigation
+        tier="office"
+        context={officeContext}
+        currentPath="/inventory"
+        mobileNavOpen
+        onCloseMobileNav={onCloseMobileNav}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /close navigation menu/i }));
+    expect(onCloseMobileNav).toHaveBeenCalled();
+  });
+
+  it("calls onCloseMobileNav when a drawer nav entry is activated (navigate-then-close)", async () => {
+    const onCloseMobileNav = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <ShellNavigation
+        tier="office"
+        context={officeContext}
+        currentPath="/inventory"
+        mobileNavOpen
+        onCloseMobileNav={onCloseMobileNav}
+      />,
+    );
+    const dialog = screen.getByRole("dialog", { name: /navigation menu/i });
+    await user.click(within(dialog).getByTestId("nav-entry-inventory"));
+    expect(onCloseMobileNav).toHaveBeenCalled();
+  });
+
+  it("never renders the floor tab bar's 'More' overlay for tier='office' (that pattern is floor-only)", () => {
+    render(
+      <ShellNavigation
+        tier="office"
+        context={officeContext}
+        currentPath="/inventory"
+        mobileNavOpen
+        onCloseMobileNav={() => {}}
+      />,
+    );
+    expect(screen.queryByTestId("floor-tab-bar")).not.toBeInTheDocument();
   });
 });

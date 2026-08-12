@@ -39,7 +39,7 @@ function initials(name: string | null): string {
 export function ShellChrome({ children }: { children: ReactNode }) {
   const context = useShellAuthorizationContext();
   const pathname = usePathname();
-  const { isOpen, toggle } = useShellSidebar();
+  const { isOpen, toggle, close } = useShellSidebar();
   const [displayName, setDisplayName] = useState<string | null>(null);
 
   useEffect(() => {
@@ -76,18 +76,24 @@ export function ShellChrome({ children }: { children: ReactNode }) {
             takes over. 64px min touch target (floor primary rules apply
             since this control is present on every surface including floor).
             active: press feedback only, no hover (brand-design-system §9). */}
-        <button
-          type="button"
-          aria-label="Open navigation"
-          aria-expanded={isOpen}
-          onClick={toggle}
-          className="flex h-16 w-16 items-center justify-center text-surface-white active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-surface-white lg:hidden"
-        >
-          {/* Unicode hamburger — no external icon library (task constraint). */}
-          <span aria-hidden="true" className="text-body-lg">
-            ☰
-          </span>
-        </button>
+        {/* Floor tier has no persistent sidebar to collapse — its full nav is
+            already one tap away via the bottom tab bar's "More" button
+            (ShellNavigation's floor branch), so the header hamburger only
+            renders for office/party tiers, per design.md §6. */}
+        {tier !== "floor" && (
+          <button
+            type="button"
+            aria-label="Open navigation"
+            aria-expanded={isOpen}
+            onClick={toggle}
+            className="flex h-16 w-16 items-center justify-center text-surface-white active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-surface-white lg:hidden"
+          >
+            {/* Unicode hamburger — no external icon library (task constraint). */}
+            <span aria-hidden="true" className="text-body-lg">
+              ☰
+            </span>
+          </button>
+        )}
 
         {/* Brand word-mark. Real letter-mark asset (text stand-in for now —
             see tasks.md deferred item on logo asset wiring). Inter
@@ -138,6 +144,8 @@ export function ShellChrome({ children }: { children: ReactNode }) {
         tier={tier}
         context={{ grants: context?.grants ?? [] }}
         currentPath={pathname}
+        mobileNavOpen={isOpen}
+        onCloseMobileNav={close}
       />
 
       {/* StatusRegion — role="status" / aria-live="polite" landmark (R5.5,

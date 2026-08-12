@@ -44,7 +44,6 @@ import {
   House,
   Inbox,
   Shield,
-  QrCode,
   Menu,
   X,
 } from "lucide-react";
@@ -216,10 +215,18 @@ export function ShellNavigation({
   tier,
   context,
   currentPath,
+  mobileNavOpen = false,
+  onCloseMobileNav,
 }: {
   tier: SessionPresentationTier;
   context: Pick<AuthorizationContext, "grants">;
   currentPath: string;
+  // Office/party tiers only — design.md §6: "At narrow mobile widths the
+  // sidebar collapses to a hamburger/drawer." The open/close state is owned
+  // by ShellChrome (the hamburger button lives in its header), so this
+  // component just renders the drawer when told to.
+  mobileNavOpen?: boolean;
+  onCloseMobileNav?: () => void;
 }) {
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [activeRoleKeys, setActiveRoleKeys] = useState<readonly string[]>([]);
@@ -244,6 +251,13 @@ export function ShellNavigation({
 
   useEffect(() => {
     setMoreOpen(false);
+  }, [currentPath]);
+
+  useEffect(() => {
+    onCloseMobileNav?.();
+    // Only re-run when the route actually changes — onCloseMobileNav's
+    // identity is not guaranteed stable across ShellChrome renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPath]);
 
   const visible = filterVisibleRoutes(context).filter(
@@ -301,6 +315,7 @@ export function ShellNavigation({
   }
 
   return (
+    <>
     <nav
       data-testid="desktop-sidebar"
       aria-label="Primary navigation"
@@ -334,18 +349,29 @@ export function ShellNavigation({
         </div>
       </Link>
 
-      <Link
-        href="/receiving"
-        className="mt-3 flex h-12 items-center justify-center gap-3 rounded bg-on-surface font-label text-label font-bold text-surface-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
-      >
-        <QrCode size={20} aria-hidden="true" />
-        Quick Scan
-      </Link>
-
       <div className="mt-5 flex flex-1 flex-col">
         <GroupedSections sections={sections} activeId={activeId} />
       </div>
     </nav>
+
+    {/* Mobile drawer — design.md §6: "At narrow mobile widths the sidebar
+        collapses to a hamburger/drawer." Opened by ShellChrome's header
+        toggle; reuses the identical grouped-section content the desktop
+        sidebar shows, so nothing reachable on desktop is unreachable on a
+        phone. `lg:hidden` guards against it staying mounted-open across a
+        resize past the breakpoint where the persistent sidebar takes over. */}
+    {mobileNavOpen && (
+      <div className="lg:hidden">
+        <MoreOverlay
+          sections={sections}
+          activeId={activeId}
+          displayName={displayName}
+          roleLabel={roleLabel}
+          onClose={() => onCloseMobileNav?.()}
+        />
+      </div>
+    )}
+    </>
   );
 }
 
@@ -368,9 +394,15 @@ function MoreOverlay({
 }) {
   return (
     <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Navigation menu">
+      {/* Decorative dismiss target — the labeled, keyboard-reachable close
+          control below is the real "Close navigation menu" affordance.
+          aria-hidden + tabIndex=-1 keep this backdrop out of the
+          accessibility tree and tab order so AT/keyboard users don't hit a
+          second, redundantly-named button. */}
       <button
         type="button"
-        aria-label="Close navigation menu"
+        aria-hidden="true"
+        tabIndex={-1}
         className="absolute inset-0 bg-black/50"
         onClick={onClose}
       />
@@ -389,7 +421,7 @@ function MoreOverlay({
             type="button"
             aria-label="Close navigation menu"
             onClick={onClose}
-            className="flex h-10 w-10 items-center justify-center rounded-full text-text-grey active:bg-surface-light-grey"
+            className="flex h-11 w-11 items-center justify-center rounded-full text-text-grey focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy active:bg-surface-light-grey"
           >
             <X size={22} aria-hidden="true" />
           </button>
