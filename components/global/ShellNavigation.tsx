@@ -167,7 +167,7 @@ function NavLink({
       onClick={onNavigate}
       className={`flex h-12 items-center gap-4 rounded px-4 font-label text-label font-semibold
         focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy
-        ${isActive ? "bg-on-surface text-surface-white" : "text-text-grey hover:bg-surface-white hover:text-on-surface"}`}
+        ${isActive ? "bg-accent-indigo-600 text-surface-white" : "text-text-grey hover:bg-surface-white hover:text-on-surface"}`}
     >
       <Icon size={22} aria-hidden="true" />
       {label}

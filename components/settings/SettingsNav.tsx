@@ -45,8 +45,8 @@ export function SettingsNav() {
             aria-current={isActive ? "page" : undefined}
             className={`flex min-h-11 items-center whitespace-nowrap rounded px-4 py-2 font-label text-label uppercase tracking-wide focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
               isActive
-                ? "bg-brand-red text-surface-white"
-                : "text-brand-navy hover:bg-surface-light-grey"
+                ? "bg-accent-indigo-600 text-surface-white"
+                : "text-on-surface hover:bg-surface-light-grey"
             }`}
           >
             {item.label}

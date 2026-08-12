@@ -128,20 +128,21 @@ export default async function SyncPage({ searchParams }: PageProps) {
           className="mt-0.5 shrink-0 text-status-held"
           aria-hidden="true"
         />
-        <div><p className="font-heading text-body-md font-bold text-status-held">Critical sync failures detected</p><p className="mt-1 font-body text-body-sm text-text-grey">Failed operations require review before data consistency can be restored.</p></div>
+        <div><p className="font-body text-body-md font-bold text-status-held">Critical sync failures detected</p><p className="mt-1 font-body text-body-sm text-text-grey">Failed operations require review before data consistency can be restored.</p></div>
       </div>
 
       {/* ── Tab navigation ─────────────────────────────────────────────────────
           URL-based tab switching — no JS required (Server Component). */}
-      <div className="mt-6 flex gap-1 border-b border-outline-variant/30">
+      <div role="tablist" aria-label="Sync sections" className="mt-6 flex gap-1 border-b border-outline-variant/30">
         <Link
           href="/sync?tab=failed"
+          role="tab"
+          aria-selected={activeTab === "failed"}
           className={`flex h-11 items-center gap-2 px-4 font-label text-label motion-safe:transition-colors motion-safe:duration-150 focus:outline-none focus:ring-2 focus:ring-brand-navy ${
             activeTab === "failed"
-              ? "border-b-2 border-brand-navy text-brand-navy"
+              ? "border-b-2 border-on-surface text-on-surface"
               : "text-text-grey hover:text-on-surface"
           }`}
-          aria-current={activeTab === "failed" ? "page" : undefined}
         >
           <XCircle size={16} aria-hidden="true" />
           Failed
@@ -154,24 +155,26 @@ export default async function SyncPage({ searchParams }: PageProps) {
         </Link>
         <Link
           href="/sync?tab=syncing"
+          role="tab"
+          aria-selected={activeTab === "syncing"}
           className={`flex h-11 items-center gap-2 px-4 font-label text-label motion-safe:transition-colors motion-safe:duration-150 focus:outline-none focus:ring-2 focus:ring-brand-navy ${
             activeTab === "syncing"
-              ? "border-b-2 border-brand-navy text-brand-navy"
+              ? "border-b-2 border-on-surface text-on-surface"
               : "text-text-grey hover:text-on-surface"
           }`}
-          aria-current={activeTab === "syncing" ? "page" : undefined}
         >
           <Loader2 size={16} aria-hidden="true" />
           Syncing
         </Link>
         <Link
           href="/sync?tab=completed"
+          role="tab"
+          aria-selected={activeTab === "completed"}
           className={`flex h-11 items-center gap-2 px-4 font-label text-label motion-safe:transition-colors motion-safe:duration-150 focus:outline-none focus:ring-2 focus:ring-brand-navy ${
             activeTab === "completed"
-              ? "border-b-2 border-brand-navy text-brand-navy"
+              ? "border-b-2 border-on-surface text-on-surface"
               : "text-text-grey hover:text-on-surface"
           }`}
-          aria-current={activeTab === "completed" ? "page" : undefined}
         >
           <CheckCircle2 size={16} aria-hidden="true" />
           Completed

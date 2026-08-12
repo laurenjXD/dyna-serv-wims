@@ -186,7 +186,7 @@ export default async function PortalPage() {
       </div>
       <aside className="rounded border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">
         <div className="flex items-center justify-between"><h2 className="font-heading text-body-lg font-bold text-on-surface">Recent Alerts</h2><Link href="/portal/notifications" className="font-label text-label font-bold text-on-surface underline">View All</Link></div>
-        <div className="mt-5 space-y-4 font-body text-body-sm text-text-grey"><p><span className="mr-2 text-status-held">●</span><strong className="text-on-surface">Low Stock Alert: SKU-492</strong><br />Inventory for Industrial Bearings has fallen below minimum threshold.</p><p><span className="mr-2 text-on-surface">●</span><strong className="text-on-surface">PO #8824 Approved</strong><br />Purchase order verified and approved.</p><p><span className="mr-2 text-status-neutral">●</span><strong className="text-on-surface">System Maintenance</strong><br />Scheduled later this week.</p></div>
+        <div className="mt-5 space-y-4 font-body text-body-sm text-text-grey"><p><span className="mr-2 text-status-held">●</span><strong className="text-on-surface">Low Stock Alert: ITM-4092</strong><br />Inventory for Industrial Bearings has fallen below minimum threshold.</p><p><span className="mr-2 text-on-surface">●</span><strong className="text-on-surface">Pick List #PL-8824 Approved</strong><br />Pick list verified and approved.</p><p><span className="mr-2 text-status-neutral">●</span><strong className="text-on-surface">System Maintenance</strong><br />Scheduled later this week.</p></div>
       </aside>
       </div>
 

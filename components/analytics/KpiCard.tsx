@@ -3,12 +3,19 @@ import type { ReactNode } from "react";
 import type { StatusToken, Trend } from "./types";
 import { trendClass, trendLabel, trendSymbol } from "./utils";
 
+// brand-design-system.md §1.1a: brand/structural colors (brand-royal-blue
+// included) are never text color. DonutChart.tsx's `stroke-brand-royal-blue/50`
+// for "expired" is a legitimate chart-mark use of that same token (§12's
+// exception) and stays as-is — this is specifically about the KPI figure's
+// *text* color, which has no such exception. "expired" is treated as
+// held-equivalent severity here, matching inventory/page.tsx's existing
+// STATUS_CLASSES mapping (expired -> status-held).
 const valueClass: Record<StatusToken, string> = {
   available: "text-status-available",
   pending: "text-status-pending",
   held: "text-status-held",
   neutral: "text-status-neutral",
-  expired: "text-brand-royal-blue",
+  expired: "text-status-held",
 };
 
 export type KpiCardProps = {

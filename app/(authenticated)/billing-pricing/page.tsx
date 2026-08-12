@@ -162,26 +162,28 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
       </div>
 
       {/* Tabs */}
-      <div className="mt-6 flex gap-1 border-b border-outline-variant/30">
+      <div role="tablist" aria-label="Billing sections" className="mt-6 flex gap-1 border-b border-outline-variant/30">
         <Link
           href="/billing-pricing?tab=vmi"
+          role="tab"
+          aria-selected={activeTab === "vmi"}
           className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-brand-navy ${
             activeTab === "vmi"
-              ? "border-b-2 border-brand-navy text-brand-navy"
+              ? "border-b-2 border-on-surface text-on-surface"
               : "text-text-grey hover:text-on-surface"
           }`}
-          aria-current={activeTab === "vmi" ? "page" : undefined}
         >
           VMI Billing
         </Link>
         <Link
           href="/billing-pricing?tab=trading"
+          role="tab"
+          aria-selected={activeTab === "trading"}
           className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-brand-navy ${
             activeTab === "trading"
-              ? "border-b-2 border-brand-navy text-brand-navy"
+              ? "border-b-2 border-on-surface text-on-surface"
               : "text-text-grey hover:text-on-surface"
           }`}
-          aria-current={activeTab === "trading" ? "page" : undefined}
         >
           Trading Margin
         </Link>

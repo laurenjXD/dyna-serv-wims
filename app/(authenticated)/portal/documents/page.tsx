@@ -144,26 +144,28 @@ export default async function PortalDocumentsPage({
       </div>
 
       {/* ── Tab navigation ─────────────────────────────────────────────────── */}
-      <div className="mt-6 flex gap-1 border-b border-outline-variant/30">
+      <div role="tablist" aria-label="Documents sections" className="mt-6 flex gap-1 border-b border-outline-variant/30">
         <Link
           href="/portal/documents?tab=pick-lists"
+          role="tab"
+          aria-selected={activeTab === "pick-lists"}
           className={`flex h-11 items-center px-4 font-label text-label motion-safe:transition-colors motion-safe:duration-150 focus:outline-none focus:ring-2 focus:ring-brand-navy ${
             activeTab === "pick-lists"
-              ? "border-b-2 border-brand-navy text-brand-navy"
+              ? "border-b-2 border-on-surface text-on-surface"
               : "text-text-grey hover:text-on-surface"
           }`}
-          aria-current={activeTab === "pick-lists" ? "page" : undefined}
         >
           Pick Lists
         </Link>
         <Link
           href="/portal/documents?tab=acknowledgement-receipts"
+          role="tab"
+          aria-selected={activeTab === "ar"}
           className={`flex h-11 items-center px-4 font-label text-label motion-safe:transition-colors motion-safe:duration-150 focus:outline-none focus:ring-2 focus:ring-brand-navy ${
             activeTab === "ar"
-              ? "border-b-2 border-brand-navy text-brand-navy"
+              ? "border-b-2 border-on-surface text-on-surface"
               : "text-text-grey hover:text-on-surface"
           }`}
-          aria-current={activeTab === "ar" ? "page" : undefined}
         >
           Acknowledgement Receipts
         </Link>

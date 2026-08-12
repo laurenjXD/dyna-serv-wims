@@ -113,8 +113,8 @@ export default async function EnrollmentPage({ searchParams }: PageProps) {
               aria-selected={isActive}
               className={`flex h-11 items-center border-b-2 px-4 font-label text-label uppercase tracking-[0.05em] focus:outline-none focus:ring-2 focus:ring-brand-navy ${
                 isActive
-                  ? "border-brand-red text-brand-navy"
-                  : "border-transparent text-text-grey hover:text-brand-navy"
+                  ? "border-on-surface text-on-surface"
+                  : "border-transparent text-text-grey hover:text-on-surface"
               }`}
             >
               {tab.label}

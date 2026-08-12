@@ -112,8 +112,8 @@ export default async function OutgoingPage({ searchParams }: PageProps) {
               aria-selected={isActive}
               className={`flex h-14 shrink-0 items-center border-b-2 px-4 font-label text-body-md uppercase tracking-[0.05em] focus:outline-none focus:ring-2 focus:ring-brand-navy md:h-11 md:text-label ${
                 isActive
-                  ? "border-brand-red text-brand-navy"
-                  : "border-transparent text-text-grey hover:text-brand-navy"
+                  ? "border-on-surface text-on-surface"
+                  : "border-transparent text-text-grey hover:text-on-surface"
               }`}
             >
               {tab.label}

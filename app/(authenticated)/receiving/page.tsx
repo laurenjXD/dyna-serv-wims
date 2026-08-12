@@ -212,8 +212,8 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
               aria-selected={isActive}
               className={`flex h-11 shrink-0 items-center border-b-2 px-1 font-label text-label font-semibold focus:outline-none focus:ring-2 focus:ring-brand-navy ${
                 isActive
-                  ? "border-brand-red text-brand-navy"
-                  : "border-transparent text-text-grey hover:text-brand-navy"
+                  ? "border-on-surface text-on-surface"
+                  : "border-transparent text-text-grey hover:text-on-surface"
               }`}
             >
               {tab.label}

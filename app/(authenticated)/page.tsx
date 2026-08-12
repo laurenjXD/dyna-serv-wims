@@ -189,7 +189,7 @@ function FloorLanding({
           <Link
             href="/receiving"
             data-testid="floor-card-wrrs"
-            className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl bg-white/10 px-3 py-4 text-center motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-navy"
+            className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl bg-brand-royal-blue px-3 py-4 text-center motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-navy"
           >
             <PackageCheck size={24} strokeWidth={2} aria-hidden="true" className="text-white/70" />
             <span className="font-heading text-data-display font-extrabold text-white">
@@ -200,7 +200,7 @@ function FloorLanding({
           <Link
             href="/outgoing"
             data-testid="floor-card-picks"
-            className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl bg-white/10 px-3 py-4 text-center motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-navy"
+            className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl bg-brand-royal-blue px-3 py-4 text-center motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-navy"
           >
             <ListChecks size={24} strokeWidth={2} aria-hidden="true" className="text-white/70" />
             <span className="font-heading text-data-display font-extrabold text-white">
@@ -211,7 +211,7 @@ function FloorLanding({
           <Link
             href="/transfers"
             data-testid="floor-card-transfers"
-            className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl bg-white/10 px-3 py-4 text-center motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-navy"
+            className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl bg-brand-royal-blue px-3 py-4 text-center motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-navy"
           >
             <ArrowLeftRight size={24} strokeWidth={2} aria-hidden="true" className="text-white/70" />
             <span className="font-heading text-data-display font-extrabold text-white">
@@ -222,7 +222,7 @@ function FloorLanding({
           <Link
             href="/inspection"
             data-testid="floor-card-inspections"
-            className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl bg-white/10 px-3 py-4 text-center motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-navy"
+            className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl bg-brand-royal-blue px-3 py-4 text-center motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-navy"
           >
             <FlaskConical size={24} strokeWidth={2} aria-hidden="true" className="text-white/70" />
             <span className="font-heading text-data-display font-extrabold text-white">
