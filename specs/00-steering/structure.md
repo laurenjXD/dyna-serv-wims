@@ -1,20 +1,36 @@
 # Structure & Naming — Dyna-Serv
 Status: Approved
 
+## User-Facing Terminology (use these terms across all UI screens, navigation, headers, forms, and client documentation)
+
+| User-Facing Term | Replaces / Context | Technical / Canonical Database Term | Do Not Use in UI |
+|---|---|---|---|
+| **Organization** | Replaces `Party` in UI labels, navigation, headers, and user documentation | `party` / `parties` | Party, Supplier, Vendor |
+| **Inventory Model** | Replaces `Flow Type` in UI forms, filters, tables, and headers (`'vmi'`, `'trading'`, `'supplies'`) | `flow_type` | Flow Type |
+| **Organization Portal** | Replaces `Party Portal` for external customer/partner portal access | `party_user` / `/portal` | Party Portal, Vendor Portal, Client Portal |
+| **Inspection** | Replaces `Daily Inspection` for aging inventory quality checks & pre-receiving triage | `inspection` / `inspection_id` | Daily Inspection, Quarantine Bay |
+| **Delivery Receipt / Acknowledgement Receipt** | Replaces `Acknowledgement Receipt` in user-facing UI labels until formal document decision | `acknowledgement_receipt` | Withdrawal Slip |
+| **Stock View** | Searchable stock view featuring expandable item → lot → location hierarchy under Inventory | `lot_location_balances` | Stock Browser |
+| **Work Queue** | Filterable operational queue for open receiving WRRs, inspection, and picking execution | — | Open Tasks |
+| **Incoming Ledger** | Confirmed receiving and putaway transaction history tab under Receiving | `inventory_transactions` (`movement_type = 'receiving'`) | Receiving History |
+| **Outgoing Ledger** | Confirmed outbound dispatch history tab under Outgoing | `inventory_transactions` (`movement_type = 'pick'`) | Dispatch History |
+| **Logistics** | Delivery status tracking, PEZA document uploads, and Add Charges tab under Outgoing | — | Logistics Manager |
+| **Pre-arrival Label Form** | Organization Portal feature for generating item barcodes prior to shipment arrival | `shipment_labels` | Pre-arrival Form |
+
 ## Glossary (use these terms exactly — no synonyms across specs)
 | Term | Definition | Do not use |
 |---|---|---|
-| `party` | Any vendor, customer, or end-customer — one table, role assigned per-transaction | supplier, vendor (as a table name) |
+| `party` | Any vendor, customer, or end-customer — one table, role assigned per-transaction. User-facing UI label is **Organization**. | supplier, vendor (as a table name) |
 | `item` | A product/SKU record | SKU (as a table/entity name) |
 | `location` | A physical storage slot (`rack-level-position` label e.g., `A1-01`) | bin, warehouse location |
 | `lot` | A physical instance of an item, partitioned by `flow_type` | batch (unless quoting a vendor's own lot number) |
-| `flow_type` | `'vmi'`, `'trading'`, or `'supplies'` — the partition key on `lots` | — |
+| `flow_type` | `'vmi'`, `'trading'`, or `'supplies'` — the partition key on `lots`. User-facing UI label is **Inventory Model**. | — |
 | `pick_list` | Operational document, generated at pick confirmation | — |
-| `acknowledgement_receipt` | Priced document, generated in-system + printed for physical signature at handoff | withdrawal slip |
+| `acknowledgement_receipt` | Priced document, generated in-system + printed for physical signature at handoff. User-facing UI label is **Delivery Receipt / Acknowledgement Receipt**. | withdrawal slip |
 | `wrr` | Warehouse Receiving Receipt — inbound receipt verification document | receiving ticket, goods receipt |
 | `cipl` | Commercial Invoice & Packing List — vendor shipping manifest reference | — |
 | `receiving_bay` | Inbound unloading dock area for un-scanned incoming shipments (separate from storage racks) | receiving dock, unloading bay |
-| `inspection` | Pre-receiving area for paper-vs-barcode cross-referencing, TDC, and damage/mismatch triage (stock here is NOT YET scanned or incremented in inventory) | quarantine bay, holding area |
+| `inspection` | Pre-receiving area for paper-vs-barcode cross-referencing, TDC, and damage/mismatch triage (stock here is NOT YET scanned or incremented in inventory). User-facing UI label is **Inspection**. | quarantine bay, holding area, daily inspection |
 | `inventory_transaction` | Ledger record of physical stock changes (replaces `stock_entry`) | stock_entry, movement_log |
 | `movement_type` | Category of stock movement (`'receiving'`, `'putaway'`, `'pick'`, `'transfer'`, `'reconciliation'`) | entry_type, transaction_type |
 | `uom` | Unit of Measure (e.g. piece, carton, pallet) | unit_type, pack_unit |

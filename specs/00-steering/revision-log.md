@@ -2,6 +2,20 @@
 
 Every merge conflict and major revision, dated, with the resolution. This is the audit trail for "why does the spec say X" when X isn't obvious from the doc alone.
 
+## UI Shell & Navigation specs and Glossary updated for unified terminology and visual design system (2026-08-14)
+
+Reconciled `specs/05-ui-shell-and-navigation/` (`requirements.md`, `design.md`, `tasks.md`) and `specs/00-steering/structure.md` with the unified visual design system (`specs/00-steering/design.md` and `specs/00-steering/ui-ux-design-plan.md`).
+
+Key updates:
+1. **User-Facing Terminology**: Formalized UI term mappings across all screens, navigation, headers, forms, and documentation:
+   - **Organization** (replaces `Party` in UI; technical schema remains `parties`)
+   - **Inventory Model** (replaces `Flow Type` in UI; technical schema remains `flow_type`)
+   - **Organization Portal** (replaces `Party Portal` in UI; technical schema remains `party_user` / `/portal`)
+   - **Inspection** (replaces `Daily Inspection` in UI)
+   - **Delivery Receipt / Acknowledgement Receipt** (replaces `Acknowledgement Receipt` in UI until formal document decision)
+2. **Visual Design System**: Enforced palette (#2563EB primary, #FFF7ED background, #FFFFFF surface, #0F172A text primary, #64748B text secondary), font families (**Etna Sans Serif** headings + **Glacial Indifference** UI/body/nav/buttons/badges), 3-component error feedback (What, Why, Next Action), solid surfaces without glassmorphism, 64px floor primary CTA, 56px floor default controls, and 44px office touch targets.
+3. **Glossary Update**: `specs/00-steering/structure.md` updated with a dedicated User-Facing Terminology table and updated Glossary entries.
+
 ## Three RLS write-policy gaps closed after the A2 rbac-rls-reviewer pass (2026-08-11)
 
 A `rbac-rls-reviewer` pass over the app-wide RLS session-binding rollout ("A2" -- server actions now run each mutation under the caller's own RLS-bound session rather than a bypassing connection) found three write-policy gaps left over from earlier, narrower-scoped migrations. All three are closed by two new migrations, `0023_core_and_pick_write_policies.sql` and `0024_approval_requests_reviewer_update_policy.sql`, handed off to `db-migration-verifier` (not self-verified).
