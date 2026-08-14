@@ -1,7 +1,7 @@
 # Incoming Receiving — Requirements
 
 Status: Approved
-Updated: 2026-08-10
+Updated: 2026-08-14 (Aligned with Unified UI/UX & Visual Design System)
 
 ## 1. Purpose and scope
 
@@ -9,205 +9,65 @@ Incoming Receiving governs the inbound lifecycle from an external CIPL/packing-l
 
 The central safety rule is that staged expected stock is not active inventory. A WRR becomes an authoritative inbound transaction only after the approved physical checks and confirmation command succeed.
 
-This feature does not own party/item enrollment, category management, location enrollment, outbound picking, transfer inspection, pricing finalization, VMI billing, or RBAC policy.
+### Terminology Alignment
+Across all user-facing receiving screens, tabs, forms, and headers:
+- **Organization** replaces Party.
+- **Inventory Model** replaces Flow Type.
+- **Organization Portal** replaces Party Portal.
+- **Inspection** replaces Daily Inspection.
+- Receiving Sub-tabs: **Work Queue**, **Receive** (scan flow), **WRRs** (staged & barcode reprint), **Incoming Ledger**.
+
+*(Note: `parties` and `flow_type` remain canonical database identifiers.)*
 
 ## 2. Actors and workflow surfaces
 
-- **Back-office receiving/operations user** — encodes CIPL data into a staged WRR, attaches the reference document, sets per-line dispositions, reviews discrepancies, and prints the WRR.
-- **Warehouse staff** — uses the printed/digital WRR at the `receiving_bay`, scans cartons, records inbound observations, and confirms or escalates the receipt according to capability.
-- **Supervisor** — reviews exceptions, non-conformance, and overrides dispositions where authorized, or any approval path explicitly assigned by the approved authorization matrix.
-- **Administrator** — manages master data and system configuration through their owning features; administrative access does not automatically authorize receipt confirmation.
+- **Back-office receiving/operations user** — encodes CIPL data into a staged WRR, attaches reference documents, sets per-line dispositions, reviews discrepancies, and prints WRRs.
+- **Warehouse staff** — uses the WRR at the `receiving_bay`, scans cartons, records inbound observations, and confirms or escalates receipt.
+- **Supervisor** — reviews exceptions, non-conformance, and overrides dispositions where authorized.
+- **Administrator** — manages master data and system configuration.
 
-The back-office form is an office surface. The physical scan and confirmation flow is a floor surface optimized for portrait handheld scanners, one primary action, high contrast, and immediate scan feedback.
+The back-office form is an office surface. The physical scan and confirmation flow is a floor surface optimized for portrait handheld scanners (375–430px base width, 64px full-width bottom CTA, 16px minimum text size).
 
-## 3. Lifecycle
+## 3. Sub-Tab Architecture
 
-The WRR lifecycle SHALL use the approved core status model, currently planned as:
-
-```text
-staged_pending_arrival → receiving_in_progress → confirmed
-                                      └──────→ cancelled (when permitted)
-```
-
-- `staged_pending_arrival`: expected lines exist, but no active lots or inbound ledger transaction exists.
-- `receiving_in_progress`: physical arrival/reconciliation is underway; scans and inspection observations are being recorded.
-- `confirmed`: the receipt commit transaction has succeeded; active inventory and immutable inbound ledger records exist.
-- `cancelled`: the staged document is deliberately stopped under approved rules; it does not represent received stock.
-
-The final enum and transition constraints must be reconciled with `01-core-data-model` before approval.
+The Receiving page (`/receiving`) features 4 primary sub-tabs:
+1. **Work Queue**: Summary list of staged pending arrivals and in-progress WRRs requiring action.
+2. **Receive**: Floor scan flow (`/receiving/[wrr_id]`) for barcode reconciliation, item verification, and store/hold location commit. Navigation is strictly hidden during active scan loops.
+3. **WRRs**: Archive and lookup of staged, in-progress, and confirmed WRR records, with barcode label reprinting.
+4. **Incoming Ledger**: Read-only, paginated audit view of all inbound inventory transactions (`movement_type = 'receiving'`).
 
 ## 4. Functional requirements
 
 ### R1. CIPL/WRR pre-receiving staging
 
-1. An authorized back-office user SHALL be able to create a WRR from an external CIPL/packing-list reference.
-2. The WRR SHALL capture the approved header references, including WRR number, CIPL reference/attachment where provided, invoice reference, import/PEZA references where applicable, MAWB/MBL (Master Air Waybill / Bill of Lading) number where applicable, source party, and `flow_type`.
-3. Each expected line SHALL identify an approved `item`, required WRR `lot_number`, expected quantity, UOM, unit CBM/reference packaging data required for reconciliation, and an inbound **disposition** (`store` or `inspect`). The `lot_number` field on `wrr_items` is the single canonical business lot identifier; it is copied verbatim to the resulting `lots` record at confirmation and is not supplemented or replaced by any vendor-supplied reference.
-4. **Amended 2026-08-10 (Product Owner) — supersedes the 2026-08-09 amendment of this clause:** a `store`-disposition line SHALL NOT be required to carry a `putaway_location_id` at WRR creation or staging time. The system does not yet know what will be scanned, so a location cannot be meaningfully suggested that early. `putaway_location_id` is instead populated per line at scan/store time, per R3.8/R7.9 below. An `inspect`-disposition line SHALL not use this value at all; its commit resolves a staff-confirmed active `inspection` location instead (R3.9). The per-line commit command re-validates location state and type inside its own transaction.
-5. A staged WRR SHALL not increment active inventory, create available lots, or write a `receiving` inventory transaction.
-6. The system SHALL validate that referenced parties/items are active and authorized for the operation, while unknown items follow the exception path in R4.
-7. The system SHALL support editing staged lines before physical receiving begins, subject to audit/version rules.
-8. Once physical receiving begins, changes to expected lines SHALL be restricted or explicitly versioned; silent changes to the scan baseline are prohibited.
+1. An authorized back-office user SHALL create a WRR capturing WRR number, CIPL/invoice reference, source Organization, and **Inventory Model** (`vmi`, `trading`, `supplies`).
+2. Each expected line SHALL specify item, WRR `lot_number`, expected quantity, UOM, and inbound **disposition** (`store` or `inspect`).
+3. Staged WRRs SHALL NOT increment active inventory or available lots.
 
-### R1a. Supplier advance-notice intake
+### R2. Supplier advance-notice intake
 
-**Added 2026-08-06**, formally adopting the confirmed matching flow from `22-parties-portal` requirements.md R11 / design.md §7c into this spec, per that spec's blocking dependency (c). This clause covers the input into `07`'s pre-receiving process from a party-submitted advance notice; it does not change R1.1's ownership of actual WRR creation.
+1. Consumes `wrr_advance_notices` submitted via the **Organization Portal**.
+2. Back-office users SHALL review `pending_review` notices against CIPL and choose to **confirm** (creating/matching a staged WRR line with adjustable declared quantity) or **reject/flag**.
+3. Physical barcode scanning of `WAN:<uuid>` payloads matches to the confirmed `wrr_items` line.
 
-1. A `wrr_advance_notices` row is owned and written entirely by `22-parties-portal` (a party in the inbound-supplying role — VMI vendor, or Trading `vendor`/`supplier` — submitting a thin pre-arrival label: item, a non-authoritative declared quantity, and an optional supplier lot number). `07` does not define, own, or grant party-user write access to this table; it only consumes rows created there. `wrr_advance_notices` is a `01-core-data-model` schema amendment (2026-08-06), now verified in real Postgres as recorded in the steering revision log.
-2. A back-office user with `receiving.view` and `receiving.confirm` SHALL be able to review a `pending_review` `wrr_advance_notices` row against the actual CIPL they have separately received, and SHALL be able to choose either of the following. The controlled function SHALL independently re-check `receiving.confirm`; no implementation may substitute a role-name check or an invented ad-hoc permission:
-   - **confirm** it — creating a new staged `wrr_items` line or matching it to an existing one, carrying over the item/party reference, and treating the advance notice's `declared_qty` as a non-authoritative starting value the back-office user MAY adjust against the actual CIPL before saving; or
-   - **reject/flag** it as a discrepancy for manual follow-up, without creating or matching a `wrr_items` line.
-   Confirming SHALL set `wrr_advance_notices.matched_wrr_item_id`, `status = 'confirmed'`, `confirmed_at`, and `confirmed_by_user_id`. Rejecting SHALL set `status = 'rejected'` and the same attribution fields, without a `matched_wrr_item_id`.
-3. A physical barcode scan at the `receiving_bay`, using this spec's existing R3 barcode-reconciliation flow, that resolves a `WAN:<uuid>` payload (per `18-barcode-integration` requirements.md FR-2.3) SHALL match to the linked `wrr_items` line via `wrr_advance_notices.matched_wrr_item_id`, and reconciliation then proceeds exactly as R3 already defines for any other scanned line.
-4. If the advance notice was never confirmed by back office before the shipment physically arrives and is scanned, the scan SHALL fall through to this spec's existing R3.3 unknown/unmatched exception path. No new bespoke error state is introduced for this case.
-5. This clause never bypasses R1.1: `07` retains sole ownership of actual WRR/`wrr_items` creation. A `wrr_advance_notices` row is advisory pre-staging input into that process, never a substitute for it, and never a party-user write path into `wrr_items`.
+### R3. Barcode reconciliation & per-line commit
 
-### R2. WRR printing and arrival
+1. Each carton scan matches against the expected item/line and barcode mapping.
+2. Immediate non-success 3-component error feedback (**What happened**, **Why it failed**, **Next Action / Solution**) is displayed on wrong item, unknown barcode, duplicate carton, or Inventory Model mismatch.
+3. For `store`-disposition lines, suggested storage location is displayed at scan time; staff accepts or overrides the active `storage` location before line commit.
+4. For `inspect`-disposition lines, staff confirms active `inspection` location before scanning.
+5. Each line's commit ("Store" or "Hold") is an explicit, per-line server command.
 
-1. The system SHALL generate a printable WRR containing a stable WRR reference, expected lines, quantities/UOMs, party and regulatory references, and the fields required by the approved paper workflow.
-2. Printing SHALL not imply receipt or create inventory.
-3. Staff SHALL be able to open a staged WRR and start receiving at a `receiving_bay` context.
-4. Starting receiving SHALL transition the WRR to `receiving_in_progress` through an authorized server command and SHALL be safe to retry.
-5. The floor flow SHALL clearly show the WRR being received, expected lines, scanned quantities, remaining quantities, and exceptions.
+### R4. Authorization, design system & error feedback
 
-### R3. Barcode reconciliation
-
-1. Each carton scan SHALL be matched against the WRR's expected item/line and the approved barcode/item identity mapping.
-2. The system SHALL track scanned versus expected quantity per WRR line and SHALL prevent silent over-receipt.
-3. A scan for the wrong item, unknown barcode, wrong WRR, duplicate carton, quantity beyond the expected amount, or (**added 2026-08-10**) a scanned item whose own `flow_type` does not match the WRR's `flow_type` SHALL produce immediate non-success feedback and a recoverable exception state, through the same rejection path.
-4. Manual entry MAY be available as a controlled recovery path when scanning fails, but it SHALL use the same server validation and audit path.
-5. A receipt SHALL not be confirmable while required lines, unresolved exceptions, or required inspection decisions remain outstanding, unless an explicitly approved discrepancy workflow allows it.
-6. Scan capture MAY be Tier 1 offline work only after its exact command and owning workflow are approved by `03-offline-mode-and-client-storage`.
-7. Scan capture SHALL not by itself create lots, increment active inventory, or finalize the inbound ledger.
-8. **Added 2026-08-10, supersedes the 2026-08-09 pre-scan putaway-location requirement:** WHEN a `store`-disposition scan matches its expected WRR line, THE SYSTEM SHALL compute and display a suggested storage location using the existing approved location/capacity suggestion interface (design.md §10), SO THAT staff can accept or override a location informed by the item's actual CBM and remaining capacity rather than a location chosen before anyone knew what was arriving. Staff SHALL be able to accept the suggestion or select another active `storage` location before the line commits.
-9. **Added 2026-08-10:** WHEN staff is receiving an `inspect`-disposition line, THE SYSTEM SHALL require staff to select/confirm the active `inspection` location before scanning the item, SO THAT the fixed, small set of hold/quarantine locations is confirmed without requiring the CBM/capacity computation that only applies to storage putaway.
-
-### R4. Unknown or unregistered item handling
-
-1. If a physical barcode does not resolve to an active `item`, the system SHALL pause that line and explain the exception.
-2. The floor flow SHALL offer only the approved recovery path: navigate to the online `06-party-and-item-enrollment` workflow for an authorized enrollment, or record an exception for back-office resolution.
-3. New item enrollment SHALL not be silently performed as an unaudited receiving-side mutation and SHALL not be available through the offline queue.
-4. After enrollment, the receiving user SHALL revalidate the item and barcode against the WRR before continuing; the system SHALL not assume the previously rejected scan is valid.
-5. If the item cannot be resolved, the receipt remains incomplete or enters the approved discrepancy/non-conformance path.
-
-### R5. Inbound receiving disposition
-
-1. Each WRR line SHALL carry a **disposition** value — either `store` or `inspect` — that determines the lot status and posting location created by the receipt confirmation commit.
-
-2. **`store` disposition**: the scanned quantity has passed the physical check and requires no further pre-availability inspection.
-   - On receipt confirmation, the lot SHALL be created with `status = 'available'`.
-   - The full confirmed quantity SHALL be posted to `lot_location_balances` at the designated putaway location with full availability.
-   - The lot is immediately eligible for FIFO/FEFO pick-list allocation.
-
-3. **`inspect` disposition**: the scanned quantity requires inspection before becoming available inventory.
-   - On receipt confirmation, the lot SHALL be created with `status = 'quarantined'`.
-   - The full confirmed quantity SHALL be posted to `lot_location_balances` at the designated `inspection` location. `qty_available` (derived as `qty_remaining - qty_committed`) will be zero because the lot is excluded from allocation by its `quarantined` status, not by a separate field value.
-   - The lot SHALL NOT be eligible for FIFO/FEFO pick-list allocation while in `quarantined` status.
-
-4. The `inspection` location is a specific `locations` record with `location_type = 'inspection'`; it holds its own `lot_location_balances` rows for all quarantined inbound stock. It is not a virtual marker — it is a real enrolled location record.
-
-5. The disposition is set per WRR line. The back-office user SHALL be able to set or override the disposition on each line before physical receiving begins. A floor supervisor MAY change the disposition at confirmation time where the authorization matrix permits.
-
-6. Mandatory `inspect` disposition SHALL be enforced automatically when: (a) the item master record carries an inspection-required flag, (b) the flow or party configuration requires inspection, or (c) a supervisor explicitly flags the line during receiving.
-
-7. Inspection resolution — pass, fail, return, or hold — for quarantined lots is owned by the shared inspection capability. `11-transfer-and-inspection` is the shared inspection handler for disposition evidence, resolution decision, and outcome recording; `07` initiates the inspection case event at commit time but does not own the resolution logic.
-
-8. A receipt with lines of mixed dispositions MAY be confirmed as a single commit provided all mandatory scan prerequisites are met for each line individually.
-
-### R5a. Visual receiving inspection and immediate dispositions
-
-1. During physical Receiving, staff SHALL visually inspect every scanned line for visible damage, wrong item/code, quantity or packaging mismatch, labeling mismatch, and other observable non-conformance; barcode success alone is not visual inspection.
-2. A conformant quantity continues through `store` or `inspect`. A non-conformant quantity SHALL receive exactly one immediate disposition: `on_hold` or `reject`.
-3. `on_hold` SHALL remain non-available pending final disposition and SHALL require a controlled reason and mandatory remarks before save.
-4. `reject` SHALL route the exact quantity to a designated rejects `location`, then create an auditable Return to Vendor (RTV) workflow linked to the WRR line, `lot_number`, quantity, reason, remarks, actor, and timestamps. Rejected quantity SHALL not become available.
-5. Visual results and dispositions SHALL be quantity-splittable and retained in the receiving inspection record. RLS must inherit the WRR party/flow scope; UI hiding is not the security boundary.
-
-### R6. Inbound inspection and conformance
-
-1. The system SHALL support inspection of inbound goods at the `inspection` location/context before active inventory is posted where the approved flow requires it.
-2. A conformance result SHALL identify the WRR, line/item, party, actor, timestamp, and result.
-3. A non-conformance result SHALL require an approved reason, remarks where required, and evidence attachment where required by the final design.
-4. Non-conformance reasons SHALL use the approved enum/reference, including TDC defect, quantity mismatch, damaged carton, wrong item code, missing paperwork, and other where retained by core design.
-5. Goods marked non-conformant SHALL not become available inventory until an approved resolution changes their state; the resolution may be quarantine, return-to-party, correction, or another explicitly defined action.
-6. A conformance result SHALL permit the matching receipt line to proceed to confirmation and putaway recommendation.
-7. Inbound inspection records SHALL remain distinct from transfer/other inspection workflows owned by `11-transfer-and-inspection`.
-
-### R7. Receipt confirmation and inventory commit
-
-1. **Amended 2026-08-10, supersedes item 2's prior single-atomic-gate wording:** each line's commit ("Store" for `store`-disposition lines, "Hold" for `inspect`-disposition lines) SHALL be an explicit, authorized server command with one primary floor action, executed per line rather than gated on every other line in the WRR being ready first.
-2. **Amended 2026-08-10:** each per-line commit SHALL atomically validate that specific line's scan totals, conformance decisions, active item/party references, flow partition, required lot metadata, disposition value, and (for `store`) the accepted/overridden putaway location's active `storage` state — or (for `inspect`) the confirmed `inspection` location — before posting that line alone.
-3. On a line's successful commit, the system SHALL create the approved physical lot/lot state for that line and insert an immutable `inventory_transaction` record with `movement_type = 'receiving'`. The resulting lot status and posting location depend on the line's disposition:
-   - `store` disposition: lot created with `status = 'available'`; `lot_location_balances` posted at the location accepted/overridden at scan time (R3.8) with full quantity as available.
-   - `inspect` disposition: lot created with `status = 'quarantined'`; `lot_location_balances` posted at the `inspection` location confirmed before scanning (R3.9); an inspection case event is emitted for `11`.
-   Both dispositions insert `inventory_transactions` with `movement_type = 'receiving'`. The `lot_location_balances` rows created by each per-line commit are the authoritative source for `lot_inventory_totals`. **Amended 2026-08-10**: the WRR itself transitions to `confirmed` only once every one of its lines has reached a terminal committed (or cancelled/discarded, per the existing cancellation path) state — see design.md §9's open item on how `01-core-data-model`'s `wrr_status` enum represents the in-between state.
-4. Regulatory and source references approved for inheritance SHALL carry from the WRR to the resulting lot/transaction records without changing their historical meaning.
-5. Each per-line commit SHALL be idempotent, scoped to that line: retries or lost responses SHALL not create duplicate lots or duplicate ledger transactions for that line.
-6. A failed per-line commit SHALL leave no partial outcome for that line and SHALL return a safe recoverable error; it SHALL NOT roll back or otherwise affect any other line's already-committed state.
-7. Non-conformant quantities SHALL not be posted as available inventory unless the approved resolution explicitly permits a different status/path.
-8. The receipt commit SHALL not finalize Trading document prices or VMI period billing; those semantics belong to `13` and `12`.
-
-### R8. Putaway handoff
-
-1. **Amended 2026-08-10, supersedes the prior post-commit-only timing:** for `store`-disposition lines, the system SHALL provide the approved putaway recommendation at scan time, before that line's commit (R3.8) — not only as a recommendation surfaced after a receipt is already committed.
-2. Recommendations SHALL use approved `locations`, item `volume_cbm`, active capacity, flow/lot constraints, and any FIFO/FEFO rules defined by the owning inventory design.
-3. A recommendation SHALL not be represented as completed putaway until the per-line "Store" commit (R7) confirms it.
-4. Completed putaway SHALL be recorded through the owning inventory transaction boundary with `movement_type = 'putaway'` where applicable.
-5. Receiving SHALL not introduce a second location/capacity model or a `warehouse_id`.
-
-### R9. Incoming ledger and review
-
-1. The Incoming Ledger SHALL be a filtered view of the authoritative `inventory_transactions` ledger, not a duplicate receipt ledger.
-2. It SHALL support receiving and putaway movements and show date/time, item code, description, canonical `lot_number` where authorized, quantity/UOM, WRR reference, source party, flow type, and performing user.
-3. It SHALL support date range, party, flow, item/code, and WRR/CIPL reference filters according to the caller's capability/scope.
-4. A row/detail view MAY show locations, conformance, discrepancies, and related WRR references only when the caller is authorized to see them.
-5. The ledger SHALL be read-only; corrections create approved new records/transactions and do not edit or delete immutable history.
-
-### R10. Authorization, audit, and privacy
-
-1. All staging, scanning, inspection, confirmation, cancellation, attachment, and ledger reads SHALL use the shared capability/scope contract from `02-rbac-roles`.
-2. Party/flow scope SHALL be checked against the current WRR and related records; client-supplied party or flow values SHALL not establish authorization.
-3. The UI MAY hide unavailable actions, but server and RLS enforcement remain authoritative.
-4. RLS policies for `wrr_inspection_logs`, RTV references, and related receiving rows SHALL inherit the WRR's party/flow scope and deny unauthorized reads/writes at the database layer; client filtering is not sufficient.
-5. Receipt lifecycle changes, exception decisions, confirmations, and non-conformance resolutions SHALL be attributable to an actor, timestamp, and correlation ID through the approved audit path.
-6. CIPL/evidence files SHALL use private Storage and authorized access from `04-services-and-infrastructure`.
-7. Errors and monitoring data SHALL not expose tokens, SQL, protected records outside scope, or unnecessary personal data.
-
-### R11. Offline and resilience behavior
-
-1. Pre-receiving WRR creation/editing, CIPL uploads, item enrollment, inspection resolution, receipt confirmation, and putaway confirmation SHALL be online-only in v1 unless an owning spec explicitly approves otherwise.
-2. Barcode scan capture/reconciliation MAY be Tier 1 offline work only through an approved versioned command envelope.
-3. Offline scan replay SHALL re-authenticate, re-authorize, re-check WRR/business state, and remain idempotent; it SHALL not directly commit inventory from the client.
-4. Connectivity and synchronization status SHALL use the shared `OfflineStatus` contract and SHALL not be confused with receipt confirmation.
-5. A network loss SHALL preserve honest local capture state without claiming that the receipt is confirmed.
+1. All protected actions use capability grants (`receiving.view`, `receiving.confirm`).
+2. Floor screens enforce 64px primary CTAs, 16px minimum font size, zero glassmorphism, Level 1 Solid White (`#FFFFFF`) card surfaces on Level 0 Cream White (`#FFF7ED`) background.
+3. All error states display 3-component error feedback (What, Why, Next Action).
 
 ## 5. Acceptance criteria
 
-- [ ] A staged WRR with CIPL reference and expected lines can be created, reviewed, and printed without affecting active inventory.
-- [ ] Floor scans match expected WRR lines, visibly track remaining quantities, and reject wrong/duplicate/over-quantity/unknown/flow-type-mismatch scans safely.
-- [ ] Unknown item handling routes to online authorized enrollment or an explicit exception; it never silently creates an item offline.
-- [ ] Inbound conformance/non-conformance decisions prevent unsafe posting and retain required evidence/reasons.
-- [ ] **Amended 2026-08-10, supersedes the prior single-atomic-commit wording:** each line's "Store"/"Hold" commit atomically creates that line's approved active inventory/lot and immutable receiving ledger outcome exactly once; the WRR reaches `confirmed` only once every line has reached a terminal committed state.
-- [ ] `store` disposition creates a lot with `status = 'available'` at the location accepted/overridden at scan time; `inspect` disposition creates a lot with `status = 'quarantined'` at the `inspection` location confirmed before scanning, with zero allocation eligibility.
-- [ ] Quarantined lots are excluded from FIFO/FEFO pick-list allocation until `11` resolves them to `available`.
-- [ ] **Amended 2026-08-10:** for `store` lines, the putaway location suggestion is shown at scan time (before that line's commit), accepted or overridden by staff, and not represented as completed putaway until the line's "Store" commit confirms it; incoming ledger views authoritative transactions only.
-- [ ] Party/flow scope, RLS, stale state, revoked access, and direct-identifier manipulation are tested.
-- [ ] Offline scan behavior is simulated and enrollment/confirmation remain blocked offline.
-- [ ] A back-office user can confirm a `pending_review` `wrr_advance_notices` row into a staged `wrr_items` line (adjusting the non-authoritative declared quantity as needed) or reject it; a physical scan of its `WAN:<uuid>` barcode at receiving matches the confirmed line via `matched_wrr_item_id`, and an unconfirmed advance notice's scan falls through to the existing R3.3 unknown/unmatched exception path.
-- [ ] Visual receiving inspection records exact conformant/`on_hold`/`reject` quantities; `on_hold` has mandatory remarks/reason, and `reject` routes to a designated rejects `location` and RTV workflow.
-- [ ] **Added 2026-08-10:** a scanned item whose `flow_type` does not match the WRR's `flow_type` is rejected through the same exception path as any other wrong-item scan.
-
-## 5a. Open Questions (added 2026-08-10, resolved 2026-08-10)
-
-- ~~`01-core-data-model`'s `wrr_status` enum has no value cleanly representing "in progress, some lines already committed, not yet fully committed."~~ **Resolved**: no new enum value. `receiving_in_progress` covers the entire in-flight window regardless of how many lines have committed; per-line completion is already tracked on `wrr_items` (§R3.2 discrepancy state), not the parent WRR status. `wrr_documents.status` moves to `confirmed` only once every line reaches a terminal committed state. This also corrects the 2026-08-09 cancellation-resolution entry, which described a cancelled-with-partial-completion WRR as closing with "`partial` status" — that value does not exist in the schema and will not be added; such a WRR closes as `cancelled`, with its already-committed lines' `lots`/`lot_location_balances`/`inventory_transactions` rows standing unaffected. See `revision-log.md`'s 2026-08-10 entry.
-
-## 6. Dependencies and exclusions
-
-- Depends on approved `01-core-data-model` tables and transitions: `parties`, `items`, `locations`, `lots`, `lot_location_balances`, `wrr_documents`, `wrr_items`, `wrr_inspection_logs`, and `inventory_transactions`. The `disposition` field on `wrr_items` is a new field required by this spec and will be added to `01` via a schema amendment before implementation. **Added 2026-08-06**: also depends on `01`'s new `wrr_advance_notices` table (schema amendment, not yet through `db-migration-verifier`, see `01` design.md §6) for R1a; this table is written by `22-parties-portal`, consumed and confirmed/rejected by `07`.
-- **Added 2026-08-06**: depends on `22-parties-portal` requirements.md R11 / design.md §7c as the originating requirement for R1a (supplier advance-notice intake) — `22` owns the party-facing submission surface; `07` owns confirmation/rejection and the physical-scan match.
-- Depends on `02-rbac-roles` for capabilities, party/flow scope, RLS, and audit attribution.
-- Depends on `03-offline-mode-and-client-storage` for the Tier 1 scan allowlist and replay contract.
-- Depends on `04-services-and-infrastructure` for Auth, private Storage, email/monitoring, server transactions, and idempotency.
-- Depends on `05-ui-shell-and-navigation` for protected routes, floor/office surfaces, page headers, and status feedback.
-- Uses `06-party-and-item-enrollment` for unknown item recovery; does not copy its enrollment logic.
-- `11-transfer-and-inspection` owns the shared inspection handler for quarantined-lot resolution, disposition evidence, and transfer of passed lots from the `inspection` location to the putaway location. Inbound WRR physical conformance recording (`wrr_inspection_logs`) is separate from transfer inspection, but quarantined-lot state transitions after commitment are delegated to `11`.
-- `08`, `09`, `10`, `12`, and `13` own outbound commitment, approvals, documents, VMI billing, and Trading pricing respectively.
+- [ ] Receiving sub-tabs (Work Queue, Receive, WRRs, Incoming Ledger) render cleanly.
+- [ ] User-facing UI labels use Organization, Inventory Model, Organization Portal, and Inspection exclusively.
+- [ ] Per-line store/hold commits update lot balances and incoming ledger atomically.
+- [ ] 3-component error feedback is displayed on all scan and receiving errors.
+- [ ] Visual design system tokens (#2563EB, #0F172A, #64748B, #FFF7ED, #FFFFFF) and Etna Sans Serif + Glacial Indifference typography are fully applied.

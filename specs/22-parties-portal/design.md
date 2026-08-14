@@ -1,239 +1,49 @@
-# Parties Portal — Design
+# Organization Portal — Design
 
 Status: Approved
-Updated: 2026-08-06
+Updated: 2026-08-14 (Aligned with Unified UI/UX & Visual Design System)
 
 ## 1. Design intent
 
-The parties portal is an authenticated, external, office/desktop-first self-service surface for the `party_user` role. It is overwhelmingly a read/consume surface backed entirely by mechanisms already designed elsewhere: `02-rbac-roles`'s finalized capability catalog and RLS patterns (Approved), `01-core-data-model`'s canonical tables (Approved), `10`'s document/signed-URL model, `12`'s VMI billing tables, `13`'s Trading price snapshot, and `14`'s notification center contract. This design introduces no new RLS mechanism beyond what `07`'s confirmed-direction `wrr_advance_notices` table needs (§7c), and no new capability semantics beyond three capabilities added to `02`'s catalog (2026-08-06): `vmi_statements.read` (§4/§7), `reporting.read` (§4/§7a), and `shipment_labels.generate` (§4/§7c). §7c is this portal's one genuine exception to its otherwise read-only posture — a real, narrow mutation, not a future hypothetical — covered in full below. Every read or write in this feature maps to an existing or already-catalogued `02` capability/scope pattern; §7c remains implementation-blocked only by `01`'s schema-amendment verification and `07`/`18`'s own approval processes.
+The Organization Portal is an authenticated, external, office/desktop-first self-service surface for the `party_user` role. It is a read/consume surface backed by `02-rbac-roles`, `01-core-data-model`, `10-pick-list-and-acknowledgement-receipt`, `12-vmi-billing`, `13-trading-orders-and-pricing`, and `14-notifications-and-alerts`.
 
-The design follows `specs/00-steering/brand-design-system.md`'s office-context rules, not floor-context rules: this is not a scanner-driven flow, so there is no 64px scan-primary button, no thumb-zone primary action, and no single-primary-action-per-screen constraint. Standard office contrast (AA), 44px touch targets, and hover affordances (§9/§10) apply, while the layout remains usable down to the approved mobile breakpoint (per `requirements.md` R9). **Corrected 2026-08-06, `design-system-auditor` finding 1**: office context is hover-only per `brand-design-system.md` §10 ("Office: hover scale to 1.02, 150-200ms transitions") — `active:`-press is defined only as a floor-specific hover replacement, so "press" affordances do not apply to this office-context portal.
+The design follows `specs/00-steering/brand-design-system.md` office-context rules with solid Level 0 Cream White (`#FFF7ED`) background and Level 1 Solid White (`#FFFFFF`) cards with subtle shadow `0 1px 2px rgba(15,23,42,0.08)`. Zero glassmorphism or backdrop blur.
 
-## 2. Foundational dependencies and tables
+### Terminology Alignment
+Across all portal design components, route layouts, and mockups:
+- **Organization Portal** replaces Party Portal.
+- **Organization** replaces Party.
+- **Inventory Model** replaces Flow Type.
+- **Delivery Receipt / Acknowledgement Receipt** replaces Acknowledgement Receipt.
+- **Pre-arrival Label Form** replaces Supplier Pre-labeling.
 
-Depends on:
+*(Note: `parties`, `party_user`, `user_party_scopes`, and `flow_type` remain canonical database identifiers.)*
 
-- `00-steering/product.md`, `tech.md`, `structure.md`, `testing.md`, and `brand-design-system.md`.
-- `01-core-data-model` (Approved) for the canonical table definitions and database constraints this feature reads.
-- `02-rbac-roles` (Approved) for the `party_user` role, capability catalog, `assigned_party` scope kind, `user_party_scopes`, the `party_visible_items` view, and every RLS pattern cited below — treated as settled fact, not re-derived.
-- `03-offline-mode-and-client-storage` (Draft) for confirming this feature has zero Tier 1 offline surface.
-- `04-services-and-infrastructure` (Draft) for Auth, server runtime, the private Storage bucket/signed-URL mechanism, Resend, and monitoring.
-- `05-ui-shell-and-navigation` (Draft) for authenticated layout, responsive behavior, and feedback regions — shell-architecture direction resolved 2026-08-06 (shared filtered shell, `"party"` `ShellSurface`), see §3.
-- `10-pick-list-and-acknowledgement-receipt` (Draft) for document generation, artifact access, and the VMI disclaimer.
-- `12-vmi-billing` (Approved) for `vmi_contracts`, `vmi_cbm_ledger`, `vmi_billing_statement`, `vmi_credit_notes`.
-- `13-trading-orders-and-pricing` (Approved) for the final Trading document price and margin exclusion.
-- `14-notifications-and-alerts` (Draft) for the in-app notification center contract.
-- `16-reporting-and-analytics` (Draft) for the party-scoped VMI/Trading analytics views (FR-5, FR-6) and the reusable component library (FR-9) §7a embeds — this design defines no new chart component or aggregation query.
-- `06-party-and-item-enrollment` (Draft) — current dependency for §7c: administrator-only internal item enrollment, which R11's scope boundary (items reachable through `party_visible_items` only) relies on as the gate for a genuinely brand-new item; `06` design.md §8/§7.4's rule that `default_supplier_party_id` must never be used to expose item records to a party user.
-- `07-incoming-receiving` (Draft) — current dependency for §7c: WRR/CIPL pre-receiving workflow, scanned-vs-expected discrepancy handling (R3.2, R3.3), WRR-creation ownership (R1.1), and the confirmed-direction `wrr_advance_notices` table's confirmation/matching flow — as of 2026-08-06, formally written into `07` requirements.md R1a / design.md §5.5, pending `07`'s own approval process.
-- `18-barcode-integration` (Approved) — current dependency for §7c: FR-3.2's UUID-lookup-not-data-blob payload principle, which the `WAN:<uuid>` payload follows; FR-2.3 formally scopes 1D/Code 128 decoding to this flow only.
+## 2. Route Architecture
 
-### Core tables touched
-
-| Table | Use in this feature | Ownership boundary |
-|---|---|---|
-| `parties` | Read own party master-data row via the implied self-row read. | `01` owns columns/constraints; `02` owns the self-row RLS pattern (§7.4); `06` owns mutation (out of scope here — this feature never writes). |
-| `lot_location_balances` | VMI party's live inventory-position view, one-hop joined to parent `lots`. | `01` owns schema; `02` owns the `can_access_party_resource('lot_location_balances', 'read', lots.owner_party_id, 'vmi')` RLS pattern (§7.4). |
-| `lots` (parent join only, VMI branch) | Supplies `owner_party_id`/`flow_type` for the `lot_location_balances` join predicate; never queried directly for Trading. | `01` owns schema; `02` §7.4 owns the two-branch VMI/Trading RLS split — this feature only ever exercises the VMI branch. |
-| `pick_lists` | Trading party's order/document list, matched on `customer_party_id`. | `01` owns schema; `02` owns `can_access_party_resource('pick_list', 'read', customer_party_id, flow_type)` (§7.4, resource key `'pick_list'` singular per `02`'s pass-2 correction). |
-| `pick_list_items` | Snapshot fields (`lot_number`, `location_label`, price) shown on a Trading order/document; inherits scope from parent `pick_lists`. | `01` owns schema; `10` owns the snapshot-immutability guarantee; `13` owns the frozen price value. |
-| `items` (via `party_visible_items` view only) | Item identity fields rendered on VMI position and Trading document lines. | `01` owns base schema; `02` owns the `party_visible_items` view (§7.4) — a default, non-`security_invoker` view; this feature never queries base `items`. |
-| `vmi_billing_statement`, `vmi_credit_notes` | VMI party's issued statements/credit-note status, PDF artifact only (see §7's resolved statement-depth note). | `12` owns schema/lifecycle; capability/RLS pattern (`vmi_statements.read`, `assigned_party`) is in `02`'s approved catalog (2026-08-06). |
-| `wrr_advance_notices` (**confirmed direction**, product owner 2026-08-06; not yet in `01`'s schema) | R11/§7c: the one write this feature originates — an inbound-supplying party's pre-arrival label submission (item, non-authoritative quantity, optional supplier lot number). | `07-incoming-receiving`'s domain (pre-receiving staging is `07`'s territory); requires the standard `01`/`07` schema-amendment and approval process before implementation; written by this portal under the proposed `shipment_labels.generate` (`assigned_party`) capability; confirmed/converted into a staged `wrr_items` line by back office — `07` retains sole ownership of actual WRR creation (R1.1) throughout. |
-
-No `wrr_documents`, `wrr_items`, `wrr_inspection_logs`, `inventory_transactions`, `inventory_commitments`, `inventory_commitment_lines`, `party_roles` mutation, `item_categories` management, or offline-queue store is owned or touched by this feature. This feature is overwhelmingly read-only: the only writes it originates are notification read/dismiss state (owned by `14`), a stored party-switcher preference if implemented (owned by `21`'s profile-preference mechanism if reused, not a new table here — see §9's open item), and — once R11's blocking gaps are resolved — the one narrowly-scoped `wrr_advance_notices` write covered in §7c. This is a real, if narrow, exception to an otherwise read-only design, not glossed over as "zero writes."
-
-`16-reporting-and-analytics`'s party-scoped analytics views (FR-5, FR-6) read from `lot_location_balances`, `lot_inventory_totals`, `lots`, `items` (party-safe projection), and `pick_lists` — all tables already listed above or owned by `16`'s own materialized-view/aggregation layer. This feature adds no new query against those tables beyond what `16` already defines; it only embeds `16`'s components. See §7a.
-
-## 3. Route and shell integration
-
-**Resolved (product owner, 2026-08-06): shared filtered shell.** Party users get the same authenticated shell (sidebar/header, `AppHeader`, `AccountControl`, `StatusRegion`) as internal staff — not a distinct minimal external layout. `05-ui-shell-and-navigation` design.md's existing capability-based `NavigationEntry` filtering ("hidden, not disabled" per `05` §5) naturally handles which entries a `party_user` sees, since every entry this portal registers is capability-gated. The only addition `05` needed was a fourth `ShellSurface` value, `"party"` (added to `05` design.md §5's `NavigationEntry` type: `"floor" | "office" | "shared" | "party"`), distinct from `"office"` (internal office users) only so floor/office-specific styling rules can be explicitly excluded from party sessions where relevant — both render the identical shell components. This reuses `05`'s existing components entirely unchanged (no new shell codebase to build/maintain, no risk of the party-facing chrome drifting from the brand system the way a second, separately-maintained layout would) — the capability-filtering mechanism `05` already has is sufficient on its own to hide every internal-only nav group from a `party_user` session.
-
-`05` design.md §3.2's route inventory now lists this portal's six routes with `surface: "party"` and their gating capability keys (`pick_list.read`, `documents.read`, `notifications.read`, `vmi_statements.read`, `reporting.read`, `shipment_labels.generate`).
-
-Route shape, folding into `05`'s shared `app/(authenticated)/` layout — not a separate route group:
+Routes fold cleanly into the shared `app/(authenticated)/` layout:
 
 ```text
 app/(authenticated)/
   portal/
-    page.tsx                    # landing: context-aware summary (VMI position or Trading orders, per active assignment)
+    page.tsx                    # Organization Home: context-aware summary (VMI position or Trading orders)
     inventory/
-      page.tsx                  # VMI-only: lot_location_balances position view + embedded VMI analytics (16 FR-5)
+      page.tsx                  # Organization Stock: VMI lot_location_balances position + embedded VMI analytics
     orders/
-      page.tsx                  # Trading-only: pick_lists list + embedded Trading analytics (16 FR-6)
-      [pickListId]/page.tsx     # Trading-only: pick_list detail with snapshot lines/price
+      page.tsx                  # Orders: Trading pick_lists list + embedded Trading analytics
+      [pickListId]/page.tsx     # Order detail with snapshot lines/price
     documents/
-      page.tsx                  # combined pick_list/acknowledgement_receipt/vmi_billing_statement/vmi_credit_notes list
-      [documentId]/page.tsx     # document preview + signed-URL download action
+      page.tsx                  # Documents: combined pick_lists, Delivery Receipts / Acknowledgement Receipts, VMI statements
+      [documentId]/page.tsx     # Document preview + signed-URL download
     notifications/
-      page.tsx                  # 14's notification center, party-scoped
+      page.tsx                  # Organization Notifications: scoped in-app notification center
     labels/
-      page.tsx                  # R11's barcode pre-label form, once R11's four blockers are resolved
+      page.tsx                  # Pre-arrival Label Form: 1D shipment label generation (WAN:<uuid>)
 ```
 
-This folds into the same `app/(authenticated)/` layout `05` already defines for `06` and other internal-staff surfaces — not a separate route group. `AuthenticatedLayout` resolves the caller's session and role identically for a `party_user` and an internal-staff user; only the resolved `NavigationEntry` set and the route's own server-side authorization differ.
+## 3. Visual Design & Typography Rules
 
-The party-switcher (per requirements.md R1.4) is rendered in the shell's account/context area — it is this feature's own component, not a `05`-owned primitive, since no other feature needs multi-entity context switching today.
-
-## 4. Command boundary
-
-Every operation in this feature except one is a scoped, authorized read. The read boundary is:
-
-```text
-request
-  → authenticated server session (Supabase Auth, per 02 §6.1)
-  → resolve active user_party_scopes assignments server-side
-  → resolve/validate selected assignment (single-assignment default, or explicit switcher selection re-validated against the user's actual active assignments — never a bare client-supplied party_id/flow_type)
-  → resolve the assignment's party_roles rows via the caller's own already-granted self-row parties read (R5.2; 02 §7.4's inheritance rule — no new capability), determining inbound-supplying eligibility for surfaces that need it (R11)
-  → capability + assigned_party scope check via requirePermission(resource, action, {partyId, flowType})
-  → RLS-scoped Postgres read (transaction-bound Drizzle client per 02 §6.3, or the Supabase session/Data API path if 04 selects that mode)
-  → safe result, redacted of any field not in the party-safe projection
-```
-
-The one exception is R11/§7c's advance-notice submission, which is a genuine mutation, not read-shaped:
-
-```text
-request (thin form: item, declared quantity, optional supplier lot number)
-  → authenticated server session (Supabase Auth, per 02 §6.1)
-  → resolve active user_party_scopes assignment server-side; resolve party_roles (per R1.7/02 §7.4's inheritance rule) and confirm the assignment is inbound-supplying (vendor/supplier), never customer/end_customer, and NOT also customer/end_customer (hybrid-party exclusion, requirements.md R11.1a; 02 §7.4 finding B)
-  → application-layer fast-fail check that the selected item is reachable through party_visible_items (R11's scope boundary — a UX nicety only; the actual enforcement is RLS condition 3 below, per 02 §7.4 finding D)
-  → capability + assigned_party scope check via requirePermission('shipment_labels', 'generate', {partyId, flowType})
-  → server-action write of a new wrr_advance_notices row (confirmed direction, pending 01/07's procedural schema-amendment and workflow approval), scoped to the caller's own party_id — the actual INSERT is authorized by 02 design.md §7.4's four-condition WITH CHECK clause (capability+scope via can_access_party_resource('shipment_labels', 'generate', ..., flow_type::text); non-hybrid inbound-supplying party_roles via rbac_internal.party_has_any_role; item_id IN (SELECT id FROM party_visible_items); and submitted_by_user_id = auth.uid()) — this server-action layer's own checks above are defense-in-depth, not a substitute for RLS
-  → generate the UUID-pointer 1D barcode payload (WAN:<uuid>) against the new row's id
-  → audited server-action mutation, online-only (Tier 2), never queued offline
-```
-
-This mutation path never writes to `wrr_items` or creates a `wrr_documents` row directly — those remain `07`'s exclusive domain, entered only when back office confirms/converts the advance notice (§7c).
-
-Capability identifiers consumed by this feature, all confirmed against `02` design.md §3.2's finalized catalog, `assigned_party` scope kind:
-
-| Resource.action | Used for |
-|---|---|
-| `pick_list.read` | Trading order/document list and detail (`pick_lists`, `pick_list_items`). |
-| `documents.read` | Listing/opening generated `pick_list`/`acknowledgement_receipt` artifacts via signed URL. |
-| `notifications.read` | Party-scoped notification center. |
-| `parties.read` (implied self-row, per `02` §7.4: `can_access_party_resource('parties', 'read', id, null)`) | Reading the caller's own `parties` master-data row. |
-| `lot_location_balances.read` (via the `02` §7.4 VMI pattern; not a separately catalogued resource key — the capability is exercised through the same `pick_list`/`inventory`-adjacent grant structure `02` uses for this table, i.e. the RLS predicate itself, not a distinct `resource.action` string beyond what `02` §7.4 already defines for `lot_location_balances`) | VMI live inventory-position view. |
-| `vmi_statements.read` (`assigned_party`) — **added to `02`'s catalog, 2026-08-06** (`02` design.md §3.2/§7.4) | Viewing/downloading own `vmi_billing_statement`/`vmi_credit_notes` records, PDF artifact only (§7's resolved statement-depth note). Blocked per requirements.md R4.4 only on `02`'s own approval/sign-off process completing for this addition — no longer an open design gap. Not built against an invented ad-hoc check until that process closes. |
-| `reporting.read` (`assigned_party`) — **added to `02`'s catalog, 2026-08-06** (`02` design.md §3.2/§7.4) | Party-scoped VMI/Trading analytics view (§7a), coexisting with `02`'s existing `global`-scope `reporting.read` row. Blocked per requirements.md R10.6 only on `02`'s own approval/sign-off process completing for this addition — no longer an open design gap. Not built against an invented ad-hoc check until that process closes. |
-| `shipment_labels.generate` (`assigned_party`) — **added to `02`'s catalog, 2026-08-06** (`02` design.md §3.2/§7.4) | The one mutation in this feature: submitting the thin barcode pre-label form, writing a `wrr_advance_notices` row (§7c). Restricted to callers whose active assignment satisfies R1.7's inbound-supplying `party_roles` check (`vendor`/`supplier`), never `customer`/`end_customer`. Named format-neutrally (not `qr_labels.generate`) since v1's symbology is 1D, not QR. Blocked per requirements.md R11.11 only on `02`'s own approval/sign-off process completing for this addition, plus `01`/`07`/`18`'s own process-completion for their respective written additions (`wrr_advance_notices` schema amendment, matching flow, 1D-decode support) — no longer open design questions. Not built against an invented ad-hoc check until all four processes close. |
-
-The client may send a requested document ID or a requested party-switcher selection, but the server independently resolves and re-validates against the caller's actual active `user_party_scopes` rows before executing any read. A client-supplied `party_id`, `flow_type`, document ID, or capability claim never grants access on its own — it is only ever a requested identifier subject to full server-side re-authorization, per the universal pattern restated in every RBAC-consuming spec in this repo.
-
-## 5. VMI inventory-position workflow
-
-1. Server resolves the active assignment (default or switcher-selected) and confirms it includes VMI eligibility (`flow_type = 'vmi'` or unnarrowed/null, which `02` §3.2 confirms excludes Supplies).
-2. Server executes a `lot_location_balances` read joined one-hop to parent `lots`, RLS-enforced via `can_access_party_resource('lot_location_balances', 'read', lots.owner_party_id, 'vmi')` exactly as specified in `02` design.md §7.4 — no application-layer re-filtering substitutes for this RLS boundary.
-3. Item identity fields for each balance row are resolved through `party_visible_items` (never base `items`), returning only `code`, `name`, `description`, `barcode`, `uom`, `spq`, `spq_meter`, dimensions, `volume_cbm`, `is_perishable` — the exact column list `02` §7.4 defines for that view.
-4. The view renders occupied CBM per lot and an aggregate total, computed from the already-authorized `lot_location_balances`/`party_visible_items` rows — this feature does not independently compute CBM occupancy logic; it displays what the authorized read returns. (Note: this is distinct from `12`'s own `ending_cbm` billing snapshot, which is a separate daily-ledger computation this feature never re-derives or represents as the authoritative billing figure — see §7's VMI statements section and requirements.md R4.6.)
-5. No action on this screen writes to `lots`, `lot_location_balances`, or any inventory table. If a future requirement needs a party-initiated action (e.g. a reconciliation dispute flag), it must be defined as a new requirement in a future revision of this spec with its own capability, not silently added here.
-
-## 6. Trading order/document workflow
-
-1. Server resolves the active assignment and confirms Trading eligibility (`flow_type = 'trading'` or unnarrowed/null).
-2. Server executes a `pick_lists` read filtered to `customer_party_id`, RLS-enforced via `can_access_party_resource('pick_list', 'read', customer_party_id, flow_type)` (`02` §7.4 — note the singular `'pick_list'` resource key, not the plural table name, per `02`'s own pass-2 correction of this exact mismatch).
-3. Order detail renders `pick_list_items` snapshot fields directly — `lot_number`, `location_label`, quantity, UOM, and the frozen unit price already written to the row by `13`'s price-resolution logic and rendered via `10`'s snapshot pipeline. This feature performs no live join to `lots` for Trading and no live price recomputation.
-4. Margin, buying cost, and any `trading.margin_view`-gated field are never selected, never rendered, and never present in any API response this feature returns to a party-user session — this is enforced at the query-shape level (the query never selects those columns), not by a UI-only hide, consistent with `13` requirements.md's resolved margin decision restricting those fields to `trading.margin_view` (admin/supervisor only).
-5. No action on this screen creates an order, requests a price change, or requests a FIFO override.
-
-## 7a. Party analytics workflow
-
-This subsection covers requirements.md R10. It embeds `16-reporting-and-analytics`'s existing party-scoped analytics views and reusable component library; it does not define a new chart component, a new aggregation query, or a parallel analytics engine.
-
-1. Server resolves the active assignment (default or switcher-selected), the same resolution used by §5 (VMI) and §6 (Trading).
-2. WHEN the active assignment is VMI-eligible, the portal renders `16` FR-5's party-scoped view — occupied CBM over time (FR-5.1), stock-on-hand summary (FR-5.2, here reduced to the caller's own party rather than the admin's per-party breakdown), lot activity summary (FR-5.3), and the VMI billing-period reference banner (FR-5.4) — by embedding `16`'s `<TrendLineChart>`, `<KpiCard>`/`<KpiCardGroup>`, and `<StockLevelTable>` components (`16` FR-9) against `16`'s own party-scoped query layer. This portal supplies the routing/navigation entry point only; `16` owns the query, the RLS scoping, and the component implementation.
-3. WHEN the active assignment is Trading-eligible, the portal renders `16` FR-6's party-scoped view — order activity trend (FR-6.1) and item movement velocity (FR-6.2) — by embedding `16`'s `<TrendLineChart>` and `<StockLevelTable>`/`<BarChart>` components. FR-6.3's margin reference display is never rendered for a party user — `16` FR-6.3 itself states "party users never see pricing fields," and this feature does not weaken that.
-4. The flow-based switcher already defined in R1.4/R1.6 (and exercised identically in §5/§6 above) selects which of the two views (VMI analytics vs. Trading analytics) is shown; an unnarrowed/null-`flow_type` assignment may show both, subject to `16`'s own scoping rules, never a combined cross-flow aggregate.
-5. **Resolved (2026-08-06), mirroring §7 item 2's `vmi_statements.read` resolution**: `02` design.md §3.2 now carries a `reporting` | `read` | `assigned_party` | `party_user` row alongside the existing `global`-scope `reporting` row. No new RLS predicate was needed at the table level — `16`'s party-scoped analytics queries already read through the `lot_location_balances`/`pick_lists`/`party_visible_items` RLS patterns `02` §7.4 defines for other capabilities; `reporting.read` (`assigned_party`) is a server-side authorization gate on top of those already-enforced policies. This route/query is not implemented, not stubbed with a weaker ad-hoc check, until `02`'s own approval/sign-off process for this addition completes — see requirements.md §7 item 5.
-6. No action on this view creates, exports, or mutates any record; it is read-only, consistent with `16` NFR-8's online-only, read-only posture.
-
-## 7. Documents and VMI statements workflow
-
-1. **Pick lists / acknowledgement receipts**: listed and opened under `documents.read` (`assigned_party`). Each open request re-authorizes against the source `pick_list`/`acknowledgement_receipt` record's party/flow scope, then requests a signed URL from `04`'s private Storage bucket, valid ≤60 minutes, generated fresh per request — never a cached or durable link (per `10` requirements.md R5.3 and `04` design.md's Storage access rule). The acknowledgement-receipt artifact is rendered exactly as generated; the portal does not post-process, re-template, or strip the VMI disclaimer text.
-2. **VMI billing statements / credit notes** (`vmi_billing_statement`, `vmi_credit_notes`): gated by `vmi_statements.read` (`assigned_party`), **added to `02`'s catalog (2026-08-06)** — `02` design.md §7.4's pattern is `can_access_party_resource('vmi_billing_statement', 'read', party_id, 'vmi')` and the equivalent for `vmi_credit_notes`, scoped to the statement's/note's own `party_id` column, SELECT-only (no INSERT/UPDATE/DELETE for `party_user`). This route/query is not implemented, not stubbed with a weaker ad-hoc check, not gated by a client-side flag alone, until `02`'s own approval/sign-off process for this addition completes. **Statement/credit-note detail depth (product owner decision, 2026-08-06): PDF artifact only in v1** — the party user sees the generated PDF via the same signed-URL mechanism as R4.2, never a structured native line-item/per-charge-type rendering. This avoids duplicating `12`'s own billing-calculation display logic into a second UI surface before `12` itself has finalized one; a structured native breakdown is a recorded future enhancement, not designed here.
-3. A `vmi_billing_statement` with `status = 'voided'` is visually distinguished by an explicit mechanism, not color alone: a status badge pairing an icon (e.g. a lock/void icon) with explicit "Voided" text, per `brand-design-system.md` §11's universal statement ("every status pill... pairs color with an icon and/or... pattern") — **corrected 2026-08-06, `design-system-auditor` finding 2**, replacing the prior unspecified "not color-only" claim that cited the floor-scoped §9 wording instead of the universal §11 rule. The badge links to its `supersedes_statement_id` target when present, consistent with `12`'s correction/reissue model (requirements.md FR-7.1).
-4. No document mutation, re-generation, or supersession request originates from this feature — those remain `10`'s and `12`'s server-owned operations.
-
-## 7c. Supplier-initiated barcode pre-labeling of inbound dispatches workflow
-
-This subsection covers requirements.md R11. Product owner decision (2026-08-06): this is now current v1 scope, not future scope — the former §11 "future integration" framing is retired; everything below replaces it. This is this portal's **first mutation** — every other section in this design remains read-only, and this section is the one deliberate exception, built to the same online-only, capability-gated, audited server-action pattern used elsewhere in this repo (e.g. `06`'s create-command boundary), not treated as a lightweight add-on to the read pipeline.
-
-**Purpose.** A party in the inbound-supplying role — a VMI vendor, or a Trading `vendor`/`supplier` (per `01-core-data-model`'s `party_roles` enum) — generates and prints a barcode label for their own outbound dispatch to the warehouse, so the shipment arrives already labeled and scan-ready, without warehouse staff generating the label reactively during receiving (`18-barcode-integration`'s current FR-3 behavior). A Trading `customer`/`end_customer` never reaches this surface — customers only ever receive from the warehouse. Gated on the caller's active assignment satisfying requirements.md R1.7's inbound-supplying `party_roles` check **and** R11.1a's hybrid-party exclusion (added 2026-08-06, `rbac-rls-reviewer` finding B): a party holding both an inbound-supplying role and a customer-facing role is not eligible for this feature in v1, even though it independently satisfies the vendor/supplier check.
-
-**Symbology (product owner decision, 2026-08-06): 1D linear barcode in v1, architected for a later QR migration.** v1 encodes the label as a 1D linear barcode (e.g. Code 128), not a 2D QR code — but the design keeps a later migration to QR a symbology/rendering change only, never a data-model or lookup-mechanism rework. Concretely: the referenced record (`wrr_advance_notices`) and the lookup mechanism (UUID pointer, resolved server-side) are identical regardless of which symbology encodes them; only the label's rendering format changes if/when QR is adopted later. This is conceptually a `label_format`/symbology distinction, not necessarily a literal new schema field on `wrr_advance_notices` itself — the payload identifier format below (`WAN:<uuid>`) is sufficient for v1 without one.
-
-**The form is deliberately thin, not a WRR-mirroring form.** This is a considered tradeoff, not an oversight: a rich form (mandatory lot number, expiry, weight, dimensions) would create a second/third source of truth alongside the CIPL and the physical count at receiving — this repo's document model (WRR, CIPL, pick lists, ARs) deliberately avoids that everywhere else (exactly one authoritative source per fact: Trading price finality, VMI billing period-average vs. document reference, immutable document snapshots). The thin form:
-
-1. **Item** — selected from the party's own known items, sourced through `party_visible_items` (§2, §8) — **scoped to items already reachable through that view** (see "Scope boundary" below).
-2. **Quantity for this specific label** (per carton/pallet) — declared for labeling purposes only. **Explicitly NOT authoritative.** `07`'s existing scanned-vs-expected discrepancy handling (R3.2, R3.3) runs unchanged at physical receipt regardless of what the label declares. The UI states this non-authority explicitly and prominently, the same way §7's VMI reference-price-vs-authoritative-bill distinction is stated prominently elsewhere in this design.
-3. **The supplier's own lot number** (optional) — not the same risk class as quantity. `structure.md`'s glossary defines `lot_number` as "Business lot number sourced from the WRR" — the supplier's own identity data they already own before shipping, not a quantity claim that can drift from a physical count. Safe to collect here.
-
-Nothing else. No expiry, no weight, no dimensions, no disposition — those remain `07`'s domain, captured/verified at receiving/inspection as today.
-
-**Added 2026-08-06, `design-system-auditor` finding 3**: this form follows §1's already-declared office rules (AA contrast, 44px touch targets, hover-only affordances) and `brand-design-system.md` §9's Forms guidance explicitly — Outfit Regular body copy and a `brand-navy` focus ring on every input — rather than leaving this implicit as it was in the prior draft.
-
-**Scope boundary (product owner decision, 2026-08-06): resolved by narrowing scope, not by building new access machinery.** `02` design.md §7.4's `party_visible_items` view filters to "`item_id` reachable via the caller's own readable `wrr_items`/`pick_list_items`" — for a brand-new item the supplier has never shipped before, there is no existing `wrr_items` row yet to establish that reachability. The product owner's reasoning: a truly first-ever shipment of a brand-new item is an unlikely edge case in practice, since it can only happen after that item has already gone through `06`'s strict, administrator-only internal enrollment process. This is resolved by narrowing R11's scope, not by inventing a new visibility mechanism: pre-labeling is available only for items already reachable through the existing `party_visible_items` path. A genuinely brand-new item continues through the standard back-office-staged `07` flow exactly as it works today, without pre-labeling; once that first shipment is received (creating the item's first `wrr_items` row for that party), every subsequent shipment of that item becomes eligible for this feature automatically, since `party_visible_items`' existing reachability condition is now satisfied. This does **not** use `items.default_supplier_party_id` as a new RLS predicate — that would directly contradict `06` design.md §8/§7.4's rule that `default_supplier_party_id` must never be used to expose item records to a party user, since it is a general reordering default, not a verified party-item shipping relationship.
-
-**The mutation: a new, narrowly-scoped record, NOT a write into `07`'s authoritative `wrr_items`/WRR-creation path.** `07` requirements.md R1.1 explicitly reserves WRR creation to "an authorized back-office user" — this design does not grant `party_user` a write path into `wrr_items` or WRR creation; that would be a real authorization-boundary violation of `07`'s existing design, not a minor implementation detail. Instead, the submission creates a new, small, clearly-separate pre-arrival record — proposed name `wrr_advance_notices` (or similar). This is now a **confirmed design direction** (product owner, 2026-08-06); it requires the standard `01`/`07` schema-amendment and approval process before implementation, following the same pattern `07` itself already used when it added `disposition` to `wrr_items` via a noted schema amendment — a settled design choice awaiting formal schema amendment, not an open design question. Ownership: `07`'s domain (pre-receiving staging is `07`'s territory). Write path: this portal, under the proposed `shipment_labels.generate` (`assigned_party`) capability, granted only where the caller's assignment satisfies R1.7's inbound-supplying `party_roles` check. Review path: back office confirms/converts the record into an actual staged `wrr_items` line (or matches it against one that already exists) — `07` still owns WRR creation exactly as before; the party's submission is advisory pre-staging input, never a bypass of that ownership.
-
-**The barcode payload stays thin, consistent with `18`'s existing design principle — and is format-neutral for a future QR migration.** `18` requirements.md FR-3.2 already commits to "a UUID lookup... rather than massive unencrypted data blobs" — so the generated code is a UUID pointer to the new advance-notice record, not an embedded data blob. Because 1D/linear symbologies are inefficient for structured payloads, v1 encodes a flat string identifier rather than embedded JSON: `WAN:<uuid>` (a prefixed form of the `wrr_advance_notices.id` UUID), explicitly distinct from `18`'s current `{"type": "lot", "id": "uuid"}` payload (no `lots` row exists pre-receipt). The referenced record is identical to what a future QR code would reference — migrating to QR later only changes the label's rendering/encoding format, never the underlying data model or the lookup mechanism.
-
-**Formerly a scope conflict with `18-barcode-integration`, now resolved in `18` (2026-08-06).** `18` requirements.md now carries the scoped **FR-2.3** exception allowing 1D/Code 128 decoding specifically for this inbound-supplier pre-label flow, since R11's flat `WAN:<uuid>` payload does not require the complex JSON payload that motivated the ordinary 2D-only rule. FR-2.1/FR-2.2 remain unchanged for every other scanning context, including `18`'s own internally-generated labels. The contract is Approved; runtime scanner tests remain implementation work.
-
-**Confirmed matching flow (product owner, 2026-08-06).** The direction is settled:
-
-1. The party submits the thin form, creating a `wrr_advance_notices` row in a `pending_review` (or equivalent) state.
-2. Back office reviews it against the actual CIPL they've separately received and either confirms it — creating/matching a staged `wrr_items` line, carrying over item/quantity/party reference, with the advance notice's declared quantity treated as non-authoritative input the back-office user can adjust — or rejects/flags it as a discrepancy for manual follow-up.
-3. The physical barcode at the receiving bay is scanned per `07`'s existing R3 barcode-reconciliation flow, resolving to the advance notice's linked `wrr_items` line.
-4. If the advance notice was never confirmed by back office before the shipment physically arrives, the scan produces `07`'s existing "unknown/unmatched" exception path (R3.3: "a scan for the wrong item, unknown barcode, wrong WRR, duplicate carton, or quantity beyond the expected amount SHALL produce immediate non-success feedback and a recoverable exception state") rather than a new bespoke error state — this reuses `07`'s existing exception handling, it does not invent a parallel one.
-
-**This is now the settled mechanism, formally written into `07` (2026-08-06)** — `07` requirements.md R1a and design.md §5.5 now carry this exact flow. What remains is `07`'s own normal approval/verification process for that addition (review, testing, sign-off), not further design work.
-
-**Offline.** This mutation is explicitly online-only (Tier 2), never enters the Tier 1 offline queue, consistent with every other online-only mutation pattern in this repo (`06`, `13`). See §9.
-
-**Blocked pending, mirroring §7/§7a's blocked-capability framing — reworded 2026-08-06 from "pending X's ruling" to "pending X's normal approval/verification process completing," since the design content itself is now settled and written into all four owning specs**: (a) `02-rbac-roles` design.md §3.2/§7.4 now carries the written `shipment_labels.generate` (`assigned_party`) capability and RLS pattern, restricted to inbound-supplying `party_roles` values — BLOCKED pending `02`'s own approval/sign-off process (including `rbac-rls-reviewer` coverage) completing for this addition; (b) `01-core-data-model` design.md §6 now carries the written `wrr_advance_notices` table, explicitly flagged as an unverified schema amendment to an already-`Approved` spec — BLOCKED pending its own dedicated `db-migration-verifier` pass, which it does not inherit from `01`'s existing verification; (c) `07-incoming-receiving` requirements.md R1a / design.md §5.5 now carry the written confirmed matching flow — BLOCKED pending `07`'s own approval/sign-off process completing for this addition; (d) `18-barcode-integration` requirements.md FR-2.3 now carries the written 1D/linear barcode decoding exception — BLOCKED pending `18`'s own approval/sign-off process completing for this addition. None of this route/query is implemented, not stubbed with a weaker ad-hoc check, until all four processes close — see requirements.md R11.11.
-
-## 8. Authorization and RLS
-
-The server checks the current session, resolves active `user_party_scopes`, and calls `requirePermission()` before every read, per `02` design.md §6.2. PostgreSQL RLS is the authoritative data boundary for every table this feature touches — this feature adds no additional application-layer filtering that RLS doesn't already enforce, and never relies on a query the RLS boundary alone wouldn't already restrict correctly.
-
-Every RLS pattern this feature depends on is cited from `02`, not redefined:
-
-- `lots`/`lot_location_balances` VMI branch — `02` design.md §7.4.
-- `pick_lists`/`pick_list_items` — `02` design.md §7.4 (resource key `'pick_list'`).
-- `party_visible_items` — `02` design.md §7.4 (default-owner, non-`security_invoker` view).
-- `parties` self-row read — `02` design.md §7.4.
-- Supplies exclusion — `02` design.md §3.2 (`has_party_scope` null-`flow_type` exclusion) + §7.2/§7.4 (`can_access_party_resource` hard-deny), both independently enforced. This feature's queries never pass `flow_type = 'supplies'` as a target anywhere, and even if a bug did so, the second gate independently blocks it — this feature relies on that redundancy rather than assuming its own query-construction discipline is sufficient on its own.
-- `vmi_billing_statement` / `vmi_credit_notes` — **added to `02` design.md §7.4, 2026-08-06**: SELECT-only for `party_user` via `can_access_party_resource('vmi_billing_statement'/'vmi_credit_notes', 'read', party_id, 'vmi')`, no INSERT/UPDATE/DELETE. This portal consumes the catalog entry; `12` owns the tables and lifecycle.
-- `reporting.read` (`assigned_party`) — **added to `02` design.md §3.2, 2026-08-06**: no new RLS predicate at the table level; this capability is a server-side authorization gate layered on top of the already-enforced `lot_location_balances`/`pick_lists`/`party_visible_items` RLS patterns listed above, which `16-reporting-and-analytics`'s party-scoped analytics queries read through (per `16` NFR-3, "RLS enforces the boundary, no application-layer `WHERE party_id = ?` clause replaces RLS"). This feature does not define or duplicate a new RLS mechanism.
-- `wrr_advance_notices` write (§7c) — **written into `02` design.md §7.4/§7.4a (revised 2026-08-06 in response to `rbac-rls-reviewer` findings B/C/D/E/F).** The actual mechanism is a four-condition INSERT WITH CHECK, all four of which are RLS-level, not application-layer: (1) `can_access_party_resource('shipment_labels', 'generate', party_id, flow_type::text)`; (2) `rbac_internal.party_has_any_role(party_id, ARRAY['vendor','supplier'])` **AND NOT** `rbac_internal.party_has_any_role(party_id, ARRAY['customer','end_customer'])`; (3) `item_id IN (SELECT id FROM party_visible_items)`; and (4) `submitted_by_user_id = auth.uid()`. The first three enforce capability, non-hybrid inbound role, and item reachability; the fourth prevents submitter-identity spoofing. The portal's own checks are fast-fail UX conveniences layered on top of RLS. `matched_wrr_item_id`'s back-office write path is a controlled `SECURITY DEFINER` function per `02` design.md §7.4a, not a direct RLS UPDATE policy for `party_user`.
-
-Not-found/forbidden behavior for out-of-scope or cross-party identifiers follows `02`'s established pattern: safe denial without existence leakage (no distinguishing "this record doesn't exist" from "this record isn't yours"). This applies equally to §7c's write path — a caller whose `party_roles` doesn't qualify, or who targets an item outside their visibility, receives the same safe-denial treatment, not a distinguishing error.
-
-Client-supplied party/flow/role/capability values never establish authorization anywhere in this design — restated per the repo's universal pattern.
-
-## 9. Offline, Realtime, and audit boundaries
-
-- **Offline**: this portal is online-only for every read, and §7c's one mutation is explicitly online-only (Tier 2) as well — it never enters the Tier 1 offline queue, consistent with every other online-only mutation pattern in this repo (`06`, `13`). There is no cached-read boundary to design here the way `03`'s offline spec discusses for `06`/`13`; every view in this feature is a fresh authoritative server read on load, with no local persistence of party inventory position, document content, billing data, or a partially-filled/queued barcode pre-label submission beyond the browser's normal in-memory render state. Confirmed with `03-offline-mode-and-client-storage`'s design intent that this portal has no Tier 1 offline surface at all (open verification item, §10).
-- **Realtime**: optional, scoped strictly to notification-count refresh via `14`'s existing Realtime contract (RLS-backed/scoped channels per `02` §11, never a global stream filtered client-side). A Realtime event triggers an authoritative refetch; it is never treated as authorization or as the complete record, per `05`/`14`'s shared pattern.
-- **Audit**: document opens, statement views (once `vmi_statements.read` exists), notification read/dismiss actions, and — once §7c is implementable — every `wrr_advance_notices` submission are recorded server-side through `04`'s/`14`'s/`10`'s existing audit boundaries. This feature originates no new audit-event table or type; it emits into the categories those specs already define (e.g. `documents` access logging owned by `10`, notification state changes owned by `14`, and the new advance-notice write attributed to the submitting actor and correlation ID per requirements.md R7.5's pattern, extended to this one write).
-- **Party-switcher preference persistence (product owner decision, 2026-08-06): session-only in v1.** No "last selected" value is persisted across sessions or stored anywhere — a party user with multiple active assignments is presented the switcher (or receives the single-assignment auto-default) fresh at the start of every session, per requirements.md R1.8. This avoids a build dependency on `21-user-profile-and-settings`'s UI-preference mechanism before `21` is itself approved; cross-session persistence via `21`'s mechanism (FR-1.4) may be added later as a pure enhancement, with no breaking change to this session-only baseline.
-
-## 10. Design verification before approval
-
-- [ ] **Resolved 2026-08-06**: `05`'s shell-architecture question (§3) is settled as a shared filtered shell using the new `"party"` `ShellSurface` value — confirm `05` completes its own review/sign-off for this addition (§3.2 route inventory, §5 `ShellSurface`/`NavigationEntry`) before implementing route mounting.
-- [x] `vmi_statements.read` (`assigned_party`) is present in `02`'s approved catalog and RLS pattern; implementation remains gated by `12`'s stable statement contract.
-- [ ] Confirm `03-offline-mode-and-client-storage` has no objection to (and ideally explicitly states) this portal's zero-Tier-1-surface status, rather than leaving it merely implied by omission.
-- [ ] Confirm Auth, Storage signed-URL parameters, monitoring, and correlation-ID conventions with `04-services-and-infrastructure`.
-- [ ] Confirm `10`'s document access model (signed URL re-authorization, disclaimer preservation) is stable enough to build against once `10` itself approaches approval.
-- [ ] Confirm `12`'s `vmi_billing_statement`/`vmi_credit_notes` schema is stable enough to build the statements list/detail view against once `12` itself approaches approval — this feature only renders what `12` defines, so any `12` schema change propagates here.
-- [ ] Confirm `13`'s margin-exclusion mechanism (query-shape-level column omission) is consistent with however `13` ultimately implements `trading.margin_view` gating server-side.
-- [ ] Confirm `14`'s notification center contract (unread count, filters, read/dismiss state) is stable enough to reuse as-is rather than needing a party-specific variant.
-- [x] `reporting.read` (`assigned_party`) is present in `02`'s approved catalog; implementation remains gated by `16`'s stable analytics contract.
-- [ ] Confirm `16`'s reusable component library (FR-9) and party-scoped analytics query layer (FR-5, FR-6) are stable enough to embed once `16` itself approaches approval.
-- [x] `shipment_labels.generate` (`assigned_party`) and its four-condition RLS pattern passed the documented RBAC review and live Postgres contract verification.
-- [x] The confirmed-direction `wrr_advance_notices` table passed the dedicated live Postgres contract verification recorded in the steering revision log.
-- [ ] **Written 2026-08-06, pending `07`'s own approval process**: the confirmed matching flow (advance notice → staged `wrr_items` line → physical scan match) is now in `07-incoming-receiving` requirements.md R1a / design.md §5.5 — confirm `07` completes its own review/testing/sign-off for this addition before implementing §7c.
-- [x] `18` requirements.md FR-2.3 is Approved and scopes 1D/Code 128 decoding to this specific inbound-supplier pre-label flow.
-- [ ] Run `rbac-rls-reviewer` against every read path in this feature, with explicit focus on the Supplies-exclusion redundancy, the `vmi_statements.read` proposal, the `reporting.read` (`assigned_party`) proposal, and — once §7c's blocking items land — the `shipment_labels.generate` write path, its RLS restriction to inbound-supplying `party_roles` values, and the `party_visible_items` scope boundary on item selection.
-- [ ] Run `design-system-auditor` against the office/mobile layout, confirming no floor-context rules (64px scan buttons, thumb-zone primary action) were incorrectly applied to this office-context surface, including the new §7c form.
+1. Palette: `#2563EB` Vibrant Blue primary, `#0F172A` Deep Navy text primary, `#64748B` Slate text secondary, `#FFF7ED` Cream White background, `#FFFFFF` Solid White surface.
+2. Typography: **Etna Sans Serif** (Bold/SemiBold) for Headings/Displays; **Glacial Indifference** (Bold/Regular) for UI, body, labels, badges, buttons, tables.
+3. 3-Component Error Feedback: Every error boundary, modal, or toast displays **What happened**, **Why it failed**, and **Next Action / Solution**.
+4. Touch targets: Standard office 44px touch targets.
