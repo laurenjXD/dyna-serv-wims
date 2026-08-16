@@ -5,7 +5,7 @@ Updated: 2026-08-10
 
 Cites foundational specs:
 - `specs/00-steering/tech.md`
-- `specs/00-steering/brand-design-system.md`
+- `specs/00-steering/ui-ux-design-plan.md`
 - `specs/01-core-data-model/requirements.md`
 - `specs/22-parties-portal/requirements.md` R11 and `design.md` §7c for the scoped `WAN:<uuid>` exception
 
@@ -60,7 +60,7 @@ export function MobileQRScanner({ onScanSuccess, onScanError }) {
 ```
 
 ### 1.2 Feedback Mechanisms
-Per `brand-design-system.md`, every floor scan requires immediate feedback. 
+Per `ui-ux-design-plan.md`, every floor scan requires immediate feedback. 
 - **Visual:** A `<ScanFeedbackProvider>` globally overlays a `div` with absolute positioning, firing a 300ms CSS opacity transition (`bg-status-available` for success, `bg-status-held` for error).
 - **Audio:** The browser's Web Audio API will be used to synthesize a short 800Hz beep (100ms duration) on successful decodes, since the device lacks a hardware beeper.
 

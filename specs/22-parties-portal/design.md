@@ -7,7 +7,7 @@ Updated: 2026-08-14 (Aligned with Unified UI/UX & Visual Design System)
 
 The Organization Portal is an authenticated, external, office/desktop-first self-service surface for the `party_user` role. It is a read/consume surface backed by `02-rbac-roles`, `01-core-data-model`, `10-pick-list-and-acknowledgement-receipt`, `12-vmi-billing`, `13-trading-orders-and-pricing`, and `14-notifications-and-alerts`.
 
-The design follows `specs/00-steering/brand-design-system.md` office-context rules with solid Level 0 Cream White (`#FFF7ED`) background and Level 1 Solid White (`#FFFFFF`) cards with subtle shadow `0 1px 2px rgba(15,23,42,0.08)`. Zero glassmorphism or backdrop blur.
+The design follows `specs/00-steering/ui-ux-design-plan.md` office-context rules with solid Level 0 Cream White (`#FFF7ED`) background and Level 1 Solid White (`#FFFFFF`) cards with subtle shadow `0 1px 2px rgba(15,23,42,0.08)`. Zero glassmorphism or backdrop blur.
 
 ### Terminology Alignment
 Across all portal design components, route layouts, and mockups:

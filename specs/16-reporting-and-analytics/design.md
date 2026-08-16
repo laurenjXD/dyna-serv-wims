@@ -8,7 +8,7 @@ Cites foundational specs:
 - `specs/00-steering/product.md`
 - `specs/00-steering/tech.md`
 - `specs/00-steering/structure.md`
-- `specs/00-steering/brand-design-system.md`
+- `specs/00-steering/ui-ux-design-plan.md`
 - `specs/01-core-data-model/design.md`
 - `specs/02-rbac-roles/design.md`
 - `specs/05-ui-shell-and-navigation/`
@@ -104,19 +104,19 @@ The dashboard and reports pages live inside the authenticated shell defined in `
 
 ### 3.2 Grid and Spacing Tokens
 
-All values from `brand-design-system.md` §4:
+All values from `ui-ux-design-plan.md` §4:
 
 | Property | Value | Token / source |
 | --- | --- | --- |
-| Page padding (office) | 32px | `brand-design-system.md` §4 |
-| Container max-width | 1280px | `brand-design-system.md` §4 |
-| Base grid unit | 8px | `brand-design-system.md` §4 |
-| Gutter | 24px | `brand-design-system.md` §4 |
+| Page padding (office) | 32px | `ui-ux-design-plan.md` §4 |
+| Container max-width | 1280px | `ui-ux-design-plan.md` §4 |
+| Base grid unit | 8px | `ui-ux-design-plan.md` §4 |
+| Gutter | 24px | `ui-ux-design-plan.md` §4 |
 | KPI card row — `lg` | 3 cards per row (2 rows of 3) | 12-col ÷ 4 = 3 cards |
 | KPI card row — `md` | 2 cards per row | 4-col ÷ 2 = 2 cards |
 | KPI card row — base | 1 card stacked | single column |
 
-### 3.3 Typography Tokens (from `brand-design-system.md` §2)
+### 3.3 Typography Tokens (from `ui-ux-design-plan.md` §2)
 
 | Usage | Token | Family / Weight / Size |
 | --- | --- | --- |
@@ -131,7 +131,7 @@ All values from `brand-design-system.md` §4:
 
 ### 3.4 Elevation
 
-Office cards use Level 1: `bg-white/75 + backdrop-blur-md`, shadow `0 1px 2px rgba(0,32,96,0.08)` — per `brand-design-system.md` §6. This surface is exclusively office/desktop. Floor-screen elevation rules do not apply here.
+Office cards use Level 1: `bg-white/75 + backdrop-blur-md`, shadow `0 1px 2px rgba(0,32,96,0.08)` — per `ui-ux-design-plan.md` §6. This surface is exclusively office/desktop. Floor-screen elevation rules do not apply here.
 
 ---
 
@@ -156,16 +156,16 @@ A single metric display card.
 
 - Card: Level 1 elevation, `radius-default` (8px), padding 24px.
 - Icon: 24px, `brand-navy` color, top-left.
-- Metric value: `data-display` — Fira Sans SemiBold 20px. Color is `on-surface` by default; overridden by `statusColor` when provided (maps to `status-available` / `status-pending` / `status-held` / `status-neutral` tokens from `brand-design-system.md` §1.3).
+- Metric value: `data-display` — Fira Sans SemiBold 20px. Color is `on-surface` by default; overridden by `statusColor` when provided (maps to `status-available` / `status-pending` / `status-held` / `status-neutral` tokens from `ui-ux-design-plan.md` §1.3).
 - Label: `label` — Epilogue SemiBold 14px, `text-grey`, uppercase, letter-spacing 0.05em.
 - Trend indicator: arrow icon (↑ / ↓ / →) + percentage string. `status-available` (#10B981) for up, `status-held` (#EF4444) for down, `status-neutral` (#64748B) for flat. Arrow icon is always rendered alongside the color — color is never the sole signal.
-- Hover: scale to 1.02, 150ms transition (office — `brand-design-system.md` §10).
+- Hover: scale to 1.02, 150ms transition (office — `ui-ux-design-plan.md` §10).
 
 **Accessibility:**
 
 - `aria-label` on the card element: `"{label}: {value}, {direction} {pct}% from prior period"`.
 - Trend arrow has `aria-hidden="true"`; the text percentage is the accessible label.
-- Focus ring: 2px solid `brand-navy`, per `brand-design-system.md` §11.
+- Focus ring: 2px solid `brand-navy`, per `ui-ux-design-plan.md` §11.
 
 **Responsive:** Full width at base, half-width at `md`, one-third at `lg`.
 
@@ -212,7 +212,7 @@ All five levels SHALL be accompanied by a visible legend strip below the heatmap
 
 **Tooltip:** On hover or keyboard focus, shows: `"{count} transactions on {date}"`. Typography: `body-sm` (Outfit 14px) for the date label, `mono` (Roboto Mono) for the count. Background: solid `on-surface`, white text — Level 2 elevation pattern.
 
-**Filter tabs:** Rendered above the grid. Active tab uses `brand-red` background, Inter SemiBold 14px white label, `rounded` corners (diagonal-cut motif retired — see `brand-design-system.md` §7). Inactive tabs use `surface-light-grey` background, `on-surface` label.
+**Filter tabs:** Rendered above the grid. Active tab uses `brand-red` background, Inter SemiBold 14px white label, `rounded` corners (diagonal-cut motif retired — see `ui-ux-design-plan.md` §7). Inactive tabs use `surface-light-grey` background, `on-surface` label.
 
 **Accessibility:**
 
@@ -298,7 +298,7 @@ A distribution/composition chart.
 | `centerLabel` | string (optional) | Text shown in the donut center (e.g., "Total Lots") |
 | `centerValue` | number (optional) | Value shown in the donut center |
 
-**StatusToken** maps to the `brand-design-system.md` §1.3 tokens:
+**StatusToken** maps to the `ui-ux-design-plan.md` §1.3 tokens:
 
 | Lot status | StatusToken | Color |
 | --- | --- | --- |

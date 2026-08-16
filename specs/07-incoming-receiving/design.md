@@ -16,7 +16,7 @@ The design preserves the boundary between expectation and inventory: `wrr_docume
 
 Depends on:
 
-- `00-steering/product.md`, `tech.md`, `structure.md`, `testing.md`, `brand-design-system.md`, and `revision-log.md`.
+- `00-steering/product.md`, `tech.md`, `structure.md`, `testing.md`, `ui-ux-design-plan.md`, and `revision-log.md`.
 - `01-core-data-model` for the canonical inbound schema and immutable ledger design.
 - `02-rbac-roles` for capabilities, party/flow scope, RLS, and current-request authorization.
 - `03-offline-mode-and-client-storage` for the limited Tier 1 scan queue and replay rules.
@@ -71,7 +71,7 @@ route despite this design's own §10 describing it as part of the receiving
 work-queue surface. `receiving/page.tsx`'s default tab ("Work Queue") is
 unchanged from before. Tabs are used here because this specific page (the
 WRR list/queue) is functionally an office review/list screen — glassmorphism
-Level 1 cards, table, hover states — per `brand-design-system.md` §3's rule
+Level 1 cards, table, hover states — per `ui-ux-design-plan.md` §3's rule
 that tabs are an office pattern; the floor-oriented scan/reconciliation
 route (`[wrrId]/receive/page.tsx`) is unaffected and remains a
 single-column, one-primary-action floor screen.

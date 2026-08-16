@@ -264,4 +264,160 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
     );
     expect(screen.queryByTestId("floor-tab-bar")).not.toBeInTheDocument();
   });
+
+  // ---------------------------------------------------------------------
+  // Floor text-size floor: requirements.md R2 "Floor screens SHALL use no
+  // text below 16px (`body-md` minimum)" (tasks.md §2 "Ensure no text
+  // below 16px (`body-md` minimum) is rendered on floor screens"), also
+  // restated in ui-ux-design-plan.md §7/§13. `text-mono-sm` resolves to
+  // 14px in tailwind.config.ts and must never be used for floor nav-entry
+  // labels; the 16px floor-appropriate token is `text-mono-md`.
+  // ---------------------------------------------------------------------
+
+  it("renders floor bottom-tab-bar entry labels at 16px minimum (text-mono-md), never the 14px text-mono-sm", () => {
+    render(
+      <ShellNavigation
+        tier="floor"
+        context={receivingOnlyContext}
+        currentPath="/receiving"
+      />,
+    );
+    const receivingLink = screen.getByTestId("nav-entry-receiving");
+    const label = within(receivingLink).getByText("Receiving");
+    expect(label.className).not.toContain("text-mono-sm");
+    expect(label.className).toContain("text-mono-md");
+  });
+
+  // ---------------------------------------------------------------------
+  // Floor text-size floor, "More" overlay case: the primary floor tab-bar
+  // fix (above) only corrected the persistent bottom tab bar. The overlay
+  // opened from that bar's "More" button reuses `GroupedSections` /
+  // `MoreOverlay`, which today hardcode office-tier (14px) text
+  // regardless of which tier opened them — the overlay's nav-entry
+  // labels, section-group headers, and role-label all still render at
+  // sub-16px even in a floor session. R7.4 (requirements.md) requires no
+  // text below 16px on floor screens; tasks.md §2 requires this be
+  // eliminated wherever floor sessions can reach it, not just on the
+  // tab-bar's own primary entries.
+  // ---------------------------------------------------------------------
+
+  // Grants enough floor/shared-surface capabilities to produce more than 4
+  // navigable floor entries (root, receiving, outgoing, inspection, sync,
+  // transfers, profile), so the "More" button renders. "outgoing" (surface
+  // floor, group "Outgoing / Withdrawal") is used as the overlay nav-entry
+  // under test since it's guaranteed present past the primary 4.
+  const floorManyEntriesContext: Pick<AuthorizationContext, "grants"> = {
+    grants: [
+      { resource: "receiving", action: "view", scopeKind: "global" },
+      { resource: "pick_list", action: "execute", scopeKind: "global" },
+      { resource: "inspection", action: "perform", scopeKind: "global" },
+      { resource: "transfer", action: "view", scopeKind: "global" },
+    ],
+  };
+
+  it("renders the floor 'More' overlay's nav-entry labels at 16px minimum (text-mono-md), never the 14px text-label, when opened from a floor session (R7.4)", async () => {
+    const user = userEvent.setup();
+    render(
+      <ShellNavigation tier="floor" context={floorManyEntriesContext} currentPath="/receiving" />,
+    );
+    await user.click(screen.getByRole("button", { name: /more navigation options/i }));
+    const dialog = screen.getByRole("dialog", { name: /navigation menu/i });
+    const entryLink = within(dialog).getByTestId("nav-entry-outgoing");
+    const label = within(entryLink).getByText("Outgoing");
+    expect(label.className).not.toContain("text-label");
+    expect(label.className).toContain("text-mono-md");
+  });
+
+  it("renders the floor 'More' overlay's section-group header at 16px minimum (text-body-md/text-mono-md), never the 14px text-mono-sm, when opened from a floor session (R7.4)", async () => {
+    const user = userEvent.setup();
+    render(
+      <ShellNavigation tier="floor" context={floorManyEntriesContext} currentPath="/receiving" />,
+    );
+    await user.click(screen.getByRole("button", { name: /more navigation options/i }));
+    const dialog = screen.getByRole("dialog", { name: /navigation menu/i });
+    const groupHeader = within(dialog).getByTestId("nav-group-outgoing-withdrawal");
+    expect(groupHeader.className).not.toContain("text-mono-sm");
+    expect(groupHeader.className).toContain("text-mono-md");
+  });
+
+  it("renders the floor 'More' overlay's role-label at 16px minimum (text-body-md), never the 14px text-body-sm, when opened from a floor session (R7.4)", async () => {
+    const user = userEvent.setup();
+    render(
+      <ShellNavigation tier="floor" context={floorManyEntriesContext} currentPath="/receiving" />,
+    );
+    await user.click(screen.getByRole("button", { name: /more navigation options/i }));
+    const dialog = screen.getByRole("dialog", { name: /navigation menu/i });
+    // Role-label sits in the same header row as the display-name; select
+    // it via its sibling text node (roleDisplayLabel([]) resolves to a
+    // non-empty string per lib/shell/surface.ts).
+    const header = dialog.querySelector('[class*="border-b"]');
+    expect(header).not.toBeNull();
+    const roleLabelEl = header!.querySelector("p.truncate.font-body");
+    expect(roleLabelEl).not.toBeNull();
+    expect(roleLabelEl!.className).not.toContain("text-body-sm");
+    expect(roleLabelEl!.className).toContain("text-body-md");
+  });
+
+  it("still allows the office desktop sidebar's grouped section text at 14px (office-only, not floor-reachable)", () => {
+    render(
+      <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" />,
+    );
+    const groupHeader = screen.getByTestId("nav-group-master-inventory");
+    expect(groupHeader.className).toContain("text-mono-sm");
+  });
+
+  // ---------------------------------------------------------------------
+  // Scan-loop navigation suppression: requirements.md R4.3 ("During an
+  // active scan-driven floor flow, navigation SHALL be completely hidden
+  // ... Bottom tabs appear only between scan steps.") and tasks.md §4
+  // ("Implement mobile/floor navigation: bottom tab bar between steps,
+  // completely hidden navigation during active scan loops.").
+  //
+  // Confirmed 2026-08-16 decision: hides for the ENTIRE duration one of
+  // the 5 scan-flow pages is open (pure route-based check via
+  // lib/shell/scan-loop.ts#isScanLoopRoute, not per-scan-step state), and
+  // reappears once the user navigates away to any other page. Tested here
+  // only for tier="floor" -- the floor bottom tab bar is the surface this
+  // rule applies to.
+  // ---------------------------------------------------------------------
+
+  const scanLoopPaths = [
+    "/receiving/wrr-123/receive",
+    "/pick-lists/PL-2026-777/pick",
+    "/pick-lists/PL-2026-777/dispatch",
+    "/transfers/TR-2026-004/execute",
+    "/transfers/TR-2026-004/inspect",
+  ];
+
+  it.each(scanLoopPaths)(
+    "does not render the floor tab bar at all for tier='floor' while on the scan-flow route %s (R4.3)",
+    (scanLoopPath) => {
+      render(
+        <ShellNavigation
+          tier="floor"
+          context={floorManyEntriesContext}
+          currentPath={scanLoopPath}
+        />,
+      );
+      expect(screen.queryByTestId("floor-tab-bar")).not.toBeInTheDocument();
+    },
+  );
+
+  it("still renders the floor tab bar for tier='floor' on an ordinary floor path that is not a scan-flow route (regression guard)", () => {
+    render(
+      <ShellNavigation tier="floor" context={receivingOnlyContext} currentPath="/receiving" />,
+    );
+    expect(screen.getByTestId("floor-tab-bar")).toBeInTheDocument();
+  });
+
+  it("still renders the floor tab bar for tier='floor' on a receiving detail page that has not yet entered the receive scan flow (near-miss regression guard)", () => {
+    render(
+      <ShellNavigation
+        tier="floor"
+        context={receivingOnlyContext}
+        currentPath="/receiving/wrr-123"
+      />,
+    );
+    expect(screen.getByTestId("floor-tab-bar")).toBeInTheDocument();
+  });
 });

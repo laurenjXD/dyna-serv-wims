@@ -150,7 +150,7 @@ The role model is explicitly unstable (`specs/00-steering/revision-log.md`). The
 - [x] Build party-scope assignment and revocation for party users, with safeguards against accidental cross-party exposure.
 - [x] Prevent an administrator from removing the last active account with the required global administrative capability unless an approved recovery path exists.
 - [x] Add an audit view/filter for authorization changes and security events at the approved administrative scope.
-- [ ] Apply `brand-design-system.md` and the UI-shell conventions once `05-ui-shell-and-navigation` is available; this is an office/admin surface, not a floor scan flow.
+- [ ] Apply `ui-ux-design-plan.md` and the UI-shell conventions once `05-ui-shell-and-navigation` is available; this is an office/admin surface, not a floor scan flow.
 
 #### Decisions for Task 6
 

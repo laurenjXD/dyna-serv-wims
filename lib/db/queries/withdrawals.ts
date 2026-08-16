@@ -127,6 +127,36 @@ export async function listPickLists(
 }
 
 // ---------------------------------------------------------------------------
+// listRecentPickLists
+//
+// Genuinely-recent pick lists (createdAt DESC), for "Recent Activity" feeds.
+// listPickLists above orders ASC (oldest-first, work-queue prioritization)
+// so it cannot be reused for a recency-sorted feed — see
+// specs/00-steering/ui-ux-design-plan.md data-honesty fix
+// (design-system-auditor finding, 2026-08-16).
+//
+// Authorization is enforced at the call site — not re-checked here.
+// ---------------------------------------------------------------------------
+
+export async function listRecentPickLists(
+  db: DbLike,
+  opts: { limit: number },
+): Promise<PickListRow[]> {
+  return (await db
+    .select({
+      id: pickLists.id,
+      pickListNumber: pickLists.pickListNumber,
+      status: pickLists.status,
+      customerPartyId: pickLists.customerPartyId,
+      flowType: pickLists.flowType,
+      createdAt: pickLists.createdAt,
+    })
+    .from(pickLists)
+    .orderBy(desc(pickLists.createdAt))
+    .limit(opts.limit)) as PickListRow[];
+}
+
+// ---------------------------------------------------------------------------
 // listPartyPickLists
 //
 // Party Portal — pick_lists read scoped to the caller's own party.

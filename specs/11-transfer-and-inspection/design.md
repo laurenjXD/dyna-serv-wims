@@ -26,7 +26,7 @@ No context reuses another's status enums or creates incompatible inventory trans
 
 Depends on:
 
-- `00-steering/product.md`, `tech.md`, `structure.md`, `testing.md`, `brand-design-system.md`, `revision-log.md`.
+- `00-steering/product.md`, `tech.md`, `structure.md`, `testing.md`, `ui-ux-design-plan.md`, `revision-log.md`.
 - `01-core-data-model` for canonical locations/lots/transactions and the single-warehouse rule.
 - `02-rbac-roles` for capability/scope/RLS/audit.
 - `03-offline-mode-and-client-storage` for Tier 1 physical-observation replay.

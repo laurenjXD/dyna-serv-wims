@@ -10,3 +10,4 @@ export * from "./StockLevelTable";
 export * from "./AlertBanner";
 export * from "./RecentActivityFeed";
 export * from "./FlowPartitionSummary";
+export * from "./WeeklyTrendChart";

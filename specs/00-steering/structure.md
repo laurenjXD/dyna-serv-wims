@@ -79,4 +79,4 @@ Status: Approved
 - Every spec folder: `NN-kebab-case-name` — number is positional, not a permanent ID (see kickoff doc §2b)
 
 ## Visual design
-See `brand-design-system.md` for colors, typography, and shape tokens. No spec should define its own visual tokens.
+See `ui-ux-design-plan.md` for colors, typography, and shape tokens. No spec should define its own visual tokens.

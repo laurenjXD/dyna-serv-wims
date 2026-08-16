@@ -16,7 +16,7 @@ This design depends on:
 - `specs/00-steering/tech.md` for the Next.js 15/Supabase/Drizzle stack and the unstable-offline warning.
 - `specs/00-steering/structure.md` for `/lib/offline`, canonical naming, and the single-warehouse constraint.
 - `specs/00-steering/testing.md` for Dexie/fake-indexeddb, browser IndexedDB, online/offline event simulation, and deferred physical QA.
-- `specs/00-steering/brand-design-system.md` for floor-first feedback and touch/contrast/motion rules.
+- `specs/00-steering/ui-ux-design-plan.md` for floor-first feedback and touch/contrast/motion rules.
 - `02-rbac-roles` for live session/capability/scope checks during replay. Its requirement that queued Tier 1 work be re-authorized is binding, and its approved role/capability model is consumed without duplication.
 - `04-services-and-infrastructure` for Auth/session, server execution, observability, and outage/runbook boundaries.
 - `05-ui-shell-and-navigation` for the shell's read-only connectivity indicator and the boundary between shell feedback and feature feedback.

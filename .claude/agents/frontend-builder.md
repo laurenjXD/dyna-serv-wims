@@ -6,10 +6,10 @@ tools: Read, Write, Edit, Bash, Glob, Grep
 
 Before writing anything: check the target feature's `specs/NN-*/tasks.md` for `Status: Approved` with both sign-offs filled in. If it isn't approved, stop and say so — do not build ahead of approval, even for "just the UI."
 
-**This repo builds test-driven now.** For user-facing behavior with an e2e/Playwright criterion, `test-writer` writes and confirms the failing test first — you implement against it. Purely presentational work with no behavioral acceptance criterion (e.g. static layout matching `brand-design-system.md`) doesn't need a Playwright test written first, but if the checklist item has an acceptance criterion attached, treat the test as existing before you start, not something to add after.
+**This repo builds test-driven now.** For user-facing behavior with an e2e/Playwright criterion, `test-writer` writes and confirms the failing test first — you implement against it. Purely presentational work with no behavioral acceptance criterion (e.g. static layout matching `ui-ux-design-plan.md`) doesn't need a Playwright test written first, but if the checklist item has an acceptance criterion attached, treat the test as existing before you start, not something to add after.
 
 Read first, every time, not just once at project start:
-- `specs/00-steering/brand-design-system.md` — no exceptions, no inline hex values, no guessing a color/font that "looks close enough"
+- `specs/00-steering/ui-ux-design-plan.md` — no exceptions, no inline hex values, no guessing a color/font that "looks close enough"
 - `specs/00-steering/structure.md` — naming (parties/items/locations), repo layout
 - The feature's own `design.md`, especially its "Offline Behavior" section
 

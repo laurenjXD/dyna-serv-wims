@@ -8,7 +8,7 @@ Depends on:
 - `specs/00-steering/product.md`
 - `specs/00-steering/tech.md`
 - `specs/00-steering/structure.md`
-- `specs/00-steering/brand-design-system.md`
+- `specs/00-steering/ui-ux-design-plan.md`
 - `specs/00-steering/testing.md`
 - `specs/01-core-data-model/`
 - `specs/02-rbac-roles/`
@@ -91,7 +91,7 @@ The primary target users for training and documentation are:
 1. **Floor Operator Quick Reference (Mobile-First):**
    - SHALL be visual, high-contrast, and optimized for mobile/handheld viewing.
    - SHALL feature step-by-step visual guides for receiving, location scanning, picking execution, and offline sync notifications.
-   - SHALL clearly highlight single-primary-action patterns per screen per `brand-design-system.md`.
+   - SHALL clearly highlight single-primary-action patterns per screen per `ui-ux-design-plan.md`.
 2. **Office Manager & Administrative Manual:**
    - SHALL cover desktop UI navigation, two-stage approval queues, stock adjustment overrides, and user management.
    - SHALL document the precise formula for VMI CBM period average billing and Trading price locking rules.

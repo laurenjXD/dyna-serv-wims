@@ -2,6 +2,16 @@
 
 Every merge conflict and major revision, dated, with the resolution. This is the audit trail for "why does the spec say X" when X isn't obvious from the doc alone.
 
+## `14` — P1 MVP slice scoped: notifications table + navbar bell, not full spec (2026-08-16)
+
+`14-notifications-and-alerts`'s `tasks.md` is `Status: Approved` with full sign-off, and its `design.md` is complete (§3 schema, §4 event-to-delivery flow, §5 authorization, §6 client/shell behavior, §7 failure handling, §9 alert evaluation) — `tasks.md`'s own checklist boxes (sections 1–7) are simply unchecked/not synced to that already-resolved content, the same staleness pattern already seen and corrected in `05-ui-shell-and-navigation`'s tasks.md this session. No open product/policy decision actually blocks starting; the design itself is the resolution.
+
+However, the full `14` spec — durable outbox/event router with atomic claim/lease and dead-letter handling, Resend email delivery, Realtime scoped signals, an alert-rule engine with threshold jobs (`alert_rules`, `inventory_alert_events`), notification preferences UI, and diagnostics — is a multi-session feature on its own, and nothing in the codebase today produces a source event `14` could route (no receiving/approval/transfer/etc. producer is wired to emit one). Building the full router with zero producers to feed it would be untestable scaffolding, not real functionality.
+
+**Scoped decision**: this pass builds only the `notifications` table itself (design.md §3's first table, trimmed of the `notification_deliveries`/`notification_preferences`/`alert_rules`/`inventory_alert_events` tables — those belong to the email-delivery and alert-rule-engine phases, not the navbar-bell MVP), its RLS (recipient reads only their own rows), list/unread-count/mark-read queries and actions, and a real bell UI in the shared shell header reading that table. No event producers are wired in this pass — the bell will correctly show zero/empty until a later pass adds `INSERT` calls from `07`/`08`/`09`/`10`/`11`/`13`'s workflows per design.md §4's router. This is real, working infrastructure with an honest empty state, not a mock — it is simply upstream of where the notification volume will eventually come from.
+
+Follow-up work (explicitly deferred, not forgotten): the outbox/event router and its idempotency/retry mechanics, Resend email adapter, Realtime signals + reconnect/polling fallback, `notification_preferences` UI, and the `alert_rules`/`inventory_alert_events` threshold-evaluation job. `tasks.md`'s section boxes are updated to reflect exactly this scoped slice, not marked complete for the sections this pass doesn't touch.
+
 ## UI Shell & Navigation specs and Glossary updated for unified terminology and visual design system (2026-08-14)
 
 Reconciled `specs/05-ui-shell-and-navigation/` (`requirements.md`, `design.md`, `tasks.md`) and `specs/00-steering/structure.md` with the unified visual design system (`specs/00-steering/design.md` and `specs/00-steering/ui-ux-design-plan.md`).

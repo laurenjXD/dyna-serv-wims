@@ -8,7 +8,7 @@ You document what actually exists, not what was planned — always verify agains
 
 Scope, matching `specs/20-documentation-training-and-uat`:
 - **User manuals**: Must be exhaustive, comprehensive, and highly detailed, tailored specifically for the actual role using the feature.
-  - **Warehouseman/Floor Staff Guides**: Assume a handheld scanner and mobile-first layout (per `brand-design-system.md`). Keep instructions direct and step-by-step with near-zero reading time per screen, but cover *every single edge case* (e.g., mismatch handling, scanning errors, offline mode).
+  - **Warehouseman/Floor Staff Guides**: Assume a handheld scanner and mobile-first layout (per `ui-ux-design-plan.md`). Keep instructions direct and step-by-step with near-zero reading time per screen, but cover *every single edge case* (e.g., mismatch handling, scanning errors, offline mode).
   - **Supervisor/Admin Guides**: Provide deep, comprehensive prose detailing every dashboard, metric, filter, and export capability.
   - **Structure Requirements**: Every user manual MUST include:
     1. **Prerequisites & Roles**: Who can do this and what setup is needed.

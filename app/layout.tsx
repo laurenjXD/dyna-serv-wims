@@ -1,18 +1,29 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-// Glacial Indifference & Etna Sans Serif font variable loading
-const fontGlacial = Inter({
+// Glacial Indifference (body/UI/nav/labels/badges/buttons) & Etna Sans
+// Serif (headings/displays), per specs/00-steering/ui-ux-design-plan.md §7.
+// Legacy Inter fallback retired now that real brand font files are in
+// app/fonts/. Only one Etna weight file is currently supplied
+// (etna-free-font.otf) — it backs both the 600 and 700 weight requests
+// the design system calls for (Bold/SemiBold) until a dedicated SemiBold
+// file is provided; the browser will not synthesize a second real weight
+// from a single static face, so 600/700 currently render identically.
+const fontGlacial = localFont({
   variable: "--font-glacial",
-  subsets: ["latin"],
-  weight: ["400", "700"],
+  src: [
+    { path: "./fonts/GlacialIndifference-Regular.otf", weight: "400", style: "normal" },
+    { path: "./fonts/GlacialIndifference-Bold.otf", weight: "700", style: "normal" },
+  ],
 });
 
-const fontEtna = Inter({
+const fontEtna = localFont({
   variable: "--font-etna",
-  subsets: ["latin"],
-  weight: ["600", "700"],
+  src: [
+    { path: "./fonts/etna-free-font.otf", weight: "600", style: "normal" },
+    { path: "./fonts/etna-free-font.otf", weight: "700", style: "normal" },
+  ],
 });
 
 export const metadata: Metadata = {

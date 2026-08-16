@@ -99,16 +99,35 @@ Documents: Archive for WRRs, Pick Lists, DR/AR, SOAs, Logistics/PEZA documents. 
 Organization Home
 Pre-arrival Label Form: Existing item selection, quantity, optional supplier lot number, barcode generation, and submission status.
 5. Screen Pattern Library
+5. Screen Pattern Library
 Reusable patterns should be designed before page-level polish:
-App shell: Office sidebar/mobile drawer, floor bottom tabs, scan-flow header, account/status region.
+
+App Shell (Floating Bento): The application shell breaks away from edge-to-edge layouts.
+
+Header: An independent horizontal floating pill (radius-full) at the top of the screen respecting outer margins, containing global search, connection status, and profile.
+
+Sidebar (Desktop): An independent vertical panel floating on the left side (radius-xl), not touching the screen edges.
+
+Mobile Tabs (Floor): A floating pill (radius-full) sitting 16px above the bottom of the screen. Must hide entirely during active scan flows.
+
 Work queue: Filterable office table and floor card-list equivalent.
+
 Scan flow: Scan-ready input, current-item card, expected-versus-scanned counter, location override.
+
 Commitment confirmation: Concise review of irreversible effects (Store, Hold, Dispatch).
+
 Master-data form: Conditional fields by inventory model, inline validation, unsaved-change protection.
+
+Data exploration (Mega-Cards): Dense tables are placed inside full-width, hyper-rounded radius-xl (24px) Mega-Cards on desktop. The table scrolls horizontally inside the card to preserve outer rounded corners. Row expansions happen inline (accordion) or via side-drawers (no modals). On mobile, rows transform into vertically stacked radius-lg (16px) individual cards.
+
 Error States & Mismatches (Floor & Office): Error states must never strand the user or rely on generic "An error occurred" text. Every error modal, toast, or feedback screen must explicitly display three components:
-What happened: Plain-language title ("Invalid Item Scanned", "Connection Lost", "Location Full").
-Why it failed: Brief context or data mismatch details ("Barcode 12345 does not match the active Pick List", "Pallet exceeds the remaining CBM capacity of Location A1").
-Next Action / Solution: A direct, unmistakable path to recover ("Rescan the correct item", "Tap to request a FIFO override", "Select a different putaway location").
+
+What happened: Plain-language title ("Invalid Item Scanned").
+
+Why it failed: Brief context or data mismatch details ("Barcode 12345 does not match the active Pick List").
+
+Next Action / Solution: A direct path to recover ("Rescan the correct item").
+
 6. Color System
 Color Role
 Color
@@ -250,39 +269,42 @@ Place the floor primary action in the bottom third of the viewport, full-width a
 8.5 Orientation
 Portrait is the primary supported orientation for floor screens. Do not build floor layouts that depend on landscape orientation.
 9. Spacing, Layout, and Shape
-Spacing: Base spacing unit is 8px. Floor page padding is 16px. Office page margin is 32px. Office gutter is 24px. Maximum office content width is 1280px.
-Shapes:
-radius-sm (4px): Small pills/tags
-radius-default (8px): Standard cards, buttons, inputs
-radius-md (12px): Larger cards and modals
-radius-lg (16px): Hero cards and feature panels
-radius-full (9999px): Status badges and avatar circles
-Note: The retired diagonal-cut motif must not be reintroduced. Primary buttons use standard rounded corners.
-10. Surfaces and Elevation
-Glassmorphism and backdrop blur are completely retired across the application. Use solid surfaces.
-Level
-Surface
-Shadow
-Use
-0
-Cream White (#FFF7ED)
-none
-Base application background
-1
-Solid White (#FFFFFF)
-0 1px 2px rgba(15, 23, 42, 0.08)
-Office cards, modals, and panels
 
-Floor cards use Level 1 solid White surfaces and avoid translucent effects.
+Spacing: Base spacing unit is 8px. Floor page padding is 16px. Office page margin is 32px. Office gutter is a wide 24px between floating cards to create the distinct Bento-box separation. Maximum office content width is 1280px.
+
+Shapes:
+
+radius-sm (4px): Small pills/tags, inner table cells
+
+radius-default (8px): Standard inputs
+
+radius-md (12px): Larger form elements and dropdown menus
+
+radius-lg (16px): Mobile floor task cards and sub-panels
+
+radius-xl (24px): The default for all primary dashboard Mega-Cards, modals, and the floating office sidebar to create the soft, modern look.
+
+radius-full (9999px): Primary buttons, active sidebar navigation items, floating top header, and status badges.
+
+Note: The retired diagonal-cut motif must not be reintroduced.
+10. Surfaces and ElevationGlassmorphism and backdrop blur are completely retired across the application. Use solid surfaces to create the modular Bento layers.LevelSurfaceShadowUse0Cream White (#FFF7ED)noneBase application background canvas1Solid White (#FFFFFF)0 4px 12px rgba(15, 23, 42, 0.05)Floating Sidebar, Top Header, Mega-Cards, ModalsFloor cards use Level 1 solid White surfaces and avoid translucent effects.
 11. Component Guidance
+
 Buttons:
-Primary: Vibrant Blue (#2563EB), White text, Glacial Indifference Bold, rounded corners. Minimum 64px height on floor screens.
+
+Primary: Vibrant Blue (#2563EB), White text, Glacial Indifference Bold, radius-full (pill-shaped). Minimum 64px height and full-width on floor screens.
+
 Destructive: Red (#EF4444).
-Navigation: Office uses a White or Cream White sidebar with Deep Navy text for active items and Slate for inactive. Floor screens collapse navigation to bottom tabs or hide it entirely during active scan flows.
+
+Navigation: Office uses a floating Level 1 Solid White sidebar. Active items use a radius-full (pill shape) background in Vibrant Blue at 10% opacity, with Deep Navy (#0F172A) text. Inactive items use Slate (#64748B) text with no background.
+
 Status Badges: radius-full, Glacial Indifference Bold uppercase, semantic colors (Emerald, Amber, Red), and icons on floor screens.
-Tables: Office tables use Glacial Indifference Bold uppercase headers and Regular for body copy. Floor workflows avoid dense tables and use card-based lists.
-Forms: Use Glacial Indifference and a visible Vibrant Blue focus ring. Minimize floor form fields; prefer scanning and single-tap selection.
-Dashboard/KPI Cards: Floor screens do not use multi-tile KPI grids; show at most a single relevant large statistic within the task layout.
+
+Tables: Office tables use Glacial Indifference Bold uppercase headers and Regular for body copy. They must be housed within radius-xl Level 1 Mega-Cards with overflow-hidden. Floor workflows avoid dense tables entirely and use stacked radius-lg cards.
+
+Forms: Use Glacial Indifference and a visible Vibrant Blue focus ring (radius-md). Minimize floor form fields; prefer scanning and single-tap selection.
+
+Dashboard/KPI Cards: Rendered as modular radius-xl Level 1 Solid White floating cards on desktop. Floor screens do not use multi-tile KPI grids; show at most a single relevant large statistic within the task layout.
 12. Motion and Feedback
 Office
 Hover scale may reach 1.02 with 150–200ms transitions.

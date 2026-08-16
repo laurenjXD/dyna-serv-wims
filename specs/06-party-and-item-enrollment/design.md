@@ -9,13 +9,13 @@ All list/table views in this feature consume the **Shared Table-Action and Filte
 
 Party and item enrollment is an authenticated office/master-data surface backed by the canonical core tables. It uses server-owned commands, typed validation, explicit capability checks, and database constraints. It does not create a parallel catalog, flow-specific item tables, or client-authoritative master data.
 
-The design follows `specs/00-steering/brand-design-system.md`: office layouts may use wider forms and tables, but the screen remains usable on mobile with approved focus, contrast, touch-target, and error-state behavior.
+The design follows `specs/00-steering/ui-ux-design-plan.md`: office layouts may use wider forms and tables, but the screen remains usable on mobile with approved focus, contrast, touch-target, and error-state behavior.
 
 ## 2. Foundational dependencies and tables
 
 Depends on:
 
-- `00-steering/product.md`, `tech.md`, `structure.md`, `testing.md`, and `brand-design-system.md`.
+- `00-steering/product.md`, `tech.md`, `structure.md`, `testing.md`, and `ui-ux-design-plan.md`.
 - `01-core-data-model` for the canonical table definitions and database constraints.
 - `02-rbac-roles` for capabilities, party/flow scope, RLS, session resolution, and audit events.
 - `03-offline-mode-and-client-storage` for the Tier 2/online-only master-data boundary.
@@ -231,7 +231,7 @@ Ownership boundary: `06` owns the enrollment step (item master record creation, 
 
 ## 6a. Location model and workflows (added 2026-08-07)
 
-This is the spec's third master-data type, following the identical create/edit/deactivate pattern as parties (§5) and items (§6). It uses the same office-primary, mobile-reviewable surface treatment stated in `requirements.md` §3: creating/editing a rack is an office task, but a warehouseman must be able to look up a location's label and remaining capacity on a handheld device while working the floor — this is a lookup/review case, not a floor scan-and-mutate flow, so it does not require the floor-priority form treatment `brand-design-system.md` §3 reserves for scan-driven screens.
+This is the spec's third master-data type, following the identical create/edit/deactivate pattern as parties (§5) and items (§6). It uses the same office-primary, mobile-reviewable surface treatment stated in `requirements.md` §3: creating/editing a rack is an office task, but a warehouseman must be able to look up a location's label and remaining capacity on a handheld device while working the floor — this is a lookup/review case, not a floor scan-and-mutate flow, so it does not require the floor-priority form treatment `ui-ux-design-plan.md` §3 reserves for scan-driven screens.
 
 ### Create
 

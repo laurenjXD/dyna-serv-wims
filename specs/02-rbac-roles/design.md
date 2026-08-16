@@ -7,7 +7,7 @@ Depends on:
 
 - `specs/00-steering/tech.md`
 - `specs/00-steering/structure.md`
-- `specs/00-steering/brand-design-system.md`
+- `specs/00-steering/ui-ux-design-plan.md`
 - `specs/00-steering/testing.md`
 - `specs/01-core-data-model/requirements.md`
 - `specs/01-core-data-model/design.md`
@@ -577,7 +577,7 @@ The lock MUST be a single fixed-key `pg_advisory_xact_lock` on a constant identi
 
 ## 9. Admin UI design
 
-This is an office-first administrative surface that remains usable on mobile. It follows `brand-design-system.md` and the route/navigation decisions in spec `05`.
+This is an office-first administrative surface that remains usable on mobile. It follows `ui-ux-design-plan.md` and the route/navigation decisions in spec `05`.
 
 Proposed information architecture:
 

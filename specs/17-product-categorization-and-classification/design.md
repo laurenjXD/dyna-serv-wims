@@ -13,7 +13,7 @@ The design starts with the provisional `01` shape—`item_categories` with `name
 
 Depends on:
 
-- `00-steering/product.md`, `tech.md`, `structure.md`, `testing.md`, and `brand-design-system.md`;
+- `00-steering/product.md`, `tech.md`, `structure.md`, `testing.md`, and `ui-ux-design-plan.md`;
 - `01-core-data-model` for `item_categories`, `items`, `flow_type`, and canonical constraints;
 - `02-rbac-roles` for capabilities, scope, RLS, session resolution, and audit;
 - `03-offline-mode-and-client-storage` for online-only master-data mutations;

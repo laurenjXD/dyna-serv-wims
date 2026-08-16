@@ -63,12 +63,12 @@ Testing: Documentation review; no implementation tests.
 Testing: Unit tests for token/config contracts; Playwright visual assertions at 375px, 430px, 768px, 1280px; manual design-system review.
 
 - [ ] Map approved design-system tokens into `tailwind.config.ts`: Primary (`#2563EB`), Primary Hover (`#1E3A8A`), Secondary (`#7C3AED`), Neutral (`#94A3B8`), Background (`#FFF7ED`), Surface (`#FFFFFF`), Text Primary (`#0F172A`), Text Secondary (`#64748B`), Border (`#E2E8F0`), Success (`#10B981`), Warning (`#F59E0B`), Error (`#EF4444`).
-- [ ] Load **Etna Sans Serif** (Bold/SemiBold for headings) and **Glacial Indifference** (Bold/Regular for body/UI/nav/buttons/badges) through `next/font/google`. Ensure legacy/monospaced fonts (Epilogue, Inter, JetBrains Mono) are completely retired.
+- [x] Load **Etna Sans Serif** (Bold/SemiBold for headings) and **Glacial Indifference** (Bold/Regular for body/UI/nav/buttons/badges). Ensure legacy/monospaced fonts (Epilogue, Inter, JetBrains Mono) are completely retired. (Neither font is on Google Fonts — loaded via `next/font/local` from `app/fonts/` instead of `/google` as originally written here; `app/layout.tsx` updated, `var(--font-inter)` swapped to `var(--font-glacial)` in the 4 recharts components that referenced it, production build verified. Only one Etna weight file was supplied — it currently backs both the 600 and 700 weight requests until a dedicated SemiBold file is provided.)
 - [ ] Define solid Level 0 Cream White (`#FFF7ED`) base background and Level 1 Solid White (`#FFFFFF`) surface utilities with subtle shadow `0 1px 2px rgba(15, 23, 42, 0.08)`. Strictly eliminate backdrop blur and glassmorphism across all components.
 - [ ] Define shape and corner radius tokens: `radius-sm` (4px), `radius-default` (8px), `radius-md` (12px), `radius-lg` (16px), and `radius-full` (9999px). Primary buttons use standard rounded corners (diagonal cuts strictly prohibited).
 - [ ] Define mobile-first responsive rules: floor defaults at 375–430px portrait base breakpoint, `md`/`lg` enhancements for desktop/office layouts.
 - [ ] Define touch-target minimums: 64px height full-width floor primary CTA (positioned in bottom-third thumb zone), 56×56px floor default controls, 44×44px office controls.
-- [ ] Ensure no text below 16px (`body-md` minimum) is rendered on floor screens.
+- [x] Ensure no text below 16px (`body-md` minimum) is rendered on floor screens.
 - [ ] Verify 2px visible Vibrant Blue (`#2563EB`) focus ring on all interactive elements, keyboard/scanner-as-keyboard navigation, screen-reader landmarks, and AAA contrast for time-critical floor content.
 
 ### 3. Implement authenticated route and layout boundaries
@@ -89,7 +89,7 @@ Testing: Unit tests for registry filtering, ordering, active-route matching, and
 - [ ] Implement typed central navigation registry using approved terminology (Organization, Inventory Model, Organization Portal, Inspection).
 - [ ] Implement desktop sidebar using White or Cream White background, Deep Navy (`#0F172A`) active text, Slate (`#64748B`) inactive text, Vibrant Blue (`#2563EB`) active indicator line, Glacial Indifference Bold 14px labels, and real letter-mark logo asset (no diagonal cut).
 - [ ] Implement Organization Portal (`"party"`) surface navigation with dedicated Organization Portal entries and explicit "your organization" framing.
-- [ ] Implement mobile/floor navigation: bottom tab bar between steps, completely hidden navigation during active scan loops.
+- [x] Implement mobile/floor navigation: bottom tab bar between steps, completely hidden navigation during active scan loops.
 - [ ] Resolve visible entries from server-provided capability context; hide unauthorized entries rather than greying them out.
 - [ ] Implement active-route matching for nested routes, query strings, trailing slashes, and dynamic segments.
 
@@ -98,11 +98,11 @@ Testing: Unit tests for registry filtering, ordering, active-route matching, and
 Testing: Unit tests for state/formatting helpers; E2E tests for keyboard and touch interactions; manual accessibility review.
 
 - [ ] Implement page header contract for title, context, optional breadcrumb/back action, and optional feature-owned primary action.
-- [ ] Implement account controls with safe display (displayName, email, Organization scope) and Sign Out action.
+- [x] Implement account controls with safe display (displayName, email, Organization scope) and Sign Out action.
 - [ ] Implement shell loading skeletons preserving layout geometry without delaying scanner input.
-- [ ] Implement mandatory 3-component error feedback structure (**What happened**, **Why it failed**, **Next Action / Solution**) for all shell error, not-found, forbidden, and timeout boundaries.
+- [x] Implement mandatory 3-component error feedback structure (**What happened**, **Why it failed**, **Next Action / Solution**) for all shell error, not-found, forbidden, and timeout boundaries.
 - [ ] Implement distinct forbidden, timeout, retrying, session-checking, sign-out transition, storage attention, and online-required states.
-- [ ] Implement read-only connectivity indicator (`online`, `offline`, `checking`) and synchronization status (`idle`, `syncing`, `attention`) via `03` contract.
+- [x] Implement read-only connectivity indicator (`online`, `offline`, `checking`) and synchronization status (`idle`, `syncing`, `attention`) via `03` contract. (Connectivity half implemented now — `lib/shell/use-connectivity.ts` + desktop/mobile indicators. Synchronization half deliberately deferred: `lib/offline/index.ts` is still a placeholder with no real Tier 1 queue, and R8.2 forbids claiming sync state without authoritative evidence — will complete once `03-offline-mode-and-client-storage`'s queue exists.)
 - [ ] Ensure all controls satisfy 64px floor primary CTA, 56px floor default, and 44px office touch-target requirements.
 
 ### 6. Publish downstream integration guidance
@@ -119,11 +119,11 @@ Testing: Type-check/build contract; E2E smoke coverage for representative floor 
 
 Testing: Unit and E2E tests for `/` rendering under floor, office, and Organization Portal sessions.
 
-- [ ] Register `/` as default post-login destination, capability `none`, surface `shared`.
-- [ ] Implement floor summary presentation: greeting, "TODAY" task-count summary card (Receiving, Picking, Inspection counts), Quick Actions list, one full-width open-work-queue CTA.
-- [ ] Implement office & Organization Portal presentation: per-queue summary cards (Receiving, Picking, Inspection, open/today counts), Recent Activity feed, Approval monitoring badge with Pending Approval count, Weekly transaction line graph (outgoing qty, sales, CBM), and Monthly outgoing KPI summary.
-- [ ] Implement office-surface-only `<ActivityHeatmap>` widget imported from `16-reporting-and-analytics`, gated by `reporting.read` at widget level; omit entirely for floor sessions and sessions lacking `reporting.read`.
-- [ ] Verify `/` never displays financial/margin KPI cards (reserved for `/reports`).
+- [x] Register `/` as default post-login destination, capability `none`, surface `shared`. (Confirmed already satisfied: `lib/shell/registry.ts`'s `root` entry.)
+- [x] Implement floor summary presentation: greeting, "TODAY" task-count summary card (Receiving, Picking, Inspection counts), Quick Actions list, one full-width open-work-queue CTA. (Implemented as a richer 4-card Shift Overview — Open WRRs/Active Picks/Pending Transfers/Open Inspections — superseding the simpler 3-count shape; confirmed decision, see revision-log.)
+- [x] Implement office & Organization Portal presentation: per-queue summary cards (Receiving, Picking, Inspection, open/today counts), Recent Activity feed, Approval monitoring badge with Pending Approval count, Weekly transaction line graph (outgoing qty, sales, CBM), and Monthly outgoing KPI summary. (Weekly graph ships with quantity + CBM series only — "sales" deliberately deferred until `12`/`13` billing/pricing backend exists; confirmed decision.)
+- [x] Implement office-surface-only `<ActivityHeatmap>` widget imported from `16-reporting-and-analytics`, gated by `reporting.read` at widget level; omit entirely for floor sessions and sessions lacking `reporting.read`. (Confirmed already satisfied: `HomeDashboardHeatmapSection`, gated by `hasReportingAccess`.)
+- [x] Verify `/` never displays financial/margin KPI cards (reserved for `/reports`). (Fixed this session: Low Stock Items card was gated on the wrong capability, `reporting.financial_read` instead of `reporting.read` — corrected and design-system-auditor verified PASS.)
 
 ## Testing matrix
 

@@ -14,6 +14,27 @@ export async function getPickListVolumeTrend(range: DateRange, flow: AnalyticsFl
   `);
 }
 
+// Weekly transaction line graph + Monthly outgoing KPI data source for `/`
+// (specs/05-ui-shell-and-navigation/requirements.md R11.3/R11.5). Unlike
+// getPickListVolumeTrend (which counts pick_lists rows), this returns the
+// actual outgoing quantity and CBM dispatched, joining pick_list_items to
+// items.volume_cbm — the "sales"/$ series named in R11.3 is deliberately
+// excluded (no pricing/billing backend exists yet).
+export async function getPickListQtyAndCbmTrend(range: DateRange, flow: AnalyticsFlow, period: "day" | "week" | "month", executor: AnalyticsExecutor = defaultAnalyticsExecutor) {
+  assertDateRange(range);
+  return executor.execute(sql`
+    SELECT date_trunc(${period}, pl.created_at) AS period,
+      COALESCE(SUM(pli.qty), 0) AS total_qty,
+      COALESCE(SUM(pli.qty * i.volume_cbm), 0) AS total_cbm
+    FROM pick_lists pl
+    JOIN pick_list_items pli ON pli.pick_list_id = pl.id
+    JOIN items i ON i.id = pli.item_id
+    WHERE pl.created_at >= ${range.startDate} AND pl.created_at <= ${range.endDate}
+      AND ${flowPredicate(sql`pl.flow_type`, flow)}
+    GROUP BY period ORDER BY period ASC
+  `);
+}
+
 export async function getDispatchRate(range: DateRange, executor: AnalyticsExecutor = defaultAnalyticsExecutor) {
   assertDateRange(range);
   const [row] = await executor.execute<{ dispatched: string; not_dispatched: string }>(sql`

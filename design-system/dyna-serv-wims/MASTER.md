@@ -2,10 +2,10 @@
 
 > **How to use:** When building a specific page, check `design-system/dyna-serv-wims/pages/[page-name].md` first.
 > If it exists, its rules **override** this file. Otherwise, follow this file exclusively.
-> Where this file and `specs/00-steering/brand-design-system.md` conflict, `brand-design-system.md` wins — it is the legal source of truth. This file is the actionable build reference.
+> Where this file and `specs/00-steering/ui-ux-design-plan.md` conflict, `ui-ux-design-plan.md` wins — it is the legal source of truth. This file is the actionable build reference.
 
 **Updated:** 2026-08-09
-**Canonical spec:** `specs/00-steering/brand-design-system.md`
+**Canonical spec:** `specs/00-steering/ui-ux-design-plan.md`
 **Figma:** `d69UrZUwxyxPbbrruXAjMX`
 
 ---

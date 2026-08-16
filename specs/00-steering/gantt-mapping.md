@@ -76,4 +76,4 @@ The current Gantt timeline tracks the **Spec Definition Phase** (Drafting Requir
 ---
 
 ## Standing Rule
-Every time a new spec is drafted or changes status, check this table for rows that reference it and update the status column. This table is only useful if it stays current — treat a stale row here as a bug the same way an undocumented design token is a bug (per `brand-design-system.md` §13's governance principle).
+Every time a new spec is drafted or changes status, check this table for rows that reference it and update the status column. This table is only useful if it stays current — treat a stale row here as a bug the same way an undocumented design token is a bug (per `ui-ux-design-plan.md` §13's governance principle).

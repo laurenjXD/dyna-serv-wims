@@ -70,7 +70,7 @@ Next.js 15 (App Router) + Supabase (Postgres, Auth, Realtime, Storage) + Vercel,
     product.md              # business context: VMI vs Trading, who the users are, why this exists
     tech.md                 # Option A stack decisions, cross-cutting architecture principles (§1.1)
     structure.md            # naming conventions, glossary (parties/items/locations), file conventions
-    brand-design-system.md   # colors, typography, motif, mobile-first floor priority, Figma file status
+    ui-ux-design-plan.md   # colors, typography, motif, mobile-first floor priority, Figma file status
     testing.md               # tooling, test-stage requirements, floor/hardware simulation strategy
     gantt-mapping.md         # traceability: Gantt line items <-> specs, tracking layer above specs
     revision-log.md         # dated log of every merge conflict / major revision, and how it was resolved

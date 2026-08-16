@@ -196,7 +196,7 @@ The RBAC design owns canonical capability identifiers. The operational capabilit
 
 ### Accessibility and usability
 
-- Administrative screens SHALL follow `brand-design-system.md` and remain usable on mobile, while targeting office/desktop workflows.
+- Administrative screens SHALL follow `ui-ux-design-plan.md` and remain usable on mobile, while targeting office/desktop workflows.
 - Access changes SHALL clearly show the user, role, party, optional flow scope, and resulting status before confirmation.
 - Keyboard navigation, visible focus, accessible labels, and non-color-only status cues SHALL be supported.
 

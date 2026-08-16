@@ -9,7 +9,7 @@
 //   specs/07-incoming-receiving/design.md §5.1 — expected line fields.
 //   specs/07-incoming-receiving/design.md §5.2 — scan-line state and discrepancy.
 
-import { eq, asc, sql } from "drizzle-orm";
+import { eq, asc, desc, sql } from "drizzle-orm";
 import { wrrDocuments, wrrItems } from "@/lib/db/schema/wrr";
 // Aliased: getWrrDocument's own `items` local (the mapped WrrItemRow[]
 // result) would otherwise shadow this schema table within the same
@@ -171,6 +171,39 @@ export async function listWrrDocuments(
   }
 
   return { rows, total: Number(countResult[0].count) };
+}
+
+// ---------------------------------------------------------------------------
+// listRecentWrrDocuments
+//
+// Genuinely-recent WRR documents (createdAt DESC), for "Recent Activity"
+// feeds. listWrrDocuments above orders ASC (oldest-first, work-queue
+// prioritization) so it cannot be reused for a recency-sorted feed —
+// see specs/00-steering/ui-ux-design-plan.md data-honesty fix
+// (design-system-auditor finding, 2026-08-16).
+//
+// Authorization is enforced at the call site — not re-checked here.
+// ---------------------------------------------------------------------------
+
+export async function listRecentWrrDocuments(
+  db: DbLike,
+  opts: { limit: number },
+): Promise<WrrDocumentRow[]> {
+  return (await db
+    .select({
+      id: wrrDocuments.id,
+      wrrNumber: wrrDocuments.wrrNumber,
+      status: wrrDocuments.status,
+      flowType: wrrDocuments.flowType,
+      vendorPartyId: wrrDocuments.vendorPartyId,
+      vendorPartyName: partiesTable.name,
+      stagedByUserId: wrrDocuments.stagedByUserId,
+      createdAt: wrrDocuments.createdAt,
+    })
+    .from(wrrDocuments)
+    .leftJoin(partiesTable, eq(partiesTable.id, wrrDocuments.vendorPartyId))
+    .orderBy(desc(wrrDocuments.createdAt))
+    .limit(opts.limit)) as WrrDocumentRow[];
 }
 
 // ---------------------------------------------------------------------------

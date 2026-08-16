@@ -42,6 +42,7 @@ import {
   type NavSection,
 } from "@/lib/shell/navigation";
 import { resolveActiveRouteId } from "@/lib/shell/active-route";
+import { isScanLoopRoute } from "@/lib/shell/scan-loop";
 import type { RouteRegistryEntry } from "@/lib/shell/registry";
 import { resolveShellUserDisplay } from "@/app/(authenticated)/actions";
 
@@ -113,17 +114,20 @@ function NavLink({
   entry,
   isActive,
   tier,
+  variant = "tab",
   onNavigate,
 }: {
   entry: RouteRegistryEntry;
   isActive: boolean;
   tier: SessionPresentationTier;
+  variant?: "tab" | "list";
   onNavigate?: () => void;
 }) {
   const Icon = routeIcon(entry.id);
   const label = toLabel(entry.id);
+  const floorText = tier === "floor";
 
-  if (tier === "floor") {
+  if (tier === "floor" && variant === "tab") {
     return (
       <Link
         href={entry.path}
@@ -137,7 +141,7 @@ function NavLink({
           ${isActive ? "bg-primary/10 text-primary" : "text-text-secondary"}`}
       >
         <Icon size={22} aria-hidden="true" />
-        <span className="text-mono-sm font-label">{label}</span>
+        <span className="text-mono-md font-label">{label}</span>
       </Link>
     );
   }
@@ -148,7 +152,8 @@ function NavLink({
       data-testid={`nav-entry-${entry.id}`}
       aria-current={isActive ? "page" : undefined}
       onClick={onNavigate}
-      className={`flex h-12 items-center gap-4 rounded-lg px-4 font-label text-label font-semibold
+      className={`flex h-12 items-center gap-4 rounded-lg px-4 font-label font-semibold
+        ${floorText ? "text-mono-md" : "text-label"}
         focus:outline-none focus-visible:ring-2 focus-visible:ring-primary
         ${isActive ? "bg-primary text-surface" : "text-text-secondary hover:bg-background hover:text-text-primary"}`}
     >
@@ -161,19 +166,23 @@ function NavLink({
 function GroupedSections({
   sections,
   activeId,
+  tier,
   onNavigate,
 }: {
   sections: readonly NavSection[];
   activeId: string | null;
+  tier: SessionPresentationTier;
   onNavigate?: () => void;
 }) {
+  const floorText = tier === "floor";
   return (
     <>
       {sections.map((section) => (
         <div key={section.group} className="mb-3">
           <p
             data-testid={`nav-group-${groupTestId(section.group)}`}
-            className="px-4 pb-1 pt-2 font-label text-mono-sm font-bold uppercase tracking-wider text-text-secondary/70"
+            className={`px-4 pb-1 pt-2 font-label font-bold uppercase tracking-wider text-text-secondary/70
+              ${floorText ? "text-mono-md" : "text-mono-sm"}`}
           >
             {section.group}
           </p>
@@ -183,7 +192,8 @@ function GroupedSections({
                 key={entry.id}
                 entry={entry}
                 isActive={entry.id === activeId}
-                tier="office"
+                tier={tier}
+                variant="list"
                 onNavigate={onNavigate}
               />
             ))}
@@ -247,6 +257,10 @@ export function ShellNavigation({
 
   const primaryFloorEntries = presented.slice(0, 4);
 
+  if (tier === "floor" && isScanLoopRoute(currentPath)) {
+    return null;
+  }
+
   if (tier === "floor") {
     return (
       <>
@@ -266,7 +280,7 @@ export function ShellNavigation({
               className="flex min-h-14 flex-1 flex-col items-center justify-center gap-1 px-2 font-label uppercase tracking-wide text-text-secondary active:scale-[0.97] active:opacity-75 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <Menu size={22} aria-hidden="true" />
-              <span className="text-mono-sm font-label">More</span>
+              <span className="text-mono-md font-label">More</span>
             </button>
           )}
         </nav>
@@ -276,6 +290,7 @@ export function ShellNavigation({
             activeId={activeId}
             displayName={displayName}
             roleLabel={roleLabel}
+            tier={tier}
             onClose={() => setMoreOpen(false)}
           />
         )}
@@ -317,7 +332,7 @@ export function ShellNavigation({
         </Link>
 
         <div className="mt-5 flex flex-1 flex-col">
-          <GroupedSections sections={sections} activeId={activeId} />
+          <GroupedSections sections={sections} activeId={activeId} tier={tier} />
         </div>
       </nav>
 
@@ -328,6 +343,7 @@ export function ShellNavigation({
             activeId={activeId}
             displayName={displayName}
             roleLabel={roleLabel}
+            tier={tier}
             onClose={() => onCloseMobileNav?.()}
           />
         </div>
@@ -341,14 +357,17 @@ function MoreOverlay({
   activeId,
   displayName,
   roleLabel,
+  tier,
   onClose,
 }: {
   sections: readonly NavSection[];
   activeId: string | null;
   displayName: string | null;
   roleLabel: string;
+  tier: SessionPresentationTier;
   onClose: () => void;
 }) {
+  const floorText = tier === "floor";
   return (
     <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Navigation menu">
       <button
@@ -366,7 +385,7 @@ function MoreOverlay({
             </span>
             <div className="min-w-0">
               <p className="truncate font-heading text-body-md font-bold text-text-primary">{displayName ?? "Loading..."}</p>
-              <p className="truncate font-body text-body-sm text-text-secondary">{roleLabel}</p>
+              <p className={`truncate font-body text-text-secondary ${floorText ? "text-body-md" : "text-body-sm"}`}>{roleLabel}</p>
             </div>
           </div>
           <button
@@ -379,7 +398,7 @@ function MoreOverlay({
           </button>
         </div>
         <div className="flex-1 px-2 py-2">
-          <GroupedSections sections={sections} activeId={activeId} onNavigate={onClose} />
+          <GroupedSections sections={sections} activeId={activeId} tier={tier} onNavigate={onClose} />
         </div>
       </div>
     </div>
