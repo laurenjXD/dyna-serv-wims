@@ -314,7 +314,8 @@ export function ShellNavigation({
           Skip to content
         </a>
 
-        <div className="px-2 pt-1">
+        <div className="flex items-center gap-2 px-2 pt-1">
+          <img src="/logo.svg" alt="Dyna-Serv WIMS" className="h-8 w-8" />
           <p className="font-heading text-headline-md font-bold tracking-tight text-text-primary">Dyna-Serv WIMS</p>
         </div>
 

@@ -945,3 +945,49 @@ describe("ShellChrome notification bell (specs/14-notifications-and-alerts R3.1,
     },
   );
 });
+
+// -----------------------------------------------------------------------
+// RED TEST (tasks.md §4 / requirements.md R4.1, R5.5): real letter-mark
+// logo asset in the mobile header, replacing the placeholder "DS" text
+// badge.
+//
+// requirements.md R4.1 ("...real letter-mark logo asset (no diagonal-cut
+// motif)."), tasks.md §4 ("...real letter-mark logo asset (no diagonal
+// cut)."). A real logo file now exists at `public/logo.svg` (confirmed
+// present, an actual SVG). Today ShellChrome.tsx's `lg:hidden` mobile
+// header block (lines 196-201) renders a text `<span aria-hidden="true">
+// DS</span>` initials badge as a placeholder, not a real asset. This RED
+// test targets that block: it must render a real <img> element referencing
+// the real asset, AND the literal placeholder text "DS" must no longer be
+// present anywhere in the rendered header.
+// -----------------------------------------------------------------------
+describe("ShellChrome mobile header logo (requirements.md R4.1, tasks.md §4 real letter-mark logo asset)", () => {
+  it("renders a real <img> logo asset referencing /logo.svg in the mobile header, not the placeholder 'DS' text badge (R4.1)", () => {
+    render(
+      <ShellChrome>
+        <div>page</div>
+      </ShellChrome>,
+    );
+
+    // EXPECTED FAILURE (RED): ShellChrome currently renders only a text
+    // <span aria-hidden="true">DS</span> placeholder badge here -- no <img>
+    // element exists at all today, so this query finds nothing.
+    const logo = screen.getByRole("img", { name: /dyna-serv wims/i });
+    expect(logo).toBeInTheDocument();
+    expect(logo.tagName).toBe("IMG");
+    expect(logo).toHaveAttribute("src", expect.stringContaining("/logo.svg"));
+  });
+
+  it("does not render the literal placeholder text 'DS' anywhere once the real logo asset is in place (R4.1 no diagonal-cut/placeholder motif)", () => {
+    render(
+      <ShellChrome>
+        <div>page</div>
+      </ShellChrome>,
+    );
+
+    // EXPECTED FAILURE (RED): the current implementation still renders the
+    // "DS" text node inside the aria-hidden placeholder badge -- this
+    // assertion fails until that placeholder is replaced by the real image.
+    expect(screen.queryByText("DS")).not.toBeInTheDocument();
+  });
+});

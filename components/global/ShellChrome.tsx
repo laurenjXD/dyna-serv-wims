@@ -193,12 +193,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
         )}
 
         <div className="flex flex-1 items-center gap-3 lg:hidden">
-          <span
-            aria-hidden="true"
-            className="inline-flex h-8 items-center rounded-lg bg-primary px-2 font-heading text-body-sm font-bold tracking-tight text-surface"
-          >
-            DS
-          </span>
+          <img src="/logo.svg" alt="Dyna-Serv WIMS" className="h-8 w-8" />
           <span className="font-label text-body-md font-semibold uppercase tracking-wide text-text-primary">
             Dyna-Serv WIMS
           </span>

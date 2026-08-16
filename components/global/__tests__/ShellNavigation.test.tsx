@@ -421,3 +421,44 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
     expect(screen.getByTestId("floor-tab-bar")).toBeInTheDocument();
   });
 });
+
+// -----------------------------------------------------------------------
+// RED TEST (tasks.md §4 / requirements.md R4.1, R5.5): real letter-mark
+// logo asset in the desktop sidebar.
+//
+// requirements.md R4.1 ("Office screens SHALL provide the approved desktop
+// sidebar using White or Cream White background, Deep Navy (#0F172A) active
+// text, Slate (#64748B) inactive text, Vibrant Blue (#2563EB) active
+// indicator, and real letter-mark logo asset (no diagonal-cut motif)."),
+// tasks.md §4 ("Implement desktop sidebar using ... and real letter-mark
+// logo asset (no diagonal cut).").
+//
+// A real logo file now exists at `public/logo.svg` (spec gap this cycle:
+// only a text brand label "Dyna-Serv WIMS" is rendered in the sidebar
+// today -- no image/logo mark at all, confirmed via read of
+// ShellNavigation.tsx lines 317-319). This RED test targets the desktop
+// sidebar (`data-testid="desktop-sidebar"`) rendering a real <img> element
+// referencing the real asset, alongside (not instead of) the existing
+// "Dyna-Serv WIMS" text label -- additive, not a replacement.
+// -----------------------------------------------------------------------
+describe("ShellNavigation desktop sidebar logo (requirements.md R4.1, tasks.md §4 real letter-mark logo asset)", () => {
+  it("renders a real <img> logo asset referencing /logo.svg inside the desktop sidebar, alongside the 'Dyna-Serv WIMS' brand text (R4.1)", () => {
+    render(
+      <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" />,
+    );
+
+    const sidebar = screen.getByTestId("desktop-sidebar");
+
+    // EXPECTED FAILURE (RED): ShellNavigation.tsx currently renders only a
+    // <p> text brand label in the sidebar header block -- no <img>/logo
+    // element exists at all today, so this query finds nothing.
+    const logo = within(sidebar).getByRole("img", { name: /dyna-serv wims/i });
+    expect(logo).toBeInTheDocument();
+    expect(logo.tagName).toBe("IMG");
+    expect(logo).toHaveAttribute("src", expect.stringContaining("/logo.svg"));
+
+    // Additive, not a replacement: the existing text brand label must still
+    // be present alongside the new logo image.
+    expect(within(sidebar).getByText("Dyna-Serv WIMS")).toBeInTheDocument();
+  });
+});

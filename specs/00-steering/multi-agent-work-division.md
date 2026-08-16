@@ -2,88 +2,107 @@
 
 Status: Active
 Effective: 2026-08-16
-Supersedes: the 2026-08-09 two-track document (Core Inventory & Infrastructure / Notifications-Billing-Pricing) — that split's backend goals (lot creation, FIFO engine, AR display, reporting dashboard, RLS/JWT session) are now confirmed **Implemented**, and the shell (`05`) is now built through `specs/05-ui-shell-and-navigation/tasks.md`'s Approved checklist. This document re-splits what's left: `specs/00-steering/ui-implementation-plan.md`'s P1–P12 page-by-page priorities.
+Supersedes: the 2026-08-09 two-track document, and this document's own first 2026-08-16 draft (which split remaining work by `ui-implementation-plan.md`'s P1–P12 order with no deadline pressure). **That ordering is now secondary to a hard delivery date** — see below.
 
 Two active tracks. One human collaborator per track. Read this before touching anything.
 
 ---
 
-## Before every session
+## ⚠ URGENT: Milestone 2 is due Wednesday 2026-08-19
 
-1. `CLAUDE.md` — binding process rules and the one rule that overrides everything (no code without `Status: Approved`).
-2. This file — which track you own, what you may not touch.
-3. `specs/00-steering/ui-implementation-plan.md` — the page-by-page priority list this split is built from. Mark a priority's status here (or in that file's own tracking) as it moves.
-4. `specs/00-steering/revision-log.md` — last 10 entries minimum. Do not redo or contradict a settled decision.
-5. `specs/00-steering/gantt-mapping.md` — current implementation status per Gantt row. Do not start a blocked item.
+Today is Sunday 2026-08-16. **Three days.** Everything in this document is
+now organized around shipping Milestone 2, not the longer P1–P12 sequence.
+The Gantt chart's Milestone 2 line items:
+
+1. Global UI Shell & Navigation (Frontend)
+2. Receiving Interface (`receiving/page.tsx`) (Frontend)
+3. Master Inventory and Pick List (Frontend)
+4. Outgoing Interface (`outgoing/page.tsx`) (Frontend)
+5. Master Data Item/Location UI (Frontend)
+6. Milestone 2 inventory processing review and launch
+
+**The good news, confirmed by an audit earlier this session**: Milestone
+1's entire backend list (repo/env setup, core data model, RBAC/RLS,
+receiving server actions, master inventory backend, master data server
+actions, pick-list allocation engine, outgoing/withdrawal server actions)
+is **already implemented and real** — Drizzle schema, migrations, RLS
+policies, and query/action layers all exist and are wired to live Supabase.
+Milestone 1 item 9 (unit testing for core workflows) also has real
+coverage already (`lib/withdrawal/__tests__`, `lib/receiving/__tests__`,
+`lib/approval/__tests__`, etc.). **Milestone 2 is a frontend-polish-plus-
+one-real-gap problem, not a from-scratch build.** That's what makes
+Wednesday realistic.
+
+### Milestone 2 punch list — exactly what's left, confirmed against real code today (2026-08-16)
+
+| Gantt item | Status right now | What's actually left |
+|---|---|---|
+| **1. Global UI Shell & Navigation** | **Done**, including the logo (2026-08-16). Full P0 shell work shipped — floating header/sidebar/mobile tabs, floor 16px text, mandatory 3-component error states, account popup (Sign Out/email/Organization scope), scan-loop nav hiding, connectivity indicator, real Etna/Glacial fonts, notification bell (P1), real logo wired into both the mobile header and desktop sidebar. | Nothing blocking. **Known follow-up, not urgent**: `public/logo.svg` is a 1.8MB base64-raster-in-SVG, not true vector geometry — a real vector export is pending from whoever owns the brand asset; swap the file when it's ready, no code change needed. |
+| **2. Receiving Interface** | Backend real (`lib/receiving/*`, `lib/actions/receiving.ts`); page already wired to live data, no `TODO` markers found. | Apply the Mega-Card (office) / floor card-list (mobile) visual patterns from `ui-ux-design-plan.md` §5 and `per page specs.md` §4 consistently; confirm item-barcode generation/reprint UI; **validate the Receive scan loop at 375px/430px portrait** — this is the design doc's hardest gate and the highest-floor-priority page in the whole app. |
+| **3. Master Inventory and Pick List** | Stock View real; Inspection real. **Pick Lists has a real gap**: `listPickLists` query and the FIFO/FEFO allocation engine (`lib/withdrawal/allocation.ts`) both already exist, but there is **no `app/(authenticated)/pick-lists/page.tsx` index route** — confirmed via directory listing, only `[pickListId]/pick` and `[pickListId]/dispatch` exist. | **Build the missing Pick Lists index route** — this is the one genuine "build something new" item in all of Milestone 2, everything else is wiring/polish. Also: Stock View's expandable item→lot→location + Excel export, Inspection queue view vs. `per page specs.md` §5. |
+| **4. Outgoing Interface** | Active Picks + Outgoing Ledger tabs both real and wired (`lib/actions/withdrawals.ts`), confirmed no `TODO` markers. | Apply Mega-Card pattern polish. **Decision needed, not yet made**: the Logistics tab (delivery/PEZA refs, "Add Charges") described in `ui-ux-design-plan.md` §4.5 and `per page specs.md` §7 does not exist at all right now — confirmed zero references to it or "Add Charges" anywhere in the codebase. The Gantt line item just says "Outgoing Interface," which Active Picks + Ledger substantively satisfies — **recommend treating Logistics/Add Charges as out of Wednesday's scope and picking it up in Phase 2**, but this is a scope call for whoever's running the Wednesday review, not something to silently drop. |
+| **5. Master Data Item/Location UI** | Organizations/Items/Locations all real, no `TODO` markers. | Apply the exact field order from `per page specs.md` §8: Inventory Model → Category → Subcategory → Item Code → UOM → CBM/Pallet Info → Barcode → Perishability. Button copy: deactivation buttons must say "Deactivate," never "Delete" (per that same doc). Confirm bulk location generator (naming convention, capacity, duplicate/error reporting). |
+| **6. Milestone 2 review and launch** | N/A | Final cross-page QA: `npx tsc --noEmit && npx vitest run --exclude "**/*.integration.test.ts" && npm run build` all green; Mega-Card/floor-card consistency sweep across all 4 pages; 375px/430px floor validation on Receiving and Pick&Dispatch specifically; spot-check the financial-KPI-gate pattern (already fixed on Dashboard this session, confirm it wasn't needed elsewhere in these 4 pages). |
+
+### The two tracks, reassigned for the 3-day sprint
+
+Same page-based split as before (it already lines up well with the punch
+list above) — just resequenced so the *only* thing either track works on
+until Wednesday is what's in the table above. **Everything from the old
+Track A/B tables (P8–P11: Approvals/Transfers/Reports/Documents,
+Organization Portal, Settings, Billing and Pricing) moves to "Phase 2 —
+after Milestone 2 ships" below. Do not start Phase 2 work before Wednesday
+even if a track finishes early — use the extra time on the review/launch
+item, floor validation, or helping the other track.**
+
+**Track A — Receiving + Master Inventory/Pick List**
+- Punch-list items 2 and 3 from the table above.
+- **This is the track with the one real "build" item** (Pick Lists index
+  route) and the harder floor-validation gate (Receiving's scan loop at
+  375/430px). Start the Pick Lists index route first — it's small and
+  unblocks confidence early — then move to Receiving's visual polish and
+  floor validation, since that's the more time-consuming, detail-sensitive
+  piece.
+- Locked files: `app/(authenticated)/receiving/**`, `app/(authenticated)/pick-lists/**`, `lib/receiving/*`, `lib/withdrawal/*` (read-mostly — allocation engine already works, don't rebuild it), `lib/db/queries/receiving.ts`, `lib/db/queries/withdrawals.ts`, `lib/actions/receiving.ts`.
+
+**Track B — Outgoing + Master Data**
+- Punch-list items 4 and 5 from the table above.
+- Lighter lift than Track A (no new routes, no floor-scan-loop validation
+  gate — Outgoing's Active Picks tab is the only floor-adjacent piece and
+  it's already built; both pages are primarily office-context polish).
+  **Once done, this track should pick up item 6 (Milestone 2 review and
+  launch) as its second half** — running the full build/test/QA sweep
+  across both tracks' work, and doing the 375/430px validation pass on
+  Track A's Receiving/Pick-and-Dispatch pages as a second set of eyes,
+  since floor-width validation benefits from someone who didn't write the
+  code checking it.
+- Locked files: `app/(authenticated)/outgoing/**`, `app/(authenticated)/master-data/**`, `lib/actions/items.ts`, `lib/actions/locations.ts`, `lib/actions/withdrawals.ts` (read-mostly).
+- Make the Logistics-tab scope call explicit in `revision-log.md` (in scope for Wednesday, or deferred to Phase 2) before starting item 4, so it's a recorded decision, not a silent omission either way.
+
+The logo asset swap is done — nothing shared/pending there anymore.
 
 ---
 
-## Current state (confirmed 2026-08-16)
+## Phase 2 — after Milestone 2 ships (do not start before Wednesday)
 
-- `P0` (shared shell) is **done**: floating header/sidebar/mobile tabs audited, floor 16px text fixed, mandatory 3-component error states implemented, Sign Out + email + Organization scope added to a consolidated account popup, floor nav hides during the 5 confirmed scan-loop routes, connectivity indicator (desktop + mobile, amber-not-red for offline) wired, real Etna/Glacial fonts loaded via `next/font/local`. **One open item**: the header still shows a "DS" text placeholder — real logo SVG is supplied but not yet wired in (do this first, it's small, before either track starts — see "Immediate next step" below).
-- `P1` (notifications table + navbar bell) is **done** (2026-08-16, MVP slice — see `revision-log.md`'s "`14` — P1 MVP slice scoped" entry). `components/global/ShellChrome.tsx`/`ShellNavigation.tsx` were the shared-shell files this touched, as expected — they are **frozen again now** except for P12 (the chathead, still last).
-- `P2` (Dashboard `/`) is **done**: Quick Actions, Recent Activity feed (genuinely-recent, not the stale work-queue rows), Weekly trend graph (quantity + CBM only — sales deferred to P11), Monthly outgoing KPI, and the Low Stock Items capability-gate fix (`reporting.financial_read` → `reporting.read`) all shipped and verified.
-- `P3`–`P12` are **not started**. This is what the two tracks below split.
+This is the original P1–P12 program from `ui-implementation-plan.md`,
+picked back up once Milestone 2 is reviewed and launched. P0–P2 are already
+done (see below); Phase 2 resumes at P8.
 
----
+- `P0` (shared shell), `P1` (notifications MVP), `P2` (Dashboard) — **done**, shipped 2026-08-16.
+- `P3`–`P7` — **this is Milestone 2's punch list above**, not separate work — once Milestone 2 ships, these priorities are done too by construction.
+- `P8` — Approvals, Transfers, Reports & Documents
+- `P9` — Organization Portal
+- `P10` — Settings + Profile/Team
+- `P11` — Billing and Pricing (the largest remaining backend gap in the whole plan — `vmi_cbm_ledger`, Trading pricing/margin schema, both from scratch)
+- `P12` — AI Chathead (still last, still gated on P8–P11 all being done — see `ui-implementation-plan.md` for why)
 
-## Immediate next step (solo, before either track starts)
-
-1. **Wire the real logo asset** into `components/global/ShellChrome.tsx` and `ShellNavigation.tsx`, replacing the "DS" text placeholder. **Still pending as of this document's writing** — the only remaining item before the two tracks below can start.
-
-P1 (notifications table + navbar bell) is **done** — see "Current state" above. It was correctly done solo/first specifically because `ShellChrome.tsx`/`ShellNavigation.tsx` were the shared files nearly every P0 fix touched this session; that reasoning held (P1 touched both files again, as expected). Once the logo lands, those two files go back to **frozen** for both tracks below except for whatever isolated addition each priority's own row calls for — the only other expected touch is P12 (the chathead launcher, last, single mount point).
-
----
-
-## Two tracks (start after P1 is merged)
-
-### Track A — Floor & Core Inventory Loop
-
-**Branch:** `track-a-floor-inventory` (rebase from `main` after P1 merges)
-**Covers the physical warehouse happy path**: Receiving → Inventory/Pick Lists → Pick & Dispatch → Outgoing → Master-Data (the data those flows consume).
-
-| Priority | What | DB | Backend | Frontend |
-|---|---|---|---|---|
-| **P3 — Receiving** | Work Queue / Receive / WRRs / Incoming Ledger | None new (`0012`, `0020`–`0022`, `0025` already cover WRR disposition/putaway/unit scans) | Already real — `lib/receiving/*`, `lib/actions/receiving.ts` | Apply the P0 Mega-Card (office) and floor card-list (mobile) patterns; verify item-barcode generation/reprint against `ui-ux-design-plan.md` §4.2. **Highest floor-priority page — validate the scan flow at 375px/430px before calling this done.** |
-| **P4 — Inventory** | Stock View / Pick Lists / Inspection | None new — `pick_lists` schema already exists | Stock View + Inspection already real. Pick Lists: `listPickLists` query exists, unused by a top-level route | Stock View: expandable item→lot→location, lot history/aging, Excel export (`lib/analytics/queries/export.ts` already has the path). **Build the missing `app/(authenticated)/pick-lists/page.tsx` index route** — FIFO/FEFO allocation preview backend already exists (`lib/withdrawal/allocation.ts`). Inspection: confirm queue view matches §4.3. |
-| **P5 — Pick and Dispatch** | Scan flow | None new | Already real end-to-end (`08`, `10`) | Already wired (`pick-lists/[id]/pick`, `/dispatch`) — apply the P0 scan-flow shell, validate mismatch/override/final-dispatch states at 375px/430px. **Second floor-priority page after Receiving — this is a `isScanLoopRoute()`-covered route already (nav already hides correctly here from P0's work), just confirm the page content itself matches the pattern.** |
-| **P6 — Outgoing** | Ledger / Logistics | Check whether `Add Charges` (charge reason, amount, evidence) has a backing table — if not, a small migration is needed here (next free number after whatever P1 used) | Ledger real. Logistics (delivery/PEZA refs, manual status, Add Charges) — extend `lib/db/queries/withdrawals.ts`/`lib/actions/withdrawals.ts` if charges aren't modeled | Ledger real; build/finish the Logistics tab per §4.5. |
-| **P7 — Master-Data** | Organizations / Items / Locations | None new | Already real | Apply Inventory-Model → Category → Subcategory field order to the Items form per §4.6; bulk location generator UI for Locations. |
-
-**Locked files (Track A writes, Track B reads-only unless coordinated):**
-- `app/(authenticated)/receiving/**`, `app/(authenticated)/pick-lists/**`, `app/(authenticated)/outgoing/**`, `app/(authenticated)/master-data/**`
-- `lib/receiving/*`, `lib/withdrawal/*`, `lib/db/queries/receiving.ts`, `lib/db/queries/withdrawals.ts`, `lib/actions/receiving.ts`, `lib/actions/withdrawals.ts`, `lib/actions/items.ts`, `lib/actions/locations.ts`, `lib/actions/parties.ts`
-- Any new migration Track A adds for P6's Add Charges table (announce the exact number in `revision-log.md` before writing it, so it doesn't collide with a Track B migration landing the same day)
-
-**Sequencing within Track A:** P3 → P5 (Receiving before Pick/Dispatch, since P5 is the natural next floor step and both need the same 375/430px validation pass — do them back to back while the scan-shell context is fresh) → P4 (Pick Lists index route is small, do it once P5 confirms the allocation-preview backend contract) → P6 → P7 (office-only, no floor-validation gate, lowest urgency).
-
----
-
-### Track B — Office, Admin & New Backend
-
-**Branch:** `track-b-office-billing` (rebase from `main` after P1 merges)
-**Covers everything that's office-first, plus the two priorities with zero existing backend.**
-
-| Priority | What | DB | Backend | Frontend |
-|---|---|---|---|---|
-| **P8 — Approvals, Transfers, Reports & Documents** | Four already-mostly-real pages | None new for Approvals/Transfers. Documents needs `generated_documents` coverage confirmed for AR generation | Approvals + Transfers already real. Reports already real (`getInventoryKpis`, volume trends, heatmap). Documents: acknowledgement-receipt generation still needs wiring | Approvals/Transfers: confirm badge/count and queue views match design doc. Reports: Excel export coverage per §4.8. Documents: finish the AR-generation TODO in `documents/page.tsx`; archive search/filter/preview/print/reprint. |
-| **P9 — Organization Portal** | Home / Orders / Inventory / Labels / Documents | `party_visible_items` view already specified in `specs/02-rbac-roles/design.md §7.4` (a default-owner, non-`security_invoker` view — read that section before building, it explains exactly why a `security_invoker` view would silently return zero rows here) — confirm whether it's actually migrated yet or still spec-only | Home/Orders/Inventory already real via `lib/portal/resolve-party-scope.ts`. Labels needs the `party_visible_items` query. Documents needs signed-URL generation against Supabase Storage | Home/Orders/Inventory already wired. Labels: Pre-arrival Label Form (item selection, quantity, optional supplier lot number, barcode generation, submission status). Documents: wire the download button to the signed URL. **No separate Notifications tab — portal pages use the same P1 navbar bell as everywhere else.** |
-| **P10 — Settings + Profile/Team** | General / Security placeholders | Config table (FIFO override policy, defaults) for General; security-events/MFA table for Security | Profile/Team already real. General/Security need actions built against the new tables | Profile/Team already wired. General/Security: replace the current placeholder pages once backend lands. |
-| **P11 — Billing and Pricing** | VMI tab / Trading tab — **the largest single backend gap in the whole plan** | `vmi_cbm_ledger` (contract dates, daily Beginning/Inbound/Outbound/Ending/Chargeable CBM, fixed charges) for VMI. Pricing/margin schema (Cost of Goods, Selling Price, Gross Margin, Margin %) for Trading — likely extends `pick_list_items` rather than a new top-level table, confirm in `13`'s design.md before migrating | Full new query/action layer for both tabs — none exists today | Replace the current 100%-mock `billing-pricing/page.tsx` with a real VMI tab (accrual + Timeline + printable/emailable SOA) and Trading tab (pricing rules per §4.7). **Treat as its own multi-cycle build via `/implement-feature` against `12` then `13` — don't try to do this in one pass.** |
-
-**Locked files (Track B writes, Track A reads-only unless coordinated):**
-- `app/(authenticated)/approvals/**`, `app/(authenticated)/transfers/**`, `app/(authenticated)/reports/**`, `app/(authenticated)/documents/**`, `app/(authenticated)/portal/**`, `app/(authenticated)/settings/**`, `app/(authenticated)/billing-pricing/**`
-- `lib/approval/*`, `lib/transfer/*`, `lib/portal/*`, `lib/user-settings/*`, `lib/actions/approvals.ts`, `lib/actions/transfers.ts`
-- New `lib/billing/*` (VMI + Trading, to be created)
-- New migrations for P9's `party_visible_items` view (if not already migrated), P10's config/security tables, and P11's VMI/pricing schema — announce each exact migration number in `revision-log.md` before writing it
-
-**Sequencing within Track B:** P8 (fastest, mostly-real, builds confidence and closes the AR-generation gap other tracks may end up depending on for printed documents) → P9 (medium — one view, one storage integration) → P11 (the big one — start it early since it's genuinely multi-session, don't leave it for last where it becomes a deadline crunch) → P10 (smallest, do last, lowest urgency — the settings pages are currently honest placeholders, not broken).
-
----
-
-## P12 — AI Chathead (last, by design, not a track assignment)
-
-Neither track owns this at the start. **P12 does not begin until every row in both tracks' tables above is done and merged to `main`** — this is a deliberate ordering choice from `ui-implementation-plan.md`, not a technical dependency. Once both tracks report done, whichever collaborator is free first picks it up solo (same shared-shell-file reasoning as P1 — it's a single mount point in `ShellChrome.tsx`, not something to split).
+When Phase 2 starts, re-form the tracks along the lines of the previous
+draft of this document (Track A continuing floor/inventory-adjacent work
+into P8's Transfers, Track B taking the two net-new-backend priorities P9
+and P11) — but don't lock that in now; re-assess actual remaining capacity
+and momentum once Milestone 2 is actually shipped, rather than planning
+Phase 2's exact split three days in advance of finishing Milestone 2.
 
 ---
 
@@ -102,11 +121,13 @@ Neither track owns this at the start. **P12 does not begin until every row in bo
 
 `specs/00-steering/*`, `lib/rbac/*`, `lib/db/schema/*`, `supabase/migrations/*`, `CLAUDE.md`, `AGENTS.md`, `.claude/agents/*`, `components/global/*`, `lib/shell/*`
 
-The last two (`components/global/*`, `lib/shell/*`) are new additions to this list versus the prior version of this document — they were single-writer-implicitly before because only one person was doing shell work; now that P1 and P12 are the only two touch points left on those files, treat them as fully locked outside those two priorities.
+The last two (`components/global/*`, `lib/shell/*`) should not need any
+edits at all before Wednesday except the logo swap — nothing else in the
+Milestone 2 punch list touches shell chrome.
 
 ### Cross-track schema changes
 
-If a track needs a new migration or schema change, open a named request in `revision-log.md` under "Pending cross-track requests" **before writing the migration file**, stating the intended migration number. This avoids both tracks picking the same next-available number (`0026` is free as of this document's writing — confirm the actual next number with `ls supabase/migrations` before assuming, since P1's migration will likely claim `0026` first).
+If a track needs a new migration or schema change, open a named request in `revision-log.md` under "Pending cross-track requests" **before writing the migration file**, stating the intended migration number. Next free number as of this writing: `0027` (`0026` was claimed by P1's notifications table).
 
 ### Git workflow
 
@@ -127,6 +148,11 @@ Merging to main:
   No force-push to main, ever
 ```
 
+Given the 3-day window, prefer committing directly to `main` in small,
+green-tested increments over long-lived feature branches that need a
+last-minute merge — coordinate in `revision-log.md` if both tracks are
+about to touch overlapping test/build state on the same day.
+
 ### Commit message convention
 
 ```
@@ -137,33 +163,45 @@ test(spec-nn): short description
 
 ### Per-priority execution reminder
 
-Every priority in both tables above is still a full spec-driven, TDD cycle — this document only assigns *who* builds *what*, not a shortcut around *how*. Use `/implement-feature` against the owning spec's already-`Approved` `tasks.md`, and route DB-touching work through `database-builder` → `db-migration-verifier`, UI work through `frontend-builder` → `design-system-auditor`, and cross-feature seams (e.g. P5 handing off into P6, P11 reading data P3/P4 produce) through `integration-reviewer` before calling either side "done."
+Even under deadline pressure, this is still a full spec-driven, TDD
+process — that's what got Milestone 1's backend and P0–P2 done reliably.
+Don't skip RED→GREEN→VERIFY to save time; the fastest way to blow the
+Wednesday deadline is a UI change that silently breaks an already-real
+backend contract. Route UI work through `frontend-builder` →
+`design-system-auditor`, route the one real new build (Pick Lists index
+route) through `test-writer` → `backend-builder`/`frontend-builder` →
+`design-system-auditor` since it touches both layers, and use
+`integration-reviewer` for the Pick Lists ↔ Outgoing seam specifically
+(a pick list created via the new index route needs to hand off cleanly
+into the already-built dispatch flow).
 
 ---
 
 ## Capability vocabulary (locked — do not invent new capability strings)
 
-All capability strings used in `requirePermission()` calls and RLS policies must exist in `specs/02-rbac-roles/design.md §3.2`. Adding a new capability requires a spec amendment to `02` and a corresponding migration. Both tracks are bound by this.
+All capability strings used in `requirePermission()` calls and RLS policies must exist in `specs/02-rbac-roles/design.md §3.2`. Adding a new capability requires a spec amendment to `02` and a corresponding migration. Both tracks are bound by this. **Check §3.2 before assuming a capability needs a fresh amendment** — `notifications.*`'s capabilities turned out to already exist when P1 needed them; the same may be true for whatever Milestone 2's punch list ends up needing.
 
-Currently confirmed strings relevant to the work in this document:
+Currently confirmed strings relevant to Milestone 2's punch list:
 
 - `pick_list.generate`, `pick_list.read`, `pick_list.execute`
 - `receiving.view`, `receiving.confirm`, `receiving.create`
-- `transfer.view`, `transfer.execute`, `transfer.approve`
-- `inspection.perform`, `inspection.resolve`
 - `parties.read`, `parties.manage`
 - `items.read`, `items.manage`
 - `locations.read`, `locations.manage`
+- `fifo_override.approve`
+
+Full catalog reference (also relevant to Phase 2's later priorities):
+
+- `transfer.view`, `transfer.execute`, `transfer.approve`
+- `inspection.perform`, `inspection.resolve`
 - `documents.read`
 - `reporting.read`, `reporting.financial_read`
-- `fifo_override.approve`
 - `users.read`
+- `notifications.read` (`global` + `assigned_party`), `notifications.manage_preferences`, `notifications.manage_rules`, `notifications.read_diagnostics`
 
-**Already resolved, corrected from this document's first draft**: `notifications.read` (`global` + `assigned_party`), `notifications.manage_preferences`, `notifications.manage_rules`, and `notifications.read_diagnostics` all already existed in `specs/02-rbac-roles/design.md §3.2` before P1 started — no new amendment was actually needed for P1. Lesson for the tracks below: check §3.2 before assuming a capability needs a fresh amendment.
+**Not yet in the catalog — needed by Phase 2 work, must be added via `02` amendment before use:**
 
-**Not yet in the catalog — needed by this document's remaining work, must be added via `02` amendment before use:**
-
-- Billing/pricing read/write capabilities for P11 (`billing.vmi_read`, `billing.vmi_write`, `billing.trading_read`, `billing.trading_write`, or however `13`'s design.md ultimately names them) — Track B owns this amendment when P11 starts.
-- Settings/security capabilities for P10 (e.g. `settings.manage`, `security_events.read`) — Track B owns this amendment when P10 starts.
+- Billing/pricing read/write capabilities for P11 (`billing.vmi_read`, `billing.vmi_write`, `billing.trading_read`, `billing.trading_write`, or however `13`'s design.md ultimately names them).
+- Settings/security capabilities for P10 (e.g. `settings.manage`, `security_events.read`).
 
 Log each addition in `revision-log.md` at the point it's actually needed — don't pre-add speculative capability strings before the priority that needs them starts.
