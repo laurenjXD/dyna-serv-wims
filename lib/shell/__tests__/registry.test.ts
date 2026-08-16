@@ -89,15 +89,15 @@ const EXPECTED_ROUTES: Array<{
   { id: "outgoing", path: "/outgoing", surface: "floor", capability: "pick_list.execute", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
   { id: "inventory-pick-list-execute", path: "/pick-lists/[pickListId]/pick", surface: "floor", capability: "pick_list.execute", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
   { id: "inventory-pick-list-dispatch", path: "/pick-lists/[pickListId]/dispatch", surface: "floor", capability: "dispatch.execute", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
-  { id: "inspection", path: "/inspection", surface: "shared", capability: "inspection.perform", featureSpecs: ["07-incoming-receiving", "08-outgoing-withdrawal-and-two-stage-commitment", "11-transfer-and-inspection"], launchStatus: "launch" },
-  { id: "inspection-detail", path: "/inspection/[inspection_id]", surface: "floor", capability: "inspection.perform", featureSpecs: ["07-incoming-receiving", "08-outgoing-withdrawal-and-two-stage-commitment", "11-transfer-and-inspection"], launchStatus: "launch" },
   { id: "documents", path: "/documents", surface: "office", capability: "documents.read", featureSpecs: ["10-pick-list-and-acknowledgement-receipt"], launchStatus: "planned" },
   { id: "approvals", path: "/approvals", surface: "office", capability: "fifo_override.approve", featureSpecs: ["09-approval-queue"], launchStatus: "launch" },
   { id: "sync", path: "/sync", surface: "floor", capability: "none", featureSpecs: ["03-offline-mode-and-client-storage"], launchStatus: "launch" },
-  // 2026-08-08: corrected transfers.read -> transfer.view (singular) —
-  // 0014_transfer_rls_policies.sql's deliberate, documented capability
-  // vocabulary for this feature. See revision-log.md.
-  { id: "transfers", path: "/transfers", surface: "shared", capability: "transfer.view", featureSpecs: ["11-transfer-and-inspection"], launchStatus: "launch" },
+  // 2026-08-17: 'transfers', 'inspection', and 'inspection-detail' rows were
+  // removed from this fixture — the merged Transfer+Inspection queue
+  // restructure retired their pages to redirects (see the second describe
+  // block below), so they are no longer nav-visible destinations. This
+  // resolves the intentional contradiction this file's second describe
+  // block previously documented between the two fixtures.
   // 2026-08-09 PO amendment: /enrollment added as office Master Data hub
   // (Parties / Items / Locations tabs). See revision-log.md.
   // 2026-08-11: this is now the SOLE Master Data nav entry — the separate
@@ -124,7 +124,7 @@ const EXPECTED_ROUTES: Array<{
 ];
 
 describe("lib/shell/registry — route catalog matches design.md §3.2 exactly (R3.1, R3.2)", () => {
-  it("exports ROUTE_REGISTRY with exactly the current 24 rows (no stale /dashboard, no extra/missing rows; 2026-08-11 consolidates Master Data nav down to the single /enrollment entry)", async () => {
+  it("exports ROUTE_REGISTRY with exactly the current 21 rows (no stale /dashboard, no extra/missing rows; 2026-08-11 consolidates Master Data nav down to the single /enrollment entry; 2026-08-17 retires 'transfers'/'inspection'/'inspection-detail' to redirect-only pages)", async () => {
     const { ROUTE_REGISTRY } = await import("../registry");
     expect(Array.isArray(ROUTE_REGISTRY)).toBe(true);
     expect(ROUTE_REGISTRY).toHaveLength(EXPECTED_ROUTES.length);

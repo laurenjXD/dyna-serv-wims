@@ -1,4 +1,4 @@
-// Inventory — office withdrawal hub: Stock View + Pick Lists + Daily Inspection tabs.
+// Inventory — office withdrawal hub: Stock View + Pick Lists + Inspection tabs.
 //
 // Traceability:
 //   specs/08-outgoing-withdrawal-and-two-stage-commitment/design.md §3 (route),
@@ -6,7 +6,11 @@
 //     2026-08-09 PO restructuring)
 //   specs/08-outgoing-withdrawal-and-two-stage-commitment/requirements.md
 //     R5.3, R5.7 (pick_list exposure)
-//   specs/11-transfer-and-inspection — Daily Inspection surface (placeholder)
+//   specs/11-transfer-and-inspection — Inspection tab renders the merged
+//     transfer + inspection queue (listInspectionAndTransferQueue), gated
+//     independently on transfer.view / inspection.perform. "Inspection"
+//     replaces the retired "Daily Inspection" label per Terminology
+//     Alignment §12.
 //   specs/00-steering/brand-design-system.md §3 (office tab pattern), §6
 //     (office surface, Level 1 elevation)
 //   specs/00-steering/revision-log.md (2026-08-09 restructuring — Ledger tab
@@ -17,15 +21,16 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronRight, Download, Search, SlidersHorizontal, FlaskConical } from "lucide-react";
+import { ChevronRight, Download, Search, SlidersHorizontal } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { listStockView, type StockViewRow } from "@/lib/db/queries/inventory";
 import { listPickLists } from "@/lib/db/queries/withdrawals";
 import type { PickListRow } from "@/lib/db/queries/withdrawals";
-import { listInspectionCases } from "@/lib/db/queries/transfers";
-import type { InspectionCaseListRow } from "@/lib/db/queries/transfers";
+import { listInspectionAndTransferQueue } from "@/lib/db/queries/transfers";
+import { resolveInventoryTab, type TabKey } from "./_lib/resolveInventoryTab";
+import { InspectionTab } from "./_components/InspectionTab";
 
 // ─── Status badge colors ─────────────────────────────────────────────────────
 // brand-design-system.md §1.3 semantic color mapping per task spec:
@@ -49,12 +54,10 @@ const FLOW_LABELS: Record<string, string> = {
   supplies: "Supplies",
 };
 
-type TabKey = "stock-view" | "pick-lists" | "daily-inspection";
-
 const TABS: Array<{ key: TabKey; label: string }> = [
   { key: "stock-view", label: "Stock View" },
   { key: "pick-lists", label: "Pick Lists" },
-  { key: "daily-inspection", label: "Daily Inspection" },
+  { key: "inspection", label: "Inspection" },
 ];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -66,10 +69,7 @@ interface PageProps {
 export default async function InventoryPage({ searchParams }: PageProps) {
   const { tab: tabParam, q } = await searchParams;
 
-  const activeTab: TabKey =
-    tabParam === "pick-lists" ? "pick-lists" :
-    tabParam === "daily-inspection" ? "daily-inspection" :
-    "stock-view";
+  const activeTab: TabKey = resolveInventoryTab(tabParam);
 
   const resolver = await createPageResolver();
 
@@ -94,7 +94,7 @@ export default async function InventoryPage({ searchParams }: PageProps) {
               ? "/inventory"
               : tab.key === "pick-lists"
               ? "/inventory?tab=pick-lists"
-              : "/inventory?tab=daily-inspection";
+              : "/inventory?tab=inspection";
           return (
             <Link
               key={tab.key}
@@ -129,7 +129,7 @@ export default async function InventoryPage({ searchParams }: PageProps) {
       ) : activeTab === "pick-lists" ? (
         <PickListsTab />
       ) : (
-        <DailyInspectionTab />
+        <InspectionTabSection />
       )}
     </div>
   );
@@ -413,104 +413,48 @@ async function PickListsTab() {
   );
 }
 
-// ─── Daily Inspection tab — wired with real listInspectionCases ───────────────
+// ─── Inspection tab — merged transfer + inspection queue ──────────────────────
 //
-// The Master-Inventory-initiated entry point into the shared inspection queue.
-// Calls listInspectionCases with status: 'open' — the same query function that
-// /inspection uses. Authorization for inspection.perform is assumed from the
-// outer page's pick_list.read gate (supervisors who can view the master inventory
-// also have inspection visibility). The actual resolution action on /inspection/[id]
-// re-checks inspection.resolve server-side.
+// The Master-Inventory-initiated entry point into the shared transfer +
+// inspection work queue (specs/11-transfer-and-inspection R2.2, R2.3).
+// transfer.view and inspection.perform are checked independently — a caller
+// missing one still sees the other row type, matching
+// listInspectionAndTransferQueue's includeTransfers/includeInspections
+// contract (see its doc comment in lib/db/queries/transfers.ts).
 
-async function DailyInspectionTab() {
-  const { rows: openCases, total } = await listInspectionCases(db, {
-    status: "open",
-    limit: 20,
+async function InspectionTabSection() {
+  const resolver = await createPageResolver();
+
+  const includeTransfers =
+    (await requirePermission(resolver, "transfer.view")).kind === "authorized";
+  const includeInspections =
+    (await requirePermission(resolver, "inspection.perform")).kind === "authorized";
+
+  const rows = await listInspectionAndTransferQueue(db, {
+    limit: 50,
+    offset: 0,
+    includeTransfers,
+    includeInspections,
   });
-
-  const INSPECTION_STATUS_CLASSES: Record<string, string> = {
-    open: "bg-status-pending/10 text-status-pending",
-    resolved: "bg-status-available/10 text-status-available",
-  };
 
   return (
     <div className="mt-6">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h2 className="font-heading text-headline-md font-semibold text-on-surface">Daily Inspection Queue</h2>
+          <h2 className="font-heading text-headline-md font-semibold text-on-surface">Inspection</h2>
           <p className="mt-1 font-body text-body-md text-text-grey">
-            {total === 0
-              ? "No open inspection cases today."
-              : `${total} open inspection case${total !== 1 ? "s" : ""} — resolution requires Supervisor access.`}
+            Open transfer and inspection items requiring action.
           </p>
         </div>
         <Link
           href="/inspection"
           className="inline-flex h-11 items-center gap-2 rounded border border-outline-variant/30 px-4 font-label text-label font-semibold text-on-surface hover:bg-surface-light-grey focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
         >
-          <FlaskConical size={16} aria-hidden="true" />
           View All
         </Link>
       </div>
 
-      {openCases.length === 0 ? (
-        <div className="rounded-md border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-1">
-          <p className="font-body text-body-md text-text-grey">No open inspection cases.</p>
-          <p className="mt-2 font-body text-body-sm text-text-grey">
-            Cases are opened when a lot is placed on Hold during receiving or transfer.
-          </p>
-        </div>
-      ) : (
-        <div className="overflow-hidden rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-1">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Item Code</th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Lot #</th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Party</th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Location</th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Opened</th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Status</th>
-                <th className="sr-only px-4 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline-variant/30">
-              {openCases.map((c: InspectionCaseListRow) => (
-                <tr key={c.id} className="hover:bg-surface-light-grey/50">
-                  <td className="px-4 py-3 font-mono text-mono-md font-bold text-on-surface">{c.itemCode}</td>
-                  <td className="px-4 py-3 font-mono text-mono-md text-on-surface">{c.lotNumber}</td>
-                  <td className="px-4 py-3 font-body text-body-md text-on-surface">{c.partyName}</td>
-                  <td className="px-4 py-3 font-body text-body-md text-text-grey">{c.locationLabel ?? "—"}</td>
-                  <td className="px-4 py-3 font-body text-body-md text-text-grey">{c.openedAt.toLocaleDateString()}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase ${INSPECTION_STATUS_CLASSES[c.status] ?? "bg-status-neutral/10 text-status-neutral"}`}>
-                      {c.status.toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Link
-                      href={`/inspection/${c.id}`}
-                      className="inline-flex h-11 items-center font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                    >
-                      View
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {total > 20 && (
-            <div className="border-t border-outline-variant/30 px-4 py-3">
-              <Link
-                href="/inspection"
-                className="font-label text-label font-semibold text-on-surface underline"
-              >
-                View all {total} open cases →
-              </Link>
-            </div>
-          )}
-        </div>
-      )}
+      <InspectionTab rows={rows} />
     </div>
   );
 }

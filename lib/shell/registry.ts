@@ -13,29 +13,17 @@ export type ShellSurface = "floor" | "office" | "shared" | "party";
 export type RouteLaunchStatus = "launch" | "planned";
 
 export type NavGroup =
-  | "Overview"
-  | "Receiving / Incoming"
-  | "Master Inventory"
-  | "Outgoing / Withdrawal"
-  | "Transfers & Inspection"
-  | "Approvals"
+  | "Main"
+  | "Reports"
   | "Master Data"
-  | "Documents"
-  | "Reporting"
   | "System"
   | "Account"
   | "Organization Portal";
 
 export const NAV_GROUP_ORDER: readonly NavGroup[] = [
-  "Overview",
-  "Receiving / Incoming",
-  "Master Inventory",
-  "Outgoing / Withdrawal",
-  "Transfers & Inspection",
-  "Approvals",
+  "Main",
+  "Reports",
   "Master Data",
-  "Documents",
-  "Reporting",
   "System",
   "Account",
   "Organization Portal",
@@ -60,7 +48,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "none",
     featureSpecs: ["05-ui-shell-and-navigation"],
     launchStatus: "launch",
-    group: "Overview",
+    group: "Main",
   },
   {
     id: "receiving",
@@ -69,7 +57,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "receiving.view",
     featureSpecs: ["07-incoming-receiving"],
     launchStatus: "launch",
-    group: "Receiving / Incoming",
+    group: "Main",
   },
   {
     id: "receiving-detail",
@@ -78,7 +66,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "receiving.view",
     featureSpecs: ["07-incoming-receiving"],
     launchStatus: "launch",
-    group: "Receiving / Incoming",
+    group: "Main",
   },
   {
     id: "inventory",
@@ -87,7 +75,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "pick_list.read",
     featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"],
     launchStatus: "launch",
-    group: "Master Inventory",
+    group: "Main",
   },
   {
     id: "outgoing",
@@ -96,7 +84,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "pick_list.execute",
     featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"],
     launchStatus: "launch",
-    group: "Outgoing / Withdrawal",
+    group: "Main",
   },
   {
     id: "inventory-pick-list-execute",
@@ -105,7 +93,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "pick_list.execute",
     featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"],
     launchStatus: "launch",
-    group: "Outgoing / Withdrawal",
+    group: "Main",
   },
   {
     id: "inventory-pick-list-dispatch",
@@ -114,33 +102,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "dispatch.execute",
     featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"],
     launchStatus: "launch",
-    group: "Outgoing / Withdrawal",
-  },
-  {
-    id: "inspection",
-    path: "/inspection",
-    surface: "shared",
-    capability: "inspection.perform",
-    featureSpecs: [
-      "07-incoming-receiving",
-      "08-outgoing-withdrawal-and-two-stage-commitment",
-      "11-transfer-and-inspection",
-    ],
-    launchStatus: "launch",
-    group: "Transfers & Inspection",
-  },
-  {
-    id: "inspection-detail",
-    path: "/inspection/[inspection_id]",
-    surface: "floor",
-    capability: "inspection.perform",
-    featureSpecs: [
-      "07-incoming-receiving",
-      "08-outgoing-withdrawal-and-two-stage-commitment",
-      "11-transfer-and-inspection",
-    ],
-    launchStatus: "launch",
-    group: "Transfers & Inspection",
+    group: "Main",
   },
   {
     id: "documents",
@@ -149,7 +111,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "documents.read",
     featureSpecs: ["10-pick-list-and-acknowledgement-receipt"],
     launchStatus: "planned",
-    group: "Documents",
+    group: "Reports",
   },
   {
     id: "approvals",
@@ -158,7 +120,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "fifo_override.approve",
     featureSpecs: ["09-approval-queue"],
     launchStatus: "launch",
-    group: "Approvals",
+    group: "Main",
   },
   {
     id: "sync",
@@ -169,15 +131,6 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     launchStatus: "launch",
     offlineFeatureGated: true,
     group: "System",
-  },
-  {
-    id: "transfers",
-    path: "/transfers",
-    surface: "shared",
-    capability: "transfer.view",
-    featureSpecs: ["11-transfer-and-inspection"],
-    launchStatus: "launch",
-    group: "Transfers & Inspection",
   },
   {
     id: "enrollment",
@@ -195,7 +148,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "reporting.financial_read",
     featureSpecs: ["12-vmi-billing", "13-trading-orders-and-pricing"],
     launchStatus: "planned",
-    group: "Reporting",
+    group: "Master Data",
   },
   {
     id: "reports",
@@ -204,7 +157,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     capability: "reporting.read",
     featureSpecs: ["16-reporting-and-analytics"],
     launchStatus: "planned",
-    group: "Reporting",
+    group: "Reports",
   },
   {
     id: "profile",

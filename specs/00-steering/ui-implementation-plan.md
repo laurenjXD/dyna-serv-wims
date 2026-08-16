@@ -130,19 +130,21 @@ Highest floor-priority page — validate scan flow at 375px/430px first.
 
 ### P4 — Inventory (Stock View / Pick Lists / Inspection)
 
-**Sidebar/IA decision locked 2026-08-17**: Transfers and Inspection are
-**no longer separate pages**. `/inventory`'s Inspection tab becomes the
+**Sidebar/IA decision — DONE (2026-08-17)**: Transfers and Inspection are
+**no longer separate pages**. `/inventory`'s Inspection tab is now the
 one canonical, fully-merged queue — transfer requests and inspection cases
 combined into a single list (not two sub-sections), each row distinguished
-by type/badge and linking to its own real detail route
-(`/transfers/[transferId]`, `/transfers/[transferId]/execute`,
+by type/badge (icon-distinct, not color-alone) and linking to its own real
+detail route (`/transfers/[transferId]`, `/transfers/[transferId]/execute`,
 `/transfers/[transferId]/inspect`, `/inspection/[id]`). `/transfers` and
-`/inspection` retire as top-level pages, becoming `redirect()`s into
-`/inventory?tab=inspection` (same pattern already used for
-`/master-data/*` → `/enrollment`), and both lose their `lib/shell/registry.ts`
-nav entries — Master Inventory is the sole entry point. This is real,
-Milestone-2-critical-path work, not deferred — see
-`multi-agent-work-division.md`'s Track A scope.
+`/inspection` are retired as top-level pages, `redirect()`ing into
+`/inventory?tab=inspection` (same pattern as `/master-data/*` →
+`/enrollment`); both lost their `lib/shell/registry.ts` nav entries.
+`lib/shell/registry.ts`'s full 6-group restructure (Main/Reports/Master
+Data/System/Account/Organization Portal) shipped in the same pass. 1386/1386
+tests passing, `rbac-rls-reviewer` verified capability gating traces to
+real server-side checks (not client-supplied), redirect correctness, and
+registry completeness — see `revision-log.md`'s matching entry.
 
 **Database:** none new for Stock View/Inspection/Transfers-merge — the
 combined queue is a new query composing two already-real tables

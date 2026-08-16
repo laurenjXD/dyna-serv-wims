@@ -45,7 +45,7 @@ describe("lib/shell/active-route — resolveActiveRouteId (R3.6, design.md §5)"
 
   it("matches a dynamic-segment route with a concrete id in place of the bracketed param", async () => {
     const { resolveActiveRouteId } = await import("../active-route");
-    expect(resolveActiveRouteId("/inspection/INSP-2026-004")).toBe("inspection-detail");
+    expect(resolveActiveRouteId("/receiving/WRR-2026-004")).toBe("receiving-detail");
   });
 
   it("does NOT falsely match a static route's own detail route when only the base path is requested (no naive prefix match)", async () => {
@@ -58,7 +58,7 @@ describe("lib/shell/active-route — resolveActiveRouteId (R3.6, design.md §5)"
 
   it("does NOT match a dynamic-segment route when an extra nested segment is appended beyond the registered depth", async () => {
     const { resolveActiveRouteId } = await import("../active-route");
-    expect(resolveActiveRouteId("/inspection/INSP-2026-004/extra")).toBeNull();
+    expect(resolveActiveRouteId("/receiving/WRR-2026-004/extra")).toBeNull();
   });
 
   it("does NOT match a similarly-prefixed but unrelated path (e.g. '/receivingfoo' must not match '/receiving')", async () => {
@@ -79,7 +79,7 @@ describe("lib/shell/active-route — resolveActiveRouteId (R3.6, design.md §5)"
   it("tolerates exactly one trailing slash without a false match or a missed match", async () => {
     const { resolveActiveRouteId } = await import("../active-route");
     expect(resolveActiveRouteId("/receiving/")).toBe("receiving");
-    expect(resolveActiveRouteId("/transfers/")).toBe("transfers");
+    expect(resolveActiveRouteId("/outgoing/")).toBe("outgoing");
   });
 
   it("matches the root path '/' distinctly from every other route, including when combined with a query string", async () => {

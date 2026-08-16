@@ -2,6 +2,18 @@
 
 Every merge conflict and major revision, dated, with the resolution. This is the audit trail for "why does the spec say X" when X isn't obvious from the doc alone.
 
+## Sidebar restructure + Transfer/Inspection full merge (2026-08-17)
+
+Product Owner decision, ahead of the Wednesday 2026-08-19 Milestone 2 deadline. Two changes:
+
+**1. Sidebar regrouped from 12 nav groups to 6.** `lib/shell/registry.ts`'s `NavGroup`/`NAV_GROUP_ORDER` collapsed to `Main` (Dashboard, Receiving, Master Inventory, Outgoing, Approvals), `Reports` (Reports & Analytics, Documents), `Master Data` (Enrollment, Billing & Pricing), `System` (Sync), `Account` (Profile, Settings), and `Organization Portal` (unchanged — confirmed with the PO that the existing capability-based filtering already keeps the admin and portal sidebars from ever mixing for any real user; a fully separate portal shell component was considered and explicitly deferred, not needed). Full target structure recorded in `specs/00-steering/multi-agent-work-division.md`.
+
+**2. Transfer and Inspection are no longer separate pages — fully merged into one queue.** Previously three overlapping surfaces existed: `/transfers` (transfer-request list), `/inspection` (inspection-case list), and `/inventory`'s own "Daily Inspection" tab (also inspection cases) — all three backed by `lib/db/queries/transfers.ts`. PO decision: the Master Inventory "Inspection" tab (renamed from "Daily Inspection," which also happens to match CLAUDE.md's already-approved terminology) becomes the one canonical destination, showing a single, fully-merged, oldest-first queue of transfer requests AND inspection cases together (not two sub-sections) — new `listInspectionAndTransferQueue()` query, each row typed/badged (icon-distinct, not color-alone) and independently capability-gated (`transfer.view`, `inspection.perform` checked separately, so a user with only one capability still sees that type's rows). `/transfers` and `/inspection` retire to `redirect("/inventory?tab=inspection")`, matching the established `/master-data/*` → `/enrollment` redirect pattern (preserves old bookmarks/deep links). Detail/action sub-routes (`/transfers/[id]`, `/transfers/[id]/execute`, `/transfers/[id]/inspect`, `/transfers/new`, `/inspection/[id]`) stay real, reached via drill-in from the merged queue's row links, not top-level nav.
+
+Real-Postgres RLS on the underlying tables (`transfer_requests`, `inspection_cases`) already existed (`0013_transfer_and_inspection_tables.sql`, `0014_transfer_rls_policies.sql`) — no new migration needed, this was a pure application-layer merge over already-authorized data. `rbac-rls-reviewer` verified the merge's capability gating traces to real server-side `requirePermission` calls, not a client-supplied or assumed-true flag.
+
+No `Status` header changed on `11-transfer-and-inspection` or `05-ui-shell-and-navigation` — both remain `Approved`; this is IA/sprint-planning-layer consolidation of already-approved surfaces, not a reopening of either spec's requirements.
+
 ## `14` — P1 MVP slice scoped: notifications table + navbar bell, not full spec (2026-08-16)
 
 `14-notifications-and-alerts`'s `tasks.md` is `Status: Approved` with full sign-off, and its `design.md` is complete (§3 schema, §4 event-to-delivery flow, §5 authorization, §6 client/shell behavior, §7 failure handling, §9 alert evaluation) — `tasks.md`'s own checklist boxes (sections 1–7) are simply unchecked/not synced to that already-resolved content, the same staleness pattern already seen and corrected in `05-ui-shell-and-navigation`'s tasks.md this session. No open product/policy decision actually blocks starting; the design itself is the resolution.

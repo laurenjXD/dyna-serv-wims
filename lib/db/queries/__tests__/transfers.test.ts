@@ -80,6 +80,7 @@ import {
   getTransferRequest,
   listInspectionCases,
   getInspectionCase,
+  listInspectionAndTransferQueue,
 } from "../transfers";
 
 // ---------------------------------------------------------------------------
@@ -761,5 +762,203 @@ describe("getInspectionCase — known ID (design.md §2, §6.1)", () => {
     );
 
     expect(result!.qtyToInspect).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// listInspectionAndTransferQueue — RED step (function does not exist yet)
+//
+// Traceability:
+//   specs/11-transfer-and-inspection/requirements.md
+//     R1.1 — authorized users SHALL request/review movement between locations
+//       (transfer-row visibility, gated by `transfer.view`).
+//     R2.3 — the inspection queue (`/inspection`) displays candidate lots and
+//       resolution controls (inspection-row visibility, gated by
+//       `inspection.perform`).
+//   specs/00-steering/multi-agent-work-division.md
+//     "Sidebar structure — confirmed target (2026-08-17)" — Product Owner
+//     decision merging Master Inventory's Inspection tab into one combined
+//     transfer+inspection queue, each row independently capability-gated.
+//   specs/00-steering/ui-implementation-plan.md
+//     P4 — "New: a combined `listInspectionAndTransferQueue`-style query
+//     merging `listTransferRequests` + `listInspectionCases` into one
+//     normalized, sortable row shape, respecting each item's own capability
+//     gate (`transfer.view`, `inspection.perform`) independently — a user
+//     missing one capability still sees the other type's rows, not an
+//     all-or-nothing tab."
+//
+// Acceptance criteria covered:
+//   "A caller with only transfer.view sees only transfer-type rows, shaped
+//    and linked to /transfers/[id] (R1.1; multi-agent-work-division.md
+//    Sidebar structure decision)."
+//   "A caller with only inspection.perform sees only inspection-type rows,
+//    shaped and linked to /inspection/[id] (R2.3; same decision)."
+//   "A caller with both capabilities sees a single merged list containing
+//    both row types, correctly typed/shaped, sorted oldest-first to match
+//    listTransferRequests'/listInspectionCases' existing work-queue
+//    prioritization order (ui-implementation-plan.md P4)."
+//   "A caller with neither capability gets an empty array and the function
+//    makes no DB calls at all — defense against wasted queries when a
+//    caller somehow ends up with no capability (ui-implementation-plan.md
+//    P4 'independently gated, not all-or-nothing')."
+//
+// ---------------------------------------------------------------------------
+// Expected module contract for lib/db/queries/transfers.ts (for
+// backend-builder — this function does not exist yet):
+//
+//   export type InspectionAndTransferQueueRow = {
+//     id: string;
+//     type: "transfer" | "inspection";
+//     title: string;
+//     status: string;
+//     createdAt: Date;
+//     href: string;
+//   };
+//
+//   // Calls listTransferRequests only when includeTransfers is true, and
+//   // listInspectionCases only when includeInspections is true — the
+//   // CALLER decides which to include based on the current user's actual
+//   // capability grants (transfer.view / inspection.perform); this function
+//   // does not perform authorization itself. Normalizes both result sets
+//   // into InspectionAndTransferQueueRow, merges them, and sorts the merged
+//   // list by createdAt ASCENDING (oldest first — matching the existing
+//   // oldest-first work-queue order used by listTransferRequests and
+//   // listInspectionCases themselves). href is `/transfers/${id}` for
+//   // transfer rows and `/inspection/${id}` for inspection rows.
+//   export async function listInspectionAndTransferQueue(
+//     db: DbLike,
+//     opts: {
+//       limit: number;
+//       offset: number;
+//       includeTransfers: boolean;
+//       includeInspections: boolean;
+//     },
+//   ): Promise<InspectionAndTransferQueueRow[]>;
+//
+// ---------------------------------------------------------------------------
+// Mock pattern: reuses makeDataChain/makeCountChain (transfer query shape)
+// and makeInspectionDataChain/makeCountChain (inspection query shape) from
+// above. Each underlying list function issues 2 db.select() calls (data +
+// count), so a combined call with both flags true issues 4 total, in the
+// order [transfers data, transfers count, inspections data, inspections
+// count] — matching the contract's "calls listTransferRequests ... then
+// listInspectionCases" description.
+// ---------------------------------------------------------------------------
+
+describe("listInspectionAndTransferQueue — transfer-only (R1.1, Sidebar structure decision 2026-08-17)", () => {
+  it("(AC: transfer.view-only caller sees only transfer rows) includeTransfers: true, includeInspections: false returns only transfer-type rows shaped for the combined queue", async () => {
+    const transferRow = rawTransferRequestRow({
+      id: "transfer-queue-1",
+      status: "in_progress",
+      createdAt: new Date("2026-08-01T00:00:00Z"),
+    });
+    const db = {
+      select: vi
+        .fn()
+        .mockReturnValueOnce(makeDataChain([transferRow]))
+        .mockReturnValueOnce(makeCountChain(1)),
+    };
+
+    const result = await listInspectionAndTransferQueue(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      { limit: 10, offset: 0, includeTransfers: true, includeInspections: false },
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe("transfer");
+    expect(result[0].id).toBe("transfer-queue-1");
+    expect(result[0].status).toBe("in_progress");
+    expect(result[0].href).toBe("/transfers/transfer-queue-1");
+    expect(typeof result[0].title).toBe("string");
+    expect(result[0].title.length).toBeGreaterThan(0);
+  });
+});
+
+describe("listInspectionAndTransferQueue — inspection-only (R2.3, Sidebar structure decision 2026-08-17)", () => {
+  it("(AC: inspection.perform-only caller sees only inspection rows) includeTransfers: false, includeInspections: true returns only inspection-type rows shaped for the combined queue", async () => {
+    const inspectionRow = rawInspectionCaseRow({
+      id: "case-queue-1",
+      status: "open",
+      openedAt: new Date("2026-08-02T00:00:00Z"),
+    });
+    const db = {
+      select: vi
+        .fn()
+        .mockReturnValueOnce(makeInspectionDataChain([inspectionRow]))
+        .mockReturnValueOnce(makeCountChain(1)),
+    };
+
+    const result = await listInspectionAndTransferQueue(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      { limit: 10, offset: 0, includeTransfers: false, includeInspections: true },
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe("inspection");
+    expect(result[0].id).toBe("case-queue-1");
+    expect(result[0].status).toBe("open");
+    expect(result[0].href).toBe("/inspection/case-queue-1");
+    expect(typeof result[0].title).toBe("string");
+    expect(result[0].title.length).toBeGreaterThan(0);
+  });
+});
+
+describe("listInspectionAndTransferQueue — merged (both capabilities, ui-implementation-plan.md P4)", () => {
+  it("(AC: both capabilities merge into one correctly sorted, correctly typed list) includeTransfers: true, includeInspections: true returns a merged list with both types present, sorted oldest-first by createdAt", async () => {
+    const olderTransfer = rawTransferRequestRow({
+      id: "transfer-old",
+      status: "staged",
+      createdAt: new Date("2026-08-01T00:00:00Z"),
+    });
+    const newerInspection = rawInspectionCaseRow({
+      id: "case-new",
+      status: "open",
+      openedAt: new Date("2026-08-05T00:00:00Z"),
+    });
+
+    const db = {
+      select: vi
+        .fn()
+        .mockReturnValueOnce(makeDataChain([olderTransfer]))
+        .mockReturnValueOnce(makeCountChain(1))
+        .mockReturnValueOnce(makeInspectionDataChain([newerInspection]))
+        .mockReturnValueOnce(makeCountChain(1)),
+    };
+
+    const result = await listInspectionAndTransferQueue(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      { limit: 10, offset: 0, includeTransfers: true, includeInspections: true },
+    );
+
+    expect(result).toHaveLength(2);
+    expect(result.map((r) => r.type).sort()).toEqual(["inspection", "transfer"]);
+
+    // Oldest-first: the transfer (2026-08-01) sorts before the inspection
+    // case (2026-08-05), matching listTransferRequests'/listInspectionCases'
+    // own oldest-first work-queue ordering.
+    expect(result[0].id).toBe("transfer-old");
+    expect(result[0].type).toBe("transfer");
+    expect(result[0].href).toBe("/transfers/transfer-old");
+    expect(result[1].id).toBe("case-new");
+    expect(result[1].type).toBe("inspection");
+    expect(result[1].href).toBe("/inspection/case-new");
+  });
+});
+
+describe("listInspectionAndTransferQueue — neither capability (defense against wasted queries, ui-implementation-plan.md P4)", () => {
+  it("(AC: no capability -> empty array, zero DB calls) includeTransfers: false, includeInspections: false returns [] and never calls db.select", async () => {
+    const db = { select: vi.fn() };
+
+    const result = await listInspectionAndTransferQueue(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      { limit: 10, offset: 0, includeTransfers: false, includeInspections: false },
+    );
+
+    expect(result).toEqual([]);
+    expect(db.select).not.toHaveBeenCalled();
   });
 });

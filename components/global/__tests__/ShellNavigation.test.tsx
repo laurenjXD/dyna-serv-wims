@@ -148,16 +148,15 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
     render(
       <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" />,
     );
-    // officeContext holds pick_list.read (-> "Master Inventory" group, since
-    // /inventory was split out of "Outbound" into its own group 2026-08-11)
-    // and documents.read (route is launchStatus:"planned", so it never
-    // contributes a visible entry or a group) -- exactly one group header
-    // should render: "Master Inventory".
-    expect(screen.getByTestId("nav-group-master-inventory")).toBeInTheDocument();
-    expect(screen.getByText("Master Inventory")).toBeInTheDocument();
+    // officeContext holds pick_list.read (-> "Main" group, per the
+    // 2026-08-17 sidebar/IA restructure) and documents.read (route is
+    // launchStatus:"planned", so it never contributes a visible entry or a
+    // group) -- exactly one group header should render: "Main".
+    expect(screen.getByTestId("nav-group-main")).toBeInTheDocument();
+    expect(screen.getByText("Main")).toBeInTheDocument();
     // No empty-group headers for capabilities this context doesn't hold.
     expect(screen.queryByTestId("nav-group-master-data")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("nav-group-approvals")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("nav-group-system")).not.toBeInTheDocument();
   });
 
   it("never renders group headers for the floor bottom tab bar (grouping is office/party-only)", () => {
@@ -203,7 +202,7 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
     // on desktop is unreachable in the mobile drawer. (The desktop sidebar
     // itself stays mounted -- CSS `hidden` below `lg`, not removed from the
     // DOM -- so this assertion is scoped to inside the dialog specifically.)
-    expect(within(dialog).getByTestId("nav-group-master-inventory")).toBeInTheDocument();
+    expect(within(dialog).getByTestId("nav-group-main")).toBeInTheDocument();
   });
 
   it("renders the drawer for tier='party' too, since party uses the office-shape sidebar (design.md §3.3)", () => {
@@ -302,10 +301,10 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
   // ---------------------------------------------------------------------
 
   // Grants enough floor/shared-surface capabilities to produce more than 4
-  // navigable floor entries (root, receiving, outgoing, inspection, sync,
-  // transfers, profile), so the "More" button renders. "outgoing" (surface
-  // floor, group "Outgoing / Withdrawal") is used as the overlay nav-entry
-  // under test since it's guaranteed present past the primary 4.
+  // navigable floor entries (root, receiving, outgoing, sync, profile), so
+  // the "More" button renders. "outgoing" (surface floor, group "Main") is
+  // used as the overlay nav-entry under test since it's guaranteed present
+  // past the primary 4.
   const floorManyEntriesContext: Pick<AuthorizationContext, "grants"> = {
     grants: [
       { resource: "receiving", action: "view", scopeKind: "global" },
@@ -335,7 +334,7 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
     );
     await user.click(screen.getByRole("button", { name: /more navigation options/i }));
     const dialog = screen.getByRole("dialog", { name: /navigation menu/i });
-    const groupHeader = within(dialog).getByTestId("nav-group-outgoing-withdrawal");
+    const groupHeader = within(dialog).getByTestId("nav-group-main");
     expect(groupHeader.className).not.toContain("text-mono-sm");
     expect(groupHeader.className).toContain("text-mono-md");
   });
@@ -362,7 +361,7 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
     render(
       <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" />,
     );
-    const groupHeader = screen.getByTestId("nav-group-master-inventory");
+    const groupHeader = screen.getByTestId("nav-group-main");
     expect(groupHeader.className).toContain("text-mono-sm");
   });
 

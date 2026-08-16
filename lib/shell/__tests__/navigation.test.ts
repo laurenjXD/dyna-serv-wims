@@ -135,14 +135,14 @@ describe("lib/shell/navigation — filterVisibleRoutes (R3.4, R3.5)", () => {
     expect(visiblePaths).not.toContain("/portal/inventory");
   });
 
-  it("a warehouse_staff context also reaches its own floor-surface routes (/receiving, /inspection, /pick-lists/[pickListId]/pick)", async () => {
+  it("a warehouse_staff context also reaches its own floor-surface routes (/receiving, /profile, /pick-lists/[pickListId]/pick)", async () => {
     const { filterVisibleRoutes } = await import("../navigation");
     const visible = filterVisibleRoutes(staffContext);
     const visiblePaths = visible.map((row) => row.path);
 
     expect(visiblePaths).toContain("/receiving");
     expect(visiblePaths).toContain("/receiving/[wrr_id]");
-    expect(visiblePaths).toContain("/inspection");
+    expect(visiblePaths).toContain("/profile");
     expect(visiblePaths).toContain("/pick-lists/[pickListId]/pick");
   });
 
@@ -190,7 +190,7 @@ describe("lib/shell/navigation — selectRoutesForPresentation (design.md §3.3 
     const floorPaths = floorNav.map((row) => row.path);
 
     expect(floorPaths).toContain("/receiving"); // floor surface
-    expect(floorPaths).toContain("/inspection"); // shared surface
+    expect(floorPaths).toContain("/profile"); // shared surface
     expect(floorPaths).not.toContain("/enrollment"); // office-only surface, even though capability-visible
     expect(floorPaths).not.toContain("/inventory"); // office-only surface
   });
@@ -202,7 +202,7 @@ describe("lib/shell/navigation — selectRoutesForPresentation (design.md §3.3 
     const officePaths = officeNav.map((row) => row.path);
 
     expect(officePaths).toContain("/enrollment");
-    expect(officePaths).toContain("/inspection"); // shared surface
+    expect(officePaths).toContain("/profile"); // shared surface
     expect(officePaths).not.toContain("/receiving/[wrr_id]"); // floor-only surface
   });
 
@@ -233,15 +233,15 @@ describe("lib/shell/navigation — groupRoutesForSidebar (2026-08-09, sidebar se
     // by the canonical group order, not input order.
     const routes = [
       { id: "settings", group: "Account" },
-      { id: "root", group: "Overview" },
+      { id: "root", group: "Main" },
       { id: "profile", group: "Account" },
-      { id: "receiving", group: "Receiving / Incoming" },
+      { id: "receiving", group: "Main" },
     ] as unknown as RouteRegistryEntry[];
 
     const sections = groupRoutesForSidebar(routes);
     const groupOrder = sections.map((s) => s.group);
 
-    expect(groupOrder).toEqual(["Overview", "Receiving / Incoming", "Account"]);
+    expect(groupOrder).toEqual(["Main", "Account"]);
     const accountSection = sections.find((s) => s.group === "Account")!;
     expect(accountSection.entries.map((e) => e.id)).toEqual(["settings", "profile"]);
     // Sanity: the three groups present are all real NAV_GROUP_ORDER members.
@@ -253,13 +253,13 @@ describe("lib/shell/navigation — groupRoutesForSidebar (2026-08-09, sidebar se
   it("omits a group entirely when it has zero entries after filtering, rather than rendering an empty section", async () => {
     const { groupRoutesForSidebar } = await import("../navigation");
     const routes = [
-      { id: "root", group: "Overview" },
+      { id: "root", group: "Main" },
     ] as unknown as RouteRegistryEntry[];
 
     const sections = groupRoutesForSidebar(routes);
 
     expect(sections).toHaveLength(1);
-    expect(sections[0].group).toBe("Overview");
+    expect(sections[0].group).toBe("Main");
   });
 
   it("returns no sections for an empty route list", async () => {
