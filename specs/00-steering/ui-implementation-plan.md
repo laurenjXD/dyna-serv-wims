@@ -130,16 +130,40 @@ Highest floor-priority page — validate scan flow at 375px/430px first.
 
 ### P4 — Inventory (Stock View / Pick Lists / Inspection)
 
-**Database:** none new for Stock View/Inspection. Pick Lists needs no new
-table either — `pick_lists` schema already exists.
-**Backend:** Stock View and Inspection already real. Pick Lists: queries
-(`listPickLists`) exist but are unused by a top-level route — wire them.
+**Sidebar/IA decision locked 2026-08-17**: Transfers and Inspection are
+**no longer separate pages**. `/inventory`'s Inspection tab becomes the
+one canonical, fully-merged queue — transfer requests and inspection cases
+combined into a single list (not two sub-sections), each row distinguished
+by type/badge and linking to its own real detail route
+(`/transfers/[transferId]`, `/transfers/[transferId]/execute`,
+`/transfers/[transferId]/inspect`, `/inspection/[id]`). `/transfers` and
+`/inspection` retire as top-level pages, becoming `redirect()`s into
+`/inventory?tab=inspection` (same pattern already used for
+`/master-data/*` → `/enrollment`), and both lose their `lib/shell/registry.ts`
+nav entries — Master Inventory is the sole entry point. This is real,
+Milestone-2-critical-path work, not deferred — see
+`multi-agent-work-division.md`'s Track A scope.
+
+**Database:** none new for Stock View/Inspection/Transfers-merge — the
+combined queue is a new query composing two already-real tables
+(`transfer_requests`, `inspection_cases`, both via `lib/db/queries/transfers.ts`),
+not new schema. Pick Lists needs no new table either — `pick_lists` schema
+already exists.
+**Backend:** Stock View already real. Pick Lists: queries (`listPickLists`)
+exist but are unused by a top-level route — wire them. **New**: a combined
+`listInspectionAndTransferQueue`-style query merging `listTransferRequests`
++ `listInspectionCases` into one normalized, sortable row shape, respecting
+each item's own capability gate (`transfer.view`, `inspection.perform`)
+independently — a user missing one capability still sees the other type's
+rows, not an all-or-nothing tab.
 **Frontend:** Stock View — expandable item→lot→location, lot history/aging,
 Excel export (export path already in `lib/analytics/queries/export.ts`).
 Pick Lists — **build the missing `app/(authenticated)/pick-lists/page.tsx`
 index route**, FIFO/FEFO allocation preview (backend already in
-`lib/withdrawal/allocation.ts`). Inspection — confirm queue view matches
-design-doc §4.3.
+`lib/withdrawal/allocation.ts`). Inspection tab — rebuild as the merged
+queue described above; rename tab label "Daily Inspection" → "Inspection"
+(this also happens to match CLAUDE.md's already-approved UI terminology,
+"Inspection replaces Daily Inspection" — a happy alignment, not a new rule).
 
 ---
 
@@ -166,24 +190,44 @@ withdrawals.ts` if charges aren't modeled.
 
 ### P7 — Master-Data (Organizations / Items / Locations)
 
+**Correction (2026-08-17):** the 2026-08-16 entry below calling this a
+"real gap" was a **false positive** — `/master-data/items/page.tsx` (and
+`/locations`, `/parties`) already deliberately `redirect()` to
+`/enrollment`'s tabs, per an existing 2026-08-11 decision documented in
+that file's own header comment (the decision itself was never logged in
+`revision-log.md`, which is why it wasn't found on the first pass — logged
+retroactively now). **No registry rows needed** — `/enrollment` is the
+correct, sole Master Data nav destination, exactly as already built. The
+`/master-data/*` list pages stay as redirects for old bookmarks/deep
+links; their `/new`, `/[id]`, `/[id]/edit` sub-routes remain real,
+reachable via drill-in from `/enrollment`'s tabs, not top-level nav.
+
 **Database:** none new.
 **Backend:** already real.
-**Frontend:** apply Inventory-Model → Category → Subcategory field order to
-the Items form per design-doc §4.6; bulk location generator UI for Locations.
+**Frontend:** apply Inventory-Model → Category → Subcategory → Item Code →
+UOM → CBM/Pallet Info → Barcode → Perishability field order to the Items
+tab per design-doc §4.6 and `per page specs.md` §8; "Deactivate," never
+"Delete," button copy; bulk location generator UI for Locations.
 
 ---
 
-### P8 — Approvals, Transfers, Reports & Documents
+### P8 — Approvals, Reports & Documents
 
-**Database:** none new for Approvals/Transfers. Documents needs
-`generated_documents` coverage confirmed for AR generation (currently TODO
-in `documents/page.tsx`).
-**Backend:** Approvals and Transfers already real. Reports already real
+**Renamed from "Approvals, Transfers, Reports & Documents"** — Transfers
+moved to P4 per the 2026-08-17 sidebar/IA decision (merged into Master
+Inventory's Inspection tab, `/transfers` retired to a redirect). Not this
+priority's concern anymore.
+
+**Database:** none new for Approvals. Documents needs `generated_documents`
+coverage confirmed for AR generation (currently TODO in `documents/page.tsx`).
+**Backend:** Approvals already real. Reports already real
 (`getInventoryKpis`, volume trends, heatmap). Documents: acknowledgement-
 receipt generation still needs wiring.
-**Frontend:** Approvals/Transfers — confirm badge/count and queue views
-match design doc. Reports — Excel export coverage per §4.8. Documents —
-finish the AR-generation TODO; archive search/filter/preview/print/reprint.
+**Frontend:** Approvals — confirm badge/count and queue views match design
+doc (also see the sidebar badge placement decision — both sidebar-adjacent
+and header-pill, per this session's earlier "both places" call). Reports —
+Excel export coverage per §4.8. Documents — finish the AR-generation TODO;
+archive search/filter/preview/print/reprint.
 
 ---
 

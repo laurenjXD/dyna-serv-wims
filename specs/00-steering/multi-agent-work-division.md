@@ -39,9 +39,9 @@ Wednesday realistic.
 |---|---|---|
 | **1. Global UI Shell & Navigation** | **Done**, including the logo (2026-08-16). Full P0 shell work shipped — floating header/sidebar/mobile tabs, floor 16px text, mandatory 3-component error states, account popup (Sign Out/email/Organization scope), scan-loop nav hiding, connectivity indicator, real Etna/Glacial fonts, notification bell (P1), real logo wired into both the mobile header and desktop sidebar. | Nothing blocking. **Known follow-up, not urgent**: `public/logo.svg` is a 1.8MB base64-raster-in-SVG, not true vector geometry — a real vector export is pending from whoever owns the brand asset; swap the file when it's ready, no code change needed. |
 | **2. Receiving Interface** | Backend real (`lib/receiving/*`, `lib/actions/receiving.ts`); page already wired to live data, no `TODO` markers found. | Apply the Mega-Card (office) / floor card-list (mobile) visual patterns from `ui-ux-design-plan.md` §5 and `per page specs.md` §4 consistently; confirm item-barcode generation/reprint UI; **validate the Receive scan loop at 375px/430px portrait** — this is the design doc's hardest gate and the highest-floor-priority page in the whole app. |
-| **3. Master Inventory and Pick List** | Stock View real; Inspection real. **Pick Lists has a real gap**: `listPickLists` query and the FIFO/FEFO allocation engine (`lib/withdrawal/allocation.ts`) both already exist, but there is **no `app/(authenticated)/pick-lists/page.tsx` index route** — confirmed via directory listing, only `[pickListId]/pick` and `[pickListId]/dispatch` exist. | **Build the missing Pick Lists index route** — this is the one genuine "build something new" item in all of Milestone 2, everything else is wiring/polish. Also: Stock View's expandable item→lot→location + Excel export, Inspection queue view vs. `per page specs.md` §5. |
+| **3. Master Inventory and Pick List** | Stock View real. Pick Lists has a real gap: `listPickLists` query and the FIFO/FEFO allocation engine (`lib/withdrawal/allocation.ts`) both already exist, but there is **no `app/(authenticated)/pick-lists/page.tsx` index route**. **IA decision locked 2026-08-17**: Transfers and Inspection are no longer separate pages — see "Sidebar structure" section below for the full picture. There are currently THREE overlapping surfaces (`/transfers`, `/inspection`, and `/inventory`'s own "Daily Inspection" tab, all three wired to the same `lib/db/queries/transfers.ts`) that need consolidating into one. | **Build the missing Pick Lists index route.** **Build the merged Transfer+Inspection queue** inside Master Inventory's Inspection tab (rename "Daily Inspection" → "Inspection") — a new combined query unioning `listTransferRequests` + `listInspectionCases` into one list, each row capability-gated independently (`transfer.view`/`inspection.perform`) so a user missing one still sees the other type. Retire `/transfers` and `/inspection` as top-level pages: `redirect()` both to `/inventory?tab=inspection` (same pattern as `/master-data/*` → `/enrollment`), remove their `lib/shell/registry.ts` nav entries. Detail/action sub-routes stay real, reachable via drill-in. Also: Stock View's expandable item→lot→location + Excel export. |
 | **4. Outgoing Interface** | Active Picks + Outgoing Ledger tabs both real and wired (`lib/actions/withdrawals.ts`), confirmed no `TODO` markers. | Apply Mega-Card pattern polish. **Decision needed, not yet made**: the Logistics tab (delivery/PEZA refs, "Add Charges") described in `ui-ux-design-plan.md` §4.5 and `per page specs.md` §7 does not exist at all right now — confirmed zero references to it or "Add Charges" anywhere in the codebase. The Gantt line item just says "Outgoing Interface," which Active Picks + Ledger substantively satisfies — **recommend treating Logistics/Add Charges as out of Wednesday's scope and picking it up in Phase 2**, but this is a scope call for whoever's running the Wednesday review, not something to silently drop. |
-| **5. Master Data Item/Location UI** | Organizations/Items/Locations all real, no `TODO` markers. | Apply the exact field order from `per page specs.md` §8: Inventory Model → Category → Subcategory → Item Code → UOM → CBM/Pallet Info → Barcode → Perishability. Button copy: deactivation buttons must say "Deactivate," never "Delete" (per that same doc). Confirm bulk location generator (naming convention, capacity, duplicate/error reporting). |
+| **5. Master Data Item/Location UI** | Organizations/Items/Locations all real, no `TODO` markers. **Correction (2026-08-17)**: the 2026-08-16 entry here calling this a "real gap" was wrong — `/master-data/items/locations/parties` already deliberately `redirect()` to `/enrollment`'s tabs, per an existing (if previously unlogged) 2026-08-11 decision. `/enrollment` is the correct, already-working sole Master Data nav entry. No registry rows needed. | Apply the exact field order from `per page specs.md` §8 (Inventory Model → Category → Subcategory → Item Code → UOM → CBM/Pallet Info → Barcode → Perishability) to the Items tab; "Deactivate," never "Delete," button copy; confirm bulk location generator (naming convention, capacity, duplicate/error reporting). |
 | **6. Milestone 2 review and launch** | N/A | Final cross-page QA: `npx tsc --noEmit && npx vitest run --exclude "**/*.integration.test.ts" && npm run build` all green; Mega-Card/floor-card consistency sweep across all 4 pages; 375px/430px floor validation on Receiving and Pick&Dispatch specifically; spot-check the financial-KPI-gate pattern (already fixed on Dashboard this session, confirm it wasn't needed elsewhere in these 4 pages). |
 
 ### The two tracks, reassigned for the 3-day sprint
@@ -57,29 +57,104 @@ item, floor validation, or helping the other track.**
 
 **Track A — Receiving + Master Inventory/Pick List**
 - Punch-list items 2 and 3 from the table above.
-- **This is the track with the one real "build" item** (Pick Lists index
-  route) and the harder floor-validation gate (Receiving's scan loop at
-  375/430px). Start the Pick Lists index route first — it's small and
-  unblocks confidence early — then move to Receiving's visual polish and
-  floor validation, since that's the more time-consuming, detail-sensitive
-  piece.
-- Locked files: `app/(authenticated)/receiving/**`, `app/(authenticated)/pick-lists/**`, `lib/receiving/*`, `lib/withdrawal/*` (read-mostly — allocation engine already works, don't rebuild it), `lib/db/queries/receiving.ts`, `lib/db/queries/withdrawals.ts`, `lib/actions/receiving.ts`.
+- **This is the heavier track** — the Pick Lists index route (small),
+  the Transfer+Inspection merge into one queue (the biggest single piece
+  of new work in Milestone 2 — new combined query, tab rebuild, two page
+  retirements-to-redirects, registry changes), and the harder
+  floor-validation gate (Receiving's scan loop at 375/430px). Suggested
+  order: Pick Lists index route first (small, unblocks confidence) →
+  Transfer+Inspection merge (biggest, most detail-sensitive, do it while
+  fresh) → Receiving's visual polish and floor validation last.
+- Locked files: `app/(authenticated)/receiving/**`, `app/(authenticated)/pick-lists/**`, `app/(authenticated)/inventory/**`, `app/(authenticated)/transfers/**` (reducing to a redirect), `app/(authenticated)/inspection/**` (reducing to a redirect), `lib/receiving/*`, `lib/withdrawal/*` (read-mostly — allocation engine already works, don't rebuild it), `lib/db/queries/receiving.ts`, `lib/db/queries/withdrawals.ts`, `lib/db/queries/transfers.ts` (new combined query goes here), `lib/actions/receiving.ts`, plus `lib/shell/registry.ts` for removing the `transfers`/`inspection` nav entries and the full group-restructure in "Sidebar structure" below — this file is normally shared/locked (see "Shared file protocol"), Track A owns the whole registry rewrite this sprint since nearly every change traces back to Master Inventory's merge.
 
 **Track B — Outgoing + Master Data**
 - Punch-list items 4 and 5 from the table above.
-- Lighter lift than Track A (no new routes, no floor-scan-loop validation
+- Lighter lift than Track A (no new pages, no floor-scan-loop validation
   gate — Outgoing's Active Picks tab is the only floor-adjacent piece and
-  it's already built; both pages are primarily office-context polish).
+  it's already built; both pages are primarily office-context polish, and
+  item 5's earlier-suspected registry gap turned out to be a false
+  positive — nothing to add there).
   **Once done, this track should pick up item 6 (Milestone 2 review and
   launch) as its second half** — running the full build/test/QA sweep
   across both tracks' work, and doing the 375/430px validation pass on
-  Track A's Receiving/Pick-and-Dispatch pages as a second set of eyes,
-  since floor-width validation benefits from someone who didn't write the
-  code checking it.
+  Track A's Receiving page as a second set of eyes, since floor-width
+  validation benefits from someone who didn't write the code checking it.
+  Also do a second-eyes pass on Track A's Transfer+Inspection merge
+  specifically — it's the riskiest single change this sprint (two pages
+  retired, one new combined query, capability-gating logic) and benefits
+  from independent verification before Wednesday.
 - Locked files: `app/(authenticated)/outgoing/**`, `app/(authenticated)/master-data/**`, `lib/actions/items.ts`, `lib/actions/locations.ts`, `lib/actions/withdrawals.ts` (read-mostly).
 - Make the Logistics-tab scope call explicit in `revision-log.md` (in scope for Wednesday, or deferred to Phase 2) before starting item 4, so it's a recorded decision, not a silent omission either way.
 
 The logo asset swap is done — nothing shared/pending there anymore.
+
+---
+
+## Sidebar structure — confirmed target (2026-08-17)
+
+This replaces the current 8-group registry structure (`Overview`,
+`Receiving / Incoming`, `Master Inventory`, `Outgoing / Withdrawal`,
+`Transfers & Inspection`, `Approvals`, `Master Data`, `Documents`,
+`Reporting`, `System`, `Account`, `Organization Portal`) with 5 groups.
+Confirmed directly by the Product Owner this session, including the
+Transfer+Inspection merge decision above. Organization Portal is
+deliberately absent — that's a separately-scoped shell for party users
+(`surface: "party"`), not part of this internal-staff sidebar.
+
+```text
+MAIN
+├── Dashboard                          (/)
+├── Receiving / Incoming               (/receiving)
+├── Master Inventory                   (/inventory — Stock View, Pick Lists,
+│                                        Inspection tabs; Inspection now the
+│                                        merged Transfer+Inspection queue)
+├── Withdrawal / Outgoing              (/outgoing)
+└── Approvals                          (/approvals)  [badge: pending count,
+                                         both sidebar AND header pill per
+                                         this session's earlier "both
+                                         places" decision]
+
+REPORTS
+├── Reports & Analytics                (/reports)
+└── Documents                          (/documents)
+
+MASTER DATA
+├── Enrollment                         (/enrollment — Organizations, Items,
+│                                        Locations tabs; already built)
+└── Billing & Pricing                  (/billing-pricing — VMI Billing,
+                                         Trading Pricing tabs; capability-
+                                         gated `reporting.financial_read`;
+                                         already built as two tabs, mock
+                                         data only — real backend is P11)
+
+SYSTEM
+└── Sync                               (/sync — status indicator, never
+                                         claims "Synced" when merely idle)
+
+ACCOUNT
+├── Profile                            (/profile)
+└── Settings                           (/settings — Team, General, Security
+                                         tabs, all already real routes;
+                                         Team/General admin-gated)
+```
+
+**What this means for the registry rewrite** (`lib/shell/registry.ts`,
+Track A's job this sprint):
+- Remove the `transfers` and `inspection` `RouteRegistryEntry` rows
+  entirely (their pages become redirects — see punch-list item 3).
+- Remove the `Transfers & Inspection` group from `NavGroup`/`NAV_GROUP_ORDER`.
+- Reassign every remaining entry's `group` field to one of the 5 groups
+  above (`Overview`→`Main` absorbs Receiving/Master Inventory/Outgoing/
+  Approvals too; `Reporting`→`Reports` gains `Documents`; `Master Data`
+  stays `Master Data` but now correctly has exactly the 2 entries it
+  always should have; `System`/`Account` keep their names).
+- No change needed to `/enrollment`, `/billing-pricing`, `/settings`,
+  `/profile`, `/sync` entries themselves — only their `group` value moves.
+- Confirm nothing else in the codebase keys off the removed `NavGroup`
+  string values (`groupTestId()`-derived `data-testid`s in
+  `ShellNavigation.tsx` will change for any renamed group — update any
+  test asserting the old `data-testid="nav-group-transfers-inspection"`-style
+  ids).
 
 ---
 
