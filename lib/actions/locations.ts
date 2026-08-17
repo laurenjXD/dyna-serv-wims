@@ -14,12 +14,14 @@
 //   - Stale-edit uses created_at (locations has no updated_at column in approved §01 schema)
 //   - No location mutation may enter the offline queue (requirements.md R7.3, design.md §9)
 
-import { eq, and, ne } from "drizzle-orm";
+import { eq, and, ne, inArray } from "drizzle-orm";
 import type { RequestAuthorizationResolver } from "@/lib/rbac/session";
 import { requirePermission } from "@/lib/rbac/guard";
 import {
   parseLocationInput,
   generateLocationLabel,
+  parseBulkLocationGeneratorInput,
+  expandBulkLocationCandidates,
 } from "@/lib/enrollment/location-schema";
 import { locations } from "@/lib/db/schema/locations";
 import { withRlsTransaction } from "@/lib/db/rls-transaction";
@@ -236,6 +238,112 @@ export async function updateLocation(
       .returning({ id: locations.id });
 
     return { ok: true } satisfies ActionResult;
+  });
+
+  if (rlsResult.kind === "unauthenticated") {
+    return { ok: false, error: "Forbidden" };
+  }
+  return rlsResult.value;
+}
+
+// ---------------------------------------------------------------------------
+// bulkGenerateLocations
+// ---------------------------------------------------------------------------
+
+export type ActionBulkGenerateLocationsResult =
+  | {
+      ok: true;
+      data: {
+        created: { id: string; label: string }[];
+        skippedDuplicates: string[];
+      };
+    }
+  | { ok: false; error: string }
+  | { ok: false; fieldErrors: Record<string, string> };
+
+/**
+ * Generates a batch of locations from a naming-convention range (Zone +
+ * rack list + level range + position range). Requires locations.manage.
+ * Never overwrites or duplicates an existing label — candidates whose label
+ * already exists are skipped and reported back, not silently dropped or
+ * treated as a hard failure (per page specs.md §8's "duplicate/error
+ * reporting" requirement).
+ */
+export async function bulkGenerateLocations(
+  resolver: RequestAuthorizationResolver,
+  input: unknown,
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+): Promise<ActionBulkGenerateLocationsResult> {
+  const denied = await checkPermission(resolver, "locations.manage");
+  if (denied) return denied;
+
+  const parsed = parseBulkLocationGeneratorInput(input);
+  if (!parsed.success) {
+    const fieldErrors: Record<string, string> = {};
+    for (const err of parsed.errors) {
+      fieldErrors[err.field] = err.message;
+    }
+    return { ok: false, fieldErrors };
+  }
+
+  const expanded = expandBulkLocationCandidates(parsed.data);
+  if (!expanded.success) {
+    const fieldErrors: Record<string, string> = {};
+    for (const err of expanded.errors) {
+      fieldErrors[err.field] = err.message;
+    }
+    return { ok: false, fieldErrors };
+  }
+
+  const candidates = expanded.candidates;
+
+  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
+
+    const existing = await db
+      .select({ label: locations.label })
+      .from(locations)
+      .where(inArray(locations.label, candidates.map((c) => c.label)));
+
+    const existingLabels = new Set(
+      (existing as { label: string }[]).map((r) => r.label),
+    );
+
+    const toInsert = candidates.filter((c) => !existingLabels.has(c.label));
+    const skippedDuplicates = candidates
+      .filter((c) => existingLabels.has(c.label))
+      .map((c) => c.label);
+
+    if (toInsert.length === 0) {
+      return {
+        ok: true,
+        data: { created: [], skippedDuplicates },
+      } satisfies ActionBulkGenerateLocationsResult;
+    }
+
+    const inserted = await db
+      .insert(locations)
+      .values(
+        toInsert.map((c) => ({
+          zone: c.zone,
+          rack: c.rack,
+          level: c.level,
+          position: c.position,
+          label: c.label,
+          locationType: c.locationType,
+          maxCbmCapacity: c.maxCbmCapacity,
+          isActive: c.isActive,
+        })),
+      )
+      .returning({ id: locations.id, label: locations.label });
+
+    return {
+      ok: true,
+      data: {
+        created: inserted as { id: string; label: string }[],
+        skippedDuplicates,
+      },
+    } satisfies ActionBulkGenerateLocationsResult;
   });
 
   if (rlsResult.kind === "unauthenticated") {

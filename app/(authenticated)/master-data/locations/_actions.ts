@@ -21,6 +21,7 @@ import {
   createLocation,
   updateLocation,
   deactivateLocation,
+  bulkGenerateLocations,
 } from "@/lib/actions/locations";
 
 // ---------------------------------------------------------------------------
@@ -121,6 +122,51 @@ export async function updateLocationAction(
   revalidatePath("/enrollment");
   revalidatePath(`/master-data/locations/${id}`);
   redirect(`/master-data/locations/${id}`);
+}
+
+// ---------------------------------------------------------------------------
+// bulkGenerateLocationsAction
+// ---------------------------------------------------------------------------
+
+export type BulkGenerateFormState = {
+  error?: string;
+  fieldErrors?: Record<string, string>;
+  result?: {
+    created: { id: string; label: string }[];
+    skippedDuplicates: string[];
+  };
+};
+
+export async function bulkGenerateLocationsAction(
+  _prevState: BulkGenerateFormState,
+  formData: FormData,
+): Promise<BulkGenerateFormState> {
+  const resolver = await createPageResolver();
+
+  const input = {
+    zone: formData.get("zone"),
+    locationType: formData.get("locationType") ?? "storage",
+    maxCbmCapacity: nullableString(formData.get("maxCbmCapacity")) ?? "",
+    racks: formData.get("racks"),
+    levelStart: formData.get("levelStart"),
+    levelEnd: formData.get("levelEnd"),
+    positionStart: formData.get("positionStart"),
+    positionEnd: formData.get("positionEnd"),
+    positionPadding: nullableString(formData.get("positionPadding")) ?? undefined,
+  };
+
+  const result = await bulkGenerateLocations(resolver, input);
+
+  if (!result.ok) {
+    if ("fieldErrors" in result) {
+      return { fieldErrors: result.fieldErrors };
+    }
+    return { error: result.error };
+  }
+
+  revalidatePath("/master-data/locations");
+  revalidatePath("/enrollment");
+  return { result: result.data };
 }
 
 // ---------------------------------------------------------------------------

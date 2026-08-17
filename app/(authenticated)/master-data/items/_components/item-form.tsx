@@ -26,6 +26,17 @@ const ITEM_TYPES = [
 const UOM_OPTIONS = ["piece", "roll", "meter"] as const;
 const CURRENCY_OPTIONS = ["USD", "PHP"] as const;
 
+// per page specs.md §8: Inventory Model is the UI name for the existing
+// flow_type field (design.md 2026-08-14 terminology entry). It lives on
+// item_categories, not items — selecting it here filters which categories
+// are offered below, it does not submit its own form field.
+const INVENTORY_MODEL_OPTIONS = ["vmi", "trading", "supplies"] as const;
+const INVENTORY_MODEL_LABELS: Record<string, string> = {
+  vmi: "VMI",
+  trading: "Trading",
+  supplies: "Supplies",
+};
+
 type ItemFormAction = (
   prevState: ItemFormState,
   formData: FormData,
@@ -67,6 +78,47 @@ export function ItemForm({
 }: ItemFormProps) {
   const [state, formAction, isPending] = useActionState(action, {});
   const isEdit = !!item;
+
+  // Classification cascade: Inventory Model -> Category -> Subcategory.
+  // Only `categoryId` (the most specific of Category/Subcategory chosen) is
+  // ever submitted — Inventory Model and the Category/Subcategory split are
+  // client-side filters over the existing flat item_categories list.
+  const parentCategories = categories.filter((c) => !c.parentId);
+  const childCategoriesByParent = new Map<string, CategoryOption[]>();
+  for (const c of categories) {
+    if (c.parentId) {
+      const siblings = childCategoriesByParent.get(c.parentId) ?? [];
+      siblings.push(c);
+      childCategoriesByParent.set(c.parentId, siblings);
+    }
+  }
+
+  const initialCategory = categories.find((c) => c.id === item?.categoryId);
+  const initialParentId = initialCategory
+    ? (initialCategory.parentId ?? initialCategory.id)
+    : "";
+  const initialSubcategoryId = initialCategory?.parentId
+    ? initialCategory.id
+    : "";
+  const initialInventoryModel =
+    (initialCategory?.parentId
+      ? categories.find((c) => c.id === initialCategory.parentId)?.flowType
+      : initialCategory?.flowType) ?? "";
+
+  const [inventoryModel, setInventoryModel] = useState(initialInventoryModel);
+  const [parentCategoryId, setParentCategoryId] = useState(initialParentId);
+  const [subcategoryId, setSubcategoryId] = useState(initialSubcategoryId);
+
+  const categoryId = subcategoryId || parentCategoryId;
+
+  const filteredParentCategories = inventoryModel
+    ? parentCategories.filter(
+        (c) => c.flowType === inventoryModel || !c.flowType,
+      )
+    : parentCategories;
+  const subcategoryOptions = parentCategoryId
+    ? (childCategoriesByParent.get(parentCategoryId) ?? [])
+    : [];
 
   const [uom, setUom] = useState<string>(item?.uom ?? "piece");
   const [lengthCm, setLengthCm] = useState(item?.lengthCm ?? "");
@@ -137,15 +189,87 @@ export function ItemForm({
         </div>
       )}
 
-      {/* Section: Core identifiers */}
-      <section aria-labelledby="section-identifiers">
+      {/* Section: Classification — per page specs.md §8 mandatory flow:
+          Inventory Model -> Category -> Subcategory -> Item Code. Inventory
+          Model/Category/Subcategory are cascading UI filters; only the most
+          specific of Category/Subcategory is ever submitted, via the hidden
+          categoryId input below. */}
+      <section aria-labelledby="section-classification">
         <h2
-          id="section-identifiers"
+          id="section-classification"
           className="mb-4 font-heading font-semibold text-data-display text-on-surface"
         >
-          Identifiers
+          Classification
         </h2>
+        <input type="hidden" name="categoryId" value={categoryId} />
         <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label htmlFor="inventoryModel" className="block font-label text-label text-on-surface">
+              Inventory Model
+            </label>
+            <select
+              id="inventoryModel"
+              value={inventoryModel}
+              onChange={(e) => {
+                setInventoryModel(e.target.value);
+                setParentCategoryId("");
+                setSubcategoryId("");
+              }}
+              className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            >
+              <option value="">All</option>
+              {INVENTORY_MODEL_OPTIONS.map((m) => (
+                <option key={m} value={m}>
+                  {INVENTORY_MODEL_LABELS[m]}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="parentCategoryId" className="block font-label text-label text-on-surface">
+              Category
+            </label>
+            <select
+              id="parentCategoryId"
+              value={parentCategoryId}
+              onChange={(e) => {
+                setParentCategoryId(e.target.value);
+                setSubcategoryId("");
+              }}
+              className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            >
+              <option value="">None</option>
+              {filteredParentCategories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="subcategoryId" className="block font-label text-label text-on-surface">
+              Subcategory
+            </label>
+            <select
+              id="subcategoryId"
+              value={subcategoryId}
+              onChange={(e) => setSubcategoryId(e.target.value)}
+              disabled={subcategoryOptions.length === 0}
+              className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <option value="">
+                {subcategoryOptions.length === 0 ? "No subcategories" : "None"}
+              </option>
+              {subcategoryOptions.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div>
             <label htmlFor="code" className="block font-label text-label text-on-surface">
               Item Code{" "}
@@ -164,31 +288,18 @@ export function ItemForm({
             />
             {fieldError("code")}
           </div>
+        </div>
+      </section>
 
-          <div>
-            <label htmlFor="barcode" className="block font-label text-label text-on-surface">
-              Barcode{" "}
-              <span aria-hidden="true" className="text-brand-red">*</span>
-            </label>
-            <input
-              id="barcode"
-              name="barcode"
-              type="text"
-              required
-              maxLength={100}
-              defaultValue={item?.barcode ?? ""}
-              disabled={!barcodeEditable}
-              className={`${inputClass("barcode")} ${!barcodeEditable ? "cursor-not-allowed opacity-60" : ""}`}
-              {...ariaProps("barcode")}
-            />
-            {!barcodeEditable && (
-              <p className="mt-1 font-body text-body-sm text-status-neutral">
-                Barcode cannot be changed after operational use.
-              </p>
-            )}
-            {fieldError("barcode")}
-          </div>
-
+      {/* Section: Additional identifiers */}
+      <section aria-labelledby="section-identifiers" className="mt-8">
+        <h2
+          id="section-identifiers"
+          className="mb-4 font-heading font-semibold text-data-display text-on-surface"
+        >
+          Additional Identifiers
+        </h2>
+        <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label htmlFor="name" className="block font-label text-label text-on-surface">
               Item Name{" "}
@@ -265,26 +376,6 @@ export function ItemForm({
               defaultValue={item?.dsgcItemNumber ?? ""}
               className={inputClass("dsgcItemNumber")}
             />
-          </div>
-
-          <div>
-            <label htmlFor="categoryId" className="block font-label text-label text-on-surface">
-              Category
-            </label>
-            <select
-              id="categoryId"
-              name="categoryId"
-              defaultValue={item?.categoryId ?? ""}
-              className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            >
-              <option value="">None</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                  {cat.flowType ? ` (${cat.flowType})` : ""}
-                </option>
-              ))}
-            </select>
           </div>
 
           <div className="md:col-span-2">
@@ -513,6 +604,42 @@ export function ItemForm({
             {fieldError("volumeCbm")}
           </div>
         )}
+      </section>
+
+      {/* Section: Barcode — per page specs.md §8, sequenced after
+          UOM/CBM/Pallet Info and before Perishability. */}
+      <section aria-labelledby="section-barcode" className="mt-8">
+        <h2
+          id="section-barcode"
+          className="mb-4 font-heading font-semibold text-data-display text-on-surface"
+        >
+          Barcode
+        </h2>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label htmlFor="barcode" className="block font-label text-label text-on-surface">
+              Barcode{" "}
+              <span aria-hidden="true" className="text-brand-red">*</span>
+            </label>
+            <input
+              id="barcode"
+              name="barcode"
+              type="text"
+              required
+              maxLength={100}
+              defaultValue={item?.barcode ?? ""}
+              disabled={!barcodeEditable}
+              className={`${inputClass("barcode")} ${!barcodeEditable ? "cursor-not-allowed opacity-60" : ""}`}
+              {...ariaProps("barcode")}
+            />
+            {!barcodeEditable && (
+              <p className="mt-1 font-body text-body-sm text-status-neutral">
+                Barcode cannot be changed after operational use.
+              </p>
+            )}
+            {fieldError("barcode")}
+          </div>
+        </div>
       </section>
 
       {/* Section: Pricing (reference values) */}
