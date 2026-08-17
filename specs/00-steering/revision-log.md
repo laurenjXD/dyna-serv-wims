@@ -26,6 +26,24 @@ Not resolved now — reconciling whether `design.md` should be updated to match 
 
 **Follow-up (same day): border consistency fixed within Track B's locked files.** A separate, narrower gap — some table/ledger card wrappers had `shadow-elevation-1` only, no `border`, unlike others (e.g. Outgoing's Active Picks tab) that have both. Per WCAG 1.4.11 (Non-text Contrast), a soft box-shadow alone is an unreliable way to hit the required 3:1 boundary contrast, especially under bright warehouse-floor lighting; a visible border is more robust. Added `border border-outline-variant/30` to the 3 table wrappers in `enrollment/page.tsx` (Organizations/Items/Locations tabs) and the bulk location generator's results table — all within Track B's locked files, covering both mobile and desktop rendering since these office-surface tables use one wrapper at all breakpoints (horizontal scroll, no separate mobile card-list variant). **Not fixed, flagged for Track A instead**: `app/(authenticated)/transfers/[transferId]/page.tsx` and `app/(authenticated)/receiving/[wrrId]/page.tsx` have the same shadow-only gap but are outside Track B's file lock this sprint.
 
+## Production incident: dashboard 500 on every sign-in, caused by the administrator RBAC fix exposing a pre-existing bug (2026-08-17)
+
+Reported live: after the administrator RBAC amendment below shipped, every sign-in landed on a "server-side exception" page. Confirmed via Vercel runtime logs (`GET /` on the current production deployment, digest matching):
+
+```
+Error: Failed query: SELECT date_trunc($1, pl.created_at) AS period, ...
+  [cause]: TypeError: The "string" argument must be of type string or an
+  instance of Buffer or ArrayBuffer. Received an instance of Date
+```
+
+**Root cause chain**: `/` (the dashboard, landing page after every sign-in) calls `getPickListQtyAndCbmTrend()` from `lib/analytics/queries/outbound.ts` only when `hasPickListAccess` is true. Before the administrator RBAC amendment (same day, below), `administrator` lacked `pick_list.read`, so this call was always skipped for admin sessions (dormant, `Promise.resolve([])` fallback) — the underlying bug was never exercised by that role. The RBAC fix granted `administrator` the same `pick_list.*` capabilities as `supervisor`, which is exactly what was asked for and is correct — but it also newly exercised this code path for admin sessions for the first time, surfacing an independent, pre-existing defect: every function in `outbound.ts` interpolated raw JS `Date` objects directly into a Drizzle `sql\`\`` template, which this deployment's Drizzle/postgres.js combination cannot serialize as a bind parameter for this query shape. This bug predates today's session entirely (part of the original dashboard-upgrade work) and would have affected `warehouse_staff`/`supervisor` sessions identically all along — it just took the RBAC fix to expose it for administrator.
+
+**Fix**: every `Date` range value in `lib/analytics/queries/outbound.ts` (`getPickListVolumeTrend`, `getPickListQtyAndCbmTrend`, `getDispatchRate`, `getTopDispatchedItems`, `getCommitmentDuration`) is now converted to an ISO string (`.toISOString()`) before interpolation, so the bound parameter is always an unambiguous string. `inventory.ts` and `heatmap.ts` (the dashboard's other analytics queries) don't interpolate raw dates and were unaffected.
+
+**Regression coverage added**: `lib/analytics/queries/__tests__/outbound.test.ts` (new — this module had zero prior test coverage, which is why the bug shipped undetected). Compiles each function's built query through Drizzle's own `PgDialect` (the same compilation step the real driver uses) and asserts no bound parameter is ever a raw `Date` instance — verified directly (via a standalone `PgDialect.sqlToQuery` check) that this is exactly the failure shape that broke production. Full suite green after: `tsc`, 1417/1417 tests, build.
+
+**Not yet deployed** — this fix is committed locally only as of this entry; it needs to reach `main` and redeploy before sign-in works again on production.
+
 ## Administrator granted full operational oversight — `02-rbac-roles` §3.2 amendment (2026-08-17)
 
 Follow-up to the `outgoing`/`sync` surface fix below: after that fix, a System Administrator session's sidebar still only showed Dashboard, Enrollment, Sync, Profile, Settings — Receiving, Master Inventory, Outgoing, and Approvals were still missing. Checked against `specs/02-rbac-roles/design.md §3.2`'s approved capability catalog: this was correct-per-spec, not a bug — `receiving`, `inspection`, `pick_list`, `fifo_override`, `dispatch`, and `transfers` were the only operational resource rows in the catalog that granted `supervisor` but not `administrator`, unlike every other row (`inventory`, `locations`, `documents`, `reporting`, `parties`, `items`, `forex_rates`, `notifications`, `audit_log`), which already grant both.
