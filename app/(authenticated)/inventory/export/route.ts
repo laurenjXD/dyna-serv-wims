@@ -4,6 +4,13 @@ import { listStockView } from "@/lib/db/queries/inventory";
 import { requirePermission } from "@/lib/rbac/guard";
 import { toStockViewSpreadsheetXml } from "../_lib/stockViewExport";
 
+// Route Handlers aren't nested in the app's layout tree, so they don't
+// inherit app/layout.tsx's `preferredRegion` — this DB-querying export
+// needs its own, same reasoning (co-locate with the Tokyo/ap-northeast-1
+// Supabase database). See specs/00-steering/revision-log.md's
+// "Vercel/Supabase region mismatch" entry (2026-08-17).
+export const preferredRegion = "hnd1";
+
 export async function GET() {
   const resolver = await createPageResolver();
   const permission = await requirePermission(resolver, "pick_list.read");
