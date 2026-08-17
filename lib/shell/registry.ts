@@ -80,7 +80,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
   {
     id: "outgoing",
     path: "/outgoing",
-    surface: "floor",
+    surface: "shared",
     capability: "pick_list.execute",
     featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"],
     launchStatus: "launch",
@@ -125,7 +125,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
   {
     id: "sync",
     path: "/sync",
-    surface: "floor",
+    surface: "shared",
     capability: "none",
     featureSpecs: ["03-offline-mode-and-client-storage"],
     launchStatus: "launch",

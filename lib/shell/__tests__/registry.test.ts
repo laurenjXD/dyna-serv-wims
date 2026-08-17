@@ -86,12 +86,24 @@ const EXPECTED_ROUTES: Array<{
   { id: "inventory", path: "/inventory", surface: "office", capability: "pick_list.read", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
   // 2026-08-09 PO amendment: /outgoing added as a floor pick-execution hub
   // (Active Picks + Outgoing Ledger tabs). See revision-log.md.
-  { id: "outgoing", path: "/outgoing", surface: "floor", capability: "pick_list.execute", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
+  // 2026-08-17: surface corrected floor -> shared, same reasoning as
+  // /receiving above. outgoing/page.tsx's own header comment already
+  // documented "Surface: Floor (primary) / Office (secondary review)" —
+  // the Outgoing Ledger tab is office-context read-only review, same shape
+  // as receiving's WRRs tab. The floor-only tag meant selectRoutesForPresentation
+  // dropped /outgoing from the office sidebar entirely, contradicting both
+  // that comment and multi-agent-work-division.md's confirmed sidebar target
+  // (Withdrawal / Outgoing listed under MAIN). See revision-log.md.
+  { id: "outgoing", path: "/outgoing", surface: "shared", capability: "pick_list.execute", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
   { id: "inventory-pick-list-execute", path: "/pick-lists/[pickListId]/pick", surface: "floor", capability: "pick_list.execute", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
   { id: "inventory-pick-list-dispatch", path: "/pick-lists/[pickListId]/dispatch", surface: "floor", capability: "dispatch.execute", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
   { id: "documents", path: "/documents", surface: "office", capability: "documents.read", featureSpecs: ["10-pick-list-and-acknowledgement-receipt"], launchStatus: "planned" },
   { id: "approvals", path: "/approvals", surface: "office", capability: "fifo_override.approve", featureSpecs: ["09-approval-queue"], launchStatus: "launch" },
-  { id: "sync", path: "/sync", surface: "floor", capability: "none", featureSpecs: ["03-offline-mode-and-client-storage"], launchStatus: "launch" },
+  // 2026-08-17: surface corrected floor -> shared. multi-agent-work-division.md's
+  // confirmed sidebar target lists Sync under the office sidebar's SYSTEM
+  // group — a status indicator page, not a floor-scan-loop action, so there
+  // is no reason to hide it from office/administrator sessions. See revision-log.md.
+  { id: "sync", path: "/sync", surface: "shared", capability: "none", featureSpecs: ["03-offline-mode-and-client-storage"], launchStatus: "launch" },
   // 2026-08-17: 'transfers', 'inspection', and 'inspection-detail' rows were
   // removed from this fixture — the merged Transfer+Inspection queue
   // restructure retired their pages to redirects (see the second describe

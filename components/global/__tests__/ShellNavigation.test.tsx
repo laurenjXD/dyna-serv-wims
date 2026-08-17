@@ -151,12 +151,19 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
     // officeContext holds pick_list.read (-> "Main" group, per the
     // 2026-08-17 sidebar/IA restructure) and documents.read (route is
     // launchStatus:"planned", so it never contributes a visible entry or a
-    // group) -- exactly one group header should render: "Main".
+    // group). "System" also renders regardless of grants: /sync is
+    // capability:"none" (unconditionally visible) and, as of the same-day
+    // surface fix below, surface:"shared" rather than "floor" -- it was
+    // never actually capability-gated, it was wrongly hidden from every
+    // office session by a surface-tag bug (see revision-log.md, "outgoing
+    // and sync surface fix"). "Master Data" correctly stays absent -- unlike
+    // /sync, /enrollment and /billing-pricing both require capabilities this
+    // context doesn't hold (parties.read / reporting.financial_read).
     expect(screen.getByTestId("nav-group-main")).toBeInTheDocument();
     expect(screen.getByText("Main")).toBeInTheDocument();
+    expect(screen.getByTestId("nav-group-system")).toBeInTheDocument();
     // No empty-group headers for capabilities this context doesn't hold.
     expect(screen.queryByTestId("nav-group-master-data")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("nav-group-system")).not.toBeInTheDocument();
   });
 
   it("never renders group headers for the floor bottom tab bar (grouping is office/party-only)", () => {
@@ -302,7 +309,7 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
 
   // Grants enough floor/shared-surface capabilities to produce more than 4
   // navigable floor entries (root, receiving, outgoing, sync, profile), so
-  // the "More" button renders. "outgoing" (surface floor, group "Main") is
+  // the "More" button renders. "outgoing" (surface shared, group "Main") is
   // used as the overlay nav-entry under test since it's guaranteed present
   // past the primary 4.
   const floorManyEntriesContext: Pick<AuthorizationContext, "grants"> = {
