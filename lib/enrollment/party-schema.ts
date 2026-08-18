@@ -11,7 +11,9 @@ export type PartyInput = {
   email?: string | null;
   phone?: string | null;
   taxId?: string | null;
-  address?: string | null;
+  address1?: string | null;
+  address2?: string | null;
+  paymentTerms?: string | null;
   notes?: string | null;
   isActive: boolean;
 };
@@ -81,6 +83,19 @@ export function parsePartyInput(input: unknown): ParseResult<PartyInput> {
     }
   }
 
+  // payment_terms — varchar(100), nullable
+  const paymentTerms = raw["paymentTerms"];
+  if (paymentTerms !== undefined && paymentTerms !== null) {
+    if (typeof paymentTerms !== "string") {
+      errors.push({ field: "paymentTerms", message: "Payment terms must be a string." });
+    } else if (paymentTerms.length > 100) {
+      errors.push({
+        field: "paymentTerms",
+        message: "Payment terms must not exceed 100 characters.",
+      });
+    }
+  }
+
   if (errors.length > 0) {
     return { success: false, errors };
   }
@@ -99,8 +114,16 @@ export function parsePartyInput(input: unknown): ParseResult<PartyInput> {
       raw["phone"] !== undefined ? (raw["phone"] as string | null) : null,
     taxId:
       raw["taxId"] !== undefined ? (raw["taxId"] as string | null) : null,
-    address:
-      raw["address"] !== undefined ? (raw["address"] as string | null) : null,
+    address1:
+      raw["address1"] !== undefined
+        ? (raw["address1"] as string | null)
+        : null,
+    address2:
+      raw["address2"] !== undefined
+        ? (raw["address2"] as string | null)
+        : null,
+    paymentTerms:
+      paymentTerms !== undefined ? (paymentTerms as string | null) : null,
     notes:
       raw["notes"] !== undefined ? (raw["notes"] as string | null) : null,
     isActive:
