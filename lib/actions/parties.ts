@@ -107,7 +107,9 @@ export async function createParty(
         email: data.email ?? undefined,
         phone: data.phone ?? undefined,
         taxId: data.taxId ?? undefined,
-        address: data.address ?? undefined,
+        address1: data.address1 ?? undefined,
+        address2: data.address2 ?? undefined,
+        paymentTerms: data.paymentTerms ?? undefined,
         notes: data.notes ?? undefined,
         isActive: data.isActive,
       })
@@ -182,7 +184,9 @@ export async function updateParty(
         email: data.email ?? undefined,
         phone: data.phone ?? undefined,
         taxId: data.taxId ?? undefined,
-        address: data.address ?? undefined,
+        address1: data.address1 ?? undefined,
+        address2: data.address2 ?? undefined,
+        paymentTerms: data.paymentTerms ?? undefined,
         notes: data.notes ?? undefined,
         isActive: data.isActive,
       })

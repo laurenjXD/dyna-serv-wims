@@ -194,6 +194,9 @@ const validPartyInput = {
   code: "PARTY-001",
   name: "Acme Supplies Ltd",
   email: "contact@acme.com",
+  address1: "123 Main Street",
+  address2: "Barangay San Isidro",
+  paymentTerms: "Net 30",
   isActive: true,
 };
 
@@ -272,6 +275,21 @@ describe("createParty — success (R1.1, design.md §5 Create)", () => {
       expect(result).toHaveProperty("data");
       expect(typeof (result as { ok: true; data: { id: string } }).data.id).toBe("string");
     }
+  });
+
+  it("writes the approved split-address and payment-terms fields", async () => {
+    const insertChain = makeInsertChain("party-new-uuid");
+    const db = { insert: vi.fn().mockReturnValue(insertChain) };
+
+    await createParty(authorizedResolver(), validPartyInput, mockRlsDeps(db).deps);
+
+    expect(insertChain.values).toHaveBeenCalledWith(
+      expect.objectContaining({
+        address1: "123 Main Street",
+        address2: "Barangay San Isidro",
+        paymentTerms: "Net 30",
+      }),
+    );
   });
 });
 

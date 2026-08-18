@@ -156,7 +156,15 @@ export default async function PartyDetailPage({
           <div className="sm:col-span-2">
             <dt className="font-label text-label text-text-grey">Address</dt>
             <dd className="mt-1 font-body text-body-md text-on-surface whitespace-pre-line">
-              {party.address ?? "—"}
+              {[party.address1, party.address2].filter(Boolean).join("\n") || "—"}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-label text-label text-text-grey">
+              Payment Terms
+            </dt>
+            <dd className="mt-1 font-body text-body-md text-on-surface">
+              {party.paymentTerms ?? "—"}
             </dd>
           </div>
           {party.notes && (

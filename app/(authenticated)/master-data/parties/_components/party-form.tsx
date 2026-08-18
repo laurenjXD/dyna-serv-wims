@@ -216,18 +216,58 @@ export function PartyForm({ action, party, cancelHref }: PartyFormProps) {
         {/* Address */}
         <div className="md:col-span-2">
           <label
-            htmlFor="address"
+            htmlFor="address1"
             className="block font-label text-label text-on-surface"
           >
-            Address
+            Address Line 1
           </label>
           <textarea
-            id="address"
-            name="address"
-            rows={3}
-            defaultValue={party?.address ?? ""}
-            className={inputClass("address")}
+            id="address1"
+            name="address1"
+            rows={2}
+            defaultValue={party?.address1 ?? ""}
+            className={inputClass("address1")}
+            {...ariaProps("address1")}
           />
+          {fieldError("address1")}
+        </div>
+
+        <div className="md:col-span-2">
+          <label
+            htmlFor="address2"
+            className="block font-label text-label text-on-surface"
+          >
+            Address Line 2
+          </label>
+          <textarea
+            id="address2"
+            name="address2"
+            rows={2}
+            defaultValue={party?.address2 ?? ""}
+            className={inputClass("address2")}
+            {...ariaProps("address2")}
+          />
+          {fieldError("address2")}
+        </div>
+
+        <div>
+          <label
+            htmlFor="paymentTerms"
+            className="block font-label text-label text-on-surface"
+          >
+            Payment Terms
+          </label>
+          <input
+            id="paymentTerms"
+            name="paymentTerms"
+            type="text"
+            maxLength={100}
+            defaultValue={party?.paymentTerms ?? ""}
+            placeholder="e.g. Net 30"
+            className={inputClass("paymentTerms")}
+            {...ariaProps("paymentTerms")}
+          />
+          {fieldError("paymentTerms")}
         </div>
 
         {/* Notes */}
