@@ -1,8 +1,8 @@
 // `OfficeLanding` — office-tier presentation for `/`.
 //
 // 2026-08-17 restyle: bento-grid layout (dispatch-rate ring, weekly trend,
-// monthly stat block, colorful KPI tiles, flow-type activity bar chart,
-// activity heatmap) inspired by a reference dashboard the user supplied,
+// monthly stat block, colorful KPI tiles, and flow-type activity bar chart)
+// inspired by a reference dashboard the user supplied,
 // reusing this app's EXISTING brand tokens (Etna/Glacial fonts, the locked
 // navy/red/royal-blue/status-color palette, the existing rounded-xl/lg +
 // shadow-elevation card pattern) rather than introducing new colors or the
@@ -23,8 +23,7 @@
 //
 // Traceability:
 //   specs/05-ui-shell-and-navigation/design.md §3.2 (`/` route: capability
-//     "none", surface "shared"; office heatmap widget gated by
-//     reporting.read at the widget level).
+//     "none", surface "shared").
 //   specs/05-ui-shell-and-navigation/requirements.md
 //     R11.3 — `/` SHALL aggregate read-only summary counts, Quick Actions,
 //       Open Work Queue, Approval monitoring badge, Weekly transaction line
@@ -34,8 +33,6 @@
 //       ($) series named in R11.3 is out of scope for `/` per this session's
 //       confirmed decision: no pricing/billing backend exists yet, so the
 //       weekly trend graph is quantity + CBM only, never a dollar figure.
-//     R11.6 — reporting.read → ActivityHeatmap widget, office/party only.
-//
 // Low Stock Items gate: this card is an operational stock-count metric, not
 // a financial/margin KPI, so it gates on `hasReportingAccess`
 // (reporting.read) rather than `hasFinancialAccess` (reporting.financial_read).
@@ -58,8 +55,6 @@ import { KpiTile } from "@/components/analytics/KpiTile";
 import { DonutChart } from "@/components/analytics/DonutChart";
 import { BarChart } from "@/components/analytics/BarChart";
 import { WeeklyTrendChart, type WeeklyTrendDatum } from "@/components/analytics/WeeklyTrendChart";
-import { HomeDashboardHeatmapSection } from "./HomeDashboardHeatmapSection";
-import type { FlowType } from "@/components/analytics/types";
 import type { WrrDocumentRow } from "@/lib/db/queries/receiving";
 import type { PickListRow } from "@/lib/db/queries/withdrawals";
 import type { InspectionCaseListRow } from "@/lib/db/queries/transfers";
@@ -104,9 +99,6 @@ export function OfficeLanding({
   hasApprovalAccess,
   hasFinancialAccess,
   hasReportingAccess,
-  // Heatmap — null means the user lacks reporting.read
-  heatmapData,
-  heatmapFilter,
   // Action queue rows (max 3 each)
   openWrrRows,
   openPickListRows,
@@ -123,8 +115,7 @@ export function OfficeLanding({
   monthlyOutgoingQty,
   monthlyTrend,
   // Dispatch rate ring + flow-type activity bar chart (2026-08-17 restyle) —
-  // null when the session lacks pick_list.read, same omission pattern as
-  // the heatmap.
+  // null when the session lacks pick_list.read.
   dispatchRate,
   flowActivity,
 }: {
@@ -142,8 +133,6 @@ export function OfficeLanding({
   hasApprovalAccess: boolean;
   hasFinancialAccess: boolean;
   hasReportingAccess: boolean;
-  heatmapData: Array<{ date: string; count: number }> | null;
-  heatmapFilter: FlowType;
   openWrrRows: WrrDocumentRow[];
   openPickListRows: PickListRow[];
   openInspectionRows: InspectionCaseListRow[];
@@ -300,13 +289,10 @@ export function OfficeLanding({
         </div>
       </section>
 
-      {/* ── Flow-type activity + Activity heatmap ──────────────────────────
-          Side by side on desktop, stacked on mobile. Flow-type bar chart is
-          this app's real equivalent of a generic "sales by platform" chart —
-          VMI/Trading/Supplies is the one dimension every pick list
-          partitions by. Heatmap gated reporting.read — omitted entirely if
-          session lacks it (no locked placeholder), per R11.6. */}
-      <section aria-label="Activity breakdown" className="mb-4 grid grid-cols-1 gap-3 sm:mb-6 sm:gap-4 lg:grid-cols-2">
+      {/* ── Flow-type activity ────────────────────────────────────────────
+          VMI/Trading/Supplies is the operational dimension every pick list
+          partitions by. */}
+      <section aria-label="Activity by flow type" className="mb-4 sm:mb-6">
         {hasPickListAccess && flowActivity && flowActivity.length > 0 && (
           <BarChart
             title="Activity by Flow Type"
@@ -318,9 +304,6 @@ export function OfficeLanding({
               color: FLOW_COLORS[row.flowType],
             }))}
           />
-        )}
-        {heatmapData !== null && (
-          <HomeDashboardHeatmapSection data={heatmapData} flowFilter={heatmapFilter} />
         )}
       </section>
 

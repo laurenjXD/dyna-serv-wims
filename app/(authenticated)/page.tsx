@@ -3,11 +3,10 @@
 // Traceability:
 //   specs/05-ui-shell-and-navigation/design.md §3.2 (`/` route: capability
 //     "none", surface "shared"; §3.3 floor vs. office shell behavior;
-//     §3.2 office heatmap widget gated by reporting.read at the widget level).
+//     §3.2 office dashboard summary widgets).
 //   specs/05-ui-shell-and-navigation/requirements.md R11.2 (floor vs. office
 //     summary shape per resolved surface), R11.5 (no raw financial metrics
-//     on `/`), R11.6 (reporting.read → ActivityHeatmap widget, office/party
-//     only).
+//     on `/`).
 //   specs/00-steering/brand-design-system.md §3 (floor primary actions,
 //     touch targets, dark surface), §6 (no glassmorphism on floor), §9
 //     (floor CTA h-16 full-width), §10 (active: press feedback, no hover
@@ -37,7 +36,6 @@ import type { InspectionCaseListRow } from "@/lib/db/queries/transfers";
 import { listPendingApprovalRequests } from "@/lib/db/queries/approvals";
 import type { ApprovalRequestRow } from "@/lib/db/queries/approvals";
 import { getInventoryKpis } from "@/lib/analytics/queries/inventory";
-import { getActivityHeatmap } from "@/lib/analytics/queries/heatmap";
 import {
   getPickListQtyAndCbmTrend,
   getDispatchRate,
@@ -49,7 +47,6 @@ import type { StockViewRow } from "@/lib/db/queries/inventory";
 import { FloorLanding } from "./_components/FloorLanding";
 import { OfficeLanding, type RecentActivityItem } from "./_components/OfficeLanding";
 import type { WeeklyTrendDatum } from "@/components/analytics/WeeklyTrendChart";
-import type { FlowType } from "@/components/analytics/types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -66,12 +63,6 @@ function getTodayString(): string {
     month: "long",
     day: "numeric",
   });
-}
-
-function toFlowType(filter: string): FlowType {
-  const lower = filter.toLowerCase();
-  if (lower === "vmi" || lower === "trading" || lower === "supplies") return lower;
-  return "all";
 }
 
 // ─── Derived inventory preview (top N items by total available stock) ──────────
@@ -139,13 +130,7 @@ function buildInventoryPreview(
 
 // ─── Page ──────────────────────────────────────────────────────────────────────
 
-interface PageProps {
-  searchParams: Promise<{ filter?: string }>;
-}
-
-export default async function Home({ searchParams }: PageProps) {
-  const { filter: filterParam } = await searchParams;
-  const heatmapFilter = toFlowType(filterParam ?? "all");
+export default async function Home() {
 
   const resolver = await createPageResolver();
   const resolution = await resolver.getContext();
@@ -256,7 +241,6 @@ export default async function Home({ searchParams }: PageProps) {
   // All run in parallel for performance.
   const [
     inventoryKpis,
-    heatmapData,
     stockRows,
     openWrrRows,
     openPickListRows,
@@ -273,8 +257,6 @@ export default async function Home({ searchParams }: PageProps) {
     // reporting.read (NOT reporting.financial_read — that gate was wrong
     // for a non-financial count; see specs/05 R11.5 gate-fix decision).
     hasReportingAccess ? getInventoryKpis() : Promise.resolve(null),
-    // Activity heatmap — gated reporting.read; null → omit entirely
-    hasReportingAccess ? getActivityHeatmap(heatmapFilter) : Promise.resolve(null),
     // Master inventory preview — uses listStockView (lot_inventory_totals-backed)
     // Gated reporting.financial_read so only supervisors/admins see it.
     hasFinancialAccess ? listStockView(db) : Promise.resolve([] as StockViewRow[]),
@@ -408,8 +390,6 @@ export default async function Home({ searchParams }: PageProps) {
       hasApprovalAccess={hasApprovalAccess}
       hasFinancialAccess={hasFinancialAccess}
       hasReportingAccess={hasReportingAccess}
-      heatmapData={heatmapData}
-      heatmapFilter={heatmapFilter}
       openWrrRows={openWrrRows.rows}
       openPickListRows={openPickListRows.rows}
       openInspectionRows={openInspectionRows.rows}
