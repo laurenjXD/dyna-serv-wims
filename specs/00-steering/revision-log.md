@@ -26,6 +26,25 @@ Not resolved now — reconciling whether `design.md` should be updated to match 
 
 **Follow-up (same day): border consistency fixed within Track B's locked files.** A separate, narrower gap — some table/ledger card wrappers had `shadow-elevation-1` only, no `border`, unlike others (e.g. Outgoing's Active Picks tab) that have both. Per WCAG 1.4.11 (Non-text Contrast), a soft box-shadow alone is an unreliable way to hit the required 3:1 boundary contrast, especially under bright warehouse-floor lighting; a visible border is more robust. Added `border border-outline-variant/30` to the 3 table wrappers in `enrollment/page.tsx` (Organizations/Items/Locations tabs) and the bulk location generator's results table — all within Track B's locked files, covering both mobile and desktop rendering since these office-surface tables use one wrapper at all breakpoints (horizontal scroll, no separate mobile card-list variant). **Not fixed, flagged for Track A instead**: `app/(authenticated)/transfers/[transferId]/page.tsx` and `app/(authenticated)/receiving/[wrrId]/page.tsx` have the same shadow-only gap but are outside Track B's file lock this sprint.
 
+## Activity heatmap redesign + Monthly Outgoing bar graph (2026-08-19)
+
+**Heatmap** (`components/analytics/ActivityHeatmap.tsx`, shared with `/reports`): was a GitHub-contribution-style 364-day strip — 12px cells, horizontal scroll required, no weekday alignment, no in-cell date labels. Reported as too compact/dated. Redesigned as a proper calendar-aligned grid: 12 weeks instead of 364 days, weekday-column-aligned (Sun–Sat header row, padded so column position always matches actual weekday), 40px `rounded-lg` cells with the day-of-month number shown in-cell, no horizontal scroll needed. Same data contract/props as before (`data`, `flowFilter`, `onFilterChange`, `title`) — callers only needed their title string updated ("52 Weeks" → "Last 12 Weeks"). No dedicated test file existed for this component to update.
+
+**Monthly Outgoing** (`OfficeLanding.tsx`'s bento row): was a bold-number-only stat block. Changed the underlying query from `period: "month"` (collapses the whole range into one bucket) to `period: "day"`, giving one data point per day; kept the headline total (still the sum of the daily rows) and added a lightweight bar graph below it — plain divs, not `recharts`, since the column is narrow (`lg:col-span-1`) and ~30 daily bars wouldn't read cleanly with a fully axis-labeled chart. New `landing-monthly-trend-graph` testid; 2 new tests (bar count matches data, omitted entirely when empty).
+
+Full suite green after both: `tsc`, 1440/1440 tests, build.
+
+## Bento-box rounding: cards, navbar, sidebar (2026-08-19)
+
+Supersedes the earlier "Mega-Card" phased-rollout decision (2026-08-17 entries below) — the user explicitly requested this now, app-wide, not phased. Added `xl: "24px"` to `tailwind.config.ts`'s `borderRadius` scale (previously topped out at `lg: 16px`) and applied it broadly:
+
+- **Cards**: every `rounded-md`/`rounded-lg` (and a few bare `rounded`) card-shaped wrapper across `app/` and `components/` — panels, tables, modals, empty/loading states, the dashboard bento tiles — converted to `rounded-xl`. Deliberately left alone: inline `border-l-4` accent-banner notices (thin colored-strip alerts, a different UI role from a card, kept at their existing smaller radius) and small controls (buttons, inputs, badges, pills) that happen to also use `rounded-md`/`-lg` for unrelated reasons.
+- **Sidebar**: converted from an edge-flush fixed panel to a genuinely floating one — `lg:top-6 lg:bottom-6 lg:left-6` (24px gutter on three sides, matching `per page specs.md §2`'s "Floating Sidebar... independent vertical panel" description), `rounded-xl`, upgraded from a single `border-r` to a full border + `shadow-elevation-2` (necessary now that the page background is plain white — see the background-color entry above — a floating panel needs a real boundary, not just color contrast with the canvas, to read as separated).
+- **Header/navbar**: converted to a floating pill (`rounded-full`) at `lg:top-6`, spanning from just after the sidebar to `lg:right-6`, full border + `shadow-elevation-2` replacing the previous bottom-border-only bar. Mobile header is unchanged (stays the edge-to-edge bar — the floating treatment is desktop-only, matching the reference doc's own "Desktop" qualifier).
+- **Main content**: padding recalculated to match the new floating geometry — `lg:pt-[124px]` (header's 24px top gutter + 76px height + 24px gap to content), `lg:pl-[354px]`/`lg:pl-6` (sidebar-open/closed), new `lg:pr-6`/`lg:pb-6` (previously content ran flush to the right/bottom edges; a floating-gutter design needs gutters on all four sides, not just left/top).
+
+Full suite green after: `tsc`, 1438/1438 tests (no test asserted the old radius classes), build.
+
 ## Items duplicate-key bug, dashboard dedup, Master Inventory floor access, app-wide primary-button color (2026-08-17)
 
 Four more items from the same live-testing batch as the entry below.

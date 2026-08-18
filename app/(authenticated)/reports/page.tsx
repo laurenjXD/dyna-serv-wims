@@ -76,7 +76,7 @@ function QuickAccessSection({
   return (
     <section aria-label="Quick access" className="grid gap-6 lg:grid-cols-3">
       {/* Recent WRRs */}
-      <div className="rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+      <div className="rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
         <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
           <h3 className="font-heading text-headline-md font-semibold text-on-surface">Recent WRRs</h3>
           <Link href="/receiving" className="font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy">
@@ -103,7 +103,7 @@ function QuickAccessSection({
       </div>
 
       {/* Open Pick Lists */}
-      <div className="rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+      <div className="rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
         <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
           <h3 className="font-heading text-headline-md font-semibold text-on-surface">Active Pick Lists</h3>
           <Link href="/outgoing" className="font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy">
@@ -128,7 +128,7 @@ function QuickAccessSection({
 
       {/* Open Inspections + Pending Approvals */}
       <div className="space-y-4">
-        <div className="rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+        <div className="rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
           <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
             <h3 className="font-heading text-headline-md font-semibold text-on-surface">Inspections</h3>
             <Link href="/inspection" className="font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy">
@@ -155,7 +155,7 @@ function QuickAccessSection({
         </div>
 
         {hasApprovalAccess && (
-          <div className="rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+          <div className="rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
             <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
               <h3 className="font-heading text-headline-md font-semibold text-on-surface">Pending Approvals</h3>
               <Link href="/approvals" className="font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy">
@@ -394,7 +394,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       {/* ── Movement Trend ────────────────────────────────────────────────── */}
       {movementChartData.length > 0 && (
         <section aria-label="Movement trend chart" className="mt-8">
-          <div className="rounded-md border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
+          <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="font-heading text-headline-md font-semibold text-on-surface">
@@ -420,7 +420,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
 
       {/* ── Monthly Flow chart (static seed — FR-2 time-series pending) ──── */}
       <section aria-label="Monthly flow breakdown" className="mt-8">
-        <div className="rounded-md border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
+        <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
           <h2 className="font-heading text-headline-md font-semibold text-on-surface">Monthly Flow</h2>
           <p className="mt-1 font-body text-body-sm text-text-grey">
             Inbound vs. outbound volumes by flow type (FR-2 per-period time-series not yet aggregated — chart shows skeleton).
@@ -430,7 +430,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       </section>
 
       {!hasFinancialAccess && (
-        <div className="mt-8 flex items-center gap-3 rounded-md border border-outline-variant/30 bg-surface-light-grey px-4 py-4">
+        <div className="mt-8 flex items-center gap-3 rounded-xl border border-outline-variant/30 bg-surface-light-grey px-4 py-4">
           <AlertTriangle size={20} className="shrink-0 text-status-pending" aria-hidden="true" />
           <p className="font-body text-body-md text-text-grey">
             Financial reporting sections (VMI billing, Trading margin) require{" "}

@@ -228,7 +228,7 @@ export default async function ReceiveFloorPage({
     return (
       <div className="flex min-h-screen flex-col bg-brand-navy">
         <div className="flex flex-1 flex-col items-center justify-center px-4 py-4 text-center">
-          <div className="w-full max-w-md rounded-md bg-surface-white p-6 shadow-elevation-2">
+          <div className="w-full max-w-md rounded-xl bg-surface-white p-6 shadow-elevation-2">
             <span
               aria-hidden="true"
               className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-status-available text-surface-white font-heading font-bold text-headline-md"
@@ -280,7 +280,7 @@ export default async function ReceiveFloorPage({
       {/* Main floor content — flex-1, single-column, 16px padding */}
       <div className="flex flex-1 flex-col px-4 py-4 pb-6">
         {/* Progress header — Fira Sans, large enough for floor visibility */}
-        <div className="rounded-md bg-surface-white p-4 shadow-elevation-2">
+        <div className="rounded-xl bg-surface-white p-4 shadow-elevation-2">
           <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
             Scan Items
           </h1>
@@ -403,7 +403,7 @@ export default async function ReceiveFloorPage({
               <div
                 key={item.id}
                 // Floor card: solid surface-white, Level 2 shadow, no glassmorphism
-                className="rounded-md bg-surface-white p-4 shadow-elevation-2"
+                className="rounded-xl bg-surface-white p-4 shadow-elevation-2"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">

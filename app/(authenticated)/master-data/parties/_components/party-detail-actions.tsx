@@ -155,7 +155,7 @@ function ContactPartyModal({
       aria-labelledby="contact-party-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/40 px-4"
     >
-      <div className="w-full max-w-lg rounded-md bg-surface-white shadow-elevation-2 p-6">
+      <div className="w-full max-w-lg rounded-xl bg-surface-white shadow-elevation-2 p-6">
         <h2
           id="contact-party-title"
           className="font-heading font-semibold text-headline-md text-on-surface"

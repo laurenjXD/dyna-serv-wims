@@ -143,7 +143,7 @@ async function StockViewTab({ query }: { query?: string }) {
   const items = groupStockByItem(rows).filter((item) => !normalizedQuery || `${item.itemCode} ${item.itemName} ${item.lots.map((lot) => lot.lotNumber).join(" ")}`.toLowerCase().includes(normalizedQuery));
 
   return (
-    <div className="mt-4 min-h-[680px] overflow-x-auto rounded-lg border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+    <div className="mt-4 min-h-[680px] overflow-x-auto rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
       {items.length === 0 ? (
         <div className="px-6 py-12 text-center">
           <p className="font-body text-body-md text-text-grey">
@@ -186,7 +186,7 @@ async function StockViewTab({ query }: { query?: string }) {
                 </div>
                 <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   {item.lots.map((lot) => (
-                    <article key={lot.lotId} className="rounded-md border border-outline-variant/30 bg-surface-white p-4">
+                    <article key={lot.lotId} className="rounded-xl border border-outline-variant/30 bg-surface-white p-4">
                       {/* FEFO/FIFO priority badge — left accent bar signal */}
                       <div className="flex items-start justify-between gap-2">
                         <p className="font-mono text-mono-md font-bold text-on-surface">{lot.lotNumber}</p>
@@ -320,7 +320,7 @@ async function PickListsTab() {
   const { rows } = await listPickLists(db, { limit: 50, offset: 0, status: "allocated" });
 
   return (
-    <div className="mt-6 overflow-hidden rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+    <div className="mt-6 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
       {rows.length === 0 ? (
         <div className="px-6 py-12 text-center">
           <p className="font-body text-body-md text-text-grey">

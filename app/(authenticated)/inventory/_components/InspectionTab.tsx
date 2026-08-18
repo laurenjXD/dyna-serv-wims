@@ -49,7 +49,7 @@ const STATUS_CLASSES: Record<string, string> = {
 export function InspectionTab({ rows }: { rows: InspectionAndTransferQueueRow[] }) {
   if (rows.length === 0) {
     return (
-      <div className="mt-6 rounded-md border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-1">
+      <div className="mt-6 rounded-xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-1">
         <p className="font-body text-body-md text-text-grey">
           No open transfer or inspection items.
         </p>
@@ -63,7 +63,7 @@ export function InspectionTab({ rows }: { rows: InspectionAndTransferQueueRow[] 
   return (
     <div
       data-testid="inspection-transfer-queue"
-      className="mt-6 overflow-hidden rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-1"
+      className="mt-6 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1"
     >
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">

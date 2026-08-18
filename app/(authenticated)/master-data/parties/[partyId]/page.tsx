@@ -122,7 +122,7 @@ export default async function PartyDetailPage({
       </div>
 
       {/* Master data */}
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-xl bg-surface-white shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Organization Information
         </h2>
@@ -185,7 +185,7 @@ export default async function PartyDetailPage({
       </div>
 
       {/* Business roles + Contact Party action (interactive, client component) */}
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-xl bg-surface-white shadow-elevation-1 p-6">
         <PartyDetailActions
           partyId={partyId}
           roles={party.roles}
@@ -196,7 +196,7 @@ export default async function PartyDetailPage({
 
       {/* Deactivation zone — only for active parties that the user can manage */}
       {canManage && party.isActive && (
-        <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+        <div className="mt-6 rounded-xl bg-surface-white shadow-elevation-1 p-6">
           <h2 className="font-heading font-semibold text-data-display text-on-surface">
             Danger Zone
           </h2>
@@ -211,7 +211,7 @@ export default async function PartyDetailPage({
       )}
 
       {/* Transaction Ledger — design.md §5b */}
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-xl bg-surface-white shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Transaction Ledger
         </h2>

@@ -51,7 +51,7 @@ export default async function EditItemPage({ params }: PageProps) {
         </p>
       </div>
 
-      <div className="rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="rounded-xl bg-surface-white shadow-elevation-1 p-6">
         <ItemForm
           action={updateItemAction}
           item={item}

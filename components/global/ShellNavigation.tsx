@@ -157,7 +157,7 @@ function NavLink({
       data-testid={`nav-entry-${entry.id}`}
       aria-current={isActive ? "page" : undefined}
       onClick={onNavigate}
-      className={`flex h-12 items-center gap-4 rounded-lg px-4 font-label font-semibold
+      className={`flex h-12 items-center gap-4 rounded-xl px-4 font-label font-semibold
         ${floorText ? "text-mono-md" : "text-label"}
         focus:outline-none focus-visible:ring-2 focus-visible:ring-primary
         ${isActive ? "bg-primary text-surface" : "text-text-secondary hover:bg-background hover:text-text-primary"}`}
@@ -315,7 +315,7 @@ export function ShellNavigation({
         data-testid="desktop-sidebar"
         aria-label="Primary navigation"
         aria-hidden={!desktopOpen}
-        className={`hidden flex-col overflow-y-auto border-r border-border bg-surface p-4 lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:w-[306px] ${
+        className={`hidden flex-col overflow-y-auto border-r border-border bg-surface p-4 lg:fixed lg:top-6 lg:bottom-6 lg:left-6 lg:z-40 lg:w-[306px] lg:rounded-xl lg:border lg:border-border lg:shadow-elevation-2 ${
           desktopOpen ? "lg:flex" : "lg:hidden"
         }`}
       >
@@ -335,9 +335,9 @@ export function ShellNavigation({
 
         <Link
           href="/profile"
-          className="mt-6 flex items-center gap-3 rounded-lg border border-border bg-background p-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="mt-6 flex items-center gap-3 rounded-xl border border-border bg-background p-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
-          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary font-label text-label font-bold text-surface">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary font-label text-label font-bold text-surface">
             {initials(displayName)}
           </span>
           <div className="min-w-0">
@@ -395,7 +395,7 @@ function MoreOverlay({
       <div className="absolute inset-y-0 right-0 flex w-[85%] max-w-sm flex-col overflow-y-auto bg-surface pb-24 shadow-elevation-2">
         <div className="flex items-center justify-between border-b border-border px-4 py-4">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary font-label text-label font-bold text-surface">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary font-label text-label font-bold text-surface">
               {initials(displayName)}
             </span>
             <div className="min-w-0">

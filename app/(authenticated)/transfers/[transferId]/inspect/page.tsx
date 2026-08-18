@@ -198,7 +198,7 @@ export default async function InspectTransferPage({
       {caseOpened && openedCaseId && (
         <div
           role="status"
-          className="mt-4 rounded-md bg-status-available/10 px-4 py-3"
+          className="mt-4 rounded-xl bg-status-available/10 px-4 py-3"
         >
           <p className="font-label text-label uppercase text-status-available">
             Inspection Case Opened
@@ -214,7 +214,7 @@ export default async function InspectTransferPage({
       {caseResolved && (
         <div
           role="status"
-          className="mt-4 rounded-md bg-status-available/10 px-4 py-3"
+          className="mt-4 rounded-xl bg-status-available/10 px-4 py-3"
         >
           <p className="font-label text-label uppercase text-status-available">
             Inspection Case Resolved
@@ -229,7 +229,7 @@ export default async function InspectTransferPage({
       {actionFailed && errorMessages.length > 0 && (
         <div
           role="alert"
-          className="mt-4 rounded-md bg-status-held/10 px-4 py-3"
+          className="mt-4 rounded-xl bg-status-held/10 px-4 py-3"
         >
           <p className="font-label text-label uppercase text-status-held">
             Action Failed
@@ -245,7 +245,7 @@ export default async function InspectTransferPage({
       )}
 
       {/* Transfer context card — Level 1 office elevation */}
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-xl bg-surface-white shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Transfer Context
         </h2>
@@ -278,7 +278,7 @@ export default async function InspectTransferPage({
       </div>
 
       {/* Open Inspection Case form — Level 1 office elevation */}
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-xl bg-surface-white shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Open Inspection Case
         </h2>
@@ -401,7 +401,7 @@ export default async function InspectTransferPage({
       </div>
 
       {/* Resolve Inspection Case form — Level 1 office elevation */}
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-xl bg-surface-white shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Resolve Inspection Case
         </h2>

@@ -49,7 +49,7 @@ export function ProfileContainer({ profile }: { profile: OwnProfile }) {
       <section
         data-testid="profile-section-account"
         aria-labelledby="profile-section-account-heading"
-        className="flex flex-col gap-4 rounded bg-surface-white p-4 shadow-elevation-2"
+        className="flex flex-col gap-4 rounded-xl bg-surface-white p-4 shadow-elevation-2"
       >
         <h2
           id="profile-section-account-heading"
@@ -63,7 +63,7 @@ export function ProfileContainer({ profile }: { profile: OwnProfile }) {
       <section
         data-testid="profile-section-security"
         aria-labelledby="profile-section-security-heading"
-        className="flex flex-col gap-4 rounded bg-surface-white p-4 shadow-elevation-2"
+        className="flex flex-col gap-4 rounded-xl bg-surface-white p-4 shadow-elevation-2"
       >
         <h2
           id="profile-section-security-heading"
@@ -77,7 +77,7 @@ export function ProfileContainer({ profile }: { profile: OwnProfile }) {
       <section
         data-testid="profile-section-preferences"
         aria-labelledby="profile-section-preferences-heading"
-        className="flex flex-col gap-4 rounded bg-surface-white p-4 shadow-elevation-2"
+        className="flex flex-col gap-4 rounded-xl bg-surface-white p-4 shadow-elevation-2"
       >
         <h2
           id="profile-section-preferences-heading"

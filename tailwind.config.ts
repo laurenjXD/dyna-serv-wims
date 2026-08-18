@@ -81,6 +81,12 @@ const config: Config = {
         DEFAULT: "8px",
         md: "12px",
         lg: "16px",
+        // 2026-08-19: bento-box card/navbar/sidebar rounding, per user
+        // request and per page specs.md §2's "Floating Header (radius-full)
+        // / Floating Sidebar (radius-xl)" description — previously never
+        // implemented anywhere (see revision-log.md's "Mega-Card" doc-drift
+        // entry for the earlier phased-rollout decision this supersedes).
+        xl: "24px",
         full: "9999px",
       },
       maxWidth: {

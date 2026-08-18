@@ -26,7 +26,7 @@ export default async function NewLocationPage() {
         </p>
       </div>
 
-      <div className="rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="rounded-xl bg-surface-white shadow-elevation-1 p-6">
         <LocationForm
           action={createLocationAction}
           cancelHref="/enrollment?tab=locations"

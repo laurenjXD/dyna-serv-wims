@@ -323,7 +323,7 @@ function AcknowledgementReceiptsTab({ docs }: { docs: DocRow[] }) {
       {/* VMI reference disclaimer — visible before the table.
           requirements.md R4.3 + CLAUDE.md: must not imply the price is
           the authoritative VMI bill. */}
-      <div className="mb-4 rounded-lg border border-status-pending/30 bg-status-pending/10 px-4 py-3">
+      <div className="mb-4 rounded-xl border border-status-pending/30 bg-status-pending/10 px-4 py-3">
         <p className="font-body text-body-sm text-on-surface">
           <strong>VMI reference note:</strong> prices shown on VMI
           acknowledgement receipts are a per-release reference amount only

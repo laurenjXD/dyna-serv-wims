@@ -295,9 +295,12 @@ export default async function Home({ searchParams }: PageProps) {
     hasPickListAccess
       ? getPickListQtyAndCbmTrend({ startDate: weekStart, endDate: now }, "all", "day")
       : Promise.resolve([] as Array<{ period: string; total_qty: string; total_cbm: string }>),
-    // Monthly outgoing KPI summary (month-to-date)
+    // Monthly outgoing KPI summary (month-to-date) — daily granularity
+    // (2026-08-19: was period="month", collapsing the whole range into one
+    // bucket; changed to "day" so the total can be shown as a bar graph,
+    // not just a single number).
     hasPickListAccess
-      ? getPickListQtyAndCbmTrend({ startDate: monthStart, endDate: now }, "all", "month")
+      ? getPickListQtyAndCbmTrend({ startDate: monthStart, endDate: now }, "all", "day")
       : Promise.resolve([] as Array<{ period: string; total_qty: string; total_cbm: string }>),
     // Recent Activity feed source — genuinely recency-sorted (createdAt
     // DESC), distinct from the oldest-first action-queue rows above.
@@ -330,11 +333,16 @@ export default async function Home({ searchParams }: PageProps) {
     cbm: toNumber(row.total_cbm),
   }));
 
-  // Monthly outgoing KPI: sum qty across returned month buckets (normally
-  // exactly one row for a month-to-date range).
-  const monthlyOutgoingQty = (
-    monthlyTrendRows as Array<{ total_qty: string }>
-  ).reduce((sum, row) => sum + toNumber(row.total_qty), 0);
+  // Monthly outgoing: daily-granularity rows for the bar graph, plus the
+  // month-to-date sum for the headline number (2026-08-19 — was a single
+  // stat block, now a graph per user request).
+  const monthlyTrendTyped = monthlyTrendRows as Array<{ period: string | Date; total_qty: string }>;
+  const monthlyOutgoingQty = monthlyTrendTyped.reduce((sum, row) => sum + toNumber(row.total_qty), 0);
+  const monthlyTrend: WeeklyTrendDatum[] = monthlyTrendTyped.map((row) => ({
+    period: new Date(row.period).toLocaleDateString("en-US", { day: "numeric" }),
+    qty: toNumber(row.total_qty),
+    cbm: 0,
+  }));
 
   // Dispatch rate ring data (2026-08-17 restyle) — null when the session
   // lacks pick_list.read, same omission pattern as the heatmap.
@@ -410,6 +418,7 @@ export default async function Home({ searchParams }: PageProps) {
       recentActivity={recentActivity}
       weeklyTrend={weeklyTrend}
       monthlyOutgoingQty={monthlyOutgoingQty}
+      monthlyTrend={monthlyTrend}
       dispatchRate={dispatchRate}
       flowActivity={flowActivity}
     />

@@ -114,7 +114,7 @@ export function BulkLocationGeneratorForm({
         </div>
 
         {created.length > 0 && (
-          <div className="mt-4 overflow-hidden rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+          <div className="mt-4 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
                 <thead>

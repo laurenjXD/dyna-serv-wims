@@ -7,7 +7,7 @@ export function TrendLineChart({ data, period, onPeriodChange, label, title, col
   const width = 720; const height = 240; const pad = 32;
   const max = Math.max(1, ...data.map((point) => point.value));
   const points = data.map((point, index) => `${pad + (index * (width - pad * 2)) / Math.max(1, data.length - 1)},${height - pad - (point.value / max) * (height - pad * 2)}`).join(" ");
-  return <section className="rounded bg-surface-white p-6 shadow-elevation-1">
+  return <section className="rounded-xl bg-surface-white p-6 shadow-elevation-1">
     <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><span className="font-body text-body-sm text-text-grey">{label}</span><div className="flex gap-2" role="tablist" aria-label={`${title} period`}>
       {(["day", "week", "month"] as const).map((value) => <button key={value} type="button" role="tab" aria-selected={period === value} onClick={() => onPeriodChange(value)} className={`rounded px-3 py-1 font-label text-label font-semibold ${period === value ? "bg-primary text-surface-white" : "bg-surface-light-grey text-on-surface"}`}>{value}</button>)}
     </div></div>

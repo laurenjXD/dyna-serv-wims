@@ -122,7 +122,7 @@ export default async function WrrDetailPage({ params }: PageProps) {
       </div>
 
       {/* WRR summary card — Level 1 office elevation */}
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-xl bg-surface-white shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Document Details
         </h2>
@@ -173,7 +173,7 @@ export default async function WrrDetailPage({ params }: PageProps) {
       </div>
 
       {/* Action buttons — conditional on WRR status */}
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-xl bg-surface-white shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Actions
         </h2>
@@ -214,7 +214,7 @@ export default async function WrrDetailPage({ params }: PageProps) {
       </div>
 
       {/* Items table — Level 1 office elevation */}
-      <div className="mt-6 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
+      <div className="mt-6 overflow-hidden rounded-xl bg-surface-white shadow-elevation-1">
         <div className="px-6 py-4">
           <h2 className="font-heading font-semibold text-data-display text-on-surface">
             Expected Lines ({wrr.items.length})

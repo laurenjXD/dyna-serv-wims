@@ -4,7 +4,7 @@
 // monthly stat block, colorful KPI tiles, flow-type activity bar chart,
 // activity heatmap) inspired by a reference dashboard the user supplied,
 // reusing this app's EXISTING brand tokens (Etna/Glacial fonts, the locked
-// navy/red/royal-blue/status-color palette, the existing rounded-md/lg +
+// navy/red/royal-blue/status-color palette, the existing rounded-xl/lg +
 // shadow-elevation card pattern) rather than introducing new colors or the
 // unbuilt "Mega-Card"/radius-xl pattern (see revision-log.md's "Mega-Card"
 // doc-drift entry — that decision still stands; this restyle intentionally
@@ -118,8 +118,10 @@ export function OfficeLanding({
   recentActivity,
   // Weekly transaction line graph (R11.3/R11.5 — qty + CBM only)
   weeklyTrend,
-  // Monthly outgoing KPI summary (R11.3)
+  // Monthly outgoing KPI summary (R11.3) — headline number + daily-
+  // granularity bar graph (2026-08-19, was a stat-only block).
   monthlyOutgoingQty,
+  monthlyTrend,
   // Dispatch rate ring + flow-type activity bar chart (2026-08-17 restyle) —
   // null when the session lacks pick_list.read, same omission pattern as
   // the heatmap.
@@ -150,6 +152,7 @@ export function OfficeLanding({
   recentActivity: RecentActivityItem[];
   weeklyTrend: WeeklyTrendDatum[];
   monthlyOutgoingQty: number;
+  monthlyTrend: WeeklyTrendDatum[];
   dispatchRate: { dispatched: number; notDispatched: number } | null;
   flowActivity: Array<{ flowType: string; count: number }> | null;
 }) {
@@ -186,12 +189,12 @@ export function OfficeLanding({
             );
           })()
         ) : (
-          <div className="flex items-center justify-center rounded-lg border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1 lg:col-span-1">
+          <div className="flex items-center justify-center rounded-xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1 lg:col-span-1">
             <p className="font-body text-body-sm text-text-grey">Dispatch rate unavailable</p>
           </div>
         )}
 
-        <div className="rounded-lg border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1 sm:p-5 lg:col-span-2">
+        <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1 sm:p-5 lg:col-span-2">
           <h2 className="mb-1 font-heading text-headline-md font-semibold text-on-surface">
             Weekly Outgoing Trend
           </h2>
@@ -205,7 +208,7 @@ export function OfficeLanding({
 
         <div
           data-testid="landing-monthly-kpi"
-          className="flex flex-col justify-center rounded-lg bg-brand-navy p-5 text-surface-white shadow-elevation-1 lg:col-span-1"
+          className="flex flex-col justify-center rounded-xl bg-brand-navy p-5 text-surface-white shadow-elevation-1 lg:col-span-1"
         >
           <p className="font-label text-label uppercase tracking-[0.05em] text-surface-white/70">
             Monthly Outgoing Qty
@@ -214,6 +217,30 @@ export function OfficeLanding({
             {monthlyOutgoingQty.toLocaleString()}
           </p>
           <p className="mt-1 font-body text-body-sm text-surface-white/70">Month to date</p>
+          {/* Daily bar graph, 2026-08-19 — was a stat-only block. Lightweight
+              div-based bars (not recharts) since this column is narrow and
+              a full axis-labeled chart wouldn't fit ~30 daily bars legibly. */}
+          {monthlyTrend.length > 0 && (
+            <div
+              data-testid="landing-monthly-trend-graph"
+              role="img"
+              aria-label={`Daily outgoing quantity trend for the month, ${monthlyTrend.length} days`}
+              className="mt-4 flex h-16 items-end gap-0.5"
+            >
+              {monthlyTrend.map((day, index) => {
+                const max = Math.max(1, ...monthlyTrend.map((d) => d.qty));
+                const heightPct = Math.max(6, Math.round((day.qty / max) * 100));
+                return (
+                  <div
+                    key={`${day.period}-${index}`}
+                    title={`Day ${day.period}: ${day.qty.toLocaleString()}`}
+                    className="min-w-[3px] flex-1 rounded-t-sm bg-surface-white/40 transition-[height] hover:bg-surface-white/70"
+                    style={{ height: `${heightPct}%` }}
+                  />
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
@@ -302,7 +329,7 @@ export function OfficeLanding({
       <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
 
         {/* Left: Master Inventory Preview (top 5 items by stock level) */}
-        <section aria-label="Top inventory items" className="rounded-lg border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+        <section aria-label="Top inventory items" className="rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
           <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3 sm:px-5 sm:py-4">
             <h2 className="font-heading text-headline-md font-semibold text-on-surface">
               Top Stock Items
@@ -397,7 +424,7 @@ export function OfficeLanding({
           <div
             aria-label="Recent activity"
             data-testid="landing-recent-activity"
-            className="rounded-lg border border-outline-variant/30 bg-surface-white shadow-elevation-1"
+            className="rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1"
           >
             <div className="flex items-center gap-2 border-b border-outline-variant/30 px-4 py-3">
               <ClipboardList size={18} strokeWidth={2} aria-hidden="true" className="text-brand-navy" />
@@ -430,7 +457,7 @@ export function OfficeLanding({
 
           {/* Open WRRs */}
           {hasReceivingAccess && (
-            <div className="rounded-lg border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+            <div className="rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
               <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
                 <h3 className="font-heading text-headline-md font-semibold text-on-surface">
                   Open WRRs
@@ -473,7 +500,7 @@ export function OfficeLanding({
 
           {/* Allocated Pick Lists */}
           {hasPickListAccess && (
-            <div className="rounded-lg border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+            <div className="rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
               <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
                 <h3 className="font-heading text-headline-md font-semibold text-on-surface">
                   Active Pick Lists
@@ -511,7 +538,7 @@ export function OfficeLanding({
 
           {/* Pending Approvals */}
           {hasApprovalAccess && (
-            <div className="rounded-lg border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+            <div className="rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
               <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
                 <h3 className="font-heading text-headline-md font-semibold text-on-surface">
                   Pending Approvals
@@ -549,7 +576,7 @@ export function OfficeLanding({
 
           {/* Open Inspection Cases */}
           {hasInspectionAccess && (
-            <div className="rounded-lg border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+            <div className="rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
               <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
                 <h3 className="font-heading text-headline-md font-semibold text-on-surface">
                   Open Inspections

@@ -29,7 +29,7 @@ export default async function BulkGenerateLocationsPage() {
         </p>
       </div>
 
-      <div className="rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="rounded-xl bg-surface-white shadow-elevation-1 p-6">
         <BulkLocationGeneratorForm
           action={bulkGenerateLocationsAction}
           cancelHref="/enrollment?tab=locations"

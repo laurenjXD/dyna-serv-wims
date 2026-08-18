@@ -31,7 +31,7 @@ export function HeatmapSection({ data, flowFilter }: Props) {
       data={data}
       flowFilter={flowFilter}
       onFilterChange={handleFilterChange}
-      title="Inventory Activity — 52 Weeks"
+      title="Inventory Activity — Last 12 Weeks"
     />
   );
 }

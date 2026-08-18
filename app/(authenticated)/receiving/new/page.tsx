@@ -138,7 +138,7 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
       {errors.length > 0 && (
         <div
           role="alert"
-          className="mt-4 rounded-md bg-status-held/10 px-4 py-3"
+          className="mt-4 rounded-xl bg-status-held/10 px-4 py-3"
         >
           <p className="font-label text-label uppercase text-status-held">
             Validation errors
@@ -156,7 +156,7 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
       {/* Create WRR form — standard office surface */}
       <form action={handleCreateWrr} className="mt-6 space-y-6">
         {/* Header section — office card, Level 1 elevation */}
-        <div className="rounded-md bg-surface-white shadow-elevation-1 p-6">
+        <div className="rounded-xl bg-surface-white shadow-elevation-1 p-6">
           <h2 className="font-heading font-semibold text-data-display text-on-surface">
             Header Information
           </h2>
@@ -298,7 +298,7 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
         </div>
 
         {/* Expected lines section */}
-        <div className="rounded-md bg-surface-white shadow-elevation-1 p-6">
+        <div className="rounded-xl bg-surface-white shadow-elevation-1 p-6">
           <h2 className="font-heading font-semibold text-data-display text-on-surface">
             Expected Lines
           </h2>

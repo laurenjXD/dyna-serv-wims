@@ -53,7 +53,7 @@ export function TransferLineItems() {
       {lines.map((line, index) => (
         <div
           key={index}
-          className="rounded-md border border-outline-variant/30 bg-surface-white p-4"
+          className="rounded-xl border border-outline-variant/30 bg-surface-white p-4"
         >
           <div className="mb-3 flex items-center justify-between">
             <span className="font-label text-label text-brand-navy">

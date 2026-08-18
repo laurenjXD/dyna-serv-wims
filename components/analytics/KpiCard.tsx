@@ -32,7 +32,7 @@ export function KpiCard({ label, value, trend, icon, statusColor, linkTo }: KpiC
   const content = (
     <div
       aria-label={ariaLabel}
-      className="group rounded bg-surface-white p-6 shadow-elevation-1 transition-transform duration-150 hover:scale-[1.02] focus-within:ring-2 focus-within:ring-brand-navy"
+      className="group rounded-xl bg-surface-white p-6 shadow-elevation-1 transition-transform duration-150 hover:scale-[1.02] focus-within:ring-2 focus-within:ring-brand-navy"
     >
       <div className="mb-4 flex items-center text-brand-navy" aria-hidden="true">{icon}</div>
       <div className={`font-heading text-data-display font-semibold ${statusColor ? valueClass[statusColor] : "text-on-surface"}`}>

@@ -179,8 +179,8 @@ export function ShellChrome({ children }: { children: ReactNode }) {
   return (
     <>
       <header
-        className={`fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-surface px-4 shadow-elevation-1 transition-[left] duration-150 motion-reduce:transition-none lg:min-h-[76px] lg:px-8 lg:py-3 lg:shadow-none ${
-          isDesktopOpen ? "lg:left-[306px]" : "lg:left-0"
+        className={`fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-surface px-4 shadow-elevation-1 transition-[left] duration-150 motion-reduce:transition-none lg:inset-x-auto lg:top-6 lg:right-6 lg:min-h-[76px] lg:rounded-full lg:border lg:border-border lg:px-8 lg:py-3 lg:shadow-elevation-2 ${
+          isDesktopOpen ? "lg:left-[354px]" : "lg:left-6"
         }`}
       >
         {tier !== "floor" && (
@@ -335,7 +335,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
                 <div
                   data-testid="account-popup"
                   aria-labelledby="account-menu-trigger"
-                  className="absolute right-0 top-[calc(100%+8px)] z-40 min-w-[220px] rounded-lg border border-border bg-surface p-2 shadow-elevation-2"
+                  className="absolute right-0 top-[calc(100%+8px)] z-40 min-w-[220px] rounded-xl border border-border bg-surface p-2 shadow-elevation-2"
                 >
                   {(email || organizationScope) && (
                     <div role="presentation" className="mb-1 border-b border-border pb-1">
@@ -361,7 +361,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
                   <Link
                     href="/profile"
                     aria-label="Profile"
-                    className="block rounded-md px-3 py-2 font-label text-body-sm font-semibold text-text-primary hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    className="block rounded-xl px-3 py-2 font-label text-body-sm font-semibold text-text-primary hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     onClick={() => setIsAccountMenuOpen(false)}
                   >
                     Profile
@@ -372,7 +372,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
                       setIsAccountMenuOpen(false);
                       void signOutAction();
                     }}
-                    className="mt-1 flex w-full items-center justify-start rounded-md px-3 py-2 font-label text-body-sm font-semibold text-text-secondary hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    className="mt-1 flex w-full items-center justify-start rounded-xl px-3 py-2 font-label text-body-sm font-semibold text-text-secondary hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     Sign Out
                   </button>
@@ -388,7 +388,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
           ref={notificationPanelRef}
           data-testid="notification-panel"
           aria-labelledby="notification-bell"
-          className="fixed inset-x-4 top-14 z-40 max-h-[70vh] overflow-y-auto rounded-lg border border-border bg-surface p-2 shadow-elevation-2 lg:inset-x-auto lg:right-8 lg:top-[86px] lg:w-[320px]"
+          className="fixed inset-x-4 top-14 z-40 max-h-[70vh] overflow-y-auto rounded-xl border border-border bg-surface p-2 shadow-elevation-2 lg:inset-x-auto lg:right-8 lg:top-[86px] lg:w-[320px]"
         >
           {notifications.length === 0 ? (
             <p className="px-3 py-4 text-center text-body-sm text-text-secondary">
@@ -402,7 +402,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
                     type="button"
                     data-testid="notification-list-item"
                     onClick={() => handleNotificationClick(notification)}
-                    className={`block w-full truncate rounded-md px-3 py-2 text-left text-body-sm font-semibold hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                    className={`block w-full truncate rounded-xl px-3 py-2 text-left text-body-sm font-semibold hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                       notification.readAt
                         ? "text-text-secondary"
                         : "text-text-primary"
@@ -436,9 +436,9 @@ export function ShellChrome({ children }: { children: ReactNode }) {
       <main
         id="main-content"
         data-surface={tier}
-        className={`min-h-screen pt-14 transition-[padding-left] duration-150 motion-reduce:transition-none lg:pb-0 lg:pt-[76px] ${
-          isDesktopOpen ? "lg:pl-[306px]" : "lg:pl-0"
-        } ${showFloorTabBar ? "pb-20" : "pb-0"} ${
+        className={`min-h-screen pt-14 transition-[padding-left] duration-150 motion-reduce:transition-none lg:pr-6 lg:pt-[124px] ${
+          isDesktopOpen ? "lg:pl-[354px]" : "lg:pl-6"
+        } ${showFloorTabBar ? "pb-20" : "lg:pb-6"} ${
           tier === "floor" ? "bg-surface" : "bg-background"
         }`}
       >

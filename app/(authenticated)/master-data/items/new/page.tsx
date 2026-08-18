@@ -32,7 +32,7 @@ export default async function NewItemPage() {
         </p>
       </div>
 
-      <div className="rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="rounded-xl bg-surface-white shadow-elevation-1 p-6">
         <ItemForm
           action={createItemAction}
           categories={categories}

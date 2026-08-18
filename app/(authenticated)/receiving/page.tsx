@@ -278,7 +278,7 @@ async function ReceiveTab({
           §9: floor tables are a fail case — card list is correct here. */}
       <div className="mt-4 space-y-3">
         {rows.length === 0 ? (
-          <div className="rounded-md border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-2">
+          <div className="rounded-xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-2">
             <p className="font-body text-body-md text-text-grey">
               No WRRs currently in progress.
             </p>
@@ -290,7 +290,7 @@ async function ReceiveTab({
           rows.map((row: WrrDocumentRow) => (
             <article
               key={row.id}
-              className="overflow-hidden rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-2"
+              className="overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-2"
             >
               {/* Left accent bar — brand-design-system.md §1.1 signature pattern:
                   in-progress receives the status-pending (amber) accent since they
@@ -437,7 +437,7 @@ async function WrrsTab({
       </div>
 
       {/* WRR table — Level 1 office elevation */}
-      <div className="mt-4 overflow-hidden rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-2 md:shadow-elevation-1">
+      <div className="mt-4 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-2 md:shadow-elevation-1">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="font-body text-body-md text-text-grey">
@@ -580,7 +580,7 @@ async function LedgerTab({ pageParam }: { pageParam?: string }) {
       </p>
 
       {/* Ledger table — Level 1 office elevation per brand-design-system.md §6 */}
-      <div className="mt-4 overflow-hidden rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-2 md:shadow-elevation-1">
+      <div className="mt-4 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-2 md:shadow-elevation-1">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="font-body text-body-md text-text-grey">
