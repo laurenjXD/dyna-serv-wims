@@ -190,42 +190,57 @@ export async function createWrr(
   // 4. Stage the header and every expected line in one RLS-claimed
   // transaction. A WRR without its line records can never safely reach the
   // confirmation command.
-  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
-    const db = tx.db as DbLike;
+  let rlsResult;
+  try {
+    rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+      const db = tx.db as DbLike;
 
-    const [inserted] = await db
-      .insert(wrrDocuments)
-      .values({
-        wrrNumber,
-        vendorPartyId: data.vendorPartyId,
-        flowType: data.flowType,
-        status: "staged_pending_arrival",
-        stagedByUserId: userId,
-        commercialInvoiceNo: data.commercialInvoiceNo ?? null,
-        ciplFileUrl: data.ciplFileUrl ?? null,
-        pezaNumber: data.pezaNumber ?? null,
-        ipNumber: data.ipNumber ?? null,
-        mawbMblNumber: data.mawbMblNumber ?? null,
-      })
-      .returning({ id: wrrDocuments.id });
+      const [inserted] = await db
+        .insert(wrrDocuments)
+        .values({
+          wrrNumber,
+          vendorPartyId: data.vendorPartyId,
+          flowType: data.flowType,
+          status: "staged_pending_arrival",
+          stagedByUserId: userId,
+          commercialInvoiceNo: data.commercialInvoiceNo ?? null,
+          ciplFileUrl: data.ciplFileUrl ?? null,
+          pezaNumber: data.pezaNumber ?? null,
+          ipNumber: data.ipNumber ?? null,
+          mawbMblNumber: data.mawbMblNumber ?? null,
+        })
+        .returning({ id: wrrDocuments.id });
 
-    await db.insert(wrrItems).values(
-      data.lines.map((line) => ({
-        wrrId: inserted.id,
-        itemId: line.itemId ?? null,
-        itemCode: line.itemCode ?? null,
-        customerItemCode: line.customerItemCode ?? null,
-        lotNumber: line.lotNumber,
-        expectedQty: line.expectedQty,
-        unitCbm: String(line.unitCbm),
-        uom: line.uom,
-        disposition: line.disposition,
-        putawayLocationId: line.putawayLocationId ?? null,
-      })),
-    );
+      await db.insert(wrrItems).values(
+        data.lines.map((line) => ({
+          wrrId: inserted.id,
+          itemId: line.itemId ?? null,
+          itemCode: line.itemCode ?? null,
+          customerItemCode: line.customerItemCode ?? null,
+          lotNumber: line.lotNumber,
+          expectedQty: line.expectedQty,
+          unitCbm: String(line.unitCbm),
+          uom: line.uom,
+          disposition: line.disposition,
+          putawayLocationId: line.putawayLocationId ?? null,
+        })),
+      );
 
-    return { ok: true, wrrId: inserted.id } satisfies CreateWrrActionResult;
-  });
+      return { ok: true, wrrId: inserted.id } satisfies CreateWrrActionResult;
+    });
+  } catch (error) {
+    // Database constraints (for example, a vendor deactivated in another
+    // session) must not escape a Server Action and render Next's generic
+    // application-error page. Keep the detailed error server-side while
+    // returning a recovery path to the operator.
+    console.error("Unable to create WRR", error);
+    return {
+      ok: false,
+      errors: [
+        "Unable to create the WRR. Confirm the selected vendor is active and try again.",
+      ],
+    };
+  }
 
   if (rlsResult.kind === "unauthenticated") {
     return { ok: false, errors: ["forbidden"] };

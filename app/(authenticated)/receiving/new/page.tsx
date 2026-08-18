@@ -7,15 +7,15 @@
 //   specs/00-steering/brand-design-system.md §6 (office surface), §3 (touch targets)
 //
 // Surface: Office. Permission gate: receiving.confirm.
-// Note: The createWrr action (lib/actions/receiving.ts) inserts the wrr_documents
-// row but currently does not insert wrr_items rows from the lines array. The form
-// submits all line data; future extension of the action will persist lines.
+// The createWrr action stages the WRR header and every expected line together.
 
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { createWrr } from "@/lib/actions/receiving";
+import { db } from "@/lib/db/client";
+import { getActiveSupplierParties } from "@/lib/db/queries/items";
 import { WrrLineItems } from "./_components/wrr-line-items";
 
 // ─── Inline server action ─────────────────────────────────────────────────────
@@ -102,6 +102,11 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
     notFound();
   }
 
+  // A WRR header holds a foreign key to parties.id. Showing the available
+  // vendor/supplier organizations prevents operators from having to discover
+  // and paste an internal UUID (and avoids a database exception on submit).
+  const vendorParties = await getActiveSupplierParties(db);
+
   const errors = encodedErrors
     ? decodeURIComponent(encodedErrors).split("|").filter(Boolean)
     : [];
@@ -163,26 +168,41 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
 
           {/* Full-width on mobile, two-column grid on desktop per task requirements */}
           <div className="mt-4 grid gap-4 md:grid-cols-2">
-            {/* Vendor Organization ID — required */}
+            {/* Vendor Organization — required */}
             <div>
               <label
                 htmlFor="vendorPartyId"
                 className="block font-label text-label text-text-grey"
               >
-                Vendor Organization ID{" "}
+                Vendor Organization{" "}
                 <span aria-hidden="true" className="text-brand-red">
                   *
                 </span>
                 <span className="sr-only">(required)</span>
               </label>
-              <input
+              <select
                 id="vendorPartyId"
                 name="vendorPartyId"
-                type="text"
                 required
-                placeholder="UUID of the vendor party"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              />
+                disabled={vendorParties.length === 0}
+                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface disabled:cursor-not-allowed disabled:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              >
+                <option value="">
+                  {vendorParties.length === 0
+                    ? "No active vendor organizations available"
+                    : "Select vendor organization…"}
+                </option>
+                {vendorParties.map((party) => (
+                  <option key={party.id} value={party.id}>
+                    {party.code} — {party.name}
+                  </option>
+                ))}
+              </select>
+              {vendorParties.length === 0 && (
+                <p className="mt-1 font-body text-body-sm text-status-held">
+                  Create an active Party with the Vendor or Supplier role before creating a WRR.
+                </p>
+              )}
             </div>
 
             {/* Flow Type — required */}
@@ -320,6 +340,7 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
           {/* Primary CTA — brand-red per brand-design-system.md §9, h-11 office touch target */}
           <button
             type="submit"
+            disabled={vendorParties.length === 0}
             className="flex h-11 items-center justify-center rounded bg-primary px-6 font-label text-label text-surface-white hover:bg-primary-hover motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
           >
             Create WRR
