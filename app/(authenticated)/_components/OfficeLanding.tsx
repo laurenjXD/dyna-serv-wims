@@ -1,5 +1,20 @@
 // `OfficeLanding` — office-tier presentation for `/`.
 //
+// 2026-08-17 restyle: bento-grid layout (dispatch-rate ring, weekly trend,
+// monthly stat block, colorful KPI tiles, flow-type activity bar chart,
+// activity heatmap) inspired by a reference dashboard the user supplied,
+// reusing this app's EXISTING brand tokens (Etna/Glacial fonts, the locked
+// navy/red/royal-blue/status-color palette, the existing rounded-md/lg +
+// shadow-elevation card pattern) rather than introducing new colors or the
+// unbuilt "Mega-Card"/radius-xl pattern (see revision-log.md's "Mega-Card"
+// doc-drift entry — that decision still stands; this restyle intentionally
+// works within it). Responsive: desktop bento grid collapses to a compact
+// single column on mobile, same content throughout, no dark-mode variant.
+// This is the FIRST page in a deliberately phased rollout — floor pages
+// (Receiving scan loop, Pick/Dispatch) do NOT get this treatment, per
+// design.md's floor-priority rules (single primary action, no decorative
+// density); FloorLanding.tsx is untouched by this restyle.
+//
 // Extracted from app/(authenticated)/page.tsx per
 // specs/05-ui-shell-and-navigation/tasks.md §7 so it can be tested directly
 // (app/(authenticated)/__tests__/OfficeLanding.test.tsx) without going
@@ -39,8 +54,9 @@ import {
   TrendingDown,
   ShieldAlert,
 } from "lucide-react";
-import { KpiCard } from "@/components/analytics/KpiCard";
-import { KpiCardGroup } from "@/components/analytics/KpiCardGroup";
+import { KpiTile } from "@/components/analytics/KpiTile";
+import { DonutChart } from "@/components/analytics/DonutChart";
+import { BarChart } from "@/components/analytics/BarChart";
 import { WeeklyTrendChart, type WeeklyTrendDatum } from "@/components/analytics/WeeklyTrendChart";
 import { HomeDashboardHeatmapSection } from "./HomeDashboardHeatmapSection";
 import type { FlowType } from "@/components/analytics/types";
@@ -68,6 +84,9 @@ export type RecentActivityItem = {
   description: string;
   timestamp?: string;
 };
+
+const FLOW_LABELS: Record<string, string> = { vmi: "VMI", trading: "Trading", supplies: "Supplies" };
+const FLOW_COLORS: Record<string, string> = { vmi: "#2563EB", trading: "#0F172A", supplies: "#64748B" };
 
 export function OfficeLanding({
   dateString,
@@ -101,6 +120,11 @@ export function OfficeLanding({
   weeklyTrend,
   // Monthly outgoing KPI summary (R11.3)
   monthlyOutgoingQty,
+  // Dispatch rate ring + flow-type activity bar chart (2026-08-17 restyle) —
+  // null when the session lacks pick_list.read, same omission pattern as
+  // the heatmap.
+  dispatchRate,
+  flowActivity,
 }: {
   dateString: string;
   openWrrs: number;
@@ -126,156 +150,48 @@ export function OfficeLanding({
   recentActivity: RecentActivityItem[];
   weeklyTrend: WeeklyTrendDatum[];
   monthlyOutgoingQty: number;
+  dispatchRate: { dispatched: number; notDispatched: number } | null;
+  flowActivity: Array<{ flowType: string; count: number }> | null;
 }) {
   return (
-    <div className="mx-auto max-w-[1280px] px-4 py-6 md:px-6 lg:px-8 lg:py-10">
+    <div className="mx-auto max-w-[1280px] px-3 py-4 sm:px-4 sm:py-6 md:px-6 lg:px-8 lg:py-10">
       {/* Page header */}
-      <header className="mb-6">
+      <header className="mb-4 sm:mb-6">
         <h1 className="font-heading text-headline-xl font-extrabold text-on-surface lg:hidden">
           Overview Dashboard
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">{dateString}</p>
       </header>
 
-      {/* ── Row 1: KPI strip ───────────────────────────────────────────────
-          6 operational count cards. Capability-gated: card shows "—" not an
-          error state when the session lacks the required capability.
-          brand-design-system.md §2: data-display (Space Grotesk SemiBold) for
-          numbers, label (Inter SemiBold uppercase) for captions.
-          Left-accent-bar only on nonzero attention items: low stock, pending
-          approvals. */}
-      <section aria-label="Key performance indicators" className="mb-8">
-        <KpiCardGroup>
-          {hasReceivingAccess ? (
-            <KpiCard
-              label="Open WRRs"
-              value={openWrrs}
-              trend={{ direction: "flat", pct: 0 }}
-              icon={<PackageCheck size={22} />}
-              linkTo="/receiving"
-            />
-          ) : (
-            <KpiCard
-              label="Open WRRs"
-              value="—"
-              trend={{ direction: "flat", pct: 0 }}
-              icon={<PackageCheck size={22} />}
-            />
-          )}
+      {/* ── Bento row: Dispatch Rate ring + Weekly Trend + Monthly stat ────
+          Compact single column on mobile; 4-column bento on desktop
+          (ring:1, trend:2, monthly:1). */}
+      <section aria-label="Outgoing performance" className="mb-4 grid grid-cols-1 gap-3 sm:mb-6 sm:gap-4 lg:grid-cols-4">
+        {hasPickListAccess && dispatchRate ? (
+          (() => {
+            const total = dispatchRate.dispatched + dispatchRate.notDispatched;
+            const pct = total > 0 ? Math.round((dispatchRate.dispatched / total) * 100) : 0;
+            return (
+              <div className="lg:col-span-1">
+                <DonutChart
+                  title="Dispatch Rate"
+                  centerLabel="Dispatched"
+                  centerValue={pct}
+                  segments={[
+                    { label: "Dispatched", value: dispatchRate.dispatched, statusToken: "available" },
+                    { label: "In Progress", value: dispatchRate.notDispatched, statusToken: "pending" },
+                  ]}
+                />
+              </div>
+            );
+          })()
+        ) : (
+          <div className="flex items-center justify-center rounded-lg border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1 lg:col-span-1">
+            <p className="font-body text-body-sm text-text-grey">Dispatch rate unavailable</p>
+          </div>
+        )}
 
-          {hasPickListAccess ? (
-            <KpiCard
-              label="Active Picks"
-              value={openPickLists}
-              trend={{ direction: "flat", pct: 0 }}
-              icon={<ListChecks size={22} />}
-              linkTo="/outgoing"
-            />
-          ) : (
-            <KpiCard
-              label="Active Picks"
-              value="—"
-              trend={{ direction: "flat", pct: 0 }}
-              icon={<ListChecks size={22} />}
-            />
-          )}
-
-          {hasTransferAccess ? (
-            <KpiCard
-              label="Pending Transfers"
-              value={pendingTransfers}
-              trend={{ direction: pendingTransfers > 0 ? "up" : "flat", pct: 0 }}
-              icon={<ArrowLeftRight size={22} />}
-              statusColor={pendingTransfers > 0 ? "pending" : undefined}
-              linkTo="/transfers"
-            />
-          ) : (
-            <KpiCard
-              label="Pending Transfers"
-              value="—"
-              trend={{ direction: "flat", pct: 0 }}
-              icon={<ArrowLeftRight size={22} />}
-            />
-          )}
-
-          {hasInspectionAccess ? (
-            <KpiCard
-              label="Open Inspections"
-              value={openInspections}
-              trend={{ direction: openInspections > 0 ? "up" : "flat", pct: 0 }}
-              icon={<FlaskConical size={22} />}
-              statusColor={openInspections > 0 ? "pending" : undefined}
-              linkTo="/inspection"
-            />
-          ) : (
-            <KpiCard
-              label="Open Inspections"
-              value="—"
-              trend={{ direction: "flat", pct: 0 }}
-              icon={<FlaskConical size={22} />}
-            />
-          )}
-
-          {/* Low Stock — operational stock-count metric, gated reporting.read
-              (NOT reporting.financial_read — that gate was wrong for a
-              non-financial count). */}
-          {hasReportingAccess && inventoryKpis ? (
-            <KpiCard
-              label="Low Stock Items"
-              value={inventoryKpis.lowStockItemsCount}
-              trend={{ direction: inventoryKpis.lowStockItemsCount > 0 ? "up" : "flat", pct: 0 }}
-              icon={<TrendingDown size={22} />}
-              statusColor={inventoryKpis.lowStockItemsCount > 0 ? "held" : undefined}
-              linkTo="/inventory"
-            />
-          ) : (
-            <KpiCard
-              label="Low Stock Items"
-              value="—"
-              trend={{ direction: "flat", pct: 0 }}
-              icon={<TrendingDown size={22} />}
-            />
-          )}
-
-          {/* Pending Approvals — gated fifo_override.approve */}
-          {hasApprovalAccess ? (
-            <KpiCard
-              label="Pending Approvals"
-              value={pendingApprovals}
-              trend={{ direction: pendingApprovals > 0 ? "up" : "flat", pct: 0 }}
-              icon={<ShieldAlert size={22} />}
-              statusColor={pendingApprovals > 0 ? "pending" : undefined}
-              linkTo="/approvals"
-            />
-          ) : (
-            <KpiCard
-              label="Pending Approvals"
-              value="—"
-              trend={{ direction: "flat", pct: 0 }}
-              icon={<ShieldAlert size={22} />}
-            />
-          )}
-        </KpiCardGroup>
-      </section>
-
-      {/* ── Row 2: Activity Heatmap ───────────────────────────────────────
-          Gated reporting.read — omitted entirely if session lacks it (no
-          locked placeholder). brand-design-system.md §3.2 R11.6. */}
-      {heatmapData !== null && (
-        <section aria-label="Inventory activity heatmap" className="mb-8">
-          <HomeDashboardHeatmapSection
-            data={heatmapData}
-            flowFilter={heatmapFilter}
-          />
-        </section>
-      )}
-
-      {/* ── Row 2.5: Weekly trend + Monthly KPI ────────────────────────────
-          R11.3 — weekly transaction line graph (outgoing qty + CBM only,
-          per R11.5 scope decision — no $/sales series) and monthly outgoing
-          KPI summary, side by side on desktop. */}
-      <section aria-label="Outgoing trend" className="mb-8 grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
-        <div className="rounded-md border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">
+        <div className="rounded-lg border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1 sm:p-5 lg:col-span-2">
           <h2 className="mb-1 font-heading text-headline-md font-semibold text-on-surface">
             Weekly Outgoing Trend
           </h2>
@@ -286,26 +202,108 @@ export function OfficeLanding({
             <WeeklyTrendChart data={weeklyTrend} />
           </div>
         </div>
+
         <div
           data-testid="landing-monthly-kpi"
-          className="flex flex-col justify-center rounded-md border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1"
+          className="flex flex-col justify-center rounded-lg bg-brand-navy p-5 text-surface-white shadow-elevation-1 lg:col-span-1"
         >
-          <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+          <p className="font-label text-label uppercase tracking-[0.05em] text-surface-white/70">
             Monthly Outgoing Qty
           </p>
-          <p className="mt-2 font-heading text-data-display font-semibold text-on-surface">
-            {monthlyOutgoingQty}
+          <p className="mt-2 font-heading text-headline-xl font-bold text-surface-white">
+            {monthlyOutgoingQty.toLocaleString()}
           </p>
+          <p className="mt-1 font-body text-body-sm text-surface-white/70">Month to date</p>
         </div>
       </section>
 
-      {/* ── Row 3: Master Inventory Preview + Action Queues ───────────────
+      {/* ── KPI tile strip ─────────────────────────────────────────────────
+          6 operational count tiles. Capability-gated: tile shows "—" not an
+          error state when the session lacks the required capability.
+          Colored icon badge is an accent only — the figure itself stays
+          text-on-surface, never colored text (KpiTile enforces this). */}
+      <section aria-label="Key performance indicators" className="mb-4 sm:mb-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
+          <KpiTile
+            label="Open WRRs"
+            value={hasReceivingAccess ? openWrrs : "—"}
+            icon={<PackageCheck size={20} />}
+            accent="royal-blue"
+            linkTo={hasReceivingAccess ? "/receiving" : undefined}
+          />
+          <KpiTile
+            label="Active Picks"
+            value={hasPickListAccess ? openPickLists : "—"}
+            icon={<ListChecks size={20} />}
+            accent="available"
+            linkTo={hasPickListAccess ? "/outgoing" : undefined}
+          />
+          <KpiTile
+            label="Pending Transfers"
+            value={hasTransferAccess ? pendingTransfers : "—"}
+            icon={<ArrowLeftRight size={20} />}
+            accent="navy"
+            linkTo={hasTransferAccess ? "/transfers" : undefined}
+          />
+          <KpiTile
+            label="Open Inspections"
+            value={hasInspectionAccess ? openInspections : "—"}
+            icon={<FlaskConical size={20} />}
+            accent="pending"
+            linkTo={hasInspectionAccess ? "/inspection" : undefined}
+          />
+          {/* Low Stock — operational stock-count metric, gated reporting.read
+              (NOT reporting.financial_read — that gate was wrong for a
+              non-financial count). */}
+          <KpiTile
+            label="Low Stock Items"
+            value={hasReportingAccess && inventoryKpis ? inventoryKpis.lowStockItemsCount : "—"}
+            icon={<TrendingDown size={20} />}
+            accent="red"
+            linkTo={hasReportingAccess ? "/inventory" : undefined}
+          />
+          {/* Pending Approvals — gated fifo_override.approve */}
+          <KpiTile
+            label="Pending Approvals"
+            value={hasApprovalAccess ? pendingApprovals : "—"}
+            icon={<ShieldAlert size={20} />}
+            accent="neutral"
+            linkTo={hasApprovalAccess ? "/approvals" : undefined}
+          />
+        </div>
+      </section>
+
+      {/* ── Flow-type activity + Activity heatmap ──────────────────────────
+          Side by side on desktop, stacked on mobile. Flow-type bar chart is
+          this app's real equivalent of a generic "sales by platform" chart —
+          VMI/Trading/Supplies is the one dimension every pick list
+          partitions by. Heatmap gated reporting.read — omitted entirely if
+          session lacks it (no locked placeholder), per R11.6. */}
+      <section aria-label="Activity breakdown" className="mb-4 grid grid-cols-1 gap-3 sm:mb-6 sm:gap-4 lg:grid-cols-2">
+        {hasPickListAccess && flowActivity && flowActivity.length > 0 && (
+          <BarChart
+            title="Activity by Flow Type"
+            xAxisLabel="Flow type"
+            yAxisLabel="Pick lists"
+            data={flowActivity.map((row) => ({
+              label: FLOW_LABELS[row.flowType] ?? row.flowType,
+              value: row.count,
+              color: FLOW_COLORS[row.flowType],
+            }))}
+          />
+        )}
+        {heatmapData !== null && (
+          <HomeDashboardHeatmapSection data={heatmapData} flowFilter={heatmapFilter} />
+        )}
+      </section>
+
+      {/* ── Master Inventory Preview + Action Queues ───────────────────────
           Two panels side by side on desktop, stacked on mobile. */}
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
 
         {/* Left: Master Inventory Preview (top 5 items by stock level) */}
-        <section aria-label="Top inventory items" className="rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-1">
-          <div className="flex items-center justify-between border-b border-outline-variant/30 px-5 py-4">
+        <section aria-label="Top inventory items" className="rounded-lg border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+          <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3 sm:px-5 sm:py-4">
             <h2 className="font-heading text-headline-md font-semibold text-on-surface">
               Top Stock Items
             </h2>
@@ -394,12 +392,12 @@ export function OfficeLanding({
         </section>
 
         {/* Right: Action Queues */}
-        <aside className="space-y-4">
+        <aside className="space-y-3 sm:space-y-4">
           {/* Recent Activity feed (R11.3) */}
           <div
             aria-label="Recent activity"
             data-testid="landing-recent-activity"
-            className="rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-1"
+            className="rounded-lg border border-outline-variant/30 bg-surface-white shadow-elevation-1"
           >
             <div className="flex items-center gap-2 border-b border-outline-variant/30 px-4 py-3">
               <ClipboardList size={18} strokeWidth={2} aria-hidden="true" className="text-brand-navy" />
@@ -432,7 +430,7 @@ export function OfficeLanding({
 
           {/* Open WRRs */}
           {hasReceivingAccess && (
-            <div className="rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+            <div className="rounded-lg border border-outline-variant/30 bg-surface-white shadow-elevation-1">
               <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
                 <h3 className="font-heading text-headline-md font-semibold text-on-surface">
                   Open WRRs
@@ -475,7 +473,7 @@ export function OfficeLanding({
 
           {/* Allocated Pick Lists */}
           {hasPickListAccess && (
-            <div className="rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+            <div className="rounded-lg border border-outline-variant/30 bg-surface-white shadow-elevation-1">
               <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
                 <h3 className="font-heading text-headline-md font-semibold text-on-surface">
                   Active Pick Lists
@@ -513,7 +511,7 @@ export function OfficeLanding({
 
           {/* Pending Approvals */}
           {hasApprovalAccess && (
-            <div className="rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+            <div className="rounded-lg border border-outline-variant/30 bg-surface-white shadow-elevation-1">
               <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
                 <h3 className="font-heading text-headline-md font-semibold text-on-surface">
                   Pending Approvals
@@ -551,7 +549,7 @@ export function OfficeLanding({
 
           {/* Open Inspection Cases */}
           {hasInspectionAccess && (
-            <div className="rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+            <div className="rounded-lg border border-outline-variant/30 bg-surface-white shadow-elevation-1">
               <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
                 <h3 className="font-heading text-headline-md font-semibold text-on-surface">
                   Open Inspections

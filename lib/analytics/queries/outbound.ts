@@ -64,6 +64,22 @@ export async function getTopDispatchedItems(range: DateRange, executor: Analytic
   `);
 }
 
+// "Activity by Flow Type" bar chart source for `/` (2026-08-17 dashboard
+// restyle) — the real equivalent of a generic "sales by platform" bar chart
+// for this app: VMI/Trading/Supplies is the one dimension every pick list
+// legitimately partitions by.
+export async function getPickListCountByFlow(range: DateRange, executor: AnalyticsExecutor = defaultAnalyticsExecutor) {
+  assertDateRange(range);
+  const startDate = range.startDate.toISOString();
+  const endDate = range.endDate.toISOString();
+  return executor.execute<{ flow_type: string; count: string }>(sql`
+    SELECT flow_type, COUNT(*) AS count
+    FROM pick_lists
+    WHERE created_at >= ${startDate} AND created_at <= ${endDate}
+    GROUP BY flow_type
+  `);
+}
+
 export async function getCommitmentDuration(range: DateRange, executor: AnalyticsExecutor = defaultAnalyticsExecutor) {
   assertDateRange(range);
   const startDate = range.startDate.toISOString();

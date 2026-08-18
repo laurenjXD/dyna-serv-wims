@@ -36,6 +36,7 @@ import {
   getDispatchRate,
   getTopDispatchedItems,
   getCommitmentDuration,
+  getPickListCountByFlow,
 } from "../outbound";
 import type { AnalyticsExecutor } from "../shared";
 
@@ -103,5 +104,43 @@ describe("lib/analytics/queries/outbound — no raw Date bind parameters (2026-0
     const executor = captureExecutor();
     await getCommitmentDuration(range, executor);
     assertNoRawDateParams(executor.captured[0]);
+  });
+
+  it("getPickListCountByFlow never binds a raw Date", async () => {
+    const executor = captureExecutor();
+    await getPickListCountByFlow(range, executor);
+    assertNoRawDateParams(executor.captured[0]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getPickListCountByFlow — 2026-08-17 dashboard restyle, "Activity by Flow
+// Type" bar chart (VMI/Trading/Supplies), replacing the reference design's
+// "Sales Ratings by platform" bar chart with this app's real equivalent
+// dimension.
+// ---------------------------------------------------------------------------
+
+describe("getPickListCountByFlow — per-flow pick list counts for the dashboard bar chart", () => {
+  it("queries pick_lists grouped by flow_type within the given range", async () => {
+    const executor = captureExecutor();
+    await getPickListCountByFlow(range, executor);
+    const { sql: compiledSql } = dialect.sqlToQuery(executor.captured[0]);
+    expect(compiledSql).toMatch(/GROUP BY\s+flow_type/i);
+    expect(compiledSql).toMatch(/pick_lists/i);
+  });
+
+  it("returns whatever rows the executor provides, shaped as {flow_type, count}", async () => {
+    const rows = [
+      { flow_type: "vmi", count: "12" },
+      { flow_type: "trading", count: "7" },
+      { flow_type: "supplies", count: "3" },
+    ];
+    const executor: AnalyticsExecutor = {
+      async execute() {
+        return rows as never;
+      },
+    };
+    const result = await getPickListCountByFlow(range, executor);
+    expect(result).toEqual(rows);
   });
 });
