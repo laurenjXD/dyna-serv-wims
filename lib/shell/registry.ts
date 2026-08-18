@@ -80,7 +80,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
   {
     id: "outgoing",
     path: "/outgoing",
-    surface: "floor",
+    surface: "shared",
     capability: "pick_list.execute",
     featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"],
     launchStatus: "launch",
@@ -125,7 +125,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
   {
     id: "sync",
     path: "/sync",
-    surface: "floor",
+    surface: "shared",
     capability: "none",
     featureSpecs: ["03-offline-mode-and-client-storage"],
     launchStatus: "launch",
@@ -156,7 +156,11 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     surface: "office",
     capability: "reporting.read",
     featureSpecs: ["16-reporting-and-analytics"],
-    launchStatus: "planned",
+    // Was "planned" — confirmed stale (2026-08-17): the page is fully wired
+    // to real query modules (getInventoryKpis, getWrrVolumeTrend,
+    // getPickListVolumeTrend, getActivityHeatmap, etc.), zero TODO/mock
+    // markers. See revision-log.md's "Reports/Billing nav visibility" entry.
+    launchStatus: "launch",
     group: "Reports",
   },
   {

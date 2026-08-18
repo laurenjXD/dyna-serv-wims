@@ -160,11 +160,11 @@ function ContactPartyModal({
           id="contact-party-title"
           className="font-heading font-semibold text-headline-md text-on-surface"
         >
-          Contact Party
+          Contact Organization
         </h2>
         <p className="mt-2 font-body text-body-md text-text-grey">
           This will send an operational notification from Dyna-Serv Operations
-          to the party&apos;s email address on record. The message is sent from
+          to the organization&apos;s email address on record. The message is sent from
           the Dyna-Serv system — not from your personal inbox.
         </p>
 
@@ -270,7 +270,7 @@ export function PartyDetailActions({
               onClick={() => setShowContactModal(true)}
               className="flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-red"
             >
-              Contact Party
+              Contact Organization
             </button>
           )}
         </div>
@@ -328,7 +328,7 @@ export function DeactivatePartySection({ partyId }: { partyId: string }) {
   if (state.ok) {
     return (
       <p className="font-body text-body-md text-status-available">
-        Party has been deactivated. Reload the page to see the updated status.
+        Organization has been deactivated. Reload the page to see the updated status.
       </p>
     );
   }
@@ -341,13 +341,13 @@ export function DeactivatePartySection({ partyId }: { partyId: string }) {
           onClick={() => setConfirmed(true)}
           className="flex h-11 items-center justify-center rounded border border-status-held px-4 font-label text-label text-status-held hover:bg-status-held/5 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-status-held"
         >
-          Deactivate Party
+          Deactivate Organization
         </button>
       ) : (
         <form action={formAction} className="flex flex-wrap items-center gap-3">
           <input type="hidden" name="id" value={partyId} />
           <p className="font-body text-body-md text-on-surface">
-            Deactivate this party? This cannot be undone through this form.
+            Deactivate this organization? This cannot be undone through this form.
           </p>
           <button
             type="button"

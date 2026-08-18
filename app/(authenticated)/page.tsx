@@ -38,7 +38,11 @@ import { listPendingApprovalRequests } from "@/lib/db/queries/approvals";
 import type { ApprovalRequestRow } from "@/lib/db/queries/approvals";
 import { getInventoryKpis } from "@/lib/analytics/queries/inventory";
 import { getActivityHeatmap } from "@/lib/analytics/queries/heatmap";
-import { getPickListQtyAndCbmTrend } from "@/lib/analytics/queries/outbound";
+import {
+  getPickListQtyAndCbmTrend,
+  getDispatchRate,
+  getPickListCountByFlow,
+} from "@/lib/analytics/queries/outbound";
 import { toNumber } from "@/lib/analytics/queries/shared";
 import { listStockView } from "@/lib/db/queries/inventory";
 import type { StockViewRow } from "@/lib/db/queries/inventory";
@@ -262,6 +266,8 @@ export default async function Home({ searchParams }: PageProps) {
     monthlyTrendRows,
     recentWrrRows,
     recentPickListRows,
+    dispatchRateRow,
+    flowActivityRows,
   ] = await Promise.all([
     // Low Stock Items KPI — operational stock-count metric, gated
     // reporting.read (NOT reporting.financial_read — that gate was wrong
@@ -301,6 +307,14 @@ export default async function Home({ searchParams }: PageProps) {
     hasPickListAccess
       ? listRecentPickLists(db, { limit: 5 })
       : Promise.resolve([] as PickListRow[]),
+    // Dispatch rate ring + flow-type activity bar chart (2026-08-17 restyle)
+    // — same weekly range as the Weekly Outgoing Trend chart they sit next to.
+    hasPickListAccess
+      ? getDispatchRate({ startDate: weekStart, endDate: now })
+      : Promise.resolve(null as { dispatched: string; not_dispatched: string } | null),
+    hasPickListAccess
+      ? getPickListCountByFlow({ startDate: weekStart, endDate: now })
+      : Promise.resolve([] as Array<{ flow_type: string; count: string }>),
   ]);
 
   // Build top-5 inventory preview from stock rows.
@@ -321,6 +335,20 @@ export default async function Home({ searchParams }: PageProps) {
   const monthlyOutgoingQty = (
     monthlyTrendRows as Array<{ total_qty: string }>
   ).reduce((sum, row) => sum + toNumber(row.total_qty), 0);
+
+  // Dispatch rate ring data (2026-08-17 restyle) — null when the session
+  // lacks pick_list.read, same omission pattern as the heatmap.
+  const dispatchRate = hasPickListAccess && dispatchRateRow
+    ? {
+        dispatched: toNumber(dispatchRateRow.dispatched),
+        notDispatched: toNumber(dispatchRateRow.not_dispatched),
+      }
+    : null;
+
+  // Flow-type activity bar chart data (2026-08-17 restyle).
+  const flowActivity = hasPickListAccess
+    ? flowActivityRows.map((row) => ({ flowType: row.flow_type, count: toNumber(row.count) }))
+    : null;
 
   // Recent Activity feed (R11.3) — built from listRecentWrrDocuments/
   // listRecentPickLists (createdAt DESC), NOT the openWrrRows/
@@ -369,6 +397,8 @@ export default async function Home({ searchParams }: PageProps) {
       recentActivity={recentActivity}
       weeklyTrend={weeklyTrend}
       monthlyOutgoingQty={monthlyOutgoingQty}
+      dispatchRate={dispatchRate}
+      flowActivity={flowActivity}
     />
   );
 }

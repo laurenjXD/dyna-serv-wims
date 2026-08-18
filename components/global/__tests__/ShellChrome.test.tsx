@@ -57,15 +57,18 @@ vi.mock("@/components/global/ShellNavigation", () => ({
   ShellNavigation: ({
     tier,
     currentPath,
+    desktopOpen,
   }: {
     tier: string;
     context: unknown;
     currentPath: string;
+    desktopOpen?: boolean;
   }) => (
     <nav
       data-testid="shell-navigation"
       data-tier={tier}
       data-current-path={currentPath}
+      data-desktop-open={String(desktopOpen)}
     />
   ),
 }));
@@ -989,5 +992,76 @@ describe("ShellChrome mobile header logo (requirements.md R4.1, tasks.md §4 rea
     // "DS" text node inside the aria-hidden placeholder badge -- this
     // assertion fails until that placeholder is replaced by the real image.
     expect(screen.queryByText("DS")).not.toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 2026-08-17: desktop (lg+) sidebar collapse/expand toggle. Distinct from
+// the pre-existing mobile hamburger button above (that one only ever
+// applies below lg, via useShellSidebar's isOpen/toggle/close). This is a
+// new, separate piece of state (useDesktopSidebar, lib/shell/state.ts),
+// defaulting open so existing behavior (desktop sidebar always visible) is
+// unchanged until a user actually collapses it. See revision-log.md.
+// ---------------------------------------------------------------------------
+
+describe("ShellChrome desktop sidebar toggle (2026-08-17)", () => {
+  it("renders a desktop navigation toggle button, expanded by default", () => {
+    render(
+      <ShellChrome>
+        <div>page</div>
+      </ShellChrome>,
+    );
+    const toggle = screen.getByRole("button", { name: /collapse navigation/i });
+    expect(toggle).toBeInTheDocument();
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("ShellNavigation receives desktopOpen: true by default", () => {
+    render(
+      <ShellChrome>
+        <div>page</div>
+      </ShellChrome>,
+    );
+    expect(screen.getByTestId("shell-navigation")).toHaveAttribute(
+      "data-desktop-open",
+      "true",
+    );
+  });
+
+  it("clicking the toggle collapses the sidebar: aria-expanded flips, label swaps to 'Expand navigation', and ShellNavigation receives desktopOpen: false", async () => {
+    const user = userEvent.setup();
+    render(
+      <ShellChrome>
+        <div>page</div>
+      </ShellChrome>,
+    );
+    const toggle = screen.getByRole("button", { name: /collapse navigation/i });
+    await user.click(toggle);
+
+    const collapsedToggle = screen.getByRole("button", { name: /expand navigation/i });
+    expect(collapsedToggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByTestId("shell-navigation")).toHaveAttribute(
+      "data-desktop-open",
+      "false",
+    );
+  });
+
+  it("clicking the toggle twice returns to the expanded state", async () => {
+    const user = userEvent.setup();
+    render(
+      <ShellChrome>
+        <div>page</div>
+      </ShellChrome>,
+    );
+    const toggle = screen.getByRole("button", { name: /collapse navigation/i });
+    await user.click(toggle);
+    await user.click(screen.getByRole("button", { name: /expand navigation/i }));
+
+    const reopenedToggle = screen.getByRole("button", { name: /collapse navigation/i });
+    expect(reopenedToggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByTestId("shell-navigation")).toHaveAttribute(
+      "data-desktop-open",
+      "true",
+    );
   });
 });

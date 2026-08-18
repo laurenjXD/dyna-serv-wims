@@ -7,7 +7,7 @@
 //     §5a (Contact Party email action)
 //   specs/00-steering/tech.md — RBAC from session, never from client params
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import type { RequestAuthorizationResolver } from "@/lib/rbac/session";
 import { requirePermission } from "@/lib/rbac/guard";
 import { parsePartyInput } from "@/lib/enrollment/party-schema";
@@ -98,6 +98,25 @@ export async function createParty(
 
   const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
     const db = tx.db as DbLike;
+
+    // Duplicate-code check (code has a DB-level UNIQUE constraint) —
+    // without this, a collision throws a raw, uncaught Postgres
+    // constraint-violation error straight out of the Server Action instead
+    // of a friendly field error. Same pattern as createLocation's label
+    // uniqueness check (lib/actions/locations.ts).
+    const existing = await db
+      .select({ id: parties.id })
+      .from(parties)
+      .where(eq(parties.code, data.code));
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((existing as any[]).length > 0) {
+      return {
+        ok: false,
+        fieldErrors: { code: "This party code is already in use." },
+      } satisfies ActionCreateResult;
+    }
+
     const [inserted] = await db
       .insert(parties)
       .values({
@@ -173,6 +192,21 @@ export async function updateParty(
     const submittedTimestamp = new Date(submittedUpdatedAt).getTime();
     if (dbTimestamp !== submittedTimestamp) {
       return { ok: false, error: "Conflict" } satisfies ActionResult;
+    }
+
+    // Duplicate-code check, excluding this row itself — same reasoning as
+    // createParty above.
+    const collision = await db
+      .select({ id: parties.id })
+      .from(parties)
+      .where(and(eq(parties.code, data.code), ne(parties.id, id)));
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((collision as any[]).length > 0) {
+      return {
+        ok: false,
+        fieldErrors: { code: "This party code is already in use." },
+      } satisfies ActionResult;
     }
 
     await db

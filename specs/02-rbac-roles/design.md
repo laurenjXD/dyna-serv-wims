@@ -111,19 +111,19 @@ The following operational capability catalog defines stable resource identifiers
 
 | Resource | Actions | Scope kind | Default role(s) |
 |---|---|---|---|
-| `receiving` | `view`, `scan`, `confirm` | `global` | `warehouse_staff`, `supervisor` |
-| `inspection` | `perform` | `global` | `warehouse_staff`, `supervisor` |
-| `inspection` | `resolve` | `global` | `supervisor` |
+| `receiving` | `view`, `scan`, `confirm` | `global` | `warehouse_staff`, `supervisor`, `administrator` |
+| `inspection` | `perform` | `global` | `warehouse_staff`, `supervisor`, `administrator` |
+| `inspection` | `resolve` | `global` | `supervisor`, `administrator` |
 | `inventory` | `read` | `global` | `warehouse_staff`, `supervisor`, `administrator` |
 | `inventory` | `manage` | `global` | `administrator` |
 | `locations` | `read` | `global` | `warehouse_staff`, `supervisor`, `administrator` |
 | `locations` | `manage` | `global` | `administrator` |
-| `pick_list` | `generate`, `execute`, `read` | `global` | `warehouse_staff`, `supervisor` |
+| `pick_list` | `generate`, `execute`, `read` | `global` | `warehouse_staff`, `supervisor`, `administrator` |
 | `pick_list` | `read` | `assigned_party` | `party_user` |
-| `fifo_override` | `request` | `global` | `warehouse_staff`, `supervisor` |
-| `fifo_override` | `approve` | `global` | `supervisor` |
-| `dispatch` | `read`, `execute` | `global` | `warehouse_staff`, `supervisor` |
-| `transfers` | `read`, `request`, `execute` | `global` | `warehouse_staff`, `supervisor` |
+| `fifo_override` | `request` | `global` | `warehouse_staff`, `supervisor`, `administrator` |
+| `fifo_override` | `approve` | `global` | `supervisor`, `administrator` |
+| `dispatch` | `read`, `execute` | `global` | `warehouse_staff`, `supervisor`, `administrator` |
+| `transfers` | `read`, `request`, `execute` | `global` | `warehouse_staff`, `supervisor`, `administrator` |
 | `documents` | `read`, `generate`, `download` | `global` | `warehouse_staff`, `supervisor`, `administrator` |
 | `documents` | `read` | `assigned_party` | `party_user` |
 | `wrr_documents` | `read` | `assigned_party` | `party_user` |
@@ -148,6 +148,8 @@ The following operational capability catalog defines stable resource identifiers
 | `notifications` | `read_diagnostics` | `global` | `supervisor`, `administrator` |
 | `shipment_labels` | `generate` | `assigned_party` | `party_user` |
 | `audit_log` | `read` | `global` | `supervisor`, `administrator` |
+
+**Amendment (2026-08-17)**: `administrator` added to the `receiving`, `inspection`, `pick_list` (global row), `fifo_override`, `dispatch`, and `transfers` rows above. These were the only operational resource rows in this catalog where `administrator` didn't already accompany `supervisor` — every other row (`inventory`, `locations`, `documents`, `reporting`, `parties`, `items`, `forex_rates`, `notifications`, `audit_log`) already grants both. PO decision: administrator oversees the whole system and should have full operational visibility and action parity with supervisor, not just admin/config/audit capabilities — the original omission had no stated separation-of-duties rationale elsewhere in this document (unlike, e.g., §3.4's self-approval prohibition, which is explicit). The self-approval prohibition itself is unaffected — it is a requester-!= -approver check independent of role, so it continues to apply when the approver happens to hold the `administrator` role. Seeded via `supabase/migrations/0027_administrator_operational_capabilities.sql`, additive to `0005_rbac_constraints_and_seed.sql` rather than editing it in place. See `revision-log.md`.
 
 **Schema amendment (2026-08-06)**: `shipment_labels.generate` originates from `22-parties-portal` requirements.md R11 (supplier-initiated barcode pre-labeling of inbound dispatches) — a party in the inbound-supplying role generates a pre-arrival label for their own outbound shipment. Like every other row in this table, `shipment_labels.generate` is `assigned_party`-scoped only — the base capability model grants nothing beyond the caller's own `party_id`. But the actual RLS policy for the one write this capability gates (§7.4's `wrr_advance_notices` pattern) layers an *additional* business-rule condition on top: the caller's party must also hold a `party_roles` row with `role IN ('vendor', 'supplier')`, because `assigned_party` scope alone does not distinguish an inbound-supplying party from an outbound-receiving one within the same `flow_type` (a Trading `customer`/`end_customer` and a Trading `vendor`/`supplier` are both merely "assigned" to the same party record's Trading scope). This is framed the same way §3.4's self-approval prohibition is framed: a capability constraint layered on top of the base authorization model, not a new `scope_kind`.
 

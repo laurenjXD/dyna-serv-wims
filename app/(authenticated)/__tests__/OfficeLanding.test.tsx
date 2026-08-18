@@ -109,6 +109,12 @@ const baseProps = {
     { period: "2026-08-11", qty: 98, cbm: 28.2 },
   ],
   monthlyOutgoingQty: 5420,
+  dispatchRate: { dispatched: 18, notDispatched: 2 },
+  flowActivity: [
+    { flowType: "vmi", count: 12 },
+    { flowType: "trading", count: 7 },
+    { flowType: "supplies", count: 3 },
+  ],
 };
 
 describe("OfficeLanding (specs/05-ui-shell-and-navigation/tasks.md §7 — Recent Activity, Weekly trend, Monthly KPI, Low Stock gate)", () => {
@@ -144,7 +150,9 @@ describe("OfficeLanding (specs/05-ui-shell-and-navigation/tasks.md §7 — Recen
   it("AC R11.3: renders a landing-monthly-kpi element showing the monthly outgoing total", () => {
     render(<OfficeLanding {...baseProps} />);
     const kpi = screen.getByTestId("landing-monthly-kpi");
-    expect(kpi).toHaveTextContent("5420");
+    // 2026-08-17 restyle: displayed via toLocaleString() (thousands
+    // separator) as part of the bold stat-block treatment.
+    expect(kpi).toHaveTextContent("5,420");
   });
 
   // R11.5 — Low Stock Items is an operational stock-count metric, not a
@@ -177,5 +185,50 @@ describe("OfficeLanding (specs/05-ui-shell-and-navigation/tasks.md §7 — Recen
     );
     const card = screen.getByLabelText(/Low Stock Items: —/i);
     expect(card).toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 2026-08-17 dashboard restyle — dispatch-rate ring, flow-type activity bar
+// chart, and the capability-gated omission behavior for both (same pattern
+// as the pre-existing heatmap: null -> omitted entirely, no locked
+// placeholder).
+// ---------------------------------------------------------------------------
+
+describe("OfficeLanding (2026-08-17 restyle — dispatch rate ring, flow-type activity)", () => {
+  it("renders the Dispatch Rate ring with the computed percentage when dispatchRate is provided", () => {
+    render(<OfficeLanding {...baseProps} />);
+    // 18 dispatched / 20 total = 90%
+    expect(screen.getByText("90")).toBeInTheDocument();
+    // DonutChart legitimately renders "Dispatched" twice (legend + sr-only
+    // accessible table) — assert presence, not uniqueness.
+    expect(screen.getAllByText("Dispatched").length).toBeGreaterThan(0);
+  });
+
+  it("omits the Dispatch Rate ring entirely when dispatchRate is null (no pick_list.read)", () => {
+    render(<OfficeLanding {...baseProps} hasPickListAccess={false} dispatchRate={null} />);
+    expect(screen.queryByText("Dispatched")).not.toBeInTheDocument();
+    expect(screen.getByText("Dispatch rate unavailable")).toBeInTheDocument();
+  });
+
+  it("renders the Activity by Flow Type bar chart with a bar per flow", () => {
+    render(<OfficeLanding {...baseProps} />);
+    const chart = screen.getByLabelText("Activity by Flow Type");
+    // BarChart legitimately renders each label twice (visible bar label +
+    // sr-only accessible table row) — assert presence, not uniqueness.
+    expect(within(chart).getAllByText("VMI").length).toBeGreaterThan(0);
+    expect(within(chart).getAllByText("Trading").length).toBeGreaterThan(0);
+    expect(within(chart).getAllByText("Supplies").length).toBeGreaterThan(0);
+  });
+
+  it("omits the flow-type bar chart entirely when flowActivity is null (no pick_list.read)", () => {
+    render(<OfficeLanding {...baseProps} hasPickListAccess={false} flowActivity={null} />);
+    expect(screen.queryByLabelText("Activity by Flow Type")).not.toBeInTheDocument();
+  });
+
+  it("renders the Monthly Outgoing Qty stat block with the same value and testid as before the restyle", () => {
+    render(<OfficeLanding {...baseProps} />);
+    const kpi = screen.getByTestId("landing-monthly-kpi");
+    expect(kpi).toHaveTextContent("5,420");
   });
 });

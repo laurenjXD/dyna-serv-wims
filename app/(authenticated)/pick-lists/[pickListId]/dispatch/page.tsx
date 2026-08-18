@@ -140,7 +140,7 @@ export default async function DispatchConfirmationPage({
     .from(parties)
     .where(eq(parties.id, pickList.customerPartyId))
     .limit(1)) as Array<{ id: string; name: string }>;
-  const partyName = partyRows[0]?.name ?? "Unknown Party";
+  const partyName = partyRows[0]?.name ?? "Unknown Organization";
 
   const alreadyDispatched = pickList.status === "dispatched";
 

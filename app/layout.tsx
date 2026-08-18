@@ -2,6 +2,18 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 
+// Co-locates every route's serverless function with the Supabase database
+// (aws-0-ap-northeast-1 / Tokyo) instead of Vercel's iad1 (US East) default.
+// Every authenticated page does at least one DB round trip (session/grants
+// resolution via middleware + requirePermission()) plus its own queries —
+// with compute and database on opposite sides of the Pacific, each of those
+// paid a ~200ms+ one-way network cost before any actual query work started.
+// See specs/00-steering/revision-log.md's "Vercel/Supabase region mismatch"
+// entry (2026-08-17). Root-layout-level `preferredRegion` applies to every
+// route unless a more specific segment overrides it (Next.js App Router
+// convention on Vercel).
+export const preferredRegion = "hnd1";
+
 // Glacial Indifference (body/UI/nav/labels/badges/buttons) & Etna Sans
 // Serif (headings/displays), per specs/00-steering/ui-ux-design-plan.md §7.
 // Legacy Inter fallback retired now that real brand font files are in

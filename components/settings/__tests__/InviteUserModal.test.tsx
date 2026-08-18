@@ -20,7 +20,7 @@ describe("InviteUserModal (design.md §2.1, FR-4.2/FR-4.3)", () => {
     expect(screen.queryByTestId("invite-party-field")).not.toBeInTheDocument();
   });
 
-  it("fades in the party field only when role is set to Party Client", async () => {
+  it("fades in the party field only when role is set to Organization Client", async () => {
     const user = userEvent.setup();
     render(<InviteUserModal parties={parties} onClose={() => {}} onInvite={vi.fn()} />);
 
@@ -40,7 +40,7 @@ describe("InviteUserModal (design.md §2.1, FR-4.2/FR-4.3)", () => {
     await user.selectOptions(screen.getByTestId("invite-role-select"), "party_user");
     await user.click(screen.getByTestId("invite-submit"));
 
-    expect(await screen.findByText(/must be assigned to a specific Party/i)).toBeInTheDocument();
+    expect(await screen.findByText(/must be assigned to a specific Organization/i)).toBeInTheDocument();
     expect(onInvite).not.toHaveBeenCalled();
   });
 

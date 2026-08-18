@@ -163,13 +163,13 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
 
           {/* Full-width on mobile, two-column grid on desktop per task requirements */}
           <div className="mt-4 grid gap-4 md:grid-cols-2">
-            {/* Vendor Party ID — required */}
+            {/* Vendor Organization ID — required */}
             <div>
               <label
                 htmlFor="vendorPartyId"
                 className="block font-label text-label text-text-grey"
               >
-                Vendor Party ID{" "}
+                Vendor Organization ID{" "}
                 <span aria-hidden="true" className="text-brand-red">
                   *
                 </span>

@@ -366,13 +366,13 @@ export default async function InspectTransferPage({
             />
           </div>
 
-          {/* Party ID */}
+          {/* Organization ID */}
           <div>
             <label
               htmlFor="open-partyId"
               className="block font-label text-label text-text-grey"
             >
-              Party ID{" "}
+              Organization ID{" "}
               <span aria-hidden="true" className="text-brand-red">
                 *
               </span>

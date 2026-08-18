@@ -141,7 +141,7 @@ export default async function WrrDetailPage({ params }: PageProps) {
           </div>
           <div>
             <dt className="font-label text-label text-text-grey">
-              Vendor Party ID
+              Vendor Organization ID
             </dt>
             <dd className="mt-1 font-mono text-mono-md text-on-surface">
               {wrr.vendorPartyId}
