@@ -75,18 +75,29 @@ const UserPreferencesContext = createContext<UserPreferencesContextValue | null>
 
 export function UserPreferencesProvider({ children }: { children: ReactNode }) {
   const [preferences, setPreferences] = useState<UserPreferences>(DEFAULT_PREFERENCES);
+  const [hasHydrated, setHasHydrated] = useState(false);
 
   // Hydrate from localStorage on mount only (client-only; avoids a
   // server/client render mismatch since the server has no localStorage).
   useEffect(() => {
     if (typeof window === "undefined") return;
     setPreferences(parsePreferences(window.localStorage.getItem(PREFERENCES_STORAGE_KEY)));
+    setHasHydrated(true);
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !hasHydrated) return;
     window.localStorage.setItem(PREFERENCES_STORAGE_KEY, serializePreferences(preferences));
-  }, [preferences]);
+  }, [hasHydrated, preferences]);
+
+  // Preferences are application-wide, not just controls on the Profile page.
+  // Data attributes let the global stylesheet theme common surfaces and apply
+  // compact table/list spacing without every feature needing a prop drill.
+  useEffect(() => {
+    if (typeof document === "undefined" || !hasHydrated) return;
+    document.documentElement.dataset.theme = preferences.darkMode ? "dark" : "light";
+    document.documentElement.dataset.density = preferences.density;
+  }, [hasHydrated, preferences]);
 
   const value = useMemo<UserPreferencesContextValue>(
     () => ({

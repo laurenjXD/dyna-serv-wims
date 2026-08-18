@@ -13,6 +13,7 @@ import type { RequestAuthorizationResolver } from "@/lib/rbac/session";
 import { AuthenticatedShellBoundary } from "@/components/global/AuthenticatedShellBoundary";
 import { ShellChrome } from "@/components/global/ShellChrome";
 import { resolveShellAuthorization } from "./actions";
+import { UserPreferencesProvider } from "@/lib/user-settings/preferences";
 
 const resolver: RequestAuthorizationResolver = {
   getContext: resolveShellAuthorization,
@@ -24,8 +25,10 @@ export default function AuthenticatedLayout({
   children: ReactNode;
 }) {
   return (
-    <AuthenticatedShellBoundary resolver={resolver}>
-      <ShellChrome>{children}</ShellChrome>
-    </AuthenticatedShellBoundary>
+    <UserPreferencesProvider>
+      <AuthenticatedShellBoundary resolver={resolver}>
+        <ShellChrome>{children}</ShellChrome>
+      </AuthenticatedShellBoundary>
+    </UserPreferencesProvider>
   );
 }

@@ -29,7 +29,6 @@ import type { OwnProfile } from "@/app/(authenticated)/profile/actions";
 import { AccountTab } from "./AccountTab";
 import { SecurityTab } from "./SecurityTab";
 import { PreferencesTab } from "./PreferencesTab";
-import { UserPreferencesProvider } from "@/lib/user-settings/preferences";
 
 export function ProfileContainer({ profile }: { profile: OwnProfile }) {
   return (
@@ -85,9 +84,7 @@ export function ProfileContainer({ profile }: { profile: OwnProfile }) {
         >
           Preferences
         </h2>
-        <UserPreferencesProvider>
-          <PreferencesTab />
-        </UserPreferencesProvider>
+        <PreferencesTab />
       </section>
     </div>
   );
