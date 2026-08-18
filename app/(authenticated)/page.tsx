@@ -38,7 +38,11 @@ import { listPendingApprovalRequests } from "@/lib/db/queries/approvals";
 import type { ApprovalRequestRow } from "@/lib/db/queries/approvals";
 import { getInventoryKpis } from "@/lib/analytics/queries/inventory";
 import { getActivityHeatmap } from "@/lib/analytics/queries/heatmap";
-import { getPickListQtyAndCbmTrend } from "@/lib/analytics/queries/outbound";
+import {
+  getPickListQtyAndCbmTrend,
+  getDispatchRate,
+  getPickListCountByFlow,
+} from "@/lib/analytics/queries/outbound";
 import { toNumber } from "@/lib/analytics/queries/shared";
 import { listStockView } from "@/lib/db/queries/inventory";
 import type { StockViewRow } from "@/lib/db/queries/inventory";
@@ -262,6 +266,8 @@ export default async function Home({ searchParams }: PageProps) {
     monthlyTrendRows,
     recentWrrRows,
     recentPickListRows,
+    dispatchRateRow,
+    flowActivityRows,
   ] = await Promise.all([
     // Low Stock Items KPI — operational stock-count metric, gated
     // reporting.read (NOT reporting.financial_read — that gate was wrong
@@ -301,6 +307,14 @@ export default async function Home({ searchParams }: PageProps) {
     hasPickListAccess
       ? listRecentPickLists(db, { limit: 5 })
       : Promise.resolve([] as PickListRow[]),
+    // Dispatch rate ring + flow-type activity bar chart (2026-08-17 restyle)
+    // — same weekly range as the Weekly Outgoing Trend chart they sit next to.
+    hasPickListAccess
+      ? getDispatchRate({ startDate: weekStart, endDate: now })
+      : Promise.resolve(null as { dispatched: string; not_dispatched: string } | null),
+    hasPickListAccess
+      ? getPickListCountByFlow({ startDate: weekStart, endDate: now })
+      : Promise.resolve([] as Array<{ flow_type: string; count: string }>),
   ]);
 
   // Build top-5 inventory preview from stock rows.
@@ -322,11 +336,37 @@ export default async function Home({ searchParams }: PageProps) {
     monthlyTrendRows as Array<{ total_qty: string }>
   ).reduce((sum, row) => sum + toNumber(row.total_qty), 0);
 
+  // Dispatch rate ring data (2026-08-17 restyle) — null when the session
+  // lacks pick_list.read, same omission pattern as the heatmap.
+  const dispatchRate = hasPickListAccess && dispatchRateRow
+    ? {
+        dispatched: toNumber(dispatchRateRow.dispatched),
+        notDispatched: toNumber(dispatchRateRow.not_dispatched),
+      }
+    : null;
+
+  // Flow-type activity bar chart data (2026-08-17 restyle).
+  const flowActivity = hasPickListAccess
+    ? flowActivityRows.map((row) => ({ flowType: row.flow_type, count: toNumber(row.count) }))
+    : null;
+
   // Recent Activity feed (R11.3) — built from listRecentWrrDocuments/
   // listRecentPickLists (createdAt DESC), NOT the openWrrRows/
   // openPickListRows action-queue rows above (those are oldest-first —
   // reusing them here previously surfaced the stalest items as "recent",
   // a data-honesty bug caught by design-system-auditor 2026-08-16).
+  //
+  // Dedup against the action queues (2026-08-17): a WRR/pick list that's
+  // both freshly created AND still open legitimately matches both this
+  // recency query and the open-queue query above, so it rendered in both
+  // panels simultaneously — the "duplicated open queues" the user reported.
+  // Recent Activity is meant to be "what just happened," the action queues
+  // are "what still needs action" — excluding already-queued ids here keeps
+  // each item in exactly one panel rather than redefining either query.
+  const openQueueIds = new Set<string>([
+    ...openWrrRows.rows.map((wrr) => `wrr-${wrr.id}`),
+    ...openPickListRows.rows.map((pl) => `pl-${pl.id}`),
+  ]);
   const recentActivity: RecentActivityItem[] = [
     ...recentWrrRows.map((wrr) => ({
       id: `wrr-${wrr.id}`,
@@ -339,6 +379,7 @@ export default async function Home({ searchParams }: PageProps) {
       timestamp: pl.createdAt.toISOString(),
     })),
   ]
+    .filter((entry) => !openQueueIds.has(entry.id))
     .sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1))
     .slice(0, 5);
 
@@ -369,6 +410,8 @@ export default async function Home({ searchParams }: PageProps) {
       recentActivity={recentActivity}
       weeklyTrend={weeklyTrend}
       monthlyOutgoingQty={monthlyOutgoingQty}
+      dispatchRate={dispatchRate}
+      flowActivity={flowActivity}
     />
   );
 }

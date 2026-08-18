@@ -192,7 +192,10 @@ describe("lib/shell/navigation — selectRoutesForPresentation (design.md §3.3 
     expect(floorPaths).toContain("/receiving"); // floor surface
     expect(floorPaths).toContain("/profile"); // shared surface
     expect(floorPaths).not.toContain("/enrollment"); // office-only surface, even though capability-visible
-    expect(floorPaths).not.toContain("/inventory"); // office-only surface
+    // 2026-08-17: /inventory corrected office -> shared — warehouse_staff
+    // needs Master Inventory's Pick Lists tab to generate pick lists and
+    // proceed to outgoing. See revision-log.md.
+    expect(floorPaths).toContain("/inventory");
   });
 
   it("office presentation includes 'office' and 'shared' surface routes but never 'floor'-only or 'party' routes", async () => {

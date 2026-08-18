@@ -642,7 +642,7 @@ export default async function ApprovalDetailPage({ params, searchParams }: PageP
               {/* Approve — primary CTA: brand-red h-11 px-6 per task spec */}
               <button
                 type="submit"
-                className="flex h-11 items-center justify-center rounded-xl bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
+                className="flex h-11 items-center justify-center rounded-xl bg-primary px-6 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
               >
                 Approve
               </button>

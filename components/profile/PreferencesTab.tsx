@@ -40,7 +40,7 @@ function ToggleRow({
         data-testid={testId}
         onClick={() => onChange(!checked)}
         className={`flex h-14 w-24 shrink-0 items-center rounded-full px-1.5 transition-colors active:scale-[0.97] motion-reduce:active:scale-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
-          checked ? "bg-brand-red justify-end" : "bg-outline-variant/60 justify-start"
+          checked ? "bg-primary justify-end" : "bg-outline-variant/60 justify-start"
         }`}
       >
         <span className="h-11 w-11 rounded-full bg-surface-white shadow-elevation-1" />

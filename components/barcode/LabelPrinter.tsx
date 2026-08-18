@@ -46,12 +46,12 @@ export function LabelPrinter({
       {/*
         AC-3: "Print Label" button triggers window.print().
         brand-design-system.md §3: floor primary action, h-16 (64px), full-width,
-        bg-brand-red for CTA, active:scale-[0.97] press feedback, no hover state.
+        bg-primary for CTA, active:scale-[0.97] press feedback, no hover state.
       */}
       <button
         type="button"
         onClick={() => window.print()}
-        className="h-16 w-full bg-brand-red text-surface-white font-label text-body-md rounded active:scale-[0.97] motion-safe:transition-transform"
+        className="h-16 w-full bg-primary text-surface-white font-label text-body-md rounded active:scale-[0.97] motion-safe:transition-transform"
       >
         Print Label
       </button>

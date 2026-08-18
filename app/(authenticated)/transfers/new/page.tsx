@@ -264,7 +264,7 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
           {/* Primary CTA — brand-red per brand-design-system.md §9, h-11 office touch target */}
           <button
             type="submit"
-            className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-11 items-center justify-center rounded bg-primary px-6 font-label text-label text-surface-white hover:bg-primary-hover motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
           >
             Create Transfer
           </button>

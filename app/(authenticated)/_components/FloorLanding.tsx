@@ -149,11 +149,11 @@ export function FloorLanding({
       </section>
 
       {/* ── Bottom CTA ───────────────────────────────────────────────────
-          Full-width bg-brand-red h-16 per §9 floor primary action rules. */}
+          Full-width bg-primary h-16 per §9 floor primary action rules. */}
       <Link
         href="/receiving"
         data-testid="landing-work-queue-cta"
-        className="mt-auto flex h-16 w-full items-center justify-center rounded-xl bg-brand-red font-label text-body-md uppercase tracking-wide text-white focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-navy motion-safe:transition-transform motion-safe:duration-100 active:scale-[0.97]"
+        className="mt-auto flex h-16 w-full items-center justify-center rounded-xl bg-primary font-label text-body-md uppercase tracking-wide text-white focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-navy motion-safe:transition-transform motion-safe:duration-100 active:scale-[0.97]"
       >
         View All Open Work
       </Link>

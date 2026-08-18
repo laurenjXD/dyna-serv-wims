@@ -76,7 +76,12 @@ const ROUTE_ICON_MAP: Record<string, LucideIcon> = {
 
 const SHORT_LABEL_OVERRIDES: Record<string, string> = {
   root: "Dashboard",
-  inventory: "Stock View",
+  // Sidebar nav entry label. "Stock View" is one of the tabs INSIDE this
+  // page (Stock View / Pick Lists / Inspection), not the page's own name —
+  // per multi-agent-work-division.md's confirmed sidebar target ("Master
+  // Inventory (/inventory — Stock View, Pick Lists, Inspection tabs...)").
+  // See specs/00-steering/revision-log.md's matching entry.
+  inventory: "Master Inventory",
   enrollment: "Organization & Item Enrollment",
   portal: "Organization Portal",
   "billing-pricing": "Billing & Pricing",
@@ -210,12 +215,18 @@ export function ShellNavigation({
   currentPath,
   mobileNavOpen = false,
   onCloseMobileNav,
+  desktopOpen = true,
 }: {
   tier: SessionPresentationTier;
   context: Pick<AuthorizationContext, "grants">;
   currentPath: string;
   mobileNavOpen?: boolean;
   onCloseMobileNav?: () => void;
+  // Desktop (lg+) sidebar collapsed/expanded state — distinct from
+  // mobileNavOpen, which only ever applies below lg. Defaults true (open)
+  // so every existing caller that doesn't pass this keeps today's
+  // always-visible desktop sidebar behavior unchanged.
+  desktopOpen?: boolean;
 }) {
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [activeRoleKeys, setActiveRoleKeys] = useState<readonly string[]>([]);
@@ -303,7 +314,10 @@ export function ShellNavigation({
       <nav
         data-testid="desktop-sidebar"
         aria-label="Primary navigation"
-        className="hidden flex-col overflow-y-auto border-r border-border bg-surface p-4 lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:flex lg:w-[306px]"
+        aria-hidden={!desktopOpen}
+        className={`hidden flex-col overflow-y-auto border-r border-border bg-surface p-4 lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:w-[306px] ${
+          desktopOpen ? "lg:flex" : "lg:hidden"
+        }`}
       >
         <a
           href="#main-content"

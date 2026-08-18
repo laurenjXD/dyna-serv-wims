@@ -183,7 +183,7 @@ export function UserManagementGrid({
                 Role
               </th>
               <th className="px-4 py-3 font-label text-label uppercase tracking-wide text-text-grey">
-                Party
+                Organization
               </th>
               <th className="px-4 py-3 font-label text-label uppercase tracking-wide text-text-grey">
                 Status

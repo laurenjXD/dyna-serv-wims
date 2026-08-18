@@ -25,7 +25,7 @@ export function ActivityHeatmap({ data, flowFilter, onFilterChange, title }: {
   return <section className="rounded bg-surface-white p-6 shadow-elevation-1">
     <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="Heatmap flow filter">
       {filters.map((filter) => <button key={filter.value} type="button" role="tab" aria-selected={flowFilter === filter.value}
-        onClick={() => onFilterChange(filter.value)} className={`rounded px-4 py-2 font-label text-label font-semibold ${flowFilter === filter.value ? "bg-brand-red text-surface-white" : "bg-surface-light-grey text-on-surface"}`}>
+        onClick={() => onFilterChange(filter.value)} className={`rounded px-4 py-2 font-label text-label font-semibold ${flowFilter === filter.value ? "bg-primary text-surface-white" : "bg-surface-light-grey text-on-surface"}`}>
         {filter.label}
       </button>)}
     </div>

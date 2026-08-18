@@ -250,7 +250,7 @@ export default async function TransferDetailPage({
               <form action={handleStartTransfer}>
                 <button
                   type="submit"
-                  className="flex h-11 items-center justify-center rounded bg-brand-red px-4 font-label text-label text-surface-white hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  className="flex h-11 items-center justify-center rounded bg-primary px-4 font-label text-label text-surface-white hover:bg-primary-hover motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 >
                   Start Transfer
                 </button>
@@ -262,7 +262,7 @@ export default async function TransferDetailPage({
                 {/* Execute Transfer — links to floor execution interface */}
                 <Link
                   href={`/transfers/${transferId}/execute`}
-                  className="inline-flex h-11 items-center justify-center rounded bg-brand-red px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  className="inline-flex h-11 items-center justify-center rounded bg-primary px-4 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 >
                   Execute Transfer
                 </Link>

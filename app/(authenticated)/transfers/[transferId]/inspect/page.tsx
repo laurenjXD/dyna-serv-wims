@@ -366,13 +366,13 @@ export default async function InspectTransferPage({
             />
           </div>
 
-          {/* Party ID */}
+          {/* Organization ID */}
           <div>
             <label
               htmlFor="open-partyId"
               className="block font-label text-label text-text-grey"
             >
-              Party ID{" "}
+              Organization ID{" "}
               <span aria-hidden="true" className="text-brand-red">
                 *
               </span>
@@ -393,7 +393,7 @@ export default async function InspectTransferPage({
 
           <button
             type="submit"
-            className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-11 items-center justify-center rounded bg-primary px-6 font-label text-label text-surface-white hover:bg-primary-hover active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy"
           >
             Open Inspection Case
           </button>
@@ -505,7 +505,7 @@ export default async function InspectTransferPage({
 
           <button
             type="submit"
-            className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-11 items-center justify-center rounded bg-primary px-6 font-label text-label text-surface-white hover:bg-primary-hover active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy"
           >
             Resolve Inspection Case
           </button>

@@ -7,7 +7,7 @@
 //     §6 (Item model, Barcode immutability, Item deactivation impact)
 //   specs/00-steering/tech.md — RBAC from session, never from client params
 
-import { eq } from "drizzle-orm";
+import { and, eq, ne, or } from "drizzle-orm";
 import type { RequestAuthorizationResolver } from "@/lib/rbac/session";
 import { requirePermission } from "@/lib/rbac/guard";
 import { parseItemInput, checkBarcodeUpdate } from "@/lib/enrollment/item-schema";
@@ -88,6 +88,28 @@ export async function createItem(
 
   const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
     const db = tx.db as DbLike;
+
+    // Duplicate code/barcode check (both have a DB-level UNIQUE constraint)
+    // — without this, a collision throws a raw, uncaught Postgres
+    // constraint-violation error straight out of the Server Action instead
+    // of a friendly field error. Same pattern as createParty/createLocation.
+    const existing = await db
+      .select({ id: items.id, code: items.code, barcode: items.barcode })
+      .from(items)
+      .where(or(eq(items.code, data.code), eq(items.barcode, data.barcode)));
+
+    const collisions = existing as { id: string; code: string; barcode: string }[];
+    const createFieldErrors: Record<string, string> = {};
+    if (collisions.some((row) => row.code === data.code)) {
+      createFieldErrors.code = "This item code is already in use.";
+    }
+    if (collisions.some((row) => row.barcode === data.barcode)) {
+      createFieldErrors.barcode = "This barcode is already in use.";
+    }
+    if (Object.keys(createFieldErrors).length > 0) {
+      return { ok: false, fieldErrors: createFieldErrors } satisfies ActionCreateResult;
+    }
+
     const [inserted] = await db
       .insert(items)
       .values({
@@ -195,6 +217,30 @@ export async function updateItem(
     const submittedTimestamp = new Date(submittedUpdatedAt).getTime();
     if (dbTimestamp !== submittedTimestamp) {
       return { ok: false, error: "Conflict" } satisfies ActionResult;
+    }
+
+    // Duplicate code/barcode check, excluding this row itself — same
+    // reasoning as createItem above.
+    const collisionRows = await db
+      .select({ id: items.id, code: items.code, barcode: items.barcode })
+      .from(items)
+      .where(
+        and(
+          ne(items.id, id),
+          or(eq(items.code, parsed.data.code), eq(items.barcode, parsed.data.barcode)),
+        ),
+      );
+
+    const collisions = collisionRows as { id: string; code: string; barcode: string }[];
+    const updateFieldErrors: Record<string, string> = {};
+    if (collisions.some((r) => r.code === parsed.data.code)) {
+      updateFieldErrors.code = "This item code is already in use.";
+    }
+    if (collisions.some((r) => r.barcode === parsed.data.barcode)) {
+      updateFieldErrors.barcode = "This barcode is already in use.";
+    }
+    if (Object.keys(updateFieldErrors).length > 0) {
+      return { ok: false, fieldErrors: updateFieldErrors } satisfies ActionResult;
     }
 
     // Barcode immutability guard (design.md §6)

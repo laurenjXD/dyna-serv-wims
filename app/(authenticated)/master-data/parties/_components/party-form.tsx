@@ -92,7 +92,7 @@ export function PartyForm({ action, party, cancelHref }: PartyFormProps) {
             htmlFor="code"
             className="block font-label text-label text-on-surface"
           >
-            Party Code{" "}
+            Organization Code{" "}
             <span aria-hidden="true" className="text-brand-red">
               *
             </span>
@@ -117,7 +117,7 @@ export function PartyForm({ action, party, cancelHref }: PartyFormProps) {
             htmlFor="name"
             className="block font-label text-label text-on-surface"
           >
-            Party Name{" "}
+            Organization Name{" "}
             <span aria-hidden="true" className="text-brand-red">
               *
             </span>
@@ -364,13 +364,13 @@ export function PartyForm({ action, party, cancelHref }: PartyFormProps) {
         <button
           type="submit"
           disabled={isPending}
-          className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:opacity-50"
+          className="flex h-11 items-center justify-center rounded bg-primary px-6 font-label text-label text-surface-white hover:bg-primary-hover active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:opacity-50"
         >
           {isPending
             ? "Saving…"
             : isEdit
               ? "Save Changes"
-              : "Create Party"}
+              : "Create Organization"}
         </button>
       </div>
     </form>

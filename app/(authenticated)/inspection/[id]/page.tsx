@@ -460,7 +460,7 @@ export default async function InspectionDetailPage({
             {/* White on brand-red: 7.31:1 (AAA) — resolved 2026-08-12 by darkening brand-red to #9A3412; see brand-design-system.md §1.1. */}
             <button
               type="submit"
-              className="mt-2 flex h-16 w-full items-center justify-center rounded-xl bg-brand-red font-label text-body-md uppercase tracking-wide text-white
+              className="mt-2 flex h-16 w-full items-center justify-center rounded-xl bg-primary font-label text-body-md uppercase tracking-wide text-white
                          active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100
                          focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-navy"
             >

@@ -28,7 +28,7 @@ export default async function EditPartyPage({ params }: PageProps) {
     <div className="mx-auto max-w-3xl">
       <div className="mb-6">
         <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
-          Edit Party
+          Edit Organization
         </h1>
         <p className="mt-1 font-mono text-mono-md text-text-grey">
           {party.code} — {party.name}

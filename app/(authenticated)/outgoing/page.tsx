@@ -176,7 +176,7 @@ async function ActivePicksTab({ canExecute }: { canExecute: boolean }) {
                 {canExecute ? (
                   <Link
                     href={`/pick-lists/${row.id}/pick`}
-                    className="flex min-h-16 w-full items-center justify-center rounded bg-brand-red px-4 font-label text-body-md uppercase tracking-wide text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2"
+                    className="flex min-h-16 w-full items-center justify-center rounded bg-primary px-4 font-label text-body-md uppercase tracking-wide text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2"
                   >
                     Start picking
                   </Link>
@@ -200,7 +200,7 @@ async function ActivePicksTab({ canExecute }: { canExecute: boolean }) {
                     Flow Type
                   </th>
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Customer Party
+                    Customer Organization
                   </th>
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                     Created
@@ -326,7 +326,7 @@ async function OutgoingLedgerTab({
                     Pick List #
                   </th>
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Customer Party
+                    Customer Organization
                   </th>
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                     Acknowledgement Receipt #
