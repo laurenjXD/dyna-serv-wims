@@ -92,7 +92,7 @@ export function PartyForm({ action, party, cancelHref }: PartyFormProps) {
             htmlFor="code"
             className="block font-label text-label text-on-surface"
           >
-            Party Code{" "}
+            Organization Code{" "}
             <span aria-hidden="true" className="text-brand-red">
               *
             </span>
@@ -117,7 +117,7 @@ export function PartyForm({ action, party, cancelHref }: PartyFormProps) {
             htmlFor="name"
             className="block font-label text-label text-on-surface"
           >
-            Party Name{" "}
+            Organization Name{" "}
             <span aria-hidden="true" className="text-brand-red">
               *
             </span>
@@ -330,7 +330,7 @@ export function PartyForm({ action, party, cancelHref }: PartyFormProps) {
             ? "Saving…"
             : isEdit
               ? "Save Changes"
-              : "Create Party"}
+              : "Create Organization"}
         </button>
       </div>
     </form>

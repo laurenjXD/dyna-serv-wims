@@ -80,7 +80,7 @@ export default async function PartyDetailPage({
                   href="/enrollment?tab=parties"
                   className="inline-flex h-11 items-center rounded hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 >
-                  Parties
+                  Organizations
                 </Link>
               </li>
               <li aria-hidden="true">/</li>
@@ -124,7 +124,7 @@ export default async function PartyDetailPage({
       {/* Master data */}
       <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-on-surface">
-          Party Information
+          Organization Information
         </h2>
         <dl className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>

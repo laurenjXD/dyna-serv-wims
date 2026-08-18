@@ -30,7 +30,7 @@ export const SYSTEM_ROLE_OPTIONS: readonly SystemRoleOption[] = [
   { key: "administrator", label: "Admin", requiresPartyScope: false },
   { key: "supervisor", label: "Supervisor", requiresPartyScope: false },
   { key: "warehouse_staff", label: "Staff", requiresPartyScope: false },
-  { key: "party_user", label: "Party Client", requiresPartyScope: true },
+  { key: "party_user", label: "Organization Client", requiresPartyScope: true },
 ];
 
 export function roleLabel(key: string): string {

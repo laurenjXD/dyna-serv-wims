@@ -719,7 +719,7 @@ export function ItemForm({
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label htmlFor="defaultSupplierPartyId" className="block font-label text-label text-on-surface">
-              Default Supplier Party
+              Default Supplier Organization
             </label>
             <select
               id="defaultSupplierPartyId"

@@ -179,7 +179,7 @@ export default async function WrrPrintPage({ params }: PageProps) {
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                Source Party (Vendor)
+                Source Organization (Vendor)
               </p>
               <p className="mt-1 font-body text-body-md text-on-surface">
                 {wrr.vendorPartyName ?? "—"}

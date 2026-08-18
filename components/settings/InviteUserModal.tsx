@@ -159,7 +159,7 @@ export function InviteUserModal({
                 htmlFor="invite-party"
                 className="font-label text-label uppercase tracking-wide text-on-surface"
               >
-                Party (vendor/customer)
+                Organization (vendor/customer)
               </label>
               <select
                 id="invite-party"

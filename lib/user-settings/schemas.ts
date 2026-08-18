@@ -29,7 +29,7 @@ export const inviteUserSchema = z
     if (data.role === "party_user" && !data.partyId) {
       ctx.addIssue({
         code: "custom",
-        message: "A Party Client must be assigned to a specific Party (Vendor/Customer).",
+        message: "An Organization Client must be assigned to a specific Organization (Vendor/Customer).",
         path: ["partyId"],
       });
     }

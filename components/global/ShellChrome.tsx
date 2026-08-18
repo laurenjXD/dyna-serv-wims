@@ -179,7 +179,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
   return (
     <>
       <header
-        className={`fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-surface px-4 shadow-elevation-1 transition-[left] duration-150 motion-reduce:transition-none lg:h-[76px] lg:px-8 lg:shadow-none ${
+        className={`fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-surface px-4 shadow-elevation-1 transition-[left] duration-150 motion-reduce:transition-none lg:min-h-[76px] lg:px-8 lg:py-3 lg:shadow-none ${
           isDesktopOpen ? "lg:left-[306px]" : "lg:left-0"
         }`}
       >
@@ -260,9 +260,9 @@ export function ShellChrome({ children }: { children: ReactNode }) {
         </div>
 
         <div className="hidden min-w-0 flex-1 items-center lg:flex">
-          <div className="min-w-0 max-w-[220px]">
+          <div className="min-w-0 max-w-[360px]">
             <p
-              className="truncate font-heading text-headline-md font-bold text-text-primary"
+              className="font-heading text-headline-md font-bold leading-tight text-text-primary"
               title={pageTitle}
             >
               {pageTitle}

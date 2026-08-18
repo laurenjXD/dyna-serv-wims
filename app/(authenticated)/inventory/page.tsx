@@ -354,7 +354,7 @@ async function PickListsTab() {
                   Flow Type
                 </th>
                 <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                  Customer Party
+                  Customer Organization
                 </th>
                 <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                   Created

@@ -29,7 +29,7 @@ const PAGE_SIZE = 25;
 type TabKey = "parties" | "items" | "locations";
 
 const TABS: Array<{ key: TabKey; label: string }> = [
-  { key: "parties", label: "Parties" },
+  { key: "parties", label: "Organizations" },
   { key: "items", label: "Items" },
   { key: "locations", label: "Locations" },
 ];
@@ -210,7 +210,7 @@ async function PartiesTab({
             href="/master-data/parties/new"
             className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy"
           >
-            New Party
+            New Organization
           </Link>
         )}
       </div>
@@ -221,8 +221,8 @@ async function PartiesTab({
           <div className="px-6 py-12 text-center">
             <p className="font-body text-body-md text-text-grey">
               {search
-                ? `No parties found for "${search}".`
-                : "No parties enrolled yet."}
+                ? `No organizations found for "${search}".`
+                : "No organizations enrolled yet."}
             </p>
           </div>
         ) : (
@@ -293,7 +293,7 @@ async function PartiesTab({
       {/* Pagination */}
       {totalPages > 1 && (
         <nav
-          aria-label="Parties pagination"
+          aria-label="Organizations pagination"
           className="mt-4 flex items-center justify-between"
         >
           <p className="font-body text-body-md text-text-grey">

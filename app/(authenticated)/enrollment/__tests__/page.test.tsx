@@ -61,12 +61,15 @@ describe("EnrollmentPage (app/(authenticated)/enrollment/page.tsx)", () => {
   });
 
   // ── Tab shell structure — plan §7 / resolution note ──────────────────────
-  it("renders three tabs: Parties, Items, Locations", () => {
+  it("renders three tabs: Organizations, Items, Locations", () => {
+    // 2026-08-17: tab label renamed Parties -> Organizations (terminology
+    // sweep, party->organization is UI-facing only; the "parties" tab KEY,
+    // route paths, and capability strings stay unchanged — see revision-log.md).
     const source = pageSource();
     expect(source).toContain('"parties"');
     expect(source).toContain('"items"');
     expect(source).toContain('"locations"');
-    expect(source).toContain("Parties");
+    expect(source).toContain("Organizations");
     expect(source).toContain("Items");
     expect(source).toContain("Locations");
   });
