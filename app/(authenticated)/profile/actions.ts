@@ -41,6 +41,9 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { userProfiles } from "@/lib/db/schema";
+import { withRlsTransaction } from "@/lib/db/rls-transaction";
+import { rlsPool } from "@/lib/db/rls-pool";
+import { getAuthenticatedSession } from "@/lib/auth/get-authenticated-session";
 import { createClient } from "@/lib/supabase/server";
 import { displayNameSchema, changePasswordSchema } from "@/lib/user-settings/schemas";
 
@@ -90,10 +93,23 @@ export async function updateDisplayName(input: { displayName: string }): Promise
     return { ok: false, error: "Not authenticated" };
   }
 
-  await db
-    .update(userProfiles)
-    .set({ displayName: parsed.data.displayName, updatedAt: new Date() })
-    .where(eq(userProfiles.id, data.user.id));
+  const rlsResult = await withRlsTransaction(
+    { getAuthenticatedSession, pool: rlsPool },
+    async (tx) => {
+      const rlsDb = tx.db as typeof db;
+      const [updated] = await rlsDb
+        .update(userProfiles)
+        .set({ displayName: parsed.data.displayName, updatedAt: new Date() })
+        .where(eq(userProfiles.id, data.user.id))
+        .returning({ id: userProfiles.id });
+
+      return updated ?? null;
+    },
+  );
+
+  if (rlsResult.kind === "unauthenticated" || rlsResult.value === null) {
+    return { ok: false, error: "Unable to save your display name." };
+  }
 
   revalidatePath("/profile");
   return { ok: true };
