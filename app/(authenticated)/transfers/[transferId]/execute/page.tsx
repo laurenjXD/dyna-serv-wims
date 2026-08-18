@@ -301,7 +301,7 @@ export default async function ExecuteTransferPage({
             <button
               type="submit"
               // active: press feedback, no hover: (floor screen per §3 §10)
-              className="flex h-16 w-full items-center justify-center rounded bg-brand-red font-label text-body-md text-surface-white active:scale-[0.97] focus:outline-none focus:ring-4 focus:ring-brand-navy"
+              className="flex h-16 w-full items-center justify-center rounded bg-primary font-label text-body-md text-surface-white active:scale-[0.97] focus:outline-none focus:ring-4 focus:ring-brand-navy"
             >
               Mark Transferred
             </button>

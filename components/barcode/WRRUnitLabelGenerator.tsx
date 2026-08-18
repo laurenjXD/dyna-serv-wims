@@ -102,7 +102,7 @@ export function WRRUnitLabelGenerator({
                 <button
                   type="button"
                   onClick={handlePrint}
-                  className="flex h-12 items-center justify-center gap-2 rounded bg-brand-red px-5 font-heading font-bold text-body-md text-surface-white active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  className="flex h-12 items-center justify-center gap-2 rounded bg-primary px-5 font-heading font-bold text-body-md text-surface-white active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 >
                   <span aria-hidden="true">&#128424;</span>
                   <span>Print Labels</span>

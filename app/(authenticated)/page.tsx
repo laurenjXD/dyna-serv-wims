@@ -355,6 +355,18 @@ export default async function Home({ searchParams }: PageProps) {
   // openPickListRows action-queue rows above (those are oldest-first —
   // reusing them here previously surfaced the stalest items as "recent",
   // a data-honesty bug caught by design-system-auditor 2026-08-16).
+  //
+  // Dedup against the action queues (2026-08-17): a WRR/pick list that's
+  // both freshly created AND still open legitimately matches both this
+  // recency query and the open-queue query above, so it rendered in both
+  // panels simultaneously — the "duplicated open queues" the user reported.
+  // Recent Activity is meant to be "what just happened," the action queues
+  // are "what still needs action" — excluding already-queued ids here keeps
+  // each item in exactly one panel rather than redefining either query.
+  const openQueueIds = new Set<string>([
+    ...openWrrRows.rows.map((wrr) => `wrr-${wrr.id}`),
+    ...openPickListRows.rows.map((pl) => `pl-${pl.id}`),
+  ]);
   const recentActivity: RecentActivityItem[] = [
     ...recentWrrRows.map((wrr) => ({
       id: `wrr-${wrr.id}`,
@@ -367,6 +379,7 @@ export default async function Home({ searchParams }: PageProps) {
       timestamp: pl.createdAt.toISOString(),
     })),
   ]
+    .filter((entry) => !openQueueIds.has(entry.id))
     .sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1))
     .slice(0, 5);
 

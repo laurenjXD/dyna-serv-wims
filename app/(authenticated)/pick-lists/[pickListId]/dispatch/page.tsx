@@ -558,7 +558,7 @@ export default async function DispatchConfirmationPage({
               {/* White on brand-red: 7.31:1 (AAA) — resolved 2026-08-12 by darkening brand-red; see brand-design-system.md §1.1. */}
               <button
                 type="submit"
-                className="flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-brand-red font-label text-body-md uppercase tracking-wide text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
+                className="flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-primary font-label text-body-md uppercase tracking-wide text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
               >
                 <Truck size={24} strokeWidth={2} aria-hidden="true" />
                 Confirm Dispatch

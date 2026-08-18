@@ -244,7 +244,7 @@ export default async function ReceiveFloorPage({
             </p>
             <Link
               href={`/receiving/${wrrId}`}
-              className="mt-6 flex h-16 w-full items-center justify-center rounded bg-brand-red font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-brand-navy"
+              className="mt-6 flex h-16 w-full items-center justify-center rounded bg-primary font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-brand-navy"
             >
               Back to WRR
             </Link>
@@ -537,7 +537,7 @@ export default async function ReceiveFloorPage({
                 <button
                   type="submit"
                   disabled={primaryStoreCandidates.length === 0}
-                  className="flex h-16 w-full items-center justify-center rounded bg-brand-red font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white disabled:opacity-50"
+                  className="flex h-16 w-full items-center justify-center rounded bg-primary font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white disabled:opacity-50"
                 >
                   Store
                 </button>
@@ -581,7 +581,7 @@ export default async function ReceiveFloorPage({
                 <button
                   type="submit"
                   disabled={inspectionLocations.length === 0}
-                  className="flex h-16 w-full items-center justify-center rounded bg-brand-red font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white disabled:opacity-50"
+                  className="flex h-16 w-full items-center justify-center rounded bg-primary font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white disabled:opacity-50"
                 >
                   Hold
                 </button>
@@ -613,7 +613,7 @@ export default async function ReceiveFloorPage({
               />
               <button
                 type="submit"
-                className="flex h-16 w-16 shrink-0 items-center justify-center rounded bg-brand-red font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white"
+                className="flex h-16 w-16 shrink-0 items-center justify-center rounded bg-primary font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white"
                 aria-label="Submit scan"
               >
                 &#8594;

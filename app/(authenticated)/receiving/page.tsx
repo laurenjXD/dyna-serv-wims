@@ -115,7 +115,7 @@ function WrrMobileCards({
               href={action.href}
               className={`flex w-full items-center justify-center rounded px-4 font-label text-body-md uppercase tracking-wide focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 active:scale-[0.97] ${
                 action.primary
-                  ? "min-h-16 bg-brand-red text-surface-white"
+                  ? "min-h-16 bg-primary text-surface-white"
                   : "min-h-14 bg-brand-navy text-surface-white"
               }`}
             >
@@ -318,7 +318,7 @@ async function ReceiveTab({
                     active: press feedback per brand-design-system.md §10 (no hover). */}
                 <Link
                   href={`/receiving/${row.id}/receive`}
-                  className="mt-4 flex min-h-16 w-full items-center justify-center rounded bg-brand-red px-4 font-label text-body-md uppercase tracking-wide text-surface-white active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2"
+                  className="mt-4 flex min-h-16 w-full items-center justify-center rounded bg-primary px-4 font-label text-body-md uppercase tracking-wide text-surface-white active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2"
                 >
                   Continue Receiving
                 </Link>
@@ -429,7 +429,7 @@ async function WrrsTab({
         {canCreate && (
           <Link
             href="/receiving/new"
-                className="inline-flex h-14 items-center justify-center rounded bg-brand-red px-4 font-label text-body-md text-surface-white active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy md:h-11 md:text-label md:hover:opacity-90"
+                className="inline-flex h-14 items-center justify-center rounded bg-primary px-4 font-label text-body-md text-surface-white active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy md:h-11 md:text-label md:hover:bg-primary-hover"
           >
             New WRR
           </Link>

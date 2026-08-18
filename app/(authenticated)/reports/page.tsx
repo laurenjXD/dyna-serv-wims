@@ -93,7 +93,7 @@ function QuickAccessSection({
                   <p className="font-mono text-mono-md font-bold text-on-surface truncate">{wrr.wrrNumber}</p>
                   <p className="font-body text-body-sm text-text-grey truncate">{wrr.vendorPartyName ?? "—"}</p>
                 </div>
-                <Link href={`/receiving/${wrr.id}/receive`} className="shrink-0 inline-flex h-9 items-center rounded bg-brand-red px-3 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy">
+                <Link href={`/receiving/${wrr.id}/receive`} className="shrink-0 inline-flex h-9 items-center rounded bg-primary px-3 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy">
                   Receive
                 </Link>
               </div>
@@ -117,7 +117,7 @@ function QuickAccessSection({
             {openPickLists.map((pl) => (
               <div key={pl.id} className="flex items-center justify-between gap-3 px-4 py-3">
                 <p className="font-mono text-mono-md font-bold text-on-surface">{pl.pickListNumber}</p>
-                <Link href={`/pick-lists/${pl.id}/pick`} className="shrink-0 inline-flex h-9 items-center rounded bg-brand-red px-3 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy">
+                <Link href={`/pick-lists/${pl.id}/pick`} className="shrink-0 inline-flex h-9 items-center rounded bg-primary px-3 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy">
                   Go to Pick
                 </Link>
               </div>
@@ -169,7 +169,7 @@ function QuickAccessSection({
                 {pendingApprovals.map((req) => (
                   <div key={req.id} className="flex items-center justify-between gap-3 px-4 py-3">
                     <p className="font-label text-label uppercase text-status-pending truncate">{req.approvalType.replace("_", " ")}</p>
-                    <Link href={`/approvals/${req.id}`} className="shrink-0 inline-flex h-9 items-center rounded bg-brand-red px-3 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy">
+                    <Link href={`/approvals/${req.id}`} className="shrink-0 inline-flex h-9 items-center rounded bg-primary px-3 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy">
                       Review
                     </Link>
                   </div>

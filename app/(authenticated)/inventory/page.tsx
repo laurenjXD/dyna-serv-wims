@@ -179,7 +179,7 @@ async function StockViewTab({ query }: { query?: string }) {
                       requires party/qty inputs beyond this static page's scope. */}
                   <Link
                     href="/outgoing"
-                    className="inline-flex h-11 items-center gap-2 rounded bg-brand-red px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+                    className="inline-flex h-11 items-center gap-2 rounded bg-primary px-4 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
                   >
                     Generate Pick List
                   </Link>
@@ -332,7 +332,7 @@ async function PickListsTab() {
           </p>
           <Link
             href="/outgoing"
-            className="mt-4 inline-flex h-11 items-center justify-center rounded bg-brand-red px-5 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+            className="mt-4 inline-flex h-11 items-center justify-center rounded bg-primary px-5 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
           >
             Go to Outgoing
           </Link>
@@ -391,7 +391,7 @@ async function PickListsTab() {
                     {/* Go to Pick — h-11 (44px) office touch target */}
                     <Link
                       href={`/pick-lists/${row.id}/pick`}
-                      className="inline-flex h-11 items-center gap-1 rounded bg-brand-red px-3 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                      className="inline-flex h-11 items-center gap-1 rounded bg-primary px-3 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy"
                     >
                       Go to Pick
                     </Link>

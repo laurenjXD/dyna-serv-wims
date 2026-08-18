@@ -175,7 +175,7 @@ function LabelForm() {
         <button
           type="button"
           disabled
-          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded bg-brand-red font-label text-label font-bold text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded bg-primary font-label text-label font-bold text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Tag size={18} aria-hidden="true" />
           Generate Label

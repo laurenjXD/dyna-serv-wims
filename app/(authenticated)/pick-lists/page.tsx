@@ -32,7 +32,7 @@ function PickListAction({ row, canExecute }: { row: PickListRow; canExecute: boo
     return (
       <Link
         href={`/pick-lists/${row.id}/pick`}
-        className="inline-flex min-h-14 items-center justify-center rounded bg-brand-red px-4 font-label text-body-md font-semibold uppercase tracking-wide text-surface-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2 active:scale-[0.97] md:min-h-11 md:text-label"
+        className="inline-flex min-h-14 items-center justify-center rounded bg-primary px-4 font-label text-body-md font-semibold uppercase tracking-wide text-surface-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2 active:scale-[0.97] md:min-h-11 md:text-label"
       >
         Start picking
       </Link>

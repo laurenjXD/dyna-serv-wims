@@ -460,7 +460,7 @@ export function OfficeLanding({
                       </div>
                       <Link
                         href={`/receiving/${wrr.id}/receive`}
-                        className="shrink-0 inline-flex h-9 items-center rounded bg-brand-red px-3 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                        className="shrink-0 inline-flex h-9 items-center rounded bg-primary px-3 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy"
                       >
                         Receive
                       </Link>
@@ -498,7 +498,7 @@ export function OfficeLanding({
                       </p>
                       <Link
                         href={`/pick-lists/${pl.id}/pick`}
-                        className="shrink-0 inline-flex h-9 items-center rounded bg-brand-red px-3 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                        className="shrink-0 inline-flex h-9 items-center rounded bg-primary px-3 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy"
                       >
                         Pick
                       </Link>
@@ -536,7 +536,7 @@ export function OfficeLanding({
                       </p>
                       <Link
                         href={`/approvals/${req.id}`}
-                        className="shrink-0 inline-flex h-9 items-center rounded bg-brand-red px-3 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                        className="shrink-0 inline-flex h-9 items-center rounded bg-primary px-3 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy"
                       >
                         Review
                       </Link>
