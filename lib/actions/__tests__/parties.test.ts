@@ -280,7 +280,10 @@ describe("createParty — success (R1.1, design.md §5 Create)", () => {
 
   it("writes the approved split-address and payment-terms fields", async () => {
     const insertChain = makeInsertChain("party-new-uuid");
-    const db = { insert: vi.fn().mockReturnValue(insertChain) };
+    const db = {
+      select: vi.fn().mockReturnValue(makeSelectChain([])),
+      insert: vi.fn().mockReturnValue(insertChain),
+    };
 
     await createParty(authorizedResolver(), validPartyInput, mockRlsDeps(db).deps);
 
@@ -322,9 +325,10 @@ describe("createParty — address field mapping (2026-08-17 fix: schema column i
       insert: vi.fn().mockReturnValue(makeInsertChain("party-new-uuid")),
     };
 
+    const { address1: _address1, ...legacyInput } = validPartyInput;
     await createParty(
       authorizedResolver(),
-      { ...validPartyInput, address: "123 Warehouse Row" },
+      { ...legacyInput, address: "123 Warehouse Row" },
       mockRlsDeps(db).deps,
     );
 
@@ -457,10 +461,11 @@ describe("updateParty — stale-edit conflict (R2.4, design.md §5 Edit/deactiva
       update: vi.fn().mockReturnValue(makeUpdateChain()),
     };
 
+    const { address1: _address1, ...legacyInput } = validPartyInput;
     await updateParty(
       authorizedResolver(),
       "party-1",
-      { ...validPartyInput, address: "456 Dock Street" },
+      { ...legacyInput, address: "456 Dock Street" },
       currentUpdatedAt,
       mockRlsDeps(db).deps,
     );
