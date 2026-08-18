@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, PanelLeftClose, PanelLeftOpen, Settings, Wifi, WifiOff } from "lucide-react";
+import { Bell, PanelLeftClose, PanelLeftOpen, Search, Settings, Wifi, WifiOff } from "lucide-react";
 import { resolveSessionPresentationTier } from "@/lib/shell/surface";
 import { isScanLoopRoute } from "@/lib/shell/scan-loop";
 import { useShellSidebar, useDesktopSidebar } from "@/lib/shell/state";
@@ -179,8 +179,8 @@ export function ShellChrome({ children }: { children: ReactNode }) {
   return (
     <>
       <header
-        className={`fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-surface px-4 shadow-elevation-1 transition-[left] duration-150 motion-reduce:transition-none lg:inset-x-auto lg:top-6 lg:right-6 lg:min-h-[76px] lg:rounded-full lg:border lg:border-border lg:px-8 lg:py-3 lg:shadow-elevation-2 ${
-          isDesktopOpen ? "lg:left-[354px]" : "lg:left-6"
+        className={`fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-surface px-4 shadow-elevation-1 transition-[left] duration-150 motion-reduce:transition-none lg:inset-x-auto lg:top-0 lg:right-0 lg:min-h-[76px] lg:rounded-none lg:border-x-0 lg:border-t-0 lg:px-8 lg:py-3 lg:shadow-none ${
+          isDesktopOpen ? "lg:left-[312px]" : "lg:left-0"
         }`}
       >
         {tier !== "floor" && (
@@ -260,7 +260,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
         </div>
 
         <div className="hidden min-w-0 flex-1 items-center lg:flex">
-          <div className="min-w-0 max-w-[360px]">
+          <div className="min-w-0 shrink-0 max-w-[300px]">
             <p
               className="font-heading text-headline-md font-bold leading-tight text-text-primary"
               title={pageTitle}
@@ -268,7 +268,16 @@ export function ShellChrome({ children }: { children: ReactNode }) {
               {pageTitle}
             </p>
           </div>
-          <div className="ml-auto flex min-w-0 items-center gap-7">
+          <label className="mx-auto flex h-12 w-full max-w-[460px] items-center gap-3 rounded-full border border-border bg-background px-4 shadow-elevation-1 focus-within:ring-2 focus-within:ring-primary">
+            <Search size={20} aria-hidden="true" className="shrink-0 text-text-secondary" />
+            <input
+              type="search"
+              aria-label="Search"
+              placeholder="Search inventory, organizations, documents…"
+              className="min-w-0 flex-1 border-0 bg-transparent p-0 font-body text-body-md text-text-primary outline-none placeholder:text-text-secondary"
+            />
+          </label>
+          <div className="ml-auto flex min-w-0 items-center gap-5">
             <span
               data-testid="connectivity-indicator"
               className="flex shrink-0 items-center gap-1.5 text-body-sm font-semibold text-text-secondary"
@@ -296,7 +305,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
               aria-haspopup="dialog"
               aria-expanded={isNotificationPanelOpen}
               onClick={() => setIsNotificationPanelOpen((open) => !open)}
-              className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-text-secondary hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="relative flex h-11 w-11 shrink-0 items-center justify-center text-text-secondary hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <Bell size={22} aria-hidden="true" />
               {unreadCount > 0 && (
@@ -312,7 +321,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
               <Link
                 href="/settings"
                 aria-label="Settings"
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-text-secondary hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="flex h-11 w-11 shrink-0 items-center justify-center text-text-secondary hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <Settings size={22} aria-hidden="true" />
               </Link>
@@ -327,9 +336,12 @@ export function ShellChrome({ children }: { children: ReactNode }) {
                 aria-haspopup="dialog"
                 aria-expanded={isAccountMenuOpen}
                 onClick={() => setIsAccountMenuOpen((open) => !open)}
-                className="flex h-11 w-11 items-center justify-center rounded-full bg-primary font-label text-body-md text-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="flex h-11 items-center gap-2 px-1 font-label text-body-md text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
-                {initials(displayName)}
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-surface">
+                  {initials(displayName)}
+                </span>
+                <span className="max-w-[120px] truncate text-left text-body-sm font-semibold">{displayName ?? "Profile"}</span>
               </button>
               {isAccountMenuOpen && (
                 <div
@@ -437,7 +449,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
         id="main-content"
         data-surface={tier}
         className={`min-h-screen pt-14 transition-[padding-left] duration-150 motion-reduce:transition-none lg:pr-6 lg:pt-[124px] ${
-          isDesktopOpen ? "lg:pl-[354px]" : "lg:pl-6"
+          isDesktopOpen ? "lg:pl-[312px]" : "lg:pl-6"
         } ${showFloorTabBar ? "pb-20" : "lg:pb-6"} ${
           tier === "floor" ? "bg-surface" : "bg-background"
         }`}
