@@ -94,6 +94,30 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
     expect(screen.queryByTestId("floor-tab-bar")).not.toBeInTheDocument();
   });
 
+  it("desktop sidebar defaults to expanded (lg:flex) when desktopOpen is omitted", () => {
+    render(
+      <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" />,
+    );
+    const sidebar = screen.getByTestId("desktop-sidebar");
+    expect(sidebar.className).toContain("lg:flex");
+    expect(sidebar.className).not.toContain("lg:hidden");
+    expect(sidebar).not.toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("desktop sidebar switches to lg:hidden and aria-hidden when desktopOpen=false (2026-08-17 collapse toggle)", () => {
+    render(
+      <ShellNavigation
+        tier="office"
+        context={officeContext}
+        currentPath="/inventory"
+        desktopOpen={false}
+      />,
+    );
+    const sidebar = screen.getByTestId("desktop-sidebar");
+    expect(sidebar.className).toContain("lg:hidden");
+    expect(sidebar).toHaveAttribute("aria-hidden", "true");
+  });
+
   it("omits nav entries the context has no grant for (R3.4 — hidden, not disabled)", () => {
     render(
       <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" />,
@@ -133,7 +157,22 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
     }
   });
 
-  it("never renders a live link for a featureStatus:'planned' registry entry (e.g. /reports)", () => {
+  it("never renders a live link for a featureStatus:'planned' registry entry (e.g. /documents)", () => {
+    // 2026-08-17: /reports retired as the example here — it flipped
+    // planned -> launch (confirmed fully wired to real data, stale flag).
+    // /documents is still genuinely planned (billing-pricing's real
+    // backend, P11, hasn't landed) — see revision-log.md.
+    render(
+      <ShellNavigation
+        tier="office"
+        context={{ grants: [{ resource: "documents", action: "read", scopeKind: "global" }] }}
+        currentPath="/inventory"
+      />,
+    );
+    expect(screen.queryByTestId("nav-entry-documents")).not.toBeInTheDocument();
+  });
+
+  it("renders a live link for /reports now that it's launchStatus: 'launch' (2026-08-17 stale-flag fix)", () => {
     render(
       <ShellNavigation
         tier="office"
@@ -141,7 +180,7 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
         currentPath="/inventory"
       />,
     );
-    expect(screen.queryByTestId("nav-entry-reports")).not.toBeInTheDocument();
+    expect(screen.getByTestId("nav-entry-reports")).toBeInTheDocument();
   });
 
   it("renders the office sidebar in grouped sections with a header per group (2026-08-09, sidebar reorganization)", () => {

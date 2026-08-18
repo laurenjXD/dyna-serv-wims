@@ -22,7 +22,7 @@ const config: Config = {
         "primary-hover": "#1E3A8A", // 🔵 Deep Blue
         secondary: "#7C3AED",       // 🟣 Violet
         neutral: "#94A3B8",         // ◻️ Cool Gray
-        background: "#FFF7ED",      // 🥛 Cream White (Level 0)
+        background: "#FFFFFF",      // ⬜ White (Level 0) — was Cream White (#FFF7ED)
         surface: "#FFFFFF",         // ⬜ Solid White (Level 1)
         "text-primary": "#0F172A",  // 🌑 Deep Navy
         "text-secondary": "#64748B",// 🩶 Slate

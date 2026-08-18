@@ -103,3 +103,28 @@ export function useShellSidebar(): ShellSidebarState {
     toggle: () => setIsOpen((prev) => !prev),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Desktop sidebar collapse/expand hook (client-only)
+// ---------------------------------------------------------------------------
+
+export interface DesktopSidebarState {
+  isOpen: boolean;
+  toggle: () => void;
+}
+
+/**
+ * Manages the DESKTOP (lg+) sidebar's collapsed/expanded state — distinct
+ * from useShellSidebar above, which is the mobile drawer's open/close state
+ * and only ever applies below the lg breakpoint. Defaults open (true), since
+ * the desktop sidebar was always-visible before this toggle existed. Same
+ * intentionally-simple useState-only pattern as useShellSidebar.
+ */
+export function useDesktopSidebar(): DesktopSidebarState {
+  const [isOpen, setIsOpen] = useState(true);
+
+  return {
+    isOpen,
+    toggle: () => setIsOpen((prev) => !prev),
+  };
+}

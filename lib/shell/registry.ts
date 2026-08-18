@@ -156,7 +156,11 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     surface: "office",
     capability: "reporting.read",
     featureSpecs: ["16-reporting-and-analytics"],
-    launchStatus: "planned",
+    // Was "planned" — confirmed stale (2026-08-17): the page is fully wired
+    // to real query modules (getInventoryKpis, getWrrVolumeTrend,
+    // getPickListVolumeTrend, getActivityHeatmap, etc.), zero TODO/mock
+    // markers. See revision-log.md's "Reports/Billing nav visibility" entry.
+    launchStatus: "launch",
     group: "Reports",
   },
   {

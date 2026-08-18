@@ -6,10 +6,10 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Settings, Wifi, WifiOff } from "lucide-react";
+import { Bell, PanelLeftClose, PanelLeftOpen, Settings, Wifi, WifiOff } from "lucide-react";
 import { resolveSessionPresentationTier } from "@/lib/shell/surface";
 import { isScanLoopRoute } from "@/lib/shell/scan-loop";
-import { useShellSidebar } from "@/lib/shell/state";
+import { useShellSidebar, useDesktopSidebar } from "@/lib/shell/state";
 import { useConnectivityStatus } from "@/lib/shell/use-connectivity";
 import { useShellAuthorizationContext } from "./AuthenticatedShellBoundary";
 import { ShellNavigation } from "./ShellNavigation";
@@ -42,6 +42,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
   const context = useShellAuthorizationContext();
   const pathname = usePathname();
   const { isOpen, toggle, close } = useShellSidebar();
+  const { isOpen: isDesktopOpen, toggle: toggleDesktop } = useDesktopSidebar();
   const connectivityStatus = useConnectivityStatus();
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
@@ -177,7 +178,11 @@ export function ShellChrome({ children }: { children: ReactNode }) {
 
   return (
     <>
-      <header className="fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-surface px-4 shadow-elevation-1 lg:left-[306px] lg:h-[76px] lg:px-8 lg:shadow-none">
+      <header
+        className={`fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-surface px-4 shadow-elevation-1 transition-[left] duration-150 motion-reduce:transition-none lg:h-[76px] lg:px-8 lg:shadow-none ${
+          isDesktopOpen ? "lg:left-[306px]" : "lg:left-0"
+        }`}
+      >
         {tier !== "floor" && (
           <button
             type="button"
@@ -189,6 +194,22 @@ export function ShellChrome({ children }: { children: ReactNode }) {
             <span aria-hidden="true" className="text-body-lg">
               ☰
             </span>
+          </button>
+        )}
+
+        {tier !== "floor" && (
+          <button
+            type="button"
+            aria-label={isDesktopOpen ? "Collapse navigation" : "Expand navigation"}
+            aria-expanded={isDesktopOpen}
+            onClick={toggleDesktop}
+            className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-full text-text-secondary hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:flex"
+          >
+            {isDesktopOpen ? (
+              <PanelLeftClose size={22} aria-hidden="true" />
+            ) : (
+              <PanelLeftOpen size={22} aria-hidden="true" />
+            )}
           </button>
         )}
 
@@ -402,6 +423,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
         currentPath={pathname}
         mobileNavOpen={isOpen}
         onCloseMobileNav={close}
+        desktopOpen={isDesktopOpen}
       />
 
       <div
@@ -414,9 +436,11 @@ export function ShellChrome({ children }: { children: ReactNode }) {
       <main
         id="main-content"
         data-surface={tier}
-        className={`min-h-screen pt-14 lg:pb-0 lg:pl-[306px] lg:pt-[76px] ${
-          showFloorTabBar ? "pb-20" : "pb-0"
-        } ${tier === "floor" ? "bg-surface" : "bg-background"}`}
+        className={`min-h-screen pt-14 transition-[padding-left] duration-150 motion-reduce:transition-none lg:pb-0 lg:pt-[76px] ${
+          isDesktopOpen ? "lg:pl-[306px]" : "lg:pl-0"
+        } ${showFloorTabBar ? "pb-20" : "pb-0"} ${
+          tier === "floor" ? "bg-surface" : "bg-background"
+        }`}
       >
         <div
           className={
@@ -436,7 +460,7 @@ function getPageTitle(pathname: string): string {
   if (pathname === "/") return "Overview Dashboard";
   if (pathname.startsWith("/reports")) return "Reports & Analytics";
   if (pathname.startsWith("/receiving")) return "Receiving / Incoming";
-  if (pathname.startsWith("/inventory")) return "Stock View";
+  if (pathname.startsWith("/inventory")) return "Master Inventory";
   if (pathname.startsWith("/outgoing") || pathname.startsWith("/pick-lists")) return "Picking & Dispatch";
   if (pathname.startsWith("/transfers")) return "Transfers";
   if (pathname.startsWith("/inspection")) return "Inspection";

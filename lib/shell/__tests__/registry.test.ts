@@ -124,7 +124,9 @@ const EXPECTED_ROUTES: Array<{
   // 2026-08-09: added — was already in 05's design.md route table (Planned)
   // but had never been added to this registry. See revision-log.md.
   { id: "billing-pricing", path: "/billing-pricing", surface: "office", capability: "reporting.financial_read", featureSpecs: ["12-vmi-billing", "13-trading-orders-and-pricing"], launchStatus: "planned" },
-  { id: "reports", path: "/reports", surface: "office", capability: "reporting.read", featureSpecs: ["16-reporting-and-analytics"], launchStatus: "planned" },
+  // 2026-08-17: launchStatus corrected planned -> launch — the page is
+  // fully wired to real query modules, no TODO/mock markers. See revision-log.md.
+  { id: "reports", path: "/reports", surface: "office", capability: "reporting.read", featureSpecs: ["16-reporting-and-analytics"], launchStatus: "launch" },
   { id: "profile", path: "/profile", surface: "shared", capability: "none", featureSpecs: ["21-user-profile-and-settings"], launchStatus: "launch" },
   { id: "settings", path: "/settings", surface: "office", capability: "users.read", featureSpecs: ["21-user-profile-and-settings"], launchStatus: "launch" },
   { id: "portal", path: "/portal", surface: "party", capability: "none", featureSpecs: ["22-parties-portal"], launchStatus: "launch" },
