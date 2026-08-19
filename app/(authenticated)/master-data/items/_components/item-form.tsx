@@ -14,6 +14,15 @@ import Link from "next/link";
 import type { ItemFormState } from "../_actions";
 import type { ItemDetail, CategoryOption, SupplierPartyOption } from "@/lib/db/queries/items";
 
+const ITEM_TYPES = [
+  "standard",
+  "raw_material",
+  "packaging",
+  "fabrication",
+  "spare_parts",
+  "machines",
+] as const;
+
 const UOM_OPTIONS = ["piece", "roll", "meter"] as const;
 const CURRENCY_OPTIONS = ["USD", "PHP"] as const;
 
@@ -98,34 +107,12 @@ export function ItemForm({
   const [parentCategoryId, setParentCategoryId] = useState(initialParentId);
   const [subcategoryId, setSubcategoryId] = useState(initialSubcategoryId);
 
-  // Primary identifier — conditional on Inventory Model (2026-08-19 user
-  // request): VMI items are identified by Supplier Item Code, Trading items
-  // by DSGC Item Number, never both shown at once. Each keeps its own value
-  // so switching Inventory Model doesn't lose what was already typed. The
-  // active one is mirrored into the DB's required `code` column (a separate,
-  // internal Dyna-Serv identifier) via a hidden input below — the user
-  // confirmed the conditional field itself should double as `code` rather
-  // than requiring a redundant third value.
-  const [codeValue, setCodeValue] = useState(item?.code ?? "");
-  const [supplierItemCodeValue, setSupplierItemCodeValue] = useState(
-    item?.supplierItemCode ?? "",
-  );
-  const [dsgcItemNumberValue, setDsgcItemNumberValue] = useState(
-    item?.dsgcItemNumber ?? "",
-  );
-  const primaryCodeValue =
-    inventoryModel === "vmi"
-      ? supplierItemCodeValue
-      : inventoryModel === "trading"
-      ? dsgcItemNumberValue
-      : codeValue;
-
   const categoryId = subcategoryId || parentCategoryId;
 
   const filteredParentCategories = inventoryModel
     ? parentCategories.filter(
-        (c) => c.flowType === inventoryModel || !c.flowType,
-      )
+      (c) => c.flowType === inventoryModel || !c.flowType,
+    )
     : parentCategories;
   const subcategoryOptions = parentCategoryId
     ? (childCategoriesByParent.get(parentCategoryId) ?? [])
@@ -167,10 +154,9 @@ export function ItemForm({
     ) : null;
 
   const inputClass = (name: string) =>
-    `mt-1 block w-full rounded border ${
-      state.fieldErrors?.[name]
-        ? "border-brand-red"
-        : "border-outline-variant/30"
+    `mt-1 block w-full rounded border ${state.fieldErrors?.[name]
+      ? "border-brand-red"
+      : "border-outline-variant/30"
     } bg-surface-white px-3 py-2 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy`;
 
   const ariaProps = (name: string) =>
@@ -377,22 +363,37 @@ export function ItemForm({
             {fieldError("name")}
           </div>
 
-          {inventoryModel !== "vmi" && inventoryModel !== "trading" && (
-            <div>
-              <label htmlFor="supplierItemCode-secondary" className="block font-label text-label text-on-surface">
-                Supplier Item Code
-              </label>
-              <input
-                id="supplierItemCode-secondary"
-                name="supplierItemCode"
-                type="text"
-                maxLength={100}
-                value={supplierItemCodeValue}
-                onChange={(e) => setSupplierItemCodeValue(e.target.value)}
-                className={inputClass("supplierItemCode")}
-              />
-            </div>
-          )}
+          <div>
+            <label htmlFor="itemType" className="block font-label text-label text-on-surface">
+              Item Type
+            </label>
+            <select
+              id="itemType"
+              name="itemType"
+              defaultValue={item?.itemType ?? "standard"}
+              className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            >
+              {ITEM_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t.replace(/_/g, " ")}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="supplierItemCode" className="block font-label text-label text-on-surface">
+              Supplier Item Code
+            </label>
+            <input
+              id="supplierItemCode"
+              name="supplierItemCode"
+              type="text"
+              maxLength={100}
+              defaultValue={item?.supplierItemCode ?? ""}
+              className={inputClass("supplierItemCode")}
+            />
+          </div>
 
           <div>
             <label htmlFor="customerItemCode" className="block font-label text-label text-on-surface">
@@ -408,22 +409,19 @@ export function ItemForm({
             />
           </div>
 
-          {inventoryModel !== "vmi" && inventoryModel !== "trading" && (
-            <div>
-              <label htmlFor="dsgcItemNumber-secondary" className="block font-label text-label text-on-surface">
-                DSGC Item Number
-              </label>
-              <input
-                id="dsgcItemNumber-secondary"
-                name="dsgcItemNumber"
-                type="text"
-                maxLength={100}
-                value={dsgcItemNumberValue}
-                onChange={(e) => setDsgcItemNumberValue(e.target.value)}
-                className={inputClass("dsgcItemNumber")}
-              />
-            </div>
-          )}
+          <div>
+            <label htmlFor="dsgcItemNumber" className="block font-label text-label text-on-surface">
+              DSGC Item Number
+            </label>
+            <input
+              id="dsgcItemNumber"
+              name="dsgcItemNumber"
+              type="text"
+              maxLength={100}
+              defaultValue={item?.dsgcItemNumber ?? ""}
+              className={inputClass("dsgcItemNumber")}
+            />
+          </div>
 
           <div className="md:col-span-2">
             <label htmlFor="description" className="block font-label text-label text-on-surface">
