@@ -37,7 +37,6 @@ export default async function NewItemPage() {
           action={createItemAction}
           categories={categories}
           supplierParties={supplierParties}
-          barcodeEditable={true}
           cancelHref="/enrollment?tab=items"
         />
       </div>

@@ -38,7 +38,6 @@ interface ItemFormProps {
   item?: ItemDetail;
   categories: CategoryOption[];
   supplierParties: SupplierPartyOption[];
-  barcodeEditable: boolean;
   cancelHref: string;
 }
 
@@ -64,7 +63,6 @@ export function ItemForm({
   item,
   categories,
   supplierParties,
-  barcodeEditable,
   cancelHref,
 }: ItemFormProps) {
   const [state, formAction, isPending] = useActionState(action, {});
@@ -303,6 +301,7 @@ export function ItemForm({
               />
               <input type="hidden" name="code" value={primaryCodeValue} />
               {fieldError("code")}
+              {fieldError("barcode")}
             </div>
           ) : inventoryModel === "trading" ? (
             <div>
@@ -324,6 +323,7 @@ export function ItemForm({
               />
               <input type="hidden" name="code" value={primaryCodeValue} />
               {fieldError("code")}
+              {fieldError("barcode")}
             </div>
           ) : (
             <div>
@@ -344,6 +344,7 @@ export function ItemForm({
                 {...ariaProps("code")}
               />
               {fieldError("code")}
+              {fieldError("barcode")}
             </div>
           )}
         </div>
@@ -652,41 +653,15 @@ export function ItemForm({
         )}
       </section>
 
-      {/* Section: Barcode — per page specs.md §8, sequenced after
-          UOM/CBM/Pallet Info and before Perishability. */}
-      <section aria-labelledby="section-barcode" className="mt-8">
-        <h2
-          id="section-barcode"
-          className="mb-4 font-heading font-semibold text-data-display text-on-surface"
-        >
-          Barcode
-        </h2>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label htmlFor="barcode" className="block font-label text-label text-on-surface">
-              Barcode{" "}
-              <span aria-hidden="true" className="text-brand-red">*</span>
-            </label>
-            <input
-              id="barcode"
-              name="barcode"
-              type="text"
-              required
-              maxLength={100}
-              defaultValue={item?.barcode ?? ""}
-              disabled={!barcodeEditable}
-              className={`${inputClass("barcode")} ${!barcodeEditable ? "cursor-not-allowed opacity-60" : ""}`}
-              {...ariaProps("barcode")}
-            />
-            {!barcodeEditable && (
-              <p className="mt-1 font-body text-body-sm text-status-neutral">
-                Barcode cannot be changed after operational use.
-              </p>
-            )}
-            {fieldError("barcode")}
-          </div>
-        </div>
-      </section>
+      {/* Barcode is no longer manually enrolled (2026-08-19 user request):
+          it's generated from the item code instead of a separate required
+          field. On create, it tracks whatever the active code field
+          currently holds; on edit, it stays frozen at the item's original
+          value — the DB barcode-immutability guard (lib/enrollment/
+          item-schema.ts's checkBarcodeUpdate, still enforced server-side)
+          exists for exactly this "never changes after operational use"
+          invariant, so an edit never submits a different value here. */}
+      <input type="hidden" name="barcode" value={item?.barcode ?? primaryCodeValue} />
 
       {/* Section: Pricing (reference values) */}
       <section aria-labelledby="section-pricing" className="mt-8">
