@@ -13,7 +13,8 @@ import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
-import { createWrr } from "@/lib/actions/receiving";
+import { createWrr, uploadCiplFile } from "@/lib/actions/receiving";
+import type { UploadCiplFileResult } from "@/lib/actions/receiving";
 import { db } from "@/lib/db/client";
 import { getActiveSupplierParties } from "@/lib/db/queries/items";
 import { WrrNewForm } from "./_components/wrr-new-form";
@@ -53,6 +54,9 @@ async function handleCreateWrr(formData: FormData): Promise<void> {
   }
 
   const input = {
+    // Client-generated (see WrrNewForm) so an uploaded CIPL file's Storage
+    // path — reserved before this row exists — and this row's own id agree.
+    id: (formData.get("id") as string | null) || undefined,
     vendorPartyId:
       (formData.get("vendorPartyId") as string | null) ?? "",
     flowType:
@@ -79,6 +83,22 @@ async function handleCreateWrr(formData: FormData): Promise<void> {
   // Redirect with encoded errors. The page re-reads them via searchParams.
   const encodedErrors = encodeURIComponent(result.errors.join("|"));
   redirect(`/receiving/new?errors=${encodedErrors}`);
+}
+
+// Thin wrapper so WrrNewForm (client) can call uploadCiplFile with a real
+// resolver built from this request's session — the pure action itself takes
+// a resolver, which only server-side code can construct.
+async function handleUploadCipl(
+  wrrId: string,
+  formData: FormData,
+): Promise<UploadCiplFileResult> {
+  "use server";
+  const actionResolver = await createPageResolver();
+  const file = formData.get("file");
+  if (!(file instanceof File)) {
+    return { ok: false, error: "No file was provided." };
+  }
+  return uploadCiplFile(actionResolver, wrrId, file);
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -164,7 +184,11 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
           conditional Item Code label) and renders the Vendor Organization
           dropdown, header fields (no PEZA Number — no longer collected),
           expected lines, and form actions. */}
-      <WrrNewForm action={handleCreateWrr} vendorParties={vendorParties} />
+      <WrrNewForm
+        action={handleCreateWrr}
+        vendorParties={vendorParties}
+        onUploadCipl={handleUploadCipl}
+      />
     </div>
   );
 }

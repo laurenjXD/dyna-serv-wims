@@ -6,27 +6,72 @@
 // selection can be shared client-side state between the header select and
 // WrrLineItems' conditional Item Code label. Vendor Organization is a
 // dropdown of real parties (page.tsx fetches the list). PEZA Number is no
-// longer collected on this form.
+// longer collected on this form. CIPL is a real Storage upload (2026-08-19
+// follow-up request), not a pasted URL.
 //
 // Traceability:
 //   specs/07-incoming-receiving/design.md §5 (pre-receiving WRR design), §5.1
 //     (expected line fields)
+//   specs/04-services-and-infrastructure/design.md §10 (Supabase Storage
+//     design — `cipl-documents` bucket, object path convention)
 
 import { useState } from "react";
 import Link from "next/link";
 import type { SupplierPartyOption } from "@/lib/db/queries/items";
+import type { UploadCiplFileResult } from "@/lib/actions/receiving";
 import { WrrLineItems } from "./wrr-line-items";
+
+const CIPL_ACCEPT = "application/pdf,image/png,image/jpeg";
 
 interface WrrNewFormProps {
   action: (formData: FormData) => void;
   vendorParties: SupplierPartyOption[];
+  onUploadCipl: (wrrId: string, formData: FormData) => Promise<UploadCiplFileResult>;
 }
 
-export function WrrNewForm({ action, vendorParties }: WrrNewFormProps) {
+export function WrrNewForm({ action, vendorParties, onUploadCipl }: WrrNewFormProps) {
   const [flowType, setFlowType] = useState("");
+
+  // Reserved up front (specs/04-services-and-infrastructure/design.md §10.2's
+  // path pattern needs a wrr_id before the row exists) so a CIPL file can
+  // upload to its final Storage path immediately on selection, without
+  // waiting for the whole form to submit. lib/actions/receiving.ts's
+  // createWrr reuses this exact id when creating the row (CreateWrrInput.id)
+  // so the two agree.
+  const [wrrId] = useState(() => crypto.randomUUID());
+  const [ciplPath, setCiplPath] = useState<string | null>(null);
+  const [ciplFileName, setCiplFileName] = useState<string | null>(null);
+  const [ciplStatus, setCiplStatus] = useState<"idle" | "uploading" | "done" | "error">("idle");
+  const [ciplError, setCiplError] = useState<string | null>(null);
+
+  async function handleCiplFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setCiplFileName(file.name);
+    setCiplStatus("uploading");
+    setCiplError(null);
+    setCiplPath(null);
+
+    const uploadFormData = new FormData();
+    uploadFormData.set("file", file);
+
+    const result = await onUploadCipl(wrrId, uploadFormData);
+    if (result.ok) {
+      setCiplPath(result.path);
+      setCiplStatus("done");
+    } else {
+      setCiplStatus("error");
+      setCiplError(result.error);
+    }
+  }
 
   return (
     <form action={action} className="mt-6 space-y-6">
+      {/* Client-generated WRR id — see the useState(() => crypto.randomUUID())
+          comment above. Always sent, whether or not a CIPL was attached. */}
+      <input type="hidden" name="id" value={wrrId} />
+
       {/* Header section — office card, Level 1 elevation */}
       <div className="rounded-xl bg-surface-white shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-on-surface">
@@ -119,21 +164,47 @@ export function WrrNewForm({ action, vendorParties }: WrrNewFormProps) {
             />
           </div>
 
-          {/* CIPL File URL — optional */}
+          {/* CIPL / Packing List Document — real Supabase Storage upload,
+              not a pasted URL (2026-08-19 user request). Uploads
+              immediately on selection to the private `cipl-documents`
+              bucket, ahead of the WRR row itself. */}
           <div>
             <label
-              htmlFor="ciplFileUrl"
+              htmlFor="ciplFile"
               className="block font-label text-label text-text-grey"
             >
-              CIPL File URL
+              CIPL / Packing List Document
             </label>
             <input
-              id="ciplFileUrl"
-              name="ciplFileUrl"
-              type="text"
-              placeholder="Storage URL of the attached CIPL document"
-              className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              id="ciplFile"
+              type="file"
+              accept={CIPL_ACCEPT}
+              onChange={handleCiplFileChange}
+              className="mt-1 block w-full font-body text-body-sm text-on-surface file:mr-3 file:h-11 file:cursor-pointer file:rounded file:border-0 file:bg-brand-navy file:px-4 file:font-label file:text-label file:text-surface-white hover:file:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
             />
+            {/* The uploaded object's Storage path — this is what actually
+                gets submitted as ciplFileUrl, never the raw <input type="file">
+                itself (file inputs can't be set programmatically, and the
+                upload already completed by the time the main form submits). */}
+            <input type="hidden" name="ciplFileUrl" value={ciplPath ?? ""} />
+            {ciplStatus === "uploading" && (
+              <p className="mt-1 font-body text-body-sm text-text-grey">
+                Uploading {ciplFileName}…
+              </p>
+            )}
+            {ciplStatus === "done" && (
+              <p className="mt-1 font-body text-body-sm text-status-available">
+                Uploaded: {ciplFileName}
+              </p>
+            )}
+            {ciplStatus === "error" && (
+              <p role="alert" className="mt-1 font-body text-body-sm text-brand-red">
+                {ciplError}
+              </p>
+            )}
+            <p className="mt-1 font-body text-body-sm text-text-grey">
+              PDF, PNG, or JPEG — up to 10MB.
+            </p>
           </div>
 
           {/* IP Number — optional */}
@@ -193,10 +264,10 @@ export function WrrNewForm({ action, vendorParties }: WrrNewFormProps) {
         {/* Primary CTA — brand-red per brand-design-system.md §9, h-11 office touch target */}
         <button
           type="submit"
-          disabled={vendorParties.length === 0}
-          className="flex h-11 items-center justify-center rounded bg-primary px-6 font-label text-label text-surface-white hover:bg-primary-hover motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+          disabled={vendorParties.length === 0 || ciplStatus === "uploading"}
+          className="flex h-11 items-center justify-center rounded bg-primary px-6 font-label text-label text-surface-white hover:bg-primary-hover motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:opacity-50"
         >
-          Create WRR
+          {ciplStatus === "uploading" ? "Uploading CIPL…" : "Create WRR"}
         </button>
         <Link
           href="/receiving"

@@ -13,6 +13,9 @@
 //     line SHALL NOT be required to carry a putawayLocationId at WRR creation or staging time;
 //     it is populated per line at scan/store time instead (see design.md §5.1 "Reversed 2026-08-10")
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export type CreateWrrLine = {
   lotNumber: string;
   expectedQty: number;
@@ -27,6 +30,13 @@ export type CreateWrrLine = {
 };
 
 export type CreateWrrInput = {
+  // Client-generated (crypto.randomUUID()) so a CIPL file can be uploaded to
+  // its final Storage path (specs/04-services-and-infrastructure/design.md
+  // §10.2: `cipl/{wrr_id}/{upload_uuid}/{sanitized-filename}`) before the
+  // wrr_documents row exists to reference. Optional: callers that never
+  // attach a CIPL file omit it and the database default (defaultRandom())
+  // applies as before.
+  id?: string;
   vendorPartyId: string;
   flowType: "vmi" | "trading" | "supplies";
   commercialInvoiceNo?: string | null;
@@ -52,6 +62,14 @@ export function validateCreateWrr(input: unknown): CreateWrrResult {
   }
 
   const raw = input as Record<string, unknown>;
+
+  // Validate id (optional — see CreateWrrInput's own doc comment)
+  const rawId = raw["id"];
+  if (rawId !== undefined && rawId !== null) {
+    if (typeof rawId !== "string" || !UUID_PATTERN.test(rawId)) {
+      errors.push("id, when provided, must be a valid UUID");
+    }
+  }
 
   // Validate vendorPartyId
   if (typeof raw["vendorPartyId"] !== "string" || raw["vendorPartyId"].trim() === "") {
@@ -99,6 +117,9 @@ export function validateCreateWrr(input: unknown): CreateWrrResult {
     lines: validatedLines,
   };
 
+  if (rawId !== undefined && rawId !== null) {
+    data.id = rawId as string;
+  }
   if (commercialInvoiceNo !== undefined) {
     data.commercialInvoiceNo = commercialInvoiceNo as string | null;
   }

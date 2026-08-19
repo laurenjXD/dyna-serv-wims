@@ -47,6 +47,7 @@ export type WrrDocumentRow = {
 // select on purpose, since the queue/ledger list views never render these.
 export type WrrDocumentDetailFields = {
   commercialInvoiceNo: string | null;
+  ciplFileUrl: string | null;
   pezaNumber: string | null;
   ipNumber: string | null;
   mawbMblNumber: string | null;
@@ -94,6 +95,7 @@ type RawJoinRow = {
   stagedByUserId: string;
   createdAt: Date;
   commercialInvoiceNo: string | null;
+  ciplFileUrl: string | null;
   pezaNumber: string | null;
   ipNumber: string | null;
   mawbMblNumber: string | null;
@@ -232,6 +234,7 @@ export async function getWrrDocument(
       createdAt: wrrDocuments.createdAt,
       // design.md §5.3 print-contract header fields.
       commercialInvoiceNo: wrrDocuments.commercialInvoiceNo,
+      ciplFileUrl: wrrDocuments.ciplFileUrl,
       pezaNumber: wrrDocuments.pezaNumber,
       ipNumber: wrrDocuments.ipNumber,
       mawbMblNumber: wrrDocuments.mawbMblNumber,
@@ -289,6 +292,7 @@ export async function getWrrDocument(
     status: first.status,
     flowType: first.flowType,
     commercialInvoiceNo: first.commercialInvoiceNo,
+    ciplFileUrl: first.ciplFileUrl,
     pezaNumber: first.pezaNumber,
     ipNumber: first.ipNumber,
     mawbMblNumber: first.mawbMblNumber,
