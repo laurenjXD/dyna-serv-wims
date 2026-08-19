@@ -158,16 +158,20 @@ export default async function WrrDetailPage({ params }: PageProps) {
           </div>
           <div>
             <dt className="font-label text-label text-text-grey">
-              Vendor Organization ID
+              Vendor Organization
             </dt>
-            <dd className="mt-1 font-mono text-mono-md text-on-surface">
-              {wrr.vendorPartyId}
+            <dd className="mt-1 font-body text-body-md text-on-surface">
+              {wrr.vendorPartyName ?? (
+                <span className="font-mono text-mono-md">{wrr.vendorPartyId}</span>
+              )}
             </dd>
           </div>
           <div>
             <dt className="font-label text-label text-text-grey">Staged By</dt>
-            <dd className="mt-1 font-mono text-mono-md text-on-surface">
-              {wrr.stagedByUserId}
+            <dd className="mt-1 font-body text-body-md text-on-surface">
+              {wrr.stagedByDisplayName ?? (
+                <span className="font-mono text-mono-md">{wrr.stagedByUserId}</span>
+              )}
             </dd>
           </div>
           <div>
