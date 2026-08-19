@@ -16,16 +16,26 @@ import { useEffect, useState } from "react";
 export type ConnectivityStatus = "online" | "offline" | "checking";
 
 function readNavigatorOnLine(): ConnectivityStatus {
-  if (typeof navigator === "undefined") return "checking";
   return navigator.onLine ? "online" : "offline";
 }
 
 export function useConnectivityStatus(): ConnectivityStatus {
-  const [status, setStatus] = useState<ConnectivityStatus>(() =>
-    readNavigatorOnLine(),
-  );
+  // Always starts at "checking" — on both the server-rendered HTML and the
+  // client's first render before effects run — never reading `navigator`
+  // during render itself. Node 21+ ships a partial global `navigator` with
+  // no real `onLine` property, so the previous `typeof navigator ===
+  // "undefined"` SSR guard no longer holds: it silently fell through to
+  // `navigator.onLine` being `undefined` (falsy) during SSR, rendering
+  // "Offline" server-side while a real online browser hydrated to "Online"
+  // — a hydration mismatch on every authenticated page's header (the shell
+  // chrome mounts this on literally every route). Reading the real value
+  // only inside this effect (client-only, post-mount) keeps the first paint
+  // identical on server and client, then corrects it immediately after.
+  const [status, setStatus] = useState<ConnectivityStatus>("checking");
 
   useEffect(() => {
+    setStatus(readNavigatorOnLine());
+
     const handleOnline = () => setStatus("online");
     const handleOffline = () => setStatus("offline");
 
