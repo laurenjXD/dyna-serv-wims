@@ -24,7 +24,7 @@ export async function addSampleData(
     ok: true,
     message:
       added === 0
-        ? "The three sample organizations, items, and WRRs already exist."
+        ? "The three sample organizations, items, and WRRs are ready. Existing sample items were refreshed."
         : `Sample data ready: added ${organizations} organization(s), ${items} item(s), and ${wrrs} WRR(s).`,
   };
 }

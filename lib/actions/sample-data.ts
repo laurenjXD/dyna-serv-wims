@@ -24,6 +24,7 @@ const defaultRlsDeps: RlsTransactionDeps = {
 type DbLike = {
   select: (...args: any[]) => any;
   insert: (...args: any[]) => any;
+  update: (...args: any[]) => any;
 };
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
@@ -38,16 +39,22 @@ const SAMPLE_ITEMS = [
     code: "SAMPLE-ITEM-001",
     name: "Sample Item One",
     barcode: "SAMPLE-BARCODE-001",
+    dsgcItemNumber: "SAMPLE-DSGC-001",
+    supplierItemCode: "SAMPLE-SUPPLIER-001",
   },
   {
     code: "SAMPLE-ITEM-002",
     name: "Sample Item Two",
     barcode: "SAMPLE-BARCODE-002",
+    dsgcItemNumber: "SAMPLE-DSGC-002",
+    supplierItemCode: "SAMPLE-SUPPLIER-002",
   },
   {
     code: "SAMPLE-ITEM-003",
     name: "Sample Item Three",
     barcode: "SAMPLE-BARCODE-003",
+    dsgcItemNumber: "SAMPLE-DSGC-003",
+    supplierItemCode: "SAMPLE-SUPPLIER-003",
   },
 ] as const;
 
@@ -164,6 +171,18 @@ export async function seedSampleData(
             .returning({ id: items.id });
           itemId = inserted.id;
           created.items += 1;
+        } else {
+          // Sample rows from an earlier seed did not contain the operational
+          // reference codes needed by the pick-list safety gate. Repair them
+          // on every idempotent seed run without creating more sample rows.
+          await db
+            .update(items)
+            .set({
+              dsgcItemNumber: item.dsgcItemNumber,
+              supplierItemCode: item.supplierItemCode,
+              updatedAt: new Date(),
+            })
+            .where(eq(items.id, itemId));
         }
         if (!itemId) throw new Error("Sample item could not be created.");
         itemIds.push(itemId);

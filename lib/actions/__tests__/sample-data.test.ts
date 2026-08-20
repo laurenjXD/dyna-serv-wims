@@ -103,4 +103,36 @@ describe("seedSampleData", () => {
       created: { organizations: 3, items: 3, wrrs: 3 },
     });
   });
+
+  it("repairs the pick-required reference codes on existing sample items without adding rows", async () => {
+    const existingRows = [
+      [{ id: "org-1" }], [{ id: "role-1" }],
+      [{ id: "org-2" }], [{ id: "role-2" }],
+      [{ id: "org-3" }], [{ id: "role-3" }],
+      [{ id: "item-1" }], [{ id: "item-2" }], [{ id: "item-3" }],
+      [{ id: "wrr-1" }], [{ id: "line-1" }],
+      [{ id: "wrr-2" }], [{ id: "line-2" }],
+      [{ id: "wrr-3" }], [{ id: "line-3" }],
+    ];
+    const updated: unknown[] = [];
+    const db = {
+      select: selectSequence(existingRows),
+      insert: vi.fn(),
+      update: vi.fn(() => ({
+        set: vi.fn((values: unknown) => {
+          updated.push(values);
+          return { where: vi.fn().mockResolvedValue(undefined) };
+        }),
+      })),
+    };
+
+    const result = await seedSampleData(administrator(), mockRlsDeps(db).deps);
+
+    expect(result).toEqual({ ok: true, created: { organizations: 0, items: 0, wrrs: 0 } });
+    expect(updated).toHaveLength(3);
+    expect(updated[0]).toMatchObject({
+      dsgcItemNumber: "SAMPLE-DSGC-001",
+      supplierItemCode: "SAMPLE-SUPPLIER-001",
+    });
+  });
 });
