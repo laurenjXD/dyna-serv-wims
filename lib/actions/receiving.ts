@@ -23,7 +23,7 @@
 // These actions are online-only; scan loop and commit are excluded from the
 // offline queue (two-stage commitment lifecycle per 08-outgoing spec).
 
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, or } from "drizzle-orm";
 import type { RequestAuthorizationResolver } from "@/lib/rbac/session";
 import { requirePermission } from "@/lib/rbac/guard";
 import { validateCreateWrr } from "@/lib/receiving/wrr-schema";
@@ -231,8 +231,36 @@ export async function createWrr(
         })
         .returning({ id: wrrDocuments.id });
 
+      // A line's itemCode is a free-text field on the create-WRR form — it is
+      // never checked against the items catalog at entry time. Without this
+      // resolution step, wrr_items.item_id stays permanently null even when
+      // an item with a matching code/barcode is already enrolled, and every
+      // floor scan against that line is rejected as unknown_item
+      // (scan-matcher.ts requires a non-null itemId to accept a match).
+      // Skip the lookup when the caller already supplied itemId directly.
+      const resolvedLines = await Promise.all(
+        data.lines.map(async (line) => {
+          if (line.itemId || !line.itemCode) return line;
+          const catalogMatches = await db
+            .select({ id: itemCatalog.id })
+            .from(itemCatalog)
+            .where(
+              or(
+                eq(itemCatalog.code, line.itemCode),
+                eq(itemCatalog.supplierItemCode, line.itemCode),
+                eq(itemCatalog.dsgcItemNumber, line.itemCode),
+                eq(itemCatalog.barcode, line.itemCode),
+              ),
+            )
+            .limit(1);
+          return catalogMatches.length === 1
+            ? { ...line, itemId: catalogMatches[0].id as string }
+            : line;
+        }),
+      );
+
       await db.insert(wrrItems).values(
-        data.lines.map((line) => ({
+        resolvedLines.map((line) => ({
           wrrId: inserted.id,
           itemId: line.itemId ?? null,
           itemCode: line.itemCode ?? null,

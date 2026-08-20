@@ -371,6 +371,38 @@ describe("createWrr — success (R1.1, R1.4, design.md §4)", () => {
     // Header and line records are staged together.
     expect(db.insert).toHaveBeenCalledTimes(2);
   });
+
+  it("(AC: itemCode resolves to catalog itemId) resolves line.itemId from the items catalog when the caller supplies itemCode but not itemId, so the line is not permanently unlinked from an already-enrolled item", async () => {
+    // The items-catalog lookup shares the same generic select() mock as the
+    // wrr/wrr_items rows — passing the match as the second arg makes it the
+    // row returned for any select() call in this test (createWrr issues only
+    // one: the catalog lookup).
+    const db = makeReceivingDb([], [{ id: "resolved-item-uuid" }]);
+
+    const result = await createWrr(
+      authorizedConfirmResolver(),
+      {
+        vendorPartyId: "party-uuid-vendor",
+        flowType: "vmi",
+        lines: [
+          {
+            lotNumber: "LOT-001",
+            expectedQty: 10,
+            unitCbm: 0.5,
+            uom: "CTN",
+            disposition: "store",
+            itemCode: "SUPP-PART-001",
+          },
+        ],
+      },
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result.ok).toBe(true);
+    // Second insert() call is the wrr_items batch (first is wrr_documents).
+    const insertedLines = db._inserted[1] as AnyRecord[];
+    expect(insertedLines[0].itemId).toBe("resolved-item-uuid");
+  });
 });
 
 // ---------------------------------------------------------------------------
