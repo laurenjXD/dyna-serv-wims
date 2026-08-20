@@ -175,10 +175,9 @@ export function resolveBilledBalanceCbm(
 // already been recorded (tasks.md A.9/C.6).
 // ---------------------------------------------------------------------------
 
-export function resolveContractTermsForDate(
-  versions: VmiContractTermsVersion[],
-  ledgerDate: string | Date,
-): VmiContractTermsVersion | null {
+export function resolveContractTermsForDate<
+  T extends { effectiveFrom: Date; effectiveTo: Date | null } = VmiContractTermsVersion,
+>(versions: T[], ledgerDate: string | Date): T | null {
   const dateMs =
     typeof ledgerDate === "string"
       ? new Date(ledgerDate).getTime()

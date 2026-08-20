@@ -1,8 +1,10 @@
 // `vmi_billing.ts` — specs/12-vmi-billing/design.md §1 (full rewrite, 2026-08-19)
 //
-// Seven tables backing VMI billing: vmi_contract_terms (effective-dated
+// Eight tables backing VMI billing: vmi_contract_terms (effective-dated
 // rate-card version history — NOT one row per party, see §1.1),
-// vmi_recurring_fee_lines, vmi_daily_balance_ledger (movement-replay-sourced,
+// vmi_recurring_fee_lines, vmi_manpower_hours_log (per-period hours entries
+// backing the manpower recurring fee — added 2026-08-20, design.md §1.2a),
+// vmi_daily_balance_ledger (movement-replay-sourced,
 // never a lot_inventory_totals read — see design.md §2.1),
 // vmi_charge_lines (Documentation/Delivery/ad-hoc only — Warehousing and
 // Handling are always movement-replay aggregates, never charge lines),
@@ -211,6 +213,47 @@ export const vmiRecurringFeeLines = pgTable("vmi_recurring_fee_lines", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+// ---------------------------------------------------------------------------
+// 1.2a vmi_manpower_hours_log — added 2026-08-20, surfaced during Task D.4.
+// vmi_recurring_fee_lines' manpower row holds only the standing hourly rate
+// (a stable, reusable config row); "hours logged this period" needs a
+// dedicated per-period table, not an extension of vmi_charge_lines (manpower
+// isn't tied to one AR/shipment the way Documentation/Delivery are).
+//
+// Append/re-entry pattern, not editable-in-place: no updatedAt column, unlike
+// every other vmi_billing table. Re-entering hours for an already-logged
+// period is an application-layer edit, not a second row — enforced by the
+// unique constraint below. No hours logged for a period is the normal,
+// expected case (design.md §2.5 reads this as "$0 if no row exists"), never
+// an error blocking period close.
+// ---------------------------------------------------------------------------
+
+export const vmiManpowerHoursLog = pgTable(
+  "vmi_manpower_hours_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    recurringFeeLineId: uuid("recurring_fee_line_id")
+      .references(() => vmiRecurringFeeLines.id)
+      .notNull(),
+    partyId: uuid("party_id")
+      .references(() => parties.id)
+      .notNull(), // redundant with recurringFeeLineId's own party, kept for RLS scoping consistency with every other VMI table
+    periodStartDate: date("period_start_date").notNull(),
+    periodEndDate: date("period_end_date").notNull(),
+    hours: decimal("hours", { precision: 10, scale: 2 }).notNull(),
+    notes: text("notes"),
+    recordedByUserId: uuid("recorded_by_user_id").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    uniquePeriod: unique("vmi_manpower_hours_log_period_unique").on(
+      table.recurringFeeLineId,
+      table.periodStartDate,
+      table.periodEndDate,
+    ),
+  }),
+);
 
 // ---------------------------------------------------------------------------
 // 1.3 vmi_daily_balance_ledger — one row per VMI party per calendar day.

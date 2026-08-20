@@ -638,11 +638,112 @@ describe("vmi_billing.ts — vmi_payments table (FR-7, B.7)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// index.ts re-export requirement (tasks.md B.8)
+// vmi_manpower_hours_log (design.md §1.2a, added 2026-08-20; tasks.md B.12)
+//
+// Surfaced during Task D.4: vmi_recurring_fee_lines' manpower row holds only
+// the standing hourly rate (stable, reusable config); "hours logged this
+// period" needs a dedicated per-period table, not an extension of
+// vmi_charge_lines (manpower isn't tied to one AR/shipment). Backing
+// acceptance criterion: requirements.md FR-5.1 — Manpower recurring-fee
+// contribution is hours_logged × rate_per_hour, requiring an explicit hours
+// entry per period; contributes $0/omits when none exists (never an error).
+//
+// Append/re-entry pattern, not an editable-in-place row: design.md §1.2a's
+// constraint notes describe "re-logging hours for an already-logged period
+// is an edit (application layer), not a second row" enforced via the unique
+// constraint below — but the table itself has no updatedAt column (unlike
+// every other vmi_billing table, all of which pair createdAt+updatedAt).
 // ---------------------------------------------------------------------------
 
-describe("index.ts — re-exports all seven vmi_billing tables (B.8)", () => {
-  it("exports all seven vmi_billing tables from the barrel file", async () => {
+describe("vmi_billing.ts — vmi_manpower_hours_log table (FR-5.1, B.12)", () => {
+  it("is named 'vmi_manpower_hours_log'", async () => {
+    const { vmiManpowerHoursLog } = await import("../vmi_billing");
+    expect(tableName(vmiManpowerHoursLog)).toBe("vmi_manpower_hours_log");
+  });
+
+  it("has id as a uuid primary key", async () => {
+    const { vmiManpowerHoursLog } = await import("../vmi_billing");
+    expect(hasColumn(vmiManpowerHoursLog, "id")).toBe(true);
+    expect(column(vmiManpowerHoursLog, "id").primary).toBe(true);
+  });
+
+  it("has recurringFeeLineId notNull referencing vmi_recurring_fee_lines.id", async () => {
+    const { vmiManpowerHoursLog } = await import("../vmi_billing");
+    expect(column(vmiManpowerHoursLog, "recurringFeeLineId").notNull).toBe(
+      true,
+    );
+    expect(
+      referencesTable(
+        vmiManpowerHoursLog,
+        "recurring_fee_line_id",
+        "vmi_recurring_fee_lines",
+        "id",
+      ),
+    ).toBe(true);
+  });
+
+  it("has partyId notNull referencing parties.id", async () => {
+    const { vmiManpowerHoursLog } = await import("../vmi_billing");
+    expect(column(vmiManpowerHoursLog, "partyId").notNull).toBe(true);
+    expect(
+      referencesTable(vmiManpowerHoursLog, "party_id", "parties", "id"),
+    ).toBe(true);
+  });
+
+  it("has periodStartDate and periodEndDate notNull date columns", async () => {
+    const { vmiManpowerHoursLog } = await import("../vmi_billing");
+    expect(column(vmiManpowerHoursLog, "periodStartDate").notNull).toBe(true);
+    expect(column(vmiManpowerHoursLog, "periodEndDate").notNull).toBe(true);
+  });
+
+  it("has hours notNull decimal(10,2) (design.md §1.2a exact precision/scale)", async () => {
+    const { vmiManpowerHoursLog } = await import("../vmi_billing");
+    const hours = column(vmiManpowerHoursLog, "hours");
+    expect(hours.notNull).toBe(true);
+    expect(hours.precision).toBe(10);
+    expect(hours.scale).toBe(2);
+  });
+
+  it("has notes nullable", async () => {
+    const { vmiManpowerHoursLog } = await import("../vmi_billing");
+    expect(hasColumn(vmiManpowerHoursLog, "notes")).toBe(true);
+    expect(column(vmiManpowerHoursLog, "notes").notNull).toBe(false);
+  });
+
+  it("has recordedByUserId notNull and createdAt notNull with default", async () => {
+    const { vmiManpowerHoursLog } = await import("../vmi_billing");
+    expect(column(vmiManpowerHoursLog, "recordedByUserId").notNull).toBe(
+      true,
+    );
+    const createdAt = column(vmiManpowerHoursLog, "createdAt");
+    expect(createdAt.notNull).toBe(true);
+    expect(createdAt.hasDefault).toBe(true);
+  });
+
+  it("has NO updatedAt column — append/re-entry pattern, not an editable-in-place row (design.md §1.2a, unlike every other vmi_billing table)", async () => {
+    const { vmiManpowerHoursLog } = await import("../vmi_billing");
+    expect(hasColumn(vmiManpowerHoursLog, "updatedAt")).toBe(false);
+  });
+
+  it("has a unique constraint on (recurringFeeLineId, periodStartDate, periodEndDate) — re-logging an already-logged period is an edit, not a duplicate row (B.12)", async () => {
+    const { vmiManpowerHoursLog } = await import("../vmi_billing");
+    const uniques = uniqueConstraints(vmiManpowerHoursLog);
+    const match = uniques.find(
+      (cols) =>
+        cols.includes("recurring_fee_line_id") &&
+        cols.includes("period_start_date") &&
+        cols.includes("period_end_date"),
+    );
+    expect(match).toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// index.ts re-export requirement (tasks.md B.8, B.12)
+// ---------------------------------------------------------------------------
+
+describe("index.ts — re-exports all eight vmi_billing tables (B.8, B.12)", () => {
+  it("exports all eight vmi_billing tables from the barrel file", async () => {
     const schema = await import("../index");
     for (const key of [
       "vmiContractTerms",
@@ -652,6 +753,7 @@ describe("index.ts — re-exports all seven vmi_billing tables (B.8)", () => {
       "vmiPermits",
       "vmiBillingPeriods",
       "vmiPayments",
+      "vmiManpowerHoursLog",
     ]) {
       expect(schema).toHaveProperty(key);
       expect(schema[key as keyof typeof schema]).toBeDefined();

@@ -111,6 +111,32 @@ export const vmiRecurringFeeLines = pgTable("vmi_recurring_fee_lines", {
 });
 ```
 
+### 1.2a `vmi_manpower_hours_log`
+
+Added 2026-08-20, surfaced while implementing Task D.4: design.md §2.5's manpower formula (`hours_logged × rate_per_hour`) needs somewhere to record "hours logged this period" — `vmi_recurring_fee_lines` intentionally holds only the standing hourly rate (a stable, reusable config row), not a per-period variable. Product Owner decision: a dedicated small table, not an extension of `vmi_charge_lines` (manpower isn't tied to one AR/shipment the way Documentation/Delivery are).
+
+```typescript
+import { pgTable, uuid, date, decimal, text, timestamp, unique } from "drizzle-orm/pg-core";
+import { parties } from "./parties";
+import { vmiRecurringFeeLines } from "./vmi_billing";
+
+export const vmiManpowerHoursLog = pgTable("vmi_manpower_hours_log", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  recurringFeeLineId: uuid("recurring_fee_line_id").references(() => vmiRecurringFeeLines.id).notNull(),
+  partyId: uuid("party_id").references(() => parties.id).notNull(), // redundant with recurringFeeLineId's own party, kept for RLS scoping consistency with every other VMI table
+  periodStartDate: date("period_start_date").notNull(),
+  periodEndDate: date("period_end_date").notNull(),
+  hours: decimal("hours", { precision: 10, scale: 2 }).notNull(),
+  notes: text("notes"),
+  recordedByUserId: uuid("recorded_by_user_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  uniquePeriod: unique().on(table.recurringFeeLineId, table.periodStartDate, table.periodEndDate),
+}));
+```
+
+**Constraint notes:** one row per `(recurring_fee_line_id, period_start_date, period_end_date)` — re-entering hours for an already-logged period is an edit (application layer), not a second row. No hours logged for a period is the normal, expected case (per the real June fixture — $0 that month), not an error; §2.5's aggregation reads this as "0 if no row exists," never blocking period close.
+
 ### 1.3 `vmi_daily_balance_ledger`
 
 One row per VMI party per calendar day. Replaces `vmi_cbm_ledger`. Source of `beginning_cbm`/`ending_cbm` is **movement replay over `inventory_transactions`**, not a `lot_inventory_totals` read — see §2.1 for why.
