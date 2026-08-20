@@ -275,11 +275,8 @@ export function WrrLineItems({ flowType, vendorPartyId, itemOptions }: { flowTyp
                   className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 />
               ) : <>
-                <select id={`line-${index}-itemCode`} value={line.itemId} disabled={!vendorPartyId} onChange={(e) => chooseItem(index, e.target.value)} className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface disabled:cursor-not-allowed disabled:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy">
-                  <option value="">{vendorPartyId ? "Select registered item…" : "Select vendor organization first"}</option>
-                  {availableItems.map((item) => <option key={item.id} value={item.id}>{codeFor(item)} — {item.name}</option>)}
-                </select>
-                <input type="hidden" name={`line_${index}_itemCode`} value={line.itemCode} />
+                <input id={`line-${index}-itemCode`} name={`line_${index}_itemCode`} list={`line-${index}-item-code-options`} value={line.itemCode} onChange={(e) => updateLine(index, "itemCode", e.target.value)} placeholder={vendorPartyId ? "Select or type an item code" : "Select organization first, or type code"} className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy" />
+                <datalist id={`line-${index}-item-code-options`}>{availableItems.map((item) => <option key={item.id} value={codeFor(item)} label={item.name} />)}</datalist>
               </>}
             </div>
 
@@ -294,11 +291,8 @@ export function WrrLineItems({ flowType, vendorPartyId, itemOptions }: { flowTyp
               {flowType === "trading" ? (
                 <input id={`line-${index}-customerItemCode`} name={`line_${index}_customerItemCode`} type="text" value={line.customerItemCode} onChange={(e) => updateLine(index, "customerItemCode", e.target.value)} placeholder="Enter customer item code" className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy" />
               ) : <>
-                <select id={`line-${index}-customerItemCode`} value={line.itemId} disabled={!vendorPartyId} onChange={(e) => chooseItem(index, e.target.value)} className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface disabled:cursor-not-allowed disabled:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy">
-                  <option value="">{vendorPartyId ? "Select customer item code…" : "Select vendor organization first"}</option>
-                  {availableItems.filter((item) => item.customerItemCode).map((item) => <option key={item.id} value={item.id}>{item.customerItemCode} — {item.name}</option>)}
-                </select>
-                <input type="hidden" name={`line_${index}_customerItemCode`} value={line.customerItemCode} />
+                <input id={`line-${index}-customerItemCode`} name={`line_${index}_customerItemCode`} list={`line-${index}-customer-code-options`} value={line.customerItemCode} onChange={(e) => updateLine(index, "customerItemCode", e.target.value)} placeholder={vendorPartyId ? "Select or type customer item code" : "Select organization first, or type code"} className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy" />
+                <datalist id={`line-${index}-customer-code-options`}>{availableItems.filter((item) => item.customerItemCode).map((item) => <option key={item.id} value={item.customerItemCode!} label={item.name} />)}</datalist>
               </>}
             </div>
           </div>

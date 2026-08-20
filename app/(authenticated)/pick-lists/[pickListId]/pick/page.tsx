@@ -156,7 +156,8 @@ export default async function PickExecutionPage({
     const match = currentLines.find(
       (line) =>
         !currentlyConfirmed.has(line.id) &&
-        (line.itemCode === barcode ||
+        (line.itemBarcode === barcode ||
+          line.itemCode === barcode ||
           line.lotNumber === barcode ||
           line.locationLabel === barcode),
     );

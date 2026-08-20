@@ -503,21 +503,25 @@ export default async function ReceiveFloorPage({
           unscanned, the scan input is the primary action. 64px minimum
           height for floor primary actions throughout. */}
       {isReceivable && primaryReadyLine && (
-        <div className="sticky bottom-0 bg-brand-navy px-4 pb-6 pt-4 shadow-elevation-2">
+        <div className="sticky bottom-0 border-t border-outline-variant/30 bg-surface-white px-4 pb-6 pt-4 shadow-elevation-2">
           <form action={handleCommitLine} className="flex flex-col gap-3">
             <input type="hidden" name="wrrItemId" value={primaryReadyLine.id} />
-            <p className="font-mono text-mono-lg font-bold text-surface-white">
+            <p className="font-mono text-mono-lg font-bold text-on-surface">
               {primaryReadyLine.lotNumber}
             </p>
             {primaryReadyLine.disposition === "store" ? (
               <>
                 <label
                   htmlFor="location-primary"
-                  className="text-body-md font-body text-surface-white"
+                  className="text-body-md font-body text-on-surface"
                 >
                   Putaway location
                 </label>
                 {primaryStoreCandidates.length > 0 ? (
+                  <>
+                  <p className="rounded border border-outline-variant/30 bg-surface-light-grey px-3 py-2 font-body text-body-md text-on-surface">
+                    This receipt needs {(primaryReadyLine.unitCbm * primaryReadyLine.expectedQty).toFixed(2)} CBM. Only locations that fit it are shown.
+                  </p>
                   <select
                     id="location-primary"
                     name="locationId"
@@ -530,6 +534,8 @@ export default async function ReceiveFloorPage({
                       </option>
                     ))}
                   </select>
+                  <p className="font-body text-body-sm text-text-grey">Selected suggestions display their remaining available space. Choose another location if the physical space does not match.</p>
+                  </>
                 ) : (
                   <div role="alert" className="rounded border-l-4 border-status-held bg-white px-3 py-2">
                     <p className="flex items-center gap-2 font-body text-body-md text-on-surface">
@@ -552,7 +558,7 @@ export default async function ReceiveFloorPage({
               <>
                 <label
                   htmlFor="location-primary"
-                  className="text-body-md font-body text-surface-white"
+                  className="text-body-md font-body text-on-surface"
                 >
                   Inspection location
                 </label>

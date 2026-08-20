@@ -242,7 +242,7 @@ export default async function WrrDetailPage({ params }: PageProps) {
           )}
           {(wrr.status === "staged_pending_arrival" || wrr.status === "receiving_in_progress") && (
             <form action={handleCancelWrr}>
-              <button type="submit" className="inline-flex h-11 items-center justify-center rounded border border-status-held px-4 font-label text-label text-status-held hover:bg-status-held/10 focus:outline-none focus:ring-2 focus:ring-brand-navy">Delete / Cancel WRR</button>
+              <button type="submit" className="inline-flex h-11 items-center justify-center rounded border border-status-held px-4 font-label text-label text-status-held hover:bg-status-held/10 focus:outline-none focus:ring-2 focus:ring-brand-navy">Cancel WRR</button>
             </form>
           )}
         </div>

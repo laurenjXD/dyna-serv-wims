@@ -41,6 +41,26 @@ html[data-density="compact"] :is(table th, table td) {
   padding-bottom: 0.5rem !important;
 }
 
+/* Inspection must be a light office surface by default. The Profile
+ * preference remains the sole opt-in path to a dark palette. */
+html:not([data-theme="dark"]) .inspection-page-header {
+  border-bottom: 1px solid #dbe3ee;
+}
+html:not([data-theme="dark"]) .inspection-page :is(.inspection-page-header, [class~="bg-white/10"]) {
+  background-color: #ffffff;
+  border-color: #dbe3ee;
+}
+html:not([data-theme="dark"]) .inspection-page :is(.inspection-page-header, [class~="bg-white/10"]) [class*="text-white"] {
+  color: #0f172a;
+}
+html:not([data-theme="dark"]) .inspection-page :is(.inspection-page-header, [class~="bg-white/10"]) [class*="text-white/"] {
+  color: #64748b;
+}
+html:not([data-theme="dark"]) .inspection-page [class~="bg-white/15"] {
+  background-color: #ffffff;
+  border-color: #cbd5e1;
+}
+
 /*
  * Unified UI/UX Visual Design System Baseline
  * (specs/00-steering/design.md & ui-ux-design-plan.md)

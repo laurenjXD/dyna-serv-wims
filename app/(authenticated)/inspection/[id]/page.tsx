@@ -184,9 +184,9 @@ export default async function InspectionDetailPage({
   return (
     // Floor screen — solid bg-brand-navy, no glassmorphism, 16px padding.
     // brand-design-system.md §6: floor never gets Level 1 glassmorphism.
-    <div className="flex min-h-screen flex-col bg-brand-navy">
+    <div className="inspection-page flex min-h-screen flex-col bg-surface-white">
       {/* Top bar — back link + inspection reference */}
-      <div className="bg-brand-navy px-4 py-3">
+      <div className="inspection-page-header bg-surface-white px-4 py-3">
         <div className="flex items-center justify-between">
           {/* Back link — h-14 (56px) floor touch target per §3 */}
           <Link
