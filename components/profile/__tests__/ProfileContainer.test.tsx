@@ -17,6 +17,10 @@ vi.mock("@/app/(authenticated)/profile/actions", () => ({
   getOwnProfile: vi.fn(async () => null),
 }));
 
+vi.mock("@/app/(authenticated)/actions", () => ({
+  signOutAction: vi.fn(),
+}));
+
 vi.mock("@/lib/supabase/client", () => ({
   createClient: () => ({
     auth: {
@@ -62,6 +66,12 @@ describe("ProfileContainer (design.md §1.1, 2026-08-08 amendment, Task 21.1)", 
   it("renders the Preferences section's toggles without needing any interaction", () => {
     render(<ProfileContainer profile={profile} />);
     expect(screen.getByTestId("dark-mode-toggle")).toBeInTheDocument();
+  });
+
+  it("provides every authenticated user a direct Sign Out control", () => {
+    render(<ProfileContainer profile={profile} />);
+    expect(screen.getByTestId("profile-section-sign-out")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign Out" })).toBeInTheDocument();
   });
 
   it("never renders a tablist/tab role — tabs are an office-only pattern (brand-design-system.md §3)", () => {
