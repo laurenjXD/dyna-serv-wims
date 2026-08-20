@@ -64,46 +64,18 @@ import {
   computeVmiDailyBalance,
   type VmiContractTermsVersion,
 } from "@/lib/billing/vmi-daily-balance";
+// Pure timezone helpers (tasks.md C.5) live in their own module, not as
+// named exports from this file — Next.js's route type-checking only allows
+// HTTP method handlers/route config to be exported from `app/**/route.ts`;
+// exporting these directly here compiled locally but broke the production
+// build ("resolveManilaLedgerDate is not a valid Route export field").
+import {
+  resolveManilaLedgerDate,
+  resolveManilaDayBoundsUtc,
+  resolvePreviousManilaLedgerDate,
+} from "@/lib/billing/vmi-manila-time";
 
 const SECRET_HEADER = "x-vmi-daily-balance-secret";
-
-// Asia/Manila is UTC+8 year-round (no DST) — a fixed offset is correct here,
-// unlike timezones that observe DST.
-const MANILA_OFFSET_MS = 8 * 60 * 60 * 1000;
-
-// ---------------------------------------------------------------------------
-// Pure timezone helpers (tasks.md C.5)
-// ---------------------------------------------------------------------------
-
-/**
- * Resolves the Asia/Manila calendar date ('YYYY-MM-DD') for a given UTC
- * instant. This can differ from the UTC calendar date (e.g. 20:00 UTC on
- * Aug 19 is 04:00 Manila on Aug 20).
- */
-export function resolveManilaLedgerDate(now: Date): string {
-  const manilaInstant = new Date(now.getTime() + MANILA_OFFSET_MS);
-  return manilaInstant.toISOString().slice(0, 10);
-}
-
-/**
- * Resolves the [startUtc, endUtc) UTC instant window corresponding to one
- * Asia/Manila calendar date, for filtering created_at columns.
- */
-export function resolveManilaDayBoundsUtc(ledgerDate: string): {
-  startUtc: Date;
-  endUtc: Date;
-} {
-  const manilaMidnightAsUtcMs = new Date(`${ledgerDate}T00:00:00.000Z`).getTime();
-  const startUtc = new Date(manilaMidnightAsUtcMs - MANILA_OFFSET_MS);
-  const endUtc = new Date(startUtc.getTime() + 24 * 60 * 60 * 1000);
-  return { startUtc, endUtc };
-}
-
-function resolvePreviousManilaLedgerDate(ledgerDate: string): string {
-  const previous = new Date(`${ledgerDate}T00:00:00.000Z`);
-  previous.setUTCDate(previous.getUTCDate() - 1);
-  return previous.toISOString().slice(0, 10);
-}
 
 // computeVmiDailyBalance deliberately performs no display-scale rounding
 // (lib/billing/vmi-daily-balance.ts's own docstring: "that is left to the

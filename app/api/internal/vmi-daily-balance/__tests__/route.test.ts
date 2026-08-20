@@ -483,7 +483,7 @@ describe("POST /api/internal/vmi-daily-balance (tasks.md C.4a, C.5)", () => {
   describe("Asia/Manila calendar-date boundary helpers (tasks.md C.5, design.md §2.2 step 3)", () => {
     it("resolveManilaLedgerDate returns the Manila calendar date, which can differ from the UTC calendar date", async () => {
       const { resolveManilaLedgerDate } = await import(
-        "@/app/api/internal/vmi-daily-balance/route"
+        "@/lib/billing/vmi-manila-time"
       );
 
       // 20:00 UTC on Aug 19 = 04:00 Manila on Aug 20 (UTC+8, no DST).
@@ -504,7 +504,7 @@ describe("POST /api/internal/vmi-daily-balance (tasks.md C.4a, C.5)", () => {
 
     it("resolveManilaDayBoundsUtc returns the correct [startUtc, endUtc) window for a given Manila calendar date", async () => {
       const { resolveManilaDayBoundsUtc } = await import(
-        "@/app/api/internal/vmi-daily-balance/route"
+        "@/lib/billing/vmi-manila-time"
       );
 
       const { startUtc, endUtc } = resolveManilaDayBoundsUtc("2026-08-20");

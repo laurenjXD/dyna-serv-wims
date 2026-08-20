@@ -26,6 +26,7 @@
 
 import { and, eq, gte, lte } from "drizzle-orm";
 import { vmiContractTerms, vmiDailyBalanceLedger } from "@/lib/db/schema/vmi_billing";
+import { resolveManilaDayBoundsUtc } from "@/lib/billing/vmi-manila-time";
 // getVmiPartyMovements is imported lazily (dynamic import), inside the
 // function body below, not statically at module top level. This is
 // deliberate, not stylistic: this module is itself statically imported at
@@ -77,21 +78,12 @@ export type VmiBackfillResult = {
 };
 
 // ---------------------------------------------------------------------------
-// Asia/Manila calendar-date helpers — same fixed UTC+8 offset precedent as
-// app/api/internal/vmi-daily-balance/route.ts (Manila has no DST).
+// Asia/Manila calendar-date helpers — shared with
+// app/api/internal/vmi-daily-balance/route.ts via lib/billing/vmi-manila-
+// time.ts (previously a local duplicate here; consolidated 2026-08-20 to
+// remove the drift risk of two independent implementations of the same
+// UTC+8 boundary math).
 // ---------------------------------------------------------------------------
-
-const MANILA_OFFSET_MS = 8 * 60 * 60 * 1000;
-
-function resolveManilaDayBoundsUtc(ledgerDate: string): {
-  startUtc: Date;
-  endUtc: Date;
-} {
-  const manilaMidnightAsUtcMs = new Date(`${ledgerDate}T00:00:00.000Z`).getTime();
-  const startUtc = new Date(manilaMidnightAsUtcMs - MANILA_OFFSET_MS);
-  const endUtc = new Date(startUtc.getTime() + 24 * 60 * 60 * 1000);
-  return { startUtc, endUtc };
-}
 
 function addDaysToLedgerDate(ledgerDate: string, days: number): string {
   const d = new Date(`${ledgerDate}T00:00:00.000Z`);
