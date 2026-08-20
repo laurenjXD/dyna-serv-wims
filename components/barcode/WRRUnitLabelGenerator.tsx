@@ -23,6 +23,11 @@ interface UnitLabelData {
   payload: string; // JSON: {"type": "wrr_item_unit", "wrr_item_id": "...", "unit_id": "..."}
 }
 
+interface CartonLabelData {
+  payload: string;
+  quantity: number;
+}
+
 export function WRRUnitLabelGenerator({
   wrrItemId,
   wrrNumber,
@@ -57,6 +62,18 @@ export function WRRUnitLabelGenerator({
       });
     }
     return labels;
+  }, [isModalOpen, wrrItemId, expectedQty]);
+
+  const cartonLabel = useMemo<CartonLabelData | null>(() => {
+    if (!isModalOpen || expectedQty <= 0) return null;
+    return {
+      quantity: expectedQty,
+      payload: JSON.stringify({
+        type: "wrr_item_carton",
+        wrr_item_id: wrrItemId,
+        quantity: expectedQty,
+      }),
+    };
   }, [isModalOpen, wrrItemId, expectedQty]);
 
   const handlePrint = () => {
@@ -98,7 +115,7 @@ export function WRRUnitLabelGenerator({
                   <span className="font-mono text-mono-md font-bold">{lotNumber}</span>
                 </p>
                 <p className="mt-1 font-body text-body-sm text-text-grey">
-                  Scan these labels during receiving—one label for each physical unit.
+                  Scan the Carton QR once for an intact carton, or scan individual labels for loose or partial units.
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -123,6 +140,30 @@ export function WRRUnitLabelGenerator({
 
             {/* Printable Sheet Grid */}
             <div className="mt-4 flex-1 overflow-y-auto print:overflow-visible">
+              {cartonLabel && (
+                <div className="mb-4 flex flex-col items-center rounded border-2 border-brand-red bg-surface-light-grey p-4 text-center break-inside-avoid print:border-black print:bg-white print:p-3">
+                  <p className="font-heading text-body-sm font-bold uppercase text-brand-navy">
+                    Carton QR — {cartonLabel.quantity} {cartonLabel.quantity === 1 ? "unit" : "units"}
+                  </p>
+                  <p className="mt-1 font-mono text-mono-sm font-semibold text-on-surface">
+                    {itemCode} | Lot: {lotNumber}
+                  </p>
+                  <div className="my-3 rounded border border-outline-variant bg-white p-2">
+                    <QRCode
+                      value={cartonLabel.payload}
+                      size={150}
+                      style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+                      viewBox="0 0 256 256"
+                    />
+                  </div>
+                  <p className="font-body text-body-sm text-on-surface">
+                    Scan once only when all {cartonLabel.quantity} units are intact and unscanned.
+                  </p>
+                  <p className="mt-1 font-body text-body-sm text-text-grey">
+                    Individual unit labels remain below for partial receiving.
+                  </p>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4 print:grid-cols-2 print:gap-4 print:w-full">
                 {unitLabels.map((unit) => (
                   <div

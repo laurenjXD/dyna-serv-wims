@@ -151,6 +151,36 @@ describe("matchScan — successful match (design.md §6, requirements.md R3.1)",
   });
 });
 
+describe("matchScan — sealed-carton QR (18 FR-3b)", () => {
+  const cartonQr = (quantity: number) =>
+    JSON.stringify({
+      type: "wrr_item_carton",
+      wrr_item_id: "line-001",
+      quantity,
+    });
+
+  it("accepts one carton QR for the full outstanding line quantity", async () => {
+    const { matchScan } = await import("@/lib/receiving/scan-matcher");
+    const result = matchScan(cartonQr(10), [makeLine({ expectedQty: 10, scannedQty: 0 })]);
+
+    expect(result).toMatchObject({ matched: true, remainingQty: 0, scanQty: 10 });
+  });
+
+  it("rejects a carton QR after an individual unit was already scanned", async () => {
+    const { matchScan } = await import("@/lib/receiving/scan-matcher");
+    const result = matchScan(cartonQr(10), [makeLine({ expectedQty: 10, scannedQty: 1 })]);
+
+    expect(result).toEqual({ matched: false, reason: "carton_quantity_mismatch" });
+  });
+
+  it("rejects a carton QR whose quantity does not match the outstanding line quantity", async () => {
+    const { matchScan } = await import("@/lib/receiving/scan-matcher");
+    const result = matchScan(cartonQr(9), [makeLine({ expectedQty: 10, scannedQty: 0 })]);
+
+    expect(result).toEqual({ matched: false, reason: "carton_quantity_mismatch" });
+  });
+});
+
 describe("matchScan — fully_scanned when scannedQty >= expectedQty (design.md §5.2, requirements.md R3.2)", () => {
   it("AC-R3.2/R3.3: returns { matched: false, reason: 'fully_scanned' } when matching line is already fully scanned", async () => {
     const { matchScan } = await import("@/lib/receiving/scan-matcher");

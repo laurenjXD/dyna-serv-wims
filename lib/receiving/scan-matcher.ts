@@ -29,7 +29,7 @@ export type WrrLine = {
 };
 
 export type ScanMatchResult =
-  | { matched: true; line: WrrLine; remainingQty: number; unitId?: string }
+  | { matched: true; line: WrrLine; remainingQty: number; scanQty: number; unitId?: string }
   | {
       matched: false;
       reason:
@@ -37,6 +37,7 @@ export type ScanMatchResult =
         | "unknown_item"
         | "fully_scanned"
         | "over_quantity"
+        | "carton_quantity_mismatch"
         | "flow_type_mismatch"
         | "duplicate_unit_scan";
     };
@@ -53,7 +54,9 @@ export type ScanMatchResult =
  * 6. fully_scanned — matched line's scannedQty equals expectedQty
  *
  * When multiple lines share the same barcode, the first non-exhausted line is selected.
- * The -1 in remainingQty accounts for the current scan being recorded.
+ * The current scan quantity is normally one; a sealed-carton QR carries its
+ * whole expected quantity and is accepted only if it is exactly the remaining
+ * line quantity.
  *
  * `alreadyScannedUnitIds` (added for Spec 18 §2.2's per-unit duplicate
  * detection): when the barcode parses as a `wrr_item_unit` payload and its
@@ -77,6 +80,7 @@ export function matchScan(
   // Parse JSON wrr_item_unit payload if present (Spec 18 §2.2)
   let parsedWrrItemId: string | null = null;
   let parsedUnitId: string | null = null;
+  let parsedCartonQty: number | null = null;
   if (barcode.trim().startsWith("{")) {
     try {
       const parsed = JSON.parse(barcode.trim());
@@ -85,6 +89,15 @@ export function matchScan(
         if (typeof parsed?.unit_id === "string") {
           parsedUnitId = parsed.unit_id;
         }
+      } else if (
+        parsed?.type === "wrr_item_carton" &&
+        typeof parsed?.wrr_item_id === "string" &&
+        typeof parsed?.quantity === "number" &&
+        Number.isSafeInteger(parsed.quantity) &&
+        parsed.quantity > 0
+      ) {
+        parsedWrrItemId = parsed.wrr_item_id;
+        parsedCartonQty = parsed.quantity;
       }
     } catch {
       // Not valid JSON — fall through to standard string matching
@@ -143,12 +156,20 @@ export function matchScan(
       continue;
     }
 
+    // A carton label may only complete the exact outstanding quantity in one
+    // operation. It must never mix with prior individual scans.
+    const scanQty = parsedCartonQty ?? 1;
+    if (parsedCartonQty !== null && line.expectedQty - line.scannedQty !== scanQty) {
+      return { matched: false, reason: "carton_quantity_mismatch" };
+    }
+
     // Line is available for scanning
-    const remainingQty = line.expectedQty - line.scannedQty - 1;
+    const remainingQty = line.expectedQty - line.scannedQty - scanQty;
     return {
       matched: true,
       line,
       remainingQty,
+      scanQty,
       ...(parsedUnitId !== null ? { unitId: parsedUnitId } : {}),
     };
   }

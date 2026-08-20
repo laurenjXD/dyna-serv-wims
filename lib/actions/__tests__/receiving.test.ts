@@ -545,6 +545,28 @@ describe("recordScan — valid scan (R3.1, R3.2, design.md §5.2, §6)", () => {
   });
 });
 
+describe("recordScan — sealed-carton QR (18 FR-3b)", () => {
+  it("records the complete carton quantity in one scan", async () => {
+    const item = wrrItemRow({ expectedQty: 10, scannedQty: 0 });
+    const db = makeReceivingDb([wrrDocRow()], [item]);
+    const barcode = JSON.stringify({
+      type: "wrr_item_carton",
+      wrr_item_id: item.id,
+      quantity: 10,
+    });
+
+    const result = await recordScan(
+      scanOnlyResolver(),
+      "wrr-uuid-existing",
+      barcode,
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result).toEqual({ ok: true, remainingQty: 0, disposition: "store" });
+    expect(db._updated).toContainEqual({ scannedQty: 10 });
+  });
+});
+
 // commitWrr's mocked-DB coverage was removed along with the function itself
 // (replaced by commitWrrLine — see the import comment above). commitWrrLine's
 // real-transaction/idempotency behavior is exercised against live Postgres in

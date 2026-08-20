@@ -56,6 +56,8 @@ function getScanErrorMessage(reason: string): string {
       return "Unknown item — barcode is not registered in the system. Contact a supervisor to enroll this item.";
     case "wrr_document_qr":
       return "This is the WRR document QR, not an item label. Scan a printed WRR unit label for the line you are receiving.";
+    case "carton_quantity_mismatch":
+      return "This Carton QR can only be used when its full quantity is still outstanding. Scan individual unit labels for a partial carton.";
     case "flow_type_mismatch":
       return "This item does not belong to this WRR's flow type — contact a supervisor.";
     case "duplicate_unit_scan":

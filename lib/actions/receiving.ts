@@ -318,10 +318,12 @@ export async function recordScan(
 
     const line = matchResult.line;
 
-    // 5. Increment scannedQty
+    // 5. Increment scannedQty. Ordinary scans contribute one unit; the
+    // optional sealed-carton QR contributes its exact, matcher-validated
+    // remaining quantity in one WRR-line update.
     await db
       .update(wrrItems)
-      .set({ scannedQty: line.scannedQty + 1 })
+      .set({ scannedQty: line.scannedQty + matchResult.scanQty })
       .where(eq(wrrItems.id, line.id));
 
     // 5a. Persist the per-unit scan record for a successful wrr_item_unit

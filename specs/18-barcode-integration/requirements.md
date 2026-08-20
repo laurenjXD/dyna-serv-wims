@@ -1,7 +1,7 @@
 # Barcode & QR Integration — Requirements
 
 Status: Approved
-Updated: 2026-08-10
+Updated: 2026-08-20
 
 Depends on:
 - `specs/00-steering/tech.md`
@@ -44,6 +44,13 @@ The warehouse floor operations are executed strictly on **mobile devices** using
 2. Every one of the `N` labels for a line SHALL share the same underlying item identity but SHALL carry its own unique per-unit identifier (e.g. a sequence number or UUID suffix); THE SYSTEM SHALL NOT print `N` labels carrying an identical payload for the same line.
 3. WHEN a physical label from this flow is scanned at the receiving bay, THE SYSTEM SHALL resolve it to its owning `wrr_items` line and treat a repeat scan of the exact same unique per-unit identifier as a duplicate-scan rejection (per `07-incoming-receiving` requirements.md R3.3), SO THAT a duplicate physical rescan cannot be silently counted as a second, distinct unit before the expected quantity is reached.
 4. This label type is distinct from FR-3's per-lot/per-item "Print Label" flow: it is generated at WRR-line staging time, before any lot exists, keyed to the WRR line and item — not to a `dsw_id` or `lots` UUID.
+
+### FR-3b: WRR-time sealed-carton QR (added 2026-08-20)
+
+1. Alongside the optional per-unit labels in FR-3a, the system SHALL print one optional carton QR for the complete expected quantity of that WRR line (for example, **Carton QR — 10 units**).
+2. The carton QR SHALL not remove or replace the unique individual labels. It is a faster receiving option only for an intact, homogeneous carton.
+3. The receiving command SHALL accept a carton QR only when its quantity exactly equals the WRR line's remaining expected quantity. It SHALL reject the QR after any partial individual scan or when the line is already complete, preventing mixed-count over-receipt.
+4. The carton QR payload SHALL identify the WRR line by UUID and include its fixed quantity. It SHALL be a 2D QR payload, not a 1D barcode.
 
 ## 5a. Out of Scope (WRR-time per-unit labels)
 - Generating per-unit labels for every WRR line by default; this remains a deliberate action for lines where the vendor's own barcode is not usable/trusted.

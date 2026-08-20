@@ -2,6 +2,8 @@
 
 Status: Approved
 
+Updated: 2026-08-20
+
 Sign-off:
 - [x] Technical Lead Sign-off — User / System, 2026-08-06 (documentation and contract review; implementation tests remain pre-build tasks)
 - [x] Product/Operations Lead Sign-off — User / System, 2026-08-06 (standing auto-sign-off for the scoped FR-2.3 decision)
@@ -25,6 +27,10 @@ Sign-off:
   - Install `react-qr-code`.
   - Implement the generator for ordinary internal `dsw_id` UUID payloads as a scannable 2D matrix; do not use this task to generate the R11 `WAN:<uuid>` Code 128 label.
   - Provide a hook to trigger the browser's native `window.print()` targeting just the label component.
+- [x] **Task 18.3a: Add optional sealed-carton QR to WRR-time label sheets**
+  - Render one carton QR above the retained per-unit labels.
+  - Encode the WRR line UUID and its full expected quantity in the QR payload.
+  - Accept it only when its quantity exactly matches the line's remaining quantity; test success, partial-scan rejection, and repeat-scan rejection.
 
 ### 3. Integration & Testing
 - [ ] **Task 18.4: Write Playwright Scanner Simulation**
