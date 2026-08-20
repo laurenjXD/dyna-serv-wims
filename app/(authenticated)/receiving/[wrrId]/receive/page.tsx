@@ -154,15 +154,22 @@ export default async function ReceiveFloorPage({
   let primaryStoreContents: Record<string, Awaited<ReturnType<typeof getPutawayLocationContents>>[string]> = {};
   let inspectionLocations: Array<{ id: string; label: string }> = [];
   if (primaryReadyLine?.disposition === "store") {
-    primaryStoreCandidates = await suggestPutawayLocations(db, {
-      itemUnitCbm: primaryReadyLine.unitCbm,
-      requestedQty: 1,
-      limit: 50,
-    });
-    primaryStoreContents = await getPutawayLocationContents(
-      db,
-      primaryStoreCandidates.map((candidate) => candidate.id),
-    );
+    // A location-preview failure must never remove the scan screen. It is a
+    // recoverable placement error, not a reason to fail the entire WRR route.
+    try {
+      primaryStoreCandidates = await suggestPutawayLocations(db, {
+        itemUnitCbm: primaryReadyLine.unitCbm,
+        requestedQty: 1,
+        limit: 50,
+      });
+      primaryStoreContents = await getPutawayLocationContents(
+        db,
+        primaryStoreCandidates.map((candidate) => candidate.id),
+      );
+    } catch {
+      primaryStoreCandidates = [];
+      primaryStoreContents = {};
+    }
   } else if (primaryReadyLine?.disposition === "inspect") {
     inspectionLocations = (await db
       .select({ id: locations.id, label: locations.label })
@@ -603,6 +610,17 @@ export default async function ReceiveFloorPage({
               </>
             )}
           </form>
+          <details className="mt-4 border-t border-outline-variant/30 pt-3">
+            <summary className="cursor-pointer font-body text-body-md text-on-surface">
+              Scan each unique QR instead
+            </summary>
+            <p className="mt-2 font-body text-body-sm text-text-grey">
+              Use this when every carton label must be individually reconciled. It is optional; Store All is the faster batch path.
+            </p>
+            <div className="mt-3">
+              <CameraScanBridge action={handleScan} />
+            </div>
+          </details>
         </div>
       )}
 
