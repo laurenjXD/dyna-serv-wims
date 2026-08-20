@@ -521,6 +521,21 @@ describe("recordScan — unknown barcode (R3.3, design.md §6)", () => {
       expect(result.reason).toBe("unknown_item");
     }
   });
+
+  it("rejects the current WRR's document QR without misreporting an unknown item", async () => {
+    const wrr = wrrDocRow({ wrrNumber: "WRR-20260819-974952" });
+    const db = makeReceivingDb([wrr], [wrrItemRow()]);
+
+    const result = await recordScan(
+      scanOnlyResolver(),
+      "wrr-uuid-existing",
+      wrr.wrrNumber,
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result).toEqual({ ok: false, reason: "wrr_document_qr" });
+    expect(db.update).not.toHaveBeenCalled();
+  });
 });
 
 // ---------------------------------------------------------------------------
