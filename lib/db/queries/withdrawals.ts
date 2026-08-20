@@ -22,6 +22,7 @@
 import { eq, asc, desc, sql, and, gte, lte } from "drizzle-orm";
 import { pickLists, pickListItems } from "@/lib/db/schema/pick_lists";
 import { inventoryTransactions } from "@/lib/db/schema/transactions";
+import { items } from "@/lib/db/schema/items";
 
 // Minimal structural type that both the real Drizzle db instance and test
 // stubs satisfy. Uses named method properties (not an index signature) so
@@ -46,6 +47,7 @@ export type PickListItemRow = {
   id: string;
   itemId: string;
   itemCode: string;
+  itemBarcode: string | null;
   customerItemCode: string | null;
   itemDescription: string | null;
   lotId: string;
@@ -259,6 +261,7 @@ export async function getPickListItems(
       id: pickListItems.id,
       itemId: pickListItems.itemId,
       itemCode: pickListItems.itemCode,
+      itemBarcode: items.barcode,
       customerItemCode: pickListItems.customerItemCode,
       itemDescription: pickListItems.itemDescription,
       lotId: pickListItems.lotId,
@@ -271,6 +274,7 @@ export async function getPickListItems(
       unitPrice: pickListItems.unitPrice,
     })
     .from(pickListItems)
+    .leftJoin(items, eq(items.id, pickListItems.itemId))
     .where(eq(pickListItems.pickListId, pickListId))
     .orderBy(asc(pickListItems.createdAt))) as PickListItemRow[];
 

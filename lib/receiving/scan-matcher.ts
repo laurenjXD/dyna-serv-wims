@@ -20,6 +20,8 @@ export type WrrLine = {
   id: string;
   itemId: string | null;
   itemBarcode: string | null;
+  /** Visible item code accepted as the camera-free manual fallback. */
+  itemCode?: string | null;
   lotNumber: string;
   expectedQty: number;
   scannedQty: number;
@@ -29,7 +31,7 @@ export type WrrLine = {
 };
 
 export type ScanMatchResult =
-  | { matched: true; line: WrrLine; remainingQty: number; unitId?: string }
+  | { matched: true; line: WrrLine; remainingQty: number; scanQty: number; unitId?: string }
   | {
       matched: false;
       reason:
@@ -53,7 +55,7 @@ export type ScanMatchResult =
  * 6. fully_scanned — matched line's scannedQty equals expectedQty
  *
  * When multiple lines share the same barcode, the first non-exhausted line is selected.
- * The -1 in remainingQty accounts for the current scan being recorded.
+ * Every accepted QR represents one physical pallet or unit.
  *
  * `alreadyScannedUnitIds` (added for Spec 18 §2.2's per-unit duplicate
  * detection): when the barcode parses as a `wrr_item_unit` payload and its
@@ -98,7 +100,7 @@ export function matchScan(
     }
     return (
       l.itemBarcode === barcode ||
-      (l as unknown as { itemCode?: string }).itemCode === barcode ||
+      l.itemCode === barcode ||
       l.itemId === barcode ||
       l.id === barcode ||
       l.lotNumber === barcode
@@ -143,12 +145,14 @@ export function matchScan(
       continue;
     }
 
-    // Line is available for scanning
-    const remainingQty = line.expectedQty - line.scannedQty - 1;
+    // Each accepted label represents exactly one physical pallet or unit.
+    const scanQty = 1;
+    const remainingQty = line.expectedQty - line.scannedQty - scanQty;
     return {
       matched: true,
       line,
       remainingQty,
+      scanQty,
       ...(parsedUnitId !== null ? { unitId: parsedUnitId } : {}),
     };
   }

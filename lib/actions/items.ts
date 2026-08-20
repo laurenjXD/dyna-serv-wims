@@ -8,10 +8,12 @@
 //   specs/00-steering/tech.md — RBAC from session, never from client params
 
 import { and, eq, ne, or } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
 import type { RequestAuthorizationResolver } from "@/lib/rbac/session";
 import { requirePermission } from "@/lib/rbac/guard";
 import { parseItemInput, checkBarcodeUpdate } from "@/lib/enrollment/item-schema";
 import { items } from "@/lib/db/schema/items";
+import { parties } from "@/lib/db/schema/parties";
 import { withRlsTransaction } from "@/lib/db/rls-transaction";
 import type { RlsTransactionDeps } from "@/lib/db/rls-transaction";
 import { rlsPool } from "@/lib/db/rls-pool";
@@ -57,6 +59,25 @@ async function checkPermission(
   return null;
 }
 
+async function validateActiveOrganization(
+  db: DbLike,
+  organizationId: string,
+): Promise<Record<string, string> | null> {
+  const rows = await db
+    .select({ id: parties.id, isActive: parties.isActive })
+    .from(parties)
+    .where(eq(parties.id, organizationId))
+    .limit(1);
+
+  if (rows.length === 0) {
+    return { defaultSupplierPartyId: "The selected Organization no longer exists. Choose an active Organization." };
+  }
+  if (!rows[0].isActive) {
+    return { defaultSupplierPartyId: "The selected Organization is inactive. Choose an active Organization." };
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // createItem
 // ---------------------------------------------------------------------------
@@ -86,30 +107,17 @@ export async function createItem(
 
   const data = parsed.data;
 
-  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+  let rlsResult;
+  try {
+    rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
     const db = tx.db as DbLike;
-
-    // Duplicate code/barcode check (both have a DB-level UNIQUE constraint)
-    // — without this, a collision throws a raw, uncaught Postgres
-    // constraint-violation error straight out of the Server Action instead
-    // of a friendly field error. Same pattern as createParty/createLocation.
-    const existing = await db
-      .select({ id: items.id, code: items.code, barcode: items.barcode })
-      .from(items)
-      .where(or(eq(items.code, data.code), eq(items.barcode, data.barcode)));
-
-    const collisions = existing as { id: string; code: string; barcode: string }[];
-    const createFieldErrors: Record<string, string> = {};
-    if (collisions.some((row) => row.code === data.code)) {
-      createFieldErrors.code = "This item code is already in use.";
+    const organizationErrors = await validateActiveOrganization(
+      db,
+      data.defaultSupplierPartyId!,
+    );
+    if (organizationErrors) {
+      return { ok: false, fieldErrors: organizationErrors } satisfies ActionCreateResult;
     }
-    if (collisions.some((row) => row.barcode === data.barcode)) {
-      createFieldErrors.barcode = "This barcode is already in use.";
-    }
-    if (Object.keys(createFieldErrors).length > 0) {
-      return { ok: false, fieldErrors: createFieldErrors } satisfies ActionCreateResult;
-    }
-
     const [inserted] = await db
       .insert(items)
       .values({
@@ -143,7 +151,15 @@ export async function createItem(
       .returning({ id: items.id });
 
     return { ok: true, data: { id: inserted.id } } satisfies ActionCreateResult;
-  });
+    });
+  } catch (error) {
+    const referenceId = randomUUID();
+    console.error("Item create transaction failed", { referenceId, error });
+    return {
+      ok: false,
+      error: `We could not save this item (reference ${referenceId}). The database rejected the request. Verify the Organization and required fields, then try again; contact support with this reference if it persists.`,
+    };
+  }
 
   if (rlsResult.kind === "unauthenticated") {
     return { ok: false, error: "Forbidden" };
@@ -192,8 +208,18 @@ export async function updateItem(
     return { ok: false, fieldErrors };
   }
 
-  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+  let rlsResult;
+  try {
+    rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
     const db = tx.db as DbLike;
+
+    const organizationErrors = await validateActiveOrganization(
+      db,
+      parsed.data.defaultSupplierPartyId!,
+    );
+    if (organizationErrors) {
+      return { ok: false, fieldErrors: organizationErrors } satisfies ActionResult;
+    }
 
     // Fetch current row for stale-edit and barcode immutability checks
     const [currentRow] = await db
@@ -291,7 +317,15 @@ export async function updateItem(
       .returning({ id: items.id });
 
     return { ok: true } satisfies ActionResult;
-  });
+    });
+  } catch (error) {
+    const referenceId = randomUUID();
+    console.error("Item update transaction failed", { referenceId, error });
+    return {
+      ok: false,
+      error: `We could not update this item (reference ${referenceId}). The database rejected the request. Reload the item and try again; contact support with this reference if it persists.`,
+    };
+  }
 
   if (rlsResult.kind === "unauthenticated") {
     return { ok: false, error: "Forbidden" };

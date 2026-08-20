@@ -179,7 +179,10 @@ function makeSelectChain(rows: unknown[]) {
   return chain;
 }
 
-function makeWithdrawalDb(pickListRows: AnyRecord[] = []) {
+function makeWithdrawalDb(
+  pickListRows: AnyRecord[] = [],
+  selectRows: unknown[][] = [],
+) {
   const inserted: unknown[] = [];
   const updated: unknown[] = [];
 
@@ -187,7 +190,9 @@ function makeWithdrawalDb(pickListRows: AnyRecord[] = []) {
     _inserted: inserted,
     _updated: updated,
 
-    select: vi.fn().mockImplementation(() => makeSelectChain(pickListRows)),
+    select: vi.fn().mockImplementation(() =>
+      makeSelectChain(selectRows.shift() ?? pickListRows),
+    ),
 
     insert: vi.fn().mockImplementation(() => ({
       values: vi.fn().mockImplementation((row: unknown) => {
@@ -202,9 +207,9 @@ function makeWithdrawalDb(pickListRows: AnyRecord[] = []) {
       set: vi.fn().mockImplementation((vals: unknown) => {
         updated.push(vals);
         return {
-          where: vi.fn().mockImplementation(() => ({
+          where: vi.fn().mockReturnValue({
             returning: vi.fn().mockResolvedValue([{ id: "balance-uuid-1" }]),
-          })),
+          }),
         };
       }),
     })),
@@ -244,6 +249,48 @@ function pickListRow(overrides: Partial<AnyRecord> = {}): AnyRecord {
   };
 }
 
+function allocationRow(overrides: Partial<AnyRecord> = {}): AnyRecord {
+  return {
+    balanceId: "balance-uuid-1",
+    qtyRemaining: 25,
+    qtyCommitted: 0,
+    itemId: "item-uuid-1",
+    itemCode: "ITEM-001",
+    itemDescription: "Test item",
+    customerItemCode: null,
+    dsgcItemNumber: "DSGC-001",
+    supplierItemCode: "SUP-001",
+    defaultSupplierPartyId: "party-uuid-customer",
+    isPerishable: false,
+    spq: 5,
+    lotId: "lot-uuid-1",
+    lotNumber: "LOT-001",
+    lotStatus: "available",
+    lotFlowType: "trading",
+    locationId: "loc-uuid-1",
+    locationLabel: "A1-01",
+    expiryDate: null,
+    receivedAt: new Date("2026-08-01T00:00:00Z"),
+    ...overrides,
+  };
+}
+
+function commitmentLineRow(overrides: Partial<AnyRecord> = {}): AnyRecord {
+  return {
+    commitmentId: "commitment-uuid-1",
+    commitmentStatus: "active",
+    commitmentLineId: "commitment-line-uuid-1",
+    commitmentLineStatus: "active",
+    qtyCommitted: 10,
+    balanceId: "balance-uuid-1",
+    pickListItemId: "pick-list-item-uuid-1",
+    itemId: "item-uuid-1",
+    lotId: "lot-uuid-1",
+    locationId: "loc-uuid-1",
+    ...overrides,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // commitWithdrawal — Authorization
 // (R5.1, R10.1, R10.2, design.md §6 step 1)
@@ -251,7 +298,7 @@ function pickListRow(overrides: Partial<AnyRecord> = {}): AnyRecord {
 
 describe("commitWithdrawal — unauthorized (R5.1, R10.1, R10.2, design.md §6)", () => {
   it("(AC: withdrawal.request required) returns { ok: false, errors: ['forbidden'] } when resolver lacks withdrawal.request capability", async () => {
-    const db = makeWithdrawalDb();
+    const db = makeWithdrawalDb([], [[allocationRow()]]);
 
     const result = await commitWithdrawal(
       unauthorizedResolver(),
@@ -391,7 +438,7 @@ describe("commitWithdrawal — provisional item code blocks generation (R1.3, de
 
 describe("commitWithdrawal — success (R5.1, R5.3, design.md §6)", () => {
   it("(AC: returns pickListId on success) returns { ok: true, pickListId: string } when authorized with valid non-provisional input", async () => {
-    const db = makeWithdrawalDb();
+    const db = makeWithdrawalDb([], [[allocationRow()]]);
 
     const result = await commitWithdrawal(
       supervisorResolver(),
@@ -405,6 +452,38 @@ describe("commitWithdrawal — success (R5.1, R5.3, design.md §6)", () => {
       expect(result.pickListId.length).toBeGreaterThan(0);
     }
     expect(db.insert).toHaveBeenCalled();
+  });
+
+  it("rebuilds FIFO allocation server-side instead of trusting the requested lot", async () => {
+    const oldest = allocationRow({ lotId: "lot-oldest", lotNumber: "LOT-OLD", receivedAt: new Date("2026-01-01T00:00:00Z") });
+    const newer = allocationRow({
+      balanceId: "balance-uuid-2",
+      lotId: "lot-newer",
+      lotNumber: "LOT-NEW",
+      receivedAt: new Date("2026-02-01T00:00:00Z"),
+    });
+    const db = makeWithdrawalDb([], [[oldest, newer]]);
+    const input = validCommitInput();
+    input.lines[0].lotId = "lot-newer"; // browser tries to skip FIFO
+
+    const result = await commitWithdrawal(supervisorResolver(), input, mockRlsDeps(db).deps);
+
+    expect(result.ok).toBe(true);
+    expect(db._inserted).toContainEqual(expect.objectContaining({
+      lotId: "lot-oldest",
+      lotNumber: "LOT-OLD",
+    }));
+  });
+
+  it("rejects a client-supplied organization that differs from the enrolled item organization", async () => {
+    const db = makeWithdrawalDb([], [[allocationRow()]]);
+    const input = validCommitInput();
+    input.partyId = "other-party";
+
+    const result = await commitWithdrawal(supervisorResolver(), input, mockRlsDeps(db).deps);
+
+    expect(result).toEqual({ ok: false, errors: ["unable_to_reserve_stock"] });
+    expect(db.insert).not.toHaveBeenCalled();
   });
 });
 
@@ -420,6 +499,7 @@ describe("dispatchPickList — unauthorized (R7.5, R10.1, R10.2, design.md §7)"
     const result = await dispatchPickList(
       unauthorizedResolver(),
       "pick-list-uuid-existing",
+      [],
       mockRlsDeps(db).deps,
     );
 
@@ -446,6 +526,7 @@ describe("dispatchPickList — pick list not found (R7.5, design.md §7)", () =>
     const result = await dispatchPickList(
       supervisorResolver(),
       "non-existent-pick-list-uuid",
+      [],
       mockRlsDeps(db).deps,
     );
 
@@ -462,6 +543,7 @@ describe("dispatchPickList — pick list not found (R7.5, design.md §7)", () =>
     const result = await dispatchPickList(
       warehouseStaffResolver(),
       "ghost-pick-list-uuid",
+      [],
       mockRlsDeps(db).deps,
     );
 
@@ -485,6 +567,7 @@ describe("dispatchPickList — already dispatched (R7.6, design.md §7)", () => 
     const result = await dispatchPickList(
       supervisorResolver(),
       "pick-list-uuid-existing",
+      [],
       mockRlsDeps(db).deps,
     );
 
@@ -504,13 +587,30 @@ describe("dispatchPickList — already dispatched (R7.6, design.md §7)", () => 
 // ---------------------------------------------------------------------------
 
 describe("dispatchPickList — success (R7.5, design.md §7)", () => {
-  it("(AC: supervisor dispatches allocated pick list) returns { ok: true } when supervisor executes a pick list in allocated status", async () => {
+  it("rejects dispatch when the committed lines have not all been scanned", async () => {
     const allocated = pickListRow({ status: "allocated" });
-    const db = makeWithdrawalDb([allocated]);
+    const db = makeWithdrawalDb([allocated], [[allocated], [commitmentLineRow()]]);
 
     const result = await dispatchPickList(
       supervisorResolver(),
       "pick-list-uuid-existing",
+      [],
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result).toEqual({ ok: false, errors: ["scan_evidence_incomplete"] });
+    expect(db.update).not.toHaveBeenCalled();
+    expect(db.insert).not.toHaveBeenCalled();
+  });
+
+  it("(AC: supervisor dispatches allocated pick list) returns { ok: true } when supervisor executes a pick list in allocated status", async () => {
+    const allocated = pickListRow({ status: "allocated" });
+    const db = makeWithdrawalDb([allocated], [[allocated], [commitmentLineRow()]]);
+
+    const result = await dispatchPickList(
+      supervisorResolver(),
+      "pick-list-uuid-existing",
+      ["pick-list-item-uuid-1"],
       mockRlsDeps(db).deps,
     );
 
@@ -519,11 +619,12 @@ describe("dispatchPickList — success (R7.5, design.md §7)", () => {
 
   it("(AC: warehouse_staff dispatches allocated pick list) returns { ok: true } for warehouse_staff with withdrawal.execute capability", async () => {
     const allocated = pickListRow({ status: "allocated" });
-    const db = makeWithdrawalDb([allocated]);
+    const db = makeWithdrawalDb([allocated], [[allocated], [commitmentLineRow()]]);
 
     const result = await dispatchPickList(
       warehouseStaffResolver(),
       "pick-list-uuid-existing",
+      ["pick-list-item-uuid-1"],
       mockRlsDeps(db).deps,
     );
 

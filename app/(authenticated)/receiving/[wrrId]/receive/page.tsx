@@ -30,11 +30,12 @@ import { db } from "@/lib/db/client";
 import { eq, and } from "drizzle-orm";
 import { locations } from "@/lib/db/schema/locations";
 import { getWrrDocument } from "@/lib/db/queries/receiving";
-import { suggestPutawayLocations } from "@/lib/db/queries/locations";
+import { getPutawayLocationContents, suggestPutawayLocations } from "@/lib/db/queries/locations";
 import type { PutawayCandidate } from "@/lib/db/queries/locations";
 import { recordScan, startReceiving, commitWrrLine } from "@/lib/actions/receiving";
 import type { WrrItemRow } from "@/lib/db/queries/receiving";
 import { CameraScanBridge } from "./_components/CameraScanBridge";
+import { PutawayLocationSelector } from "./_components/PutawayLocationSelector";
 
 // ─── Error reason → plain language ──────────────────────────────────────────
 
@@ -56,6 +57,8 @@ function getScanErrorMessage(reason: string): string {
       return "Duplicate scan — this barcode has already been counted.";
     case "unknown_item":
       return "Unknown item — barcode is not registered in the system. Contact a supervisor to enroll this item.";
+    case "wrr_document_qr":
+      return "This is the WRR document QR, not an item label. Scan a printed WRR unit label for the line you are receiving.";
     case "flow_type_mismatch":
       return "This item does not belong to this WRR's flow type — contact a supervisor.";
     case "duplicate_unit_scan":
@@ -149,12 +152,17 @@ export default async function ReceiveFloorPage({
   // Fetch putaway suggestions (store) / active inspection locations (inspect)
   // only for the single primary ready line.
   let primaryStoreCandidates: PutawayCandidate[] = [];
+  let primaryStoreContents: Record<string, Awaited<ReturnType<typeof getPutawayLocationContents>>[string]> = {};
   let inspectionLocations: Array<{ id: string; label: string }> = [];
   if (primaryReadyLine?.disposition === "store") {
     primaryStoreCandidates = await suggestPutawayLocations(db, {
       itemUnitCbm: primaryReadyLine.unitCbm,
       requestedQty: primaryReadyLine.expectedQty,
     });
+    primaryStoreContents = await getPutawayLocationContents(
+      db,
+      primaryStoreCandidates.map((candidate) => candidate.id),
+    );
   } else if (primaryReadyLine?.disposition === "inspect") {
     inspectionLocations = (await db
       .select({ id: locations.id, label: locations.label })
@@ -228,7 +236,7 @@ export default async function ReceiveFloorPage({
   // ─── Receipt complete: all lines committed, WRR already confirmed server-side ───
   if (isComplete) {
     return (
-      <div className="flex min-h-screen flex-col bg-brand-navy">
+      <div className="flex min-h-screen flex-col bg-surface-light-grey">
         <div className="flex flex-1 flex-col items-center justify-center px-4 py-4 text-center">
           <div className="w-full max-w-md rounded-xl bg-surface-white p-6 shadow-elevation-2">
             <span
@@ -257,23 +265,24 @@ export default async function ReceiveFloorPage({
   }
 
   return (
-    // Floor screen: solid bg-brand-navy, no glassmorphism, 16px padding.
+    // Floor screen uses the active light surface by default. Dark mode is
+    // controlled globally from the Profile preference, never hard-coded here.
     // brand-design-system.md §4: floor screens use 16px page padding.
-    <div className="flex min-h-screen flex-col bg-brand-navy">
+    <div className="flex min-h-screen flex-col bg-surface-light-grey">
       {/* Top bar — compact, floor-appropriate */}
-      <div className="bg-brand-navy px-4 py-3">
+      <div className="border-b border-outline-variant/30 bg-surface-white px-4 py-3">
         <div className="flex items-center justify-between">
           {/* Back link — h-14 (56px) minimum floor touch target per §3 */}
           <Link
             href={`/receiving/${wrrId}`}
-            className="inline-flex h-14 items-center gap-2 text-body-md font-body text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
+            className="inline-flex h-14 items-center gap-2 text-body-md font-body text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
           >
             {/* Left arrow — no icon dependency, pure text/unicode for floor performance */}
             <span aria-hidden="true">&#8592;</span>
             <span>Back to WRR</span>
           </Link>
           {/* WRR reference — Roboto Mono per §9 */}
-          <span className="font-mono text-mono-lg text-white/70">
+          <span className="font-mono text-mono-lg text-text-grey">
             {wrr.wrrNumber}
           </span>
         </div>
@@ -499,33 +508,25 @@ export default async function ReceiveFloorPage({
           unscanned, the scan input is the primary action. 64px minimum
           height for floor primary actions throughout. */}
       {isReceivable && primaryReadyLine && (
-        <div className="sticky bottom-0 bg-brand-navy px-4 pb-6 pt-4 shadow-elevation-2">
+        <div className="sticky bottom-0 border-t border-outline-variant/30 bg-surface-white px-4 pb-6 pt-4 shadow-elevation-2">
           <form action={handleCommitLine} className="flex flex-col gap-3">
             <input type="hidden" name="wrrItemId" value={primaryReadyLine.id} />
-            <p className="font-mono text-mono-lg font-bold text-surface-white">
+            <p className="font-mono text-mono-lg font-bold text-on-surface">
               {primaryReadyLine.lotNumber}
             </p>
             {primaryReadyLine.disposition === "store" ? (
               <>
-                <label
-                  htmlFor="location-primary"
-                  className="text-body-md font-body text-surface-white"
-                >
-                  Putaway location
-                </label>
                 {primaryStoreCandidates.length > 0 ? (
-                  <select
-                    id="location-primary"
-                    name="locationId"
-                    defaultValue={primaryStoreCandidates[0].id}
-                    className="h-16 w-full rounded border-2 border-surface-white bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-4 focus:ring-brand-navy"
-                  >
-                    {primaryStoreCandidates.map((candidate) => (
-                      <option key={candidate.id} value={candidate.id}>
-                        {candidate.label} | {candidate.remainingCbm.toFixed(2)} CBM remaining
-                      </option>
-                    ))}
-                  </select>
+                  <>
+                  <p className="rounded border border-outline-variant/30 bg-surface-light-grey px-3 py-2 font-body text-body-md text-on-surface">
+                    This receipt needs {(primaryReadyLine.unitCbm * primaryReadyLine.expectedQty).toFixed(2)} CBM. Choose a location, review its capacity and current contents, then store.
+                  </p>
+                  <PutawayLocationSelector
+                    candidates={primaryStoreCandidates}
+                    contents={primaryStoreContents}
+                    requestedCbm={primaryReadyLine.unitCbm * primaryReadyLine.expectedQty}
+                  />
+                  </>
                 ) : (
                   <div role="alert" className="rounded border-l-4 border-status-held bg-white px-3 py-2">
                     <p className="flex items-center gap-2 font-body text-body-md text-on-surface">
@@ -548,7 +549,7 @@ export default async function ReceiveFloorPage({
               <>
                 <label
                   htmlFor="location-primary"
-                  className="text-body-md font-body text-surface-white"
+                  className="text-body-md font-body text-on-surface"
                 >
                   Inspection location
                 </label>
@@ -559,7 +560,7 @@ export default async function ReceiveFloorPage({
                     defaultValue={
                       inspectionLocations.length === 1 ? inspectionLocations[0].id : undefined
                     }
-                    className="h-16 w-full rounded border-2 border-surface-white bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-4 focus:ring-brand-navy"
+                    className="h-16 w-full rounded border-2 border-outline-variant bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-4 focus:ring-brand-navy"
                   >
                     {inspectionLocations.length > 1 && (
                       <option value="">Select an inspection location…</option>
@@ -594,11 +595,11 @@ export default async function ReceiveFloorPage({
       )}
 
       {isReceivable && !primaryReadyLine && !allLinesScanned && (
-        <div className="sticky bottom-0 bg-brand-navy px-4 pb-6 pt-4 shadow-elevation-2">
+        <div className="sticky bottom-0 border-t border-outline-variant/30 bg-surface-white px-4 pb-6 pt-4 shadow-elevation-2">
           <form action={handleScan} className="flex flex-col gap-3">
             <label
               htmlFor="barcode-input"
-              className="text-body-md font-body text-surface-white"
+              className="text-body-md font-body text-on-surface"
             >
               Scan or enter barcode
             </label>
@@ -611,7 +612,7 @@ export default async function ReceiveFloorPage({
                 autoComplete="off"
                 inputMode="none"
                 placeholder="Waiting for scan…"
-                className="h-16 flex-1 rounded border-2 border-surface-white bg-surface-white px-4 font-mono text-mono-lg text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-4 focus:ring-brand-navy"
+                className="h-16 flex-1 rounded border-2 border-outline-variant bg-surface-white px-4 font-mono text-mono-lg text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-4 focus:ring-brand-navy"
               />
               <button
                 type="submit"

@@ -74,7 +74,7 @@ const DISPOSITION_OPTIONS: DispositionOption[] = [
     label: "Store as-is",
     description: "Item passes inspection — return to standard storage location.",
     selectedClasses: "bg-status-available/10 border-status-available",
-    unselectedClasses: "bg-white/5 border-white/20",
+    unselectedClasses: "bg-surface-white border-outline-variant/50",
   },
   {
     value: "inspect_further",
@@ -82,7 +82,7 @@ const DISPOSITION_OPTIONS: DispositionOption[] = [
     description:
       "Hold for additional inspection — item remains at current location.",
     selectedClasses: "bg-status-pending/10 border-status-pending",
-    unselectedClasses: "bg-white/5 border-white/20",
+    unselectedClasses: "bg-surface-white border-outline-variant/50",
   },
   {
     value: "flag_for_review",
@@ -90,7 +90,7 @@ const DISPOSITION_OPTIONS: DispositionOption[] = [
     description:
       "Non-conformance detected — route to supervisor for resolution.",
     selectedClasses: "bg-status-held/10 border-status-held",
-    unselectedClasses: "bg-white/5 border-white/20",
+    unselectedClasses: "bg-surface-white border-outline-variant/50",
   },
 ];
 
@@ -184,16 +184,16 @@ export default async function InspectionDetailPage({
   return (
     // Floor screen — solid bg-brand-navy, no glassmorphism, 16px padding.
     // brand-design-system.md §6: floor never gets Level 1 glassmorphism.
-    <div className="flex min-h-screen flex-col bg-brand-navy">
+    <div className="inspection-page flex min-h-screen flex-col bg-surface-white">
       {/* Top bar — back link + inspection reference */}
-      <div className="bg-brand-navy px-4 py-3">
+      <div className="inspection-page-header bg-surface-white px-4 py-3">
         <div className="flex items-center justify-between">
           {/* Back link — h-14 (56px) floor touch target per §3 */}
           <Link
             href="/inspection"
-            className="inline-flex h-14 items-center gap-2 font-body text-body-md text-white
+            className="inline-flex h-14 items-center gap-2 font-body text-body-md text-on-surface
                        active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100
-                       focus:outline-none focus:ring-2 focus:ring-white"
+                       focus:outline-none focus:ring-2 focus:ring-brand-navy"
           >
             <ChevronLeft size={20} strokeWidth={2} aria-hidden="true" />
             <span>Inspections</span>
@@ -201,7 +201,7 @@ export default async function InspectionDetailPage({
           {/* Source reference — Roboto Mono per §9. Raw sourceRefType/sourceRefId;
               inspection_cases.source_ref_id is a polymorphic reference (design.md §2)
               with no formatted business document number resolved here. */}
-          <span className="font-mono text-mono-lg text-white/70">
+          <span className="font-mono text-mono-lg text-text-grey">
             {inspection.sourceRefType}:{inspection.sourceRefId.slice(0, 8)}
           </span>
         </div>
@@ -233,52 +233,52 @@ export default async function InspectionDetailPage({
             aria-live="assertive"
             className="mb-4 rounded-xl bg-status-held border border-status-held px-4 py-4"
           >
-            <p className="font-heading font-bold text-headline-md text-white">
+            <p className="font-heading font-bold text-headline-md text-on-surface">
               Submission failed
             </p>
-            <p className="mt-1 font-body text-body-md text-white/80">
+            <p className="mt-1 font-body text-body-md text-on-surface">
               {errorReason ?? "Could not record this inspection. Try again."}
             </p>
           </div>
         )}
 
         {/* Item context card — solid surface, Level 2 shadow, no glassmorphism */}
-        <div className="rounded-xl bg-white/10 border border-white/20 p-4">
+        <div className="rounded-xl border border-outline-variant/50 bg-surface-white p-4 shadow-elevation-1">
           {/* Item name — Fira Sans SemiBold, headline-md; floor min 16px §2 */}
-          <h1 className="font-heading font-extrabold text-headline-md text-white">
+          <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
             {inspection.itemName}
           </h1>
           {/* Item code — Roboto Mono per §9 */}
-          <p className="mt-1 font-mono text-mono-lg text-white/70">
+          <p className="mt-1 font-mono text-mono-lg text-text-grey">
             {inspection.itemCode}
           </p>
           {/* Party — VMI cases carry an owner party; Trading/Supplies too (partyId is required) */}
-          <p className="mt-1 font-body text-body-md text-white/70">
+          <p className="mt-1 font-body text-body-md text-text-grey">
             {inspection.partyName}
           </p>
           {/* Lot + location context — body-md (16px) per §2 floor minimum */}
           <div className="mt-3 grid grid-cols-2 gap-3">
             <div>
-              <p className="font-label text-body-md text-white/50">Lot</p>
-              <p className="font-mono text-mono-lg text-white">
+              <p className="font-label text-body-md text-text-grey">Lot</p>
+              <p className="font-mono text-mono-lg text-on-surface">
                 {inspection.lotNumber}
               </p>
             </div>
             <div>
-              <p className="font-label text-body-md text-white/50">Location</p>
-              <p className="font-mono text-mono-lg text-white">
+              <p className="font-label text-body-md text-text-grey">Location</p>
+              <p className="font-mono text-mono-lg text-on-surface">
                 {inspection.locationLabel ?? "Unavailable"}
               </p>
             </div>
             <div>
-              <p className="font-label text-body-md text-white/50">Qty to Inspect</p>
-              <p className="font-mono text-mono-lg text-white">
+              <p className="font-label text-body-md text-text-grey">Qty to Inspect</p>
+              <p className="font-mono text-mono-lg text-on-surface">
                 {inspection.qtyToInspect} {inspection.itemUom}
               </p>
             </div>
             <div>
-              <p className="font-label text-body-md text-white/50">Context</p>
-              <p className="font-body text-body-md text-white capitalize">
+              <p className="font-label text-body-md text-text-grey">Context</p>
+              <p className="font-body text-body-md text-on-surface capitalize">
                 {inspection.contextType}
               </p>
             </div>
@@ -290,11 +290,11 @@ export default async function InspectionDetailPage({
             comment). A warehouse_staff session that opened this case never
             gets the resolve form, even while the case is open. */}
         {isOpen && !canResolve && (
-          <div className="mt-4 rounded-xl bg-white/10 border border-white/20 p-4">
-            <p className="font-body text-body-md text-white/70">
+          <div className="mt-4 rounded-xl border border-outline-variant/50 bg-surface-white p-4">
+            <p className="font-body text-body-md text-on-surface">
               This case is open and awaiting a supervisor&apos;s resolution.
               You do not have the{" "}
-              <span className="font-mono text-mono-md text-white">
+              <span className="font-mono text-mono-md text-on-surface">
                 inspection.resolve
               </span>{" "}
               capability required to record a disposition.
@@ -305,7 +305,7 @@ export default async function InspectionDetailPage({
           <form action={handleSubmitInspection} className="mt-4 flex flex-col gap-4">
             {/* ── Disposition selection — large tap targets per §3 ───────────── */}
             <fieldset>
-              <legend className="font-label text-body-md text-white/70">
+              <legend className="font-label text-body-md text-text-grey">
                 Disposition
               </legend>
               <div className="mt-2 space-y-2">
@@ -334,7 +334,7 @@ export default async function InspectionDetailPage({
                         className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${
                           isSelected
                             ? "border-current bg-current/20"
-                            : "border-white/40"
+                            : "border-outline-variant"
                         }`}
                       >
                         {isSelected && (
@@ -343,10 +343,10 @@ export default async function InspectionDetailPage({
                       </span>
                       <div className="min-w-0">
                         {/* Label — body-md minimum per floor §2 rule */}
-                        <p className="font-label text-body-md text-white">
+                        <p className="font-label text-body-md text-on-surface">
                           {option.label}
                         </p>
-                        <p className="font-body text-body-md text-white/60 truncate">
+                        <p className="font-body text-body-md text-text-grey truncate">
                           {option.description}
                         </p>
                       </div>
@@ -357,8 +357,8 @@ export default async function InspectionDetailPage({
             </fieldset>
 
             {/* ── Quantity fields ─────────────────────────────────────────────── */}
-            <div className="rounded-xl bg-white/10 border border-white/20 p-4">
-              <p className="font-label text-body-md text-white/70 mb-3">
+            <div className="rounded-xl border border-outline-variant/50 bg-surface-white p-4">
+              <p className="mb-3 font-label text-body-md text-text-grey">
                 Quantities
               </p>
               <div className="grid grid-cols-3 gap-3">
@@ -366,7 +366,7 @@ export default async function InspectionDetailPage({
                 <div>
                   <label
                     htmlFor="inspectedQty"
-                    className="block font-label text-body-md text-white/70"
+                    className="block font-label text-body-md text-text-grey"
                   >
                     Inspected
                   </label>
@@ -379,9 +379,9 @@ export default async function InspectionDetailPage({
                     max={inspection.qtyToInspect}
                     defaultValue={inspection.qtyToInspect}
                     // h-14 (56px) floor default touch target — §3
-                    className="mt-1 h-14 w-full rounded-xl border border-white/20 bg-white/15 px-3 font-mono text-mono-lg text-white
+                    className="mt-1 h-14 w-full rounded-xl border border-outline-variant bg-surface-white px-3 font-mono text-mono-lg text-on-surface
                                focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-transparent
-                               placeholder:text-white/40"
+                               placeholder:text-status-neutral"
                     aria-label="Inspected quantity"
                   />
                 </div>
@@ -389,7 +389,7 @@ export default async function InspectionDetailPage({
                 <div>
                   <label
                     htmlFor="passedQty"
-                    className="block font-label text-body-md text-white/70"
+                    className="block font-label text-body-md text-text-grey"
                   >
                     Passed
                   </label>
@@ -400,9 +400,9 @@ export default async function InspectionDetailPage({
                     inputMode="numeric"
                     min={0}
                     defaultValue={0}
-                    className="mt-1 h-14 w-full rounded-xl border border-white/20 bg-white/15 px-3 font-mono text-mono-lg text-white
+                    className="mt-1 h-14 w-full rounded-xl border border-outline-variant bg-surface-white px-3 font-mono text-mono-lg text-on-surface
                                focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-transparent
-                               placeholder:text-white/40"
+                               placeholder:text-status-neutral"
                     aria-label="Passed quantity"
                   />
                 </div>
@@ -410,7 +410,7 @@ export default async function InspectionDetailPage({
                 <div>
                   <label
                     htmlFor="failedQty"
-                    className="block font-label text-body-md text-white/70"
+                    className="block font-label text-body-md text-text-grey"
                   >
                     Failed
                   </label>
@@ -421,9 +421,9 @@ export default async function InspectionDetailPage({
                     inputMode="numeric"
                     min={0}
                     defaultValue={0}
-                    className="mt-1 h-14 w-full rounded-xl border border-white/20 bg-white/15 px-3 font-mono text-mono-lg text-white
+                    className="mt-1 h-14 w-full rounded-xl border border-outline-variant bg-surface-white px-3 font-mono text-mono-lg text-on-surface
                                focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-transparent
-                               placeholder:text-white/40"
+                               placeholder:text-status-neutral"
                     aria-label="Failed quantity"
                   />
                 </div>
@@ -434,10 +434,10 @@ export default async function InspectionDetailPage({
             <div>
               <label
                 htmlFor="notes"
-                className="block font-label text-body-md text-white/70"
+                className="block font-label text-body-md text-text-grey"
               >
                 Notes{" "}
-                <span className="font-body text-body-md text-white/40">
+                <span className="font-body text-body-md text-text-grey">
                   (optional)
                 </span>
               </label>
@@ -446,9 +446,9 @@ export default async function InspectionDetailPage({
                 name="notes"
                 rows={3}
                 placeholder="Add any observations, remarks, or exception notes…"
-                className="mt-1 w-full rounded-xl border border-white/20 bg-white/15 px-4 py-3 font-body text-body-md text-white
+                className="mt-1 w-full rounded-xl border border-outline-variant bg-surface-white px-4 py-3 font-body text-body-md text-on-surface
                            focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-transparent
-                           placeholder:text-white/40 resize-none"
+                           placeholder:text-status-neutral resize-none"
               />
             </div>
 
@@ -462,26 +462,26 @@ export default async function InspectionDetailPage({
               type="submit"
               className="mt-2 flex h-16 w-full items-center justify-center rounded-xl bg-primary font-label text-body-md uppercase tracking-wide text-white
                          active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100
-                         focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-navy"
+                         focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 focus:ring-offset-surface-white"
             >
               Submit Inspection
             </button>
           </form>
         ) : !isOpen ? (
           // Non-open case — read-only view
-          <div className="mt-4 rounded-xl bg-white/10 border border-white/20 p-4">
-            <p className="font-body text-body-md text-white/70">
+          <div className="mt-4 rounded-xl border border-outline-variant/50 bg-surface-white p-4">
+            <p className="font-body text-body-md text-on-surface">
               This inspection case is{" "}
-              <span className="font-label text-body-md text-white uppercase">
+              <span className="font-label text-body-md text-on-surface uppercase">
                 {inspection.status}
               </span>{" "}
               and cannot be edited.
             </p>
             <Link
               href="/inspection"
-              className="mt-4 flex h-16 w-full items-center justify-center rounded-xl bg-brand-navy border border-white/20 font-label text-body-md uppercase text-white
+              className="mt-4 flex h-16 w-full items-center justify-center rounded-xl border border-brand-navy bg-brand-navy font-label text-body-md uppercase text-surface-white
                          active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100
-                         focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-navy"
+                         focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 focus:ring-offset-surface-white"
             >
               Back to Queue
             </Link>

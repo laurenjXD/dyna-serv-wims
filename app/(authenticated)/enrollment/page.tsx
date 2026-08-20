@@ -23,6 +23,7 @@ import { listItems } from "@/lib/db/queries/items";
 import type { ItemListRow } from "@/lib/db/queries/items";
 import { listLocations } from "@/lib/db/queries/locations";
 import type { LocationListRow } from "@/lib/db/queries/locations";
+import { SampleDataButton } from "./_components/SampleDataButton";
 
 const PAGE_SIZE = 25;
 
@@ -78,6 +79,13 @@ export default async function EnrollmentPage({ searchParams }: PageProps) {
 
   const currentPage = Math.max(1, parseInt(pageParam ?? "1", 10));
   const offset = (currentPage - 1) * PAGE_SIZE;
+  const canAddSampleData = (
+    await Promise.all([
+      requirePermission(resolver, "parties.manage"),
+      requirePermission(resolver, "items.manage"),
+      requirePermission(resolver, "receiving.confirm"),
+    ])
+  ).every((permission) => permission.kind === "authorized");
 
   return (
     <div className="mx-auto max-w-container">
@@ -89,6 +97,7 @@ export default async function EnrollmentPage({ searchParams }: PageProps) {
         <p className="mt-1 font-body text-body-md text-text-grey">
           Configure and manage core system entities.
         </p>
+        {canAddSampleData && <SampleDataButton />}
       </div>
 
       {/* Tab switcher — office pattern per brand-design-system.md §3 */}

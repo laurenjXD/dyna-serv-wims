@@ -12,7 +12,7 @@
 //     "consumes the approved location/capacity suggestion interface... does
 //     not create a second capacity calculation")
 
-import { and, eq, ilike, or, desc, sql } from "drizzle-orm";
+import { and, eq, ilike, or, desc, gt, inArray, sql } from "drizzle-orm";
 import { locations, lotLocationBalances, lots, items } from "@/lib/db/schema";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -163,6 +163,55 @@ export type PutawayCandidate = {
   occupiedCbm: number;
   remainingCbm: number;
 };
+
+export type LocationStoredItem = {
+  itemCode: string;
+  itemName: string;
+  lotNumber: string;
+  qtyRemaining: number;
+};
+
+/**
+ * Returns the live stock held in each suggested storage location so an
+ * operator can verify the putaway choice before confirming Store.
+ */
+export async function getPutawayLocationContents(
+  db: DbLike,
+  locationIds: string[],
+): Promise<Record<string, LocationStoredItem[]>> {
+  const grouped = Object.fromEntries(locationIds.map((id) => [id, [] as LocationStoredItem[]]));
+  if (locationIds.length === 0) return grouped;
+
+  const rows = await db
+    .select({
+      locationId: lotLocationBalances.locationId,
+      itemCode: items.code,
+      itemName: items.name,
+      lotNumber: lots.lotNumber,
+      qtyRemaining: lotLocationBalances.qtyRemaining,
+    })
+    .from(lotLocationBalances)
+    .innerJoin(lots, eq(lots.id, lotLocationBalances.lotId))
+    .innerJoin(items, eq(items.id, lots.itemId))
+    .where(and(inArray(lotLocationBalances.locationId, locationIds), gt(lotLocationBalances.qtyRemaining, 0)));
+
+  for (const row of rows as Array<{
+    locationId: string;
+    itemCode: string;
+    itemName: string;
+    lotNumber: string;
+    qtyRemaining: number;
+  }>) {
+    grouped[row.locationId]?.push({
+      itemCode: row.itemCode,
+      itemName: row.itemName,
+      lotNumber: row.lotNumber,
+      qtyRemaining: row.qtyRemaining,
+    });
+  }
+
+  return grouped;
+}
 
 export type SuggestPutawayLocationsOpts = {
   /** CBM per unit for the quantity being placed. Callers pass the WRR line's

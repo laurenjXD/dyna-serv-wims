@@ -13,6 +13,12 @@ export default defineConfig({
     include: ["**/*.integration.test.ts"],
     exclude: ["node_modules", ".next"],
     testTimeout: 30_000,
+    // These suites rebuild the shared public/auth/RBAC schemas from the full
+    // migration chain. Running files concurrently makes them drop each
+    // other's schema and produces false failures; real-Postgres verification
+    // must be serial.
+    fileParallelism: false,
+    maxWorkers: 1,
   },
   resolve: {
     alias: {

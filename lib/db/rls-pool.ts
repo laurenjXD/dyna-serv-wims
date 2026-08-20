@@ -26,7 +26,12 @@ import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import type { RlsConnection, RlsPool } from "./rls-transaction";
 import * as schema from "./schema";
 
-const connectionString = process.env.DATABASE_URL ?? "";
+// Keep this in sync with lib/db/client.ts. Vercel's Supabase integration
+// supplies POSTGRES_URL, while local development and CI use DATABASE_URL.
+// This pool is used exclusively by protected writes, so accepting only the
+// latter made every party/item creation fail in the deployed environment
+// even though server-rendered reads could connect successfully.
+const connectionString = process.env.DATABASE_URL ?? process.env.POSTGRES_URL ?? "";
 
 // `prepare: false` matches lib/db/client.ts's existing rationale: required
 // for Supabase's connection pooler (pgbouncer, transaction mode).

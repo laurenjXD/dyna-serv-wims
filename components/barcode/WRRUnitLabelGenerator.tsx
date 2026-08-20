@@ -97,6 +97,9 @@ export function WRRUnitLabelGenerator({
                   {wrrNumber} — Lot:{" "}
                   <span className="font-mono text-mono-md font-bold">{lotNumber}</span>
                 </p>
+                <p className="mt-1 font-body text-body-sm text-text-grey">
+                  Each pallet has its own QR label. If no camera is available, type the item code or lot number shown on the label once per pallet.
+                </p>
               </div>
               <div className="flex items-center gap-3">
                 <button
@@ -152,7 +155,7 @@ export function WRRUnitLabelGenerator({
                         Lot: {lotNumber}
                       </p>
                       <p className="font-mono text-mono-xs text-status-neutral">
-                        Unit {unit.unitIndex} of {expectedQty} | {unit.unitId.substring(0, 8)}
+                        Label ID: {unit.unitId.substring(0, 8)}
                       </p>
                     </div>
                   </div>

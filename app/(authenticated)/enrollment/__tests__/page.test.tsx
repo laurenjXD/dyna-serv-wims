@@ -110,6 +110,13 @@ describe("EnrollmentPage (app/(authenticated)/enrollment/page.tsx)", () => {
     expect(source).toContain('"locations.manage"');
   });
 
+  it("shows the sample-data control only when its three required capabilities are available", () => {
+    const source = pageSource();
+    expect(source).toContain("SampleDataButton");
+    expect(source).toContain('"receiving.confirm"');
+    expect(source).toContain("canAddSampleData");
+  });
+
   // ── Entry points still land on the real /master-data/* routes — the tab
   // shell renders these sections inline for read, but create/detail/edit
   // stay on their existing sibling routes, per the plan's resolution note. ──

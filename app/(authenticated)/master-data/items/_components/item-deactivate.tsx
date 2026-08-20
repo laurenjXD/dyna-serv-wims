@@ -51,7 +51,7 @@ export function DeactivateItemSection({ itemId }: { itemId: string }) {
           <button
             type="submit"
             disabled={isPending}
-            className="flex h-11 items-center justify-center rounded bg-status-held px-4 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-status-held"
+            className="flex h-11 items-center justify-center rounded-lg bg-primary px-5 font-label text-label font-semibold tracking-wide text-surface-white shadow-sm transition-all hover:brightness-95 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
           >
             {isPending ? "Deactivating…" : "Confirm Deactivate"}
           </button>

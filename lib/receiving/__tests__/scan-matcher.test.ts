@@ -76,6 +76,7 @@ const makeLine = (
     id: string;
     itemId: string | null;
     itemBarcode: string | null;
+    itemCode: string | null;
     lotNumber: string;
     expectedQty: number;
     scannedQty: number;
@@ -85,6 +86,7 @@ const makeLine = (
   id: "line-001",
   itemId: "item-uuid-001",
   itemBarcode: "BC-ALPHA-001",
+  itemCode: "ITEM-ALPHA-001",
   lotNumber: "LOT-2026-001",
   expectedQty: 10,
   scannedQty: 0,
@@ -126,6 +128,15 @@ describe("matchScan — unknown barcode returns unknown_item (design.md §6, req
   });
 });
 
+describe("matchScan — manual item-code fallback", () => {
+  it("accepts the displayed item code when a camera is unavailable", async () => {
+    const { matchScan } = await import("@/lib/receiving/scan-matcher");
+    const result = matchScan("ITEM-ALPHA-001", [makeLine()]);
+
+    expect(result).toMatchObject({ matched: true, remainingQty: 9, scanQty: 1 });
+  });
+});
+
 describe("matchScan — successful match (design.md §6, requirements.md R3.1)", () => {
   it("AC-R3.1: returns { matched: true, line, remainingQty } when a line's itemBarcode exactly matches", async () => {
     const { matchScan } = await import("@/lib/receiving/scan-matcher");
@@ -148,6 +159,22 @@ describe("matchScan — successful match (design.md §6, requirements.md R3.1)",
     if (!result.matched) return;
     // After this scan: scannedQty would be 4 (3 + 1), remaining = 10 - 4 = 6
     expect(result.remainingQty).toBe(6);
+  });
+});
+
+describe("matchScan — legacy multi-pallet QR", () => {
+  const cartonQr = (quantity: number) =>
+    JSON.stringify({
+      type: "wrr_item_carton",
+      wrr_item_id: "line-001",
+      quantity,
+    });
+
+  it("rejects a legacy multi-pallet QR so each pallet requires its own label", async () => {
+    const { matchScan } = await import("@/lib/receiving/scan-matcher");
+    const result = matchScan(cartonQr(10), [makeLine({ expectedQty: 10, scannedQty: 0 })]);
+
+    expect(result).toEqual({ matched: false, reason: "unknown_item" });
   });
 });
 

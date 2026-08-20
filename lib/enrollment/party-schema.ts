@@ -114,10 +114,15 @@ export function parsePartyInput(input: unknown): ParseResult<PartyInput> {
       raw["phone"] !== undefined ? (raw["phone"] as string | null) : null,
     taxId:
       raw["taxId"] !== undefined ? (raw["taxId"] as string | null) : null,
+    // Accept the pre-address-split key only as a compatibility fallback.
+    // Browser forms now submit address1, but accepting the legacy key keeps
+    // queued/older clients from turning a valid enrollment into a crash.
     address1:
       raw["address1"] !== undefined
         ? (raw["address1"] as string | null)
-        : null,
+        : raw["address"] !== undefined
+          ? (raw["address"] as string | null)
+          : null,
     address2:
       raw["address2"] !== undefined
         ? (raw["address2"] as string | null)

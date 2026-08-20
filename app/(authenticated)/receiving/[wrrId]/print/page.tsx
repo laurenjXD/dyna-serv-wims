@@ -159,8 +159,9 @@ export default async function WrrPrintPage({ params }: PageProps) {
                   Date of Generation: {new Date().toLocaleString()}
                 </p>
               </div>
-              {/* WRR number — scannable QR per design.md §5.3, plus the
-                  human-readable number in mono for manual reference. */}
+              {/* This QR identifies the WRR document. It deliberately does
+                  not represent a physical unit and must not be used in the
+                  receiving scan loop; unit labels are printed per WRR line. */}
               <div className="flex items-start gap-3">
                 <div className="text-right">
                   <p className="font-label text-label uppercase text-text-grey">
@@ -170,7 +171,12 @@ export default async function WrrPrintPage({ params }: PageProps) {
                     {wrr.wrrNumber}
                   </p>
                 </div>
-                <WrrBarcode wrrNumber={wrr.wrrNumber} />
+                <div className="text-center">
+                  <WrrBarcode wrrNumber={wrr.wrrNumber} />
+                  <p className="mt-1 max-w-[120px] font-body text-body-sm text-text-grey">
+                    Document QR — not for item scanning
+                  </p>
+                </div>
               </div>
             </div>
           </div>

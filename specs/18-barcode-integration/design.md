@@ -1,7 +1,7 @@
 # Barcode & QR Integration — Design
 
 Status: Approved
-Updated: 2026-08-10
+Updated: 2026-08-20
 
 Cites foundational specs:
 - `specs/00-steering/tech.md`
@@ -108,3 +108,17 @@ Code 128/UPC values as lot or item payloads in any other workflow.
 `wrr_item_id` is the lookup key into the expected line (item, expected quantity, UOM, lot number, disposition — all already defined by `07-incoming-receiving` design.md §5.1); `unit_id` is the value that must never repeat across the `N` labels printed for that line, and is what `07`'s scan matcher records to detect an exact duplicate-label rescan versus a legitimately distinct unit. This is keyed to the WRR line/item, not to `dsw_id` or a `lots` UUID (per §2's `dsw_id` convention) or to a `wrr_advance_notices` row (per the Scoped R11 exception's `WAN:<uuid>`) — no lot exists yet at WRR-line time, and this is not an advance-notice submission.
 
 **Ownership boundary.** Generation and printing of these labels is triggered from `07-incoming-receiving`'s WRR creation/staging surface (an office pre-receiving action, per `07` design.md §1), reusing this spec's own §2.1 QR-generation component and print driver rather than a second one. `07` owns when/whether to trigger generation for a given line (e.g. a vendor known to ship without reliable barcodes); this spec owns the label component, payload shape, and print rendering. Scanning one of these labels at the receiving bay resolves through `07`'s existing barcode-reconciliation matcher (`07` design.md §6) exactly as any other 2D payload does — no new scan-time code path, only a new payload shape the matcher recognizes by its `type` discriminator.
+
+### 2.3 WRR-time sealed-carton QR (added 2026-08-20)
+
+The Unit Labels sheet additionally renders one prominent carton label before the individual labels. Its payload represents the complete expected quantity for that line:
+
+```json
+{
+  "type": "wrr_item_carton",
+  "wrr_item_id": "uuid",
+  "quantity": 10
+}
+```
+
+The matcher resolves `wrr_item_id` to the same expected line as §2.2, then accepts the scan only when `quantity === expected_qty - scanned_qty`. This exact-remaining-quantity rule means a carton QR completes an untouched ten-unit line in one scan, but is rejected if one or more individual labels have already been scanned. No unit-label records are fabricated for a carton scan: the authoritative WRR line count is incremented by the carton quantity and the individual labels remain valid for a separate, unstarted or partial receiving scenario. A second carton scan is rejected because the line is already complete.

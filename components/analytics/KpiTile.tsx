@@ -42,7 +42,7 @@ export function KpiTile({ label, value, trend, icon, accent, linkTo }: KpiTilePr
   // an ancestor-of-the-focused-element, which never fires (:focus-within
   // only matches when the focused node is itself or a DESCENDANT).
   const tileClass =
-    "flex items-center gap-4 rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1 transition-transform duration-150 hover:scale-[1.02]";
+    "flex items-center gap-4 rounded-lg border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1 transition-transform duration-150 hover:scale-[1.02]";
   // Icon badge + text block are the flex container's direct children in
   // BOTH cases (Fragment adds no wrapping element), so centering/gap layout
   // is identical whether the outer element is the <a> or the plain <div>.

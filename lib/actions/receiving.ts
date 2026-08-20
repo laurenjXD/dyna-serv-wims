@@ -37,6 +37,7 @@ import { lots } from "@/lib/db/schema/lots";
 import { lotLocationBalances } from "@/lib/db/schema/lot_location_balances";
 import { inventoryTransactions } from "@/lib/db/schema/transactions";
 import { locations } from "@/lib/db/schema/locations";
+import { inspectionCases } from "@/lib/db/schema/transfers";
 import { withRlsTransaction } from "@/lib/db/rls-transaction";
 import type { RlsTransactionDeps } from "@/lib/db/rls-transaction";
 import { rlsPool } from "@/lib/db/rls-pool";
@@ -77,6 +78,8 @@ export type RecordScanResult =
   | { ok: false; reason: string };
 
 export type CommitWrrLineResult = { ok: true } | { ok: false; errors: string[] };
+export type CancelWrrResult = { ok: true } | { ok: false; errors: string[] };
+export type UpdateWrrResult = { ok: true } | { ok: false; errors: string[] };
 
 // ---------------------------------------------------------------------------
 // Internal: fetch WRR document with items for action context
@@ -131,6 +134,9 @@ async function fetchWrrForAction(
       // a test-double/backward-compatible fallback, then the supplier item
       // code supports legacy labels where no distinct barcode was recorded.
       itemBarcode: (enrolledItem?.barcode ?? line.barcode ?? line.itemCode ?? null) as string | null,
+      // Preserve the item code separately so it can be entered manually when
+      // a camera or hardware scanner is unavailable.
+      itemCode: (enrolledItem?.code ?? line.itemCode ?? null) as string | null,
       lotNumber: line.lotNumber as string,
       expectedQty: line.expectedQty as number,
       scannedQty: line.scannedQty as number,
@@ -296,6 +302,68 @@ export async function createWrr(
   return rlsResult.value;
 }
 
+/**
+ * Cancels a pre-receiving WRR instead of hard-deleting it. WRRs are audit
+ * documents: once created, their reference and any partial physical work
+ * must remain traceable. A staged WRR is therefore safely removed from the
+ * active queue by transitioning it to `cancelled`.
+ */
+export async function cancelWrr(
+  resolver: RequestAuthorizationResolver,
+  wrrId: string,
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+): Promise<CancelWrrResult> {
+  const perm = await requirePermission(resolver, "receiving.confirm");
+  if (perm.kind !== "authorized") return { ok: false, errors: ["forbidden"] };
+
+  const result = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
+    const updated = await db
+      .update(wrrDocuments)
+      .set({ status: "cancelled", updatedAt: new Date() })
+      .where(and(
+        eq(wrrDocuments.id, wrrId),
+        or(
+          eq(wrrDocuments.status, "staged_pending_arrival"),
+          eq(wrrDocuments.status, "receiving_in_progress"),
+        ),
+      ))
+      .returning({ id: wrrDocuments.id });
+    return updated.length === 1
+      ? { ok: true } satisfies CancelWrrResult
+      : { ok: false, errors: ["This WRR can no longer be cancelled."] } satisfies CancelWrrResult;
+  });
+  return result.kind === "unauthenticated" ? { ok: false, errors: ["forbidden"] } : result.value;
+}
+
+/** Updates a staged WRR header. Expected lines are deliberately locked once
+ * receiving begins; editing them would invalidate generated scan labels. */
+export async function updateWrrHeader(
+  resolver: RequestAuthorizationResolver,
+  wrrId: string,
+  input: { vendorPartyId: string; flowType: "vmi" | "trading" | "supplies"; commercialInvoiceNo?: string | null; ipNumber?: string | null; mawbMblNumber?: string | null },
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+): Promise<UpdateWrrResult> {
+  const perm = await requirePermission(resolver, "receiving.confirm");
+  if (perm.kind !== "authorized") return { ok: false, errors: ["forbidden"] };
+  if (!input.vendorPartyId || !["vmi", "trading", "supplies"].includes(input.flowType)) {
+    return { ok: false, errors: ["Enter a valid organization and inventory model."] };
+  }
+  const result = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
+    const updated = await db.update(wrrDocuments).set({
+      vendorPartyId: input.vendorPartyId,
+      flowType: input.flowType,
+      commercialInvoiceNo: input.commercialInvoiceNo ?? null,
+      ipNumber: input.ipNumber ?? null,
+      mawbMblNumber: input.mawbMblNumber ?? null,
+      updatedAt: new Date(),
+    }).where(and(eq(wrrDocuments.id, wrrId), eq(wrrDocuments.status, "staged_pending_arrival"))).returning({ id: wrrDocuments.id });
+    return updated.length === 1 ? { ok: true } satisfies UpdateWrrResult : { ok: false, errors: ["Only staged WRRs can be edited."] } satisfies UpdateWrrResult;
+  });
+  return result.kind === "unauthenticated" ? { ok: false, errors: ["forbidden"] } : result.value;
+}
+
 // ---------------------------------------------------------------------------
 // uploadCiplFile / getCiplSignedUrl
 // ---------------------------------------------------------------------------
@@ -440,11 +508,9 @@ export async function recordScan(
       return { ok: false, reason: "invalid_status" } satisfies RecordScanResult;
     }
 
-    // The QR printed on the WRR document encodes the document number. It is
-    // useful for identifying/opening a WRR, but it must never count as an
-    // item scan: one document QR cannot prove which physical unit is in hand.
-    // Return a specific, recoverable reason instead of misleading staff into
-    // thinking an enrolled item is missing from the catalog.
+    // The QR printed in the WRR header contains the document number. It is a
+    // document identifier, not a physical unit label, so reject it with an
+    // actionable explanation instead of the misleading "unknown item" state.
     if (barcode.trim() === doc.wrrNumber) {
       return { ok: false, reason: "wrr_document_qr" } satisfies RecordScanResult;
     }
@@ -470,10 +536,11 @@ export async function recordScan(
 
     const line = matchResult.line;
 
-    // 5. Increment scannedQty
+    // 5. Increment scannedQty. Every accepted QR represents exactly one
+    // physical pallet or unit.
     await db
       .update(wrrItems)
-      .set({ scannedQty: line.scannedQty + 1 })
+      .set({ scannedQty: line.scannedQty + matchResult.scanQty })
       .where(eq(wrrItems.id, line.id));
 
     // 5a. Persist the per-unit scan record for a successful wrr_item_unit
@@ -695,6 +762,25 @@ export async function commitWrrLine(
         wrrId: doc.id,
         performedByUserId: userId,
       });
+
+      // An inspect-disposition receipt is not complete when the lot is merely
+      // quarantined. It must also open the shared inbound inspection case that
+      // drives Master Inventory's Inspection tab and the subsequent resolution
+      // workflow. Keeping this in the same transaction means a successfully
+      // committed held lot can never be stranded without an inspection task.
+      if (line.disposition === "inspect") {
+        await tx.insert(inspectionCases).values({
+          contextType: "inbound",
+          sourceRefType: "wrr_item",
+          sourceRefId: line.id,
+          lotId: lot.id,
+          itemId: line.itemId!,
+          partyId: doc.vendorPartyId,
+          flowType: doc.flowType as "vmi" | "trading" | "supplies",
+          status: "open",
+          openedBy: userId,
+        });
+      }
     }
     // If claimed.length === 0, this line was already committed by a prior
     // call — idempotent retry; nothing more to post for this line.

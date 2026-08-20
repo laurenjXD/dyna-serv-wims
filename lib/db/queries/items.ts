@@ -68,6 +68,43 @@ export type SupplierPartyOption = {
   name: string;
 };
 
+/** A catalog projection safe for the WRR pre-receiving form. */
+export type WrrItemOption = {
+  id: string;
+  defaultSupplierPartyId: string | null;
+  code: string;
+  name: string;
+  supplierItemCode: string | null;
+  customerItemCode: string | null;
+  dsgcItemNumber: string | null;
+  uom: string;
+  volumeCbm: string;
+};
+
+/**
+ * Lists active catalog items with the owning/supplying organization relation.
+ * The client filters this small office-form projection after the operator
+ * chooses the Vendor Organization; the server action still resolves the item
+ * ID independently before staging the WRR.
+ */
+export async function listActiveWrrItemOptions(db: DbLike): Promise<WrrItemOption[]> {
+  return (await db
+    .select({
+      id: items.id,
+      defaultSupplierPartyId: items.defaultSupplierPartyId,
+      code: items.code,
+      name: items.name,
+      supplierItemCode: items.supplierItemCode,
+      customerItemCode: items.customerItemCode,
+      dsgcItemNumber: items.dsgcItemNumber,
+      uom: items.uom,
+      volumeCbm: items.volumeCbm,
+    })
+    .from(items)
+    .where(eq(items.isActive, true))
+    .orderBy(items.code)) as WrrItemOption[];
+}
+
 export type ItemOperationalRecords = {
   hasRelatedLots: boolean;
   hasRelatedWrrItems: boolean;

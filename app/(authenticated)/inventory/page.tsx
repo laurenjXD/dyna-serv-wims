@@ -33,7 +33,6 @@ import { resolveInventoryTab, type TabKey } from "./_lib/resolveInventoryTab";
 import { InspectionTab } from "./_components/InspectionTab";
 import { PickListGenerator } from "./_components/PickListGenerator";
 import { createPickList } from "./actions";
-import { listParties } from "@/lib/db/queries/parties";
 
 // ─── Status badge colors ─────────────────────────────────────────────────────
 // brand-design-system.md §1.3 semantic color mapping per task spec:
@@ -66,11 +65,11 @@ const TABS: Array<{ key: TabKey; label: string }> = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 interface PageProps {
-  searchParams: Promise<{ tab?: string; q?: string }>;
+  searchParams: Promise<{ tab?: string; q?: string; pickListError?: string }>;
 }
 
 export default async function InventoryPage({ searchParams }: PageProps) {
-  const { tab: tabParam, q } = await searchParams;
+  const { tab: tabParam, q, pickListError } = await searchParams;
 
   const activeTab: TabKey = resolveInventoryTab(tabParam);
 
@@ -127,6 +126,14 @@ export default async function InventoryPage({ searchParams }: PageProps) {
         </form>
       </div>
 
+      {pickListError && (
+        <div role="alert" className="mt-4 rounded-lg border-l-4 border-status-held bg-surface-white p-4 shadow-elevation-1">
+          <p className="font-heading text-body-md font-semibold text-on-surface">Pick list was not created</p>
+          <p className="mt-1 font-body text-body-md text-on-surface">{pickListError === "forbidden" ? "Your account does not have permission to generate pick lists." : `Reason: ${pickListError.replaceAll(",", ", ")}`}</p>
+          <p className="mt-1 font-body text-body-md text-text-grey">Check the destination organization and available quantity, then try again.</p>
+        </div>
+      )}
+
       {activeTab === "stock-view" ? (
         <StockViewTab query={q} />
       ) : activeTab === "pick-lists" ? (
@@ -142,7 +149,6 @@ export default async function InventoryPage({ searchParams }: PageProps) {
 
 async function StockViewTab({ query }: { query?: string }) {
   const rows = await listStockView(db);
-  const { rows: partyRows } = await listParties(db, { limit: 100 });
   const normalizedQuery = query?.trim().toLowerCase() ?? "";
   const items = groupStockByItem(rows).filter((item) => !normalizedQuery || `${item.itemCode} ${item.itemName} ${item.lots.map((lot) => lot.lotNumber).join(" ")}`.toLowerCase().includes(normalizedQuery));
 
@@ -159,19 +165,19 @@ async function StockViewTab({ query }: { query?: string }) {
         </div>
       ) : (
         <div className="min-w-[760px] divide-y divide-outline-variant/30">
-          <div className="grid grid-cols-[40px_210px_minmax(220px,1fr)_120px_140px_160px] items-center bg-accent-indigo-50 px-5 py-3 font-label text-label font-semibold tracking-[0.04em] text-text-grey">
+          <div className="grid grid-cols-[40px_210px_minmax(220px,1fr)_120px_150px_170px] items-center gap-x-3 bg-accent-indigo-50 px-5 py-3 font-label text-label font-semibold tracking-[0.04em] text-text-grey">
             <span aria-hidden="true" />
-            <span>Item Code</span><span>Name</span><span>UOM</span><span className="text-right">Stock Level</span><span>Status</span>
+            <span>Item Code</span><span>Name</span><span>UOM</span><span className="text-right">Stock Level</span><span className="pl-6">Status</span>
           </div>
           {items.map((item) => (
             <details key={item.itemId} className="group">
-              <summary className="grid cursor-pointer list-none grid-cols-[40px_210px_minmax(220px,1fr)_120px_140px_160px] items-center px-5 py-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy hover:bg-surface-light-grey/40">
+              <summary className="grid cursor-pointer list-none grid-cols-[40px_210px_minmax(220px,1fr)_120px_150px_170px] items-center gap-x-3 px-5 py-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy hover:bg-surface-light-grey/40">
                 <ChevronRight size={22} aria-hidden="true" className="text-text-grey transition-transform group-open:rotate-90" />
                 <p className="font-mono text-mono-md font-bold text-on-surface">{item.itemCode}</p>
                 <p className="font-body text-body-md text-on-surface">{item.itemName}</p>
                 <p className="font-body text-body-md text-text-grey">{item.uom}</p>
                 <p className="text-right font-mono text-mono-lg font-bold text-on-surface">{item.availableQty.toLocaleString()}</p>
-                <span className="inline-flex w-fit items-center rounded-full bg-on-surface px-3 py-1 font-label text-label tracking-[0.06em] text-surface-white">ON HAND</span>
+                <span className="ml-6 inline-flex w-fit items-center rounded-full bg-on-surface px-3 py-1 font-label text-label tracking-[0.06em] text-surface-white">ON HAND</span>
               </summary>
               <div className="border-t border-outline-variant/30 bg-surface-light-grey/45 px-4 py-4 md:px-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -181,8 +187,8 @@ async function StockViewTab({ query }: { query?: string }) {
                   <PickListGenerator
                     itemId={item.itemId}
                     flowType={item.flowType}
+                    organizationId={item.organizationId}
                     lots={rows.filter((row) => row.itemId === item.itemId).map((row) => ({ lotId: row.lotId, locationId: row.locationId, availableQty: row.qtyRemaining - row.qtyCommitted }))}
-                    parties={partyRows.filter((party) => party.isActive).map((party) => ({ id: party.id, name: party.name, code: party.code }))}
                     action={createPickList}
                   />
                 </div>
@@ -242,6 +248,7 @@ type GroupedItem = {
   uom: string;
   isPerishable: boolean;
   flowType: "vmi" | "trading" | "supplies";
+  organizationId: string | null;
   availableQty: number;
   lots: AggregatedLot[];
 };
@@ -251,7 +258,7 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
   // The query already orders by (items.code, lots.expiry_date, lots.created_at)
   // so FEFO/FIFO order is preserved by the insertion sequence.
   const itemMap = new Map<string, {
-    itemId: string; itemCode: string; itemName: string; uom: string; isPerishable: boolean; flowType: "vmi" | "trading" | "supplies";
+    itemId: string; itemCode: string; itemName: string; uom: string; isPerishable: boolean; flowType: "vmi" | "trading" | "supplies"; organizationId: string | null;
     lotMap: Map<string, { lot: AggregatedLot }>;
     insertionOrder: string[]; // lot IDs in FEFO/FIFO order
   }>();
@@ -268,6 +275,7 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
         uom: row.uom,
         isPerishable: row.isPerishable,
         flowType: row.flowType ?? "trading",
+        organizationId: row.organizationId ?? null,
         lotMap: new Map(),
         insertionOrder: [],
       };
@@ -311,6 +319,7 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
       uom: entry.uom,
       isPerishable: entry.isPerishable,
       flowType: entry.flowType,
+      organizationId: entry.organizationId,
       availableQty: lots.reduce((sum, l) => sum + l.availableQty, 0),
       lots,
     };
