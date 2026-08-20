@@ -523,6 +523,29 @@ describe("recordScan — valid scan (R3.1, R3.2, design.md §5.2, §6)", () => {
     // scannedQty must have been updated in the DB.
     expect(db.update).toHaveBeenCalled();
   });
+
+  it("matches the enrolled item's registered barcode from the WRR item join", async () => {
+    const catalogBarcode = "QR-REGISTERED-ITEM-001";
+    const wrr = wrrDocRow();
+    const line = wrrItemRow({ barcode: undefined, itemCode: "SUPPLIER-PART-001" });
+    const db = makeReceivingDb([
+      {
+        wrr_documents: wrr,
+        wrr_items: line,
+        items: { id: line.itemId, barcode: catalogBarcode, flowType: "vmi" },
+      },
+    ]);
+
+    const result = await recordScan(
+      scanOnlyResolver(),
+      "wrr-uuid-existing",
+      catalogBarcode,
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result.ok).toBe(true);
+    expect(db.update).toHaveBeenCalled();
+  });
 });
 
 // commitWrr's mocked-DB coverage was removed along with the function itself

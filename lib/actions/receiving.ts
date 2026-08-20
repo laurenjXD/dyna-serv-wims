@@ -32,6 +32,7 @@ import type { WrrLine } from "@/lib/receiving/scan-matcher";
 import { validateLineCommit } from "@/lib/receiving/commit-validation";
 import type { CommitLocation } from "@/lib/receiving/commit-validation";
 import { wrrDocuments, wrrItems, wrrItemUnitScans } from "@/lib/db/schema/wrr";
+import { items as itemCatalog } from "@/lib/db/schema/items";
 import { lots } from "@/lib/db/schema/lots";
 import { lotLocationBalances } from "@/lib/db/schema/lot_location_balances";
 import { inventoryTransactions } from "@/lib/db/schema/transactions";
@@ -81,7 +82,7 @@ export type CommitWrrLineResult = { ok: true } | { ok: false; errors: string[] }
 // Internal: fetch WRR document with items for action context
 // ---------------------------------------------------------------------------
 //
-// Drizzle returns nested left-join rows (`{ wrr_documents, wrr_items }`),
+// Drizzle returns nested left-join rows (`{ wrr_documents, wrr_items, items }`),
 // while the action test double returns flat rows. Normalize both shapes here.
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -106,6 +107,10 @@ async function fetchWrrForAction(
     .select()
     .from(wrrDocuments)
     .leftJoin(wrrItems, eq(wrrItems.wrrId, wrrDocuments.id))
+    // A WRR line's supplier item code is not necessarily the barcode printed
+    // on the enrolled Dyna-Serv item. Join the catalog record so floor scans
+    // can match the registered `items.barcode` value as well.
+    .leftJoin(itemCatalog, eq(itemCatalog.id, wrrItems.itemId))
     .where(eq(wrrDocuments.id, wrrId));
 
   if (allRows.length === 0) return null;
@@ -113,19 +118,25 @@ async function fetchWrrForAction(
   const first = (allRows[0].wrr_documents ?? allRows[0]) as AnyRecord;
 
   const items: WrrLine[] = allRows
-    .map((row: AnyRecord) => (row.wrr_items ?? row) as AnyRecord)
-    .filter((row: AnyRecord) => row.wrrId != null)
-    .map((row: AnyRecord) => ({
-      id: row.id as string,
-      itemId: (row.itemId ?? null) as string | null,
-      // barcode comes from the mock's convenience field; itemCode is the
-      // production fallback for the supplier part number field.
-      itemBarcode: (row.barcode ?? row.itemCode ?? null) as string | null,
-      lotNumber: row.lotNumber as string,
-      expectedQty: row.expectedQty as number,
-      scannedQty: row.scannedQty as number,
-      disposition: row.disposition as "store" | "inspect",
-      putawayLocationId: (row.putawayLocationId ?? null) as string | null,
+    .map((joinedRow: AnyRecord) => {
+      const line = (joinedRow.wrr_items ?? joinedRow) as AnyRecord;
+      const enrolledItem = (joinedRow.items ?? null) as AnyRecord | null;
+      return { line, enrolledItem };
+    })
+    .filter(({ line }) => line.wrrId != null)
+    .map(({ line, enrolledItem }) => ({
+      id: line.id as string,
+      itemId: (line.itemId ?? null) as string | null,
+      // Prefer the enrolled item's canonical barcode. `line.barcode` remains
+      // a test-double/backward-compatible fallback, then the supplier item
+      // code supports legacy labels where no distinct barcode was recorded.
+      itemBarcode: (enrolledItem?.barcode ?? line.barcode ?? line.itemCode ?? null) as string | null,
+      lotNumber: line.lotNumber as string,
+      expectedQty: line.expectedQty as number,
+      scannedQty: line.scannedQty as number,
+      disposition: line.disposition as "store" | "inspect",
+      putawayLocationId: (line.putawayLocationId ?? null) as string | null,
+      itemFlowType: (enrolledItem?.flowType ?? null) as WrrLine["itemFlowType"],
     }));
 
   return {
