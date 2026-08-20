@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { buildStockAllocationPreview, type StockViewRow } from "../inventory";
 
 const baseRow: StockViewRow = {
-  itemId: "item-1", itemCode: "ITEM-1", itemName: "Test item", uom: "piece",
-  isPerishable: false, lotId: "lot-1", lotNumber: "LOT-1", lotStatus: "available",
+  itemId: "item-1", itemCode: "ITEM-1", itemName: "Test item", defaultSupplierPartyId: "party-1", uom: "piece",
+  isPerishable: false, lotId: "lot-1", flowType: "trading", lotNumber: "LOT-1", lotStatus: "available",
   expiryDate: null, receivedAt: new Date("2026-01-01T00:00:00Z"),
   locationId: "loc-1", locationLabel: "A-01", qtyRemaining: 10, qtyCommitted: 0,
 };

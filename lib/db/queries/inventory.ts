@@ -18,8 +18,10 @@ export type StockViewRow = {
   itemId: string;
   itemCode: string;
   itemName: string;
+  defaultSupplierPartyId: string | null;
   uom: string;
   isPerishable: boolean;
+  flowType: "vmi" | "trading" | "supplies";
   lotId: string;
   lotNumber: string;
   lotStatus: string;
@@ -46,9 +48,11 @@ export async function listStockView(db: DbLike): Promise<StockViewRow[]> {
       itemId: items.id,
       itemCode: items.code,
       itemName: items.name,
+      defaultSupplierPartyId: items.defaultSupplierPartyId,
       uom: items.uom,
       isPerishable: items.isPerishable,
       lotId: lots.id,
+      flowType: lots.flowType,
       lotNumber: lots.lotNumber,
       lotStatus: lots.status,
       expiryDate: lots.expiryDate,

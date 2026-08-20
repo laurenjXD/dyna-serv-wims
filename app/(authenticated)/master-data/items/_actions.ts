@@ -87,8 +87,16 @@ export async function createItemAction(
 ): Promise<ItemFormState> {
   const resolver = await createPageResolver();
   const input = parseItemFormData(formData);
-
-  const result = await createItem(resolver, input);
+  let result: Awaited<ReturnType<typeof createItem>>;
+  try {
+    result = await createItem(resolver, input);
+  } catch (error) {
+    console.error("Item enrollment failed", error);
+    return {
+      error:
+        "The item could not be saved. Verify the selected Organization and required item fields, then try again.",
+    };
+  }
 
   if (!result.ok) {
     if ("fieldErrors" in result) {

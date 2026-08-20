@@ -236,7 +236,11 @@ export default async function DispatchConfirmationPage({
       (formData.get("scanned") as string | null) ?? ""
     ).trim();
     const actionResolver = await createPageResolver();
-    const dispatchResult = await dispatchPickList(actionResolver, pickListId);
+    const dispatchResult = await dispatchPickList(
+      actionResolver,
+      pickListId,
+      scannedRaw ? scannedRaw.split(",").filter(Boolean) : [],
+    );
     if (dispatchResult.ok) {
       // Return to outgoing queue — dispatch is complete.
       redirect("/outgoing");

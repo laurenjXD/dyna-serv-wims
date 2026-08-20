@@ -66,6 +66,7 @@ const VALID_BASE: Record<string, unknown> = {
   code: "ITEM-001",
   name: "Test Widget",
   barcode: "1234567890123",
+  defaultSupplierPartyId: "party-uuid-1",
   volumeCbm: "0.0120",  // explicit when no dimensions provided
 };
 

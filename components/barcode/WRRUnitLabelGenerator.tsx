@@ -97,6 +97,9 @@ export function WRRUnitLabelGenerator({
                   {wrrNumber} — Lot:{" "}
                   <span className="font-mono text-mono-md font-bold">{lotNumber}</span>
                 </p>
+                <p className="mt-1 font-body text-body-sm text-text-grey">
+                  Scan these labels during receiving—one label for each physical unit.
+                </p>
               </div>
               <div className="flex items-center gap-3">
                 <button

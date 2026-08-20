@@ -223,6 +223,19 @@ export function parseItemInput(input: unknown): ParseResult<ItemInput> {
     }
   }
 
+  // Every enrolled item carries a default Organization reference. It is the
+  // item-level default used when downstream workflows need organization
+  // context before a received lot has its own owner record.
+  if (
+    typeof raw["defaultSupplierPartyId"] !== "string" ||
+    raw["defaultSupplierPartyId"].trim() === ""
+  ) {
+    errors.push({
+      field: "defaultSupplierPartyId",
+      message: "Organization is required.",
+    });
+  }
+
   // ── dimensions: all-or-nothing; each must be positive when provided ──────────
   const rawLength = raw["lengthCm"];
   const rawWidth = raw["widthCm"];

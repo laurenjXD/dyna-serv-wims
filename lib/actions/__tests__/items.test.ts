@@ -152,6 +152,14 @@ function makeSelectChain(rows: unknown[]): any {
   return chain;
 }
 
+function activeOrganizationRow() {
+  return { id: "party-uuid-1", isActive: true };
+}
+
+function makeSelectSequence(...rowSets: unknown[][]) {
+  return vi.fn().mockImplementation(() => makeSelectChain(rowSets.shift() ?? []));
+}
+
 // Minimal valid item input (no dimensions — uses direct volumeCbm).
 const validItemInput = {
   code: "ITEM-001",
@@ -163,6 +171,7 @@ const validItemInput = {
   volumeCbm: "0.0010",
   minReorderLevel: 0,
   isActive: true,
+  defaultSupplierPartyId: "party-uuid-1",
 };
 
 // ---------------------------------------------------------------------------
@@ -182,6 +191,45 @@ describe("createItem — authorization (R6.1, design.md §4: items.manage requir
 });
 
 describe("createItem — validation (R4.1-R4.4, design.md §6)", () => {
+  it("requires an organization for a new item", async () => {
+    const result = await createItem(
+      authorizedResolver(),
+      { ...validItemInput, defaultSupplierPartyId: "" },
+    );
+    expect(result).toMatchObject({ ok: false, fieldErrors: { defaultSupplierPartyId: expect.any(String) } });
+  });
+
+  it("rejects an organization that does not exist", async () => {
+    const db = {
+      select: makeSelectSequence([]),
+      insert: vi.fn().mockReturnValue(makeInsertChain("item-new-1")),
+    };
+    const { deps } = mockRlsDeps(db);
+
+    const result = await createItem(authorizedResolver(), validItemInput, deps);
+
+    expect(result).toMatchObject({
+      ok: false,
+      fieldErrors: { defaultSupplierPartyId: expect.stringMatching(/no longer exists/i) },
+    });
+    expect(db.insert).not.toHaveBeenCalled();
+  });
+
+  it("rejects an inactive organization", async () => {
+    const db = {
+      select: makeSelectSequence([{ id: "party-uuid-1", isActive: false }]),
+      insert: vi.fn().mockReturnValue(makeInsertChain("item-new-1")),
+    };
+    const { deps } = mockRlsDeps(db);
+
+    const result = await createItem(authorizedResolver(), validItemInput, deps);
+
+    expect(result).toMatchObject({
+      ok: false,
+      fieldErrors: { defaultSupplierPartyId: expect.stringMatching(/inactive/i) },
+    });
+    expect(db.insert).not.toHaveBeenCalled();
+  });
   it("returns { ok: false, fieldErrors: { code: '...' } } when item code is missing (parseItemInput fails)", async () => {
     const db = {
       insert: vi.fn().mockReturnValue(makeInsertChain("item-new-1")),
@@ -258,6 +306,7 @@ describe("createItem — validation (R4.1-R4.4, design.md §6)", () => {
 describe("createItem — success (R4.1, design.md §6)", () => {
   it("returns { ok: true, data: { id: string } } on a valid authorized request", async () => {
     const db = {
+      select: makeSelectSequence([activeOrganizationRow()]),
       insert: vi.fn().mockReturnValue(makeInsertChain("item-new-uuid")),
     };
     const { deps } = mockRlsDeps(db);
@@ -270,6 +319,24 @@ describe("createItem — success (R4.1, design.md §6)", () => {
       expect(
         typeof (result as { ok: true; data: { id: string } }).data.id,
       ).toBe("string");
+    }
+  });
+
+  it("returns recoverable feedback with a support reference when the transaction fails", async () => {
+    const db = {
+      select: makeSelectSequence([activeOrganizationRow()]),
+      insert: vi.fn(() => {
+        throw new Error("database unavailable");
+      }),
+    };
+    const { deps } = mockRlsDeps(db);
+
+    const result = await createItem(authorizedResolver(), validItemInput, deps);
+
+    expect(result).toMatchObject({ ok: false });
+    if (!result.ok && "error" in result) {
+      expect(result.error).toMatch(/reference/i);
+      expect(result.error).toMatch(/try again/i);
     }
   });
 });
@@ -308,7 +375,7 @@ describe("updateItem — stale-edit conflict (R2.4 pattern, design.md §6)", () 
       updated_at: new Date("2024-06-01T12:00:00.000Z"),
     };
     const db = {
-      select: vi.fn().mockReturnValue(makeSelectChain([dbRow])),
+      select: makeSelectSequence([activeOrganizationRow()], [dbRow]),
       update: vi.fn().mockReturnValue(makeUpdateChain()),
     };
     const { deps } = mockRlsDeps(db);
@@ -327,6 +394,34 @@ describe("updateItem — stale-edit conflict (R2.4 pattern, design.md §6)", () 
       expect(result.error).toMatch(/conflict/i);
     }
   });
+
+  it("returns recoverable feedback when an update transaction throws", async () => {
+    const db = {
+      select: makeSelectSequence(
+        [activeOrganizationRow()],
+        [{ id: "item-1", barcode: "1234567890", updated_at: new Date("2024-06-01T12:00:00.000Z") }],
+      ),
+      update: vi.fn(() => {
+        throw new Error("database unavailable");
+      }),
+    };
+    const { deps } = mockRlsDeps(db);
+
+    const result = await updateItem(
+      authorizedResolver(),
+      "item-1",
+      validItemInput,
+      "2024-06-01T12:00:00.000Z",
+      undefined,
+      deps,
+    );
+
+    expect(result).toMatchObject({ ok: false });
+    if (!result.ok && "error" in result) {
+      expect(result.error).toMatch(/reference/i);
+      expect(result.error).toMatch(/try again/i);
+    }
+  });
 });
 
 describe("updateItem — barcode immutability (R4.10, design.md §6 Barcode immutability)", () => {
@@ -338,7 +433,7 @@ describe("updateItem — barcode immutability (R4.10, design.md §6 Barcode immu
       updated_at: new Date(currentUpdatedAt),
     };
     const db = {
-      select: vi.fn().mockReturnValue(makeSelectChain([dbRow])),
+      select: makeSelectSequence([activeOrganizationRow()], [dbRow]),
       update: vi.fn().mockReturnValue(makeUpdateChain()),
     };
     const { deps } = mockRlsDeps(db);
@@ -376,7 +471,7 @@ describe("updateItem — barcode immutability (R4.10, design.md §6 Barcode immu
       updated_at: new Date(currentUpdatedAt),
     };
     const db = {
-      select: vi.fn().mockReturnValue(makeSelectChain([dbRow])),
+      select: makeSelectSequence([activeOrganizationRow()], [dbRow]),
       update: vi.fn().mockReturnValue(makeUpdateChain()),
     };
     const { deps } = mockRlsDeps(db);
@@ -407,7 +502,7 @@ describe("updateItem — barcode immutability (R4.10, design.md §6 Barcode immu
       updated_at: new Date(currentUpdatedAt),
     };
     const db = {
-      select: vi.fn().mockReturnValue(makeSelectChain([dbRow])),
+      select: makeSelectSequence([activeOrganizationRow()], [dbRow]),
       update: vi.fn().mockReturnValue(makeUpdateChain()),
     };
     const { deps } = mockRlsDeps(db);

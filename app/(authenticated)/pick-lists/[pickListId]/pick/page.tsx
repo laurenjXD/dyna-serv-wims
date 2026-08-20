@@ -178,7 +178,11 @@ export default async function PickExecutionPage({
   async function handleCompletePick(_formData: FormData): Promise<void> {
     "use server";
     const actionResolver = await createPageResolver();
-    const pickResult = await markPickListPicked(actionResolver, pickListId);
+    const pickResult = await markPickListPicked(
+      actionResolver,
+      pickListId,
+      Array.from(confirmedIds),
+    );
     if (!pickResult.ok) {
       redirect(
         `/pick-lists/${pickListId}/pick?result=error&reason=${encodeURIComponent(pickResult.errors[0] ?? "complete_pick_failed")}&confirmed=${encodeURIComponent(confirmedQueryValue)}`,
