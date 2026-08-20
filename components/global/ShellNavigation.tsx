@@ -320,7 +320,7 @@ export function ShellNavigation({
         data-testid="desktop-sidebar"
         aria-label="Primary navigation"
         aria-hidden={!desktopOpen}
-        className={`hidden flex-col overflow-y-auto border-r border-border bg-surface p-4 lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:w-[306px] ${
+        className={`hidden flex-col overflow-hidden border-r border-border bg-surface p-3 lg:fixed lg:top-3 lg:bottom-3 lg:left-3 lg:z-40 lg:w-[286px] lg:rounded-xl lg:border lg:border-border lg:shadow-elevation-2 ${
           desktopOpen ? "lg:flex" : "lg:hidden"
         }`}
       >
