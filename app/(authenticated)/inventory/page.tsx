@@ -64,11 +64,11 @@ const TABS: Array<{ key: TabKey; label: string }> = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 interface PageProps {
-  searchParams: Promise<{ tab?: string; q?: string }>;
+  searchParams: Promise<{ tab?: string; q?: string; pickListError?: string }>;
 }
 
 export default async function InventoryPage({ searchParams }: PageProps) {
-  const { tab: tabParam, q } = await searchParams;
+  const { tab: tabParam, q, pickListError } = await searchParams;
 
   const activeTab: TabKey = resolveInventoryTab(tabParam);
 
@@ -125,6 +125,14 @@ export default async function InventoryPage({ searchParams }: PageProps) {
         </form>
       </div>
 
+      {pickListError && (
+        <div role="alert" className="mt-4 rounded-lg border-l-4 border-status-held bg-surface-white p-4 shadow-elevation-1">
+          <p className="font-heading text-body-md font-semibold text-on-surface">Pick list was not created</p>
+          <p className="mt-1 font-body text-body-md text-on-surface">{pickListError === "forbidden" ? "Your account does not have permission to generate pick lists." : `Reason: ${pickListError.replaceAll(",", ", ")}`}</p>
+          <p className="mt-1 font-body text-body-md text-text-grey">Check the destination organization and available quantity, then try again.</p>
+        </div>
+      )}
+
       {activeTab === "stock-view" ? (
         <StockViewTab query={q} />
       ) : activeTab === "pick-lists" ? (
@@ -144,7 +152,7 @@ async function StockViewTab({ query }: { query?: string }) {
   const items = groupStockByItem(rows).filter((item) => !normalizedQuery || `${item.itemCode} ${item.itemName} ${item.lots.map((lot) => lot.lotNumber).join(" ")}`.toLowerCase().includes(normalizedQuery));
 
   return (
-    <div className="mt-4 min-h-[680px] overflow-x-auto rounded-lg border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+    <div className="mt-4 min-h-[680px] overflow-x-auto rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
       {items.length === 0 ? (
         <div className="px-6 py-12 text-center">
           <p className="font-body text-body-md text-text-grey">
@@ -184,7 +192,7 @@ async function StockViewTab({ query }: { query?: string }) {
                 </div>
                 <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   {item.lots.map((lot) => (
-                    <article key={lot.lotId} className="rounded-md border border-outline-variant/30 bg-surface-white p-4">
+                    <article key={lot.lotId} className="rounded-xl border border-outline-variant/30 bg-surface-white p-4">
                       {/* FEFO/FIFO priority badge — left accent bar signal */}
                       <div className="flex items-start justify-between gap-2">
                         <p className="font-mono text-mono-md font-bold text-on-surface">{lot.lotNumber}</p>
@@ -238,6 +246,8 @@ type GroupedItem = {
   defaultSupplierPartyId: string | null;
   uom: string;
   isPerishable: boolean;
+  flowType: "vmi" | "trading" | "supplies";
+  organizationId: string | null;
   availableQty: number;
   lots: AggregatedLot[];
   allocationLines: Array<{
@@ -273,6 +283,8 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
         defaultSupplierPartyId: row.defaultSupplierPartyId,
         uom: row.uom,
         isPerishable: row.isPerishable,
+        flowType: row.flowType ?? "trading",
+        organizationId: row.organizationId ?? null,
         lotMap: new Map(),
         insertionOrder: [],
         allocationLines: [],
@@ -325,6 +337,8 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
       defaultSupplierPartyId: entry.defaultSupplierPartyId,
       uom: entry.uom,
       isPerishable: entry.isPerishable,
+      flowType: entry.flowType,
+      organizationId: entry.organizationId,
       availableQty: lots.reduce((sum, l) => sum + l.availableQty, 0),
       lots,
       allocationLines: entry.allocationLines,
@@ -340,7 +354,7 @@ async function PickListsTab() {
   const { rows } = await listPickLists(db, { limit: 50, offset: 0, status: "allocated" });
 
   return (
-    <div className="mt-6 overflow-hidden rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+    <div className="mt-6 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
       {rows.length === 0 ? (
         <div className="px-6 py-12 text-center">
           <p className="font-body text-body-md text-text-grey">
@@ -352,7 +366,7 @@ async function PickListsTab() {
           </p>
           <Link
             href="/outgoing"
-            className="mt-4 inline-flex h-11 items-center justify-center rounded bg-brand-red px-5 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+            className="mt-4 inline-flex h-11 items-center justify-center rounded bg-primary px-5 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
           >
             Go to Outgoing
           </Link>
@@ -411,7 +425,7 @@ async function PickListsTab() {
                     {/* Go to Pick — h-11 (44px) office touch target */}
                     <Link
                       href={`/pick-lists/${row.id}/pick`}
-                      className="inline-flex h-11 items-center gap-1 rounded bg-brand-red px-3 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                      className="inline-flex h-11 items-center gap-1 rounded bg-primary px-3 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy"
                     >
                       Go to Pick
                     </Link>

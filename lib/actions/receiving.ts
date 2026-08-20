@@ -23,7 +23,7 @@
 // These actions are online-only; scan loop and commit are excluded from the
 // offline queue (two-stage commitment lifecycle per 08-outgoing spec).
 
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, or } from "drizzle-orm";
 import type { RequestAuthorizationResolver } from "@/lib/rbac/session";
 import { requirePermission } from "@/lib/rbac/guard";
 import { validateCreateWrr } from "@/lib/receiving/wrr-schema";
@@ -32,6 +32,7 @@ import type { WrrLine } from "@/lib/receiving/scan-matcher";
 import { validateLineCommit } from "@/lib/receiving/commit-validation";
 import type { CommitLocation } from "@/lib/receiving/commit-validation";
 import { wrrDocuments, wrrItems, wrrItemUnitScans } from "@/lib/db/schema/wrr";
+import { items as itemCatalog } from "@/lib/db/schema/items";
 import { lots } from "@/lib/db/schema/lots";
 import { lotLocationBalances } from "@/lib/db/schema/lot_location_balances";
 import { inventoryTransactions } from "@/lib/db/schema/transactions";
@@ -40,6 +41,9 @@ import { withRlsTransaction } from "@/lib/db/rls-transaction";
 import type { RlsTransactionDeps } from "@/lib/db/rls-transaction";
 import { rlsPool } from "@/lib/db/rls-pool";
 import { getAuthenticatedSession } from "@/lib/auth/get-authenticated-session";
+import { getStorageClient } from "@/lib/supabase/storage";
+import { validateCiplFile, buildCiplObjectPath } from "@/lib/receiving/cipl-upload";
+import { randomUUID } from "node:crypto";
 
 // Every action below binds its DB work to the caller's RLS-claimed
 // transaction (specs/02-rbac-roles/design.md §6.3) rather than an
@@ -78,7 +82,7 @@ export type CommitWrrLineResult = { ok: true } | { ok: false; errors: string[] }
 // Internal: fetch WRR document with items for action context
 // ---------------------------------------------------------------------------
 //
-// Drizzle returns nested left-join rows (`{ wrr_documents, wrr_items }`),
+// Drizzle returns nested left-join rows (`{ wrr_documents, wrr_items, items }`),
 // while the action test double returns flat rows. Normalize both shapes here.
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -103,6 +107,10 @@ async function fetchWrrForAction(
     .select()
     .from(wrrDocuments)
     .leftJoin(wrrItems, eq(wrrItems.wrrId, wrrDocuments.id))
+    // A WRR line's supplier item code is not necessarily the barcode printed
+    // on the enrolled Dyna-Serv item. Join the catalog record so floor scans
+    // can match the registered `items.barcode` value as well.
+    .leftJoin(itemCatalog, eq(itemCatalog.id, wrrItems.itemId))
     .where(eq(wrrDocuments.id, wrrId));
 
   if (allRows.length === 0) return null;
@@ -110,19 +118,25 @@ async function fetchWrrForAction(
   const first = (allRows[0].wrr_documents ?? allRows[0]) as AnyRecord;
 
   const items: WrrLine[] = allRows
-    .map((row: AnyRecord) => (row.wrr_items ?? row) as AnyRecord)
-    .filter((row: AnyRecord) => row.wrrId != null)
-    .map((row: AnyRecord) => ({
-      id: row.id as string,
-      itemId: (row.itemId ?? null) as string | null,
-      // barcode comes from the mock's convenience field; itemCode is the
-      // production fallback for the supplier part number field.
-      itemBarcode: (row.barcode ?? row.itemCode ?? null) as string | null,
-      lotNumber: row.lotNumber as string,
-      expectedQty: row.expectedQty as number,
-      scannedQty: row.scannedQty as number,
-      disposition: row.disposition as "store" | "inspect",
-      putawayLocationId: (row.putawayLocationId ?? null) as string | null,
+    .map((joinedRow: AnyRecord) => {
+      const line = (joinedRow.wrr_items ?? joinedRow) as AnyRecord;
+      const enrolledItem = (joinedRow.items ?? null) as AnyRecord | null;
+      return { line, enrolledItem };
+    })
+    .filter(({ line }) => line.wrrId != null)
+    .map(({ line, enrolledItem }) => ({
+      id: line.id as string,
+      itemId: (line.itemId ?? null) as string | null,
+      // Prefer the enrolled item's canonical barcode. `line.barcode` remains
+      // a test-double/backward-compatible fallback, then the supplier item
+      // code supports legacy labels where no distinct barcode was recorded.
+      itemBarcode: (enrolledItem?.barcode ?? line.barcode ?? line.itemCode ?? null) as string | null,
+      lotNumber: line.lotNumber as string,
+      expectedQty: line.expectedQty as number,
+      scannedQty: line.scannedQty as number,
+      disposition: line.disposition as "store" | "inspect",
+      putawayLocationId: (line.putawayLocationId ?? null) as string | null,
+      itemFlowType: (enrolledItem?.flowType ?? null) as WrrLine["itemFlowType"],
     }));
 
   return {
@@ -190,47 +204,183 @@ export async function createWrr(
   // 4. Stage the header and every expected line in one RLS-claimed
   // transaction. A WRR without its line records can never safely reach the
   // confirmation command.
-  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
-    const db = tx.db as DbLike;
+  let rlsResult;
+  try {
+    rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+      const db = tx.db as DbLike;
 
-    const [inserted] = await db
-      .insert(wrrDocuments)
-      .values({
-        wrrNumber,
-        vendorPartyId: data.vendorPartyId,
-        flowType: data.flowType,
-        status: "staged_pending_arrival",
-        stagedByUserId: userId,
-        commercialInvoiceNo: data.commercialInvoiceNo ?? null,
-        ciplFileUrl: data.ciplFileUrl ?? null,
-        pezaNumber: data.pezaNumber ?? null,
-        ipNumber: data.ipNumber ?? null,
-        mawbMblNumber: data.mawbMblNumber ?? null,
-      })
-      .returning({ id: wrrDocuments.id });
+      const [inserted] = await db
+        .insert(wrrDocuments)
+        .values({
+          // Reuses the client-generated id (see CreateWrrInput's doc comment
+          // in lib/receiving/wrr-schema.ts) when a CIPL file was uploaded
+          // before this row existed, so the file's Storage path and this
+          // row's id agree. `undefined` (no CIPL attached) falls through to
+          // the column's defaultRandom(), unchanged from before.
+          id: data.id,
+          wrrNumber,
+          vendorPartyId: data.vendorPartyId,
+          flowType: data.flowType,
+          status: "staged_pending_arrival",
+          stagedByUserId: userId,
+          commercialInvoiceNo: data.commercialInvoiceNo ?? null,
+          ciplFileUrl: data.ciplFileUrl ?? null,
+          pezaNumber: data.pezaNumber ?? null,
+          ipNumber: data.ipNumber ?? null,
+          mawbMblNumber: data.mawbMblNumber ?? null,
+        })
+        .returning({ id: wrrDocuments.id });
 
-    await db.insert(wrrItems).values(
-      data.lines.map((line) => ({
-        wrrId: inserted.id,
-        itemId: line.itemId ?? null,
-        itemCode: line.itemCode ?? null,
-        customerItemCode: line.customerItemCode ?? null,
-        lotNumber: line.lotNumber,
-        expectedQty: line.expectedQty,
-        unitCbm: String(line.unitCbm),
-        uom: line.uom,
-        disposition: line.disposition,
-        putawayLocationId: line.putawayLocationId ?? null,
-      })),
-    );
+      // A line's itemCode is a free-text field on the create-WRR form — it is
+      // never checked against the items catalog at entry time. Without this
+      // resolution step, wrr_items.item_id stays permanently null even when
+      // an item with a matching code/barcode is already enrolled, and every
+      // floor scan against that line is rejected as unknown_item
+      // (scan-matcher.ts requires a non-null itemId to accept a match).
+      // Skip the lookup when the caller already supplied itemId directly.
+      const resolvedLines = await Promise.all(
+        data.lines.map(async (line) => {
+          if (line.itemId || !line.itemCode) return line;
+          const catalogMatches = await db
+            .select({ id: itemCatalog.id })
+            .from(itemCatalog)
+            .where(
+              or(
+                eq(itemCatalog.code, line.itemCode),
+                eq(itemCatalog.supplierItemCode, line.itemCode),
+                eq(itemCatalog.dsgcItemNumber, line.itemCode),
+                eq(itemCatalog.barcode, line.itemCode),
+              ),
+            )
+            .limit(1);
+          return catalogMatches.length === 1
+            ? { ...line, itemId: catalogMatches[0].id as string }
+            : line;
+        }),
+      );
 
-    return { ok: true, wrrId: inserted.id } satisfies CreateWrrActionResult;
-  });
+      await db.insert(wrrItems).values(
+        resolvedLines.map((line) => ({
+          wrrId: inserted.id,
+          itemId: line.itemId ?? null,
+          itemCode: line.itemCode ?? null,
+          customerItemCode: line.customerItemCode ?? null,
+          lotNumber: line.lotNumber,
+          expectedQty: line.expectedQty,
+          unitCbm: String(line.unitCbm),
+          uom: line.uom,
+          disposition: line.disposition,
+          putawayLocationId: line.putawayLocationId ?? null,
+        })),
+      );
+
+      return { ok: true, wrrId: inserted.id } satisfies CreateWrrActionResult;
+    });
+  } catch (error) {
+    // Database constraints (for example, a vendor deactivated in another
+    // session) must not escape a Server Action and render Next's generic
+    // application-error page. Keep the detailed error server-side while
+    // returning a recovery path to the operator.
+    console.error("Unable to create WRR", error);
+    return {
+      ok: false,
+      errors: [
+        "Unable to create the WRR. Confirm the selected vendor is active and try again.",
+      ],
+    };
+  }
 
   if (rlsResult.kind === "unauthenticated") {
     return { ok: false, errors: ["forbidden"] };
   }
   return rlsResult.value;
+}
+
+// ---------------------------------------------------------------------------
+// uploadCiplFile / getCiplSignedUrl
+// ---------------------------------------------------------------------------
+//
+// specs/04-services-and-infrastructure/design.md §10 (Supabase Storage
+// design) — bucket `cipl-documents`, path
+// `cipl/{wrr_id}/{upload_uuid}/{sanitized-filename}`, private with signed
+// URLs generated only after authorizing access (§10.2/§10.3).
+//
+// The WRR row does not exist yet when a CIPL is attached on the create-WRR
+// form — the caller generates `wrrId` client-side (crypto.randomUUID()) and
+// createWrr above reuses that same id (CreateWrrInput.id) so the uploaded
+// object's path and the eventual row agree without a second write.
+
+export type UploadCiplFileResult =
+  | { ok: true; path: string }
+  | { ok: false; error: string };
+
+/**
+ * Uploads a CIPL/packing-list reference file to the private `cipl-documents`
+ * bucket. Requires receiving.confirm — the same capability createWrr itself
+ * requires, and the one the bucket's own INSERT policy checks
+ * (0030_cipl_documents_storage.sql), so this call and the eventual createWrr
+ * call are gated identically.
+ */
+export async function uploadCiplFile(
+  resolver: RequestAuthorizationResolver,
+  wrrId: string,
+  file: File,
+): Promise<UploadCiplFileResult> {
+  const perm = await requirePermission(resolver, "receiving.confirm");
+  if (perm.kind !== "authorized") {
+    return { ok: false, error: "forbidden" };
+  }
+
+  const validation = validateCiplFile(file);
+  if (!validation.ok) {
+    return { ok: false, error: validation.error };
+  }
+
+  const path = buildCiplObjectPath(wrrId, randomUUID(), file.name);
+
+  const storage = await getStorageClient();
+  const { error } = await storage
+    .from("cipl-documents")
+    .upload(path, file, { contentType: file.type, upsert: false });
+
+  if (error) {
+    console.error("CIPL upload failed", error);
+    return { ok: false, error: "Upload failed. Please try again." };
+  }
+
+  return { ok: true, path };
+}
+
+export type CiplSignedUrlResult =
+  | { ok: true; url: string }
+  | { ok: false; error: string };
+
+/**
+ * Generates a short-lived (design.md §10.2: "Signed URLs are short-lived
+ * (<= 60 minutes)") signed URL for viewing an already-uploaded CIPL file.
+ * Requires receiving.view — matches the WRR detail page's own gate and the
+ * bucket's SELECT policy.
+ */
+export async function getCiplSignedUrl(
+  resolver: RequestAuthorizationResolver,
+  objectPath: string,
+): Promise<CiplSignedUrlResult> {
+  const perm = await requirePermission(resolver, "receiving.view");
+  if (perm.kind !== "authorized") {
+    return { ok: false, error: "forbidden" };
+  }
+
+  const storage = await getStorageClient();
+  const { data, error } = await storage
+    .from("cipl-documents")
+    .createSignedUrl(objectPath, 60 * 60); // 60 minutes — the spec's stated ceiling
+
+  if (error || !data) {
+    console.error("CIPL signed URL generation failed", error);
+    return { ok: false, error: "Unable to generate a document link." };
+  }
+
+  return { ok: true, url: data.signedUrl };
 }
 
 // ---------------------------------------------------------------------------

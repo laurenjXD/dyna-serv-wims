@@ -268,7 +268,16 @@ export function ShellChrome({ children }: { children: ReactNode }) {
               {pageTitle}
             </p>
           </div>
-          <div className="ml-auto flex min-w-0 items-center gap-7">
+          <label className="mx-auto flex h-12 w-full max-w-[460px] items-center gap-3 rounded-full border border-border bg-background px-4 shadow-elevation-1 focus-within:ring-2 focus-within:ring-primary">
+            <Search size={20} aria-hidden="true" className="shrink-0 text-text-secondary" />
+            <input
+              type="search"
+              aria-label="Search"
+              placeholder="Search inventory, organizations, documents…"
+              className="min-w-0 flex-1 border-0 bg-transparent p-0 font-body text-body-md text-text-primary outline-none placeholder:text-text-secondary"
+            />
+          </label>
+          <div className="ml-auto flex min-w-0 items-center gap-5">
             <span
               data-testid="connectivity-indicator"
               className="flex shrink-0 items-center gap-1.5 text-body-sm font-semibold text-text-secondary"
@@ -296,7 +305,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
               aria-haspopup="dialog"
               aria-expanded={isNotificationPanelOpen}
               onClick={() => setIsNotificationPanelOpen((open) => !open)}
-              className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-text-secondary hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="relative flex h-11 w-11 shrink-0 items-center justify-center text-text-secondary hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <Bell size={22} aria-hidden="true" />
               {unreadCount > 0 && (
@@ -312,7 +321,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
               <Link
                 href="/settings"
                 aria-label="Settings"
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-text-secondary hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="flex h-11 w-11 shrink-0 items-center justify-center text-text-secondary hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <Settings size={22} aria-hidden="true" />
               </Link>
@@ -327,15 +336,18 @@ export function ShellChrome({ children }: { children: ReactNode }) {
                 aria-haspopup="dialog"
                 aria-expanded={isAccountMenuOpen}
                 onClick={() => setIsAccountMenuOpen((open) => !open)}
-                className="flex h-11 w-11 items-center justify-center rounded-full bg-primary font-label text-body-md text-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="flex h-11 items-center gap-2 px-1 font-label text-body-md text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
-                {initials(displayName)}
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-surface">
+                  {initials(displayName)}
+                </span>
+                <span className="max-w-[120px] truncate text-left text-body-sm font-semibold">{displayName ?? "Profile"}</span>
               </button>
               {isAccountMenuOpen && (
                 <div
                   data-testid="account-popup"
                   aria-labelledby="account-menu-trigger"
-                  className="absolute right-0 top-[calc(100%+8px)] z-40 min-w-[220px] rounded-lg border border-border bg-surface p-2 shadow-elevation-2"
+                  className="absolute right-0 top-[calc(100%+8px)] z-40 min-w-[220px] rounded-xl border border-border bg-surface p-2 shadow-elevation-2"
                 >
                   {(email || organizationScope) && (
                     <div role="presentation" className="mb-1 border-b border-border pb-1">
@@ -361,7 +373,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
                   <Link
                     href="/profile"
                     aria-label="Profile"
-                    className="block rounded-md px-3 py-2 font-label text-body-sm font-semibold text-text-primary hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    className="block rounded-xl px-3 py-2 font-label text-body-sm font-semibold text-text-primary hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     onClick={() => setIsAccountMenuOpen(false)}
                   >
                     Profile
@@ -372,7 +384,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
                       setIsAccountMenuOpen(false);
                       void signOutAction();
                     }}
-                    className="mt-1 flex w-full items-center justify-start rounded-md px-3 py-2 font-label text-body-sm font-semibold text-text-secondary hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    className="mt-1 flex w-full items-center justify-start rounded-xl px-3 py-2 font-label text-body-sm font-semibold text-text-secondary hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     Sign Out
                   </button>
@@ -388,7 +400,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
           ref={notificationPanelRef}
           data-testid="notification-panel"
           aria-labelledby="notification-bell"
-          className="fixed inset-x-4 top-14 z-40 max-h-[70vh] overflow-y-auto rounded-lg border border-border bg-surface p-2 shadow-elevation-2 lg:inset-x-auto lg:right-8 lg:top-[86px] lg:w-[320px]"
+          className="fixed inset-x-4 top-14 z-40 max-h-[70vh] overflow-y-auto rounded-xl border border-border bg-surface p-2 shadow-elevation-2 lg:inset-x-auto lg:right-8 lg:top-[86px] lg:w-[320px]"
         >
           {notifications.length === 0 ? (
             <p className="px-3 py-4 text-center text-body-sm text-text-secondary">
@@ -402,7 +414,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
                     type="button"
                     data-testid="notification-list-item"
                     onClick={() => handleNotificationClick(notification)}
-                    className={`block w-full truncate rounded-md px-3 py-2 text-left text-body-sm font-semibold hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                    className={`block w-full truncate rounded-xl px-3 py-2 text-left text-body-sm font-semibold hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                       notification.readAt
                         ? "text-text-secondary"
                         : "text-text-primary"

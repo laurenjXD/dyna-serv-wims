@@ -114,7 +114,7 @@ export function BulkLocationGeneratorForm({
         </div>
 
         {created.length > 0 && (
-          <div className="mt-4 overflow-hidden rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+          <div className="mt-4 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
                 <thead>
@@ -371,7 +371,7 @@ export function BulkLocationGeneratorForm({
         <button
           type="submit"
           disabled={isPending}
-          className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:opacity-50"
+          className="flex h-11 items-center justify-center rounded bg-primary px-6 font-label text-label text-surface-white hover:bg-primary-hover active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:opacity-50"
         >
           {isPending ? "Generating…" : "Generate Locations"}
         </button>

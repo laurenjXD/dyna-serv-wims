@@ -83,7 +83,12 @@ const EXPECTED_ROUTES: Array<{
   // and /outgoing-ledger routes were merged into inventory/page.tsx (Pick
   // Lists + Ledger tabs). The floor pick/dispatch detail routes stay at
   // /pick-lists/[pickListId]/... unchanged. See revision-log.md.
-  { id: "inventory", path: "/inventory", surface: "office", capability: "pick_list.read", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
+  // 2026-08-17: surface corrected office -> shared. warehouse_staff (floor
+  // tier) needs Master Inventory's Pick Lists tab to generate pick lists and
+  // proceed to outgoing — office-only excluded floor sessions from this
+  // route entirely. Same reasoning/precedent as receiving/outgoing/sync
+  // above. See revision-log.md.
+  { id: "inventory", path: "/inventory", surface: "shared", capability: "pick_list.read", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
   // 2026-08-09 PO amendment: /outgoing added as a floor pick-execution hub
   // (Active Picks + Outgoing Ledger tabs). See revision-log.md.
   // 2026-08-17: surface corrected floor -> shared, same reasoning as

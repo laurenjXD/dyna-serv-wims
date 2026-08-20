@@ -54,7 +54,7 @@ export function ReceivingCameraScanner({
           <span>Open Camera Scanner</span>
         </button>
       ) : (
-        <div className="rounded-md bg-surface-white p-3 shadow-elevation-2">
+        <div className="rounded-xl bg-surface-white p-3 shadow-elevation-2">
           <div className="mb-2 flex items-center justify-between">
             <span className="font-heading font-semibold text-body-md text-brand-navy">
               Camera Scanner Active

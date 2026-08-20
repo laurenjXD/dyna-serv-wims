@@ -76,7 +76,7 @@ export function InviteUserModal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-brand-navy/40 p-4"
     >
       {/* Modal surface — Level 2 elevation per brand-design-system.md §6. */}
-      <div className="w-full max-w-md rounded-md bg-surface-white p-6 shadow-elevation-2">
+      <div className="w-full max-w-md rounded-xl bg-surface-white p-6 shadow-elevation-2">
         <h2
           id="invite-user-title"
           className="font-heading text-headline-md font-semibold text-on-surface"

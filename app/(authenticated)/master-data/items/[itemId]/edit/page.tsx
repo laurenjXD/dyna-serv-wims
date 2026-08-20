@@ -6,7 +6,6 @@ import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import {
   getItem,
-  getItemOperationalRecords,
   getItemCategories,
   getActiveSupplierParties,
 } from "@/lib/db/queries/items";
@@ -26,19 +25,13 @@ export default async function EditItemPage({ params }: PageProps) {
     notFound();
   }
 
-  const [item, opRecords, categories, supplierParties] = await Promise.all([
+  const [item, categories, supplierParties] = await Promise.all([
     getItem(db, itemId),
-    getItemOperationalRecords(db, itemId),
     getItemCategories(db),
     getActiveSupplierParties(db),
   ]);
 
   if (!item) notFound();
-
-  const barcodeEditable =
-    !opRecords.hasRelatedLots &&
-    !opRecords.hasRelatedWrrItems &&
-    !opRecords.hasRelatedInventoryTransactions;
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -51,13 +44,12 @@ export default async function EditItemPage({ params }: PageProps) {
         </p>
       </div>
 
-      <div className="rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="rounded-xl bg-surface-white shadow-elevation-1 p-6">
         <ItemForm
           action={updateItemAction}
           item={item}
           categories={categories}
           supplierParties={supplierParties}
-          barcodeEditable={barcodeEditable}
           cancelHref={`/master-data/items/${itemId}`}
         />
       </div>

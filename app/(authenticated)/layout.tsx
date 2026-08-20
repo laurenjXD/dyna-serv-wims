@@ -9,23 +9,32 @@
 // See ./actions.ts for the known 02-rbac-roles backend seam gap
 // (`loadAuthorizationRecord` has no real query yet).
 import type { ReactNode } from "react";
-import type { RequestAuthorizationResolver } from "@/lib/rbac/session";
 import { AuthenticatedShellBoundary } from "@/components/global/AuthenticatedShellBoundary";
 import { ShellChrome } from "@/components/global/ShellChrome";
-import { resolveShellAuthorization } from "./actions";
+import { UserPreferencesProvider } from "@/lib/user-settings/preferences";
+import { createPageResolver } from "@/lib/auth/page-resolver";
+import { redirect } from "next/navigation";
 
-const resolver: RequestAuthorizationResolver = {
-  getContext: resolveShellAuthorization,
-};
-
-export default function AuthenticatedLayout({
+export default async function AuthenticatedLayout({
   children,
 }: {
   children: ReactNode;
 }) {
+  // Resolve the session during the server render. The previous client-side
+  // server-action call could remain pending forever, leaving visitors on an
+  // otherwise blank "Checking your session…" screen.
+  const resolver = await createPageResolver();
+  const initialResolution = await resolver.getContext();
+
+  if (initialResolution.kind === "unauthenticated") {
+    redirect("/login");
+  }
+
   return (
-    <AuthenticatedShellBoundary resolver={resolver}>
-      <ShellChrome>{children}</ShellChrome>
-    </AuthenticatedShellBoundary>
+    <UserPreferencesProvider>
+      <AuthenticatedShellBoundary initialResolution={initialResolution}>
+        <ShellChrome>{children}</ShellChrome>
+      </AuthenticatedShellBoundary>
+    </UserPreferencesProvider>
   );
 }

@@ -2,6 +2,45 @@
 @tailwind components;
 @tailwind utilities;
 
+/* User-controlled preferences. These selectors deliberately use the root
+ * data attributes set by UserPreferencesProvider so they apply throughout
+ * the authenticated app, not only inside the Settings/Profile screen. */
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+html[data-theme="dark"] body,
+html[data-theme="dark"] main[data-surface] {
+  background-color: #0f172a;
+  color: #f8fafc;
+}
+
+html[data-theme="dark"] :is(.bg-background, .bg-surface, .bg-surface-white, .bg-surface-light-grey) {
+  background-color: #1e293b;
+}
+
+html[data-theme="dark"] :is(.text-text-primary, .text-on-surface) {
+  color: #f8fafc;
+}
+
+html[data-theme="dark"] :is(.text-text-secondary, .text-text-grey) {
+  color: #cbd5e1;
+}
+
+html[data-theme="dark"] :is(.border-border, .border-outline-variant) {
+  border-color: #475569;
+}
+
+html[data-theme="dark"] :is(input, select, textarea) {
+  background-color: #0f172a;
+  color: #f8fafc;
+}
+
+html[data-density="compact"] :is(table th, table td) {
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+}
+
 /*
  * Unified UI/UX Visual Design System Baseline
  * (specs/00-steering/design.md & ui-ux-design-plan.md)

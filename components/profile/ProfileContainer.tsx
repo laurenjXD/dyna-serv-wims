@@ -26,10 +26,10 @@
 // specs/21-user-profile-and-settings/design.md §1.1's updated note.)
 
 import type { OwnProfile } from "@/app/(authenticated)/profile/actions";
+import { signOutAction } from "@/app/(authenticated)/actions";
 import { AccountTab } from "./AccountTab";
 import { SecurityTab } from "./SecurityTab";
 import { PreferencesTab } from "./PreferencesTab";
-import { UserPreferencesProvider } from "@/lib/user-settings/preferences";
 
 export function ProfileContainer({ profile }: { profile: OwnProfile }) {
   return (
@@ -49,7 +49,7 @@ export function ProfileContainer({ profile }: { profile: OwnProfile }) {
       <section
         data-testid="profile-section-account"
         aria-labelledby="profile-section-account-heading"
-        className="flex flex-col gap-4 rounded bg-surface-white p-4 shadow-elevation-2"
+        className="flex flex-col gap-4 rounded-xl bg-surface-white p-4 shadow-elevation-2"
       >
         <h2
           id="profile-section-account-heading"
@@ -63,7 +63,7 @@ export function ProfileContainer({ profile }: { profile: OwnProfile }) {
       <section
         data-testid="profile-section-security"
         aria-labelledby="profile-section-security-heading"
-        className="flex flex-col gap-4 rounded bg-surface-white p-4 shadow-elevation-2"
+        className="flex flex-col gap-4 rounded-xl bg-surface-white p-4 shadow-elevation-2"
       >
         <h2
           id="profile-section-security-heading"
@@ -77,7 +77,7 @@ export function ProfileContainer({ profile }: { profile: OwnProfile }) {
       <section
         data-testid="profile-section-preferences"
         aria-labelledby="profile-section-preferences-heading"
-        className="flex flex-col gap-4 rounded bg-surface-white p-4 shadow-elevation-2"
+        className="flex flex-col gap-4 rounded-xl bg-surface-white p-4 shadow-elevation-2"
       >
         <h2
           id="profile-section-preferences-heading"
@@ -85,9 +85,33 @@ export function ProfileContainer({ profile }: { profile: OwnProfile }) {
         >
           Preferences
         </h2>
-        <UserPreferencesProvider>
-          <PreferencesTab />
-        </UserPreferencesProvider>
+        <PreferencesTab />
+      </section>
+
+      <section
+        data-testid="profile-section-sign-out"
+        aria-labelledby="profile-section-sign-out-heading"
+        className="flex flex-col gap-4 rounded-xl bg-surface-white p-4 shadow-elevation-2"
+      >
+        <div>
+          <h2
+            id="profile-section-sign-out-heading"
+            className="font-label text-body-md font-semibold uppercase tracking-wide text-brand-navy"
+          >
+            Sign out
+          </h2>
+          <p className="mt-1 font-body text-body-md text-on-surface">
+            End this session on this device.
+          </p>
+        </div>
+        <form action={signOutAction}>
+          <button
+            type="submit"
+            className="min-h-14 w-full rounded-xl border border-error bg-surface-white px-4 font-label text-body-md font-semibold text-error active:bg-error/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-error"
+          >
+            Sign Out
+          </button>
+        </form>
       </section>
     </div>
   );

@@ -4,7 +4,7 @@ export function BarChart({ data, title, xAxisLabel, yAxisLabel, horizontal = fal
   data: BarDatum[]; title: string; xAxisLabel: string; yAxisLabel: string; horizontal?: boolean;
 }) {
   const max = Math.max(1, ...data.map((item) => item.value));
-  return <section className="rounded bg-surface-white p-6 shadow-elevation-1" aria-label={title}>
+  return <section className="rounded-xl bg-surface-white p-6 shadow-elevation-1" aria-label={title}>
     <div className={horizontal ? "space-y-3" : "flex min-h-56 items-end gap-3 overflow-x-auto border-b border-outline-variant/30 pb-2"}>
       {data.map((item) => <div key={item.label} className={horizontal ? "flex items-center gap-3" : "flex min-w-12 flex-1 flex-col justify-end gap-1"}>
         <span className="font-mono text-mono-sm text-on-surface">{item.value}</span><div className={horizontal ? "h-6 flex-1" : "flex h-40 w-full items-end"}>

@@ -46,6 +46,8 @@ function getScanErrorMessage(reason: string): string {
       return "WRR document not found.";
     case "invalid_status":
       return "This WRR is not in receiving status. Return to the WRR and start receiving first.";
+    case "wrr_document_qr":
+      return "This QR identifies the WRR document, not a physical item. Go back to the WRR, print its Unit Labels, then scan one label per carton or item.";
     case "no_match":
       return "Item not found — barcode does not match any expected line on this WRR.";
     case "over_quantity":
@@ -232,7 +234,7 @@ export default async function ReceiveFloorPage({
     return (
       <div className="flex min-h-screen flex-col bg-brand-navy">
         <div className="flex flex-1 flex-col items-center justify-center px-4 py-4 text-center">
-          <div className="w-full max-w-md rounded-md bg-surface-white p-6 shadow-elevation-2">
+          <div className="w-full max-w-md rounded-xl bg-surface-white p-6 shadow-elevation-2">
             <span
               aria-hidden="true"
               className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-status-available text-surface-white font-heading font-bold text-headline-md"
@@ -248,7 +250,7 @@ export default async function ReceiveFloorPage({
             </p>
             <Link
               href={`/receiving/${wrrId}`}
-              className="mt-6 flex h-16 w-full items-center justify-center rounded bg-brand-red font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-brand-navy"
+              className="mt-6 flex h-16 w-full items-center justify-center rounded bg-primary font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-brand-navy"
             >
               Back to WRR
             </Link>
@@ -284,7 +286,7 @@ export default async function ReceiveFloorPage({
       {/* Main floor content — flex-1, single-column, 16px padding */}
       <div className="flex flex-1 flex-col px-4 py-4 pb-6">
         {/* Progress header — Fira Sans, large enough for floor visibility */}
-        <div className="rounded-md bg-surface-white p-4 shadow-elevation-2">
+        <div className="rounded-xl bg-surface-white p-4 shadow-elevation-2">
           <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
             Scan Items
           </h1>
@@ -407,7 +409,7 @@ export default async function ReceiveFloorPage({
               <div
                 key={item.id}
                 // Floor card: solid surface-white, Level 2 shadow, no glassmorphism
-                className="rounded-md bg-surface-white p-4 shadow-elevation-2"
+                className="rounded-xl bg-surface-white p-4 shadow-elevation-2"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
@@ -541,7 +543,7 @@ export default async function ReceiveFloorPage({
                 <button
                   type="submit"
                   disabled={primaryStoreCandidates.length === 0}
-                  className="flex h-16 w-full items-center justify-center rounded bg-brand-red font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white disabled:opacity-50"
+                  className="flex h-16 w-full items-center justify-center rounded bg-primary font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white disabled:opacity-50"
                 >
                   Store
                 </button>
@@ -585,7 +587,7 @@ export default async function ReceiveFloorPage({
                 <button
                   type="submit"
                   disabled={inspectionLocations.length === 0}
-                  className="flex h-16 w-full items-center justify-center rounded bg-brand-red font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white disabled:opacity-50"
+                  className="flex h-16 w-full items-center justify-center rounded bg-primary font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white disabled:opacity-50"
                 >
                   Hold
                 </button>
@@ -617,7 +619,7 @@ export default async function ReceiveFloorPage({
               />
               <button
                 type="submit"
-                className="flex h-16 w-16 shrink-0 items-center justify-center rounded bg-brand-red font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white"
+                className="flex h-16 w-16 shrink-0 items-center justify-center rounded bg-primary font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white"
                 aria-label="Submit scan"
               >
                 &#8594;

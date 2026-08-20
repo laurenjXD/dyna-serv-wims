@@ -71,7 +71,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
   {
     id: "inventory",
     path: "/inventory",
-    surface: "office",
+    surface: "shared",
     capability: "pick_list.read",
     featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"],
     launchStatus: "launch",

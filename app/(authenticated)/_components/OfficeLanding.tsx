@@ -23,8 +23,7 @@
 //
 // Traceability:
 //   specs/05-ui-shell-and-navigation/design.md §3.2 (`/` route: capability
-//     "none", surface "shared"; office heatmap widget gated by
-//     reporting.read at the widget level).
+//     "none", surface "shared").
 //   specs/05-ui-shell-and-navigation/requirements.md
 //     R11.3 — `/` SHALL aggregate read-only summary counts, Quick Actions,
 //       Open Work Queue, Approval monitoring badge, Weekly transaction line
@@ -34,8 +33,6 @@
 //       ($) series named in R11.3 is out of scope for `/` per this session's
 //       confirmed decision: no pricing/billing backend exists yet, so the
 //       weekly trend graph is quantity + CBM only, never a dollar figure.
-//     R11.6 — reporting.read → ActivityHeatmap widget, office/party only.
-//
 // Low Stock Items gate: this card is an operational stock-count metric, not
 // a financial/margin KPI, so it gates on `hasReportingAccess`
 // (reporting.read) rather than `hasFinancialAccess` (reporting.financial_read).
@@ -58,8 +55,6 @@ import { KpiTile } from "@/components/analytics/KpiTile";
 import { DonutChart } from "@/components/analytics/DonutChart";
 import { BarChart } from "@/components/analytics/BarChart";
 import { WeeklyTrendChart, type WeeklyTrendDatum } from "@/components/analytics/WeeklyTrendChart";
-import { HomeDashboardHeatmapSection } from "./HomeDashboardHeatmapSection";
-import type { FlowType } from "@/components/analytics/types";
 import type { WrrDocumentRow } from "@/lib/db/queries/receiving";
 import type { PickListRow } from "@/lib/db/queries/withdrawals";
 import type { InspectionCaseListRow } from "@/lib/db/queries/transfers";
@@ -104,9 +99,6 @@ export function OfficeLanding({
   hasApprovalAccess,
   hasFinancialAccess,
   hasReportingAccess,
-  // Heatmap — null means the user lacks reporting.read
-  heatmapData,
-  heatmapFilter,
   // Action queue rows (max 3 each)
   openWrrRows,
   openPickListRows,
@@ -118,7 +110,8 @@ export function OfficeLanding({
   recentActivity,
   // Weekly transaction line graph (R11.3/R11.5 — qty + CBM only)
   weeklyTrend,
-  // Monthly outgoing KPI summary (R11.3)
+  // Monthly outgoing KPI summary (R11.3) — headline number + daily-
+  // granularity bar graph (2026-08-19, was a stat-only block).
   monthlyOutgoingQty,
   // Dispatch rate ring + flow-type activity bar chart (2026-08-17 restyle) —
   // null when the session lacks pick_list.read, same omission pattern as
@@ -140,8 +133,6 @@ export function OfficeLanding({
   hasApprovalAccess: boolean;
   hasFinancialAccess: boolean;
   hasReportingAccess: boolean;
-  heatmapData: Array<{ date: string; count: number }> | null;
-  heatmapFilter: FlowType;
   openWrrRows: WrrDocumentRow[];
   openPickListRows: PickListRow[];
   openInspectionRows: InspectionCaseListRow[];
@@ -460,7 +451,7 @@ export function OfficeLanding({
                       </div>
                       <Link
                         href={`/receiving/${wrr.id}/receive`}
-                        className="shrink-0 inline-flex h-9 items-center rounded bg-brand-red px-3 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                        className="shrink-0 inline-flex h-9 items-center rounded bg-primary px-3 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy"
                       >
                         Receive
                       </Link>
@@ -498,7 +489,7 @@ export function OfficeLanding({
                       </p>
                       <Link
                         href={`/pick-lists/${pl.id}/pick`}
-                        className="shrink-0 inline-flex h-9 items-center rounded bg-brand-red px-3 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                        className="shrink-0 inline-flex h-9 items-center rounded bg-primary px-3 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy"
                       >
                         Pick
                       </Link>
@@ -536,7 +527,7 @@ export function OfficeLanding({
                       </p>
                       <Link
                         href={`/approvals/${req.id}`}
-                        className="shrink-0 inline-flex h-9 items-center rounded bg-brand-red px-3 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                        className="shrink-0 inline-flex h-9 items-center rounded bg-primary px-3 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy"
                       >
                         Review
                       </Link>

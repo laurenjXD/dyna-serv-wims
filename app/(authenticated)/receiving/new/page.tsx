@@ -7,16 +7,17 @@
 //   specs/00-steering/brand-design-system.md §6 (office surface), §3 (touch targets)
 //
 // Surface: Office. Permission gate: receiving.confirm.
-// Note: The createWrr action (lib/actions/receiving.ts) inserts the wrr_documents
-// row but currently does not insert wrr_items rows from the lines array. The form
-// submits all line data; future extension of the action will persist lines.
+// The createWrr action stages the WRR header and every expected line together.
 
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
-import { createWrr } from "@/lib/actions/receiving";
-import { WrrLineItems } from "./_components/wrr-line-items";
+import { createWrr, uploadCiplFile } from "@/lib/actions/receiving";
+import type { UploadCiplFileResult } from "@/lib/actions/receiving";
+import { db } from "@/lib/db/client";
+import { getActiveSupplierParties } from "@/lib/db/queries/items";
+import { WrrNewForm } from "./_components/wrr-new-form";
 
 // ─── Inline server action ─────────────────────────────────────────────────────
 
@@ -53,6 +54,9 @@ async function handleCreateWrr(formData: FormData): Promise<void> {
   }
 
   const input = {
+    // Client-generated (see WrrNewForm) so an uploaded CIPL file's Storage
+    // path — reserved before this row exists — and this row's own id agree.
+    id: (formData.get("id") as string | null) || undefined,
     vendorPartyId:
       (formData.get("vendorPartyId") as string | null) ?? "",
     flowType:
@@ -61,8 +65,9 @@ async function handleCreateWrr(formData: FormData): Promise<void> {
       (formData.get("commercialInvoiceNo") as string | null) || null,
     ciplFileUrl:
       (formData.get("ciplFileUrl") as string | null) || null,
-    pezaNumber:
-      (formData.get("pezaNumber") as string | null) || null,
+    // PEZA Number is no longer collected on this form (2026-08-19 user
+    // request) — wrr_documents.peza_number stays nullable and unset here.
+    pezaNumber: null,
     ipNumber:
       (formData.get("ipNumber") as string | null) || null,
     mawbMblNumber:
@@ -78,6 +83,22 @@ async function handleCreateWrr(formData: FormData): Promise<void> {
   // Redirect with encoded errors. The page re-reads them via searchParams.
   const encodedErrors = encodeURIComponent(result.errors.join("|"));
   redirect(`/receiving/new?errors=${encodedErrors}`);
+}
+
+// Thin wrapper so WrrNewForm (client) can call uploadCiplFile with a real
+// resolver built from this request's session — the pure action itself takes
+// a resolver, which only server-side code can construct.
+async function handleUploadCipl(
+  wrrId: string,
+  formData: FormData,
+): Promise<UploadCiplFileResult> {
+  "use server";
+  const actionResolver = await createPageResolver();
+  const file = formData.get("file");
+  if (!(file instanceof File)) {
+    return { ok: false, error: "No file was provided." };
+  }
+  return uploadCiplFile(actionResolver, wrrId, file);
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -101,6 +122,11 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
   if (permResult.kind !== "authorized") {
     notFound();
   }
+
+  // A WRR header holds a foreign key to parties.id. Showing the available
+  // vendor/supplier organizations prevents operators from having to discover
+  // and paste an internal UUID (and avoids a database exception on submit).
+  const vendorParties = await getActiveSupplierParties(db);
 
   const errors = encodedErrors
     ? decodeURIComponent(encodedErrors).split("|").filter(Boolean)
@@ -138,7 +164,7 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
       {errors.length > 0 && (
         <div
           role="alert"
-          className="mt-4 rounded-md bg-status-held/10 px-4 py-3"
+          className="mt-4 rounded-xl bg-status-held/10 px-4 py-3"
         >
           <p className="font-label text-label uppercase text-status-held">
             Validation errors

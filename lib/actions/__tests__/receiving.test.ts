@@ -371,6 +371,38 @@ describe("createWrr — success (R1.1, R1.4, design.md §4)", () => {
     // Header and line records are staged together.
     expect(db.insert).toHaveBeenCalledTimes(2);
   });
+
+  it("(AC: itemCode resolves to catalog itemId) resolves line.itemId from the items catalog when the caller supplies itemCode but not itemId, so the line is not permanently unlinked from an already-enrolled item", async () => {
+    // The items-catalog lookup shares the same generic select() mock as the
+    // wrr/wrr_items rows — passing the match as the second arg makes it the
+    // row returned for any select() call in this test (createWrr issues only
+    // one: the catalog lookup).
+    const db = makeReceivingDb([], [{ id: "resolved-item-uuid" }]);
+
+    const result = await createWrr(
+      authorizedConfirmResolver(),
+      {
+        vendorPartyId: "party-uuid-vendor",
+        flowType: "vmi",
+        lines: [
+          {
+            lotNumber: "LOT-001",
+            expectedQty: 10,
+            unitCbm: 0.5,
+            uom: "CTN",
+            disposition: "store",
+            itemCode: "SUPP-PART-001",
+          },
+        ],
+      },
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result.ok).toBe(true);
+    // Second insert() call is the wrr_items batch (first is wrr_documents).
+    const insertedLines = db._inserted[1] as AnyRecord[];
+    expect(insertedLines[0].itemId).toBe("resolved-item-uuid");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -489,6 +521,21 @@ describe("recordScan — unknown barcode (R3.3, design.md §6)", () => {
       expect(result.reason).toBe("unknown_item");
     }
   });
+
+  it("rejects the current WRR's document QR without misreporting an unknown item", async () => {
+    const wrr = wrrDocRow({ wrrNumber: "WRR-20260819-974952" });
+    const db = makeReceivingDb([wrr], [wrrItemRow()]);
+
+    const result = await recordScan(
+      scanOnlyResolver(),
+      "wrr-uuid-existing",
+      wrr.wrrNumber,
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result).toEqual({ ok: false, reason: "wrr_document_qr" });
+    expect(db.update).not.toHaveBeenCalled();
+  });
 });
 
 describe("recordScan — WRR document QR", () => {
@@ -541,6 +588,29 @@ describe("recordScan — valid scan (R3.1, R3.2, design.md §5.2, §6)", () => {
       expect(result.disposition).toBe("store");
     }
     // scannedQty must have been updated in the DB.
+    expect(db.update).toHaveBeenCalled();
+  });
+
+  it("matches the enrolled item's registered barcode from the WRR item join", async () => {
+    const catalogBarcode = "QR-REGISTERED-ITEM-001";
+    const wrr = wrrDocRow();
+    const line = wrrItemRow({ barcode: undefined, itemCode: "SUPPLIER-PART-001" });
+    const db = makeReceivingDb([
+      {
+        wrr_documents: wrr,
+        wrr_items: line,
+        items: { id: line.itemId, barcode: catalogBarcode, flowType: "vmi" },
+      },
+    ]);
+
+    const result = await recordScan(
+      scanOnlyResolver(),
+      "wrr-uuid-existing",
+      catalogBarcode,
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result.ok).toBe(true);
     expect(db.update).toHaveBeenCalled();
   });
 });

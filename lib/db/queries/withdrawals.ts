@@ -19,7 +19,7 @@
 // v1 resolution (tasks.md 2026-08-08): transfer rows are excluded from the
 // Outgoing Ledger — only movement_type = 'pick' rows are included.
 
-import { eq, asc, desc, sql } from "drizzle-orm";
+import { eq, asc, desc, sql, and, gte, lte } from "drizzle-orm";
 import { pickLists, pickListItems } from "@/lib/db/schema/pick_lists";
 import { inventoryTransactions } from "@/lib/db/schema/transactions";
 
@@ -291,14 +291,28 @@ export async function getPickListItems(
 // Authorization is enforced at the call site — not re-checked here.
 // ---------------------------------------------------------------------------
 
+export type LedgerDateRange = { startDate: Date; endDate: Date };
+
+// R9.3: "ledger SHALL support date... filters" — v1 shipped without it;
+// added 2026-08-19 (user request: date-range filter on read-only pages).
+function buildPickLedgerFilter(dateRange?: LedgerDateRange) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pickFilter = eq(inventoryTransactions.movementType, "pick" as any);
+  if (!dateRange) return pickFilter;
+  return and(
+    pickFilter,
+    gte(inventoryTransactions.createdAt, dateRange.startDate),
+    lte(inventoryTransactions.createdAt, dateRange.endDate),
+  );
+}
+
 export async function listOutgoingLedger(
   db: DbLike,
-  opts: { limit: number; offset: number },
+  opts: { limit: number; offset: number; dateRange?: LedgerDateRange },
 ): Promise<{ rows: OutgoingLedgerRow[]; total: number }> {
   // movement_type = 'pick' filter — required by R9.1 and verified by the
   // test suite (where() call is expected on the data chain).
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pickFilter = eq(inventoryTransactions.movementType, "pick" as any);
+  const pickFilter = buildPickLedgerFilter(opts.dateRange);
 
   const rows = (await db
     .select({
@@ -321,4 +335,50 @@ export async function listOutgoingLedger(
     .where(pickFilter)) as Array<{ count: string }>;
 
   return { rows, total: Number(countResult[0]?.count ?? 0) };
+}
+
+export type OutgoingLedgerSummary = {
+  totalQty: number;
+  totalTransactions: number;
+  byFlowType: { vmi: number; trading: number; supplies: number };
+};
+
+// Overview cards data source (2026-08-19 user request: "each incoming and
+// outgoing ledger... should have an overview card at the top, just simple
+// data analytics like how much went in or out, or how many what inventory
+// model"). Respects the same date-range filter as the ledger rows above.
+export async function getOutgoingLedgerSummary(
+  db: DbLike,
+  dateRange?: LedgerDateRange,
+): Promise<OutgoingLedgerSummary> {
+  const pickFilter = buildPickLedgerFilter(dateRange);
+
+  const rows = (await db
+    .select({
+      flowType: inventoryTransactions.flowType,
+      totalQty: sql<string>`coalesce(sum(${inventoryTransactions.qty}), 0)`,
+      count: sql<string>`count(*)`,
+    })
+    .from(inventoryTransactions)
+    .where(pickFilter)
+    .groupBy(inventoryTransactions.flowType)) as Array<{
+    flowType: string;
+    totalQty: string;
+    count: string;
+  }>;
+
+  const byFlowType = { vmi: 0, trading: 0, supplies: 0 };
+  let totalQty = 0;
+  let totalTransactions = 0;
+  for (const row of rows) {
+    const qty = Number(row.totalQty);
+    const count = Number(row.count);
+    if (row.flowType === "vmi" || row.flowType === "trading" || row.flowType === "supplies") {
+      byFlowType[row.flowType] = qty;
+    }
+    totalQty += qty;
+    totalTransactions += count;
+  }
+
+  return { totalQty, totalTransactions, byFlowType };
 }

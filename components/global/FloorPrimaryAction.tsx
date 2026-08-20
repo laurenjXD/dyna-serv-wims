@@ -30,7 +30,7 @@ export function FloorPrimaryAction({ label, onPress, disabled }: FloorPrimaryAct
       onClick={onPress}
       disabled={disabled}
       aria-disabled={disabled}
-      className="flex min-h-16 w-full items-center justify-center gap-2 rounded bg-brand-red px-4 font-label text-body-md text-surface-white transition-transform duration-0 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 disabled:cursor-not-allowed disabled:bg-status-neutral disabled:opacity-70"
+      className="flex min-h-16 w-full items-center justify-center gap-2 rounded bg-primary px-4 font-label text-body-md text-surface-white transition-transform duration-0 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 disabled:cursor-not-allowed disabled:bg-status-neutral disabled:opacity-70"
     >
       {label}
     </button>

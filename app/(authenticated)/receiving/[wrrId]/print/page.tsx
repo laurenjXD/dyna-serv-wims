@@ -144,7 +144,7 @@ export default async function WrrPrintPage({ params }: PageProps) {
         </div>
 
         {/* Printable WRR document */}
-        <div className="rounded-md bg-surface-white p-8 shadow-elevation-1">
+        <div className="rounded-xl bg-surface-white p-8 shadow-elevation-1">
           {/* Document header — design.md §5.3 header section */}
           <div className="border-b border-outline-variant/30 pb-6">
             <div className="flex items-start justify-between gap-4">

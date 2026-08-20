@@ -289,7 +289,7 @@ export default async function ApprovalDetailPage({ params, searchParams }: PageP
       {decisionError && (
         <div
           role="alert"
-          className="mt-4 flex items-start gap-3 rounded-md bg-status-held/10 px-4 py-3"
+          className="mt-4 flex items-start gap-3 rounded-xl bg-status-held/10 px-4 py-3"
         >
           <AlertTriangle
             size={20}
@@ -308,7 +308,7 @@ export default async function ApprovalDetailPage({ params, searchParams }: PageP
       {isStale && (
         <div
           role="alert"
-          className="mt-4 flex items-start gap-3 rounded-md bg-status-pending/10 px-4 py-3"
+          className="mt-4 flex items-start gap-3 rounded-xl bg-status-pending/10 px-4 py-3"
         >
           <AlertTriangle
             size={20}
@@ -534,7 +534,7 @@ export default async function ApprovalDetailPage({ params, searchParams }: PageP
           {/* System FIFO recommendation — read-only allocation preview from the
               shared 08 allocation engine (lib/db/queries/inventory.ts), never
               a duplicate implementation. */}
-          <div className="rounded-lg border border-outline-variant/30 p-4">
+          <div className="rounded-xl border border-outline-variant/30 p-4">
             <h3 className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
               System {systemRecommendationStrategy ?? "FIFO"} Order
             </h3>
@@ -576,7 +576,7 @@ export default async function ApprovalDetailPage({ params, searchParams }: PageP
           </div>
 
           {/* Override request */}
-          <div className="rounded-lg border border-status-pending/40 bg-status-pending/5 p-4">
+          <div className="rounded-xl border border-status-pending/40 bg-status-pending/5 p-4">
             <h3 className="font-label text-label uppercase tracking-[0.05em] text-status-pending">
               Override Request
             </h3>
@@ -642,7 +642,7 @@ export default async function ApprovalDetailPage({ params, searchParams }: PageP
               {/* Approve — primary CTA: brand-red h-11 px-6 per task spec */}
               <button
                 type="submit"
-                className="flex h-11 items-center justify-center rounded-xl bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
+                className="flex h-11 items-center justify-center rounded-xl bg-primary px-6 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
               >
                 Approve
               </button>
@@ -756,7 +756,7 @@ export default async function ApprovalDetailPage({ params, searchParams }: PageP
             {request.decisions.map((dec) => (
               <li
                 key={dec.id}
-                className="rounded-lg border border-outline-variant/30 p-4"
+                className="rounded-xl border border-outline-variant/30 p-4"
               >
                 <div className="flex flex-wrap items-center gap-3">
                   <span

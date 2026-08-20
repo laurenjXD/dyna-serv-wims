@@ -155,7 +155,7 @@ function ContactPartyModal({
       aria-labelledby="contact-party-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/40 px-4"
     >
-      <div className="w-full max-w-lg rounded-md bg-surface-white shadow-elevation-2 p-6">
+      <div className="w-full max-w-lg rounded-xl bg-surface-white shadow-elevation-2 p-6">
         <h2
           id="contact-party-title"
           className="font-heading font-semibold text-headline-md text-on-surface"
@@ -222,7 +222,7 @@ function ContactPartyModal({
               <button
                 type="submit"
                 disabled={isPending}
-                className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:opacity-50"
+                className="flex h-11 items-center justify-center rounded bg-primary px-6 font-label text-label text-surface-white hover:bg-primary-hover active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:opacity-50"
               >
                 {isPending ? "Sending…" : "Send Notification"}
               </button>

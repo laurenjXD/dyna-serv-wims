@@ -14,15 +14,6 @@ import Link from "next/link";
 import type { ItemFormState } from "../_actions";
 import type { ItemDetail, CategoryOption, SupplierPartyOption } from "@/lib/db/queries/items";
 
-const ITEM_TYPES = [
-  "standard",
-  "raw_material",
-  "packaging",
-  "fabrication",
-  "spare_parts",
-  "machines",
-] as const;
-
 const UOM_OPTIONS = ["piece", "roll", "meter"] as const;
 const CURRENCY_OPTIONS = ["USD", "PHP"] as const;
 
@@ -47,7 +38,6 @@ interface ItemFormProps {
   item?: ItemDetail;
   categories: CategoryOption[];
   supplierParties: SupplierPartyOption[];
-  barcodeEditable: boolean;
   cancelHref: string;
 }
 
@@ -73,7 +63,6 @@ export function ItemForm({
   item,
   categories,
   supplierParties,
-  barcodeEditable,
   cancelHref,
 }: ItemFormProps) {
   const [state, formAction, isPending] = useActionState(action, {});
@@ -109,12 +98,34 @@ export function ItemForm({
   const [parentCategoryId, setParentCategoryId] = useState(initialParentId);
   const [subcategoryId, setSubcategoryId] = useState(initialSubcategoryId);
 
+  // Primary identifier — conditional on Inventory Model (2026-08-19 user
+  // request): VMI items are identified by Supplier Item Code, Trading items
+  // by DSGC Item Number, never both shown at once. Each keeps its own value
+  // so switching Inventory Model doesn't lose what was already typed. The
+  // active one is mirrored into the DB's required `code` column (a separate,
+  // internal Dyna-Serv identifier) via a hidden input below — the user
+  // confirmed the conditional field itself should double as `code` rather
+  // than requiring a redundant third value.
+  const [codeValue, setCodeValue] = useState(item?.code ?? "");
+  const [supplierItemCodeValue, setSupplierItemCodeValue] = useState(
+    item?.supplierItemCode ?? "",
+  );
+  const [dsgcItemNumberValue, setDsgcItemNumberValue] = useState(
+    item?.dsgcItemNumber ?? "",
+  );
+  const primaryCodeValue =
+    inventoryModel === "vmi"
+      ? supplierItemCodeValue
+      : inventoryModel === "trading"
+      ? dsgcItemNumberValue
+      : codeValue;
+
   const categoryId = subcategoryId || parentCategoryId;
 
   const filteredParentCategories = inventoryModel
     ? parentCategories.filter(
-        (c) => c.flowType === inventoryModel || !c.flowType,
-      )
+      (c) => c.flowType === inventoryModel || !c.flowType,
+    )
     : parentCategories;
   const subcategoryOptions = parentCategoryId
     ? (childCategoriesByParent.get(parentCategoryId) ?? [])
@@ -156,10 +167,9 @@ export function ItemForm({
     ) : null;
 
   const inputClass = (name: string) =>
-    `mt-1 block w-full rounded border ${
-      state.fieldErrors?.[name]
-        ? "border-brand-red"
-        : "border-outline-variant/30"
+    `mt-1 block w-full rounded border ${state.fieldErrors?.[name]
+      ? "border-brand-red"
+      : "border-outline-variant/30"
     } bg-surface-white px-3 py-2 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy`;
 
   const ariaProps = (name: string) =>
@@ -270,24 +280,72 @@ export function ItemForm({
             </select>
           </div>
 
-          <div>
-            <label htmlFor="code" className="block font-label text-label text-on-surface">
-              Item Code{" "}
-              <span aria-hidden="true" className="text-brand-red">*</span>
-            </label>
-            <input
-              id="code"
-              name="code"
-              type="text"
-              required
-              maxLength={100}
-              defaultValue={item?.code ?? ""}
-              placeholder="e.g. ITM-00001"
-              className={inputClass("code")}
-              {...ariaProps("code")}
-            />
-            {fieldError("code")}
-          </div>
+          {inventoryModel === "vmi" ? (
+            <div>
+              <label htmlFor="supplierItemCode" className="block font-label text-label text-on-surface">
+                Supplier Item Code{" "}
+                <span aria-hidden="true" className="text-brand-red">*</span>
+              </label>
+              <input
+                id="supplierItemCode"
+                name="supplierItemCode"
+                type="text"
+                required
+                maxLength={100}
+                value={supplierItemCodeValue}
+                onChange={(e) => setSupplierItemCodeValue(e.target.value)}
+                placeholder="Supplier part number"
+                className={inputClass("code")}
+                {...ariaProps("code")}
+              />
+              <input type="hidden" name="code" value={primaryCodeValue} />
+              {fieldError("code")}
+              {fieldError("barcode")}
+            </div>
+          ) : inventoryModel === "trading" ? (
+            <div>
+              <label htmlFor="dsgcItemNumber" className="block font-label text-label text-on-surface">
+                DSGC Item Number{" "}
+                <span aria-hidden="true" className="text-brand-red">*</span>
+              </label>
+              <input
+                id="dsgcItemNumber"
+                name="dsgcItemNumber"
+                type="text"
+                required
+                maxLength={100}
+                value={dsgcItemNumberValue}
+                onChange={(e) => setDsgcItemNumberValue(e.target.value)}
+                placeholder="DSGC item number"
+                className={inputClass("code")}
+                {...ariaProps("code")}
+              />
+              <input type="hidden" name="code" value={primaryCodeValue} />
+              {fieldError("code")}
+              {fieldError("barcode")}
+            </div>
+          ) : (
+            <div>
+              <label htmlFor="code" className="block font-label text-label text-on-surface">
+                Item Code{" "}
+                <span aria-hidden="true" className="text-brand-red">*</span>
+              </label>
+              <input
+                id="code"
+                name="code"
+                type="text"
+                required
+                maxLength={100}
+                value={codeValue}
+                onChange={(e) => setCodeValue(e.target.value)}
+                placeholder="e.g. ITM-00001"
+                className={inputClass("code")}
+                {...ariaProps("code")}
+              />
+              {fieldError("code")}
+              {fieldError("barcode")}
+            </div>
+          )}
         </div>
       </section>
 
@@ -318,37 +376,22 @@ export function ItemForm({
             {fieldError("name")}
           </div>
 
-          <div>
-            <label htmlFor="itemType" className="block font-label text-label text-on-surface">
-              Item Type
-            </label>
-            <select
-              id="itemType"
-              name="itemType"
-              defaultValue={item?.itemType ?? "standard"}
-              className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            >
-              {ITEM_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t.replace(/_/g, " ")}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="supplierItemCode" className="block font-label text-label text-on-surface">
-              Supplier Item Code
-            </label>
-            <input
-              id="supplierItemCode"
-              name="supplierItemCode"
-              type="text"
-              maxLength={100}
-              defaultValue={item?.supplierItemCode ?? ""}
-              className={inputClass("supplierItemCode")}
-            />
-          </div>
+          {inventoryModel !== "vmi" && inventoryModel !== "trading" && (
+            <div>
+              <label htmlFor="supplierItemCode-secondary" className="block font-label text-label text-on-surface">
+                Supplier Item Code
+              </label>
+              <input
+                id="supplierItemCode-secondary"
+                name="supplierItemCode"
+                type="text"
+                maxLength={100}
+                value={supplierItemCodeValue}
+                onChange={(e) => setSupplierItemCodeValue(e.target.value)}
+                className={inputClass("supplierItemCode")}
+              />
+            </div>
+          )}
 
           <div>
             <label htmlFor="customerItemCode" className="block font-label text-label text-on-surface">
@@ -364,19 +407,22 @@ export function ItemForm({
             />
           </div>
 
-          <div>
-            <label htmlFor="dsgcItemNumber" className="block font-label text-label text-on-surface">
-              DSGC Item Number
-            </label>
-            <input
-              id="dsgcItemNumber"
-              name="dsgcItemNumber"
-              type="text"
-              maxLength={100}
-              defaultValue={item?.dsgcItemNumber ?? ""}
-              className={inputClass("dsgcItemNumber")}
-            />
-          </div>
+          {inventoryModel !== "vmi" && inventoryModel !== "trading" && (
+            <div>
+              <label htmlFor="dsgcItemNumber-secondary" className="block font-label text-label text-on-surface">
+                DSGC Item Number
+              </label>
+              <input
+                id="dsgcItemNumber-secondary"
+                name="dsgcItemNumber"
+                type="text"
+                maxLength={100}
+                value={dsgcItemNumberValue}
+                onChange={(e) => setDsgcItemNumberValue(e.target.value)}
+                className={inputClass("dsgcItemNumber")}
+              />
+            </div>
+          )}
 
           <div className="md:col-span-2">
             <label htmlFor="description" className="block font-label text-label text-on-surface">
@@ -606,41 +652,15 @@ export function ItemForm({
         )}
       </section>
 
-      {/* Section: Barcode — per page specs.md §8, sequenced after
-          UOM/CBM/Pallet Info and before Perishability. */}
-      <section aria-labelledby="section-barcode" className="mt-8">
-        <h2
-          id="section-barcode"
-          className="mb-4 font-heading font-semibold text-data-display text-on-surface"
-        >
-          Barcode
-        </h2>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label htmlFor="barcode" className="block font-label text-label text-on-surface">
-              Barcode{" "}
-              <span aria-hidden="true" className="text-brand-red">*</span>
-            </label>
-            <input
-              id="barcode"
-              name="barcode"
-              type="text"
-              required
-              maxLength={100}
-              defaultValue={item?.barcode ?? ""}
-              disabled={!barcodeEditable}
-              className={`${inputClass("barcode")} ${!barcodeEditable ? "cursor-not-allowed opacity-60" : ""}`}
-              {...ariaProps("barcode")}
-            />
-            {!barcodeEditable && (
-              <p className="mt-1 font-body text-body-sm text-status-neutral">
-                Barcode cannot be changed after operational use.
-              </p>
-            )}
-            {fieldError("barcode")}
-          </div>
-        </div>
-      </section>
+      {/* Barcode is no longer manually enrolled (2026-08-19 user request):
+          it's generated from the item code instead of a separate required
+          field. On create, it tracks whatever the active code field
+          currently holds; on edit, it stays frozen at the item's original
+          value — the DB barcode-immutability guard (lib/enrollment/
+          item-schema.ts's checkBarcodeUpdate, still enforced server-side)
+          exists for exactly this "never changes after operational use"
+          invariant, so an edit never submits a different value here. */}
+      <input type="hidden" name="barcode" value={item?.barcode ?? primaryCodeValue} />
 
       {/* Section: Pricing (reference values) */}
       <section aria-labelledby="section-pricing" className="mt-8">
@@ -725,9 +745,10 @@ export function ItemForm({
               id="defaultSupplierPartyId"
               name="defaultSupplierPartyId"
               defaultValue={item?.defaultSupplierPartyId ?? ""}
+              required
               className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
             >
-              <option value="">None</option>
+              <option value="">Select organization…</option>
               {supplierParties.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.code} — {p.name}
@@ -735,7 +756,7 @@ export function ItemForm({
               ))}
             </select>
             <p className="mt-1 font-body text-body-sm text-text-grey">
-              Active parties with vendor or supplier role only.
+              The default organization this item belongs to. It is used when preparing receiving and pick-list workflows.
             </p>
           </div>
 
@@ -830,7 +851,7 @@ export function ItemForm({
         <button
           type="submit"
           disabled={isPending}
-          className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:opacity-50"
+          className="flex h-11 items-center justify-center rounded bg-primary px-6 font-label text-label text-surface-white hover:bg-primary-hover active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:opacity-50"
         >
           {isPending ? "Saving…" : isEdit ? "Save Changes" : "Create Item"}
         </button>

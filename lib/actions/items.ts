@@ -245,6 +245,30 @@ export async function updateItem(
       return { ok: false, error: "Conflict" } satisfies ActionResult;
     }
 
+    // Duplicate code/barcode check, excluding this row itself — same
+    // reasoning as createItem above.
+    const collisionRows = await db
+      .select({ id: items.id, code: items.code, barcode: items.barcode })
+      .from(items)
+      .where(
+        and(
+          ne(items.id, id),
+          or(eq(items.code, parsed.data.code), eq(items.barcode, parsed.data.barcode)),
+        ),
+      );
+
+    const collisions = collisionRows as { id: string; code: string; barcode: string }[];
+    const updateFieldErrors: Record<string, string> = {};
+    if (collisions.some((r) => r.code === parsed.data.code)) {
+      updateFieldErrors.code = "This item code is already in use.";
+    }
+    if (collisions.some((r) => r.barcode === parsed.data.barcode)) {
+      updateFieldErrors.barcode = "This barcode is already in use.";
+    }
+    if (Object.keys(updateFieldErrors).length > 0) {
+      return { ok: false, fieldErrors: updateFieldErrors } satisfies ActionResult;
+    }
+
     // Barcode immutability guard (design.md §6)
     const newBarcode = parsed.data.barcode;
     if (newBarcode !== row.barcode && deps?.getBarcodeCheckData) {

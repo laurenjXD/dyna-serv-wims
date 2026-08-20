@@ -3,11 +3,10 @@
 // Traceability:
 //   specs/05-ui-shell-and-navigation/design.md §3.2 (`/` route: capability
 //     "none", surface "shared"; §3.3 floor vs. office shell behavior;
-//     §3.2 office heatmap widget gated by reporting.read at the widget level).
+//     §3.2 office dashboard summary widgets).
 //   specs/05-ui-shell-and-navigation/requirements.md R11.2 (floor vs. office
 //     summary shape per resolved surface), R11.5 (no raw financial metrics
-//     on `/`), R11.6 (reporting.read → ActivityHeatmap widget, office/party
-//     only).
+//     on `/`).
 //   specs/00-steering/brand-design-system.md §3 (floor primary actions,
 //     touch targets, dark surface), §6 (no glassmorphism on floor), §9
 //     (floor CTA h-16 full-width), §10 (active: press feedback, no hover
@@ -49,7 +48,6 @@ import type { StockViewRow } from "@/lib/db/queries/inventory";
 import { FloorLanding } from "./_components/FloorLanding";
 import { OfficeLanding, type RecentActivityItem } from "./_components/OfficeLanding";
 import type { WeeklyTrendDatum } from "@/components/analytics/WeeklyTrendChart";
-import type { FlowType } from "@/components/analytics/types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -66,12 +64,6 @@ function getTodayString(): string {
     month: "long",
     day: "numeric",
   });
-}
-
-function toFlowType(filter: string): FlowType {
-  const lower = filter.toLowerCase();
-  if (lower === "vmi" || lower === "trading" || lower === "supplies") return lower;
-  return "all";
 }
 
 // ─── Derived inventory preview (top N items by total available stock) ──────────
@@ -139,13 +131,7 @@ function buildInventoryPreview(
 
 // ─── Page ──────────────────────────────────────────────────────────────────────
 
-interface PageProps {
-  searchParams: Promise<{ filter?: string }>;
-}
-
-export default async function Home({ searchParams }: PageProps) {
-  const { filter: filterParam } = await searchParams;
-  const heatmapFilter = toFlowType(filterParam ?? "all");
+export default async function Home() {
 
   const resolver = await createPageResolver();
   const resolution = await resolver.getContext();
@@ -256,7 +242,6 @@ export default async function Home({ searchParams }: PageProps) {
   // All run in parallel for performance.
   const [
     inventoryKpis,
-    heatmapData,
     stockRows,
     openWrrRows,
     openPickListRows,
@@ -273,8 +258,6 @@ export default async function Home({ searchParams }: PageProps) {
     // reporting.read (NOT reporting.financial_read — that gate was wrong
     // for a non-financial count; see specs/05 R11.5 gate-fix decision).
     hasReportingAccess ? getInventoryKpis() : Promise.resolve(null),
-    // Activity heatmap — gated reporting.read; null → omit entirely
-    hasReportingAccess ? getActivityHeatmap(heatmapFilter) : Promise.resolve(null),
     // Master inventory preview — uses listStockView (lot_inventory_totals-backed)
     // Gated reporting.financial_read so only supervisors/admins see it.
     hasFinancialAccess ? listStockView(db) : Promise.resolve([] as StockViewRow[]),
@@ -295,9 +278,12 @@ export default async function Home({ searchParams }: PageProps) {
     hasPickListAccess
       ? getPickListQtyAndCbmTrend({ startDate: weekStart, endDate: now }, "all", "day")
       : Promise.resolve([] as Array<{ period: string; total_qty: string; total_cbm: string }>),
-    // Monthly outgoing KPI summary (month-to-date)
+    // Monthly outgoing KPI summary (month-to-date) — daily granularity
+    // (2026-08-19: was period="month", collapsing the whole range into one
+    // bucket; changed to "day" so the total can be shown as a bar graph,
+    // not just a single number).
     hasPickListAccess
-      ? getPickListQtyAndCbmTrend({ startDate: monthStart, endDate: now }, "all", "month")
+      ? getPickListQtyAndCbmTrend({ startDate: monthStart, endDate: now }, "all", "day")
       : Promise.resolve([] as Array<{ period: string; total_qty: string; total_cbm: string }>),
     // Recent Activity feed source — genuinely recency-sorted (createdAt
     // DESC), distinct from the oldest-first action-queue rows above.
@@ -330,11 +316,30 @@ export default async function Home({ searchParams }: PageProps) {
     cbm: toNumber(row.total_cbm),
   }));
 
-  // Monthly outgoing KPI: sum qty across returned month buckets (normally
-  // exactly one row for a month-to-date range).
-  const monthlyOutgoingQty = (
-    monthlyTrendRows as Array<{ total_qty: string }>
-  ).reduce((sum, row) => sum + toNumber(row.total_qty), 0);
+  // Monthly outgoing: daily-granularity rows for the bar graph, plus the
+  // month-to-date sum for the headline number (2026-08-19 — was a single
+  // stat block, now a graph per user request).
+  const monthlyTrendTyped = monthlyTrendRows as Array<{ period: string | Date; total_qty: string }>;
+  const monthlyOutgoingQty = monthlyTrendTyped.reduce((sum, row) => sum + toNumber(row.total_qty), 0);
+  const monthlyTrend: WeeklyTrendDatum[] = monthlyTrendTyped.map((row) => ({
+    period: new Date(row.period).toLocaleDateString("en-US", { day: "numeric" }),
+    qty: toNumber(row.total_qty),
+    cbm: 0,
+  }));
+
+  // Dispatch rate ring data (2026-08-17 restyle) — null when the session
+  // lacks pick_list.read, same omission pattern as the heatmap.
+  const dispatchRate = hasPickListAccess && dispatchRateRow
+    ? {
+        dispatched: toNumber(dispatchRateRow.dispatched),
+        notDispatched: toNumber(dispatchRateRow.not_dispatched),
+      }
+    : null;
+
+  // Flow-type activity bar chart data (2026-08-17 restyle).
+  const flowActivity = hasPickListAccess
+    ? flowActivityRows.map((row) => ({ flowType: row.flow_type, count: toNumber(row.count) }))
+    : null;
 
   // Dispatch rate ring data (2026-08-17 restyle) — null when the session
   // lacks pick_list.read, same omission pattern as the heatmap.
@@ -355,6 +360,18 @@ export default async function Home({ searchParams }: PageProps) {
   // openPickListRows action-queue rows above (those are oldest-first —
   // reusing them here previously surfaced the stalest items as "recent",
   // a data-honesty bug caught by design-system-auditor 2026-08-16).
+  //
+  // Dedup against the action queues (2026-08-17): a WRR/pick list that's
+  // both freshly created AND still open legitimately matches both this
+  // recency query and the open-queue query above, so it rendered in both
+  // panels simultaneously — the "duplicated open queues" the user reported.
+  // Recent Activity is meant to be "what just happened," the action queues
+  // are "what still needs action" — excluding already-queued ids here keeps
+  // each item in exactly one panel rather than redefining either query.
+  const openQueueIds = new Set<string>([
+    ...openWrrRows.rows.map((wrr) => `wrr-${wrr.id}`),
+    ...openPickListRows.rows.map((pl) => `pl-${pl.id}`),
+  ]);
   const recentActivity: RecentActivityItem[] = [
     ...recentWrrRows.map((wrr) => ({
       id: `wrr-${wrr.id}`,
@@ -367,6 +384,7 @@ export default async function Home({ searchParams }: PageProps) {
       timestamp: pl.createdAt.toISOString(),
     })),
   ]
+    .filter((entry) => !openQueueIds.has(entry.id))
     .sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1))
     .slice(0, 5);
 
@@ -387,8 +405,6 @@ export default async function Home({ searchParams }: PageProps) {
       hasApprovalAccess={hasApprovalAccess}
       hasFinancialAccess={hasFinancialAccess}
       hasReportingAccess={hasReportingAccess}
-      heatmapData={heatmapData}
-      heatmapFilter={heatmapFilter}
       openWrrRows={openWrrRows.rows}
       openPickListRows={openPickListRows.rows}
       openInspectionRows={openInspectionRows.rows}

@@ -139,7 +139,7 @@ async function ActivePicksTab({ canExecute }: { canExecute: boolean }) {
   const { rows } = await listPickLists(db, { limit: 50, offset: 0, status: "allocated" });
 
   return (
-    <div className="mt-6 overflow-hidden rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-2 md:shadow-elevation-1">
+    <div className="mt-6 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-2 md:shadow-elevation-1">
       {rows.length === 0 ? (
         <div className="px-6 py-12 text-center">
           <p className="font-body text-body-md text-text-grey">
@@ -176,7 +176,7 @@ async function ActivePicksTab({ canExecute }: { canExecute: boolean }) {
                 {canExecute ? (
                   <Link
                     href={`/pick-lists/${row.id}/pick`}
-                    className="flex min-h-16 w-full items-center justify-center rounded bg-brand-red px-4 font-label text-body-md uppercase tracking-wide text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2"
+                    className="flex min-h-16 w-full items-center justify-center rounded bg-primary px-4 font-label text-body-md uppercase tracking-wide text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2"
                   >
                     Start picking
                   </Link>
@@ -287,7 +287,7 @@ async function OutgoingLedgerTab({
           design.md §9: item code is the prominent first field in office review.
           Card wrapper matches Active Picks tab's pattern (border + responsive
           shadow) for cross-tab visual consistency. */}
-      <div className="mt-6 overflow-hidden rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-2 md:shadow-elevation-1">
+      <div className="mt-6 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-2 md:shadow-elevation-1">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="font-body text-body-md text-text-grey">

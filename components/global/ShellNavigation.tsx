@@ -121,12 +121,14 @@ function NavLink({
   tier,
   variant = "tab",
   onNavigate,
+  compact = false,
 }: {
   entry: RouteRegistryEntry;
   isActive: boolean;
   tier: SessionPresentationTier;
   variant?: "tab" | "list";
   onNavigate?: () => void;
+  compact?: boolean;
 }) {
   const Icon = routeIcon(entry.id);
   const label = toLabel(entry.id);
@@ -157,7 +159,7 @@ function NavLink({
       data-testid={`nav-entry-${entry.id}`}
       aria-current={isActive ? "page" : undefined}
       onClick={onNavigate}
-      className={`flex h-12 items-center gap-4 rounded-lg px-4 font-label font-semibold
+      className={`flex ${compact ? "h-9 gap-3 rounded-lg px-3" : "h-12 gap-4 rounded-xl px-4"} items-center font-label font-semibold
         ${floorText ? "text-mono-md" : "text-label"}
         focus:outline-none focus-visible:ring-2 focus-visible:ring-primary
         ${isActive ? "bg-primary text-surface" : "text-text-secondary hover:bg-background hover:text-text-primary"}`}
@@ -173,25 +175,27 @@ function GroupedSections({
   activeId,
   tier,
   onNavigate,
+  compact = false,
 }: {
   sections: readonly NavSection[];
   activeId: string | null;
   tier: SessionPresentationTier;
   onNavigate?: () => void;
+  compact?: boolean;
 }) {
   const floorText = tier === "floor";
   return (
     <>
       {sections.map((section) => (
-        <div key={section.group} className="mb-3">
+        <div key={section.group} className={compact ? "mb-1" : "mb-3"}>
           <p
             data-testid={`nav-group-${groupTestId(section.group)}`}
-            className={`px-4 pb-1 pt-2 font-label font-bold uppercase tracking-wider text-text-secondary/70
+            className={`${compact ? "px-3 pb-0.5 pt-1" : "px-4 pb-1 pt-2"} font-label font-bold uppercase tracking-wider text-text-secondary/70
               ${floorText ? "text-mono-md" : "text-mono-sm"}`}
           >
             {section.group}
           </p>
-          <div className="flex flex-col gap-1">
+          <div className={compact ? "flex flex-col" : "flex flex-col gap-1"}>
             {section.entries.map((entry) => (
               <NavLink
                 key={entry.id}
@@ -200,6 +204,7 @@ function GroupedSections({
                 tier={tier}
                 variant="list"
                 onNavigate={onNavigate}
+                compact={compact}
               />
             ))}
           </div>
@@ -328,26 +333,13 @@ export function ShellNavigation({
           Skip to content
         </a>
 
-        <div className="flex items-center gap-2 px-2 pt-1">
-          <img src="/logo.svg" alt="Dyna-Serv WIMS" className="h-8 w-8" />
-          <p className="font-heading text-headline-md font-bold tracking-tight text-text-primary">Dyna-Serv WIMS</p>
+        <div className="flex items-center gap-2 px-2 py-1">
+          <img src="/logo.svg" alt="Dyna-Serv WIMS" className="h-7 w-7" />
+          <p className="font-heading text-data-display font-bold tracking-tight text-text-primary">Dyna-Serv WIMS</p>
         </div>
 
-        <Link
-          href="/profile"
-          className="mt-6 flex items-center gap-3 rounded-lg border border-border bg-background p-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        >
-          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary font-label text-label font-bold text-surface">
-            {initials(displayName)}
-          </span>
-          <div className="min-w-0">
-            <p className="truncate font-heading text-body-md font-bold text-text-primary">{displayName ?? "Loading..."}</p>
-            <p className="truncate font-body text-body-sm text-text-secondary">{roleLabel}</p>
-          </div>
-        </Link>
-
-        <div className="mt-5 flex flex-1 flex-col">
-          <GroupedSections sections={sections} activeId={activeId} tier={tier} />
+        <div className="mt-2 flex min-h-0 flex-1 flex-col">
+          <GroupedSections sections={sections} activeId={activeId} tier={tier} compact />
         </div>
       </nav>
 
@@ -395,7 +387,7 @@ function MoreOverlay({
       <div className="absolute inset-y-0 right-0 flex w-[85%] max-w-sm flex-col overflow-y-auto bg-surface pb-24 shadow-elevation-2">
         <div className="flex items-center justify-between border-b border-border px-4 py-4">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary font-label text-label font-bold text-surface">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary font-label text-label font-bold text-surface">
               {initials(displayName)}
             </span>
             <div className="min-w-0">
