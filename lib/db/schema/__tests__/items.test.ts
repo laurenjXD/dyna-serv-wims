@@ -160,3 +160,50 @@ describe("items.ts — items table (Req 4)", () => {
     }
   });
 });
+
+// RED-step tests for the 12-vmi-billing B.11 amendment (2026-08-19).
+// Traceability: specs/12-vmi-billing/tasks.md B.11, requirements.md FR-2.2
+// ("Sourced from items.vmi_movement_category ... Nullable; items with no
+// category set contribute to an 'Uncategorized' bucket"), and
+// specs/01-core-data-model/design.md §1.1 (new `vmiMovementCategoryEnum`)
+// and §1.2 (`items.vmiMovementCategory`) — both added as a dated amendment,
+// not yet present in lib/db/schema/enums.ts or lib/db/schema/items.ts as of
+// this test's authoring. See specs/00-steering/revision-log.md's
+// "`01-core-data-model` amendment: `items.vmi_movement_category` added
+// (2026-08-19)" entry for the full reasoning.
+describe("items.ts — vmi_movement_category amendment (12-vmi-billing B.11 / Req FR-2.2)", () => {
+  it("enums.ts exports vmiMovementCategoryEnum with exactly the 5 VMI category values", async () => {
+    const { vmiMovementCategoryEnum } = await import("../enums");
+    expect(vmiMovementCategoryEnum.enumValues).toEqual([
+      "fg",
+      "raw_material",
+      "for_process",
+      "reject",
+      "re_inspect",
+    ]);
+  });
+
+  it("has vmiMovementCategory column backed by the vmi_movement_category enum type, correctly named, nullable", async () => {
+    const { items } = await import("../items");
+    const { vmiMovementCategoryEnum } = await import("../enums");
+    expect(hasColumn(items, "vmiMovementCategory")).toBe(true);
+    const vmiCategory = column(items, "vmiMovementCategory");
+    expect(vmiCategory.name).toBe("vmi_movement_category");
+    expect(vmiCategory.enumValues).toEqual(vmiMovementCategoryEnum.enumValues);
+    expect(vmiCategory.notNull).toBe(false); // nullable — not every item is VMI-classified
+  });
+
+  it("is a distinct column from the pre-existing free-text itemType/item_type field", async () => {
+    const { items } = await import("../items");
+    expect(hasColumn(items, "itemType")).toBe(true);
+    expect(hasColumn(items, "vmiMovementCategory")).toBe(true);
+    const itemType = column(items, "itemType");
+    const vmiCategory = column(items, "vmiMovementCategory");
+    expect(itemType.name).toBe("item_type");
+    expect(vmiCategory.name).toBe("vmi_movement_category");
+    // itemType stays required-with-default (unchanged by this amendment);
+    // vmiMovementCategory is the new, independently nullable column.
+    expect(itemType.notNull).toBe(true);
+    expect(vmiCategory.notNull).toBe(false);
+  });
+});

@@ -8,14 +8,28 @@ import { getTableColumns } from "drizzle-orm";
 import { getTableConfig } from "drizzle-orm/pg-core";
 import type { PgTable, PgColumn } from "drizzle-orm/pg-core";
 
+// Drizzle types `precision`/`scale` (PgNumeric*) and `length` (PgVarchar) as
+// members of their concrete column subclasses, not the shared `PgColumn`
+// base — see drizzle-orm/pg-core/columns/{numeric,varchar}.d.ts. These tests
+// introspect column definitions generically across every column type in a
+// table, so the helper can't statically know which concrete subclass a given
+// column is. Widening the return type with these fields as optional mirrors
+// the actual runtime shape (present with a `number` value on
+// decimal/varchar-family columns, simply absent — not `undefined`-valued,
+// just not present — on every other column type), rather than hiding the
+// gap behind a wider `any`.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function columns(table: PgTable): Record<string, PgColumn<any>> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return getTableColumns(table) as unknown as Record<string, PgColumn<any>>;
+export type SchemaTestColumn = PgColumn<any> & {
+  readonly precision?: number | undefined;
+  readonly scale?: number | undefined;
+  readonly length?: number | undefined;
+};
+
+export function columns(table: PgTable): Record<string, SchemaTestColumn> {
+  return getTableColumns(table) as unknown as Record<string, SchemaTestColumn>;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function column(table: PgTable, key: string): PgColumn<any> {
+export function column(table: PgTable, key: string): SchemaTestColumn {
   const cols = columns(table);
   const col = cols[key];
   if (!col) {

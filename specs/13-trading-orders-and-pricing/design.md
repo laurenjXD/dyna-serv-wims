@@ -1,71 +1,123 @@
-# Trading Orders & Pricing — Design
+# Trading Pricing — Design
 
 Status: Approved
-Updated: 2026-08-05
+Updated: 2026-08-19 (Full rewrite — see `requirements.md` header for what this supersedes and why)
 
 ## 1. Design intent
 
-All list/table views in this feature consume the **Shared Table-Action and Filter/Search Contract** in `05-ui-shell-and-navigation` §8; this design adds only Trading-specific fields and capabilities and never replaces RLS with client filtering.
+Trading Pricing is a **rate card**, not an order-lifecycle system. The commercial decision (what a customer pays for an item) is made once, ahead of time, per `(customer, item)` pair, and simply gets looked up and frozen at the moment a pick list is generated for a Trading-flow line. This removes an entire pre-commitment order stage (`price_quote_requested → price_set/ready → committed`) that `08` never actually needed — `08`'s existing Stock View → pick-list-generation flow is already the single operational trigger for outbound Trading movement; this spec supplies the price that flow consumes, not a parallel entry point.
 
-Trading pricing is an online, server-authoritative commercial boundary between a customer order and the physical withdrawal workflow. It resolves a price, freezes an auditable snapshot, and hands that snapshot to `08` for commitment and `10` for document rendering.
-
-This design keeps Trading stock and price data separate from VMI period billing and Supplies operations. It does not let item-master defaults or client forms become final transaction truth.
+All list/table views in this feature consume the **Shared Table-Action and Filter/Search Contract** in `05-ui-shell-and-navigation` §8.
 
 ## 2. Foundational dependencies and source tables
 
 Depends on:
 
-- `00-steering/product.md`, `tech.md`, `structure.md`, `testing.md`, `ui-ux-design-plan.md`, and `revision-log.md`.
-- `01-core-data-model` for parties/items/lots/flow partitions, core price/reference fields, pick-list linkage, and currency/forex references.
-- `02-rbac-roles` for capabilities, party/flow scope, RLS, and audit.
+- `00-steering/product.md`, `tech.md`, `structure.md`, `testing.md`, `revision-log.md`.
+- `01-core-data-model` for parties/items/lots/flow partitions and `inventory_transactions` (the purchase-side ingestion target, see §4).
+- `02-rbac-roles` for capabilities, RLS, audit.
 - `03-offline-mode-and-client-storage` for the Tier 2 online-only boundary.
-- `04-services-and-infrastructure` for Auth, runtime, idempotency, external/forex integrations if approved, monitoring, and jobs.
-- `05-ui-shell-and-navigation` for office shell and responsive order/pricing UI.
-- `06-party-and-item-enrollment` for master party/item/category references.
-- `08-outgoing-withdrawal-and-two-stage-commitment` for allocation/commitment/dispatch.
-- `10-pick-list-and-acknowledgement-receipt` for immutable document snapshots and artifacts.
-- `12-vmi-billing` for the boundary that prevents document reference price from becoming the VMI bill.
+- `04-services-and-infrastructure` for Auth, runtime, idempotency, monitoring.
+- `05-ui-shell-and-navigation` for office shell.
+- `06-party-and-item-enrollment` for master party/item references.
+- `08-outgoing-withdrawal-and-two-stage-commitment` — the pick-list generation flow this spec's price resolution plugs into (§4).
+- `10-pick-list-and-acknowledgement-receipt` for the frozen snapshot's document consumption.
+- `12-vmi-billing` for the boundary confirming this spec never touches VMI period billing.
 
 ### Core tables/read models
 
 | Source | Use | Ownership |
 | --- | --- | --- |
-| `parties` | Customer/end-customer and authorized order scope. | `06` master data; RBAC/RLS governs access. |
-| `items` | Item identity, UOM/SPQ, reference buying/selling fields, and cross-references. | `06`/core master data; not final transaction price by itself. |
-| `lots` | Trading flow/availability/ownership context consumed by `08`. | Core/08 inventory boundary. |
-| `pick_lists`/`pick_list_items` | Final committed operational linkage and document price snapshot. | `08`/core owns physical workflow; `13` supplies price contract. |
-| `forex_rates` | Approved currency conversion source if the final pricing design uses it. | Core/finance owner; no client rates. |
+| `parties` | Customer scope for `trading_policies`. | `06` master data; RBAC/RLS governs access. |
+| `items` | Item identity, UOM/SPQ. `items.buying_price`/`selling_price` remain reference-only, never a final cost/price basis. | `06`/core master data. |
+| `lots`, `inventory_transactions` | Trading flow/availability context consumed by `08`; purchase-side ingestion target for supplier invoices (§4). | Core/08 inventory boundary. |
+| `pick_lists`/`pick_list_items`/`acknowledgement_receipt` | Final committed operational linkage and document price snapshot. | `08`/`10` own physical workflow and documents; `13` supplies the price contract. |
+| `forex_rates` | Currency conversion when buy/sell currencies differ. | Core/finance owner. |
 
-### Trading-owned persistence (provisional)
+### Trading-owned persistence
 
-The core schema does not yet define complete Trading order/price tables. The intended model is:
+```typescript
+// lib/db/schema/trading_pricing.ts
 
-```text
-trading_orders
-  id, order_number, customer_party_id, flow_type='trading',
-  status ('price_quote_requested' | 'price_set_ready' | 'committed'
-          | 'dispatched' | 'settled' | 'cancelled'),
-  currency ('PHP' | 'USD'), version,
-  requested_at, price_set_at, committed_at,
-  dispatched_at, settled_at, cancelled_at,
-  created_by, correlation_id
+import { pgTable, uuid, varchar, decimal, boolean, text, timestamp, pgEnum, unique } from "drizzle-orm/pg-core";
+import { parties } from "./parties";
+import { items } from "./items";
 
-trading_order_items
-  id, order_id, item_id, customer_item_code, requested_qty, uom,
-  price_snapshot_id, status, version
+export const tradingMarginTypeEnum = pgEnum("trading_margin_type", ["percentage", "fixed_amount"]);
 
-trading_price_snapshots
-  id, trading_order_id, trading_order_item_id, item_id, lot_id,
-  unit_price (numeric, stored as decimal string),
-  currency ('PHP' | 'USD'),
-  tax_rate (numeric %), discount_rate (numeric %),
-  effective_price (computed: unit_price × (1 + tax_rate/100) × (1 − discount_rate/100), stored for integrity),
-  forex_rate (null when currency = 'PHP'),
-  snapshot_hash (SHA-256 of line data),
-  locked_at, created_by
+// R1 — the rate card. One active row per (party, item); prior rows are
+// deactivated, not deleted, when a policy is revised, so historical sales
+// remain traceable to the policy that produced them.
+export const tradingPolicies = pgTable("trading_policies", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  partyId: uuid("party_id").references(() => parties.id).notNull(), // customer
+  itemId: uuid("item_id").references(() => items.id).notNull(),
+
+  buyCost: decimal("buy_cost", { precision: 12, scale: 4 }).notNull(),
+  buyCurrency: varchar("buy_currency", { length: 3 }).notNull().default("USD"),
+
+  marginType: tradingMarginTypeEnum("margin_type").notNull(),
+  marginValue: decimal("margin_value", { precision: 10, scale: 4 }).notNull(), // e.g. 15.00 (%) or a flat $/unit
+
+  // Derived by default (buy_cost adjusted by margin); a trading.price_set
+  // holder may override directly — sellPriceIsOverride distinguishes the two
+  // for audit/display, never silently blurred together.
+  sellPrice: decimal("sell_price", { precision: 12, scale: 4 }).notNull(),
+  sellPriceIsOverride: boolean("sell_price_is_override").default(false).notNull(),
+  sellCurrency: varchar("sell_currency", { length: 3 }).notNull().default("PHP"),
+  fxSource: varchar("fx_source", { length: 50 }), // required when buyCurrency != sellCurrency
+
+  isActive: boolean("is_active").default(true).notNull(),
+  effectiveFrom: timestamp("effective_from").defaultNow().notNull(),
+  effectiveTo: timestamp("effective_to"), // set when superseded, never deleted
+
+  createdByUserId: uuid("created_by_user_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  // Only one currently-active policy per (party, item) — enforced at the
+  // application layer on write (isActive transition), not a DB partial
+  // unique index, matching this project's established preference for
+  // application-layer enforcement of "one active X" invariants where a
+  // partial index would need conditional logic beyond a plain UNIQUE.
+}));
+
+export const tradingInvoiceDirectionEnum = pgEnum("trading_invoice_direction", ["purchase", "sale"]);
+
+// R2/R3 — the frozen transaction record. direction='purchase' rows come from
+// supplier invoice import (§4); direction='sale' rows are the frozen price
+// snapshot handed to 08/10.
+export const tradingInvoiceLines = pgTable("trading_invoice_lines", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  direction: tradingInvoiceDirectionEnum("direction").notNull(),
+
+  // Sale rows: FK to the pick_list_item this price was frozen for.
+  // Purchase rows: null (no pick-list exists yet for an inbound purchase).
+  pickListItemId: uuid("pick_list_item_id"),
+  // Purchase rows: the supplier's own invoice number (e.g. 'PR260026P').
+  // Sale rows: null.
+  supplierInvoiceRef: varchar("supplier_invoice_ref", { length: 100 }),
+
+  partyId: uuid("party_id").references(() => parties.id).notNull(), // customer (sale) or supplier (purchase)
+  itemId: uuid("item_id").references(() => items.id).notNull(),
+  qty: decimal("qty", { precision: 12, scale: 4 }).notNull(),
+
+  // Snapshotted from trading_policies at freeze time — never recomputed if
+  // the policy later changes.
+  buyCost: decimal("buy_cost", { precision: 12, scale: 4 }).notNull(),
+  sellPrice: decimal("sell_price", { precision: 12, scale: 4 }), // null for purchase rows
+  marginAmount: decimal("margin_amount", { precision: 14, scale: 4 }), // null for purchase rows
+
+  currency: varchar("currency", { length: 3 }).notNull(),
+  sourcePolicyId: uuid("source_policy_id").references(() => tradingPolicies.id), // null for purchase rows
+  snapshotHash: varchar("snapshot_hash", { length: 64 }).notNull(), // SHA-256 of the line data
+
+  hsCode: varchar("hs_code", { length: 20 }),
+  lockedAt: timestamp("locked_at").notNull(),
+  createdByUserId: uuid("created_by_user_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
 ```
-
-Column names, exact types, and whether order lines link directly to `pick_lists` must be confirmed before migrations. The snapshot is immutable; price corrections create a new approved revision record rather than editing history.
 
 ## 3. Pricing contract
 
@@ -73,141 +125,109 @@ The finalized server contract consumed by `08` and `10`:
 
 ```typescript
 type TradingPriceSnapshot = {
-  trading_order_id: string
-  trading_order_item_id: string
+  trading_invoice_line_id: string
+  pick_list_item_id: string
   item_id: string
-  lot_id: string           // bound at pick-list generation
-  unit_price: string       // decimal string, never float
+  party_id: string          // customer
+  buy_cost: string           // decimal string, never float
+  sell_price: string
+  margin_amount: string      // internal only — see §5 projection rule
   currency: 'PHP' | 'USD'
-  tax_rate: string         // percentage, e.g. "12.00"
-  discount_rate: string    // percentage, e.g. "0.00"
-  effective_price: string  // computed, stored for integrity
-  forex_rate: string | null // null if currency is PHP
-  snapshot_hash: string    // SHA-256
-  locked_at: string        // ISO 8601
+  snapshot_hash: string      // SHA-256
+  locked_at: string          // ISO 8601
 }
 ```
 
-The contract guarantees:
-
+Guarantees:
 - All monetary values are decimal strings; floating-point types are forbidden for price fields.
-- Currency is explicit (`'PHP' | 'USD'`) and never inferred from locale or browser state.
-- `effective_price` is computed server-side as `unit_price × (1 + tax_rate/100) × (1 − discount_rate/100)` and stored; it is not recomputed by consumers.
-- `snapshot_hash` is a SHA-256 of the line data fields; it detects any post-freeze mutation.
-- Internal buying-cost and margin fields are not included in this type; they are projected separately under `trading.margin_view` authorization.
-- The snapshot is immutable after `locked_at`; corrections create a new revision record.
+- `snapshot_hash` detects any post-freeze mutation attempt.
+- Internal `buy_cost`/`margin_amount` are never included in a customer-facing projection of this type — see §5.
+- Immutable after `locked_at`; a later price correction creates a new `trading_invoice_lines` row, never edits history.
 
 **Integration rules:**
+- `08` retrieves this snapshot via a server-side query keyed on the `pick_list_item_id` it is about to commit, at Stage 1. It never recomputes prices. A missing or hash-mismatched snapshot causes `08` to reject the pick-list generation request.
+- `10` embeds the same snapshot verbatim in the generated `pick_list` and `acknowledgement_receipt`. `snapshot_hash` is stored on the document artifact for tamper detection.
 
-- `08` retrieves this snapshot via a server-side query keyed on `trading_order_id` before Stage 1 commitment. It never recomputes prices. A missing or hash-mismatched snapshot causes `08` to reject the pick-list generation request.
-- `10` embeds this snapshot verbatim in the generated pick list and acknowledgement receipt. The `snapshot_hash` is stored on the document artifact for tamper detection. `10` does not calculate or replace any price field.
-
-## 4. Order and workflow architecture
-
-The Trading order lifecycle (defined in `requirements.md` §5) drives the integration sequence:
+## 4. Price resolution and purchase-side ingestion
 
 ```text
-price_quote_requested
-  → validate party / flow_type='trading' / item / quantity / UOM
-  → authorized user sets unit_price (trading.price_set required)
-price_set/ready
-  → immutable trading_price_snapshots created per order line
-  → forex_rate locked from forex_rates (USD orders only)
-  → order is now eligible for 08 pick-list generation
-committed  ← 08 Stage 1: generates pick_list, resolves lot_id, reserves inventory
-  → 08 physical pick and dispatch scan
-dispatched ← 08 Stage 2: inventory_transaction (movement_type='pick') recorded
-  → 10 generates priced pick_list and acknowledgement_receipt from frozen snapshot
-settled    ← 10 finalizes acknowledgement_receipt; order and documents become immutable
+Sale (price resolution, plugs into 08's existing pick-list generation):
+  08 Stock View → operator selects Trading-flow item + customer + qty
+    → 13 looks up active trading_policies WHERE party_id = customer AND item_id = item
+    → found: freeze into trading_invoice_lines (direction='sale'), compute
+        snapshot_hash, return TradingPriceSnapshot to 08
+    → not found: reject with a clear error naming the missing (customer, item)
+        pair; a trading.price_set holder must create a trading_policies row
+        (or an explicit one-off override, trading.price_override + reason)
+        before generation can proceed. No default price is ever applied.
+  08 Stage 1 commitment proceeds only with a valid snapshot.
+
+Purchase (ingestion, independent of any sale):
+  Supplier commercial invoice (item code, customer part number, unit price,
+  qty, currency) → parsed line-by-line
+    → IN inventory_transactions row, flow_type='trading'
+    → trading_invoice_lines row, direction='purchase', supplier_invoice_ref
+        = the invoice number, buy_cost = unit_price, sell_price = null
+  This does not itself set or change any trading_policies row — a
+  trading.price_set holder decides whether/how a new purchase informs the
+  standing rate card, the same "never auto-apply" boundary as everywhere
+  else in this spec.
 ```
 
-`13` does not allocate lots or change inventory. If `08` fails allocation, the price snapshot remains historical for that order; the order may be revised or cancelled only through the approved order policy. Repricing is never performed silently during a retry.
+`13` does not allocate lots or change inventory — that remains `08`'s job entirely. If `08` fails allocation after a snapshot is frozen, the snapshot stays historical; nothing is silently repriced on retry.
 
 ## 5. Margin, currency, and commercial rules
 
-All seven pricing decisions are resolved. See `requirements.md` §6 for the full decision record. Design-level policy summary:
-
-- **Price authority**: `trading.price_set` capability required to confirm a unit selling price. `items.selling_price` is reference data only.
-- **Price formula**: `effective_price = unit_price × (1 + tax_rate/100) × (1 − discount_rate/100)`. Tax and discount rates are optional per order line and stored on the snapshot.
-- **Margin**: `(effective_price − items.buying_price) / effective_price`. Visible only to users with `trading.margin_view`; never projected to party/customer users.
-- **Currency**: PHP base; USD per-order override. Forex rate sourced from `forex_rates` and locked at `price_set_at`. No client-supplied rate accepted. Missing rate blocks commitment.
-- **Overrides**: `trading.price_override` capability required plus a mandatory written reason. All overrides appended to an immutable audit log.
-- **Effective dates**: Active from `price_set_at` until cancelled or settled. No future-dated price schedules in v1.
-- **Deferred to v2**: freight surcharges, minimum margin floors, customer-submitted orders, Supplies shared document pricing.
-
-`items.buying_price` and `items.selling_price` are never used as the final transaction price without explicit authorized confirmation. VMI price references are not resolved by this model; VMI period billing remains `12`’s responsibility.
+- **Price authority**: `trading.price_set` required to create/edit a `trading_policies` row or override a resolved price. `items.selling_price`/`items.buying_price` are reference data only, never auto-applied.
+- **Margin formula**: `sell_price = buy_cost + (buy_cost × margin_value/100)` for `margin_type = 'percentage'`, or `buy_cost + margin_value` for `'fixed_amount'` — unless `sell_price_is_override = true`, in which case the stored value is authoritative and the formula is display-only context.
+- **Margin visibility**: `buy_cost`, `margin_amount`, and margin % are visible only to `trading.margin_view` (Administrator & Supervisor). A caller with `reporting.financial_read` but not `trading.margin_view` sees price/amount columns only, with cost/margin columns omitted entirely — not nulled — from any response, matching this project's established financial-projection pattern (`01` §3 item 4, `16` FR-2.4).
+- **Currency**: `buy_currency`/`sell_currency` independently configurable per policy (evidenced: buy in USD from a supplier, sell in PHP to a customer). `fx_source` required when they differ; forex sourced from `forex_rates`, locked at freeze time. Missing rate blocks the freeze.
+- **Overrides**: `trading.price_override` plus a mandatory written reason, appended to an immutable audit log.
+- **Deferred to v2**: customer-submitted orders (there was never an order UI to begin with in this model), freight surcharges, minimum margin floors, Supplies shared document pricing.
 
 ## 6. Authorization and RLS
-
-Every order and price command follows:
 
 ```text
 server Auth session
   → current capability + party/flow scope
-  → validated Trading order/item/customer state
-  → price policy/source authorization
-  → immutable snapshot/order transaction
+  → resolve trading_policies for (customer, item)
+  → freeze trading_invoice_lines
 ```
 
-Potential capability vocabulary is resource/action based (`trading_orders.read`, `trading_orders.manage`, `trading_prices.read_internal`, `trading_prices.manage`, `trading_prices.override`), but final identifiers belong to `02`.
+Capability vocabulary (final identifiers owned by `02`): `trading_policies.read`, `trading_policies.manage` (= `price_set`), `trading_prices.read_internal` (= `margin_view`), `trading_prices.override`.
 
-Party users may see their own scoped customer-facing orders/prices only if explicitly granted. They must not see internal buy cost, margin, other parties, or unscoped item catalog data. RLS is default deny and is evaluated on the current authenticated request.
+Organization users may see their own scoped sale price/amount only (via `22-parties-portal`), never `trading_policies`, `buy_cost`, or margin. RLS is default deny.
 
 ## 7. UI and shell integration
 
-Provisional routes:
-
 ```text
 app/(authenticated)/
-  trading/
-    orders/page.tsx
-    orders/new/page.tsx
-    orders/[orderId]/page.tsx
-    orders/[orderId]/pricing/page.tsx
+  billing-pricing/
+    trading/
+      page.tsx                        # rate-card list + Trading Pricing & Margin Ledger tab
+      policies/[partyId]/[itemId]/edit/page.tsx   # trading_policies create/edit
 ```
 
-The UI uses `05`’s office surface: searchable order list, detail, line editor, price summary, explicit freeze/commit handoff, and safe errors. It remains usable at narrow widths. It must clearly distinguish draft/reference price, frozen final document price, and internal margin; no color-only status is used.
+No `orders/` routes exist in this feature — removed entirely from the prior design.
 
-The UI never sends price authority via hidden fields or browser storage. A price preview is not final until the server returns a frozen snapshot reference.
+### 7a. Trading Pricing & Margin Ledger
 
-**(2026-08-08)** The former `trading/pricing/history/page.tsx` route is superseded by `billing-pricing/trading/page.tsx` — see §7a below — rather than the two coexisting as separate, overlapping "pricing history" surfaces. `orders/[orderId]/pricing/page.tsx` (the per-order price-setting screen) is unaffected; it is a different concern (setting one order's price) from the ledger (reviewing historical margin across orders).
+Unchanged in shape from the prior design's already-approved intent: one row per dispatched sale, computed on read (a query/view, not a stored table):
 
-### 7a. Trading Pricing & Margin Ledger (added 2026-08-08)
+| DATE | ITEM | QTY | UNIT COST | UNIT PRICE | AMOUNT | COST AMOUNT | MARGIN | MARGIN % |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Dispatch timestamp (`08` Stage 2, via the dispatched `inventory_transactions` row's `pick_list_id`) | `items.name`/`code` | `trading_invoice_lines.qty` | `buy_cost` | `sell_price` | QTY × UNIT PRICE | QTY × UNIT COST | AMOUNT − COST AMOUNT | MARGIN / AMOUNT |
 
-Shared with `12-vmi-billing` at the joint `/billing-pricing` route (see `12` §6 for the shell/tab contract and the rationale for why this lives outside `06-party-and-item-enrollment`). This tab, `billing-pricing/trading/page.tsx`, is owned by `13`.
+Sourced directly from `trading_invoice_lines WHERE direction = 'sale'` — no `trading_order_items` join, since that table no longer exists.
 
-Unlike VMI's ledger, Trading has no continuous daily balance to snapshot — a sale is a discrete event, not an accruing occupancy. So this is **one row per dispatched order line**, computed on read (a query/view, not a nightly job or a stored table — there is nothing to accrue day over day):
-
-| DATE | ORDER # | ITEM | QTY | UNIT COST | UNIT PRICE | AMOUNT | COST AMOUNT | MARGIN | MARGIN % |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Dispatch timestamp (`08` Stage 2 dispatch event, via `inventory_transactions.pick_list_id` → this order) | `trading_orders.order_number` | `items.name`/`code` | `trading_order_items.requested_qty` | `items.buying_price` | `trading_price_snapshots.effective_price` | QTY × UNIT PRICE | QTY × UNIT COST | AMOUNT − COST AMOUNT | MARGIN / AMOUNT |
-
-This reuses §5's already-approved margin formula exactly (`items.buying_price` as the cost basis — not a per-lot actual cost; that basis was a deliberate, already-resolved decision in `requirements.md` §6, not reopened here) and `trading_price_snapshots.effective_price` as the frozen sale price. No new calculation is introduced; this is a report over `12`/`13`'s and `01`'s existing fields.
-
-This tab is **office-only**, gated by `reporting.financial_read` at the route level (same `/billing-pricing` gate as `12`'s VMI tab — see `12` §6). Party/customer users do not reach this page at all; their own order/price/document visibility already exists as a separate, already-approved surface (`22-parties-portal`'s scoped order/document routes, per `13` requirements.md's party/customer-user actor definition). This page does not replace or duplicate that portal access.
-
-**Column-level gating within the office-only tab**: `UNIT COST`, `COST AMOUNT`, `MARGIN`, and `MARGIN %` additionally require `trading.margin_view` (admin/supervisor only, per §5/§6) — a supervisor/administrator holding `reporting.financial_read` but not `trading.margin_view` (if that combination is ever granted) sees `DATE | ORDER # | ITEM | QTY | UNIT PRICE | AMOUNT` only, columns omitted rather than nulled, per this project's established financial-projection pattern (`01` §3 item 4, `16` FR-2.4).
-
-Date-range filterable, defaults to the current month, item/party filterable for Office Admin/Supervisor. No statement-generation action exists here (Trading has no periodic billing cycle to close — each order's `acknowledgement_receipt`, generated by `10`, is already the final commercial document for that sale).
+Office-only, gated `reporting.financial_read`. `UNIT COST`, `COST AMOUNT`, `MARGIN`, `MARGIN %` additionally require `trading.margin_view`, omitted (not nulled) without it. Date-range filterable, defaults to the current month, item/party filterable.
 
 ## 8. Offline, Realtime, and infrastructure integration
 
-No Trading order/pricing mutation is Tier 1. Cached read projections may be bounded and scope-safe, but cached price/permission data cannot create or freeze a price.
-
-Realtime may invalidate order/price status; authoritative refetch is required. External forex/price services, if selected, are called server-side with timeouts, auditability, and deterministic snapshotting. A provider outage blocks new final snapshots according to the approved policy; it must not silently use an unknown rate.
+No `trading_policies` write or price freeze is Tier 1. Cached price/policy reads may be bounded and scope-safe but cannot create or freeze a price. A forex provider outage blocks new freezes for cross-currency pairs; it must not silently use a stale or unknown rate.
 
 ## 9. Integration contracts
 
-- `08` retrieves the `TradingPriceSnapshot` via a server-side query keyed on `trading_order_id` before Stage 1 commitment. It stores the `snapshot_hash` with the committed outbound context and rejects a missing, stale, or hash-mismatched snapshot. `08` never recomputes prices.
-- `10` embeds the same `TradingPriceSnapshot` verbatim in the generated `pick_list` and `acknowledgement_receipt`. The `snapshot_hash` is stored on the document artifact for tamper detection. `10` does not calculate or replace any price field.
-- `12` remains authoritative for VMI period billing and may define a separate VMI document reference contract.
-- `09` may be extended for approved price overrides only after a separate approval policy defines target/version/authority; the initial approval type is FIFO override.
-
-## 10. Design verification before approval
-
-- [x] Resolve all open pricing/commercial decisions — resolved in `requirements.md` §6; steering revision log update pending.
-- [ ] Reconcile Trading order/price tables, precision, constraints, and snapshot linkage with `01`/`08`/`10`.
-- [ ] Confirm capability identifiers, internal/customer projections, and RLS with `02`.
-- [ ] Confirm online-only behavior with `03` and external service/runtime with `04`.
-- [ ] Confirm VMI boundary with `12` and document fields with `10`.
-- [ ] Run `rbac-rls-reviewer`, `design-system-auditor`, and `db-migration-verifier` before approval.
+- `08` retrieves the `TradingPriceSnapshot` via a server-side query keyed on `pick_list_item_id` before Stage 1 commitment; rejects a missing, stale, or hash-mismatched snapshot; never recomputes prices.
+- `10` embeds the same snapshot verbatim in `pick_list` and `acknowledgement_receipt`; stores `snapshot_hash` for tamper detection.
+- `12` remains solely authoritative for VMI period billing; this spec never touches it.

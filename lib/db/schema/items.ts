@@ -1,7 +1,7 @@
 // `item_categories` & `items` — specs/01-core-data-model/design.md §1.2
 import { pgTable, uuid, varchar, text, integer, decimal, boolean, timestamp, check } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import { flowTypeEnum } from "./enums";
+import { flowTypeEnum, vmiMovementCategoryEnum } from "./enums";
 import { parties } from "./parties";
 
 export const itemCategories = pgTable("item_categories", {
@@ -41,6 +41,12 @@ export const items = pgTable("items", {
   minReorderLevel: integer("min_reorder_level").default(0).notNull(),
   isPerishable: boolean("is_perishable").default(false).notNull(), // Triggers mandatory expiry check at receiving
   isActive: boolean("is_active").default(true).notNull(),
+  // VMI movement classification (fg/raw_material/for_process/reject/re_inspect).
+  // Nullable — not every item is VMI-classified; "Uncategorized" bucket when
+  // absent. specs/01-core-data-model/design.md §1.2 amendment (2026-08-19),
+  // specs/12-vmi-billing/tasks.md B.11. Distinct from the pre-existing
+  // free-text itemType column (not a repurposing of it).
+  vmiMovementCategory: vmiMovementCategoryEnum("vmi_movement_category"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({

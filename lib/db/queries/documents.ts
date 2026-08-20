@@ -15,9 +15,23 @@
 //   documentType 'pick_list'              -> sourceType 'inventory_commitment'
 //     -> inventory_commitments.id -> inventory_commitments.pick_list_id
 //     -> pick_lists.customer_party_id
-//   documentType 'acknowledgement_receipt' -> sourceType 'inventory_transaction'
-//     -> inventory_transactions.id -> inventory_transactions.pick_list_id
+//   documentType 'acknowledgement_receipt' -> sourceType 'inventory_commitment'
+//     -> inventory_commitments.id -> inventory_commitments.pick_list_id
 //     -> pick_lists.customer_party_id
+//
+// 2026-08-20 correction: acknowledgement_receipt previously keyed off
+// sourceType 'inventory_transaction' pointing at a single dispatch
+// transaction row (specs/00-steering/revision-log.md, the "Snapshot field
+// contract" entry). That assumption broke when dispatchPickList was fixed
+// to insert one inventory_transactions row PER pick-list line (multi-line
+// dispatch support) instead of one aggregate row — there is no longer a
+// single canonical transaction id to reference for a multi-line dispatch.
+// Both pick_list and acknowledgement_receipt now key off sourceType
+// 'inventory_commitment' / sourceId = inventory_commitments.id: one
+// commitment represents one whole dispatch event (all its lines), which is
+// the correct unit for "one document per dispatch." See
+// specs/00-steering/revision-log.md's 2026-08-20 entry for the full
+// resolution.
 //
 // This is the only correct scoping path for this table; there is no
 // shortcut party_id filter to apply directly on generated_documents. The
@@ -29,7 +43,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import { generatedDocuments } from "@/lib/db/schema/documents";
 import { inventoryCommitments } from "@/lib/db/schema/commitments";
-import { inventoryTransactions } from "@/lib/db/schema/transactions";
 import { pickLists } from "@/lib/db/schema/pick_lists";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -93,14 +106,14 @@ export async function listPartyAcknowledgementReceiptDocuments(
     })
     .from(generatedDocuments)
     .innerJoin(
-      inventoryTransactions,
-      eq(inventoryTransactions.id, generatedDocuments.sourceId),
+      inventoryCommitments,
+      eq(inventoryCommitments.id, generatedDocuments.sourceId),
     )
-    .innerJoin(pickLists, eq(pickLists.id, inventoryTransactions.pickListId))
+    .innerJoin(pickLists, eq(pickLists.id, inventoryCommitments.pickListId))
     .where(
       and(
         eq(generatedDocuments.documentType, "acknowledgement_receipt"),
-        eq(generatedDocuments.sourceType, "inventory_transaction"),
+        eq(generatedDocuments.sourceType, "inventory_commitment"),
         eq(pickLists.customerPartyId, partyId),
       ),
     )

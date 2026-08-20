@@ -83,6 +83,19 @@ export const approvalRequestStatusEnum = pgEnum("approval_request_status", [
   "superseded",
 ]);
 
+// `items.vmi_movement_category` — specs/01-core-data-model/design.md §1.1
+// amendment (2026-08-19), surfaced by specs/12-vmi-billing/tasks.md B.11.
+// Per-movement classification used by the VMI daily balance replay engine
+// (design.md §2.1) to split IN/OUT CBM by FG/RAW_MATERIAL/etc. Nullable on
+// items (see items.ts) — not every item is VMI-classified.
+export const vmiMovementCategoryEnum = pgEnum("vmi_movement_category", [
+  "fg",
+  "raw_material",
+  "for_process",
+  "reject",
+  "re_inspect",
+]);
+
 // RBAC enums — specs/02-rbac-roles/design.md §4
 
 export const userProfileStatusEnum = pgEnum("user_profile_status", [

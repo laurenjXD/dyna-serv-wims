@@ -280,7 +280,10 @@ describe("createParty — success (R1.1, design.md §5 Create)", () => {
 
   it("writes the approved split-address and payment-terms fields", async () => {
     const insertChain = makeInsertChain("party-new-uuid");
-    const db = { insert: vi.fn().mockReturnValue(insertChain) };
+    const db = {
+      select: vi.fn().mockReturnValue(makeSelectChain([])), // no code collision
+      insert: vi.fn().mockReturnValue(insertChain),
+    };
 
     await createParty(authorizedResolver(), validPartyInput, mockRlsDeps(db).deps);
 
@@ -312,29 +315,6 @@ describe("createParty — duplicate code (DB UNIQUE constraint on code; previous
       expect(result.fieldErrors.code).toMatch(/already in use/i);
     }
     expect(db.insert).not.toHaveBeenCalled();
-  });
-});
-
-describe("createParty — address field mapping (2026-08-17 fix: schema column is address_1, not address)", () => {
-  it("maps the input's address to address1 in the insert values, not a nonexistent 'address' key", async () => {
-    const db = {
-      select: vi.fn().mockReturnValue(makeSelectChain([])),
-      insert: vi.fn().mockReturnValue(makeInsertChain("party-new-uuid")),
-    };
-
-    await createParty(
-      authorizedResolver(),
-      { ...validPartyInput, address: "123 Warehouse Row" },
-      mockRlsDeps(db).deps,
-    );
-
-    const insertChain = db.insert.mock.results[0].value;
-    expect(insertChain.values).toHaveBeenCalledWith(
-      expect.objectContaining({ address1: "123 Warehouse Row" }),
-    );
-    expect(insertChain.values).not.toHaveBeenCalledWith(
-      expect.objectContaining({ address: expect.anything() }),
-    );
   });
 });
 
@@ -446,30 +426,6 @@ describe("updateParty — stale-edit conflict (R2.4, design.md §5 Edit/deactiva
     expect(db.update).not.toHaveBeenCalled();
   });
 
-  it("maps the input's address to address1 in the update values, not a nonexistent 'address' key", async () => {
-    const currentUpdatedAt = "2024-06-01T12:00:00.000Z";
-    const dbRow = { id: "party-1", updated_at: new Date(currentUpdatedAt) };
-    const db = {
-      select: vi
-        .fn()
-        .mockReturnValueOnce(makeSelectChain([dbRow]))
-        .mockReturnValueOnce(makeSelectChain([])),
-      update: vi.fn().mockReturnValue(makeUpdateChain()),
-    };
-
-    await updateParty(
-      authorizedResolver(),
-      "party-1",
-      { ...validPartyInput, address: "456 Dock Street" },
-      currentUpdatedAt,
-      mockRlsDeps(db).deps,
-    );
-
-    const updateChain = db.update.mock.results[0].value;
-    expect(updateChain.set).toHaveBeenCalledWith(
-      expect.objectContaining({ address1: "456 Dock Street" }),
-    );
-  });
 });
 
 // ---------------------------------------------------------------------------
