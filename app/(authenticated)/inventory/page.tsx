@@ -66,11 +66,11 @@ const TABS: Array<{ key: TabKey; label: string }> = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 interface PageProps {
-  searchParams: Promise<{ tab?: string; q?: string }>;
+  searchParams: Promise<{ tab?: string; q?: string; pickListError?: string }>;
 }
 
 export default async function InventoryPage({ searchParams }: PageProps) {
-  const { tab: tabParam, q } = await searchParams;
+  const { tab: tabParam, q, pickListError } = await searchParams;
 
   const activeTab: TabKey = resolveInventoryTab(tabParam);
 
@@ -126,6 +126,14 @@ export default async function InventoryPage({ searchParams }: PageProps) {
           <Link href="/inventory/export" className="inline-flex h-11 items-center gap-2 rounded bg-on-surface px-4 font-label text-label font-semibold text-surface-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"><Download size={16} aria-hidden="true" />Export Excel</Link>
         </form>
       </div>
+
+      {pickListError && (
+        <div role="alert" className="mt-4 rounded-lg border-l-4 border-status-held bg-surface-white p-4 shadow-elevation-1">
+          <p className="font-heading text-body-md font-semibold text-on-surface">Pick list was not created</p>
+          <p className="mt-1 font-body text-body-md text-on-surface">{pickListError === "forbidden" ? "Your account does not have permission to generate pick lists." : `Reason: ${pickListError.replaceAll(",", ", ")}`}</p>
+          <p className="mt-1 font-body text-body-md text-text-grey">Check the destination organization and available quantity, then try again.</p>
+        </div>
+      )}
 
       {activeTab === "stock-view" ? (
         <StockViewTab query={q} />

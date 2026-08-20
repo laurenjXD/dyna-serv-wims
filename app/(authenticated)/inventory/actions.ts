@@ -20,8 +20,8 @@ export async function createPickList(formData: FormData): Promise<void> {
       revalidatePath("/pick-lists");
       redirect("/outgoing");
     }
+    redirect(`/inventory?pickListError=${encodeURIComponent(result.errors.join(","))}`);
   } catch {
     redirect("/inventory?pickListError=unable_to_reserve_stock");
   }
-  redirect("/inventory?pickListError=unable_to_reserve_stock");
 }
