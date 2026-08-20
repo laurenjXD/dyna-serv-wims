@@ -33,7 +33,6 @@ import { resolveInventoryTab, type TabKey } from "./_lib/resolveInventoryTab";
 import { InspectionTab } from "./_components/InspectionTab";
 import { PickListGenerator } from "./_components/PickListGenerator";
 import { createPickList } from "./actions";
-import { listParties } from "@/lib/db/queries/parties";
 
 // ─── Status badge colors ─────────────────────────────────────────────────────
 // brand-design-system.md §1.3 semantic color mapping per task spec:
@@ -150,7 +149,6 @@ export default async function InventoryPage({ searchParams }: PageProps) {
 
 async function StockViewTab({ query }: { query?: string }) {
   const rows = await listStockView(db);
-  const { rows: partyRows } = await listParties(db, { limit: 100 });
   const normalizedQuery = query?.trim().toLowerCase() ?? "";
   const items = groupStockByItem(rows).filter((item) => !normalizedQuery || `${item.itemCode} ${item.itemName} ${item.lots.map((lot) => lot.lotNumber).join(" ")}`.toLowerCase().includes(normalizedQuery));
 
@@ -189,8 +187,8 @@ async function StockViewTab({ query }: { query?: string }) {
                   <PickListGenerator
                     itemId={item.itemId}
                     flowType={item.flowType}
+                    organizationId={item.organizationId}
                     lots={rows.filter((row) => row.itemId === item.itemId).map((row) => ({ lotId: row.lotId, locationId: row.locationId, availableQty: row.qtyRemaining - row.qtyCommitted }))}
-                    parties={partyRows.filter((party) => party.isActive).map((party) => ({ id: party.id, name: party.name, code: party.code }))}
                     action={createPickList}
                   />
                 </div>
@@ -250,6 +248,7 @@ type GroupedItem = {
   uom: string;
   isPerishable: boolean;
   flowType: "vmi" | "trading" | "supplies";
+  organizationId: string | null;
   availableQty: number;
   lots: AggregatedLot[];
 };
@@ -259,7 +258,7 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
   // The query already orders by (items.code, lots.expiry_date, lots.created_at)
   // so FEFO/FIFO order is preserved by the insertion sequence.
   const itemMap = new Map<string, {
-    itemId: string; itemCode: string; itemName: string; uom: string; isPerishable: boolean; flowType: "vmi" | "trading" | "supplies";
+    itemId: string; itemCode: string; itemName: string; uom: string; isPerishable: boolean; flowType: "vmi" | "trading" | "supplies"; organizationId: string | null;
     lotMap: Map<string, { lot: AggregatedLot }>;
     insertionOrder: string[]; // lot IDs in FEFO/FIFO order
   }>();
@@ -276,6 +275,7 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
         uom: row.uom,
         isPerishable: row.isPerishable,
         flowType: row.flowType ?? "trading",
+        organizationId: row.organizationId ?? null,
         lotMap: new Map(),
         insertionOrder: [],
       };
@@ -319,6 +319,7 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
       uom: entry.uom,
       isPerishable: entry.isPerishable,
       flowType: entry.flowType,
+      organizationId: entry.organizationId,
       availableQty: lots.reduce((sum, l) => sum + l.availableQty, 0),
       lots,
     };

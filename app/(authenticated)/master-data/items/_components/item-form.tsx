@@ -739,15 +739,16 @@ export function ItemForm({
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label htmlFor="defaultSupplierPartyId" className="block font-label text-label text-on-surface">
-              Default Supplier Organization
+              Organization
             </label>
             <select
               id="defaultSupplierPartyId"
               name="defaultSupplierPartyId"
               defaultValue={item?.defaultSupplierPartyId ?? ""}
+              required
               className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
             >
-              <option value="">None</option>
+              <option value="">Select organization…</option>
               {supplierParties.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.code} — {p.name}
@@ -755,7 +756,7 @@ export function ItemForm({
               ))}
             </select>
             <p className="mt-1 font-body text-body-sm text-text-grey">
-              Active parties with vendor or supplier role only.
+              The default organization this item belongs to. It is used when preparing receiving and pick-list workflows.
             </p>
           </div>
 
