@@ -232,7 +232,7 @@ export default async function ReceiveFloorPage({
   // ─── Receipt complete: all lines committed, WRR already confirmed server-side ───
   if (isComplete) {
     return (
-      <div className="flex min-h-screen flex-col bg-brand-navy">
+      <div className="flex min-h-screen flex-col bg-surface-light-grey">
         <div className="flex flex-1 flex-col items-center justify-center px-4 py-4 text-center">
           <div className="w-full max-w-md rounded-xl bg-surface-white p-6 shadow-elevation-2">
             <span
@@ -261,23 +261,24 @@ export default async function ReceiveFloorPage({
   }
 
   return (
-    // Floor screen: solid bg-brand-navy, no glassmorphism, 16px padding.
+    // Floor screen uses the active light surface by default. Dark mode is
+    // controlled globally from the Profile preference, never hard-coded here.
     // brand-design-system.md §4: floor screens use 16px page padding.
-    <div className="flex min-h-screen flex-col bg-brand-navy">
+    <div className="flex min-h-screen flex-col bg-surface-light-grey">
       {/* Top bar — compact, floor-appropriate */}
-      <div className="bg-brand-navy px-4 py-3">
+      <div className="border-b border-outline-variant/30 bg-surface-white px-4 py-3">
         <div className="flex items-center justify-between">
           {/* Back link — h-14 (56px) minimum floor touch target per §3 */}
           <Link
             href={`/receiving/${wrrId}`}
-            className="inline-flex h-14 items-center gap-2 text-body-md font-body text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
+            className="inline-flex h-14 items-center gap-2 text-body-md font-body text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
           >
             {/* Left arrow — no icon dependency, pure text/unicode for floor performance */}
             <span aria-hidden="true">&#8592;</span>
             <span>Back to WRR</span>
           </Link>
           {/* WRR reference — Roboto Mono per §9 */}
-          <span className="font-mono text-mono-lg text-white/70">
+          <span className="font-mono text-mono-lg text-text-grey">
             {wrr.wrrNumber}
           </span>
         </div>
@@ -526,7 +527,7 @@ export default async function ReceiveFloorPage({
                     id="location-primary"
                     name="locationId"
                     defaultValue={primaryStoreCandidates[0].id}
-                    className="h-16 w-full rounded border-2 border-surface-white bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-4 focus:ring-brand-navy"
+                    className="h-16 w-full rounded border-2 border-outline-variant bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-4 focus:ring-brand-navy"
                   >
                     {primaryStoreCandidates.map((candidate) => (
                       <option key={candidate.id} value={candidate.id}>
@@ -569,7 +570,7 @@ export default async function ReceiveFloorPage({
                     defaultValue={
                       inspectionLocations.length === 1 ? inspectionLocations[0].id : undefined
                     }
-                    className="h-16 w-full rounded border-2 border-surface-white bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-4 focus:ring-brand-navy"
+                    className="h-16 w-full rounded border-2 border-outline-variant bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-4 focus:ring-brand-navy"
                   >
                     {inspectionLocations.length > 1 && (
                       <option value="">Select an inspection location…</option>
@@ -604,11 +605,11 @@ export default async function ReceiveFloorPage({
       )}
 
       {isReceivable && !primaryReadyLine && !allLinesScanned && (
-        <div className="sticky bottom-0 bg-brand-navy px-4 pb-6 pt-4 shadow-elevation-2">
+        <div className="sticky bottom-0 border-t border-outline-variant/30 bg-surface-white px-4 pb-6 pt-4 shadow-elevation-2">
           <form action={handleScan} className="flex flex-col gap-3">
             <label
               htmlFor="barcode-input"
-              className="text-body-md font-body text-surface-white"
+              className="text-body-md font-body text-on-surface"
             >
               Scan or enter barcode
             </label>
@@ -621,7 +622,7 @@ export default async function ReceiveFloorPage({
                 autoComplete="off"
                 inputMode="none"
                 placeholder="Waiting for scan…"
-                className="h-16 flex-1 rounded border-2 border-surface-white bg-surface-white px-4 font-mono text-mono-lg text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-4 focus:ring-brand-navy"
+                className="h-16 flex-1 rounded border-2 border-outline-variant bg-surface-white px-4 font-mono text-mono-lg text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-4 focus:ring-brand-navy"
               />
               <button
                 type="submit"

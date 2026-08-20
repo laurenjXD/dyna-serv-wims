@@ -45,6 +45,7 @@ import { db } from "@/lib/db/client";
 import { getPickList, getPickListItems } from "@/lib/db/queries/withdrawals";
 import type { PickListItemRow } from "@/lib/db/queries/withdrawals";
 import { markPickListPicked } from "@/lib/actions/withdrawals";
+import { CameraScanBridge } from "@/components/floor/CameraScanBridge";
 
 // ─── Error messaging ──────────────────────────────────────────────────────────
 
@@ -344,7 +345,7 @@ export default async function PickExecutionPage({
           {/* Scan input — auto-focused, inputMode="none" suppresses virtual
               keyboard on scanner devices; scanner fires hardware keystrokes.
               h-14 (56px) floor secondary input touch target per §3. */}
-          <form action={handleScan} className="mb-3">
+          <form action={handleScan} className="mb-3 flex gap-3">
             <input type="hidden" name="confirmed" value={confirmedQueryValue} />
             <input
               autoFocus
@@ -353,10 +354,21 @@ export default async function PickExecutionPage({
               inputMode="none"
               autoComplete="off"
               aria-label="Scan item barcode"
-              className="h-14 w-full rounded-xl border border-outline-variant/30 bg-surface-white px-4 font-mono text-mono-lg text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="h-14 min-w-0 flex-1 rounded-xl border border-outline-variant/30 bg-surface-white px-4 font-mono text-mono-lg text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
               placeholder="Scan barcode..."
             />
+            <button
+              type="submit"
+              className="inline-flex h-14 shrink-0 items-center justify-center rounded-xl bg-primary px-5 font-label text-body-md uppercase tracking-wide text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            >
+              Scan
+            </button>
           </form>
+
+          <CameraScanBridge
+            action={handleScan}
+            extraFields={{ confirmed: confirmedQueryValue }}
+          />
 
           {/* Scan error feedback — above CTA */}
           {scanError && (

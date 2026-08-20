@@ -167,7 +167,7 @@ async function StockViewTab({ query }: { query?: string }) {
         <div className="min-w-[760px] divide-y divide-outline-variant/30">
           <div className="grid grid-cols-[40px_210px_minmax(220px,1fr)_120px_150px_170px] items-center gap-x-3 bg-accent-indigo-50 px-5 py-3 font-label text-label font-semibold tracking-[0.04em] text-text-grey">
             <span aria-hidden="true" />
-            <span>Item Code</span><span>Name</span><span>UOM</span><span className="text-right">Stock Level</span><span>Status</span>
+            <span>Item Code</span><span>Name</span><span>UOM</span><span className="text-right">Stock Level</span><span className="pl-6">Status</span>
           </div>
           {items.map((item) => (
             <details key={item.itemId} className="group">
@@ -177,7 +177,7 @@ async function StockViewTab({ query }: { query?: string }) {
                 <p className="font-body text-body-md text-on-surface">{item.itemName}</p>
                 <p className="font-body text-body-md text-text-grey">{item.uom}</p>
                 <p className="text-right font-mono text-mono-lg font-bold text-on-surface">{item.availableQty.toLocaleString()}</p>
-                <span className="inline-flex w-fit items-center rounded-full bg-on-surface px-3 py-1 font-label text-label tracking-[0.06em] text-surface-white">ON HAND</span>
+                <span className="ml-6 inline-flex w-fit items-center rounded-full bg-on-surface px-3 py-1 font-label text-label tracking-[0.06em] text-surface-white">ON HAND</span>
               </summary>
               <div className="border-t border-outline-variant/30 bg-surface-light-grey/45 px-4 py-4 md:px-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
