@@ -13,7 +13,7 @@ It is deliberately not a generic “approved” boolean attached to every busine
 
 Depends on:
 
-- `00-steering/product.md`, `tech.md`, `structure.md`, `testing.md`, and `brand-design-system.md`.
+- `00-steering/product.md`, `tech.md`, `structure.md`, `testing.md`, and `ui-ux-design-plan.md`.
 - `02-rbac-roles` for resource/action/scope capabilities, current authorization, default-deny RLS, security events, and actor attribution.
 - `03-offline-mode-and-client-storage` for the Tier 2 online-only boundary.
 - `04-services-and-infrastructure` for Supabase Auth, Realtime, durable jobs/notifications, idempotency, monitoring, and service-role restrictions.

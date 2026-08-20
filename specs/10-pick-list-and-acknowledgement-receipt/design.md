@@ -13,7 +13,7 @@ The document service never becomes the source of inventory, reservation, approva
 
 Depends on:
 
-- `00-steering/product.md`, `tech.md`, `structure.md`, `testing.md`, `brand-design-system.md`, and `revision-log.md`.
+- `00-steering/product.md`, `tech.md`, `structure.md`, `testing.md`, `ui-ux-design-plan.md`, and `revision-log.md`.
 - `01-core-data-model` for canonical outbound document rows and item/party/lot/location relationships.
 - `02-rbac-roles` for capability/scope/RLS and audit attribution.
 - `03-offline-mode-and-client-storage` for online-only generation and bounded cached-preview semantics.
@@ -194,7 +194,7 @@ A cancelled pick list causes its linked AR to be voided (`status = voided`). A v
 - **Margins:** 20 mm on all four sides.
 - **Header (every page):** Dyna-Serv logo (left-aligned) + warehouse name and address (right-aligned). `brand-navy` (`#002060`) header background with white text. Epilogue SemiBold labels.
 - **Footer (every page):** "Page n of m" (left) | document number in Roboto Mono (center) | generation timestamp in Asia/Manila time (right). Epilogue SemiBold 9pt.
-- **Body typefaces** per `brand-design-system.md §2`:
+- **Body typefaces** per `ui-ux-design-plan.md §2`:
   - Fira Sans Bold/SemiBold for section headings and numeric data display.
   - Outfit Regular for body copy and table cell content.
   - Epilogue SemiBold for column headers, field labels, and functional labels.

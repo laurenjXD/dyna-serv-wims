@@ -256,7 +256,7 @@ function FailedEntryCard({ entry }: { entry: FailedEntry }) {
       </div>
 
       {/* Data snapshot — Roboto Mono for codes/IDs per §9 */}
-      <div className="mt-3 rounded-lg bg-surface-light-grey px-3 py-2">
+      <div className="mt-3 rounded-xl bg-surface-light-grey px-3 py-2">
         <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
           Captured data (truncated)
         </p>

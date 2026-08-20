@@ -42,15 +42,20 @@ export function useShellAuthorizationContext(): AuthorizationContext | null {
 
 export function AuthenticatedShellBoundary({
   resolver,
+  initialResolution,
   children,
 }: {
-  resolver: RequestAuthorizationResolver;
+  resolver?: RequestAuthorizationResolver;
+  initialResolution?: AuthorizationResolution;
   children: ReactNode;
 }) {
   const router = useRouter();
-  const [resolution, setResolution] = useState<AuthorizationResolution | null>(null);
+  const [resolution, setResolution] = useState<AuthorizationResolution | null>(
+    initialResolution ?? null,
+  );
 
   useEffect(() => {
+    if (initialResolution || !resolver) return;
     let active = true;
     resolver
       .getContext()
@@ -65,7 +70,7 @@ export function AuthenticatedShellBoundary({
     };
     // A new resolver instance means a new request-scoped resolution;
     // re-resolve whenever the caller supplies a different resolver.
-  }, [resolver]);
+  }, [initialResolution, resolver]);
 
   // The "revoked_session" ShellStateView copy says "Redirecting you to sign
   // in..." -- this effect is what makes that claim true for a genuinely

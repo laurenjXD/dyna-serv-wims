@@ -116,7 +116,7 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
       {errors.length > 0 && (
         <div
           role="alert"
-          className="mt-4 rounded-md bg-status-held/10 px-4 py-3"
+          className="mt-4 rounded-xl bg-status-held/10 px-4 py-3"
         >
           <p className="font-label text-label uppercase text-status-held">
             Validation errors
@@ -134,7 +134,7 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
       {/* Create Transfer form — standard office surface */}
       <form action={handleCreateTransfer} className="mt-6 space-y-6">
         {/* Header section — office card, Level 1 elevation */}
-        <div className="rounded-md bg-surface-white shadow-elevation-1 p-6">
+        <div className="rounded-xl bg-surface-white shadow-elevation-1 p-6">
           <h2 className="font-heading font-semibold text-data-display text-on-surface">
             Transfer Details
           </h2>
@@ -245,7 +245,7 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
         </div>
 
         {/* Transfer lines section */}
-        <div className="rounded-md bg-surface-white shadow-elevation-1 p-6">
+        <div className="rounded-xl bg-surface-white shadow-elevation-1 p-6">
           <h2 className="font-heading font-semibold text-data-display text-on-surface">
             Transfer Lines
           </h2>
@@ -264,7 +264,7 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
           {/* Primary CTA — brand-red per brand-design-system.md §9, h-11 office touch target */}
           <button
             type="submit"
-            className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-11 items-center justify-center rounded bg-primary px-6 font-label text-label text-surface-white hover:bg-primary-hover motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
           >
             Create Transfer
           </button>

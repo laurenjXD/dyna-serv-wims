@@ -14,11 +14,9 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -41,15 +39,11 @@ export default function LoginPage() {
         return;
       }
 
-      // On success, return to the authenticated shell's landing route.
-      // router.refresh() alongside push (2026-08-08): App Router's client
-      // Router Cache can otherwise serve a stale RSC payload for `/` from
-      // before sign-in; refresh() drops that cache and forces a fresh
-      // server-side render under the new session, working together with
-      // middleware.ts's cookie refresh (added the same day — without it,
-      // a successful sign-in appeared to redirect nowhere).
-      router.push("/");
-      router.refresh();
+      // Force a document navigation after Supabase has written the auth
+      // cookie. Client-side App Router navigation may otherwise reuse the
+      // anonymous RSC payload and make a successful login look like a
+      // redirect loop or a permanently blank session-checking screen.
+      window.location.assign("/");
     } catch {
       setError("An unexpected error occurred. Please try again.");
     } finally {

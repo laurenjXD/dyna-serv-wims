@@ -13,7 +13,7 @@ The design follows the settled document model: an operational `pick_list` is gen
 
 Depends on:
 
-- `00-steering/product.md`, `tech.md`, `structure.md`, `testing.md`, `brand-design-system.md`, and `revision-log.md`.
+- `00-steering/product.md`, `tech.md`, `structure.md`, `testing.md`, `ui-ux-design-plan.md`, and `revision-log.md`.
 - `01-core-data-model` for parties/items/locations/lots, FIFO/FEFO eligibility, pick-list records, and immutable transactions.
 - `02-rbac-roles` for capabilities, party/flow scope, RLS, and approval authorization.
 - `03-offline-mode-and-client-storage` for the limited physical-observation queue and replay reauthorization.

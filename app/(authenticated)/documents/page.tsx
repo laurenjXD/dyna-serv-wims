@@ -254,7 +254,7 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
               htmlFor="party-filter"
               className="font-label text-label text-text-grey"
             >
-              Party
+              Organization
             </label>
             <input
               type="text"
@@ -340,7 +340,7 @@ function PickListsTab() {
                 Pick List #
               </th>
               <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                Party
+                Organization
               </th>
               <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                 Items
@@ -454,7 +454,7 @@ function AcknowledgementReceiptsTab() {
                 AR #
               </th>
               <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                Party
+                Organization
               </th>
               <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                 Pick List #

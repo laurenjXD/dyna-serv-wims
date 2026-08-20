@@ -38,7 +38,9 @@ export type PartyDetail = {
   email: string | null;
   phone: string | null;
   taxId: string | null;
-  address: string | null;
+  address1: string | null;
+  address2: string | null;
+  paymentTerms: string | null;
   notes: string | null;
   isActive: boolean;
   createdAt: Date;
@@ -133,7 +135,9 @@ export async function getPartyWithRoles(
       email: parties.email,
       phone: parties.phone,
       taxId: parties.taxId,
-      address: parties.address1,
+      address1: parties.address1,
+      address2: parties.address2,
+      paymentTerms: parties.paymentTerms,
       notes: parties.notes,
       isActive: parties.isActive,
       createdAt: parties.createdAt,

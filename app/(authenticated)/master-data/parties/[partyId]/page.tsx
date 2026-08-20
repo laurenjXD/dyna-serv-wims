@@ -80,7 +80,7 @@ export default async function PartyDetailPage({
                   href="/enrollment?tab=parties"
                   className="inline-flex h-11 items-center rounded hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 >
-                  Parties
+                  Organizations
                 </Link>
               </li>
               <li aria-hidden="true">/</li>
@@ -122,9 +122,9 @@ export default async function PartyDetailPage({
       </div>
 
       {/* Master data */}
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-xl bg-surface-white shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-on-surface">
-          Party Information
+          Organization Information
         </h2>
         <dl className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
@@ -156,7 +156,15 @@ export default async function PartyDetailPage({
           <div className="sm:col-span-2">
             <dt className="font-label text-label text-text-grey">Address</dt>
             <dd className="mt-1 font-body text-body-md text-on-surface whitespace-pre-line">
-              {party.address ?? "—"}
+              {[party.address1, party.address2].filter(Boolean).join("\n") || "—"}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-label text-label text-text-grey">
+              Payment Terms
+            </dt>
+            <dd className="mt-1 font-body text-body-md text-on-surface">
+              {party.paymentTerms ?? "—"}
             </dd>
           </div>
           {party.notes && (
@@ -185,7 +193,7 @@ export default async function PartyDetailPage({
       </div>
 
       {/* Business roles + Contact Party action (interactive, client component) */}
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-xl bg-surface-white shadow-elevation-1 p-6">
         <PartyDetailActions
           partyId={partyId}
           roles={party.roles}
@@ -196,7 +204,7 @@ export default async function PartyDetailPage({
 
       {/* Deactivation zone — only for active parties that the user can manage */}
       {canManage && party.isActive && (
-        <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+        <div className="mt-6 rounded-xl bg-surface-white shadow-elevation-1 p-6">
           <h2 className="font-heading font-semibold text-data-display text-on-surface">
             Danger Zone
           </h2>
@@ -211,7 +219,7 @@ export default async function PartyDetailPage({
       )}
 
       {/* Transaction Ledger — design.md §5b */}
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-xl bg-surface-white shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Transaction Ledger
         </h2>

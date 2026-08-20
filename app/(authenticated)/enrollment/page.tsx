@@ -29,7 +29,7 @@ const PAGE_SIZE = 25;
 type TabKey = "parties" | "items" | "locations";
 
 const TABS: Array<{ key: TabKey; label: string }> = [
-  { key: "parties", label: "Parties" },
+  { key: "parties", label: "Organizations" },
   { key: "items", label: "Items" },
   { key: "locations", label: "Locations" },
 ];
@@ -208,21 +208,21 @@ async function PartiesTab({
         {canManage && (
           <Link
             href="/master-data/parties/new"
-            className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-11 items-center justify-center rounded bg-primary px-6 font-label text-label text-surface-white hover:bg-primary-hover active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy"
           >
-            New Party
+            New Organization
           </Link>
         )}
       </div>
 
       {/* Table */}
-      <div className="mt-4 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
+      <div className="mt-4 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="font-body text-body-md text-text-grey">
               {search
-                ? `No parties found for "${search}".`
-                : "No parties enrolled yet."}
+                ? `No organizations found for "${search}".`
+                : "No organizations enrolled yet."}
             </p>
           </div>
         ) : (
@@ -293,7 +293,7 @@ async function PartiesTab({
       {/* Pagination */}
       {totalPages > 1 && (
         <nav
-          aria-label="Parties pagination"
+          aria-label="Organizations pagination"
           className="mt-4 flex items-center justify-between"
         >
           <p className="font-body text-body-md text-text-grey">
@@ -345,7 +345,7 @@ async function ItemsTab({
 
   if (itemsReadResult.kind !== "authorized") {
     return (
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 px-6 py-12 text-center">
+      <div className="mt-6 rounded-xl bg-surface-white shadow-elevation-1 px-6 py-12 text-center">
         <p className="font-body text-body-md text-text-grey">
           You do not have permission to view items.
         </p>
@@ -393,7 +393,7 @@ async function ItemsTab({
         {canManage && (
           <Link
             href="/master-data/items/new"
-            className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="flex h-11 items-center justify-center rounded bg-primary px-6 font-label text-label text-surface-white hover:bg-primary-hover active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy"
           >
             New Item
           </Link>
@@ -401,7 +401,7 @@ async function ItemsTab({
       </div>
 
       {/* Table */}
-      <div className="mt-4 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
+      <div className="mt-4 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="font-body text-body-md text-text-grey">
@@ -530,7 +530,7 @@ async function LocationsTab({
 
   if (locReadResult.kind !== "authorized") {
     return (
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 px-6 py-12 text-center">
+      <div className="mt-6 rounded-xl bg-surface-white shadow-elevation-1 px-6 py-12 text-center">
         <p className="font-body text-body-md text-text-grey">
           You do not have permission to view locations.
         </p>
@@ -576,17 +576,25 @@ async function LocationsTab({
           )}
         </form>
         {canManage && (
-          <Link
-            href="/master-data/locations/new"
-            className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy"
-          >
-            New Location
-          </Link>
+          <>
+            <Link
+              href="/master-data/locations/bulk"
+              className="flex h-11 items-center justify-center rounded border border-outline-variant/30 px-6 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            >
+              Bulk Generate
+            </Link>
+            <Link
+              href="/master-data/locations/new"
+              className="flex h-11 items-center justify-center rounded bg-primary px-6 font-label text-label text-surface-white hover:bg-primary-hover active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            >
+              New Location
+            </Link>
+          </>
         )}
       </div>
 
       {/* Table */}
-      <div className="mt-4 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
+      <div className="mt-4 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="font-body text-body-md text-text-grey">

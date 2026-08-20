@@ -5,5 +5,4 @@ export * from "./RouteGuard";
 export * from "./AuthenticatedShellBoundary";
 export * from "./ShellChrome";
 export * from "./ShellNavigation";
-export * from "./LandingPage";
 export * from "./FloorPrimaryAction";

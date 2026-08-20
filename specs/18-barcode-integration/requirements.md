@@ -5,7 +5,7 @@ Updated: 2026-08-10
 
 Depends on:
 - `specs/00-steering/tech.md`
-- `specs/00-steering/brand-design-system.md`
+- `specs/00-steering/ui-ux-design-plan.md`
 - `specs/01-core-data-model/requirements.md`
 
 ## 1. Overview
@@ -50,7 +50,7 @@ The warehouse floor operations are executed strictly on **mobile devices** using
 - Any change to FR-3's existing per-lot/per-item "Print Label" flow.
 
 ## 4. Non-Functional Requirements & UX
-1. **Visual Feedback:** As mandated by `brand-design-system.md`, every successful scan MUST trigger a full-screen color flash (Green for success, Red for failure).
+1. **Visual Feedback:** As mandated by `ui-ux-design-plan.md`, every successful scan MUST trigger a full-screen color flash (Green for success, Red for failure).
 2. **Auditory Feedback:** Upon a successful camera decode, the web application SHALL trigger a short, distinct audio beep to simulate hardware scanner feedback.
 3. **Environment:** The camera scanner MUST support a "torch" (flashlight) toggle if the mobile device's API permits it, to handle poorly lit warehouse aisles.
 

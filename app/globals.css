@@ -2,54 +2,89 @@
 @tailwind components;
 @tailwind utilities;
 
+/* User-controlled preferences. These selectors deliberately use the root
+ * data attributes set by UserPreferencesProvider so they apply throughout
+ * the authenticated app, not only inside the Settings/Profile screen. */
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+html[data-theme="dark"] body,
+html[data-theme="dark"] main[data-surface] {
+  background-color: #0f172a;
+  color: #f8fafc;
+}
+
+html[data-theme="dark"] :is(.bg-background, .bg-surface, .bg-surface-white, .bg-surface-light-grey) {
+  background-color: #1e293b;
+}
+
+html[data-theme="dark"] :is(.text-text-primary, .text-on-surface) {
+  color: #f8fafc;
+}
+
+html[data-theme="dark"] :is(.text-text-secondary, .text-text-grey) {
+  color: #cbd5e1;
+}
+
+html[data-theme="dark"] :is(.border-border, .border-outline-variant) {
+  border-color: #475569;
+}
+
+html[data-theme="dark"] :is(input, select, textarea) {
+  background-color: #0f172a;
+  color: #f8fafc;
+}
+
+html[data-density="compact"] :is(table th, table td) {
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+}
+
 /*
- * Office-page visual contract
- *
- * The template supplied by the product owner uses a compact dashboard rhythm:
- * a light canvas, flat white panels, structured tables and clearly bounded
- * filters/forms. These selectors provide that baseline to every office and
- * party page without changing feature markup, queries, or permission gates.
- * Floor routes are explicitly excluded through ShellChrome's data-surface
- * marker so their scanner-first presentation remains untouched.
+ * Unified UI/UX Visual Design System Baseline
+ * (specs/00-steering/design.md & ui-ux-design-plan.md)
  */
 @layer components {
   main[data-surface="office"],
   main[data-surface="party"] {
-    @apply bg-surface-light-grey text-on-surface;
+    @apply bg-background text-text-primary;
   }
 
   main[data-surface="office"] :is(input, select, textarea),
   main[data-surface="party"] :is(input, select, textarea) {
-    @apply rounded-lg border border-outline-variant/30 bg-surface-white font-body text-body-md text-on-surface shadow-sm outline-none placeholder:text-text-grey/70 focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/20;
+    @apply rounded-lg border border-border bg-surface font-body text-body-md text-text-primary shadow-sm outline-none placeholder:text-text-secondary/70 focus:border-primary focus:ring-2 focus:ring-primary/20;
   }
 
   main[data-surface="office"] table,
   main[data-surface="party"] table {
-    @apply overflow-hidden;
+    @apply overflow-hidden bg-surface;
   }
 
   main[data-surface="office"] thead,
   main[data-surface="party"] thead {
-    @apply bg-surface-light-grey;
+    @apply bg-background;
   }
 
   main[data-surface="office"] th,
   main[data-surface="party"] th {
-    @apply font-label text-label uppercase tracking-[0.06em] text-text-grey;
+    @apply font-label text-label uppercase tracking-[0.06em] text-text-secondary;
   }
 
   main[data-surface="office"] tbody tr,
   main[data-surface="party"] tbody tr {
-    @apply border-outline-variant/30 transition-colors duration-150;
+    @apply border-border/50 transition-colors duration-150;
   }
 
   main[data-surface="office"] tbody tr:hover,
   main[data-surface="party"] tbody tr:hover {
-    @apply bg-accent-indigo-50/35;
+    @apply bg-background/50;
   }
 
   main[data-surface="office"] button:not(:disabled),
-  main[data-surface="party"] button:not(:disabled) {
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2;
+  main[data-surface="party"] button:not(:disabled),
+  button:focus-visible,
+  a:focus-visible {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2;
   }
 }

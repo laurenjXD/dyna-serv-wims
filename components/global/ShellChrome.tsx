@@ -1,32 +1,34 @@
-// Renders the full shell composition: AppHeader landmark (with mobile nav
-// toggle), ShellNavigation, StatusRegion, and the page content slot.
-//
-// Traceability:
-// - design.md §4 (shell composition tree: AppHeader, DesktopSidebar /
-//   MobileFloorNavigation, MainContent slot, StatusRegion).
-// - requirements.md R5.1 ("Authenticated feature routes SHALL render inside
-//   a shared shell layout").
-// - requirements.md R5.5 ("The shell SHALL provide stable landmarks for
-//   header, navigation, main content, and status/feedback regions").
-// - design.md §6 ("At narrow mobile widths the sidebar collapses to a
-//   hamburger/drawer").
-//
-// This is app-wiring glue for app/(authenticated)/layout.tsx, not a
-// separately spec'd component — it composes already-tested pieces
-// (ShellNavigation, useShellAuthorizationContext) with Next.js'
-// `usePathname()`, which is only available client-side.
+// Renders full shell composition: AppHeader, ShellNavigation, StatusRegion, and page content slot.
+// Traceability: design.md §4, requirements.md R5.1, R5.5
 
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Settings } from "lucide-react";
+import { Bell, PanelLeftClose, PanelLeftOpen, Search, Settings, Wifi, WifiOff } from "lucide-react";
 import { resolveSessionPresentationTier } from "@/lib/shell/surface";
-import { useShellSidebar } from "@/lib/shell/state";
+import { isScanLoopRoute } from "@/lib/shell/scan-loop";
+import { useShellSidebar, useDesktopSidebar } from "@/lib/shell/state";
+import { useConnectivityStatus } from "@/lib/shell/use-connectivity";
 import { useShellAuthorizationContext } from "./AuthenticatedShellBoundary";
 import { ShellNavigation } from "./ShellNavigation";
-import { resolveShellUserDisplay } from "@/app/(authenticated)/actions";
+import {
+  resolveShellNotifications,
+  resolveShellUserDisplay,
+  signOutAction,
+} from "@/app/(authenticated)/actions";
+import type { ShellNotification } from "@/app/(authenticated)/actions";
+import { markNotificationReadAction } from "@/lib/actions/notifications";
+
+const CONNECTIVITY_LABEL: Record<
+  ReturnType<typeof useConnectivityStatus>,
+  string
+> = {
+  online: "Online",
+  offline: "Offline",
+  checking: "Checking connection…",
+};
 
 function initials(name: string | null): string {
   if (!name) return "?";
@@ -40,26 +42,135 @@ export function ShellChrome({ children }: { children: ReactNode }) {
   const context = useShellAuthorizationContext();
   const pathname = usePathname();
   const { isOpen, toggle, close } = useShellSidebar();
+  const { isOpen: isDesktopOpen, toggle: toggleDesktop } = useDesktopSidebar();
+  const connectivityStatus = useConnectivityStatus();
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
+  const [organizationScope, setOrganizationScope] = useState<string | null>(null);
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement | null>(null);
+  const accountMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifications, setNotifications] = useState<ShellNotification[]>([]);
+  const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
+  const notificationPanelRef = useRef<HTMLDivElement | null>(null);
+  const desktopBellRef = useRef<HTMLButtonElement | null>(null);
+  const mobileBellRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (!isAccountMenuOpen) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        accountMenuRef.current &&
+        !accountMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsAccountMenuOpen(false);
+      }
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsAccountMenuOpen(false);
+        accountMenuTriggerRef.current?.focus();
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isAccountMenuOpen]);
 
   useEffect(() => {
     let active = true;
     resolveShellUserDisplay()
       .then((result) => {
-        if (active) setDisplayName(result.displayName);
+        if (active) {
+          setDisplayName(result.displayName);
+          setEmail(result.email);
+          setOrganizationScope(result.organizationScope);
+        }
       })
       .catch(() => {
-        if (active) setDisplayName(null);
+        if (active) {
+          setDisplayName(null);
+          setEmail(null);
+          setOrganizationScope(null);
+        }
       });
     return () => {
       active = false;
     };
   }, []);
 
-  // AuthenticatedShellBoundary only renders this subtree once authorized,
-  // so `context` is non-null in practice; the fallback keeps this
-  // component defensively correct without asserting on the boundary.
+  useEffect(() => {
+    let active = true;
+    resolveShellNotifications()
+      .then((result) => {
+        if (active) {
+          setUnreadCount(result.unreadCount);
+          setNotifications(result.notifications);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setUnreadCount(0);
+          setNotifications([]);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isNotificationPanelOpen) return;
+    function handleClickOutside(event: MouseEvent) {
+      const target = event.target as Node;
+      if (
+        notificationPanelRef.current &&
+        !notificationPanelRef.current.contains(target) &&
+        !desktopBellRef.current?.contains(target) &&
+        !mobileBellRef.current?.contains(target)
+      ) {
+        setIsNotificationPanelOpen(false);
+      }
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsNotificationPanelOpen(false);
+        desktopBellRef.current?.focus();
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isNotificationPanelOpen]);
+
+  function handleNotificationClick(notification: ShellNotification) {
+    if (notification.readAt) return;
+
+    // Optimistic UI: mark this notification read locally and drop the
+    // unread count immediately, then fire the real write. The write is
+    // RLS-enforced (markNotificationReadAction -> withRlsTransaction), so
+    // no local rollback/refetch is attempted on failure here -- worst case
+    // is a stale badge until the next resolveShellNotifications() load.
+    setNotifications((current) =>
+      current.map((item) =>
+        item.id === notification.id
+          ? { ...item, readAt: new Date().toISOString() }
+          : item,
+      ),
+    );
+    setUnreadCount((count) => Math.max(0, count - 1));
+    void markNotificationReadAction(notification.id);
+  }
+
   const tier = resolveSessionPresentationTier(context?.activeRoleKeys ?? []);
+  const showFloorTabBar = tier === "floor" && !isScanLoopRoute(pathname);
   const pageTitle = getPageTitle(pathname);
   const canManageAccess = context?.grants.some(
     (grant) => grant.resource === "users" && grant.action === "read",
@@ -67,78 +178,256 @@ export function ShellChrome({ children }: { children: ReactNode }) {
 
   return (
     <>
-      {/* AppHeader — role="banner" landmark (R5.5, design.md §4).
-          Holds the brand mark, the mobile nav-open toggle, and account
-          controls. brand-navy background per brand-design-system.md §9.
-          No backdrop-blur — solid surface for both floor and office tiers. */}
-      <header className="fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-white/10 bg-brand-navy px-4 shadow-elevation-2 lg:left-[306px] lg:h-[76px] lg:border-outline-variant/30 lg:bg-surface-white lg:px-8 lg:shadow-none">
-        {/* Mobile hamburger — hidden above lg where the persistent sidebar
-            takes over. 64px min touch target (floor primary rules apply
-            since this control is present on every surface including floor).
-            active: press feedback only, no hover (brand-design-system §9). */}
-        {/* Floor tier has no persistent sidebar to collapse — its full nav is
-            already one tap away via the bottom tab bar's "More" button
-            (ShellNavigation's floor branch), so the header hamburger only
-            renders for office/party tiers, per design.md §6. */}
+      <header
+        className={`fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-surface px-4 shadow-elevation-1 transition-[left] duration-150 motion-reduce:transition-none lg:inset-x-auto lg:top-0 lg:right-0 lg:min-h-[76px] lg:rounded-none lg:border-x-0 lg:border-t-0 lg:px-8 lg:py-3 lg:shadow-none ${
+          isDesktopOpen ? "lg:left-[312px]" : "lg:left-0"
+        }`}
+      >
         {tier !== "floor" && (
           <button
             type="button"
             aria-label="Open navigation"
             aria-expanded={isOpen}
             onClick={toggle}
-            className="flex h-16 w-16 items-center justify-center text-surface-white active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-surface-white lg:hidden"
+            className="flex h-16 w-16 items-center justify-center text-text-primary active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:hidden"
           >
-            {/* Unicode hamburger — no external icon library (task constraint). */}
             <span aria-hidden="true" className="text-body-lg">
               ☰
             </span>
           </button>
         )}
 
-        {/* Brand word-mark. Real letter-mark asset (text stand-in for now —
-            see tasks.md deferred item on logo asset wiring). Inter
-            SemiBold per brand-design-system §2 / §9 sidebar spec. */}
-        <div className="flex items-center gap-3 lg:hidden">
-          <span
-            aria-hidden="true"
-            className="inline-flex h-8 items-center rounded bg-brand-red px-2 font-heading text-body-sm font-bold tracking-tight text-white"
+        {tier !== "floor" && (
+          <button
+            type="button"
+            aria-label={isDesktopOpen ? "Collapse navigation" : "Expand navigation"}
+            aria-expanded={isDesktopOpen}
+            onClick={toggleDesktop}
+            className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-full text-text-secondary hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:flex"
           >
-            DS
-          </span>
-          <span className="font-label text-body-md font-semibold uppercase tracking-wide text-surface-white">
+            {isDesktopOpen ? (
+              <PanelLeftClose size={22} aria-hidden="true" />
+            ) : (
+              <PanelLeftOpen size={22} aria-hidden="true" />
+            )}
+          </button>
+        )}
+
+        <div className="flex flex-1 items-center gap-3 lg:hidden">
+          <img src="/logo.svg" alt="Dyna-Serv WIMS" className="h-8 w-8" />
+          <span className="font-label text-body-md font-semibold uppercase tracking-wide text-text-primary">
             Dyna-Serv WIMS
           </span>
+          <span
+            data-testid="connectivity-indicator-mobile"
+            aria-label={CONNECTIVITY_LABEL[connectivityStatus]}
+            className="ml-auto flex shrink-0 items-center"
+          >
+            {connectivityStatus === "offline" ? (
+              <WifiOff size={18} aria-hidden="true" className="text-warning" />
+            ) : (
+              <Wifi
+                size={18}
+                aria-hidden="true"
+                className={
+                  connectivityStatus === "online"
+                    ? "text-status-available"
+                    : "text-status-neutral"
+                }
+              />
+            )}
+          </span>
+          <button
+            ref={mobileBellRef}
+            type="button"
+            data-testid="notification-bell"
+            aria-label="Notifications"
+            aria-haspopup="dialog"
+            aria-expanded={isNotificationPanelOpen}
+            onClick={() => setIsNotificationPanelOpen((open) => !open)}
+            className="relative flex h-14 w-14 shrink-0 items-center justify-center text-text-primary active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <Bell size={20} aria-hidden="true" />
+            {unreadCount > 0 && (
+              <span
+                data-testid="notification-badge"
+                className="absolute right-0 top-0 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 font-label text-mono-md font-semibold leading-none text-surface"
+              >
+                {unreadCount}
+              </span>
+            )}
+          </button>
         </div>
 
-        {/* Desktop top bar — matches the Stitch reference's compact title and
-            account controls. Search stays within feature pages, where it can
-            be scoped to a real result set. */}
         <div className="hidden min-w-0 flex-1 items-center lg:flex">
-          <div className="min-w-[230px]">
-            <p className="font-heading text-headline-md font-bold text-on-surface">
+          <div className="min-w-0 shrink-0 max-w-[300px]">
+            <p
+              className="font-heading text-headline-md font-bold leading-tight text-text-primary"
+              title={pageTitle}
+            >
               {pageTitle}
             </p>
           </div>
-          <div className="ml-auto flex items-center gap-7">
+          <label className="mx-auto flex h-12 w-full max-w-[460px] items-center gap-3 rounded-full border border-border bg-background px-4 shadow-elevation-1 focus-within:ring-2 focus-within:ring-primary">
+            <Search size={20} aria-hidden="true" className="shrink-0 text-text-secondary" />
+            <input
+              type="search"
+              aria-label="Search"
+              placeholder="Search inventory, organizations, documents…"
+              className="min-w-0 flex-1 border-0 bg-transparent p-0 font-body text-body-md text-text-primary outline-none placeholder:text-text-secondary"
+            />
+          </label>
+          <div className="ml-auto flex min-w-0 items-center gap-5">
+            <span
+              data-testid="connectivity-indicator"
+              className="flex shrink-0 items-center gap-1.5 text-body-sm font-semibold text-text-secondary"
+            >
+              {connectivityStatus === "offline" ? (
+                <WifiOff size={18} aria-hidden="true" className="text-warning" />
+              ) : (
+                <Wifi
+                  size={18}
+                  aria-hidden="true"
+                  className={
+                    connectivityStatus === "online"
+                      ? "text-status-available"
+                      : "text-status-neutral"
+                  }
+                />
+              )}
+              {CONNECTIVITY_LABEL[connectivityStatus]}
+            </span>
+            <button
+              ref={desktopBellRef}
+              type="button"
+              data-testid="notification-bell"
+              aria-label="Notifications"
+              aria-haspopup="dialog"
+              aria-expanded={isNotificationPanelOpen}
+              onClick={() => setIsNotificationPanelOpen((open) => !open)}
+              className="relative flex h-11 w-11 shrink-0 items-center justify-center text-text-secondary hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <Bell size={22} aria-hidden="true" />
+              {unreadCount > 0 && (
+                <span
+                  data-testid="notification-badge"
+                  className="absolute right-0.5 top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 font-label text-mono-md font-semibold leading-none text-surface"
+                >
+                  {unreadCount}
+                </span>
+              )}
+            </button>
             {canManageAccess && (
               <Link
                 href="/settings"
                 aria-label="Settings"
-                className="flex h-11 w-11 items-center justify-center rounded-full text-text-grey hover:bg-surface-light-grey focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+                className="flex h-11 w-11 shrink-0 items-center justify-center text-text-secondary hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <Settings size={22} aria-hidden="true" />
               </Link>
             )}
-            <Link
-              href="/profile"
-              aria-label="Profile"
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-accent-indigo-300 font-label text-body-md text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
-            >
-              {initials(displayName)}
-            </Link>
+            <div ref={accountMenuRef} className="relative shrink-0">
+              <button
+                ref={accountMenuTriggerRef}
+                type="button"
+                id="account-menu-trigger"
+                data-testid="account-menu-trigger"
+                aria-label="Account"
+                aria-haspopup="dialog"
+                aria-expanded={isAccountMenuOpen}
+                onClick={() => setIsAccountMenuOpen((open) => !open)}
+                className="flex h-11 items-center gap-2 px-1 font-label text-body-md text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-surface">
+                  {initials(displayName)}
+                </span>
+                <span className="max-w-[120px] truncate text-left text-body-sm font-semibold">{displayName ?? "Profile"}</span>
+              </button>
+              {isAccountMenuOpen && (
+                <div
+                  data-testid="account-popup"
+                  aria-labelledby="account-menu-trigger"
+                  className="absolute right-0 top-[calc(100%+8px)] z-40 min-w-[220px] rounded-xl border border-border bg-surface p-2 shadow-elevation-2"
+                >
+                  {(email || organizationScope) && (
+                    <div role="presentation" className="mb-1 border-b border-border pb-1">
+                      {email && (
+                        <span
+                          className="block truncate px-3 py-1 text-body-sm text-text-secondary"
+                          title={email}
+                        >
+                          {email}
+                        </span>
+                      )}
+                      {organizationScope && (
+                        <span
+                          data-testid="account-organization-scope"
+                          className="block truncate px-3 py-1 text-body-sm text-text-secondary"
+                          title={organizationScope}
+                        >
+                          {organizationScope}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  <Link
+                    href="/profile"
+                    aria-label="Profile"
+                    className="block rounded-xl px-3 py-2 font-label text-body-sm font-semibold text-text-primary hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    onClick={() => setIsAccountMenuOpen(false)}
+                  >
+                    Profile
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAccountMenuOpen(false);
+                      void signOutAction();
+                    }}
+                    className="mt-1 flex w-full items-center justify-start rounded-xl px-3 py-2 font-label text-body-sm font-semibold text-text-secondary hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
+
+      {isNotificationPanelOpen && (
+        <div
+          ref={notificationPanelRef}
+          data-testid="notification-panel"
+          aria-labelledby="notification-bell"
+          className="fixed inset-x-4 top-14 z-40 max-h-[70vh] overflow-y-auto rounded-xl border border-border bg-surface p-2 shadow-elevation-2 lg:inset-x-auto lg:right-8 lg:top-[86px] lg:w-[320px]"
+        >
+          {notifications.length === 0 ? (
+            <p className="px-3 py-4 text-center text-body-sm text-text-secondary">
+              No notifications
+            </p>
+          ) : (
+            <ul>
+              {notifications.map((notification) => (
+                <li key={notification.id}>
+                  <button
+                    type="button"
+                    data-testid="notification-list-item"
+                    onClick={() => handleNotificationClick(notification)}
+                    className={`block w-full truncate rounded-xl px-3 py-2 text-left text-body-sm font-semibold hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                      notification.readAt
+                        ? "text-text-secondary"
+                        : "text-text-primary"
+                    }`}
+                  >
+                    {notification.title}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <ShellNavigation
         tier={tier}
@@ -146,15 +435,9 @@ export function ShellChrome({ children }: { children: ReactNode }) {
         currentPath={pathname}
         mobileNavOpen={isOpen}
         onCloseMobileNav={close}
+        desktopOpen={isDesktopOpen}
       />
 
-      {/* StatusRegion — role="status" / aria-live="polite" landmark (R5.5,
-          design.md §4/§10). Visually hidden until a feature writes a
-          message into it; the ARIA live region is always present in the
-          accessibility tree so assistive technology can discover it before
-          any announcement fires. Features write scan success/error
-          feedback here only where shell-level announcement is appropriate
-          — feature-owned floor flash behavior is separate (design.md §9). */}
       <div
         role="status"
         aria-live="polite"
@@ -162,18 +445,13 @@ export function ShellChrome({ children }: { children: ReactNode }) {
         className="sr-only"
       />
 
-      {/* pb-20 (base) clears the fixed floor bottom tab bar; office tier
-          doesn't render that bar, so the extra bottom space is harmless.
-          lg:pl-72 clears the office/party desktop sidebar's fixed width.
-          pt-14 clears the fixed AppHeader.
-          Office/party tiers get the light `surface-light-grey` dashboard
-          backdrop (brand-design-system §6/§9, revised 2026-08-09); floor
-          keeps a plain white background per §6's AAA-contrast floor rule. */}
       <main
         id="main-content"
         data-surface={tier}
-        className={`min-h-screen pb-20 pt-14 lg:pb-0 lg:pl-[306px] lg:pt-[76px] ${
-          tier === "floor" ? "" : "bg-surface-light-grey"
+        className={`min-h-screen pt-14 transition-[padding-left] duration-150 motion-reduce:transition-none lg:pr-6 lg:pt-[124px] ${
+          isDesktopOpen ? "lg:pl-[312px]" : "lg:pl-6"
+        } ${showFloorTabBar ? "pb-20" : "lg:pb-6"} ${
+          tier === "floor" ? "bg-surface" : "bg-background"
         }`}
       >
         <div
@@ -193,19 +471,19 @@ export function ShellChrome({ children }: { children: ReactNode }) {
 function getPageTitle(pathname: string): string {
   if (pathname === "/") return "Overview Dashboard";
   if (pathname.startsWith("/reports")) return "Reports & Analytics";
-  if (pathname.startsWith("/receiving")) return "Incoming Receiving";
-  if (pathname.startsWith("/inventory")) return "Detailed Stock Audit";
+  if (pathname.startsWith("/receiving")) return "Receiving / Incoming";
+  if (pathname.startsWith("/inventory")) return "Master Inventory";
   if (pathname.startsWith("/outgoing") || pathname.startsWith("/pick-lists")) return "Picking & Dispatch";
   if (pathname.startsWith("/transfers")) return "Transfers";
   if (pathname.startsWith("/inspection")) return "Inspection";
   if (pathname.startsWith("/approvals")) return "Approvals";
-  if (pathname.startsWith("/enrollment")) return "Enrollment";
-  if (pathname.startsWith("/master-data/parties")) return "Parties";
-  if (pathname.startsWith("/master-data/items")) return "Items";
+  if (pathname.startsWith("/enrollment")) return "Organization & Item Enrollment";
+  if (pathname.startsWith("/master-data/parties")) return "Organizations";
+  if (pathname.startsWith("/master-data/items")) return "Items (Inventory Model)";
   if (pathname.startsWith("/master-data/locations")) return "Locations";
   if (pathname.startsWith("/billing-pricing")) return "Billing & Pricing";
   if (pathname.startsWith("/documents")) return "Documents";
-  if (pathname.startsWith("/portal")) return "Partner Portal";
+  if (pathname.startsWith("/portal")) return "Organization Portal";
   if (pathname.startsWith("/settings")) return "Settings";
   if (pathname.startsWith("/profile")) return "Profile";
   if (pathname.startsWith("/sync")) return "Sync Center";

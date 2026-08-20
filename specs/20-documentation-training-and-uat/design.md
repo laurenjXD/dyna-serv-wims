@@ -8,7 +8,7 @@ Cites foundational specs:
 - `specs/00-steering/product.md`
 - `specs/00-steering/tech.md`
 - `specs/00-steering/structure.md`
-- `specs/00-steering/brand-design-system.md`
+- `specs/00-steering/ui-ux-design-plan.md`
 - `specs/00-steering/testing.md`
 - `specs/01-core-data-model/`
 - `specs/02-rbac-roles/`
@@ -75,7 +75,7 @@ The table below supersedes the earlier six-scenario draft. Scenarios are grouped
 ## 3. Documentation Design & Templates
 
 ### 3.1 Mobile Floor Operator Quick Reference (Handheld Focus)
-Per `brand-design-system.md`, floor guides follow strict visual hierarchy:
+Per `ui-ux-design-plan.md`, floor guides follow strict visual hierarchy:
 - High contrast typography (sans-serif, minimum 16px text).
 - Single primary action button per screen (`48px` minimum touch target).
 - Explicit visual status badges:

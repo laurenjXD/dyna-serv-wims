@@ -337,7 +337,7 @@ function VmiBillingTab({ selectedMonth, selectedYear }: TabProps) {
             <thead>
               <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
                 <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                  Party
+                  Organization
                 </th>
                 <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                   Lots in Storage
@@ -530,7 +530,7 @@ function TradingMarginTab({ selectedMonth, selectedYear }: TabProps) {
                   Order #
                 </th>
                 <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                  Party
+                  Organization
                 </th>
                 <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                   Item

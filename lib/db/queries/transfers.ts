@@ -413,3 +413,86 @@ export async function getInspectionCase(
     qtyToInspect: row.qtyToInspect == null ? 0 : Number(row.qtyToInspect),
   };
 }
+
+// ---------------------------------------------------------------------------
+// listInspectionAndTransferQueue
+// ---------------------------------------------------------------------------
+//
+// specs/11-transfer-and-inspection/requirements.md R1.1, R2.3;
+// specs/00-steering/multi-agent-work-division.md "Sidebar structure —
+// confirmed target (2026-08-17)"; specs/00-steering/ui-implementation-plan.md
+// P4 — merges listTransferRequests + listInspectionCases into one normalized,
+// sortable row shape. Each row type is independently capability-gated by the
+// CALLER (transfer.view / inspection.perform) — this function performs no
+// authorization itself, it only decides which underlying queries to run
+// based on the opts it's handed.
+
+export type InspectionAndTransferQueueRow = {
+  id: string;
+  type: "transfer" | "inspection";
+  title: string;
+  status: string;
+  createdAt: Date;
+  href: string;
+};
+
+/**
+ * Merges listTransferRequests and listInspectionCases into a single
+ * work-queue list, sorted oldest-first by createdAt to match both source
+ * queries' own ordering.
+ *
+ * Calls listTransferRequests only when includeTransfers is true, and
+ * listInspectionCases only when includeInspections is true (in that order).
+ * When both flags are false, returns [] without issuing any db.select()
+ * calls — defense against wasted queries when a caller ends up with neither
+ * capability.
+ */
+export async function listInspectionAndTransferQueue(
+  db: DbLike,
+  opts: {
+    limit: number;
+    offset: number;
+    includeTransfers: boolean;
+    includeInspections: boolean;
+  },
+): Promise<InspectionAndTransferQueueRow[]> {
+  const rows: InspectionAndTransferQueueRow[] = [];
+
+  if (opts.includeTransfers) {
+    const { rows: transferRows } = await listTransferRequests(db, {
+      limit: opts.limit,
+      offset: opts.offset,
+    });
+    for (const t of transferRows) {
+      rows.push({
+        id: t.id,
+        type: "transfer",
+        title: `Transfer ${t.fromLocationId} → ${t.toLocationId}`,
+        status: t.status,
+        createdAt: t.createdAt,
+        href: `/transfers/${t.id}`,
+      });
+    }
+  }
+
+  if (opts.includeInspections) {
+    const { rows: inspectionRows } = await listInspectionCases(db, {
+      limit: opts.limit,
+      offset: opts.offset,
+    });
+    for (const c of inspectionRows) {
+      rows.push({
+        id: c.id,
+        type: "inspection",
+        title: `${c.itemName} — Lot ${c.lotNumber}`,
+        status: c.status,
+        createdAt: c.openedAt,
+        href: `/inspection/${c.id}`,
+      });
+    }
+  }
+
+  rows.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+
+  return rows;
+}

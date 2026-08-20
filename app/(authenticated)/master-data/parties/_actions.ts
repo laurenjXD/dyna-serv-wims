@@ -67,7 +67,9 @@ export async function createPartyAction(
     email: nullableString(formData.get("email")),
     phone: nullableString(formData.get("phone")),
     taxId: nullableString(formData.get("taxId")),
-    address: nullableString(formData.get("address")),
+    address1: nullableString(formData.get("address1")),
+    address2: nullableString(formData.get("address2")),
+    paymentTerms: nullableString(formData.get("paymentTerms")),
     notes: nullableString(formData.get("notes")),
     isActive: formData.get("isActive") !== "false",
   };
@@ -116,7 +118,9 @@ export async function updatePartyAction(
     email: nullableString(formData.get("email")),
     phone: nullableString(formData.get("phone")),
     taxId: nullableString(formData.get("taxId")),
-    address: nullableString(formData.get("address")),
+    address1: nullableString(formData.get("address1")),
+    address2: nullableString(formData.get("address2")),
+    paymentTerms: nullableString(formData.get("paymentTerms")),
     notes: nullableString(formData.get("notes")),
     isActive: formData.get("isActive") !== "false",
   };

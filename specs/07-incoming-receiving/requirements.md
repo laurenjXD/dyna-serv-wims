@@ -9,58 +9,46 @@ Incoming Receiving governs the inbound lifecycle from an external CIPL/packing-l
 
 The central safety rule is that staged expected stock is not active inventory. A WRR becomes an authoritative inbound transaction only after the approved physical checks and confirmation command succeed.
 
-This feature does not own party/item enrollment, category management, location enrollment, outbound picking, transfer inspection, pricing finalization, VMI billing, or RBAC policy.
+### Terminology Alignment
+Across all user-facing receiving screens, tabs, forms, and headers:
+- **Organization** replaces Party.
+- **Inventory Model** replaces Flow Type.
+- **Organization Portal** replaces Party Portal.
+- **Inspection** replaces Daily Inspection.
+- Receiving Sub-tabs: **Work Queue**, **Receive** (scan flow), **WRRs** (staged & barcode reprint), **Incoming Ledger**.
+
+*(Note: `parties` and `flow_type` remain canonical database identifiers.)*
 
 ## 2. Actors and workflow surfaces
 
-- **Back-office receiving/operations user** — encodes CIPL data into a staged WRR, attaches the reference document, sets per-line dispositions, reviews discrepancies, and prints the WRR.
-- **Warehouse staff** — uses the printed/digital WRR at the `receiving_bay`, scans cartons, records inbound observations, and confirms or escalates the receipt according to capability.
-- **Supervisor** — reviews exceptions, non-conformance, and overrides dispositions where authorized, or any approval path explicitly assigned by the approved authorization matrix.
-- **Administrator** — manages master data and system configuration through their owning features; administrative access does not automatically authorize receipt confirmation.
+- **Back-office receiving/operations user** — encodes CIPL data into a staged WRR, attaches reference documents, sets per-line dispositions, reviews discrepancies, and prints WRRs.
+- **Warehouse staff** — uses the WRR at the `receiving_bay`, scans cartons, records inbound observations, and confirms or escalates receipt.
+- **Supervisor** — reviews exceptions, non-conformance, and overrides dispositions where authorized.
+- **Administrator** — manages master data and system configuration.
 
-The back-office form is an office surface. The physical scan and confirmation flow is a floor surface optimized for portrait handheld scanners, one primary action, high contrast, and immediate scan feedback.
+The back-office form is an office surface. The physical scan and confirmation flow is a floor surface optimized for portrait handheld scanners (375–430px base width, 64px full-width bottom CTA, 16px minimum text size).
 
-## 3. Lifecycle
+## 3. Sub-Tab Architecture
 
-The WRR lifecycle SHALL use the approved core status model, currently planned as:
-
-```text
-staged_pending_arrival → receiving_in_progress → confirmed
-                                      └──────→ cancelled (when permitted)
-```
-
-- `staged_pending_arrival`: expected lines exist, but no active lots or inbound ledger transaction exists.
-- `receiving_in_progress`: physical arrival/reconciliation is underway; scans and inspection observations are being recorded.
-- `confirmed`: the receipt commit transaction has succeeded; active inventory and immutable inbound ledger records exist.
-- `cancelled`: the staged document is deliberately stopped under approved rules; it does not represent received stock.
-
-The final enum and transition constraints must be reconciled with `01-core-data-model` before approval.
+The Receiving page (`/receiving`) features 4 primary sub-tabs:
+1. **Work Queue**: Summary list of staged pending arrivals and in-progress WRRs requiring action.
+2. **Receive**: Floor scan flow (`/receiving/[wrr_id]`) for barcode reconciliation, item verification, and store/hold location commit. Navigation is strictly hidden during active scan loops.
+3. **WRRs**: Archive and lookup of staged, in-progress, and confirmed WRR records, with barcode label reprinting.
+4. **Incoming Ledger**: Read-only, paginated audit view of all inbound inventory transactions (`movement_type = 'receiving'`).
 
 ## 4. Functional requirements
 
 ### R1. CIPL/WRR pre-receiving staging
 
-1. An authorized back-office user SHALL be able to create a WRR from an external CIPL/packing-list reference.
-2. The WRR SHALL capture the approved header references, including WRR number, CIPL reference/attachment where provided, invoice reference, import/PEZA references where applicable, MAWB/MBL (Master Air Waybill / Bill of Lading) number where applicable, source party, and `flow_type`.
-3. Each expected line SHALL identify an approved `item`, required WRR `lot_number`, expected quantity, UOM, unit CBM/reference packaging data required for reconciliation, and an inbound **disposition** (`store` or `inspect`). The `lot_number` field on `wrr_items` is the single canonical business lot identifier; it is copied verbatim to the resulting `lots` record at confirmation and is not supplemented or replaced by any vendor-supplied reference.
-4. **Amended 2026-08-10 (Product Owner) — supersedes the 2026-08-09 amendment of this clause:** a `store`-disposition line SHALL NOT be required to carry a `putaway_location_id` at WRR creation or staging time. The system does not yet know what will be scanned, so a location cannot be meaningfully suggested that early. `putaway_location_id` is instead populated per line at scan/store time, per R3.8/R7.9 below. An `inspect`-disposition line SHALL not use this value at all; its commit resolves a staff-confirmed active `inspection` location instead (R3.9). The per-line commit command re-validates location state and type inside its own transaction.
-5. A staged WRR SHALL not increment active inventory, create available lots, or write a `receiving` inventory transaction.
-6. The system SHALL validate that referenced parties/items are active and authorized for the operation, while unknown items follow the exception path in R4.
-7. The system SHALL support editing staged lines before physical receiving begins, subject to audit/version rules.
-8. Once physical receiving begins, changes to expected lines SHALL be restricted or explicitly versioned; silent changes to the scan baseline are prohibited.
+1. An authorized back-office user SHALL create a WRR capturing WRR number, CIPL/invoice reference, source Organization, and **Inventory Model** (`vmi`, `trading`, `supplies`).
+2. Each expected line SHALL specify item, WRR `lot_number`, expected quantity, UOM, and inbound **disposition** (`store` or `inspect`).
+3. Staged WRRs SHALL NOT increment active inventory or available lots.
 
-### R1a. Supplier advance-notice intake
+### R2. Supplier advance-notice intake
 
-**Added 2026-08-06**, formally adopting the confirmed matching flow from `22-parties-portal` requirements.md R11 / design.md §7c into this spec, per that spec's blocking dependency (c). This clause covers the input into `07`'s pre-receiving process from a party-submitted advance notice; it does not change R1.1's ownership of actual WRR creation.
-
-1. A `wrr_advance_notices` row is owned and written entirely by `22-parties-portal` (a party in the inbound-supplying role — VMI vendor, or Trading `vendor`/`supplier` — submitting a thin pre-arrival label: item, a non-authoritative declared quantity, and an optional supplier lot number). `07` does not define, own, or grant party-user write access to this table; it only consumes rows created there. `wrr_advance_notices` is a `01-core-data-model` schema amendment (2026-08-06), now verified in real Postgres as recorded in the steering revision log.
-2. A back-office user with `receiving.view` and `receiving.confirm` SHALL be able to review a `pending_review` `wrr_advance_notices` row against the actual CIPL they have separately received, and SHALL be able to choose either of the following. The controlled function SHALL independently re-check `receiving.confirm`; no implementation may substitute a role-name check or an invented ad-hoc permission:
-   - **confirm** it — creating a new staged `wrr_items` line or matching it to an existing one, carrying over the item/party reference, and treating the advance notice's `declared_qty` as a non-authoritative starting value the back-office user MAY adjust against the actual CIPL before saving; or
-   - **reject/flag** it as a discrepancy for manual follow-up, without creating or matching a `wrr_items` line.
-   Confirming SHALL set `wrr_advance_notices.matched_wrr_item_id`, `status = 'confirmed'`, `confirmed_at`, and `confirmed_by_user_id`. Rejecting SHALL set `status = 'rejected'` and the same attribution fields, without a `matched_wrr_item_id`.
-3. A physical barcode scan at the `receiving_bay`, using this spec's existing R3 barcode-reconciliation flow, that resolves a `WAN:<uuid>` payload (per `18-barcode-integration` requirements.md FR-2.3) SHALL match to the linked `wrr_items` line via `wrr_advance_notices.matched_wrr_item_id`, and reconciliation then proceeds exactly as R3 already defines for any other scanned line.
-4. If the advance notice was never confirmed by back office before the shipment physically arrives and is scanned, the scan SHALL fall through to this spec's existing R3.3 unknown/unmatched exception path. No new bespoke error state is introduced for this case.
-5. This clause never bypasses R1.1: `07` retains sole ownership of actual WRR/`wrr_items` creation. A `wrr_advance_notices` row is advisory pre-staging input into that process, never a substitute for it, and never a party-user write path into `wrr_items`.
+1. Consumes `wrr_advance_notices` submitted via the **Organization Portal**.
+2. Back-office users SHALL review `pending_review` notices against CIPL and choose to **confirm** (creating/matching a staged WRR line with adjustable declared quantity) or **reject/flag**.
+3. Physical barcode scanning of `WAN:<uuid>` payloads matches to the confirmed `wrr_items` line.
 
 ### R2. WRR printing and arrival
 

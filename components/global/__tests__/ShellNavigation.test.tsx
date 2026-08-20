@@ -94,6 +94,30 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
     expect(screen.queryByTestId("floor-tab-bar")).not.toBeInTheDocument();
   });
 
+  it("desktop sidebar defaults to expanded (lg:flex) when desktopOpen is omitted", () => {
+    render(
+      <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" />,
+    );
+    const sidebar = screen.getByTestId("desktop-sidebar");
+    expect(sidebar.className).toContain("lg:flex");
+    expect(sidebar.className).not.toContain("lg:hidden");
+    expect(sidebar).not.toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("desktop sidebar switches to lg:hidden and aria-hidden when desktopOpen=false (2026-08-17 collapse toggle)", () => {
+    render(
+      <ShellNavigation
+        tier="office"
+        context={officeContext}
+        currentPath="/inventory"
+        desktopOpen={false}
+      />,
+    );
+    const sidebar = screen.getByTestId("desktop-sidebar");
+    expect(sidebar.className).toContain("lg:hidden");
+    expect(sidebar).toHaveAttribute("aria-hidden", "true");
+  });
+
   it("omits nav entries the context has no grant for (R3.4 — hidden, not disabled)", () => {
     render(
       <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" />,
@@ -133,7 +157,22 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
     }
   });
 
-  it("never renders a live link for a featureStatus:'planned' registry entry (e.g. /reports)", () => {
+  it("never renders a live link for a featureStatus:'planned' registry entry (e.g. /documents)", () => {
+    // 2026-08-17: /reports retired as the example here — it flipped
+    // planned -> launch (confirmed fully wired to real data, stale flag).
+    // /documents is still genuinely planned (billing-pricing's real
+    // backend, P11, hasn't landed) — see revision-log.md.
+    render(
+      <ShellNavigation
+        tier="office"
+        context={{ grants: [{ resource: "documents", action: "read", scopeKind: "global" }] }}
+        currentPath="/inventory"
+      />,
+    );
+    expect(screen.queryByTestId("nav-entry-documents")).not.toBeInTheDocument();
+  });
+
+  it("renders a live link for /reports now that it's launchStatus: 'launch' (2026-08-17 stale-flag fix)", () => {
     render(
       <ShellNavigation
         tier="office"
@@ -141,23 +180,29 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
         currentPath="/inventory"
       />,
     );
-    expect(screen.queryByTestId("nav-entry-reports")).not.toBeInTheDocument();
+    expect(screen.getByTestId("nav-entry-reports")).toBeInTheDocument();
   });
 
   it("renders the office sidebar in grouped sections with a header per group (2026-08-09, sidebar reorganization)", () => {
     render(
       <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" />,
     );
-    // officeContext holds pick_list.read (-> "Master Inventory" group, since
-    // /inventory was split out of "Outbound" into its own group 2026-08-11)
-    // and documents.read (route is launchStatus:"planned", so it never
-    // contributes a visible entry or a group) -- exactly one group header
-    // should render: "Master Inventory".
-    expect(screen.getByTestId("nav-group-master-inventory")).toBeInTheDocument();
-    expect(screen.getByText("Master Inventory")).toBeInTheDocument();
+    // officeContext holds pick_list.read (-> "Main" group, per the
+    // 2026-08-17 sidebar/IA restructure) and documents.read (route is
+    // launchStatus:"planned", so it never contributes a visible entry or a
+    // group). "System" also renders regardless of grants: /sync is
+    // capability:"none" (unconditionally visible) and, as of the same-day
+    // surface fix below, surface:"shared" rather than "floor" -- it was
+    // never actually capability-gated, it was wrongly hidden from every
+    // office session by a surface-tag bug (see revision-log.md, "outgoing
+    // and sync surface fix"). "Master Data" correctly stays absent -- unlike
+    // /sync, /enrollment and /billing-pricing both require capabilities this
+    // context doesn't hold (parties.read / reporting.financial_read).
+    expect(screen.getByTestId("nav-group-main")).toBeInTheDocument();
+    expect(screen.getByText("Main")).toBeInTheDocument();
+    expect(screen.getByTestId("nav-group-system")).toBeInTheDocument();
     // No empty-group headers for capabilities this context doesn't hold.
     expect(screen.queryByTestId("nav-group-master-data")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("nav-group-approvals")).not.toBeInTheDocument();
   });
 
   it("never renders group headers for the floor bottom tab bar (grouping is office/party-only)", () => {
@@ -203,7 +248,7 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
     // on desktop is unreachable in the mobile drawer. (The desktop sidebar
     // itself stays mounted -- CSS `hidden` below `lg`, not removed from the
     // DOM -- so this assertion is scoped to inside the dialog specifically.)
-    expect(within(dialog).getByTestId("nav-group-master-inventory")).toBeInTheDocument();
+    expect(within(dialog).getByTestId("nav-group-main")).toBeInTheDocument();
   });
 
   it("renders the drawer for tier='party' too, since party uses the office-shape sidebar (design.md §3.3)", () => {
@@ -263,5 +308,202 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
       />,
     );
     expect(screen.queryByTestId("floor-tab-bar")).not.toBeInTheDocument();
+  });
+
+  // ---------------------------------------------------------------------
+  // Floor text-size floor: requirements.md R2 "Floor screens SHALL use no
+  // text below 16px (`body-md` minimum)" (tasks.md §2 "Ensure no text
+  // below 16px (`body-md` minimum) is rendered on floor screens"), also
+  // restated in ui-ux-design-plan.md §7/§13. `text-mono-sm` resolves to
+  // 14px in tailwind.config.ts and must never be used for floor nav-entry
+  // labels; the 16px floor-appropriate token is `text-mono-md`.
+  // ---------------------------------------------------------------------
+
+  it("renders floor bottom-tab-bar entry labels at 16px minimum (text-mono-md), never the 14px text-mono-sm", () => {
+    render(
+      <ShellNavigation
+        tier="floor"
+        context={receivingOnlyContext}
+        currentPath="/receiving"
+      />,
+    );
+    const receivingLink = screen.getByTestId("nav-entry-receiving");
+    const label = within(receivingLink).getByText("Receiving");
+    expect(label.className).not.toContain("text-mono-sm");
+    expect(label.className).toContain("text-mono-md");
+  });
+
+  // ---------------------------------------------------------------------
+  // Floor text-size floor, "More" overlay case: the primary floor tab-bar
+  // fix (above) only corrected the persistent bottom tab bar. The overlay
+  // opened from that bar's "More" button reuses `GroupedSections` /
+  // `MoreOverlay`, which today hardcode office-tier (14px) text
+  // regardless of which tier opened them — the overlay's nav-entry
+  // labels, section-group headers, and role-label all still render at
+  // sub-16px even in a floor session. R7.4 (requirements.md) requires no
+  // text below 16px on floor screens; tasks.md §2 requires this be
+  // eliminated wherever floor sessions can reach it, not just on the
+  // tab-bar's own primary entries.
+  // ---------------------------------------------------------------------
+
+  // Grants enough floor/shared-surface capabilities to produce more than 4
+  // navigable floor entries (root, receiving, outgoing, sync, profile), so
+  // the "More" button renders. "outgoing" (surface shared, group "Main") is
+  // used as the overlay nav-entry under test since it's guaranteed present
+  // past the primary 4.
+  const floorManyEntriesContext: Pick<AuthorizationContext, "grants"> = {
+    grants: [
+      { resource: "receiving", action: "view", scopeKind: "global" },
+      { resource: "pick_list", action: "execute", scopeKind: "global" },
+      { resource: "inspection", action: "perform", scopeKind: "global" },
+      { resource: "transfer", action: "view", scopeKind: "global" },
+    ],
+  };
+
+  it("renders the floor 'More' overlay's nav-entry labels at 16px minimum (text-mono-md), never the 14px text-label, when opened from a floor session (R7.4)", async () => {
+    const user = userEvent.setup();
+    render(
+      <ShellNavigation tier="floor" context={floorManyEntriesContext} currentPath="/receiving" />,
+    );
+    await user.click(screen.getByRole("button", { name: /more navigation options/i }));
+    const dialog = screen.getByRole("dialog", { name: /navigation menu/i });
+    const entryLink = within(dialog).getByTestId("nav-entry-outgoing");
+    const label = within(entryLink).getByText("Outgoing");
+    expect(label.className).not.toContain("text-label");
+    expect(label.className).toContain("text-mono-md");
+  });
+
+  it("renders the floor 'More' overlay's section-group header at 16px minimum (text-body-md/text-mono-md), never the 14px text-mono-sm, when opened from a floor session (R7.4)", async () => {
+    const user = userEvent.setup();
+    render(
+      <ShellNavigation tier="floor" context={floorManyEntriesContext} currentPath="/receiving" />,
+    );
+    await user.click(screen.getByRole("button", { name: /more navigation options/i }));
+    const dialog = screen.getByRole("dialog", { name: /navigation menu/i });
+    const groupHeader = within(dialog).getByTestId("nav-group-main");
+    expect(groupHeader.className).not.toContain("text-mono-sm");
+    expect(groupHeader.className).toContain("text-mono-md");
+  });
+
+  it("renders the floor 'More' overlay's role-label at 16px minimum (text-body-md), never the 14px text-body-sm, when opened from a floor session (R7.4)", async () => {
+    const user = userEvent.setup();
+    render(
+      <ShellNavigation tier="floor" context={floorManyEntriesContext} currentPath="/receiving" />,
+    );
+    await user.click(screen.getByRole("button", { name: /more navigation options/i }));
+    const dialog = screen.getByRole("dialog", { name: /navigation menu/i });
+    // Role-label sits in the same header row as the display-name; select
+    // it via its sibling text node (roleDisplayLabel([]) resolves to a
+    // non-empty string per lib/shell/surface.ts).
+    const header = dialog.querySelector('[class*="border-b"]');
+    expect(header).not.toBeNull();
+    const roleLabelEl = header!.querySelector("p.truncate.font-body");
+    expect(roleLabelEl).not.toBeNull();
+    expect(roleLabelEl!.className).not.toContain("text-body-sm");
+    expect(roleLabelEl!.className).toContain("text-body-md");
+  });
+
+  it("still allows the office desktop sidebar's grouped section text at 14px (office-only, not floor-reachable)", () => {
+    render(
+      <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" />,
+    );
+    const groupHeader = screen.getByTestId("nav-group-main");
+    expect(groupHeader.className).toContain("text-mono-sm");
+  });
+
+  // ---------------------------------------------------------------------
+  // Scan-loop navigation suppression: requirements.md R4.3 ("During an
+  // active scan-driven floor flow, navigation SHALL be completely hidden
+  // ... Bottom tabs appear only between scan steps.") and tasks.md §4
+  // ("Implement mobile/floor navigation: bottom tab bar between steps,
+  // completely hidden navigation during active scan loops.").
+  //
+  // Confirmed 2026-08-16 decision: hides for the ENTIRE duration one of
+  // the 5 scan-flow pages is open (pure route-based check via
+  // lib/shell/scan-loop.ts#isScanLoopRoute, not per-scan-step state), and
+  // reappears once the user navigates away to any other page. Tested here
+  // only for tier="floor" -- the floor bottom tab bar is the surface this
+  // rule applies to.
+  // ---------------------------------------------------------------------
+
+  const scanLoopPaths = [
+    "/receiving/wrr-123/receive",
+    "/pick-lists/PL-2026-777/pick",
+    "/pick-lists/PL-2026-777/dispatch",
+    "/transfers/TR-2026-004/execute",
+    "/transfers/TR-2026-004/inspect",
+  ];
+
+  it.each(scanLoopPaths)(
+    "does not render the floor tab bar at all for tier='floor' while on the scan-flow route %s (R4.3)",
+    (scanLoopPath) => {
+      render(
+        <ShellNavigation
+          tier="floor"
+          context={floorManyEntriesContext}
+          currentPath={scanLoopPath}
+        />,
+      );
+      expect(screen.queryByTestId("floor-tab-bar")).not.toBeInTheDocument();
+    },
+  );
+
+  it("still renders the floor tab bar for tier='floor' on an ordinary floor path that is not a scan-flow route (regression guard)", () => {
+    render(
+      <ShellNavigation tier="floor" context={receivingOnlyContext} currentPath="/receiving" />,
+    );
+    expect(screen.getByTestId("floor-tab-bar")).toBeInTheDocument();
+  });
+
+  it("still renders the floor tab bar for tier='floor' on a receiving detail page that has not yet entered the receive scan flow (near-miss regression guard)", () => {
+    render(
+      <ShellNavigation
+        tier="floor"
+        context={receivingOnlyContext}
+        currentPath="/receiving/wrr-123"
+      />,
+    );
+    expect(screen.getByTestId("floor-tab-bar")).toBeInTheDocument();
+  });
+});
+
+// -----------------------------------------------------------------------
+// RED TEST (tasks.md §4 / requirements.md R4.1, R5.5): real letter-mark
+// logo asset in the desktop sidebar.
+//
+// requirements.md R4.1 ("Office screens SHALL provide the approved desktop
+// sidebar using White or Cream White background, Deep Navy (#0F172A) active
+// text, Slate (#64748B) inactive text, Vibrant Blue (#2563EB) active
+// indicator, and real letter-mark logo asset (no diagonal-cut motif)."),
+// tasks.md §4 ("Implement desktop sidebar using ... and real letter-mark
+// logo asset (no diagonal cut).").
+//
+// A real logo file now exists at `public/logo.svg` (spec gap this cycle:
+// only a text brand label "Dyna-Serv WIMS" is rendered in the sidebar
+// today -- no image/logo mark at all, confirmed via read of
+// ShellNavigation.tsx lines 317-319). This RED test targets the desktop
+// sidebar (`data-testid="desktop-sidebar"`) rendering a real <img> element
+// referencing the real asset, alongside (not instead of) the existing
+// "Dyna-Serv WIMS" text label -- additive, not a replacement.
+// -----------------------------------------------------------------------
+describe("ShellNavigation desktop sidebar logo (requirements.md R4.1, tasks.md §4 real letter-mark logo asset)", () => {
+  it("renders a real <img> logo asset referencing /logo.svg inside the desktop sidebar, alongside the 'Dyna-Serv WIMS' brand text (R4.1)", () => {
+    render(
+      <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" />,
+    );
+
+    const sidebar = screen.getByTestId("desktop-sidebar");
+
+    // EXPECTED FAILURE (RED): ShellNavigation.tsx currently renders only a
+    // <p> text brand label in the sidebar header block -- no <img>/logo
+    // element exists at all today, so this query finds nothing.
+    const logo = within(sidebar).getByRole("img", { name: /dyna-serv wims/i });
+    expect(logo).toBeInTheDocument();
+    expect(logo.tagName).toBe("IMG");
+    expect(logo).toHaveAttribute("src", expect.stringContaining("/logo.svg"));
+
+    // Additive, not a replacement: the existing text brand label must still
+    // be present alongside the new logo image.
+    expect(within(sidebar).getByText("Dyna-Serv WIMS")).toBeInTheDocument();
   });
 });

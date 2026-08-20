@@ -194,6 +194,9 @@ const validPartyInput = {
   code: "PARTY-001",
   name: "Acme Supplies Ltd",
   email: "contact@acme.com",
+  address1: "123 Main Street",
+  address2: "Barangay San Isidro",
+  paymentTerms: "Net 30",
   isActive: true,
 };
 
@@ -258,6 +261,7 @@ describe("createParty — validation (R1.1-R1.3, design.md §5 Create)", () => {
 describe("createParty — success (R1.1, design.md §5 Create)", () => {
   it("returns { ok: true, data: { id: string } } on a valid authorized request", async () => {
     const db = {
+      select: vi.fn().mockReturnValue(makeSelectChain([])), // no code collision
       insert: vi.fn().mockReturnValue(makeInsertChain("party-new-uuid")),
     };
 
@@ -272,6 +276,65 @@ describe("createParty — success (R1.1, design.md §5 Create)", () => {
       expect(result).toHaveProperty("data");
       expect(typeof (result as { ok: true; data: { id: string } }).data.id).toBe("string");
     }
+  });
+
+  it("writes the approved split-address and payment-terms fields", async () => {
+    const insertChain = makeInsertChain("party-new-uuid");
+    const db = { insert: vi.fn().mockReturnValue(insertChain) };
+
+    await createParty(authorizedResolver(), validPartyInput, mockRlsDeps(db).deps);
+
+    expect(insertChain.values).toHaveBeenCalledWith(
+      expect.objectContaining({
+        address1: "123 Main Street",
+        address2: "Barangay San Isidro",
+        paymentTerms: "Net 30",
+      }),
+    );
+  });
+});
+
+describe("createParty — duplicate code (DB UNIQUE constraint on code; previously an unhandled raw insert error)", () => {
+  it("returns { ok: false, fieldErrors: { code: '...' } } and never calls insert when the code already exists", async () => {
+    const db = {
+      select: vi.fn().mockReturnValue(makeSelectChain([{ id: "existing-party" }])),
+      insert: vi.fn().mockReturnValue(makeInsertChain("party-new-uuid")),
+    };
+
+    const result = await createParty(
+      authorizedResolver(),
+      validPartyInput,
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok && "fieldErrors" in result) {
+      expect(result.fieldErrors.code).toMatch(/already in use/i);
+    }
+    expect(db.insert).not.toHaveBeenCalled();
+  });
+});
+
+describe("createParty — address field mapping (2026-08-17 fix: schema column is address_1, not address)", () => {
+  it("maps the input's address to address1 in the insert values, not a nonexistent 'address' key", async () => {
+    const db = {
+      select: vi.fn().mockReturnValue(makeSelectChain([])),
+      insert: vi.fn().mockReturnValue(makeInsertChain("party-new-uuid")),
+    };
+
+    await createParty(
+      authorizedResolver(),
+      { ...validPartyInput, address: "123 Warehouse Row" },
+      mockRlsDeps(db).deps,
+    );
+
+    const insertChain = db.insert.mock.results[0].value;
+    expect(insertChain.values).toHaveBeenCalledWith(
+      expect.objectContaining({ address1: "123 Warehouse Row" }),
+    );
+    expect(insertChain.values).not.toHaveBeenCalledWith(
+      expect.objectContaining({ address: expect.anything() }),
+    );
   });
 });
 
@@ -334,7 +397,15 @@ describe("updateParty — stale-edit conflict (R2.4, design.md §5 Edit/deactiva
       updated_at: new Date(currentUpdatedAt),
     };
     const db = {
-      select: vi.fn().mockReturnValue(makeSelectChain([dbRow])),
+      // Two sequential select calls: 1) stale-edit fetch of the current row,
+      // 2) duplicate-code check (excludes self via ne(), but this mock
+      // doesn't evaluate WHERE clauses — mockReturnValueOnce keeps them
+      // distinct so the duplicate check sees "no collision" rather than
+      // wrongly matching the current row against itself).
+      select: vi
+        .fn()
+        .mockReturnValueOnce(makeSelectChain([dbRow]))
+        .mockReturnValueOnce(makeSelectChain([])),
       update: vi.fn().mockReturnValue(makeUpdateChain()),
     };
 
@@ -347,6 +418,57 @@ describe("updateParty — stale-edit conflict (R2.4, design.md §5 Edit/deactiva
     );
 
     expect(result.ok).toBe(true);
+  });
+
+  it("returns { ok: false, fieldErrors: { code: '...' } } and never calls update when the new code collides with a DIFFERENT party", async () => {
+    const currentUpdatedAt = "2024-06-01T12:00:00.000Z";
+    const dbRow = { id: "party-1", updated_at: new Date(currentUpdatedAt) };
+    const db = {
+      select: vi
+        .fn()
+        .mockReturnValueOnce(makeSelectChain([dbRow])) // stale-edit fetch
+        .mockReturnValueOnce(makeSelectChain([{ id: "some-other-party" }])), // collision
+      update: vi.fn().mockReturnValue(makeUpdateChain()),
+    };
+
+    const result = await updateParty(
+      authorizedResolver(),
+      "party-1",
+      validPartyInput,
+      currentUpdatedAt,
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok && "fieldErrors" in result) {
+      expect(result.fieldErrors.code).toMatch(/already in use/i);
+    }
+    expect(db.update).not.toHaveBeenCalled();
+  });
+
+  it("maps the input's address to address1 in the update values, not a nonexistent 'address' key", async () => {
+    const currentUpdatedAt = "2024-06-01T12:00:00.000Z";
+    const dbRow = { id: "party-1", updated_at: new Date(currentUpdatedAt) };
+    const db = {
+      select: vi
+        .fn()
+        .mockReturnValueOnce(makeSelectChain([dbRow]))
+        .mockReturnValueOnce(makeSelectChain([])),
+      update: vi.fn().mockReturnValue(makeUpdateChain()),
+    };
+
+    await updateParty(
+      authorizedResolver(),
+      "party-1",
+      { ...validPartyInput, address: "456 Dock Street" },
+      currentUpdatedAt,
+      mockRlsDeps(db).deps,
+    );
+
+    const updateChain = db.update.mock.results[0].value;
+    expect(updateChain.set).toHaveBeenCalledWith(
+      expect.objectContaining({ address1: "456 Dock Street" }),
+    );
   });
 });
 

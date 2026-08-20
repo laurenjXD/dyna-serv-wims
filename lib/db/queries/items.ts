@@ -59,6 +59,7 @@ export type CategoryOption = {
   id: string;
   name: string;
   flowType: string | null;
+  parentId: string | null;
 };
 
 export type SupplierPartyOption = {
@@ -295,6 +296,7 @@ export async function getItemCategories(
       id: itemCategories.id,
       name: itemCategories.name,
       flowType: itemCategories.flowType,
+      parentId: itemCategories.parentId,
     })
     .from(itemCategories)
     .orderBy(itemCategories.name);

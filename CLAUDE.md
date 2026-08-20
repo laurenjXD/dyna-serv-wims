@@ -19,7 +19,7 @@ A hybrid warehouse inventory system: VMI (vendor-owned stock, CBM-based billing)
 | `specs/00-steering/product.md` | Business context, who the users are |
 | `specs/00-steering/tech.md` | Stack (Next.js 15 + Supabase + Vercel, locked as Option A), cross-cutting architecture principles |
 | `specs/00-steering/structure.md` | Naming (parties/items/locations, never suppliers/SKU/bins), repo layout |
-| `specs/00-steering/brand-design-system.md` | Colors, typography, mobile-first floor-priority rules — **read before any UI code**, no exceptions |
+| `specs/00-steering/ui-ux-design-plan.md` | Colors, typography, mobile-first floor-priority rules — **read before any UI code**, no exceptions |
 | `specs/00-steering/testing.md` | Vitest + Playwright, two-stage DB testing, floor/hardware simulation strategy |
 | `specs/00-steering/gantt-mapping.md` | What's actually approved vs. in-progress vs. not started, mapped to the delivery timeline |
 | `specs/00-steering/revision-log.md` | Every merge conflict and major decision, dated — check here before assuming something is settled |
@@ -30,7 +30,7 @@ A hybrid warehouse inventory system: VMI (vendor-owned stock, CBM-based billing)
 - **One warehouse.** No `warehouse_id` anywhere.
 - **`parties` / `items` / `locations`** — not `suppliers` / `SKU` / `bins`.
 - **`pick_list` + `acknowledgement_receipt`**, both priced. No `withdrawal_slip`, no `awaiting_pricing` status. Trading's price on a document is final; VMI's is a per-release reference only — the real VMI bill is always the period average, never a single document's total.
-- **Mobile-first, floor-priority.** The warehouseman on a handheld scanner is the primary user. Office/desktop screens are the secondary case. See `brand-design-system.md` §3 for what this means concretely (touch targets, no glassmorphism on floor screens, hover vs. press, single-primary-action-per-screen).
+- **Mobile-first, floor-priority.** The warehouseman on a handheld scanner is the primary user. Office/desktop screens are the secondary case. See `ui-ux-design-plan.md` §3 for what this means concretely (touch targets, no glassmorphism on floor screens, hover vs. press, single-primary-action-per-screen).
 - **Deferred or Draft areas:** parties portal (`22`) is Approved for its documented contract, with downstream runtime work gated by its named dependencies; barcode integration (`18`) is Approved for its documented contract, with runtime scanner tests remaining implementation work; dispatch scheduling/delivery tracking (`19`) is deferred.
 
 ## Working in this repo
@@ -52,7 +52,7 @@ Use these for their specific jobs instead of doing everything in the main thread
 | `backend-builder` | Implementing Next.js API routes, Server Actions, and business logic (FIFO/FEFO, pricing, approval workflow) against an approved, already-verified schema. |
 | `frontend-builder` | Implementing Next.js pages/components against a working backend. Always hands off to `design-system-auditor` before considering a component done. |
 | `rbac-rls-reviewer` | Reviewing anything touching party/role-scoped data. Flags application-layer-only access control that isn't actually enforced by RLS. Read-only. |
-| `design-system-auditor` | Reviewing new UI work against `brand-design-system.md`. Read-only. |
+| `design-system-auditor` | Reviewing new UI work against `ui-ux-design-plan.md`. Read-only. |
 | `offline-sync-reviewer` | Reviewing offline-queue code. Catches Tier 2 actions (approval, pricing, FIFO allocation) accidentally wired into the Tier 1 offline queue. Read-only. |
 | `integration-reviewer` | Reviewing the seam between two already-built features (e.g. receiving → picking, approval queue → withdrawal) — checks shared tables/state/assumptions match on both sides. Read-only. |
 | `test-writer` | Writing actual test code per `testing.md`'s strategy once a tasks.md's testing requirements are known. |

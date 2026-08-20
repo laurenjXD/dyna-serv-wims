@@ -120,7 +120,7 @@ An online UI may still render these controls only when the current server state 
 
 1. Floor screens SHALL clearly communicate whether a capture is saved locally, queued, syncing, accepted, rejected, or requires attention.
 2. The interface SHALL provide one obvious next action during a floor flow and SHALL not force a warehouseman to inspect a dense queue table to continue work.
-3. Offline feedback SHALL use icon/text/state semantics in addition to color and SHALL follow the brand-design-system touch, contrast, typography, and motion rules.
+3. Offline feedback SHALL use icon/text/state semantics in addition to color and SHALL follow `ui-ux-design-plan.md`'s touch, contrast, typography, and motion rules.
 4. Sync feedback SHALL not block scanner input or local capture longer than necessary.
 5. Office users SHALL have an appropriate queue/attention view when their workflow owns review of rejected or conflicted operations.
 6. The shell's connectivity indicator consumes this spec's read-only status contract; it does not own queue replay or conflict resolution.

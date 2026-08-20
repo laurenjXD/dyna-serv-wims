@@ -83,21 +83,38 @@ const EXPECTED_ROUTES: Array<{
   // and /outgoing-ledger routes were merged into inventory/page.tsx (Pick
   // Lists + Ledger tabs). The floor pick/dispatch detail routes stay at
   // /pick-lists/[pickListId]/... unchanged. See revision-log.md.
-  { id: "inventory", path: "/inventory", surface: "office", capability: "pick_list.read", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
+  // 2026-08-17: surface corrected office -> shared. warehouse_staff (floor
+  // tier) needs Master Inventory's Pick Lists tab to generate pick lists and
+  // proceed to outgoing — office-only excluded floor sessions from this
+  // route entirely. Same reasoning/precedent as receiving/outgoing/sync
+  // above. See revision-log.md.
+  { id: "inventory", path: "/inventory", surface: "shared", capability: "pick_list.read", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
   // 2026-08-09 PO amendment: /outgoing added as a floor pick-execution hub
   // (Active Picks + Outgoing Ledger tabs). See revision-log.md.
-  { id: "outgoing", path: "/outgoing", surface: "floor", capability: "pick_list.execute", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
+  // 2026-08-17: surface corrected floor -> shared, same reasoning as
+  // /receiving above. outgoing/page.tsx's own header comment already
+  // documented "Surface: Floor (primary) / Office (secondary review)" —
+  // the Outgoing Ledger tab is office-context read-only review, same shape
+  // as receiving's WRRs tab. The floor-only tag meant selectRoutesForPresentation
+  // dropped /outgoing from the office sidebar entirely, contradicting both
+  // that comment and multi-agent-work-division.md's confirmed sidebar target
+  // (Withdrawal / Outgoing listed under MAIN). See revision-log.md.
+  { id: "outgoing", path: "/outgoing", surface: "shared", capability: "pick_list.execute", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
   { id: "inventory-pick-list-execute", path: "/pick-lists/[pickListId]/pick", surface: "floor", capability: "pick_list.execute", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
   { id: "inventory-pick-list-dispatch", path: "/pick-lists/[pickListId]/dispatch", surface: "floor", capability: "dispatch.execute", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
-  { id: "inspection", path: "/inspection", surface: "shared", capability: "inspection.perform", featureSpecs: ["07-incoming-receiving", "08-outgoing-withdrawal-and-two-stage-commitment", "11-transfer-and-inspection"], launchStatus: "launch" },
-  { id: "inspection-detail", path: "/inspection/[inspection_id]", surface: "floor", capability: "inspection.perform", featureSpecs: ["07-incoming-receiving", "08-outgoing-withdrawal-and-two-stage-commitment", "11-transfer-and-inspection"], launchStatus: "launch" },
   { id: "documents", path: "/documents", surface: "office", capability: "documents.read", featureSpecs: ["10-pick-list-and-acknowledgement-receipt"], launchStatus: "planned" },
   { id: "approvals", path: "/approvals", surface: "office", capability: "fifo_override.approve", featureSpecs: ["09-approval-queue"], launchStatus: "launch" },
-  { id: "sync", path: "/sync", surface: "floor", capability: "none", featureSpecs: ["03-offline-mode-and-client-storage"], launchStatus: "launch" },
-  // 2026-08-08: corrected transfers.read -> transfer.view (singular) —
-  // 0014_transfer_rls_policies.sql's deliberate, documented capability
-  // vocabulary for this feature. See revision-log.md.
-  { id: "transfers", path: "/transfers", surface: "shared", capability: "transfer.view", featureSpecs: ["11-transfer-and-inspection"], launchStatus: "launch" },
+  // 2026-08-17: surface corrected floor -> shared. multi-agent-work-division.md's
+  // confirmed sidebar target lists Sync under the office sidebar's SYSTEM
+  // group — a status indicator page, not a floor-scan-loop action, so there
+  // is no reason to hide it from office/administrator sessions. See revision-log.md.
+  { id: "sync", path: "/sync", surface: "shared", capability: "none", featureSpecs: ["03-offline-mode-and-client-storage"], launchStatus: "launch" },
+  // 2026-08-17: 'transfers', 'inspection', and 'inspection-detail' rows were
+  // removed from this fixture — the merged Transfer+Inspection queue
+  // restructure retired their pages to redirects (see the second describe
+  // block below), so they are no longer nav-visible destinations. This
+  // resolves the intentional contradiction this file's second describe
+  // block previously documented between the two fixtures.
   // 2026-08-09 PO amendment: /enrollment added as office Master Data hub
   // (Parties / Items / Locations tabs). See revision-log.md.
   // 2026-08-11: this is now the SOLE Master Data nav entry — the separate
@@ -112,7 +129,9 @@ const EXPECTED_ROUTES: Array<{
   // 2026-08-09: added — was already in 05's design.md route table (Planned)
   // but had never been added to this registry. See revision-log.md.
   { id: "billing-pricing", path: "/billing-pricing", surface: "office", capability: "reporting.financial_read", featureSpecs: ["12-vmi-billing", "13-trading-orders-and-pricing"], launchStatus: "planned" },
-  { id: "reports", path: "/reports", surface: "office", capability: "reporting.read", featureSpecs: ["16-reporting-and-analytics"], launchStatus: "planned" },
+  // 2026-08-17: launchStatus corrected planned -> launch — the page is
+  // fully wired to real query modules, no TODO/mock markers. See revision-log.md.
+  { id: "reports", path: "/reports", surface: "office", capability: "reporting.read", featureSpecs: ["16-reporting-and-analytics"], launchStatus: "launch" },
   { id: "profile", path: "/profile", surface: "shared", capability: "none", featureSpecs: ["21-user-profile-and-settings"], launchStatus: "launch" },
   { id: "settings", path: "/settings", surface: "office", capability: "users.read", featureSpecs: ["21-user-profile-and-settings"], launchStatus: "launch" },
   { id: "portal", path: "/portal", surface: "party", capability: "none", featureSpecs: ["22-parties-portal"], launchStatus: "launch" },
@@ -124,7 +143,7 @@ const EXPECTED_ROUTES: Array<{
 ];
 
 describe("lib/shell/registry — route catalog matches design.md §3.2 exactly (R3.1, R3.2)", () => {
-  it("exports ROUTE_REGISTRY with exactly the current 24 rows (no stale /dashboard, no extra/missing rows; 2026-08-11 consolidates Master Data nav down to the single /enrollment entry)", async () => {
+  it("exports ROUTE_REGISTRY with exactly the current 21 rows (no stale /dashboard, no extra/missing rows; 2026-08-11 consolidates Master Data nav down to the single /enrollment entry; 2026-08-17 retires 'transfers'/'inspection'/'inspection-detail' to redirect-only pages)", async () => {
     const { ROUTE_REGISTRY } = await import("../registry");
     expect(Array.isArray(ROUTE_REGISTRY)).toBe(true);
     expect(ROUTE_REGISTRY).toHaveLength(EXPECTED_ROUTES.length);
@@ -189,5 +208,178 @@ describe("lib/shell/registry — route catalog matches design.md §3.2 exactly (
     for (const row of ROUTE_REGISTRY) {
       expect(row.capability).toMatch(capabilityPattern);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// RED step for the 2026-08-17 sidebar/IA restructure.
+//
+// Backing acceptance criterion: specs/05-ui-shell-and-navigation/requirements.md
+// R3.2 ("Each entry SHALL support, at minimum, ... navigation group, ...").
+// The specific 5(+1)-group taxonomy below is the Product Owner's confirmed
+// target, recorded in specs/00-steering/multi-agent-work-division.md's
+// "Sidebar structure — confirmed target (2026-08-17)" section. That section
+// is this cycle's authoritative source for the exact reassignment table and
+// removed-entry list -- it supersedes registry.test.ts's older
+// EXPECTED_ROUTES fixture above wherever the two disagree (this new block
+// intentionally does not touch that older fixture/its `id: "transfers"` /
+// `id: "inspection"` rows -- those will need updating in the same PR that
+// implements the removal, since the two describe blocks currently make
+// contradictory assertions about the same rows on purpose, to prove this
+// block is RED against the CURRENT registry.ts state).
+//
+// Determination made after reading the code (not assumed): the party portal
+// sidebar (`surface: "party"`, tier: "party") is NOT rendered through a
+// separate mechanism today -- ShellNavigation's non-floor branch renders the
+// exact same `groupRoutesForSidebar()` / `GroupedSections` path for
+// tier==="office" and tier==="party" alike (see
+// components/global/ShellNavigation.tsx's single non-floor return block, and
+// components/global/__tests__/ShellNavigation.test.tsx's "renders the
+// desktop sidebar (office composition) for tier='party'" and "renders the
+// drawer for tier='party' too, since party uses the office-shape sidebar"
+// tests). `groupRoutesForSidebar` buckets strictly by
+// `NAV_GROUP_ORDER.filter((group) => byGroup.has(group))` -- so dropping
+// "Organization Portal" from NAV_GROUP_ORDER, as the work-division doc's
+// prose literally suggests ("Organization Portal is deliberately absent...
+// not part of this internal-staff sidebar"), would silently render ZERO
+// nav sections for every party-tier session, since portal rows' `group`
+// value has nowhere left to bucket into. No replacement portal-sidebar
+// mechanism exists in the codebase today. Per this repo's decision
+// principle (resolve by what's best-suited to the system, don't just ask),
+// this test file keeps "Organization Portal" as a 6th `NAV_GROUP_ORDER`
+// value rather than removing it outright -- the restructure is "5 groups
+// for the internal-staff surface, plus the portal's own untouched 6th" not
+// literally "NAV_GROUP_ORDER has exactly 5 entries total." Flag this to the
+// builder explicitly: if the intent really was to fully separate the portal
+// sidebar onto its own non-shared component, that is materially more work
+// than a registry rewrite and belongs in its own spec'd task, not silently
+// folded into this cycle.
+describe("lib/shell/registry — 2026-08-17 sidebar/IA restructure (R3.2, multi-agent-work-division.md 'Sidebar structure — confirmed target')", () => {
+  it("NAV_GROUP_ORDER is exactly the 5 restructured internal-staff groups plus the untouched 'Organization Portal' group (6 total, in this order)", async () => {
+    const { NAV_GROUP_ORDER } = await import("../registry");
+    expect(NAV_GROUP_ORDER).toEqual([
+      "Main",
+      "Reports",
+      "Master Data",
+      "System",
+      "Account",
+      "Organization Portal",
+    ]);
+  });
+
+  it("NAV_GROUP_ORDER no longer contains any of the 7 retired internal-staff group names", async () => {
+    const { NAV_GROUP_ORDER } = await import("../registry");
+    const retired = [
+      "Overview",
+      "Receiving / Incoming",
+      "Master Inventory",
+      "Outgoing / Withdrawal",
+      "Transfers & Inspection",
+      "Approvals",
+      "Reporting",
+    ];
+    for (const retiredGroup of retired) {
+      expect(NAV_GROUP_ORDER).not.toContain(retiredGroup);
+    }
+  });
+
+  // Reassignment table, spot-checked entry by entry (multi-agent-work-division.md
+  // "Sidebar structure" section, and its "What this means for the registry
+  // rewrite" bullets):
+  //   root, receiving, inventory, outgoing, approvals -> "Main"
+  //   reports, documents -> "Reports"
+  //   enrollment, billing-pricing -> "Master Data"
+  //   sync -> "System"
+  //   profile, settings -> "Account"
+  const REASSIGNED_TO_MAIN = ["root", "receiving", "inventory", "outgoing", "approvals"];
+  const REASSIGNED_TO_REPORTS = ["reports", "documents"];
+  const REASSIGNED_TO_MASTER_DATA = ["enrollment", "billing-pricing"];
+  const REASSIGNED_TO_SYSTEM = ["sync"];
+  const REASSIGNED_TO_ACCOUNT = ["profile", "settings"];
+
+  it.each(REASSIGNED_TO_MAIN)("entry '%s' has group 'Main'", async (id) => {
+    const { ROUTE_REGISTRY } = await import("../registry");
+    const entry = ROUTE_REGISTRY.find((row) => row.id === id);
+    expect(entry, `expected a registry row with id ${id}`).toBeDefined();
+    expect(entry!.group).toBe("Main");
+  });
+
+  it.each(REASSIGNED_TO_REPORTS)("entry '%s' has group 'Reports'", async (id) => {
+    const { ROUTE_REGISTRY } = await import("../registry");
+    const entry = ROUTE_REGISTRY.find((row) => row.id === id);
+    expect(entry, `expected a registry row with id ${id}`).toBeDefined();
+    expect(entry!.group).toBe("Reports");
+  });
+
+  it.each(REASSIGNED_TO_MASTER_DATA)("entry '%s' has group 'Master Data'", async (id) => {
+    const { ROUTE_REGISTRY } = await import("../registry");
+    const entry = ROUTE_REGISTRY.find((row) => row.id === id);
+    expect(entry, `expected a registry row with id ${id}`).toBeDefined();
+    expect(entry!.group).toBe("Master Data");
+  });
+
+  it.each(REASSIGNED_TO_SYSTEM)("entry '%s' has group 'System'", async (id) => {
+    const { ROUTE_REGISTRY } = await import("../registry");
+    const entry = ROUTE_REGISTRY.find((row) => row.id === id);
+    expect(entry, `expected a registry row with id ${id}`).toBeDefined();
+    expect(entry!.group).toBe("System");
+  });
+
+  it.each(REASSIGNED_TO_ACCOUNT)("entry '%s' has group 'Account'", async (id) => {
+    const { ROUTE_REGISTRY } = await import("../registry");
+    const entry = ROUTE_REGISTRY.find((row) => row.id === id);
+    expect(entry, `expected a registry row with id ${id}`).toBeDefined();
+    expect(entry!.group).toBe("Account");
+  });
+
+  // Dynamic-segment siblings: stay as entries, just inherit their
+  // non-detail sibling's new group value.
+  it("'receiving-detail' inherits 'receiving's new group ('Main')", async () => {
+    const { ROUTE_REGISTRY } = await import("../registry");
+    const entry = ROUTE_REGISTRY.find((row) => row.id === "receiving-detail");
+    expect(entry, "expected a registry row with id receiving-detail").toBeDefined();
+    expect(entry!.group).toBe("Main");
+  });
+
+  it("'inventory-pick-list-execute' and 'inventory-pick-list-dispatch' inherit 'outgoing's new group ('Main')", async () => {
+    const { ROUTE_REGISTRY } = await import("../registry");
+    for (const id of ["inventory-pick-list-execute", "inventory-pick-list-dispatch"]) {
+      const entry = ROUTE_REGISTRY.find((row) => row.id === id);
+      expect(entry, `expected a registry row with id ${id}`).toBeDefined();
+      expect(entry!.group).toBe("Main");
+    }
+  });
+
+  // Portal rows are explicitly untouched by this restructure -- still
+  // "Organization Portal".
+  it("portal rows keep group 'Organization Portal', unchanged by this restructure", async () => {
+    const { ROUTE_REGISTRY } = await import("../registry");
+    const portalIds = [
+      "portal",
+      "portal-inventory",
+      "portal-orders",
+      "portal-documents",
+      "portal-notifications",
+      "portal-labels",
+    ];
+    for (const id of portalIds) {
+      const entry = ROUTE_REGISTRY.find((row) => row.id === id);
+      expect(entry, `expected a registry row with id ${id}`).toBeDefined();
+      expect(entry!.group).toBe("Organization Portal");
+    }
+  });
+
+  // The merged Transfer+Inspection queue removal: /transfers, /inspection,
+  // and /inspection/[inspection_id] become redirect-only pages, so their
+  // ROUTE_REGISTRY rows must be gone -- a redirect target is not a
+  // nav-visible destination.
+  it("no longer registers 'transfers', 'inspection', or 'inspection-detail' rows (retired -> redirect-only pages)", async () => {
+    const { ROUTE_REGISTRY } = await import("../registry");
+    expect(ROUTE_REGISTRY.some((row) => row.id === "transfers")).toBe(false);
+    expect(ROUTE_REGISTRY.some((row) => row.id === "inspection")).toBe(false);
+    expect(ROUTE_REGISTRY.some((row) => row.id === "inspection-detail")).toBe(false);
+    expect(ROUTE_REGISTRY.some((row) => row.path === "/transfers")).toBe(false);
+    expect(ROUTE_REGISTRY.some((row) => row.path === "/inspection")).toBe(false);
+    expect(ROUTE_REGISTRY.some((row) => row.path === "/inspection/[inspection_id]")).toBe(false);
   });
 });

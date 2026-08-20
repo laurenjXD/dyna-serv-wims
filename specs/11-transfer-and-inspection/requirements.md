@@ -1,155 +1,56 @@
 # Transfer & Inspection — Requirements
 
 Status: Approved
-Updated: 2026-08-06
+Updated: 2026-08-14 (Aligned with Unified UI/UX & Visual Design System)
 
 ## 1. Purpose and scope
 
-This feature governs controlled internal movement of inventory between physical `locations` in the one warehouse, together with inspection and exception handling specific to that transfer. It covers transfer request creation, approval integration, source/destination validation, physical scan execution, conformance/non-conformance decisions, and immutable transfer ledger records.
+This feature governs controlled internal movement of inventory between physical `locations` within the warehouse, together with inspection and exception handling specific to transfers and aging inventory.
 
-“Transfer” in this feature means a location-to-location movement inside the single warehouse. It does not mean a second warehouse, inter-warehouse shipment, customer withdrawal, or a receiving WRR.
+"Transfer" means location-to-location movement inside the single warehouse. "Inspection" covers both inbound inspection cases (shared data model initialized by `07`) and Daily Inspection of aging inventory.
 
-## 2. Ownership boundaries
+### Terminology Alignment
+Across all user-facing transfer and inspection screens, forms, and headers:
+- **Organization** replaces Party.
+- **Inventory Model** replaces Flow Type.
+- **Organization Portal** replaces Party Portal.
+- **Stock View** replaces Master Inventory.
+- **Inspection** replaces Daily Inspection in UI labels.
 
-- `07-incoming-receiving` owns CIPL/WRR staging, inbound receipt reconciliation, and inbound conformance before receiving commit. It populates the shared inspection record (`inspection_cases`, `inspection_evidence`, `inspection_dispositions`) with `context_type = 'inbound'` and a `wrr_item` source reference. `11` provides the shared record model; `07` owns the WRR/CIPL linkage and lot-creation on pass.
-- `11` owns internal transfer requests, transfer lines, and routine transfer inspection. It also defines the shared inspection data model used by `07` and `08`. When `08` or `07` creates an inspection case, it uses the shared tables defined in `11`'s design with the appropriate `context_type`.
-- `08-outgoing-withdrawal-and-two-stage-commitment` owns customer/internal withdrawal and `pick` movement. Outbound dispatch is direct after picking; this feature does not own pre-dispatch inspection.
-- `09-approval-queue` stores approval decisions; `11` owns transfer business state and consumes an exact decision.
-- `01-core-data-model` owns canonical `locations`, `lots`, `lot_location_balances`, and immutable `inventory_transactions`; final transfer request/inspection tables must be reconciled before approval.
-- `14`/`04` own notification delivery and infrastructure boundaries; notification is not the transfer source of truth.
+*(Note: `parties` and `flow_type` remain canonical database identifiers.)*
 
-## 3. Actors and surfaces
+## 2. Actors and workflow surfaces
 
-- **Requestor/operations user** — creates an internal transfer request with reason, source, destination, items/lots, and quantities.
-- **Supervisor/reviewer** — approves transfer requests where the approved policy requires it.
-- **Warehouse staff** — executes physical movement and scan confirmation on a floor-first handheld flow.
-- **Inspector/authorized staff** — records transfer conformance/non-conformance and evidence.
-- **Party users** — do not gain internal location movement authority from party-scoped data visibility.
+- **Requestor/operations user** — creates internal transfer requests with source, destination, items/lots, and quantities.
+- **Supervisor/reviewer** — approves transfer requests and resolves inspection candidate queues.
+- **Warehouse staff** — executes physical movements and scan confirmations on handheld devices (`/transfers`, `/inspection`).
+- **Inspector** — records transfer and aging inspection decisions.
 
-Office request/review is desktop-first but mobile-usable. Physical transfer and inspection are floor surfaces: portrait, scanner-first, one primary action, solid high-contrast surfaces, and no dense multi-column table.
+## 3. Functional requirements
 
-## 4. Transfer lifecycle
+### R1. Internal location transfer
 
-The final state names must be reconciled with the approved schema. The intended lifecycle is:
+1. Authorized users SHALL request movement from one active source location to a distinct active destination location (`/transfers`).
+2. Requests specify item, lot, Inventory Model (`vmi`, `trading`, `supplies`), quantity, source, and destination.
+3. Server validates source balances, lot status (`available`), and location CBM capacity.
 
-```text
-draft → pending_approval → approved → ready_for_execution
-                                      ├→ executing → inspection_pending
-                                      │                ├→ passed → completed
-                                      │                └→ failed → exception/resolution
-                                      └→ rejected/cancelled/expired
-```
+### R2. Inspection & Daily Inspection of aging inventory
 
-Routine transfers may use a shorter path only if the approved capability/policy explicitly permits it. An approved request is not a completed movement. Completion requires the authoritative physical/transaction command.
+1. Single shared inspection record structure (`inspection_cases`, `inspection_evidence`, `inspection_dispositions`).
+2. Daily Inspection is initiated directly from the **Stock View** (`/inventory`) dashboard by selecting aging candidate lots.
+3. The inspection queue (`/inspection`) displays candidate lots, quarantine reasons, and resolution controls.
+4. Split disposition is supported: e.g., for 10 inspected items, 3 may be `reject` (routed to rejects location) and 7 `return_to_stock` (returned to suggested storage location). Total must equal inspected quantity.
 
-## 5. Functional requirements
+### R3. Visual design system & 3-component error feedback
 
-### R1. Transfer request
+1. Floor scan flows (`/inspection/[inspection_id]`) enforce 64px full-width primary CTAs, 16px minimum text size, and solid surfaces (`#FFF7ED` background, `#FFFFFF` cards).
+2. Navigation is strictly hidden during active scan loops.
+3. All error states display 3-component error feedback (**What happened**, **Why it failed**, **Next Action / Solution**).
 
-1. An authorized user SHALL be able to request movement from one active source `location` to one active destination `location` within the single warehouse.
-2. A request SHALL identify item, lot where required, flow type, quantity/UOM, source/destination, reason, priority, and any inspection requirement.
-3. Source and destination SHALL be distinct and valid for the requested movement; a location cannot be its own transfer destination.
-4. The server SHALL validate the current source quantity, lot status, item identity, flow partition, location type/capacity, and caller scope.
-5. A draft request SHALL not change inventory or create an `inventory_transaction`.
-6. The request SHALL be versioned so later changes to source quantity, lot status, location capacity, or approval state invalidate stale plans.
+## 4. Acceptance criteria
 
-### R2. Transfer approval
-
-1. A transfer requiring approval SHALL create a typed request in `09-approval-queue` with exact target/version, source/destination, item/lot/quantity, reason, and actor context.
-2. Approval SHALL be capability-specific and current; a supervisor role alone SHALL not authorize every transfer.
-3. Approval SHALL be online-only, append-only, and consumable only by this exact transfer request/version.
-4. The transfer command SHALL revalidate the approval, current source/destination state, lot status, quantity, scope, and business rules before execution.
-5. Rejected, expired, superseded, revoked, or mismatched approval SHALL block execution.
-6. Routine/internal transfers MAY omit approval only when the approved policy explicitly identifies the capability and conditions that allow the shortcut.
-
-### R3. Shared inspection capability and transfer inspection
-
-1. The system SHALL maintain a single shared inspection record structure used by `07` (inbound) and `11` (transfer). Each context is identified by `context_type` and a context-specific source reference.
-2. If the transfer policy requires inspection, the system SHALL create an `inspection_cases` record with `context_type = 'transfer'` tied to the `transfer_line`, item, lot, and location context.
-3. Inspection SHALL record the pass/fail result, actor, timestamp, reason, remarks, and evidence where required, using `inspection_evidence` for evidence capture.
-4. Transfer-specific non-conformance SHALL block completion or route to an approved exception/resolution path using `inspection_dispositions`.
-5. Conformance SHALL allow execution/completion only after the transfer's other prerequisites pass.
-6. Transfer inspection SHALL not modify inbound `wrr_inspection_logs` or WRR status and SHALL not be used to bypass inbound receiving rules.
-7. No two inspection contexts SHALL create incompatible inventory transitions; each context follows the balance-effect rules in `11`'s design.
-8. An inspection case open beyond the approved time window without disposition SHALL surface in the supervisor attention queue via `14-notifications-and-alerts`.
-
-### R3a. Daily Inspection of aging inventory
-
-1. Daily Inspection SHALL select long-stored inventory by canonical `lot_number` and connected confirmed receiving history; `lots.created_at` alone is not an aging basis.
-2. The system SHALL create an inspection transfer for exact `lot_number`, item, source `location`, quantity, and timestamps. The Daily Aging Inspection transfer SHALL be initiated from the Master Inventory dashboard by selecting an aging candidate; no separate initiation surface is required.
-3. The record SHALL capture mandatory remarks, a controlled reason/dropdown, inspection start/end timestamps, and the inspection date range.
-4. Split disposition SHALL be supported: for 10 inspected items, 3 may be `reject` routed to a designated rejects `location` and 7 may be `return_to_stock` returned to a system-suggested storage `location`.
-5. Resolution SHALL require returned quantity plus rejected quantity to equal inspected quantity, retaining exact quantities, reasons, remarks, locations, actors, and timestamps.
-
-### R4. Physical execution and scan validation
-
-1. The floor flow SHALL present one transfer task at a time with source, destination, item/lot, expected quantity, and current status.
-2. Source scans SHALL verify the expected item/barcode, lot, location, and quantity before physical movement is accepted.
-3. Destination scans SHALL verify the expected destination location and item/lot before completion.
-4. Wrong item, wrong lot, wrong location, duplicate scan, over-quantity, stale request, and insufficient source quantity SHALL receive immediate recoverable feedback.
-5. Manual entry MAY be a controlled recovery path but SHALL use the same server validation and audit boundary.
-6. Physical scan observations MAY be Tier 1 offline work only if explicitly registered with `03-offline-mode-and-client-storage`; no offline scan may complete the transfer or mutate authoritative inventory.
-
-### R5. Transfer commit and inventory ledger
-
-1. Final transfer completion SHALL be an explicit authorized server command.
-2. The commit SHALL atomically revalidate request state, approval/inspection, source quantity, destination validity/capacity, lot/flow identity, scan evidence, and idempotency key.
-3. On success, the system SHALL update the authoritative location assignment/quantity and insert an immutable `inventory_transaction` with `movement_type = 'transfer'`, including source and destination locations.
-4. The transaction SHALL preserve item, lot, flow, quantity, actor, timestamp, source transfer reference, and correlation ID.
-5. Duplicate or lost-response completion SHALL return the original outcome and SHALL not move the stock twice.
-6. A failed commit SHALL roll back completely and leave the request in a recoverable state.
-7. A transfer SHALL not be represented as a receiving, pick, reconciliation, or pricing transaction.
-
-### R6. Exceptions and reversal
-
-1. Cancellation, shortage, damage, wrong destination, and failed inspection SHALL use explicit states and reasons.
-2. An incomplete transfer SHALL not be marked completed by changing a client status.
-3. A completed transfer SHALL not be edited or deleted from the immutable ledger.
-4. A correction or reversal SHALL create the approved compensating movement/transaction with reason and authorization; it SHALL not rewrite the original transfer.
-5. Reallocation of affected stock after failure SHALL use a new approved workflow action, not an implicit retry that assumes the physical state.
-
-### R7. Transfer history and review
-
-1. Authorized users SHALL be able to review transfer requests, current state, approval/inspection history, scan exceptions, and resulting ledger references.
-2. Search/filter SHALL support status, date, source/destination, item/lot, flow, requestor, and approval state within current scope.
-3. The transfer history SHALL be read-only for completed transaction records.
-4. Party users SHALL not infer unrelated party/flow transfer records through identifiers, counts, filters, errors, or notifications.
-
-### R8. Authorization, audit, and privacy
-
-1. Every transfer read and mutation SHALL use current capability, party/flow scope, and RLS enforcement from `02-rbac-roles`.
-2. Client-supplied party, flow, lot, location, quantity, approval, role, or status values SHALL not establish authorization or truth.
-3. Request, approval submission, inspection, execution, completion, cancellation, failure, and reversal SHALL be attributable and auditable.
-4. Evidence files SHALL use private Storage and source-record authorization.
-5. Monitoring and error responses SHALL not expose tokens, SQL, protected records outside scope, or unnecessary personal data.
-6. RLS SHALL enforce party/flow scope for `inspection_cases`, `inspection_evidence`, `inspection_dispositions`, `transfer_requests`, and `transfer_lines`; client filters and caller-supplied party values are never the sole boundary.
-
-### R9. Offline and realtime behavior
-
-1. Request creation, approval, allocation/validation, inspection resolution, transfer completion, reversal, and any authoritative quantity/location update SHALL be online-only in v1.
-2. Approved physical scan observations MAY be queued as Tier 1, but replay SHALL re-authenticate, re-authorize, recheck current transfer state, and remain idempotent.
-3. Approval decisions SHALL never enter the offline queue.
-4. Realtime MAY signal new requests/status changes; durable transfer state and authoritative refetch remain the source of truth.
-5. Connectivity/sync status SHALL use the shared `OfflineStatus` contract and SHALL not be shown as transfer completion.
-
-## 6. Acceptance criteria
-
-- [ ] A valid internal location transfer can be requested with exact item/lot/quantity/source/destination context.
-- [ ] Approval-required transfers cannot execute until a current, exact approval is consumed.
-- [ ] Transfer inspection is distinct from inbound WRR inspection and blocks unsafe completion.
-- [ ] Daily aging inspection is initiated from the Master Inventory dashboard and preserves lot-number aging, inspection duration, mandatory reasons/remarks, and exact split `return_to_stock`/`reject` quantities.
-- [ ] Source/destination scans reject mismatches and support safe recovery.
-- [ ] Completion moves stock exactly once and writes one immutable `transfer` inventory transaction with both locations.
-- [ ] Completed records cannot be edited/deleted; corrections use explicit compensating actions.
-- [ ] Offline observations cannot approve or complete a transfer.
-- [ ] Party/flow scope, RLS, stale-state, concurrency, and evidence access tests pass.
-
-## 7. Dependencies and exclusions
-
-- Depends on `01-core-data-model` for `parties`, `items`, `locations`, `lots`, and `inventory_transactions`; transfer/inspection persistence gaps must be resolved before approval.
-- Depends on `02-rbac-roles` for capabilities, scope, RLS, audit, and approval authority.
-- Depends on `03-offline-mode-and-client-storage` for Tier 1 physical-observation policy.
-- Depends on `04-services-and-infrastructure` for Auth, Storage, transactions/idempotency, Realtime, notifications, and monitoring.
-- Depends on `05-ui-shell-and-navigation` for office/floor routes, responsive patterns, and feedback states.
-- Depends on `09-approval-queue` for transfer approval decisions.
-- `07` owns inbound WRR inspection; `08` owns direct post-picking dispatch; `16` owns reporting. Pre-dispatch inspection is excluded.
+- [ ] Internal location transfers validate source/destination locations and CBM capacity.
+- [ ] User-facing UI labels use Organization, Inventory Model, Stock View, Organization Portal, and Inspection exclusively.
+- [ ] Daily Inspection initiates directly from Stock View (`/inventory`).
+- [ ] Split dispositions (reject / return_to_stock) enforce total balance equality.
+- [ ] 3-component error feedback is present on all scan and validation errors.

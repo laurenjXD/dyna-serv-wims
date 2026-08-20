@@ -7,16 +7,17 @@
 //   specs/00-steering/brand-design-system.md §6 (office surface), §3 (touch targets)
 //
 // Surface: Office. Permission gate: receiving.confirm.
-// Note: The createWrr action (lib/actions/receiving.ts) inserts the wrr_documents
-// row but currently does not insert wrr_items rows from the lines array. The form
-// submits all line data; future extension of the action will persist lines.
+// The createWrr action stages the WRR header and every expected line together.
 
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
-import { createWrr } from "@/lib/actions/receiving";
-import { WrrLineItems } from "./_components/wrr-line-items";
+import { createWrr, uploadCiplFile } from "@/lib/actions/receiving";
+import type { UploadCiplFileResult } from "@/lib/actions/receiving";
+import { db } from "@/lib/db/client";
+import { getActiveSupplierParties } from "@/lib/db/queries/items";
+import { WrrNewForm } from "./_components/wrr-new-form";
 
 // ─── Inline server action ─────────────────────────────────────────────────────
 
@@ -53,6 +54,9 @@ async function handleCreateWrr(formData: FormData): Promise<void> {
   }
 
   const input = {
+    // Client-generated (see WrrNewForm) so an uploaded CIPL file's Storage
+    // path — reserved before this row exists — and this row's own id agree.
+    id: (formData.get("id") as string | null) || undefined,
     vendorPartyId:
       (formData.get("vendorPartyId") as string | null) ?? "",
     flowType:
@@ -61,8 +65,9 @@ async function handleCreateWrr(formData: FormData): Promise<void> {
       (formData.get("commercialInvoiceNo") as string | null) || null,
     ciplFileUrl:
       (formData.get("ciplFileUrl") as string | null) || null,
-    pezaNumber:
-      (formData.get("pezaNumber") as string | null) || null,
+    // PEZA Number is no longer collected on this form (2026-08-19 user
+    // request) — wrr_documents.peza_number stays nullable and unset here.
+    pezaNumber: null,
     ipNumber:
       (formData.get("ipNumber") as string | null) || null,
     mawbMblNumber:
@@ -78,6 +83,22 @@ async function handleCreateWrr(formData: FormData): Promise<void> {
   // Redirect with encoded errors. The page re-reads them via searchParams.
   const encodedErrors = encodeURIComponent(result.errors.join("|"));
   redirect(`/receiving/new?errors=${encodedErrors}`);
+}
+
+// Thin wrapper so WrrNewForm (client) can call uploadCiplFile with a real
+// resolver built from this request's session — the pure action itself takes
+// a resolver, which only server-side code can construct.
+async function handleUploadCipl(
+  wrrId: string,
+  formData: FormData,
+): Promise<UploadCiplFileResult> {
+  "use server";
+  const actionResolver = await createPageResolver();
+  const file = formData.get("file");
+  if (!(file instanceof File)) {
+    return { ok: false, error: "No file was provided." };
+  }
+  return uploadCiplFile(actionResolver, wrrId, file);
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -101,6 +122,11 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
   if (permResult.kind !== "authorized") {
     notFound();
   }
+
+  // A WRR header holds a foreign key to parties.id. Showing the available
+  // vendor/supplier organizations prevents operators from having to discover
+  // and paste an internal UUID (and avoids a database exception on submit).
+  const vendorParties = await getActiveSupplierParties(db);
 
   const errors = encodedErrors
     ? decodeURIComponent(encodedErrors).split("|").filter(Boolean)
@@ -138,7 +164,7 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
       {errors.length > 0 && (
         <div
           role="alert"
-          className="mt-4 rounded-md bg-status-held/10 px-4 py-3"
+          className="mt-4 rounded-xl bg-status-held/10 px-4 py-3"
         >
           <p className="font-label text-label uppercase text-status-held">
             Validation errors
@@ -153,185 +179,16 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
         </div>
       )}
 
-      {/* Create WRR form — standard office surface */}
-      <form action={handleCreateWrr} className="mt-6 space-y-6">
-        {/* Header section — office card, Level 1 elevation */}
-        <div className="rounded-md bg-surface-white shadow-elevation-1 p-6">
-          <h2 className="font-heading font-semibold text-data-display text-on-surface">
-            Header Information
-          </h2>
-
-          {/* Full-width on mobile, two-column grid on desktop per task requirements */}
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            {/* Vendor Party ID — required */}
-            <div>
-              <label
-                htmlFor="vendorPartyId"
-                className="block font-label text-label text-text-grey"
-              >
-                Vendor Party ID{" "}
-                <span aria-hidden="true" className="text-brand-red">
-                  *
-                </span>
-                <span className="sr-only">(required)</span>
-              </label>
-              <input
-                id="vendorPartyId"
-                name="vendorPartyId"
-                type="text"
-                required
-                placeholder="UUID of the vendor party"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              />
-            </div>
-
-            {/* Flow Type — required */}
-            <div>
-              <label
-                htmlFor="flowType"
-                className="block font-label text-label text-text-grey"
-              >
-                Flow Type{" "}
-                <span aria-hidden="true" className="text-brand-red">
-                  *
-                </span>
-                <span className="sr-only">(required)</span>
-              </label>
-              <select
-                id="flowType"
-                name="flowType"
-                required
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              >
-                <option value="">Select flow type…</option>
-                <option value="vmi">VMI</option>
-                <option value="trading">Trading</option>
-                <option value="supplies">Supplies</option>
-              </select>
-            </div>
-
-            {/* Commercial Invoice No — optional */}
-            <div>
-              <label
-                htmlFor="commercialInvoiceNo"
-                className="block font-label text-label text-text-grey"
-              >
-                Commercial Invoice No.
-              </label>
-              <input
-                id="commercialInvoiceNo"
-                name="commercialInvoiceNo"
-                type="text"
-                placeholder="CIPL / commercial invoice reference"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              />
-            </div>
-
-            {/* CIPL File URL — optional */}
-            <div>
-              <label
-                htmlFor="ciplFileUrl"
-                className="block font-label text-label text-text-grey"
-              >
-                CIPL File URL
-              </label>
-              <input
-                id="ciplFileUrl"
-                name="ciplFileUrl"
-                type="text"
-                placeholder="Storage URL of the attached CIPL document"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              />
-            </div>
-
-            {/* PEZA Number — optional */}
-            <div>
-              <label
-                htmlFor="pezaNumber"
-                className="block font-label text-label text-text-grey"
-              >
-                PEZA Number
-              </label>
-              <input
-                id="pezaNumber"
-                name="pezaNumber"
-                type="text"
-                placeholder="PEZA permit number"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              />
-            </div>
-
-            {/* IP Number — optional */}
-            <div>
-              <label
-                htmlFor="ipNumber"
-                className="block font-label text-label text-text-grey"
-              >
-                IP Number
-              </label>
-              <input
-                id="ipNumber"
-                name="ipNumber"
-                type="text"
-                placeholder="Import permit number"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              />
-            </div>
-
-            {/* MAWB/MBL Number — optional */}
-            <div className="md:col-span-2">
-              <label
-                htmlFor="mawbMblNumber"
-                className="block font-label text-label text-text-grey"
-              >
-                MAWB / MBL Number
-              </label>
-              <input
-                id="mawbMblNumber"
-                name="mawbMblNumber"
-                type="text"
-                placeholder="Master Air Waybill / Bill of Lading number"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Expected lines section */}
-        <div className="rounded-md bg-surface-white shadow-elevation-1 p-6">
-          <h2 className="font-heading font-semibold text-data-display text-on-surface">
-            Expected Lines
-          </h2>
-          <p className="mt-1 font-body text-body-sm text-text-grey">
-            At least one line is required. Each line requires a lot number,
-            expected quantity, unit CBM, UOM, and disposition. The putaway
-            location for store-disposition lines is selected on the floor at
-            scan/store time, not here.
-          </p>
-          <div className="mt-4">
-            {/* WrrLineItems is a client component — handles dynamic add/remove.
-                All line inputs are rendered within this form and submitted with it. */}
-            <WrrLineItems />
-          </div>
-        </div>
-
-        {/* Form actions */}
-        <div className="flex flex-wrap gap-3">
-          {/* Primary CTA — brand-red per brand-design-system.md §9, h-11 office touch target */}
-          <button
-            type="submit"
-            className="flex h-11 items-center justify-center rounded bg-brand-red px-6 font-label text-label text-surface-white hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
-          >
-            Create WRR
-          </button>
-          <Link
-            href="/receiving"
-            className="flex h-11 items-center justify-center rounded border border-outline-variant/30 px-6 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
-          >
-            Cancel
-          </Link>
-        </div>
-      </form>
+      {/* Create WRR form — standard office surface. WrrNewForm is a client
+          component: it owns Inventory Model state (shared with WrrLineItems'
+          conditional Item Code label) and renders the Vendor Organization
+          dropdown, header fields (no PEZA Number — no longer collected),
+          expected lines, and form actions. */}
+      <WrrNewForm
+        action={handleCreateWrr}
+        vendorParties={vendorParties}
+        onUploadCipl={handleUploadCipl}
+      />
     </div>
   );
 }

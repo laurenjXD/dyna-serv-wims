@@ -16,7 +16,7 @@ export function LocationOccupancyChart() {
     <div className="mt-5 h-52">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
-          <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid rgba(197,198,210,0.3)", fontFamily: "var(--font-inter)", fontSize: 13 }} />
+          <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid rgba(197,198,210,0.3)", fontFamily: "var(--font-glacial)", fontSize: 13 }} />
           <Pie data={data} dataKey="value" nameKey="name" innerRadius={52} outerRadius={85} paddingAngle={2} stroke="none">
             {data.map((entry, index) => <Cell key={entry.name} fill={COLORS[index]} />)}
           </Pie>

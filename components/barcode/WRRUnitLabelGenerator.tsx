@@ -83,7 +83,7 @@ export function WRRUnitLabelGenerator({
           aria-labelledby="print-modal-title"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 print:p-0 print:bg-white print:static"
         >
-          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-lg bg-surface-white p-6 shadow-elevation-2 print:max-h-none print:p-0 print:shadow-none">
+          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-xl bg-surface-white p-6 shadow-elevation-2 print:max-h-none print:p-0 print:shadow-none">
             {/* Header — Screen only */}
             <div className="flex items-center justify-between border-b border-outline-variant pb-4 print:hidden">
               <div>
@@ -102,7 +102,7 @@ export function WRRUnitLabelGenerator({
                 <button
                   type="button"
                   onClick={handlePrint}
-                  className="flex h-12 items-center justify-center gap-2 rounded bg-brand-red px-5 font-heading font-bold text-body-md text-surface-white active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  className="flex h-12 items-center justify-center gap-2 rounded bg-primary px-5 font-heading font-bold text-body-md text-surface-white active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 >
                   <span aria-hidden="true">&#128424;</span>
                   <span>Print Labels</span>

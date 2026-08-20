@@ -258,6 +258,7 @@ describe("createItem — validation (R4.1-R4.4, design.md §6)", () => {
 describe("createItem — success (R4.1, design.md §6)", () => {
   it("returns { ok: true, data: { id: string } } on a valid authorized request", async () => {
     const db = {
+      select: vi.fn().mockReturnValue(makeSelectChain([])), // no code/barcode collision
       insert: vi.fn().mockReturnValue(makeInsertChain("item-new-uuid")),
     };
     const { deps } = mockRlsDeps(db);
@@ -271,6 +272,44 @@ describe("createItem — success (R4.1, design.md §6)", () => {
         typeof (result as { ok: true; data: { id: string } }).data.id,
       ).toBe("string");
     }
+  });
+});
+
+describe("createItem — duplicate code/barcode (DB UNIQUE constraints; previously an unhandled raw insert error)", () => {
+  it("returns { ok: false, fieldErrors: { code: '...' } } and never calls insert when the code already exists", async () => {
+    const db = {
+      select: vi.fn().mockReturnValue(
+        makeSelectChain([{ id: "existing-item", code: validItemInput.code, barcode: "OTHER-BARCODE" }]),
+      ),
+      insert: vi.fn().mockReturnValue(makeInsertChain("item-new-uuid")),
+    };
+    const { deps } = mockRlsDeps(db);
+
+    const result = await createItem(authorizedResolver(), validItemInput, deps);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok && "fieldErrors" in result) {
+      expect(result.fieldErrors.code).toMatch(/already in use/i);
+    }
+    expect(db.insert).not.toHaveBeenCalled();
+  });
+
+  it("returns { ok: false, fieldErrors: { barcode: '...' } } when the barcode already exists", async () => {
+    const db = {
+      select: vi.fn().mockReturnValue(
+        makeSelectChain([{ id: "existing-item", code: "OTHER-CODE", barcode: validItemInput.barcode }]),
+      ),
+      insert: vi.fn().mockReturnValue(makeInsertChain("item-new-uuid")),
+    };
+    const { deps } = mockRlsDeps(db);
+
+    const result = await createItem(authorizedResolver(), validItemInput, deps);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok && "fieldErrors" in result) {
+      expect(result.fieldErrors.barcode).toMatch(/already in use/i);
+    }
+    expect(db.insert).not.toHaveBeenCalled();
   });
 });
 

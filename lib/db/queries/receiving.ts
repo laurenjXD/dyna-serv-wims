@@ -9,7 +9,7 @@
 //   specs/07-incoming-receiving/design.md §5.1 — expected line fields.
 //   specs/07-incoming-receiving/design.md §5.2 — scan-line state and discrepancy.
 
-import { eq, asc, sql } from "drizzle-orm";
+import { eq, asc, desc, sql } from "drizzle-orm";
 import { wrrDocuments, wrrItems } from "@/lib/db/schema/wrr";
 // Aliased: getWrrDocument's own `items` local (the mapped WrrItemRow[]
 // result) would otherwise shadow this schema table within the same
@@ -19,6 +19,7 @@ import { items as itemsTable } from "@/lib/db/schema/items";
 // `parties` local (vendor name/code on the returned document) would
 // otherwise collide with the schema table.
 import { parties as partiesTable } from "@/lib/db/schema/parties";
+import { userProfiles } from "@/lib/db/schema/rbac";
 
 // Minimal structural type that both the real Drizzle db instance and test
 // stubs satisfy.
@@ -47,11 +48,15 @@ export type WrrDocumentRow = {
 // select on purpose, since the queue/ledger list views never render these.
 export type WrrDocumentDetailFields = {
   commercialInvoiceNo: string | null;
+  ciplFileUrl: string | null;
   pezaNumber: string | null;
   ipNumber: string | null;
   mawbMblNumber: string | null;
   vendorPartyName: string | null;
   vendorPartyCode: string | null;
+  // Resolved via join on user_profiles — null if the staging user's profile
+  // row is missing (edge case), never the raw stagedByUserId as a fallback.
+  stagedByDisplayName: string | null;
 };
 
 export type WrrItemRow = {
@@ -94,11 +99,13 @@ type RawJoinRow = {
   stagedByUserId: string;
   createdAt: Date;
   commercialInvoiceNo: string | null;
+  ciplFileUrl: string | null;
   pezaNumber: string | null;
   ipNumber: string | null;
   mawbMblNumber: string | null;
   vendorPartyName: string | null;
   vendorPartyCode: string | null;
+  stagedByDisplayName: string | null;
   // Prefixed item fields — null when left join finds no matching wrr_items row
   itemRowId: string | null;
   itemWrrId: string | null;
@@ -174,6 +181,39 @@ export async function listWrrDocuments(
 }
 
 // ---------------------------------------------------------------------------
+// listRecentWrrDocuments
+//
+// Genuinely-recent WRR documents (createdAt DESC), for "Recent Activity"
+// feeds. listWrrDocuments above orders ASC (oldest-first, work-queue
+// prioritization) so it cannot be reused for a recency-sorted feed —
+// see specs/00-steering/ui-ux-design-plan.md data-honesty fix
+// (design-system-auditor finding, 2026-08-16).
+//
+// Authorization is enforced at the call site — not re-checked here.
+// ---------------------------------------------------------------------------
+
+export async function listRecentWrrDocuments(
+  db: DbLike,
+  opts: { limit: number },
+): Promise<WrrDocumentRow[]> {
+  return (await db
+    .select({
+      id: wrrDocuments.id,
+      wrrNumber: wrrDocuments.wrrNumber,
+      status: wrrDocuments.status,
+      flowType: wrrDocuments.flowType,
+      vendorPartyId: wrrDocuments.vendorPartyId,
+      vendorPartyName: partiesTable.name,
+      stagedByUserId: wrrDocuments.stagedByUserId,
+      createdAt: wrrDocuments.createdAt,
+    })
+    .from(wrrDocuments)
+    .leftJoin(partiesTable, eq(partiesTable.id, wrrDocuments.vendorPartyId))
+    .orderBy(desc(wrrDocuments.createdAt))
+    .limit(opts.limit)) as WrrDocumentRow[];
+}
+
+// ---------------------------------------------------------------------------
 // getWrrDocument
 // ---------------------------------------------------------------------------
 
@@ -199,11 +239,13 @@ export async function getWrrDocument(
       createdAt: wrrDocuments.createdAt,
       // design.md §5.3 print-contract header fields.
       commercialInvoiceNo: wrrDocuments.commercialInvoiceNo,
+      ciplFileUrl: wrrDocuments.ciplFileUrl,
       pezaNumber: wrrDocuments.pezaNumber,
       ipNumber: wrrDocuments.ipNumber,
       mawbMblNumber: wrrDocuments.mawbMblNumber,
       vendorPartyName: partiesTable.name,
       vendorPartyCode: partiesTable.code,
+      stagedByDisplayName: userProfiles.displayName,
       // Item fields — aliased with "item" prefix to avoid collision
       itemRowId: wrrItems.id,
       itemWrrId: wrrItems.wrrId,
@@ -222,6 +264,7 @@ export async function getWrrDocument(
     .from(wrrDocuments)
     .where(eq(wrrDocuments.id, wrrId))
     .leftJoin(partiesTable, eq(partiesTable.id, wrrDocuments.vendorPartyId))
+    .leftJoin(userProfiles, eq(userProfiles.id, wrrDocuments.stagedByUserId))
     .leftJoin(wrrItems, eq(wrrItems.wrrId, wrrDocuments.id))
     .leftJoin(itemsTable, eq(itemsTable.id, wrrItems.itemId))) as RawJoinRow[];
 
@@ -256,6 +299,7 @@ export async function getWrrDocument(
     status: first.status,
     flowType: first.flowType,
     commercialInvoiceNo: first.commercialInvoiceNo,
+    ciplFileUrl: first.ciplFileUrl,
     pezaNumber: first.pezaNumber,
     ipNumber: first.ipNumber,
     mawbMblNumber: first.mawbMblNumber,
@@ -263,6 +307,7 @@ export async function getWrrDocument(
     vendorPartyCode: first.vendorPartyCode,
     vendorPartyId: first.vendorPartyId,
     stagedByUserId: first.stagedByUserId,
+    stagedByDisplayName: first.stagedByDisplayName,
     createdAt: first.createdAt,
     items,
   };

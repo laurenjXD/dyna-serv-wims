@@ -21,3 +21,4 @@ export * from "./rbac";
 export * from "./approvals";
 export * from "./transfers";
 export * from "./documents";
+export * from "./notifications";

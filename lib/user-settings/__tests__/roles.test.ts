@@ -21,7 +21,7 @@ describe("SYSTEM_ROLE_OPTIONS (02-rbac-roles design.md §3.1's real role keys)",
 describe("roleLabel", () => {
   it("returns the human label for a known role key", () => {
     expect(roleLabel("administrator")).toBe("Admin");
-    expect(roleLabel("party_user")).toBe("Party Client");
+    expect(roleLabel("party_user")).toBe("Organization Client");
   });
 
   it("falls back to the raw key for an unrecognized value", () => {

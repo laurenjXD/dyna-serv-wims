@@ -1,7 +1,39 @@
 # Track 2 Handoff — Remaining Work
-Status: Active
+Status: Superseded (kept for historical task-breakdown detail only — see notice below)
 Updated: 2026-08-09
 Author: Track 3 (Jaime)
+
+> **Superseded 2026-08-16.** The "Track 2 / Track 3" split and this document's
+> page-by-page task list predate the current plan. For current, accurate
+> status and assignments, use:
+> - `specs/00-steering/ui-implementation-plan.md` — the live page-by-page
+>   priority list (P1–P12) with Database/Backend/Frontend scope per page.
+> - `specs/00-steering/multi-agent-work-division.md` — the current two-track
+>   split ("Track A — Floor & Core Inventory", "Track B — Office, Admin &
+>   New Backend"), which replaces "Track 2"/"Track 3" naming entirely.
+>
+> Two factual corrections to what's below, so it doesn't mislead anyone who
+> reads it anyway:
+> 1. **Sprint A's "Notification UI page" (A2) is wrong.** There is no
+>    standalone `/notifications` route. Confirmed decision (2026-08-16,
+>    `ui-implementation-plan.md`'s P1): notifications are a bell/dropdown in
+>    the shared shell header, present on every page — not a routed page, no
+>    registry entry. `A1` (schema) and `A3` (shell badge) are directionally
+>    correct and are, as of 2026-08-16, implemented (`supabase/migrations/
+>    0026_notifications.sql`, `lib/db/schema/notifications.ts`) as a scoped
+>    MVP slice — see `revision-log.md`'s "`14` — P1 MVP slice scoped" entry
+>    for exactly what shipped vs. what's still deferred (email delivery,
+>    Realtime, alert-rule engine, `A4`'s alert triggers).
+> 2. **Sprint B1 references `supabase/migrations/0010_vmi_cbm_ledger.sql` —
+>    this migration does not exist.** No VMI billing schema has been built
+>    at all as of 2026-08-16 (confirmed: zero migrations reference
+>    `vmi_cbm_ledger` anywhere in `supabase/migrations/`). Treat Sprint B as
+>    a from-scratch build against `ui-implementation-plan.md`'s P11, not a
+>    "confirm it's already there" check.
+>
+> Sprints B/C/D's task breakdowns below are otherwise still useful detail
+> for P11 (Billing and Pricing) — read them as a task checklist, not as a
+> claim about current repo state.
 
 This document lists the tasks Track 2 (Lauren) owns as of 2026-08-09, following the full frontend UI build completed by Track 3. All UI shells for Track 2's specs are built and live on `main` — Track 2's job is to wire in the real backend logic and data.
 

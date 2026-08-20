@@ -43,7 +43,7 @@ export function SuspendUserDialog({
       data-testid="suspend-user-dialog"
       className="fixed inset-0 z-50 flex items-center justify-center bg-brand-navy/40 p-4"
     >
-      <div className="w-full max-w-sm rounded-md bg-surface-white p-6 shadow-elevation-2">
+      <div className="w-full max-w-sm rounded-xl bg-surface-white p-6 shadow-elevation-2">
         <h2
           id="suspend-user-title"
           className="font-heading text-headline-md font-semibold text-status-held"

@@ -165,7 +165,7 @@ export default async function TransferDetailPage({
       {actionErrorMsg && (
         <div
           role="alert"
-          className="mt-4 rounded-md bg-status-held/10 px-4 py-3"
+          className="mt-4 rounded-xl bg-status-held/10 px-4 py-3"
         >
           <p className="font-label text-label uppercase text-status-held">
             Action failed
@@ -177,7 +177,7 @@ export default async function TransferDetailPage({
       )}
 
       {/* Transfer summary card — Level 1 office elevation */}
-      <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+      <div className="mt-6 rounded-xl bg-surface-white shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Transfer Details
         </h2>
@@ -241,7 +241,7 @@ export default async function TransferDetailPage({
 
       {/* Action buttons — conditional on transfer status and execute capability */}
       {canExecute && (
-        <div className="mt-6 rounded-md bg-surface-white shadow-elevation-1 p-6">
+        <div className="mt-6 rounded-xl bg-surface-white shadow-elevation-1 p-6">
           <h2 className="font-heading font-semibold text-data-display text-on-surface">
             Actions
           </h2>
@@ -250,7 +250,7 @@ export default async function TransferDetailPage({
               <form action={handleStartTransfer}>
                 <button
                   type="submit"
-                  className="flex h-11 items-center justify-center rounded bg-brand-red px-4 font-label text-label text-surface-white hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  className="flex h-11 items-center justify-center rounded bg-primary px-4 font-label text-label text-surface-white hover:bg-primary-hover motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 >
                   Start Transfer
                 </button>
@@ -262,7 +262,7 @@ export default async function TransferDetailPage({
                 {/* Execute Transfer — links to floor execution interface */}
                 <Link
                   href={`/transfers/${transferId}/execute`}
-                  className="inline-flex h-11 items-center justify-center rounded bg-brand-red px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  className="inline-flex h-11 items-center justify-center rounded bg-primary px-4 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 >
                   Execute Transfer
                 </Link>
@@ -291,7 +291,7 @@ export default async function TransferDetailPage({
       )}
 
       {/* Lines table — Level 1 office elevation */}
-      <div className="mt-6 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
+      <div className="mt-6 overflow-hidden rounded-xl bg-surface-white shadow-elevation-1">
         <div className="px-6 py-4">
           <h2 className="font-heading font-semibold text-data-display text-on-surface">
             Transfer Lines ({transfer.lines.length})

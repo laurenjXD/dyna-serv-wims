@@ -69,11 +69,11 @@ The current Gantt timeline tracks the **Spec Definition Phase** (Drafting Requir
 | 4.6 | Inventory user manual completion | `20-documentation-training-and-uat` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
 | 4.7 | Administrator inventory system training | `20-documentation-training-and-uat` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
 | 4.8 | Production deployment of the inventory system | `04-services-and-infrastructure` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
-| 4.9 | Dispatch scheduling and delivery tracking | `19-dispatch-scheduling-and-delivery-tracking` | **Deferred** (reserved scope; no implementation) | Deferred |
+| 4.9 | Dispatch scheduling and delivery tracking | `19-dispatch-scheduling-and-delivery-tracking` | **Deleted / Scope Removed** (Obsolete spec folder deleted; unneeded for single-warehouse v1 scope) | Removed |
 | 4.10 | Final client inventory validation | Project closure | **Not Started** | Not Started |
 | 4.11 | Final inventory system handover and acceptance | Sign-off gate | **Not Started** | Not Started |
 
 ---
 
 ## Standing Rule
-Every time a new spec is drafted or changes status, check this table for rows that reference it and update the status column. This table is only useful if it stays current — treat a stale row here as a bug the same way an undocumented design token is a bug (per `brand-design-system.md` §13's governance principle).
+Every time a new spec is drafted or changes status, check this table for rows that reference it and update the status column. This table is only useful if it stays current — treat a stale row here as a bug the same way an undocumented design token is a bug (per `ui-ux-design-plan.md` §13's governance principle).

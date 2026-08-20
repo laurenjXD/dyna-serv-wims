@@ -5,7 +5,7 @@
 //     §9 (Outgoing ledger design)
 //   specs/08-outgoing-withdrawal-and-two-stage-commitment/requirements.md
 //     R5.3, R5.7 (pick_list exposure), R9.1-R9.4 (Outgoing Ledger contract)
-//   specs/00-steering/brand-design-system.md §3 (office tab pattern), §6
+//   specs/00-steering/design.md §3 (office tab pattern), §6
 //     (office surface, Level 1 elevation)
 //   lib/shell/registry.ts — id: "outgoing", surface: "floor",
 //     capability: "pick_list.execute"
@@ -30,7 +30,7 @@ import { listOutgoingLedger } from "@/lib/actions/withdrawals";
 import type { OutgoingLedgerRow } from "@/lib/db/queries/withdrawals";
 
 // ─── Status badge colors ─────────────────────────────────────────────────────
-// brand-design-system.md §1.3 semantic color mapping:
+// design.md §1.3 semantic color mapping:
 // allocated → status-pending (amber); picked → brand-navy; dispatched → status-available.
 
 const STATUS_CLASSES: Record<string, string> = {
@@ -94,7 +94,7 @@ export default async function OutgoingPage({ searchParams }: PageProps) {
         </p>
       </div>
 
-      {/* Tab switcher — office pattern per brand-design-system.md §3 */}
+      {/* Tab switcher — office pattern per design.md §3 */}
       <div
         role="tablist"
         aria-label="Outgoing sections"
@@ -139,7 +139,7 @@ async function ActivePicksTab({ canExecute }: { canExecute: boolean }) {
   const { rows } = await listPickLists(db, { limit: 50, offset: 0, status: "allocated" });
 
   return (
-    <div className="mt-6 overflow-hidden rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-2 md:shadow-elevation-1">
+    <div className="mt-6 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-2 md:shadow-elevation-1">
       {rows.length === 0 ? (
         <div className="px-6 py-12 text-center">
           <p className="font-body text-body-md text-text-grey">
@@ -176,7 +176,7 @@ async function ActivePicksTab({ canExecute }: { canExecute: boolean }) {
                 {canExecute ? (
                   <Link
                     href={`/pick-lists/${row.id}/pick`}
-                    className="flex min-h-16 w-full items-center justify-center rounded bg-brand-red px-4 font-label text-body-md uppercase tracking-wide text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2"
+                    className="flex min-h-16 w-full items-center justify-center rounded bg-primary px-4 font-label text-body-md uppercase tracking-wide text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2"
                   >
                     Start picking
                   </Link>
@@ -200,7 +200,7 @@ async function ActivePicksTab({ canExecute }: { canExecute: boolean }) {
                     Flow Type
                   </th>
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Customer Party
+                    Customer Organization
                   </th>
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                     Created
@@ -283,9 +283,11 @@ async function OutgoingLedgerTab({
         or deletions — corrections use new approved transactions.
       </p>
 
-      {/* Ledger table — Level 1 office elevation per brand-design-system.md §6.
-          design.md §9: item code is the prominent first field in office review. */}
-      <div className="mt-4 overflow-hidden rounded-md bg-surface-white shadow-elevation-1">
+      {/* Ledger table — Level 1 office elevation per design.md §6.
+          design.md §9: item code is the prominent first field in office review.
+          Card wrapper matches Active Picks tab's pattern (border + responsive
+          shadow) for cross-tab visual consistency. */}
+      <div className="mt-6 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-2 md:shadow-elevation-1">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="font-body text-body-md text-text-grey">
@@ -324,7 +326,7 @@ async function OutgoingLedgerTab({
                     Pick List #
                   </th>
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Customer Party
+                    Customer Organization
                   </th>
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                     Acknowledgement Receipt #

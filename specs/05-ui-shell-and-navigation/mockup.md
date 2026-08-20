@@ -13,7 +13,7 @@ This mockup translates the approved brand system and the current UI Shell & Navi
 - **Floor text:** `on-surface` `#1A1B20`; minimum 16px, AAA for time-critical actions.
 - **Floor surfaces:** opaque white cards with Level 2 elevation; no blur or glassmorphism.
 - **Typography:** Fira Sans for headings/data, Outfit for body, Epilogue for labels/actions, Roboto Mono for codes and quantities.
-- **Shape:** 8px default radius across all buttons/cards; the diagonal-cut motif has been retired (`brand-design-system.md` §7) — office primary actions use plain rounded corners, same as everywhere else.
+- **Shape:** 8px default radius across all buttons/cards; the diagonal-cut motif has been retired (`ui-ux-design-plan.md` §7) — office primary actions use plain rounded corners, same as everywhere else.
 
 ## 1. Floor shell — default route
 

@@ -13,7 +13,7 @@ export function PrintButton() {
     <button
       type="button"
       onClick={() => window.print()}
-      className="flex h-11 items-center justify-center rounded bg-brand-red px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+      className="flex h-11 items-center justify-center rounded bg-primary px-4 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy"
     >
       Print
     </button>

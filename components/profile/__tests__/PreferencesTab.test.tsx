@@ -20,6 +20,8 @@ function renderTab() {
 describe("PreferencesTab (Task 21.4)", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    delete document.documentElement.dataset.theme;
+    delete document.documentElement.dataset.density;
   });
 
   it("starts with dark mode and compact density both off", () => {
@@ -37,6 +39,7 @@ describe("PreferencesTab (Task 21.4)", () => {
     expect(screen.getByTestId("dark-mode-toggle")).toHaveAttribute("aria-checked", "true");
     const stored = JSON.parse(window.localStorage.getItem("wims:user-preferences") ?? "{}");
     expect(stored.darkMode).toBe(true);
+    expect(document.documentElement).toHaveAttribute("data-theme", "dark");
   });
 
   it("toggles density independently of dark mode", async () => {
@@ -49,6 +52,7 @@ describe("PreferencesTab (Task 21.4)", () => {
     expect(screen.getByTestId("dark-mode-toggle")).toHaveAttribute("aria-checked", "false");
     const stored = JSON.parse(window.localStorage.getItem("wims:user-preferences") ?? "{}");
     expect(stored.density).toBe("compact");
+    expect(document.documentElement).toHaveAttribute("data-density", "compact");
   });
 
   it("hydrates from an existing localStorage value on mount", () => {
@@ -59,5 +63,7 @@ describe("PreferencesTab (Task 21.4)", () => {
     renderTab();
     expect(screen.getByTestId("dark-mode-toggle")).toHaveAttribute("aria-checked", "true");
     expect(screen.getByTestId("density-toggle")).toHaveAttribute("aria-checked", "true");
+    expect(document.documentElement).toHaveAttribute("data-theme", "dark");
+    expect(document.documentElement).toHaveAttribute("data-density", "compact");
   });
 });

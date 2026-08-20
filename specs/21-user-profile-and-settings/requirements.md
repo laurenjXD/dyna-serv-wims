@@ -1,71 +1,44 @@
 # User Profile & Settings — Requirements
 
 Status: Approved
+Updated: 2026-08-14 (Aligned with Unified UI/UX & Visual Design System)
 
-Depends on:
-- `specs/00-steering/product.md`
-- `specs/00-steering/tech.md`
-- `specs/00-steering/brand-design-system.md`
-- `specs/02-rbac-roles/` (Consumes the roles defined here)
-- `specs/05-ui-shell-and-navigation/` (Applies global UI state toggles)
+## 1. Purpose and scope
 
----
+This feature defines user profile management (`/profile`) and administrative settings / user management (`/settings`), acting as the visual counterpart to `02-rbac-roles`.
 
-## 1. Overview
+### Terminology Alignment
+Across all user-facing settings screens, forms, headers, and modals:
+- **Organization** replaces Party.
+- **Inventory Model** replaces Flow Type.
+- **Organization Portal** replaces Party Portal.
 
-This module defines the front-end user interface for managing personal profiles, system-wide settings, and administrative Role-Based Access Control (RBAC). It acts as the visual counterpart to the backend security rules defined in Spec 02.
+*(Note: `parties`, `party_user`, `user_party_scopes`, and `flow_type` remain canonical database identifiers.)*
 
----
+## 2. Actors and surfaces
 
-## 2. Goals
+- **All Authenticated Users** — access `/profile` to view account details, reset passwords, and toggle user preferences.
+- **Administrators & Users with `users.read` / `users.manage`** — access `/settings` to manage user accounts, assign RBAC roles (`warehouse_staff`, `supervisor`, `administrator`, `party_user`), and bind Organization scopes (`user_party_scopes`).
 
-- Provide a dedicated `/profile` route for individual users to manage their credentials and preferences.
-- Provide a dedicated `/settings` route restricted exclusively to Administrators.
-- Allow administrators to invite, suspend, and configure permissions for internal staff and external party users via an intuitive UI table.
-- Centralize system-wide configurations (e.g., warehouse operational defaults).
-
----
-
-## 3. Functional Requirements
+## 3. Functional requirements
 
 ### FR-1: User Profile (`/profile`)
-1. **Access:** The profile page SHALL be accessible to all authenticated users (Staff, Supervisors, Admins, and Party Clients).
-2. **Personal Information:** Users SHALL be able to view and edit their `displayName` and `contactNumber`. Email addresses SHALL remain read-only unless an explicit email change verification flow is triggered.
-3. **Security:** Users SHALL be able to initiate a "Password Reset" flow.
-4. **UI Preferences:** Users SHALL be able to toggle global application preferences (e.g., "Dark Mode", "Compact Table View"). These preferences SHALL persist across sessions.
+1. All authenticated users access `/profile` to update `displayName` and `contactNumber`.
+2. Password reset flow and UI preference toggles.
 
-### FR-2: Administrative Settings Shell (`/settings`)
-1. **Access:** The settings route SHALL strictly reject access to non-Admin roles, redirecting them back to `/dashboard` with an unauthorized alert.
-2. **Navigation:** The settings layout SHALL utilize a tabbed or secondary sidebar navigation structure (e.g., `User Management`, `Roles & Permissions`, `System Configs`).
+### FR-2: Administrative Settings & User Management (`/settings`)
+1. Gated by `users.read` / `users.manage` capabilities.
+2. Searchable, filterable user management data grid.
+3. User invitation, suspension, and role assignment (`warehouse_staff`, `supervisor`, `administrator`, `party_user`).
+4. Organization scope binding (`user_party_scopes`): when assigning `party_user`, selecting an Organization (`party_id`) is required.
 
-### FR-3: User Management UI
-1. **Data Grid:** The system SHALL display a searchable, filterable data grid listing all authenticated users.
-2. **User Invite Flow:** Administrators SHALL be able to invite new users by entering an email address and assigning an initial role. The system will dispatch an invitation link via Supabase Auth.
-3. **Account Lifecycle:** Administrators SHALL be able to click a user record to "Suspend" or "Revoke" access instantly.
+### FR-3: Visual Design & 3-Component Error Feedback
+1. Level 0 Cream White (`#FFF7ED`) background, Level 1 Solid White (`#FFFFFF`) cards with `#2563EB` Vibrant Blue accents, and Etna Sans Serif + Glacial Indifference typography.
+2. All form validation and server action errors display 3-component error feedback (**What happened**, **Why it failed**, **Next Action / Solution**).
 
-### FR-4: RBAC & Role Assignment UI
-1. **Role Configuration:** When editing a user in the User Management grid, Admins SHALL be presented with a dropdown to assign system roles (`warehouse_staff`, `supervisor`, `admin`, `party_user`) as defined in `02-rbac-roles`.
-2. **Party Scope Binding:** If a user is assigned the `party_user` role, the UI SHALL dynamically require the Admin to select a `party_id` from the `parties` table (e.g., binding a Vendor login to the "UBoT" party).
-3. **Validation:** The UI SHALL strictly validate that a `party_user` cannot exist without a bound `party_id`.
+## 4. Acceptance criteria
 
-### FR-5: System Configurations
-1. **Global Variables:** The settings page SHALL include a tab for generic system-wide flags (e.g., "Enable Strict FIFO override approvals", "Default Currency").
-
----
-
-## 4. Non-Functional Requirements
-1. **Security & Auditability:** Every action taken in the `/settings` route (especially role assignment and user suspension) MUST be logged in an audit trail table with the Admin's `user_id` and a timestamp.
-2. **Form Validation:** All inputs in the profile and settings forms MUST be validated using Zod schemas before submission to the server.
-
----
-
-## 5. Out of Scope
-- Granular capability matrix editing (We are sticking to predefined roles per Spec 02, not building a custom permission builder UI where users check individual capability boxes).
-- Complex SSO integration configurations (e.g., hooking up Azure AD or Okta SAML). Basic email/password authentication is sufficient for v1.
-
----
-
-## 6. Acceptance Criteria
-1. A standard user can navigate to `/profile`, toggle dark mode, and change their display name.
-2. An Administrator can navigate to `/settings`, invite a new user, and assign them the `party_user` role bound to a specific vendor `party_id`.
-3. An unauthorized user attempting to navigate directly to `/settings` is securely redirected away.
+- [ ] Users access `/profile`; Administrators and authorized users access `/settings`.
+- [ ] User-facing UI labels use Organization, Inventory Model, and Organization Portal exclusively.
+- [ ] User management binds `party_user` to specific Organization scopes (`user_party_scopes`).
+- [ ] 3-component error feedback is present on all form and server errors.

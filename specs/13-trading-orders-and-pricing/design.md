@@ -15,7 +15,7 @@ This design keeps Trading stock and price data separate from VMI period billing 
 
 Depends on:
 
-- `00-steering/product.md`, `tech.md`, `structure.md`, `testing.md`, `brand-design-system.md`, and `revision-log.md`.
+- `00-steering/product.md`, `tech.md`, `structure.md`, `testing.md`, `ui-ux-design-plan.md`, and `revision-log.md`.
 - `01-core-data-model` for parties/items/lots/flow partitions, core price/reference fields, pick-list linkage, and currency/forex references.
 - `02-rbac-roles` for capabilities, party/flow scope, RLS, and audit.
 - `03-offline-mode-and-client-storage` for the Tier 2 online-only boundary.

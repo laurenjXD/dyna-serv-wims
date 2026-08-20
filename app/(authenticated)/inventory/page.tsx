@@ -1,4 +1,4 @@
-// Inventory — office withdrawal hub: Stock View + Pick Lists + Daily Inspection tabs.
+// Inventory — office withdrawal hub: Stock View + Pick Lists + Inspection tabs.
 //
 // Traceability:
 //   specs/08-outgoing-withdrawal-and-two-stage-commitment/design.md §3 (route),
@@ -6,7 +6,11 @@
 //     2026-08-09 PO restructuring)
 //   specs/08-outgoing-withdrawal-and-two-stage-commitment/requirements.md
 //     R5.3, R5.7 (pick_list exposure)
-//   specs/11-transfer-and-inspection — Daily Inspection surface (placeholder)
+//   specs/11-transfer-and-inspection — Inspection tab renders the merged
+//     transfer + inspection queue (listInspectionAndTransferQueue), gated
+//     independently on transfer.view / inspection.perform. "Inspection"
+//     replaces the retired "Daily Inspection" label per Terminology
+//     Alignment §12.
 //   specs/00-steering/brand-design-system.md §3 (office tab pattern), §6
 //     (office surface, Level 1 elevation)
 //   specs/00-steering/revision-log.md (2026-08-09 restructuring — Ledger tab
@@ -17,15 +21,19 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronRight, Download, Search, SlidersHorizontal, FlaskConical } from "lucide-react";
+import { ChevronRight, Download, Search, SlidersHorizontal } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { listStockView, type StockViewRow } from "@/lib/db/queries/inventory";
 import { listPickLists } from "@/lib/db/queries/withdrawals";
 import type { PickListRow } from "@/lib/db/queries/withdrawals";
-import { listInspectionCases } from "@/lib/db/queries/transfers";
-import type { InspectionCaseListRow } from "@/lib/db/queries/transfers";
+import { listInspectionAndTransferQueue } from "@/lib/db/queries/transfers";
+import { resolveInventoryTab, type TabKey } from "./_lib/resolveInventoryTab";
+import { InspectionTab } from "./_components/InspectionTab";
+import { PickListGenerator } from "./_components/PickListGenerator";
+import { createPickList } from "./actions";
+import { listParties } from "@/lib/db/queries/parties";
 
 // ─── Status badge colors ─────────────────────────────────────────────────────
 // brand-design-system.md §1.3 semantic color mapping per task spec:
@@ -49,12 +57,10 @@ const FLOW_LABELS: Record<string, string> = {
   supplies: "Supplies",
 };
 
-type TabKey = "stock-view" | "pick-lists" | "daily-inspection";
-
 const TABS: Array<{ key: TabKey; label: string }> = [
   { key: "stock-view", label: "Stock View" },
   { key: "pick-lists", label: "Pick Lists" },
-  { key: "daily-inspection", label: "Daily Inspection" },
+  { key: "inspection", label: "Inspection" },
 ];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -66,10 +72,7 @@ interface PageProps {
 export default async function InventoryPage({ searchParams }: PageProps) {
   const { tab: tabParam, q } = await searchParams;
 
-  const activeTab: TabKey =
-    tabParam === "pick-lists" ? "pick-lists" :
-    tabParam === "daily-inspection" ? "daily-inspection" :
-    "stock-view";
+  const activeTab: TabKey = resolveInventoryTab(tabParam);
 
   const resolver = await createPageResolver();
 
@@ -94,7 +97,7 @@ export default async function InventoryPage({ searchParams }: PageProps) {
               ? "/inventory"
               : tab.key === "pick-lists"
               ? "/inventory?tab=pick-lists"
-              : "/inventory?tab=daily-inspection";
+              : "/inventory?tab=inspection";
           return (
             <Link
               key={tab.key}
@@ -120,7 +123,7 @@ export default async function InventoryPage({ searchParams }: PageProps) {
             <input id="inventory-search" name="q" type="search" defaultValue={q ?? ""} placeholder="Search SKU, Lot..." className="w-40 bg-transparent font-body text-body-sm text-on-surface placeholder:text-status-neutral focus:outline-none" />
           </div>
           <button type="submit" className="inline-flex h-11 items-center gap-2 rounded border border-outline-variant/30 bg-surface-white px-4 font-label text-label font-semibold text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"><SlidersHorizontal size={16} aria-hidden="true" />Filters</button>
-          <button type="button" className="inline-flex h-11 items-center gap-2 rounded bg-on-surface px-4 font-label text-label font-semibold text-surface-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"><Download size={16} aria-hidden="true" />Export</button>
+          <Link href="/inventory/export" className="inline-flex h-11 items-center gap-2 rounded bg-on-surface px-4 font-label text-label font-semibold text-surface-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"><Download size={16} aria-hidden="true" />Export Excel</Link>
         </form>
       </div>
 
@@ -129,7 +132,7 @@ export default async function InventoryPage({ searchParams }: PageProps) {
       ) : activeTab === "pick-lists" ? (
         <PickListsTab />
       ) : (
-        <DailyInspectionTab />
+        <InspectionTabSection />
       )}
     </div>
   );
@@ -139,11 +142,12 @@ export default async function InventoryPage({ searchParams }: PageProps) {
 
 async function StockViewTab({ query }: { query?: string }) {
   const rows = await listStockView(db);
+  const { rows: partyRows } = await listParties(db, { limit: 100 });
   const normalizedQuery = query?.trim().toLowerCase() ?? "";
   const items = groupStockByItem(rows).filter((item) => !normalizedQuery || `${item.itemCode} ${item.itemName} ${item.lots.map((lot) => lot.lotNumber).join(" ")}`.toLowerCase().includes(normalizedQuery));
 
   return (
-    <div className="mt-4 min-h-[680px] overflow-x-auto rounded-lg border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+    <div className="mt-4 min-h-[680px] overflow-x-auto rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
       {items.length === 0 ? (
         <div className="px-6 py-12 text-center">
           <p className="font-body text-body-md text-text-grey">
@@ -174,19 +178,17 @@ async function StockViewTab({ query }: { query?: string }) {
                   <p className="font-body text-body-md text-text-grey">
                     Lots are shown in {item.isPerishable ? "FEFO" : "FIFO"} order.
                   </p>
-                  {/* Generate Pick List — navigates to /outgoing which is the floor
-                      pick-list hub. A full in-page modal with commitWithdrawal wiring
-                      requires party/qty inputs beyond this static page's scope. */}
-                  <Link
-                    href="/outgoing"
-                    className="inline-flex h-11 items-center gap-2 rounded bg-brand-red px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
-                  >
-                    Generate Pick List
-                  </Link>
+                  <PickListGenerator
+                    itemId={item.itemId}
+                    flowType={item.flowType}
+                    lots={rows.filter((row) => row.itemId === item.itemId).map((row) => ({ lotId: row.lotId, locationId: row.locationId, availableQty: row.qtyRemaining - row.qtyCommitted }))}
+                    parties={partyRows.filter((party) => party.isActive).map((party) => ({ id: party.id, name: party.name, code: party.code }))}
+                    action={createPickList}
+                  />
                 </div>
                 <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   {item.lots.map((lot) => (
-                    <article key={lot.lotId} className="rounded-md border border-outline-variant/30 bg-surface-white p-4">
+                    <article key={lot.lotId} className="rounded-xl border border-outline-variant/30 bg-surface-white p-4">
                       {/* FEFO/FIFO priority badge — left accent bar signal */}
                       <div className="flex items-start justify-between gap-2">
                         <p className="font-mono text-mono-md font-bold text-on-surface">{lot.lotNumber}</p>
@@ -239,6 +241,7 @@ type GroupedItem = {
   itemName: string;
   uom: string;
   isPerishable: boolean;
+  flowType: "vmi" | "trading" | "supplies";
   availableQty: number;
   lots: AggregatedLot[];
 };
@@ -248,7 +251,7 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
   // The query already orders by (items.code, lots.expiry_date, lots.created_at)
   // so FEFO/FIFO order is preserved by the insertion sequence.
   const itemMap = new Map<string, {
-    itemId: string; itemCode: string; itemName: string; uom: string; isPerishable: boolean;
+    itemId: string; itemCode: string; itemName: string; uom: string; isPerishable: boolean; flowType: "vmi" | "trading" | "supplies";
     lotMap: Map<string, { lot: AggregatedLot }>;
     insertionOrder: string[]; // lot IDs in FEFO/FIFO order
   }>();
@@ -264,6 +267,7 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
         itemName: row.itemName,
         uom: row.uom,
         isPerishable: row.isPerishable,
+        flowType: row.flowType ?? "trading",
         lotMap: new Map(),
         insertionOrder: [],
       };
@@ -306,6 +310,7 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
       itemName: entry.itemName,
       uom: entry.uom,
       isPerishable: entry.isPerishable,
+      flowType: entry.flowType,
       availableQty: lots.reduce((sum, l) => sum + l.availableQty, 0),
       lots,
     };
@@ -320,7 +325,7 @@ async function PickListsTab() {
   const { rows } = await listPickLists(db, { limit: 50, offset: 0, status: "allocated" });
 
   return (
-    <div className="mt-6 overflow-hidden rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+    <div className="mt-6 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
       {rows.length === 0 ? (
         <div className="px-6 py-12 text-center">
           <p className="font-body text-body-md text-text-grey">
@@ -332,7 +337,7 @@ async function PickListsTab() {
           </p>
           <Link
             href="/outgoing"
-            className="mt-4 inline-flex h-11 items-center justify-center rounded bg-brand-red px-5 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+            className="mt-4 inline-flex h-11 items-center justify-center rounded bg-primary px-5 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
           >
             Go to Outgoing
           </Link>
@@ -354,7 +359,7 @@ async function PickListsTab() {
                   Flow Type
                 </th>
                 <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                  Customer Party
+                  Customer Organization
                 </th>
                 <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                   Created
@@ -391,7 +396,7 @@ async function PickListsTab() {
                     {/* Go to Pick — h-11 (44px) office touch target */}
                     <Link
                       href={`/pick-lists/${row.id}/pick`}
-                      className="inline-flex h-11 items-center gap-1 rounded bg-brand-red px-3 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                      className="inline-flex h-11 items-center gap-1 rounded bg-primary px-3 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy"
                     >
                       Go to Pick
                     </Link>
@@ -413,104 +418,48 @@ async function PickListsTab() {
   );
 }
 
-// ─── Daily Inspection tab — wired with real listInspectionCases ───────────────
+// ─── Inspection tab — merged transfer + inspection queue ──────────────────────
 //
-// The Master-Inventory-initiated entry point into the shared inspection queue.
-// Calls listInspectionCases with status: 'open' — the same query function that
-// /inspection uses. Authorization for inspection.perform is assumed from the
-// outer page's pick_list.read gate (supervisors who can view the master inventory
-// also have inspection visibility). The actual resolution action on /inspection/[id]
-// re-checks inspection.resolve server-side.
+// The Master-Inventory-initiated entry point into the shared transfer +
+// inspection work queue (specs/11-transfer-and-inspection R2.2, R2.3).
+// transfer.view and inspection.perform are checked independently — a caller
+// missing one still sees the other row type, matching
+// listInspectionAndTransferQueue's includeTransfers/includeInspections
+// contract (see its doc comment in lib/db/queries/transfers.ts).
 
-async function DailyInspectionTab() {
-  const { rows: openCases, total } = await listInspectionCases(db, {
-    status: "open",
-    limit: 20,
+async function InspectionTabSection() {
+  const resolver = await createPageResolver();
+
+  const includeTransfers =
+    (await requirePermission(resolver, "transfer.view")).kind === "authorized";
+  const includeInspections =
+    (await requirePermission(resolver, "inspection.perform")).kind === "authorized";
+
+  const rows = await listInspectionAndTransferQueue(db, {
+    limit: 50,
+    offset: 0,
+    includeTransfers,
+    includeInspections,
   });
-
-  const INSPECTION_STATUS_CLASSES: Record<string, string> = {
-    open: "bg-status-pending/10 text-status-pending",
-    resolved: "bg-status-available/10 text-status-available",
-  };
 
   return (
     <div className="mt-6">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h2 className="font-heading text-headline-md font-semibold text-on-surface">Daily Inspection Queue</h2>
+          <h2 className="font-heading text-headline-md font-semibold text-on-surface">Inspection</h2>
           <p className="mt-1 font-body text-body-md text-text-grey">
-            {total === 0
-              ? "No open inspection cases today."
-              : `${total} open inspection case${total !== 1 ? "s" : ""} — resolution requires Supervisor access.`}
+            Open transfer and inspection items requiring action.
           </p>
         </div>
         <Link
           href="/inspection"
           className="inline-flex h-11 items-center gap-2 rounded border border-outline-variant/30 px-4 font-label text-label font-semibold text-on-surface hover:bg-surface-light-grey focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
         >
-          <FlaskConical size={16} aria-hidden="true" />
           View All
         </Link>
       </div>
 
-      {openCases.length === 0 ? (
-        <div className="rounded-md border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-1">
-          <p className="font-body text-body-md text-text-grey">No open inspection cases.</p>
-          <p className="mt-2 font-body text-body-sm text-text-grey">
-            Cases are opened when a lot is placed on Hold during receiving or transfer.
-          </p>
-        </div>
-      ) : (
-        <div className="overflow-hidden rounded-md border border-outline-variant/30 bg-surface-white shadow-elevation-1">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Item Code</th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Lot #</th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Party</th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Location</th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Opened</th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Status</th>
-                <th className="sr-only px-4 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline-variant/30">
-              {openCases.map((c: InspectionCaseListRow) => (
-                <tr key={c.id} className="hover:bg-surface-light-grey/50">
-                  <td className="px-4 py-3 font-mono text-mono-md font-bold text-on-surface">{c.itemCode}</td>
-                  <td className="px-4 py-3 font-mono text-mono-md text-on-surface">{c.lotNumber}</td>
-                  <td className="px-4 py-3 font-body text-body-md text-on-surface">{c.partyName}</td>
-                  <td className="px-4 py-3 font-body text-body-md text-text-grey">{c.locationLabel ?? "—"}</td>
-                  <td className="px-4 py-3 font-body text-body-md text-text-grey">{c.openedAt.toLocaleDateString()}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase ${INSPECTION_STATUS_CLASSES[c.status] ?? "bg-status-neutral/10 text-status-neutral"}`}>
-                      {c.status.toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Link
-                      href={`/inspection/${c.id}`}
-                      className="inline-flex h-11 items-center font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                    >
-                      View
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {total > 20 && (
-            <div className="border-t border-outline-variant/30 px-4 py-3">
-              <Link
-                href="/inspection"
-                className="font-label text-label font-semibold text-on-surface underline"
-              >
-                View all {total} open cases →
-              </Link>
-            </div>
-          )}
-        </div>
-      )}
+      <InspectionTab rows={rows} />
     </div>
   );
 }
