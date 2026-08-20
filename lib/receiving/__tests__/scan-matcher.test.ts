@@ -76,6 +76,7 @@ const makeLine = (
     id: string;
     itemId: string | null;
     itemBarcode: string | null;
+    itemCode: string | null;
     lotNumber: string;
     expectedQty: number;
     scannedQty: number;
@@ -85,6 +86,7 @@ const makeLine = (
   id: "line-001",
   itemId: "item-uuid-001",
   itemBarcode: "BC-ALPHA-001",
+  itemCode: "ITEM-ALPHA-001",
   lotNumber: "LOT-2026-001",
   expectedQty: 10,
   scannedQty: 0,
@@ -123,6 +125,15 @@ describe("matchScan — unknown barcode returns unknown_item (design.md §6, req
     expect(result.matched).toBe(false);
     if (result.matched) return;
     expect(result.reason).toBe("unknown_item");
+  });
+});
+
+describe("matchScan — manual item-code fallback", () => {
+  it("accepts the displayed item code when a camera is unavailable", async () => {
+    const { matchScan } = await import("@/lib/receiving/scan-matcher");
+    const result = matchScan("ITEM-ALPHA-001", [makeLine()]);
+
+    expect(result).toMatchObject({ matched: true, remainingQty: 9, scanQty: 1 });
   });
 });
 

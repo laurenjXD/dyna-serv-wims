@@ -20,6 +20,8 @@ export type WrrLine = {
   id: string;
   itemId: string | null;
   itemBarcode: string | null;
+  /** Visible item code accepted as the camera-free manual fallback. */
+  itemCode?: string | null;
   lotNumber: string;
   expectedQty: number;
   scannedQty: number;
@@ -98,7 +100,7 @@ export function matchScan(
     }
     return (
       l.itemBarcode === barcode ||
-      (l as unknown as { itemCode?: string }).itemCode === barcode ||
+      l.itemCode === barcode ||
       l.itemId === barcode ||
       l.id === barcode ||
       l.lotNumber === barcode

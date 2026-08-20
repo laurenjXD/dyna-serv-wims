@@ -1,4 +1,4 @@
-# Track A Implementation Plan — For Codex
+chrome is connected# Track A Implementation Plan — For Codex
 
 Status: Active
 Prepared: 2026-08-17

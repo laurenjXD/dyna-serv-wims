@@ -134,6 +134,9 @@ async function fetchWrrForAction(
       // a test-double/backward-compatible fallback, then the supplier item
       // code supports legacy labels where no distinct barcode was recorded.
       itemBarcode: (enrolledItem?.barcode ?? line.barcode ?? line.itemCode ?? null) as string | null,
+      // Preserve the item code separately so it can be entered manually when
+      // a camera or hardware scanner is unavailable.
+      itemCode: (enrolledItem?.code ?? line.itemCode ?? null) as string | null,
       lotNumber: line.lotNumber as string,
       expectedQty: line.expectedQty as number,
       scannedQty: line.scannedQty as number,

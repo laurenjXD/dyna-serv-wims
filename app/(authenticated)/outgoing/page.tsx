@@ -134,9 +134,15 @@ export default async function OutgoingPage({ searchParams }: PageProps) {
 // ─── Active Picks tab (default) ───────────────────────────────────────────────
 
 async function ActivePicksTab({ canExecute }: { canExecute: boolean }) {
-  // Only show allocated pick lists — status=allocated is the "active" state that
-  // the floor warehouseman needs to act on. picked/dispatched rows belong in the ledger.
-  const { rows } = await listPickLists(db, { limit: 50, offset: 0, status: "allocated" });
+  // Both allocated and picked documents are still active work. A picked list
+  // has not affected stock yet, so it belongs here until Dispatch succeeds.
+  const [{ rows: allocatedRows }, { rows: pickedRows }] = await Promise.all([
+    listPickLists(db, { limit: 50, offset: 0, status: "allocated" }),
+    listPickLists(db, { limit: 50, offset: 0, status: "picked" }),
+  ]);
+  const rows = [...allocatedRows, ...pickedRows].sort(
+    (first, second) => first.createdAt.getTime() - second.createdAt.getTime(),
+  );
 
   return (
     <div className="mt-6 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-2 md:shadow-elevation-1">
@@ -146,8 +152,7 @@ async function ActivePicksTab({ canExecute }: { canExecute: boolean }) {
             No active pick lists.
           </p>
           <p className="mt-2 font-body text-body-sm text-text-grey">
-            Pick lists appear here once created. Scan items against each pick
-            list to execute.
+            Allocated and picked lists stay here until their dispatch is complete.
           </p>
         </div>
       ) : (
@@ -175,10 +180,14 @@ async function ActivePicksTab({ canExecute }: { canExecute: boolean }) {
                 </p>
                 {canExecute ? (
                   <Link
-                    href={`/pick-lists/${row.id}/pick`}
+                    href={
+                      row.status === "picked"
+                        ? `/pick-lists/${row.id}/dispatch`
+                        : `/pick-lists/${row.id}/pick`
+                    }
                     className="flex min-h-16 w-full items-center justify-center rounded bg-primary px-4 font-label text-body-md uppercase tracking-wide text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2"
                   >
-                    Start picking
+                    {row.status === "picked" ? "Continue to Dispatch" : "Start picking"}
                   </Link>
                 ) : (
                   <p className="font-body text-body-md text-text-grey">
@@ -233,10 +242,14 @@ async function ActivePicksTab({ canExecute }: { canExecute: boolean }) {
                       {/* Execute link — h-11 (44px) office touch target, gated pick_list.execute */}
                       {canExecute ? (
                         <Link
-                          href={`/pick-lists/${row.id}/pick`}
+                          href={
+                            row.status === "picked"
+                              ? `/pick-lists/${row.id}/dispatch`
+                              : `/pick-lists/${row.id}/pick`
+                          }
                           className="inline-flex h-11 items-center font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
                         >
-                          Execute
+                          {row.status === "picked" ? "Continue to Dispatch" : "Execute"}
                         </Link>
                       ) : (
                         <span className="font-label text-label text-text-grey">View only</span>
@@ -248,8 +261,8 @@ async function ActivePicksTab({ canExecute }: { canExecute: boolean }) {
             </table>
           </div>
           <p className="border-t border-outline-variant/30 px-4 py-4 font-body text-body-md text-text-grey md:px-6 md:py-3 md:text-body-sm">
-            Scan items against each pick list to execute. Acknowledgement receipt
-            is generated after dispatch.
+            Confirm the pick, then dispatch it. The acknowledgement receipt is
+            generated only after dispatch.
           </p>
         </>
       )}

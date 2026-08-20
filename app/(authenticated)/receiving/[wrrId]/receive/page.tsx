@@ -30,11 +30,12 @@ import { db } from "@/lib/db/client";
 import { eq, and } from "drizzle-orm";
 import { locations } from "@/lib/db/schema/locations";
 import { getWrrDocument } from "@/lib/db/queries/receiving";
-import { suggestPutawayLocations } from "@/lib/db/queries/locations";
+import { getPutawayLocationContents, suggestPutawayLocations } from "@/lib/db/queries/locations";
 import type { PutawayCandidate } from "@/lib/db/queries/locations";
 import { recordScan, startReceiving, commitWrrLine } from "@/lib/actions/receiving";
 import type { WrrItemRow } from "@/lib/db/queries/receiving";
 import { CameraScanBridge } from "./_components/CameraScanBridge";
+import { PutawayLocationSelector } from "./_components/PutawayLocationSelector";
 
 // ─── Error reason → plain language ──────────────────────────────────────────
 
@@ -151,12 +152,17 @@ export default async function ReceiveFloorPage({
   // Fetch putaway suggestions (store) / active inspection locations (inspect)
   // only for the single primary ready line.
   let primaryStoreCandidates: PutawayCandidate[] = [];
+  let primaryStoreContents: Record<string, Awaited<ReturnType<typeof getPutawayLocationContents>>[string]> = {};
   let inspectionLocations: Array<{ id: string; label: string }> = [];
   if (primaryReadyLine?.disposition === "store") {
     primaryStoreCandidates = await suggestPutawayLocations(db, {
       itemUnitCbm: primaryReadyLine.unitCbm,
       requestedQty: primaryReadyLine.expectedQty,
     });
+    primaryStoreContents = await getPutawayLocationContents(
+      db,
+      primaryStoreCandidates.map((candidate) => candidate.id),
+    );
   } else if (primaryReadyLine?.disposition === "inspect") {
     inspectionLocations = (await db
       .select({ id: locations.id, label: locations.label })
@@ -510,30 +516,16 @@ export default async function ReceiveFloorPage({
             </p>
             {primaryReadyLine.disposition === "store" ? (
               <>
-                <label
-                  htmlFor="location-primary"
-                  className="text-body-md font-body text-on-surface"
-                >
-                  Putaway location
-                </label>
                 {primaryStoreCandidates.length > 0 ? (
                   <>
                   <p className="rounded border border-outline-variant/30 bg-surface-light-grey px-3 py-2 font-body text-body-md text-on-surface">
-                    This receipt needs {(primaryReadyLine.unitCbm * primaryReadyLine.expectedQty).toFixed(2)} CBM. Only locations that fit it are shown.
+                    This receipt needs {(primaryReadyLine.unitCbm * primaryReadyLine.expectedQty).toFixed(2)} CBM. Choose a location, review its capacity and current contents, then store.
                   </p>
-                  <select
-                    id="location-primary"
-                    name="locationId"
-                    defaultValue={primaryStoreCandidates[0].id}
-                    className="h-16 w-full rounded border-2 border-outline-variant bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-4 focus:ring-brand-navy"
-                  >
-                    {primaryStoreCandidates.map((candidate) => (
-                      <option key={candidate.id} value={candidate.id}>
-                        {candidate.label} | {candidate.remainingCbm.toFixed(2)} CBM remaining
-                      </option>
-                    ))}
-                  </select>
-                  <p className="font-body text-body-sm text-text-grey">Selected suggestions display their remaining available space. Choose another location if the physical space does not match.</p>
+                  <PutawayLocationSelector
+                    candidates={primaryStoreCandidates}
+                    contents={primaryStoreContents}
+                    requestedCbm={primaryReadyLine.unitCbm * primaryReadyLine.expectedQty}
+                  />
                   </>
                 ) : (
                   <div role="alert" className="rounded border-l-4 border-status-held bg-white px-3 py-2">
