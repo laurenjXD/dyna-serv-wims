@@ -57,8 +57,6 @@ function getScanErrorMessage(reason: string): string {
       return "Duplicate scan — this barcode has already been counted.";
     case "unknown_item":
       return "Unknown item — barcode is not registered in the system. Contact a supervisor to enroll this item.";
-    case "wrr_document_qr":
-      return "This is the WRR document QR, not an item label. Scan a printed WRR unit label for the line you are receiving.";
     case "flow_type_mismatch":
       return "This item does not belong to this WRR's flow type — contact a supervisor.";
     case "duplicate_unit_scan":
@@ -142,14 +140,15 @@ export default async function ReceiveFloorPage({
   ).length;
   const allLinesScanned = totalLines > 0 && fullyScannedLines === totalLines;
 
-  // Lines that are fully scanned but not yet committed need their commit UI.
+  // One accepted label may open batch placement for a whole declared line.
   const readyLines = wrr.items.filter(
     (item: WrrItemRow) =>
-      item.scannedQty >= item.expectedQty && item.committedAt === null
+      item.scannedQty >= 1 && item.committedAt === null
   );
   const primaryReadyLine: WrrItemRow | null = readyLines.length > 0 ? readyLines[0] : null;
 
-  // Fetch putaway suggestions (store) / active inspection locations (inspect)
+  // Fetch putaway suggestions (store) / active inspection locations (inspect).
+  // Candidate data includes remainingCbm and the selector renders it per box.
   // only for the single primary ready line.
   let primaryStoreCandidates: PutawayCandidate[] = [];
   let primaryStoreContents: Record<string, Awaited<ReturnType<typeof getPutawayLocationContents>>[string]> = {};
@@ -157,7 +156,8 @@ export default async function ReceiveFloorPage({
   if (primaryReadyLine?.disposition === "store") {
     primaryStoreCandidates = await suggestPutawayLocations(db, {
       itemUnitCbm: primaryReadyLine.unitCbm,
-      requestedQty: primaryReadyLine.expectedQty,
+      requestedQty: 1,
+      limit: 50,
     });
     primaryStoreContents = await getPutawayLocationContents(
       db,
@@ -203,7 +203,16 @@ export default async function ReceiveFloorPage({
     "use server";
     const wrrItemId = (formData.get("wrrItemId") as string | null) ?? "";
     const locationId = (formData.get("locationId") as string | null) ?? "";
-    if (!wrrItemId || !locationId) {
+    const serializedAllocations = (formData.get("allocations") as string | null) ?? "";
+    let allocations: Array<{ locationId: string; qty: number }> | undefined;
+    try {
+      const parsed = JSON.parse(serializedAllocations || "null");
+      if (Array.isArray(parsed)) allocations = parsed;
+    } catch {
+      // Validation below returns the normal recoverable error.
+    }
+    const presenceAttested = formData.get("presenceAttested") === "true";
+    if (!wrrItemId || (!locationId && !allocations?.length)) {
       redirect(
         `/receiving/${wrrId}/receive?result=commit_error&line=${encodeURIComponent(wrrItemId)}&reason=${encodeURIComponent("missing_location")}`
       );
@@ -211,6 +220,8 @@ export default async function ReceiveFloorPage({
     const actionResolver = await createPageResolver();
     const commitResult = await commitWrrLine(actionResolver, wrrId, wrrItemId, {
       locationId,
+      allocations,
+      presenceAttested,
     });
     if (commitResult.ok) {
       redirect(
@@ -524,7 +535,8 @@ export default async function ReceiveFloorPage({
                   <PutawayLocationSelector
                     candidates={primaryStoreCandidates}
                     contents={primaryStoreContents}
-                    requestedCbm={primaryReadyLine.unitCbm * primaryReadyLine.expectedQty}
+                    quantity={primaryReadyLine.expectedQty}
+                    unitCbm={primaryReadyLine.unitCbm}
                   />
                   </>
                 ) : (
@@ -542,7 +554,7 @@ export default async function ReceiveFloorPage({
                   disabled={primaryStoreCandidates.length === 0}
                   className="flex h-16 w-full items-center justify-center rounded bg-primary font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white disabled:opacity-50"
                 >
-                  Store
+                  Store All
                 </button>
               </>
             ) : (

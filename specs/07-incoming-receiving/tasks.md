@@ -1,7 +1,7 @@
 # Incoming Receiving — Implementation Plan
 
 Status: Approved
-Updated: 2026-08-10
+Updated: 2026-08-20
 
 ## Implementation gate
 
@@ -108,6 +108,10 @@ Testing: Unit commit validation; real-Postgres transaction/idempotency/RLS integ
 - [ ] Record completed putaway through the owning inventory transaction boundary.
 - [ ] **Added 2026-08-10**: implement the flow-type cross-check rejection (design.md §6.1) — a scanned item's `items.flow_type` must match the WRR's `wrr_documents.flow_type`, rejected through the existing wrong-item exception path.
 - [ ] **Added 2026-08-10**: implement the location-first "Hold" sequence for `inspect`-disposition lines (design.md §6.3) — confirm inspection location, then scan, then commit.
+- [ ] **Added 2026-08-20, blocked pending reapproval**: add `wrr_item_putaway_allocations` migration/schema/RLS and server validation. It must enforce positive quantities, one line/location allocation, active storage locations, allocation total equal to expected quantity, and per-location CBM fit inside the final transaction.
+- [ ] **Added 2026-08-20, blocked pending reapproval**: build batch putaway after one accepted label scan: unsequenced carton/pallet allocation slots, current/projected CBM and stored-content preview, explicit physical-presence attestation, and one red **Store All** primary command. Retain individual QR scanning as the unique-label-reconciliation path.
+- [ ] **Added 2026-08-20, blocked pending reapproval**: make **Hold All** select an active inspection location and require the same attestation for `inspect` lines; do not offer storage-capacity allocation in this path.
+- [ ] **Added 2026-08-20, blocked pending reapproval**: commit one lot and one balance/receiving transaction per storage allocation atomically; prove retry/idempotency cannot duplicate any allocation posting.
 
 ### 7. Implement incoming ledger and review
 
@@ -158,6 +162,7 @@ Testing: Full applicable matrix below.
 - [ ] Verify inbound conformance and non-conformance flows, evidence, and blocked commit.
 - [ ] Confirm receipt, reload/retry, and verify no duplicate outcome.
 - [ ] Verify offline scan capture behavior and that confirmation/enrollment remain unavailable offline.
+- [ ] Verify batch allocation supports boxes placed in different locations, rejects an allocation total that differs from expected quantity, rejects over-capacity/stale/wrong-type locations, and does not mutate unique QR payloads or require printed-label order.
 - [ ] Verify Incoming Ledger filters, detail access, mobile/floor and office layouts, focus, contrast, touch targets, and reduced motion.
 
 ### Manual QA
@@ -176,3 +181,5 @@ Testing: Full applicable matrix below.
 - [ ] Design-system and print/physical workflow reviews pass.
 - [x] Product owner approval — Name: User / System Date: 2026-08-06
 - [x] Second approver approval — Name/Role: User / System (auto-sign-off per standing instruction) Date: 2026-08-06
+- [x] Batch putaway allocation amendment approval — Product owner: User, 2026-08-20
+- [x] Batch putaway allocation amendment approval — Second approver: System (standing auto-sign-off), 2026-08-20

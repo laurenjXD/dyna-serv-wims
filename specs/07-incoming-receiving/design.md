@@ -1,7 +1,7 @@
 # Incoming Receiving — Design
 
 Status: Approved
-Updated: 2026-08-10
+Updated: 2026-08-20
 
 ## 1. Design intent
 
@@ -35,9 +35,9 @@ Depends on:
 | `items` | Resolve barcode/item identity and read packaging/UOM/volume/perishability data. | Master data owned by `06`; unknown items follow its enrollment path. |
 | `locations` | Resolve `receiving_bay`, `inspection` (for quarantined inbound stock), and putaway recommendations/confirmation. | Location master/physical configuration is owned by the appropriate core/location feature. |
 | `lots` | Create the approved inbound lot during receipt commit. Status is `available` for `store` disposition or `quarantined` for `inspect` disposition. | Core/inventory transaction boundary owns invariant enforcement. |
-| `lot_location_balances` | Created at commit for each confirmed line: putaway location row for `store`, inspection location row for `inspect`. These rows are the authoritative source for `lot_inventory_totals`. | Core schema owns fields and constraints; receiving inserts via the commit transaction. |
+| `lot_location_balances` | Created at commit for each selected allocation: one putaway location row per `store` allocation, or one inspection-location row for `inspect`. These rows are the authoritative source for `lot_inventory_totals`. | Core schema owns fields and constraints; receiving inserts via the commit transaction. |
 | `wrr_documents` | Store staged WRR header and lifecycle. | Core schema owns fields/status constraints; receiving owns workflow commands. |
-| `wrr_items` | Store expected lines, scan reconciliation state, and per-line disposition. | Core schema owns fields; receiving owns matching behavior. The `disposition` field (`store`/`inspect`) is a new field to be added to `01` via schema amendment. |
+| `wrr_items` | Store expected lines, scan reconciliation state, and per-line disposition. | Core schema owns fields; receiving owns matching behavior. Batch allocation is staged as `wrr_item_putaway_allocations`; `putaway_location_id` is legacy/single-location compatibility data and is not authoritative for a split allocation. |
 | `wrr_inspection_logs` | Store inbound physical conformance/non-conformance observations during arrival. Distinct from post-commit quarantine resolution owned by `11`. | Retained by approved core schema; receiving owns the write path during the scan/conformance phase. |
 | `inventory_transactions` | Insert immutable receiving movements through server transactions. Both `store` and `inspect` dispositions insert a `movement_type = 'receiving'` record at commit. | No updates/deletes; inventory transaction boundary is authoritative. |
 | `wrr_advance_notices` (**added 2026-08-06, schema amendment not yet through `db-migration-verifier`** — see `01-core-data-model` design.md §6) | Confirm (creating/matching a staged `wrr_items` line) or reject a party-submitted pre-arrival label; resolve its `matched_wrr_item_id` at a physical scan of its `WAN:<uuid>` barcode. | Written by `22-parties-portal`'s party-facing surface only. `07` owns the confirm/reject transition and the scan-match consumption; `07` never writes an initial `wrr_advance_notices` row. |
@@ -413,16 +413,29 @@ Evidence uses private Supabase Storage and inherits WRR/party scope. Automated e
 
 ## 9. Receipt commit and idempotency
 
+### 9.0 Batch putaway allocation amendment — pending reapproval (2026-08-20)
+
+This amendment adds a lower-friction receiving mode for a line whose declared cartons/pallets may be stored separately. It deliberately does **not** change the unique payload of any printed QR label and does not treat a single scan as proof that every unique label was individually reconciled.
+
+1. One accepted label scan may open the line's batch-allocation surface. The operator sees one unsequenced allocation slot per `expected_qty`; the slots are operational placement entries, not identities for the printed QR labels.
+2. For a `store` line, the operator assigns every slot (or equivalent positive quantity groups) to active `storage` locations. The screen shows each location's used/maximum CBM, current remaining CBM, projected remaining CBM after the proposed quantity, and existing item/lot quantities there.
+3. The server persists the staged plan as `wrr_item_putaway_allocations` and rechecks it on every mutation. The sum of allocation quantities must equal `expected_qty`; all quantities must be positive; each selected location must be active storage; and the proposed CBM must fit every selected location. A missing, stale, over-capacity, or wrong-type allocation is rejected without posting inventory.
+4. Before **Store All**, the operator must provide a required presence attestation that all declared physical cartons/pallets are present. The final command sets the line's receipt quantity to `expected_qty`, records the attestation in the immutable audit event, and commits all allocations in one transaction. If individual label traceability is required instead, the operator uses the existing one-label-at-a-time path.
+5. For an `inspect` line, the equivalent action is **Hold All**: the operator selects one active `inspection` location and provides the same presence attestation. The line is committed as a quarantined lot at that location; no storage-capacity allocation is performed.
+6. Batch allocation is editable only while the line is uncommitted. A committed line, its allocation rows, lot balances, and receipt transactions are immutable; corrections are new domain transactions.
+
+The line retains one business lot. A split `store` commit creates one `lot_location_balances` row and one immutable `inventory_transactions` receiving row for each allocation, all linked to that lot and WRR line. This makes physical placement, capacity, ledger destination, and audit history agree without a duplicate stock table.
+
 **Reversed 2026-08-10: per-line immediate commit, not a single end-of-WRR atomic gate.** The prior model — one commit command validating and posting every line of a WRR in a single transaction, gated on all lines being fully scanned/resolved first — is replaced by a per-line commit: each line commits as its own atomic step, immediately when staff taps "Store" (§6.2, `store` lines) or "Hold" (§6.3, `inspect` lines). This generalizes a pattern already accepted elsewhere in this spec set rather than inventing new architecture: the 2026-08-09 "Eight cross-spec PO decisions" WRR-cancellation resolution (revision-log.md) already establishes that a WRR can reach a state where some lines are committed/posted to inventory while others are not (there, as a cancellation edge case; here, as the normal path — every WRR now progresses line-by-line as a matter of course, not only when cancelled mid-stream).
 
-**Per-line commit command.** Each line's commit receives the WRR ID, the specific `wrr_items.id`, the resolved disposition (`store`/`inspect`), the accepted-or-overridden `putaway_location_id` (for `store`) or the confirmed inspection `location_id` (for `inspect`), a client correlation ID, and an idempotency key. Within one transaction, for that line alone, it:
+**Per-line commit command.** Each line's commit receives the WRR ID, the specific `wrr_items.id`, the resolved disposition (`store`/`inspect`), the persisted allocation IDs (for `store`) or confirmed inspection `location_id` (for `inspect`), the batch-presence attestation where batch mode is used, a client correlation ID, and an idempotency key. Within one transaction, for that line alone, it:
 
 1. locks or otherwise protects the specific `wrr_items` row from concurrent double-commit;
-2. verifies the line's scanned quantity, conformance decision, disposition value, and (for `store`) the target location's active/`storage` state are present and valid;
+2. verifies the line's individual-scan total or batch-presence attestation, conformance decision, disposition value, and (for `store`) that the persisted allocation total, active/`storage` locations, and capacity fit are present and valid;
 3. applies the disposition path:
-   - **`store` disposition**: creates the lot with `status = 'available'`, `lot_number` copied from `wrr_items.lot_number` (the single canonical identifier), and `wrr_item_id` set; creates `lot_location_balances` at the accepted/overridden putaway location with the confirmed quantity as `qty_received` and `qty_remaining`; sets `wrr_items.putaway_location_id` to the same location.
+   - **`store` disposition**: creates the lot with `status = 'available'`, `lot_number` copied from `wrr_items.lot_number` (the single canonical identifier), and `wrr_item_id` set; creates one `lot_location_balances` row for each persisted allocation with that allocation quantity as `qty_received` and `qty_remaining`. `wrr_items.putaway_location_id` is not used as the source of truth for a split allocation.
    - **`inspect` disposition**: creates the lot with `status = 'quarantined'`, `lot_number` copied from `wrr_items.lot_number`, and `wrr_item_id` set; creates `lot_location_balances` at the confirmed `inspection` location with the confirmed quantity as `qty_received` and `qty_remaining`; emits an inspection case event for `11`.
-4. inserts an immutable `inventory_transactions` row with `movement_type = 'receiving'` for this line, with `to_location_id` set to the putaway location for `store` or the inspection location for `inspect`;
+4. inserts an immutable `inventory_transactions` row with `movement_type = 'receiving'` for each `store` allocation, with `to_location_id` set to that allocation's putaway location; `inspect` retains one transaction to the inspection location;
 5. re-evaluates the parent WRR's aggregate line-completion state (see the open item below) and updates `wrr_documents.status` accordingly;
 6. records audit/correlation data according to the approved cross-cutting design.
 

@@ -1272,6 +1272,20 @@ The Product Owner selected the previously-presented **option 1** for `07` receip
 
 This closes the C1 implementation ambiguity without introducing a temporary receiving-bay availability state or an unapproved automatic location-selection engine. The nullable staging column is added by `0020_wrr_item_putaway_location.sql`; the confirmation invariant, rather than a cross-row database CHECK, makes it required specifically for `store` lines. `01` and `07` documentation have been amended to reflect the decision. No `warehouse_id`, new capability string, or duplicate stock ledger is introduced.
 
+## Batch receiving / split putaway amendment (2026-08-20) — pending reapproval
+
+The Product Owner requested a lower-friction receiving workflow for cartons or pallets that may be placed in different locations: one accepted QR can open a batch placement surface, then staff can assign the declared physical quantity across locations instead of scanning every carton merely to enter a location.
+
+The amendment is intentionally bounded:
+
+- Printed QR labels remain unique and may be applied in any physical order. Batch allocation does not alter their payloads and does not claim individual-label reconciliation from one scan.
+- Batch allocation presents unsequenced placement slots (or grouped quantities), with each storage location's used/maximum CBM, remaining CBM, projected remaining CBM, and contents preview.
+- Staff must attest that all declared cartons/pallets are present; allocation quantities must exactly equal the WRR line's expected quantity. The individual-label scan path remains for operations requiring unique-label evidence.
+- `store` creates one business lot but one `lot_location_balances` row and one immutable receiving transaction per selected location. `inspect` uses an active inspection location and **Hold All**, without storage allocation.
+- A new staged `wrr_item_putaway_allocations` relation is required. It is a placement plan only, not inventory and not a duplicate ledger. The final receipt transaction must revalidate quantity, location type/activity, and capacity before posting.
+
+Because this changes the receipt data model and posting cardinality, `01-core-data-model` and `07-incoming-receiving` were marked **Pending Reapproval**. The Product Owner approved the amendment on 2026-08-20 and the standing System auto-sign-off supplied the second required approval; both specs are returned to **Approved** and implementation is authorized.
+
 # `08` Stock View — read-only standard FIFO/FEFO allocation preview (2026-08-10)
 
 The Inventory hub's Stock View now reads live, pickable `lot_location_balances` joined to lots, items, and locations. It exposes only `lots.status = 'available'` rows with a positive derived quantity (`qty_remaining - qty_committed`) and shows staff a requested-quantity preview using the shared allocation engine: FEFO for perishable items, FIFO for non-perishable items, including the selected lot/location sequence and quantities across dispersed locations. Insufficient stock returns no partial plan.
