@@ -78,6 +78,8 @@ export type RecordScanResult =
   | { ok: false; reason: string };
 
 export type CommitWrrLineResult = { ok: true } | { ok: false; errors: string[] };
+export type CancelWrrResult = { ok: true } | { ok: false; errors: string[] };
+export type UpdateWrrResult = { ok: true } | { ok: false; errors: string[] };
 
 // ---------------------------------------------------------------------------
 // Internal: fetch WRR document with items for action context
@@ -295,6 +297,68 @@ export async function createWrr(
     return { ok: false, errors: ["forbidden"] };
   }
   return rlsResult.value;
+}
+
+/**
+ * Cancels a pre-receiving WRR instead of hard-deleting it. WRRs are audit
+ * documents: once created, their reference and any partial physical work
+ * must remain traceable. A staged WRR is therefore safely removed from the
+ * active queue by transitioning it to `cancelled`.
+ */
+export async function cancelWrr(
+  resolver: RequestAuthorizationResolver,
+  wrrId: string,
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+): Promise<CancelWrrResult> {
+  const perm = await requirePermission(resolver, "receiving.confirm");
+  if (perm.kind !== "authorized") return { ok: false, errors: ["forbidden"] };
+
+  const result = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
+    const updated = await db
+      .update(wrrDocuments)
+      .set({ status: "cancelled", updatedAt: new Date() })
+      .where(and(
+        eq(wrrDocuments.id, wrrId),
+        or(
+          eq(wrrDocuments.status, "staged_pending_arrival"),
+          eq(wrrDocuments.status, "receiving_in_progress"),
+        ),
+      ))
+      .returning({ id: wrrDocuments.id });
+    return updated.length === 1
+      ? { ok: true } satisfies CancelWrrResult
+      : { ok: false, errors: ["This WRR can no longer be cancelled."] } satisfies CancelWrrResult;
+  });
+  return result.kind === "unauthenticated" ? { ok: false, errors: ["forbidden"] } : result.value;
+}
+
+/** Updates a staged WRR header. Expected lines are deliberately locked once
+ * receiving begins; editing them would invalidate generated scan labels. */
+export async function updateWrrHeader(
+  resolver: RequestAuthorizationResolver,
+  wrrId: string,
+  input: { vendorPartyId: string; flowType: "vmi" | "trading" | "supplies"; commercialInvoiceNo?: string | null; ipNumber?: string | null; mawbMblNumber?: string | null },
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+): Promise<UpdateWrrResult> {
+  const perm = await requirePermission(resolver, "receiving.confirm");
+  if (perm.kind !== "authorized") return { ok: false, errors: ["forbidden"] };
+  if (!input.vendorPartyId || !["vmi", "trading", "supplies"].includes(input.flowType)) {
+    return { ok: false, errors: ["Enter a valid organization and inventory model."] };
+  }
+  const result = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
+    const updated = await db.update(wrrDocuments).set({
+      vendorPartyId: input.vendorPartyId,
+      flowType: input.flowType,
+      commercialInvoiceNo: input.commercialInvoiceNo ?? null,
+      ipNumber: input.ipNumber ?? null,
+      mawbMblNumber: input.mawbMblNumber ?? null,
+      updatedAt: new Date(),
+    }).where(and(eq(wrrDocuments.id, wrrId), eq(wrrDocuments.status, "staged_pending_arrival"))).returning({ id: wrrDocuments.id });
+    return updated.length === 1 ? { ok: true } satisfies UpdateWrrResult : { ok: false, errors: ["Only staged WRRs can be edited."] } satisfies UpdateWrrResult;
+  });
+  return result.kind === "unauthenticated" ? { ok: false, errors: ["forbidden"] } : result.value;
 }
 
 // ---------------------------------------------------------------------------

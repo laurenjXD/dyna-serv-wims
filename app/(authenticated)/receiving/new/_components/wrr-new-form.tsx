@@ -17,7 +17,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import type { SupplierPartyOption } from "@/lib/db/queries/items";
+import type { SupplierPartyOption, WrrItemOption } from "@/lib/db/queries/items";
 import type { UploadCiplFileResult } from "@/lib/actions/receiving";
 import { WrrLineItems } from "./wrr-line-items";
 
@@ -26,11 +26,13 @@ const CIPL_ACCEPT = "application/pdf,image/png,image/jpeg";
 interface WrrNewFormProps {
   action: (formData: FormData) => void;
   vendorParties: SupplierPartyOption[];
+  itemOptions: WrrItemOption[];
   onUploadCipl: (wrrId: string, formData: FormData) => Promise<UploadCiplFileResult>;
 }
 
-export function WrrNewForm({ action, vendorParties, onUploadCipl }: WrrNewFormProps) {
+export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }: WrrNewFormProps) {
   const [flowType, setFlowType] = useState("");
+  const [vendorPartyId, setVendorPartyId] = useState("");
 
   // Reserved up front (specs/04-services-and-infrastructure/design.md §10.2's
   // path pattern needs a wrr_id before the row exists) so a CIPL file can
@@ -99,6 +101,8 @@ export function WrrNewForm({ action, vendorParties, onUploadCipl }: WrrNewFormPr
               required
               disabled={vendorParties.length === 0}
               defaultValue=""
+              value={vendorPartyId}
+              onChange={(e) => setVendorPartyId(e.target.value)}
               className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface disabled:cursor-not-allowed disabled:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
             >
               <option value="" disabled>
@@ -255,7 +259,7 @@ export function WrrNewForm({ action, vendorParties, onUploadCipl }: WrrNewFormPr
           scan/store time, not here.
         </p>
         <div className="mt-4">
-          <WrrLineItems flowType={flowType} />
+          <WrrLineItems flowType={flowType} vendorPartyId={vendorPartyId} itemOptions={itemOptions} />
         </div>
       </div>
 

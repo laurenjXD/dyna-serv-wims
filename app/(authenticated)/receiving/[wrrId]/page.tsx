@@ -22,7 +22,7 @@ import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { getWrrDocument } from "@/lib/db/queries/receiving";
-import { startReceiving, getCiplSignedUrl } from "@/lib/actions/receiving";
+import { startReceiving, getCiplSignedUrl, cancelWrr } from "@/lib/actions/receiving";
 import type { WrrItemRow } from "@/lib/db/queries/receiving";
 import { WRRUnitLabelGenerator } from "@/components/barcode/WRRUnitLabelGenerator";
 import { CiplDocumentLink, type SignedUrlResult } from "./_components/CiplDocumentLink";
@@ -101,6 +101,13 @@ export default async function WrrDetailPage({ params }: PageProps) {
     }
     const actionResolver = await createPageResolver();
     return getCiplSignedUrl(actionResolver, ciplFileUrl);
+  }
+
+  async function handleCancelWrr(): Promise<void> {
+    "use server";
+    const actionResolver = await createPageResolver();
+    await cancelWrr(actionResolver, wrrId);
+    redirect(`/receiving/${wrrId}`);
   }
 
   return (
@@ -200,14 +207,12 @@ export default async function WrrDetailPage({ params }: PageProps) {
         </h2>
         <div className="mt-4 flex flex-wrap gap-3">
           {wrr.status === "staged_pending_arrival" && (
-            <form action={handleStartReceiving}>
-              <button
-                type="submit"
-                className="flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              >
-                Start Receiving
-              </button>
-            </form>
+            <>
+              <form action={handleStartReceiving}>
+                <button type="submit" className="flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy">Start Receiving</button>
+              </form>
+              <Link href={`/receiving/${wrrId}/edit`} className="inline-flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy">Edit WRR</Link>
+            </>
           )}
 
           {wrr.status === "receiving_in_progress" && (
@@ -234,6 +239,11 @@ export default async function WrrDetailPage({ params }: PageProps) {
 
           {wrr.ciplFileUrl && (
             <CiplDocumentLink onGetSignedUrl={handleGetCiplSignedUrl} />
+          )}
+          {(wrr.status === "staged_pending_arrival" || wrr.status === "receiving_in_progress") && (
+            <form action={handleCancelWrr}>
+              <button type="submit" className="inline-flex h-11 items-center justify-center rounded border border-status-held px-4 font-label text-label text-status-held hover:bg-status-held/10 focus:outline-none focus:ring-2 focus:ring-brand-navy">Delete / Cancel WRR</button>
+            </form>
           )}
         </div>
       </div>

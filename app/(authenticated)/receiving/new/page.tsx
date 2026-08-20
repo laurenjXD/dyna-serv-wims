@@ -16,7 +16,7 @@ import { requirePermission } from "@/lib/rbac/guard";
 import { createWrr, uploadCiplFile } from "@/lib/actions/receiving";
 import type { UploadCiplFileResult } from "@/lib/actions/receiving";
 import { db } from "@/lib/db/client";
-import { getActiveSupplierParties } from "@/lib/db/queries/items";
+import { getActiveSupplierParties, listActiveWrrItemOptions } from "@/lib/db/queries/items";
 import { WrrNewForm } from "./_components/wrr-new-form";
 
 // ─── Inline server action ─────────────────────────────────────────────────────
@@ -38,6 +38,7 @@ async function handleCreateWrr(formData: FormData): Promise<void> {
     const rawExpectedQty = formData.get(`line_${i}_expectedQty`) as string | null;
     const rawUnitCbm = formData.get(`line_${i}_unitCbm`) as string | null;
     lines.push({
+      itemId: (formData.get(`line_${i}_itemId`) as string | null) || null,
       lotNumber: (formData.get(`line_${i}_lotNumber`) as string | null) ?? "",
       expectedQty: rawExpectedQty ? parseFloat(rawExpectedQty) : NaN,
       unitCbm: rawUnitCbm ? parseFloat(rawUnitCbm) : NaN,
@@ -127,6 +128,7 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
   // vendor/supplier organizations prevents operators from having to discover
   // and paste an internal UUID (and avoids a database exception on submit).
   const vendorParties = await getActiveSupplierParties(db);
+  const wrrItemOptions = await listActiveWrrItemOptions(db);
 
   const errors = encodedErrors
     ? decodeURIComponent(encodedErrors).split("|").filter(Boolean)
@@ -187,6 +189,7 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
       <WrrNewForm
         action={handleCreateWrr}
         vendorParties={vendorParties}
+        itemOptions={wrrItemOptions}
         onUploadCipl={handleUploadCipl}
       />
     </div>

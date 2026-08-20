@@ -12,7 +12,8 @@
 // form inputs named `line_N_fieldName`. A hidden `lineCount` input tells the
 // server action how many lines to parse. Fields default to { disposition: "store" }.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import type { WrrItemOption } from "@/lib/db/queries/items";
 
 interface LineState {
   lotNumber: string;
@@ -22,6 +23,7 @@ interface LineState {
   disposition: "store" | "inspect";
   itemCode: string;
   customerItemCode: string;
+  itemId: string;
 }
 
 const EMPTY_LINE: LineState = {
@@ -32,6 +34,7 @@ const EMPTY_LINE: LineState = {
   disposition: "store",
   itemCode: "",
   customerItemCode: "",
+  itemId: "",
 };
 
 // Item Code label is conditional on the WRR's Inventory Model (2026-08-19
@@ -44,8 +47,38 @@ function itemCodeLabel(flowType: string): string {
   return flowType === "trading" ? "DSGC Item Number" : "Item Code (Supplier)";
 }
 
-export function WrrLineItems({ flowType }: { flowType: string }) {
+export function WrrLineItems({ flowType, vendorPartyId, itemOptions }: { flowType: string; vendorPartyId: string; itemOptions: WrrItemOption[] }) {
   const [lines, setLines] = useState<LineState[]>([{ ...EMPTY_LINE }]);
+
+  // Never retain a selection from a different organization. Besides being
+  // confusing in the form, retaining it would let a stale hidden itemId be
+  // submitted after the operator changes vendor.
+  useEffect(() => {
+    setLines((prev) => prev.map((line) => ({ ...line, itemId: "", itemCode: "", customerItemCode: "" })));
+  }, [vendorPartyId]);
+
+  const availableItems = vendorPartyId
+    ? itemOptions.filter((item) => item.defaultSupplierPartyId === vendorPartyId)
+    : [];
+
+  function codeFor(item: WrrItemOption): string {
+    return flowType === "trading"
+      ? (item.dsgcItemNumber ?? item.code)
+      : (item.supplierItemCode ?? item.code);
+  }
+
+  function chooseItem(index: number, itemId: string) {
+    const item = availableItems.find((candidate) => candidate.id === itemId);
+    if (!item) return;
+    setLines((prev) => prev.map((line, i) => i === index ? {
+      ...line,
+      itemId: item.id,
+      itemCode: codeFor(item),
+      customerItemCode: item.customerItemCode ?? "",
+      uom: item.uom,
+      unitCbm: item.volumeCbm,
+    } : line));
+  }
 
   function addLine() {
     setLines((prev) => [...prev, { ...EMPTY_LINE }]);
@@ -89,6 +122,7 @@ export function WrrLineItems({ flowType }: { flowType: string }) {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <input type="hidden" name={`line_${index}_itemId`} value={line.itemId} />
             {/* Lot Number — required */}
             <div>
               <label
@@ -222,7 +256,7 @@ export function WrrLineItems({ flowType }: { flowType: string }) {
               </select>
             </div>
 
-            {/* Item Code — conditional label per flowType, optional */}
+            {/* Item Code — limited to items registered under the selected vendor organization. */}
             <div>
               <label
                 htmlFor={`line-${index}-itemCode`}
@@ -230,15 +264,21 @@ export function WrrLineItems({ flowType }: { flowType: string }) {
               >
                 {itemCodeLabel(flowType)}
               </label>
-              <input
+              <select
                 id={`line-${index}-itemCode`}
-                name={`line_${index}_itemCode`}
-                type="text"
-                value={line.itemCode}
-                onChange={(e) => updateLine(index, "itemCode", e.target.value)}
-                placeholder={flowType === "trading" ? "DSGC item number" : "Supplier part number"}
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              />
+                value={line.itemId}
+                disabled={!vendorPartyId}
+                onChange={(e) => chooseItem(index, e.target.value)}
+                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface disabled:cursor-not-allowed disabled:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              >
+                <option value="">{vendorPartyId ? "Select registered item…" : "Select vendor organization first"}</option>
+                {availableItems.map((item) => <option key={item.id} value={item.id}>{codeFor(item)} — {item.name}</option>)}
+              </select>
+              <input type="hidden" name={`line_${index}_itemCode`} value={line.itemCode} />
+              {/* Retain a readable fallback only until an organization has been selected. */}
+              {!vendorPartyId && (
+                <p className="mt-1 font-body text-body-sm text-text-grey">Item codes are filtered after you choose an organization.</p>
+              )}
             </div>
 
             {/* Customer Item Code — optional */}
@@ -249,17 +289,19 @@ export function WrrLineItems({ flowType }: { flowType: string }) {
               >
                 Customer Item Code
               </label>
-              <input
+              <select
                 id={`line-${index}-customerItemCode`}
-                name={`line_${index}_customerItemCode`}
-                type="text"
-                value={line.customerItemCode}
+                value={line.itemId}
+                disabled={!vendorPartyId}
                 onChange={(e) =>
-                  updateLine(index, "customerItemCode", e.target.value)
+                  chooseItem(index, e.target.value)
                 }
-                placeholder="Customer part number"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              />
+                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface disabled:cursor-not-allowed disabled:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              >
+                <option value="">{vendorPartyId ? "Select customer item code…" : "Select vendor organization first"}</option>
+                {availableItems.filter((item) => item.customerItemCode).map((item) => <option key={item.id} value={item.id}>{item.customerItemCode} — {item.name}</option>)}
+              </select>
+              <input type="hidden" name={`line_${index}_customerItemCode`} value={line.customerItemCode} />
             </div>
           </div>
         </div>
