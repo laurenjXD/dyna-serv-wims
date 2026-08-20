@@ -31,6 +31,9 @@ import type { PickListRow } from "@/lib/db/queries/withdrawals";
 import { listInspectionAndTransferQueue } from "@/lib/db/queries/transfers";
 import { resolveInventoryTab, type TabKey } from "./_lib/resolveInventoryTab";
 import { InspectionTab } from "./_components/InspectionTab";
+import { PickListGenerator } from "./_components/PickListGenerator";
+import { createPickList } from "./actions";
+import { listParties } from "@/lib/db/queries/parties";
 
 // ─── Status badge colors ─────────────────────────────────────────────────────
 // brand-design-system.md §1.3 semantic color mapping per task spec:
@@ -139,6 +142,7 @@ export default async function InventoryPage({ searchParams }: PageProps) {
 
 async function StockViewTab({ query }: { query?: string }) {
   const rows = await listStockView(db);
+  const { rows: partyRows } = await listParties(db, { limit: 100 });
   const normalizedQuery = query?.trim().toLowerCase() ?? "";
   const items = groupStockByItem(rows).filter((item) => !normalizedQuery || `${item.itemCode} ${item.itemName} ${item.lots.map((lot) => lot.lotNumber).join(" ")}`.toLowerCase().includes(normalizedQuery));
 
@@ -174,15 +178,13 @@ async function StockViewTab({ query }: { query?: string }) {
                   <p className="font-body text-body-md text-text-grey">
                     Lots are shown in {item.isPerishable ? "FEFO" : "FIFO"} order.
                   </p>
-                  {/* Generate Pick List — navigates to /outgoing which is the floor
-                      pick-list hub. A full in-page modal with commitWithdrawal wiring
-                      requires party/qty inputs beyond this static page's scope. */}
-                  <Link
-                    href="/outgoing"
-                    className="inline-flex h-11 items-center gap-2 rounded bg-primary px-4 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
-                  >
-                    Generate Pick List
-                  </Link>
+                  <PickListGenerator
+                    itemId={item.itemId}
+                    flowType={item.flowType}
+                    lots={rows.filter((row) => row.itemId === item.itemId).map((row) => ({ lotId: row.lotId, locationId: row.locationId, availableQty: row.qtyRemaining - row.qtyCommitted }))}
+                    parties={partyRows.filter((party) => party.isActive).map((party) => ({ id: party.id, name: party.name, code: party.code }))}
+                    action={createPickList}
+                  />
                 </div>
                 <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   {item.lots.map((lot) => (
@@ -239,6 +241,7 @@ type GroupedItem = {
   itemName: string;
   uom: string;
   isPerishable: boolean;
+  flowType: "vmi" | "trading" | "supplies";
   availableQty: number;
   lots: AggregatedLot[];
 };
@@ -248,7 +251,7 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
   // The query already orders by (items.code, lots.expiry_date, lots.created_at)
   // so FEFO/FIFO order is preserved by the insertion sequence.
   const itemMap = new Map<string, {
-    itemId: string; itemCode: string; itemName: string; uom: string; isPerishable: boolean;
+    itemId: string; itemCode: string; itemName: string; uom: string; isPerishable: boolean; flowType: "vmi" | "trading" | "supplies";
     lotMap: Map<string, { lot: AggregatedLot }>;
     insertionOrder: string[]; // lot IDs in FEFO/FIFO order
   }>();
@@ -264,6 +267,7 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
         itemName: row.itemName,
         uom: row.uom,
         isPerishable: row.isPerishable,
+        flowType: row.flowType ?? "trading",
         lotMap: new Map(),
         insertionOrder: [],
       };
@@ -306,6 +310,7 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
       itemName: entry.itemName,
       uom: entry.uom,
       isPerishable: entry.isPerishable,
+      flowType: entry.flowType,
       availableQty: lots.reduce((sum, l) => sum + l.availableQty, 0),
       lots,
     };

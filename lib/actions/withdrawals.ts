@@ -27,13 +27,14 @@
 //     withdrawal.request, withdrawal.execute, withdrawal.view
 //   specs/00-steering/tech.md — RBAC always from session, never client params.
 
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import type { RequestAuthorizationResolver } from "@/lib/rbac/session";
 import { requirePermission } from "@/lib/rbac/guard";
 import { validateWithdrawal } from "@/lib/withdrawal/withdrawal-validator";
 import { checkProvisionalItemCodes } from "@/lib/withdrawal/allocation";
 import { pickLists, pickListItems } from "@/lib/db/schema/pick_lists";
+import { lotLocationBalances } from "@/lib/db/schema/lot_location_balances";
 import {
   inventoryCommitments,
   inventoryCommitmentLines,
@@ -159,11 +160,24 @@ export async function commitWithdrawal(
 
     const pickListId = (insertedPickList as { id: string }).id;
 
-    // Step 5: Insert pick_list_items — one row per requested line
+    const [insertedCommitment] = await db
+      .insert(inventoryCommitments)
+      .values({
+        commitmentNumber: `CMT-${Date.now()}`,
+        pickListId,
+        status: "active",
+        createdByUserId: userId,
+      })
+      .returning();
+    const commitmentId = (insertedCommitment as { id: string }).id;
+
+    // Step 5: Insert pick_list_items and retain each real row id for the
+    // corresponding commitment line. A pick-list id is not a valid
+    // pick-list-item foreign key.
     // item_code snapshot: requires item lookup in production; placeholder here
     // (TODO: resolve item_code and other snapshot fields from items table).
     for (const line of data.lines) {
-      await db
+      const [insertedPickListItem] = await db
         .insert(pickListItems)
         .values({
           pickListId,
@@ -178,32 +192,36 @@ export async function commitWithdrawal(
           numberOfBoxes: 1, // TODO: calculate from qty / spq
         })
         .returning();
-    }
 
-    // Step 6: Insert inventory_commitments header (design.md §6 step 5)
-    const commitmentNumber = `CMT-${Date.now()}`;
+      const pickListItemId = (insertedPickListItem as { id: string }).id;
 
-    const [insertedCommitment] = await db
-      .insert(inventoryCommitments)
-      .values({
-        commitmentNumber,
-        pickListId,
-        status: "active",
-        createdByUserId: userId,
-      })
-      .returning();
+      // Reserve only the exact lot/location selected by the allocation plan.
+      // The conditional predicate is the last line of defence against an
+      // over-commit when another request consumes availability first.
+      const reserved = await db
+        .update(lotLocationBalances)
+        .set({
+          qtyCommitted: sql`${lotLocationBalances.qtyCommitted} + ${line.qty}`,
+          version: sql`${lotLocationBalances.version} + 1`,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(lotLocationBalances.lotId, line.lotId),
+          eq(lotLocationBalances.locationId, line.locationId),
+          sql`${lotLocationBalances.qtyRemaining} - ${lotLocationBalances.qtyCommitted} >= ${line.qty}`,
+        ))
+        .returning({ id: lotLocationBalances.id });
 
-    const commitmentId = (insertedCommitment as { id: string }).id;
+      if (reserved.length !== 1) {
+        throw new Error("insufficient_stock");
+      }
 
-    // Step 7: Insert inventory_commitment_lines — one row per line
-    // TODO: resolve lot_location_balance_id and pick_list_item_id in production.
-    for (const line of data.lines) {
       await db
         .insert(inventoryCommitmentLines)
         .values({
           commitmentId,
-          pickListItemId: pickListId, // TODO: resolve real pick_list_item_id from inserted items above
-          lotLocationBalanceId: line.lotId, // TODO: resolve real lot_location_balance_id
+          pickListItemId,
+          lotLocationBalanceId: reserved[0].id,
           qtyCommitted: line.qty,
           qtyExecuted: 0,
           status: "active",

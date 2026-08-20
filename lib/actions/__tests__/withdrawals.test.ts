@@ -202,7 +202,9 @@ function makeWithdrawalDb(pickListRows: AnyRecord[] = []) {
       set: vi.fn().mockImplementation((vals: unknown) => {
         updated.push(vals);
         return {
-          where: vi.fn().mockResolvedValue(undefined),
+          where: vi.fn().mockImplementation(() => ({
+            returning: vi.fn().mockResolvedValue([{ id: "balance-uuid-1" }]),
+          })),
         };
       }),
     })),
