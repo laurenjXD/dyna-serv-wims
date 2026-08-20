@@ -40,6 +40,9 @@ import { withRlsTransaction } from "@/lib/db/rls-transaction";
 import type { RlsTransactionDeps } from "@/lib/db/rls-transaction";
 import { rlsPool } from "@/lib/db/rls-pool";
 import { getAuthenticatedSession } from "@/lib/auth/get-authenticated-session";
+import { getStorageClient } from "@/lib/supabase/storage";
+import { validateCiplFile, buildCiplObjectPath } from "@/lib/receiving/cipl-upload";
+import { randomUUID } from "node:crypto";
 
 // Every action below binds its DB work to the caller's RLS-claimed
 // transaction (specs/02-rbac-roles/design.md §6.3) rather than an
@@ -198,6 +201,12 @@ export async function createWrr(
       const [inserted] = await db
         .insert(wrrDocuments)
         .values({
+          // Reuses the client-generated id (see CreateWrrInput's doc comment
+          // in lib/receiving/wrr-schema.ts) when a CIPL file was uploaded
+          // before this row existed, so the file's Storage path and this
+          // row's id agree. `undefined` (no CIPL attached) falls through to
+          // the column's defaultRandom(), unchanged from before.
+          id: data.id,
           wrrNumber,
           vendorPartyId: data.vendorPartyId,
           flowType: data.flowType,
@@ -246,6 +255,93 @@ export async function createWrr(
     return { ok: false, errors: ["forbidden"] };
   }
   return rlsResult.value;
+}
+
+// ---------------------------------------------------------------------------
+// uploadCiplFile / getCiplSignedUrl
+// ---------------------------------------------------------------------------
+//
+// specs/04-services-and-infrastructure/design.md §10 (Supabase Storage
+// design) — bucket `cipl-documents`, path
+// `cipl/{wrr_id}/{upload_uuid}/{sanitized-filename}`, private with signed
+// URLs generated only after authorizing access (§10.2/§10.3).
+//
+// The WRR row does not exist yet when a CIPL is attached on the create-WRR
+// form — the caller generates `wrrId` client-side (crypto.randomUUID()) and
+// createWrr above reuses that same id (CreateWrrInput.id) so the uploaded
+// object's path and the eventual row agree without a second write.
+
+export type UploadCiplFileResult =
+  | { ok: true; path: string }
+  | { ok: false; error: string };
+
+/**
+ * Uploads a CIPL/packing-list reference file to the private `cipl-documents`
+ * bucket. Requires receiving.confirm — the same capability createWrr itself
+ * requires, and the one the bucket's own INSERT policy checks
+ * (0030_cipl_documents_storage.sql), so this call and the eventual createWrr
+ * call are gated identically.
+ */
+export async function uploadCiplFile(
+  resolver: RequestAuthorizationResolver,
+  wrrId: string,
+  file: File,
+): Promise<UploadCiplFileResult> {
+  const perm = await requirePermission(resolver, "receiving.confirm");
+  if (perm.kind !== "authorized") {
+    return { ok: false, error: "forbidden" };
+  }
+
+  const validation = validateCiplFile(file);
+  if (!validation.ok) {
+    return { ok: false, error: validation.error };
+  }
+
+  const path = buildCiplObjectPath(wrrId, randomUUID(), file.name);
+
+  const storage = await getStorageClient();
+  const { error } = await storage
+    .from("cipl-documents")
+    .upload(path, file, { contentType: file.type, upsert: false });
+
+  if (error) {
+    console.error("CIPL upload failed", error);
+    return { ok: false, error: "Upload failed. Please try again." };
+  }
+
+  return { ok: true, path };
+}
+
+export type CiplSignedUrlResult =
+  | { ok: true; url: string }
+  | { ok: false; error: string };
+
+/**
+ * Generates a short-lived (design.md §10.2: "Signed URLs are short-lived
+ * (<= 60 minutes)") signed URL for viewing an already-uploaded CIPL file.
+ * Requires receiving.view — matches the WRR detail page's own gate and the
+ * bucket's SELECT policy.
+ */
+export async function getCiplSignedUrl(
+  resolver: RequestAuthorizationResolver,
+  objectPath: string,
+): Promise<CiplSignedUrlResult> {
+  const perm = await requirePermission(resolver, "receiving.view");
+  if (perm.kind !== "authorized") {
+    return { ok: false, error: "forbidden" };
+  }
+
+  const storage = await getStorageClient();
+  const { data, error } = await storage
+    .from("cipl-documents")
+    .createSignedUrl(objectPath, 60 * 60); // 60 minutes — the spec's stated ceiling
+
+  if (error || !data) {
+    console.error("CIPL signed URL generation failed", error);
+    return { ok: false, error: "Unable to generate a document link." };
+  }
+
+  return { ok: true, url: data.signedUrl };
 }
 
 // ---------------------------------------------------------------------------

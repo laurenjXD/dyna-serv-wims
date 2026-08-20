@@ -22,9 +22,10 @@ import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { getWrrDocument } from "@/lib/db/queries/receiving";
-import { startReceiving } from "@/lib/actions/receiving";
+import { startReceiving, getCiplSignedUrl } from "@/lib/actions/receiving";
 import type { WrrItemRow } from "@/lib/db/queries/receiving";
 import { WRRUnitLabelGenerator } from "@/components/barcode/WRRUnitLabelGenerator";
+import { CiplDocumentLink, type SignedUrlResult } from "./_components/CiplDocumentLink";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -77,6 +78,12 @@ export default async function WrrDetailPage({ params }: PageProps) {
     notFound();
   }
 
+  // Captured as its own binding (not `wrr.ciplFileUrl` inline) so the two
+  // inline "use server" closures below can reference it — TypeScript
+  // doesn't retain the `!wrr` early-return's narrowing of `wrr` itself
+  // across a hoisted `function` declaration's body.
+  const ciplFileUrl = wrr.ciplFileUrl;
+
   // ─── Inline server action: startReceiving ──────────────────────────────────
   async function handleStartReceiving(): Promise<void> {
     "use server";
@@ -84,6 +91,16 @@ export default async function WrrDetailPage({ params }: PageProps) {
     await startReceiving(actionResolver, wrrId);
     // Revalidate by redirecting back to this page so the updated status renders.
     redirect(`/receiving/${wrrId}`);
+  }
+
+  // ─── Inline server action: getCiplSignedUrl ────────────────────────────────
+  async function handleGetCiplSignedUrl(): Promise<SignedUrlResult> {
+    "use server";
+    if (!ciplFileUrl) {
+      return { ok: false, error: "No CIPL document is attached to this WRR." };
+    }
+    const actionResolver = await createPageResolver();
+    return getCiplSignedUrl(actionResolver, ciplFileUrl);
   }
 
   return (
@@ -141,16 +158,20 @@ export default async function WrrDetailPage({ params }: PageProps) {
           </div>
           <div>
             <dt className="font-label text-label text-text-grey">
-              Vendor Organization ID
+              Vendor Organization
             </dt>
-            <dd className="mt-1 font-mono text-mono-md text-on-surface">
-              {wrr.vendorPartyId}
+            <dd className="mt-1 font-body text-body-md text-on-surface">
+              {wrr.vendorPartyName ?? (
+                <span className="font-mono text-mono-md">{wrr.vendorPartyId}</span>
+              )}
             </dd>
           </div>
           <div>
             <dt className="font-label text-label text-text-grey">Staged By</dt>
-            <dd className="mt-1 font-mono text-mono-md text-on-surface">
-              {wrr.stagedByUserId}
+            <dd className="mt-1 font-body text-body-md text-on-surface">
+              {wrr.stagedByDisplayName ?? (
+                <span className="font-mono text-mono-md">{wrr.stagedByUserId}</span>
+              )}
             </dd>
           </div>
           <div>
@@ -209,6 +230,10 @@ export default async function WrrDetailPage({ params }: PageProps) {
             >
               Print Receipt
             </Link>
+          )}
+
+          {wrr.ciplFileUrl && (
+            <CiplDocumentLink onGetSignedUrl={handleGetCiplSignedUrl} />
           )}
         </div>
       </div>

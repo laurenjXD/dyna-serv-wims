@@ -34,7 +34,17 @@ const EMPTY_LINE: LineState = {
   customerItemCode: "",
 };
 
-export function WrrLineItems() {
+// Item Code label is conditional on the WRR's Inventory Model (2026-08-19
+// user request): Trading lines are identified by DSGC Item Number; VMI (and
+// unset/Supplies) lines keep the original Supplier Item Code framing —
+// `wrr_items` has no separate `dsgc_item_number` column at the line level,
+// so both cases still post to the same `line_N_itemCode` field / `item_code`
+// column, only the label changes.
+function itemCodeLabel(flowType: string): string {
+  return flowType === "trading" ? "DSGC Item Number" : "Item Code (Supplier)";
+}
+
+export function WrrLineItems({ flowType }: { flowType: string }) {
   const [lines, setLines] = useState<LineState[]>([{ ...EMPTY_LINE }]);
 
   function addLine() {
@@ -212,13 +222,13 @@ export function WrrLineItems() {
               </select>
             </div>
 
-            {/* Item Code (supplier) — optional */}
+            {/* Item Code — conditional label per flowType, optional */}
             <div>
               <label
                 htmlFor={`line-${index}-itemCode`}
                 className="block font-label text-label text-text-grey"
               >
-                Item Code (Supplier)
+                {itemCodeLabel(flowType)}
               </label>
               <input
                 id={`line-${index}-itemCode`}
@@ -226,7 +236,7 @@ export function WrrLineItems() {
                 type="text"
                 value={line.itemCode}
                 onChange={(e) => updateLine(index, "itemCode", e.target.value)}
-                placeholder="Supplier part number"
+                placeholder={flowType === "trading" ? "DSGC item number" : "Supplier part number"}
                 className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
               />
             </div>
