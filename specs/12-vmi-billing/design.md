@@ -439,12 +439,21 @@ ad_hoc_charges_usd = SUM(vmi_charge_lines.amount WHERE charge_type IN
    Validate: forex_rates row exists for today (generation date); block with a
    clear error if absent.
 
-2. Compute storage_charge_usd, handling_in_usd, handling_out_usd,
-   documentation_usd, delivery_usd, recurring_fees_usd, ad_hoc_charges_usd
-   per §2.2-2.5.
+2. Compute storage_charge_usd = SUM(vmi_daily_balance_ledger.storage_amount_usd
+     for the period) — this specific sum has no owning sibling module (unlike
+     handling/documentation/delivery/recurring-fees, each D.1/D.3/D.4's own
+     job); D.8 owns it directly, per §2.2. Also compute handling_in_usd,
+     handling_out_usd, documentation_usd, delivery_usd, recurring_fees_usd,
+     ad_hoc_charges_usd per §2.2-2.5.
 
 3. credits_applied_usd = SUM(vmi_payments WHERE type IN ('credit_memo','adjustment')
-                              AND not yet applied, for this party)
+                              AND applied_to_period_id = this new period's id)
+   Clarified 2026-08-20 (surfaced during Task D.8): `vmi_payments.applied_to_period_id`
+   is already a NOT NULL FK — every credit/adjustment row targets one specific
+   period at entry time, the same way a regular payment does. There is no
+   separate "unapplied credit pool" concept and no field tracking "already
+   applied" independent of that FK; "not yet applied" simply means "targets
+   this period," identical in shape to D.6's soa_payments_applied_usd scoping.
 
 4. billing_statement_total_usd = storage + handling_in + handling_out +
      documentation + delivery + recurring_fees + ad_hoc_charges - credits_applied
