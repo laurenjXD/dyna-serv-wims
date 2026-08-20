@@ -36,7 +36,6 @@ import type { InspectionCaseListRow } from "@/lib/db/queries/transfers";
 import { listPendingApprovalRequests } from "@/lib/db/queries/approvals";
 import type { ApprovalRequestRow } from "@/lib/db/queries/approvals";
 import { getInventoryKpis } from "@/lib/analytics/queries/inventory";
-import { getActivityHeatmap } from "@/lib/analytics/queries/heatmap";
 import {
   getPickListQtyAndCbmTrend,
   getDispatchRate,
@@ -341,20 +340,6 @@ export default async function Home() {
     ? flowActivityRows.map((row) => ({ flowType: row.flow_type, count: toNumber(row.count) }))
     : null;
 
-  // Dispatch rate ring data (2026-08-17 restyle) — null when the session
-  // lacks pick_list.read, same omission pattern as the heatmap.
-  const dispatchRate = hasPickListAccess && dispatchRateRow
-    ? {
-        dispatched: toNumber(dispatchRateRow.dispatched),
-        notDispatched: toNumber(dispatchRateRow.not_dispatched),
-      }
-    : null;
-
-  // Flow-type activity bar chart data (2026-08-17 restyle).
-  const flowActivity = hasPickListAccess
-    ? flowActivityRows.map((row) => ({ flowType: row.flow_type, count: toNumber(row.count) }))
-    : null;
-
   // Recent Activity feed (R11.3) — built from listRecentWrrDocuments/
   // listRecentPickLists (createdAt DESC), NOT the openWrrRows/
   // openPickListRows action-queue rows above (those are oldest-first —
@@ -413,6 +398,7 @@ export default async function Home() {
       recentActivity={recentActivity}
       weeklyTrend={weeklyTrend}
       monthlyOutgoingQty={monthlyOutgoingQty}
+      monthlyTrend={monthlyTrend}
       dispatchRate={dispatchRate}
       flowActivity={flowActivity}
     />

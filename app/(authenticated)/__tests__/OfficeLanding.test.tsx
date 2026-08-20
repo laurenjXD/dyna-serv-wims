@@ -109,6 +109,11 @@ const baseProps = {
     { period: "2026-08-11", qty: 98, cbm: 28.2 },
   ],
   monthlyOutgoingQty: 5420,
+  monthlyTrend: [
+    { period: "1", qty: 150, cbm: 0 },
+    { period: "2", qty: 200, cbm: 0 },
+    { period: "3", qty: 90, cbm: 0 },
+  ],
   dispatchRate: { dispatched: 18, notDispatched: 2 },
   flowActivity: [
     { flowType: "vmi", count: 12 },
@@ -153,6 +158,21 @@ describe("OfficeLanding (specs/05-ui-shell-and-navigation/tasks.md §7 — Recen
     // 2026-08-17 restyle: displayed via toLocaleString() (thousands
     // separator) as part of the bold stat-block treatment.
     expect(kpi).toHaveTextContent("5,420");
+  });
+
+  // 2026-08-19: Monthly Outgoing changed from a stat-only block to a
+  // headline number + daily bar graph, per user request.
+  it("renders a landing-monthly-trend-graph bar for each day in monthlyTrend, alongside the existing total", () => {
+    render(<OfficeLanding {...baseProps} />);
+    const graph = screen.getByTestId("landing-monthly-trend-graph");
+    // 3 days in baseProps.monthlyTrend -> 3 bar elements as direct children.
+    expect(graph.children).toHaveLength(3);
+    expect(screen.getByTestId("landing-monthly-kpi")).toHaveTextContent("5,420");
+  });
+
+  it("omits the monthly trend graph entirely when monthlyTrend is empty (no days in range yet)", () => {
+    render(<OfficeLanding {...baseProps} monthlyTrend={[]} />);
+    expect(screen.queryByTestId("landing-monthly-trend-graph")).not.toBeInTheDocument();
   });
 
   // R11.5 — Low Stock Items is an operational stock-count metric, not a

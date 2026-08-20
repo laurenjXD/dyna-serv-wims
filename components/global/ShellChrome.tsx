@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, PanelLeftClose, PanelLeftOpen, Settings, Wifi, WifiOff } from "lucide-react";
+import { Bell, PanelLeftClose, PanelLeftOpen, Search, Settings, Wifi, WifiOff } from "lucide-react";
 import { resolveSessionPresentationTier } from "@/lib/shell/surface";
 import { isScanLoopRoute } from "@/lib/shell/scan-loop";
 import { useShellSidebar, useDesktopSidebar } from "@/lib/shell/state";
@@ -179,8 +179,8 @@ export function ShellChrome({ children }: { children: ReactNode }) {
   return (
     <>
       <header
-        className={`fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-surface px-4 shadow-elevation-1 transition-[left] duration-150 motion-reduce:transition-none lg:min-h-[76px] lg:px-8 lg:py-3 lg:shadow-none ${
-          isDesktopOpen ? "lg:left-[306px]" : "lg:left-0"
+        className={`fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-surface px-4 shadow-elevation-1 transition-[left] duration-150 motion-reduce:transition-none lg:inset-x-auto lg:top-0 lg:right-0 lg:min-h-[76px] lg:rounded-none lg:border-x-0 lg:border-t-0 lg:px-8 lg:py-3 lg:shadow-none ${
+          isDesktopOpen ? "lg:left-[312px]" : "lg:left-0"
         }`}
       >
         {tier !== "floor" && (
@@ -260,7 +260,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
         </div>
 
         <div className="hidden min-w-0 flex-1 items-center lg:flex">
-          <div className="min-w-0 max-w-[360px]">
+          <div className="min-w-0 shrink-0 max-w-[300px]">
             <p
               className="font-heading text-headline-md font-bold leading-tight text-text-primary"
               title={pageTitle}
@@ -448,9 +448,9 @@ export function ShellChrome({ children }: { children: ReactNode }) {
       <main
         id="main-content"
         data-surface={tier}
-        className={`min-h-screen pt-14 transition-[padding-left] duration-150 motion-reduce:transition-none lg:pb-0 lg:pt-[76px] ${
-          isDesktopOpen ? "lg:pl-[306px]" : "lg:pl-0"
-        } ${showFloorTabBar ? "pb-20" : "pb-0"} ${
+        className={`min-h-screen pt-14 transition-[padding-left] duration-150 motion-reduce:transition-none lg:pr-6 lg:pt-[124px] ${
+          isDesktopOpen ? "lg:pl-[312px]" : "lg:pl-6"
+        } ${showFloorTabBar ? "pb-20" : "lg:pb-6"} ${
           tier === "floor" ? "bg-surface" : "bg-background"
         }`}
       >

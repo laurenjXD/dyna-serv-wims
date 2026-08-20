@@ -7,7 +7,7 @@
 //     §6 (Item model, Barcode immutability, Item deactivation impact)
 //   specs/00-steering/tech.md — RBAC from session, never from client params
 
-import { eq } from "drizzle-orm";
+import { and, eq, ne, or } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import type { RequestAuthorizationResolver } from "@/lib/rbac/session";
 import { requirePermission } from "@/lib/rbac/guard";

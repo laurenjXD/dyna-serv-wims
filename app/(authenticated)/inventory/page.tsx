@@ -31,7 +31,8 @@ import type { PickListRow } from "@/lib/db/queries/withdrawals";
 import { listInspectionAndTransferQueue } from "@/lib/db/queries/transfers";
 import { resolveInventoryTab, type TabKey } from "./_lib/resolveInventoryTab";
 import { InspectionTab } from "./_components/InspectionTab";
-import { GeneratePickListForm } from "./_components/GeneratePickListForm";
+import { PickListGenerator } from "./_components/PickListGenerator";
+import { createPickList } from "./actions";
 
 // ─── Status badge colors ─────────────────────────────────────────────────────
 // brand-design-system.md §1.3 semantic color mapping per task spec:
@@ -183,11 +184,12 @@ async function StockViewTab({ query }: { query?: string }) {
                   <p className="font-body text-body-md text-text-grey">
                     Lots are shown in {item.isPerishable ? "FEFO" : "FIFO"} order.
                   </p>
-                  <GeneratePickListForm
-                    itemCode={item.itemCode}
+                  <PickListGenerator
                     itemId={item.itemId}
-                    defaultSupplierPartyId={item.defaultSupplierPartyId}
-                    lines={item.allocationLines}
+                    flowType={item.flowType}
+                    organizationId={item.organizationId}
+                    lots={rows.filter((row) => row.itemId === item.itemId).map((row) => ({ lotId: row.lotId, locationId: row.locationId, availableQty: row.qtyRemaining - row.qtyCommitted }))}
+                    action={createPickList}
                   />
                 </div>
                 <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -243,21 +245,12 @@ type GroupedItem = {
   itemId: string;
   itemCode: string;
   itemName: string;
-  defaultSupplierPartyId: string | null;
   uom: string;
   isPerishable: boolean;
   flowType: "vmi" | "trading" | "supplies";
   organizationId: string | null;
   availableQty: number;
   lots: AggregatedLot[];
-  allocationLines: Array<{
-    itemId: string;
-    lotId: string;
-    locationId: string;
-    qtyRemaining: number;
-    qtyCommitted: number;
-    flowType: "vmi" | "trading" | "supplies";
-  }>;
 };
 
 function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
@@ -265,10 +258,9 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
   // The query already orders by (items.code, lots.expiry_date, lots.created_at)
   // so FEFO/FIFO order is preserved by the insertion sequence.
   const itemMap = new Map<string, {
-    itemId: string; itemCode: string; itemName: string; defaultSupplierPartyId: string | null; uom: string; isPerishable: boolean;
+    itemId: string; itemCode: string; itemName: string; uom: string; isPerishable: boolean; flowType: "vmi" | "trading" | "supplies"; organizationId: string | null;
     lotMap: Map<string, { lot: AggregatedLot }>;
     insertionOrder: string[]; // lot IDs in FEFO/FIFO order
-    allocationLines: GroupedItem["allocationLines"];
   }>();
 
   for (const row of rows) {
@@ -280,14 +272,12 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
         itemId: row.itemId,
         itemCode: row.itemCode,
         itemName: row.itemName,
-        defaultSupplierPartyId: row.defaultSupplierPartyId,
         uom: row.uom,
         isPerishable: row.isPerishable,
         flowType: row.flowType ?? "trading",
         organizationId: row.organizationId ?? null,
         lotMap: new Map(),
         insertionOrder: [],
-        allocationLines: [],
       };
       itemMap.set(row.itemId, itemEntry);
     }
@@ -313,14 +303,6 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
 
     lotEntry.lot.locationLabels.push(row.locationLabel);
     lotEntry.lot.availableQty += availableQty;
-    itemEntry.allocationLines.push({
-      itemId: row.itemId,
-      lotId: row.lotId,
-      locationId: row.locationId,
-      qtyRemaining: row.qtyRemaining,
-      qtyCommitted: row.qtyCommitted,
-      flowType: row.flowType,
-    });
   }
 
   // Second pass: flatten into the final shape, assigning FEFO/FIFO priority
@@ -334,14 +316,12 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
       itemId: entry.itemId,
       itemCode: entry.itemCode,
       itemName: entry.itemName,
-      defaultSupplierPartyId: entry.defaultSupplierPartyId,
       uom: entry.uom,
       isPerishable: entry.isPerishable,
       flowType: entry.flowType,
       organizationId: entry.organizationId,
       availableQty: lots.reduce((sum, l) => sum + l.availableQty, 0),
       lots,
-      allocationLines: entry.allocationLines,
     };
   });
 }

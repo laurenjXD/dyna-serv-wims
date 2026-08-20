@@ -18,6 +18,7 @@ export type StockViewRow = {
   itemId: string;
   itemCode: string;
   itemName: string;
+  organizationId?: string | null;
   defaultSupplierPartyId: string | null;
   uom: string;
   isPerishable: boolean;
@@ -48,6 +49,7 @@ export async function listStockView(db: DbLike): Promise<StockViewRow[]> {
       itemId: items.id,
       itemCode: items.code,
       itemName: items.name,
+      organizationId: items.defaultSupplierPartyId,
       defaultSupplierPartyId: items.defaultSupplierPartyId,
       uom: items.uom,
       isPerishable: items.isPerishable,
