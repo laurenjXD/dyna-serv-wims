@@ -29,9 +29,9 @@ type DbLike = {
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 const SAMPLE_ORGANIZATIONS = [
-  { code: "SAMPLE-ORG-001", name: "Sample Organization One" },
-  { code: "SAMPLE-ORG-002", name: "Sample Organization Two" },
-  { code: "SAMPLE-ORG-003", name: "Sample Organization Three" },
+  { code: "SAMPLE-ORG-001", name: "Northstar Components Inc.", contactPerson: "Ana Reyes", email: "ana.reyes@northstar.example", phone: "+63 917 555 0101", taxId: "TIN-100-000-001", address1: "101 Innovation Drive", address2: "Laguna Technopark, Biñan, Laguna", paymentTerms: "Net 30", notes: "Sample VMI partner." },
+  { code: "SAMPLE-ORG-002", name: "Pacific Trade Solutions", contactPerson: "Miguel Santos", email: "miguel.santos@pacifictrade.example", phone: "+63 917 555 0102", taxId: "TIN-100-000-002", address1: "22 Commerce Avenue", address2: "Makati City, Metro Manila", paymentTerms: "Net 45", notes: "Sample trading supplier." },
+  { code: "SAMPLE-ORG-003", name: "Summit Industrial Supply", contactPerson: "Lea Cruz", email: "lea.cruz@summitindustrial.example", phone: "+63 917 555 0103", taxId: "TIN-100-000-003", address1: "88 Logistics Road", address2: "Cabuyao, Laguna", paymentTerms: "COD", notes: "Sample supplies partner." },
 ] as const;
 
 const SAMPLE_ITEMS = [
@@ -41,6 +41,22 @@ const SAMPLE_ITEMS = [
     barcode: "SAMPLE-BARCODE-001",
     dsgcItemNumber: "SAMPLE-DSGC-001",
     supplierItemCode: "SAMPLE-SUPPLIER-001",
+    customerItemCode: "CUST-NS-001",
+    description: "Sample palletized electronic components for testing the complete receiving flow.",
+    itemType: "raw_material",
+    uom: "pallet",
+    currency: "PHP",
+    buyingPrice: "12500.0000",
+    sellingPrice: "14500.0000",
+    spq: 1,
+    lengthCm: "120.00",
+    widthCm: "100.00",
+    heightCm: "100.00",
+    volumeCm3: "1200000.00",
+    volumeCbm: "1.2000",
+    boxesPerPallet: 24,
+    weightKg: "450.000",
+    minReorderLevel: 1,
   },
   {
     code: "SAMPLE-ITEM-002",
@@ -48,6 +64,22 @@ const SAMPLE_ITEMS = [
     barcode: "SAMPLE-BARCODE-002",
     dsgcItemNumber: "SAMPLE-DSGC-002",
     supplierItemCode: "SAMPLE-SUPPLIER-002",
+    customerItemCode: "CUST-PT-002",
+    description: "Sample palletized trading item for pick and dispatch testing.",
+    itemType: "finished_good",
+    uom: "pallet",
+    currency: "PHP",
+    buyingPrice: "9800.0000",
+    sellingPrice: "12100.0000",
+    spq: 1,
+    lengthCm: "120.00",
+    widthCm: "100.00",
+    heightCm: "110.00",
+    volumeCm3: "1320000.00",
+    volumeCbm: "1.3200",
+    boxesPerPallet: 18,
+    weightKg: "390.000",
+    minReorderLevel: 1,
   },
   {
     code: "SAMPLE-ITEM-003",
@@ -55,13 +87,29 @@ const SAMPLE_ITEMS = [
     barcode: "SAMPLE-BARCODE-003",
     dsgcItemNumber: "SAMPLE-DSGC-003",
     supplierItemCode: "SAMPLE-SUPPLIER-003",
+    customerItemCode: "CUST-SI-003",
+    description: "Sample palletized industrial supply for receiving and inspection testing.",
+    itemType: "packaging",
+    uom: "pallet",
+    currency: "PHP",
+    buyingPrice: "7400.0000",
+    sellingPrice: "9100.0000",
+    spq: 1,
+    lengthCm: "120.00",
+    widthCm: "100.00",
+    heightCm: "90.00",
+    volumeCm3: "1080000.00",
+    volumeCbm: "1.0800",
+    boxesPerPallet: 30,
+    weightKg: "320.000",
+    minReorderLevel: 1,
   },
 ] as const;
 
 const SAMPLE_WRRS = [
-  { number: "SAMPLE-WRR-001", lotNumber: "SAMPLE-LOT-001", quantity: 10 },
-  { number: "SAMPLE-WRR-002", lotNumber: "SAMPLE-LOT-002", quantity: 20 },
-  { number: "SAMPLE-WRR-003", lotNumber: "SAMPLE-LOT-003", quantity: 30 },
+  { number: "SAMPLE-WRR-001", invoice: "SAMPLE-CIPL-001", lotNumber: "SAMPLE-LOT-001", quantity: 3, flowType: "vmi" as const, pezaNumber: "PEZA-SAMPLE-001", ipNumber: "IP-SAMPLE-001", mawbMblNumber: "MAWB-SAMPLE-001" },
+  { number: "SAMPLE-WRR-002", invoice: "SAMPLE-CIPL-002", lotNumber: "SAMPLE-LOT-002", quantity: 4, flowType: "trading" as const, pezaNumber: "PEZA-SAMPLE-002", ipNumber: "IP-SAMPLE-002", mawbMblNumber: "MAWB-SAMPLE-002" },
+  { number: "SAMPLE-WRR-003", invoice: "SAMPLE-CIPL-003", lotNumber: "SAMPLE-LOT-003", quantity: 5, flowType: "supplies" as const, pezaNumber: "PEZA-SAMPLE-003", ipNumber: "IP-SAMPLE-003", mawbMblNumber: "MAWB-SAMPLE-003" },
 ] as const;
 
 export type SeedSampleDataResult =
@@ -123,6 +171,11 @@ export async function seedSampleData(
             .returning({ id: parties.id });
           organizationId = inserted.id;
           created.organizations += 1;
+        } else {
+          await db
+            .update(parties)
+            .set({ ...organization, isActive: true, updatedAt: new Date() })
+            .where(eq(parties.id, organizationId));
         }
         if (!organizationId)
           throw new Error("Sample organization could not be created.");
@@ -160,11 +213,6 @@ export async function seedSampleData(
             .values({
               ...item,
               defaultSupplierPartyId: organizationIds[index],
-              uom: "piece",
-              currency: "USD",
-              spq: 1,
-              volumeCbm: "0.0100",
-              minReorderLevel: 0,
               isPerishable: false,
               isActive: true,
             })
@@ -172,14 +220,15 @@ export async function seedSampleData(
           itemId = inserted.id;
           created.items += 1;
         } else {
-          // Sample rows from an earlier seed did not contain the operational
-          // reference codes needed by the pick-list safety gate. Repair them
-          // on every idempotent seed run without creating more sample rows.
+          // Refresh every sample field on repeated runs without creating a
+          // duplicate record, so the three examples stay complete and usable.
           await db
             .update(items)
             .set({
-              dsgcItemNumber: item.dsgcItemNumber,
-              supplierItemCode: item.supplierItemCode,
+              ...item,
+              defaultSupplierPartyId: organizationIds[index],
+              isPerishable: false,
+              isActive: true,
               updatedAt: new Date(),
             })
             .where(eq(items.id, itemId));
@@ -201,15 +250,31 @@ export async function seedSampleData(
             .insert(wrrDocuments)
             .values({
               wrrNumber: sampleWrr.number,
-              commercialInvoiceNo: `SAMPLE-CIPL-00${index + 1}`,
+              commercialInvoiceNo: sampleWrr.invoice,
               vendorPartyId: organizationIds[index],
-              flowType: "trading",
+              flowType: sampleWrr.flowType,
+              pezaNumber: sampleWrr.pezaNumber,
+              ipNumber: sampleWrr.ipNumber,
+              mawbMblNumber: sampleWrr.mawbMblNumber,
               status: "staged_pending_arrival",
               stagedByUserId: receivingPermission.context.userId,
             })
             .returning({ id: wrrDocuments.id });
           wrrId = inserted.id;
           created.wrrs += 1;
+        } else {
+          await db
+            .update(wrrDocuments)
+            .set({
+              commercialInvoiceNo: sampleWrr.invoice,
+              vendorPartyId: organizationIds[index],
+              flowType: sampleWrr.flowType,
+              pezaNumber: sampleWrr.pezaNumber,
+              ipNumber: sampleWrr.ipNumber,
+              mawbMblNumber: sampleWrr.mawbMblNumber,
+              updatedAt: new Date(),
+            })
+            .where(eq(wrrDocuments.id, wrrId));
         }
         if (!wrrId) throw new Error("Sample WRR could not be created.");
 
@@ -229,10 +294,22 @@ export async function seedSampleData(
             itemCode: SAMPLE_ITEMS[index].code,
             lotNumber: sampleWrr.lotNumber,
             expectedQty: sampleWrr.quantity,
-            unitCbm: "0.0100",
-            uom: "piece",
+            unitCbm: SAMPLE_ITEMS[index].volumeCbm,
+            uom: SAMPLE_ITEMS[index].uom,
             disposition: "store",
           });
+        } else {
+          await db
+            .update(wrrItems)
+            .set({
+              itemCode: SAMPLE_ITEMS[index].code,
+              lotNumber: sampleWrr.lotNumber,
+              expectedQty: sampleWrr.quantity,
+              unitCbm: SAMPLE_ITEMS[index].volumeCbm,
+              uom: SAMPLE_ITEMS[index].uom,
+              disposition: "store",
+            })
+            .where(eq(wrrItems.id, expectedLine[0].id));
         }
       }
 

@@ -615,8 +615,8 @@ describe("recordScan — valid scan (R3.1, R3.2, design.md §5.2, §6)", () => {
   });
 });
 
-describe("recordScan — sealed-carton QR (18 FR-3b)", () => {
-  it("records the complete carton quantity in one scan", async () => {
+describe("recordScan — legacy multi-pallet QR", () => {
+  it("rejects a legacy multi-pallet QR", async () => {
     const item = wrrItemRow({ expectedQty: 10, scannedQty: 0 });
     const db = makeReceivingDb([wrrDocRow()], [item]);
     const barcode = JSON.stringify({
@@ -632,8 +632,8 @@ describe("recordScan — sealed-carton QR (18 FR-3b)", () => {
       mockRlsDeps(db).deps,
     );
 
-    expect(result).toEqual({ ok: true, remainingQty: 0, disposition: "store" });
-    expect(db._updated).toContainEqual({ scannedQty: 10 });
+    expect(result).toEqual({ ok: false, reason: "unknown_item" });
+    expect(db._updated).toEqual([]);
   });
 });
 

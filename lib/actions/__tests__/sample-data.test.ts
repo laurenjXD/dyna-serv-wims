@@ -104,7 +104,7 @@ describe("seedSampleData", () => {
     });
   });
 
-  it("repairs the pick-required reference codes on existing sample items without adding rows", async () => {
+  it("refreshes existing sample records without adding rows", async () => {
     const existingRows = [
       [{ id: "org-1" }], [{ id: "role-1" }],
       [{ id: "org-2" }], [{ id: "role-2" }],
@@ -129,10 +129,13 @@ describe("seedSampleData", () => {
     const result = await seedSampleData(administrator(), mockRlsDeps(db).deps);
 
     expect(result).toEqual({ ok: true, created: { organizations: 0, items: 0, wrrs: 0 } });
-    expect(updated).toHaveLength(3);
-    expect(updated[0]).toMatchObject({
+    expect(updated).toHaveLength(12);
+    expect(updated[3]).toMatchObject({
       dsgcItemNumber: "SAMPLE-DSGC-001",
       supplierItemCode: "SAMPLE-SUPPLIER-001",
+      uom: "pallet",
+      volumeCbm: "1.2000",
     });
+    expect(updated[7]).toMatchObject({ expectedQty: 3, uom: "pallet" });
   });
 });
