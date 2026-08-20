@@ -37,6 +37,7 @@ import { lots } from "@/lib/db/schema/lots";
 import { lotLocationBalances } from "@/lib/db/schema/lot_location_balances";
 import { inventoryTransactions } from "@/lib/db/schema/transactions";
 import { locations } from "@/lib/db/schema/locations";
+import { inspectionCases } from "@/lib/db/schema/transfers";
 import { withRlsTransaction } from "@/lib/db/rls-transaction";
 import type { RlsTransactionDeps } from "@/lib/db/rls-transaction";
 import { rlsPool } from "@/lib/db/rls-pool";
@@ -695,6 +696,25 @@ export async function commitWrrLine(
         wrrId: doc.id,
         performedByUserId: userId,
       });
+
+      // An inspect-disposition receipt is not complete when the lot is merely
+      // quarantined. It must also open the shared inbound inspection case that
+      // drives Master Inventory's Inspection tab and the subsequent resolution
+      // workflow. Keeping this in the same transaction means a successfully
+      // committed held lot can never be stranded without an inspection task.
+      if (line.disposition === "inspect") {
+        await tx.insert(inspectionCases).values({
+          contextType: "inbound",
+          sourceRefType: "wrr_item",
+          sourceRefId: line.id,
+          lotId: lot.id,
+          itemId: line.itemId!,
+          partyId: doc.vendorPartyId,
+          flowType: doc.flowType as "vmi" | "trading" | "supplies",
+          status: "open",
+          openedBy: userId,
+        });
+      }
     }
     // If claimed.length === 0, this line was already committed by a prior
     // call — idempotent retry; nothing more to post for this line.

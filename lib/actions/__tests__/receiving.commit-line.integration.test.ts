@@ -397,7 +397,7 @@ describe.skipIf(!hasLiveDb)(
     // -----------------------------------------------------------------
     // 2. Happy path — inspect disposition (R7.3, design.md §7.3/§6.3/§9)
     // -----------------------------------------------------------------
-    it("(AC R7.3, design.md §7.3/§6.3/§9) commits a fully-scanned inspect line: creates one quarantined lot and posts its balance row at the given (staff-confirmed) inspection location", async () => {
+    it("(AC R7.3, design.md §7.3/§6.3/§9) commits a fully-scanned inspect line: creates one quarantined lot, posts its balance at the inspection location, and opens the inbound inspection case", async () => {
       const { commitWrrLine } = await import("../receiving");
 
       const { wrrId, lineIds } = await createWrrFixture([
@@ -422,6 +422,15 @@ describe.skipIf(!hasLiveDb)(
       expect(balanceRows.length).toBe(1);
       expect(balanceRows[0].location_id).toBe(inspectionLocationId);
       expect(balanceRows[0].qty_received).toBe(4);
+
+      const caseRows = await sql`
+        SELECT * FROM inspection_cases
+        WHERE source_ref_type = 'wrr_item' AND source_ref_id = ${lineIds[0]}
+      `;
+      expect(caseRows).toHaveLength(1);
+      expect(caseRows[0].context_type).toBe("inbound");
+      expect(caseRows[0].lot_id).toBe(lotRows[0].id);
+      expect(caseRows[0].status).toBe("open");
     });
 
     // -----------------------------------------------------------------
