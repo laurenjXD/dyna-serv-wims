@@ -46,6 +46,8 @@ function getScanErrorMessage(reason: string): string {
       return "WRR document not found.";
     case "invalid_status":
       return "This WRR is not in receiving status. Return to the WRR and start receiving first.";
+    case "wrr_document_qr":
+      return "This QR identifies the WRR document, not a physical item. Go back to the WRR, print its Unit Labels, then scan one label per carton or item.";
     case "no_match":
       return "Item not found — barcode does not match any expected line on this WRR.";
     case "over_quantity":

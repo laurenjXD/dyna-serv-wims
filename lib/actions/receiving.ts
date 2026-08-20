@@ -412,6 +412,15 @@ export async function recordScan(
       return { ok: false, reason: "invalid_status" } satisfies RecordScanResult;
     }
 
+    // The QR printed on the WRR document encodes the document number. It is
+    // useful for identifying/opening a WRR, but it must never count as an
+    // item scan: one document QR cannot prove which physical unit is in hand.
+    // Return a specific, recoverable reason instead of misleading staff into
+    // thinking an enrolled item is missing from the catalog.
+    if (barcode.trim() === doc.wrrNumber) {
+      return { ok: false, reason: "wrr_document_qr" } satisfies RecordScanResult;
+    }
+
     // 3a. Per-unit duplicate detection (Spec 18 §2.2): only when the barcode
     // itself parses as a wrr_item_unit payload do we even query
     // wrr_item_unit_scans — an ordinary barcode never triggers this lookup.
