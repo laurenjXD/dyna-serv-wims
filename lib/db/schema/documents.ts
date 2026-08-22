@@ -13,6 +13,20 @@
 // source_type:     'inventory_commitment' | 'inventory_transaction'
 // event_type:      'generated' | 'printed' | 'reprinted' | 'failed' | 'superseded'
 //
+// document_type -> source_type mapping (2026-08-20 correction — see
+// specs/00-steering/revision-log.md): both 'pick_list' and
+// 'acknowledgement_receipt' now map to source_type 'inventory_commitment'
+// (source_id = inventory_commitments.id). Multi-line dispatch support
+// (dispatchPickList inserting one inventory_transactions row per pick-list
+// line, matching Stage 1's already-established pattern) means there is no
+// longer a single canonical inventory_transactions row to reference for an
+// acknowledgement_receipt covering a whole dispatch — one
+// inventory_commitments row already represents one whole dispatch event
+// (all its lines), so both document types key off it. The
+// 'inventory_transaction' source_type value remains in the CHECK
+// constraint below for backward compatibility with any already-generated
+// rows written under the prior contract; new rows should never use it.
+//
 // Plain text columns are used for status/type/event_type (same discipline as
 // transfers.ts) with SQL-level CHECK constraints declared in the migration.
 import {

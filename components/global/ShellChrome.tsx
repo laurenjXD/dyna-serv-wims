@@ -179,7 +179,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
   return (
     <>
       <header
-        className={`fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-surface px-4 shadow-elevation-1 transition-[left] duration-150 motion-reduce:transition-none lg:inset-x-auto lg:top-0 lg:right-0 lg:min-h-[76px] lg:rounded-none lg:border-x-0 lg:border-t-0 lg:px-8 lg:py-3 lg:shadow-none ${
+        className={`fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 bg-surface px-4 transition-[left] duration-150 motion-reduce:transition-none lg:inset-x-auto lg:top-0 lg:right-0 lg:min-h-[76px] lg:px-8 lg:py-3 ${
           isDesktopOpen ? "lg:left-[312px]" : "lg:left-0"
         }`}
       >
@@ -259,22 +259,22 @@ export function ShellChrome({ children }: { children: ReactNode }) {
           </button>
         </div>
 
-        <div className="hidden min-w-0 flex-1 items-center lg:flex">
-          <div className="min-w-0 shrink-0 max-w-[300px]">
+        <div className="hidden min-w-0 flex-1 items-center gap-8 lg:flex">
+          <div className="min-w-0 shrink-0 max-w-[280px]">
             <p
-              className="font-heading text-headline-md font-bold leading-tight text-text-primary"
+              className="truncate font-heading text-headline-md font-bold leading-tight text-text-primary"
               title={pageTitle}
             >
               {pageTitle}
             </p>
           </div>
-          <label className="mx-auto flex h-12 w-full max-w-[460px] items-center gap-3 rounded-full border border-border bg-background px-4 shadow-elevation-1 focus-within:ring-2 focus-within:ring-primary">
-            <Search size={20} aria-hidden="true" className="shrink-0 text-text-secondary" />
+          <label className="flex h-10 w-full max-w-[320px] shrink flex-1 items-center gap-2.5 rounded-full border border-border bg-surface px-3.5 shadow-elevation-1 focus-within:ring-2 focus-within:ring-primary">
+            <Search size={18} aria-hidden="true" className="shrink-0 text-text-secondary" />
             <input
               type="search"
               aria-label="Search"
               placeholder="Search inventory, organizations, documents…"
-              className="min-w-0 flex-1 border-0 bg-transparent p-0 font-body text-body-md text-text-primary outline-none placeholder:text-text-secondary"
+              className="min-w-0 flex-1 border-0 bg-transparent p-0 font-body text-body-sm text-text-primary outline-none placeholder:text-text-secondary"
             />
           </label>
           <div className="ml-auto flex min-w-0 items-center gap-5">
@@ -448,7 +448,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
       <main
         id="main-content"
         data-surface={tier}
-        className={`min-h-screen pt-14 transition-[padding-left] duration-150 motion-reduce:transition-none lg:pr-6 lg:pt-[124px] ${
+        className={`min-h-screen pt-14 transition-[padding-left] duration-150 motion-reduce:transition-none lg:pr-6 lg:pt-[96px] ${
           isDesktopOpen ? "lg:pl-[312px]" : "lg:pl-6"
         } ${showFloorTabBar ? "pb-20" : "lg:pb-6"} ${
           tier === "floor" ? "bg-surface" : "bg-background"

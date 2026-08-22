@@ -49,7 +49,10 @@ import {
   type OutgoingLedgerRow,
 } from "@/lib/db/queries/withdrawals";
 import { withRlsTransaction } from "@/lib/db/rls-transaction";
-import type { RlsTransactionDeps } from "@/lib/db/rls-transaction";
+import type {
+  RlsTransactionDeps,
+  RlsTransactionResult,
+} from "@/lib/db/rls-transaction";
 import { rlsPool } from "@/lib/db/rls-pool";
 import { getAuthenticatedSession } from "@/lib/auth/get-authenticated-session";
 
@@ -74,6 +77,28 @@ type AnyRecord = Record<string, any>;
 
 function hashSnapshot(data: unknown): string {
   return createHash("sha256").update(JSON.stringify(data)).digest("hex");
+}
+
+// Thrown from inside dispatchPickList's withRlsTransaction callback when the
+// lot_location_balances CAS-guard update (see that update's own comment,
+// below) affects zero rows -- i.e. a concurrent dispatch of a DIFFERENT pick
+// list already changed the same balance row between this line's SELECT and
+// this UPDATE, so the optimistic-concurrency WHERE clause no longer matches.
+//
+// Thrown (not returned) so it propagates through withRlsTransaction's
+// guaranteed catch/rollback/rethrow (lib/db/rls-transaction.ts) exactly like
+// any other mid-loop failure -- the whole transaction rolls back, no partial
+// pick_list/commitment/ledger state is left behind. dispatchPickList's own
+// try/catch around the withRlsTransaction call (below) is the only place
+// that recognizes this specific error type and translates it into a named,
+// recoverable { ok: false, errors: ["concurrent_modification"] } result
+// distinct from the generic thrown-error case (which continues to reject
+// the whole dispatchPickList call, per that path's existing contract).
+class ConcurrentModificationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ConcurrentModificationError";
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -468,211 +493,363 @@ export async function dispatchPickList(
 
   const userId = perm.context.userId;
 
-  let rlsResult;
+  // The whole withRlsTransaction call is wrapped so this function can
+  // recognize the specific ConcurrentModificationError thrown by the
+  // lot_location_balances CAS-guard update below (a lost race with a
+  // concurrent dispatch of a different pick list) and translate it into a
+  // named, recoverable result. withRlsTransaction itself has already rolled
+  // the transaction back (its own guaranteed catch/rollback/rethrow) by the
+  // time this catch runs — see that error class's own comment. Any other
+  // thrown error (e.g. a genuine constraint violation) is not this
+  // function's to interpret and is rethrown unchanged, preserving the
+  // existing "mid-loop failure rejects the whole dispatchPickList call"
+  // contract for every other failure mode.
+  let rlsResult: RlsTransactionResult<DispatchPickListResult>;
   try {
     rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
-    const db = tx.db as DbLike;
+      const db = tx.db as DbLike;
 
-    // Step 2: Load pick list — verify it exists (design.md §7 dispatch disposition)
-    const rows = (await db
-      .select({
-        id: pickLists.id,
-        status: pickLists.status,
-        customerPartyId: pickLists.customerPartyId,
-        flowType: pickLists.flowType,
-      })
-      .from(pickLists)
-      .where(eq(pickLists.id, pickListId))
-      .limit(1)) as AnyRecord[];
+      // Step 2: Load pick list — verify it exists (design.md §7 dispatch disposition).
+      // SELECT ... FOR UPDATE: without this, two genuinely concurrent
+      // dispatchPickList calls for the SAME pick list can both read
+      // status !== 'dispatched' before either commits, both pass the Step 3
+      // idempotency guard below, and both proceed to write a second, duplicate
+      // 'pick' inventory_transactions row — the atomic per-line balance guard
+      // further down prevents stock from going negative, but does not prevent
+      // that duplicate-ledger-row outcome on its own. The row lock serializes
+      // this: the second call blocks until the first transaction's writes
+      // (through Step 6's status transition to 'dispatched') commit or roll
+      // back, then re-reads status = 'dispatched' and correctly hits the
+      // idempotency guard instead of racing past it.
+      const rows = (await db
+        .select({
+          id: pickLists.id,
+          status: pickLists.status,
+          customerPartyId: pickLists.customerPartyId,
+          flowType: pickLists.flowType,
+        })
+        .from(pickLists)
+        .where(eq(pickLists.id, pickListId))
+        .limit(1)
+        .for("update")) as AnyRecord[];
 
-    if (rows.length === 0) {
-      return { ok: false as const, errors: ["not_found"] };
-    }
+      if (rows.length === 0) {
+        return { ok: false as const, errors: ["not_found"] };
+      }
 
-    const pickList = rows[0];
+      const pickList = rows[0];
 
-    // Step 3: Idempotency guard — duplicate/lost-response protection (R7.6)
-    if (pickList.status === "dispatched") {
-      return { ok: false as const, errors: ["already_dispatched"] };
-    }
+      // Step 3: Idempotency guard — duplicate/lost-response protection (R7.6)
+      if (pickList.status === "dispatched") {
+        return { ok: false as const, errors: ["already_dispatched"] };
+      }
 
-    // Step 4: Re-load the active reservation lines. These, not browser state,
-    // are the authoritative instructions for a dispatch.
-    const commitmentLines = (await db
-      .select({
-        commitmentId: inventoryCommitments.id,
-        commitmentStatus: inventoryCommitments.status,
-        expiresAt: inventoryCommitments.expiresAt,
-        commitmentLineId: inventoryCommitmentLines.id,
-        commitmentLineStatus: inventoryCommitmentLines.status,
-        qtyCommitted: inventoryCommitmentLines.qtyCommitted,
-        balanceId: inventoryCommitmentLines.lotLocationBalanceId,
-        pickListItemId: pickListItems.id,
-        itemId: pickListItems.itemId,
-        lotId: pickListItems.lotId,
-        locationId: pickListItems.locationId,
-      })
-      .from(inventoryCommitments)
-      .innerJoin(
-        inventoryCommitmentLines,
-        eq(inventoryCommitmentLines.commitmentId, inventoryCommitments.id),
-      )
-      .innerJoin(
-        pickListItems,
-        eq(pickListItems.id, inventoryCommitmentLines.pickListItemId),
-      )
-      .where(eq(inventoryCommitments.pickListId, pickListId))) as AnyRecord[];
+      // Step 4a: Load pick_list_items — one row per requested line, iterated
+      // below per design.md §7's per-line "for each affected row" framing.
+      const items = (await db
+        .select({
+          id: pickListItems.id,
+          itemId: pickListItems.itemId,
+          lotId: pickListItems.lotId,
+          locationId: pickListItems.locationId,
+          qty: pickListItems.qty,
+        })
+        .from(pickListItems)
+        .where(eq(pickListItems.pickListId, pickListId))) as AnyRecord[];
 
-    if (
-      commitmentLines.length === 0 ||
-      commitmentLines.some((line) =>
-        line.commitmentStatus !== "active" || line.commitmentLineStatus !== "active",
-      )
-    ) {
-      return { ok: false as const, errors: ["invalid_commitment"] };
-    }
+      // Step 4b: Load the parent inventory_commitments header for this pick
+      // list (exactly one per pick list — see commitments.ts's unique
+      // pick_list_id). expiresAt is loaded here for the reservation-state
+      // recheck below.
+      const commitmentRows = (await db
+        .select({
+          id: inventoryCommitments.id,
+          status: inventoryCommitments.status,
+          expiresAt: inventoryCommitments.expiresAt,
+        })
+        .from(inventoryCommitments)
+        .where(eq(inventoryCommitments.pickListId, pickListId))
+        .limit(1)) as AnyRecord[];
 
-    // Reservation-state recheck (design.md §7) — a commitment past its 24h
-    // TTL is rejected here, in real time, rather than being allowed to
-    // proceed to the physical dispatch writes below. This is the same
-    // `expired` transition the nightly pg_cron sweep (expire_stale_commitments)
-    // writes for commitments that are never attempted; this real-time path is
-    // the primary enforcer, the sweep is the safety net (revision-log.md
-    // "Pick-list expiry enforcement: Option C").
-    const commitmentExpiresAt = commitmentLines[0].expiresAt as Date | string | null;
-    if (commitmentExpiresAt && new Date(commitmentExpiresAt).getTime() < Date.now()) {
-      // Release every reserved balance back to its pre-reservation state —
-      // stock never left the shelf, only the reservation is undone.
-      for (const line of commitmentLines) {
+      const commitmentId = (commitmentRows[0] as { id?: string } | undefined)
+        ?.id;
+
+      // Invariant guard: commitWithdrawal (Stage 1) always creates exactly one
+      // inventory_commitments row per pick_list before pick_list_items is
+      // considered committable. If execution reaches this point — past the
+      // not_found and already_dispatched guards above — a pick list with no
+      // matching commitment row is a genuine data-integrity violation, not a
+      // recoverable/optional case.
+      if (!commitmentId) {
+        return { ok: false as const, errors: ["commitment_not_found"] };
+      }
+
+      // Reservation-state recheck (design.md §7) — a commitment past its 24h
+      // TTL is rejected here, in real time, rather than being allowed to
+      // proceed to the physical dispatch writes below. This is the same
+      // `expired` transition the nightly pg_cron sweep (expire_stale_commitments)
+      // writes for commitments that are never attempted; this real-time path is
+      // the primary enforcer, the sweep is the safety net (revision-log.md
+      // "Pick-list expiry enforcement: Option C").
+      const commitmentExpiresAt = commitmentRows[0].expiresAt as
+        | Date
+        | string
+        | null;
+      if (
+        commitmentExpiresAt &&
+        new Date(commitmentExpiresAt).getTime() < Date.now()
+      ) {
+        // Release every reserved balance back to its pre-reservation state —
+        // stock never left the shelf, only the reservation is undone.
+        for (const line of items) {
+          const commitLineRows = (await db
+            .select({
+              id: inventoryCommitmentLines.id,
+              balanceId: inventoryCommitmentLines.lotLocationBalanceId,
+              qtyCommitted: inventoryCommitmentLines.qtyCommitted,
+            })
+            .from(inventoryCommitmentLines)
+            .where(
+              and(
+                eq(inventoryCommitmentLines.commitmentId, commitmentId),
+                eq(inventoryCommitmentLines.pickListItemId, line.id),
+              ),
+            )
+            .limit(1)) as AnyRecord[];
+          const commitLine = commitLineRows[0] as AnyRecord | undefined;
+          if (!commitLine) continue;
+
+          await db
+            .update(lotLocationBalances)
+            .set({
+              qtyCommitted: sql`${lotLocationBalances.qtyCommitted} - ${commitLine.qtyCommitted}`,
+              version: sql`${lotLocationBalances.version} + 1`,
+              updatedAt: new Date(),
+            })
+            .where(and(
+              eq(lotLocationBalances.id, commitLine.balanceId),
+              sql`${lotLocationBalances.qtyCommitted} >= ${commitLine.qtyCommitted}`,
+            ));
+
+          await db
+            .update(inventoryCommitmentLines)
+            .set({ status: "expired", updatedAt: new Date() })
+            .where(eq(inventoryCommitmentLines.id, commitLine.id));
+        }
+
         await db
+          .update(inventoryCommitments)
+          .set({ status: "expired", releasedAt: new Date(), updatedAt: new Date() })
+          .where(eq(inventoryCommitments.id, commitmentId));
+
+        // No dispatch/pick transaction is written — the reservation is gone,
+        // not executed.
+        return { ok: false as const, errors: ["commitment_expired"] };
+      }
+
+      // Scan-evidence completeness (design.md §7, R7.2) — the caller must
+      // have confirmed every committed line was physically scanned before
+      // dispatch proceeds; a partial scan set is rejected outright rather
+      // than dispatching only the confirmed lines.
+      const scanned = new Set(scannedPickListItemIds);
+      if (
+        items.some((line) => !scanned.has(line.id)) ||
+        scanned.size !== items.length
+      ) {
+        return { ok: false as const, errors: ["scan_evidence_incomplete"] };
+      }
+
+      const insertedTransactions: AnyRecord[] = [];
+
+      // Steps 1-3, 5 (design.md §7): for each pick_list_items line, atomically
+      // decrement the affected lot_location_balances row, transition its
+      // inventory_commitment_line to 'executed', and insert one immutable
+      // inventory_transactions 'pick' row carrying that line's own real data
+      // (never a placeholder/aggregate row).
+      for (let i = 0; i < items.length; i++) {
+        const line = items[i];
+
+        // Resolve the affected lot_location_balances row for this line.
+        const balanceRows = (await db
+          .select({
+            id: lotLocationBalances.id,
+            qtyRemaining: lotLocationBalances.qtyRemaining,
+            qtyCommitted: lotLocationBalances.qtyCommitted,
+          })
+          .from(lotLocationBalances)
+          .where(
+            and(
+              eq(lotLocationBalances.lotId, line.lotId),
+              eq(lotLocationBalances.locationId, line.locationId),
+            ),
+          )
+          .limit(1)) as AnyRecord[];
+        const balance = balanceRows[0] as AnyRecord;
+
+        // Resolve the matching inventory_commitment_line for this pick_list_item.
+        // commitmentId is guaranteed resolved here — see the invariant guard above.
+        const commitLineRows = (await db
+          .select({ id: inventoryCommitmentLines.id })
+          .from(inventoryCommitmentLines)
+          .where(
+            and(
+              eq(inventoryCommitmentLines.commitmentId, commitmentId),
+              eq(inventoryCommitmentLines.pickListItemId, line.id),
+            ),
+          )
+          .limit(1)) as AnyRecord[];
+        const commitLine = commitLineRows[0] as AnyRecord;
+
+        // Step 1: decrement qty_remaining by the executed quantity.
+        // Step 2: decrement qty_committed by the same quantity (releases the
+        // reservation) — both on the same lot_location_balances row, in the
+        // same atomic transaction as every other line's work.
+        //
+        // Optimistic-concurrency guard: the WHERE clause re-asserts the exact
+        // qty_remaining/qty_committed values just read, so if another
+        // transaction already changed this row in between (a concurrent
+        // dispatch of a DIFFERENT pick list drawing the same lot/location —
+        // not serialized by the pick_lists row lock above, which only
+        // protects against two dispatches of the SAME pick list), Postgres's
+        // row-level locking makes this UPDATE block until that transaction
+        // commits, then re-evaluate this WHERE clause against the
+        // now-committed row — which no longer matches, so this UPDATE safely
+        // affects zero rows instead of silently overwriting the other
+        // transaction's decrement (a lost update).
+        //
+        // An UPDATE with no `.returning()` chained resolves (real postgres-js
+        // driver) to an array-like carrying the driver's own `.count` of
+        // affected rows. Zero rows affected without a thrown error is a lost
+        // race, not a genuine success — thrown here so the whole transaction
+        // rolls back via withRlsTransaction's guaranteed catch, translated by
+        // this function's own try/catch (below) into a named
+        // { ok: false, errors: ["concurrent_modification"] } result.
+        const balanceUpdateResult = await db
           .update(lotLocationBalances)
           .set({
-            qtyCommitted: sql`${lotLocationBalances.qtyCommitted} - ${line.qtyCommitted}`,
-            version: sql`${lotLocationBalances.version} + 1`,
+            qtyRemaining: balance.qtyRemaining - line.qty,
+            qtyCommitted: balance.qtyCommitted - line.qty,
             updatedAt: new Date(),
           })
-          .where(and(
-            eq(lotLocationBalances.id, line.balanceId),
-            sql`${lotLocationBalances.qtyCommitted} >= ${line.qtyCommitted}`,
-          ));
+          .where(
+            and(
+              eq(lotLocationBalances.id, balance.id),
+              eq(lotLocationBalances.qtyRemaining, balance.qtyRemaining),
+              eq(lotLocationBalances.qtyCommitted, balance.qtyCommitted),
+            ),
+          );
 
+        const balanceUpdateAffectedCount = (
+          balanceUpdateResult as { count?: number } | undefined
+        )?.count;
+
+        if (balanceUpdateAffectedCount === 0) {
+          throw new ConcurrentModificationError(
+            `lot_location_balances CAS guard matched zero rows for balance id ` +
+              `${balance.id} (lost race with a concurrent dispatch of a ` +
+              `different pick list touching the same balance row)`,
+          );
+        }
+
+        // Step 3: transition the inventory_commitment_line to 'executed' and
+        // set qty_executed to the executed quantity.
         await db
           .update(inventoryCommitmentLines)
-          .set({ status: "expired", updatedAt: new Date() })
-          .where(eq(inventoryCommitmentLines.id, line.commitmentLineId));
+          .set({
+            status: "executed",
+            qtyExecuted: line.qty,
+            updatedAt: new Date(),
+          })
+          .where(eq(inventoryCommitmentLines.id, commitLine.id));
+
+        // Step 5: insert the immutable inventory_transactions pick row for
+        // this line. pick_list_id is the symmetric link to the customer party
+        // per design.md §7.
+        const transactionNumber = `TXN-${Date.now()}-${i}`;
+        const [insertedTransaction] = (await db
+          .insert(inventoryTransactions)
+          .values({
+            transactionNumber,
+            lotId: line.lotId,
+            itemId: line.itemId,
+            movementType: "pick",
+            fromLocationId: line.locationId,
+            qty: line.qty,
+            flowType: pickList.flowType,
+            pickListId,
+            performedByUserId: userId,
+          })
+          .returning()) as AnyRecord[];
+
+        insertedTransactions.push(insertedTransaction);
       }
 
+      // Step 4: transition the inventory_commitments header to 'executed' and
+      // stamp completed_at, once every line above has been executed.
       await db
         .update(inventoryCommitments)
-        .set({ status: "expired", releasedAt: new Date(), updatedAt: new Date() })
-        .where(eq(inventoryCommitments.id, commitmentLines[0].commitmentId));
-
-      // No dispatch/pick transaction is written — the reservation is gone,
-      // not executed.
-      return { ok: false as const, errors: ["commitment_expired"] };
-    }
-
-    const scanned = new Set(scannedPickListItemIds);
-    if (
-      commitmentLines.some((line) => !scanned.has(line.pickListItemId)) ||
-      scanned.size !== commitmentLines.length
-    ) {
-      return { ok: false as const, errors: ["scan_evidence_incomplete"] };
-    }
-
-    let lastTransactionId: string | null = null;
-    for (const line of commitmentLines) {
-      // Both decrement and release happen in the same guarded write. A stale
-      // reservation cannot create a movement or take stock below zero.
-      const updatedBalances = await db
-        .update(lotLocationBalances)
         .set({
-          qtyRemaining: sql`${lotLocationBalances.qtyRemaining} - ${line.qtyCommitted}`,
-          qtyCommitted: sql`${lotLocationBalances.qtyCommitted} - ${line.qtyCommitted}`,
-          version: sql`${lotLocationBalances.version} + 1`,
+          status: "executed",
+          completedAt: new Date(),
           updatedAt: new Date(),
         })
-        .where(and(
-          eq(lotLocationBalances.id, line.balanceId),
-          sql`${lotLocationBalances.qtyRemaining} >= ${line.qtyCommitted}`,
-          sql`${lotLocationBalances.qtyCommitted} >= ${line.qtyCommitted}`,
-        ))
-        .returning({ id: lotLocationBalances.id });
+        .where(eq(inventoryCommitments.id, commitmentId));
 
-      if (updatedBalances.length !== 1) {
-        throw new Error("dispatch_stock_conflict");
+      // Step 6: transition the pick_list to 'dispatched' (design.md §7 step 6).
+      // This intentionally happens only after every line above has succeeded —
+      // a mid-loop failure above must never leave a partially-dispatched
+      // pick_list status; the guaranteed rollback in withRlsTransaction is what
+      // makes the whole per-line loop atomic.
+      await db
+        .update(pickLists)
+        .set({ status: "dispatched", updatedAt: new Date() })
+        .where(eq(pickLists.id, pickListId));
+
+      // Step 7: Document generation trigger — spec 10 (design.md §7 step 7).
+      // Intentionally outside the dispatch transaction; failure must not roll back
+      // the stock movement. sourceType/sourceId use inventory_transactions.id
+      // (the dispatched pick movement), per 10/design.md's resolved source
+      // reference contract for the acknowledgement receipt — the last line's
+      // transaction stands in for the whole dispatch event; the full set of
+      // transaction ids is still captured in the snapshot hash below for audit.
+      try {
+        const lastTransaction = insertedTransactions[insertedTransactions.length - 1] as
+          | { id: string }
+          | undefined;
+        if (!lastTransaction) throw new Error("missing_dispatch_transaction");
+        const transactionId = lastTransaction.id;
+        const numRows = (await db.execute!(
+          sql`SELECT generate_document_number('acknowledgement_receipt')`,
+        )) as Array<{ generate_document_number: string }>;
+        const documentNumber = numRows[0].generate_document_number;
+        await db
+          .insert(generatedDocuments)
+          .values({
+            documentType: "acknowledgement_receipt",
+            documentNumber,
+            templateVersion: "1.0",
+            sourceType: "inventory_transaction",
+            sourceId: transactionId,
+            snapshotHash: hashSnapshot({
+              pickListId,
+              commitmentId,
+              transactionIds: insertedTransactions.map(
+                (t) => (t as { id: string }).id,
+              ),
+            }),
+            status: "pending",
+            systemExecutor: "dispatchPickList",
+          });
+      } catch {
+        // Non-fatal — document generation failure does not roll back the stock movement.
       }
 
-      await db
-        .update(inventoryCommitmentLines)
-        .set({
-          qtyExecuted: line.qtyCommitted,
-          status: "executed",
-          updatedAt: new Date(),
-        })
-        .where(eq(inventoryCommitmentLines.id, line.commitmentLineId));
-
-      const [transaction] = (await db
-        .insert(inventoryTransactions)
-        .values({
-          // transaction_number is varchar(50). Date.now() plus the first UUID
-          // segment is sufficiently unique for this per-line dispatch while
-          // remaining safely within the persisted business identifier limit.
-          transactionNumber: `TXN-${Date.now()}-${line.commitmentLineId.slice(0, 8)}`,
-          lotId: line.lotId,
-          itemId: line.itemId,
-          movementType: "pick",
-          qty: line.qtyCommitted,
-          fromLocationId: line.locationId,
-          flowType: pickList.flowType,
-          pickListId,
-          performedByUserId: userId,
-        })
-        .returning()) as AnyRecord[];
-      lastTransactionId = transaction.id;
-    }
-
-    await db
-      .update(inventoryCommitments)
-      .set({ status: "executed", completedAt: new Date(), updatedAt: new Date() })
-      .where(eq(inventoryCommitments.id, commitmentLines[0].commitmentId));
-
-    // The status transition comes after all balance and ledger writes, so an
-    // Active Pick never disappears before its inventory movement is durable.
-    await db
-      .update(pickLists)
-      .set({ status: "dispatched", updatedAt: new Date() })
-      .where(eq(pickLists.id, pickListId));
-
-    // Step 7: Document generation trigger — spec 10 (design.md §7 step 7).
-    // Intentionally outside the dispatch transaction; failure must not roll back
-    // the stock movement.
-    try {
-      const transactionId = lastTransactionId;
-      if (!transactionId) throw new Error("missing_dispatch_transaction");
-      const numRows = (await db.execute!(
-        sql`SELECT generate_document_number('acknowledgement_receipt')`,
-      )) as Array<{ generate_document_number: string }>;
-      const documentNumber = numRows[0].generate_document_number;
-      await db
-        .insert(generatedDocuments)
-        .values({
-          documentType: "acknowledgement_receipt",
-          documentNumber,
-          templateVersion: "1.0",
-          sourceType: "inventory_transaction",
-          sourceId: transactionId,
-          snapshotHash: hashSnapshot({ pickListId, transactionId }),
-          status: "pending",
-          systemExecutor: "dispatchPickList",
-        });
-    } catch {
-      // Non-fatal — document generation failure does not roll back the stock movement.
-    }
-
-    return { ok: true as const };
+      return { ok: true as const };
     });
   } catch (error) {
+    if (error instanceof ConcurrentModificationError) {
+      return { ok: false, errors: ["concurrent_modification"] };
+    }
     console.error("Pick-list dispatch failed", error);
     return { ok: false, errors: ["dispatch_stock_conflict"] };
   }

@@ -151,10 +151,12 @@ Testing: Full applicable matrix below.
 
 ### Integration tests
 
+**2026-08-20 progress note**: `dispatchPickList` (Stage 2) was found genuinely incomplete during unrelated `12-vmi-billing` work — see `specs/00-steering/revision-log.md`'s 2026-08-20 entries. Since fixed: one real `inventory_transactions` row per pick-list line (not a placeholder aggregate), `lot_location_balances`/`inventory_commitment_lines`/`inventory_commitments` mutations implemented, a `SELECT ... FOR UPDATE` row lock + optimistic-concurrency guard against duplicate concurrent dispatch (with zero-row-count detection on the CAS guard, closing the last residual race-detection gap the same day), the missing RLS `UPDATE` policies added (`0037_dispatch_execute_update_policies.sql`) and real-Postgres-verified (allowed/disallowed role functional checks both pass), and the `acknowledgement_receipt` document's `sourceType`/`sourceId` contract corrected. 22/22 unit tests passing (mocked `db`). **Not yet done**: a true integration test that invokes the real `dispatchPickList` function against real Postgres (today's RLS verification checked the policies directly via raw SQL, not through the function itself) — the four bullets below remain open for that reason, not because the underlying fix is unverified.
+
 - [ ] Apply complete migrations in real Postgres and verify reservation/commitment constraints, pick-list relations, lot quantities, and immutable transaction behavior.
 - [ ] Verify concurrent allocation cannot reserve the same available quantity twice.
-- [ ] Verify Stage 1 reserves without decrementing and Stage 2 decrements/releases/writes exactly once.
-- [ ] Verify the Stage 2 `inventory_transactions` row carries `pick_list_id` set to the dispatched pick list's id.
+- [ ] Verify Stage 1 reserves without decrementing and Stage 2 decrements/releases/writes exactly once. *(Unit-level coverage exists; real-Postgres call-through still open — see note above.)*
+- [ ] Verify the Stage 2 `inventory_transactions` row carries `pick_list_id` set to the dispatched pick list's id. *(Unit-level coverage exists; real-Postgres call-through still open — see note above.)*
 - [ ] Verify stale, revoked, out-of-scope, invalid-approval, and cross-party requests fail safely under RLS.
 - [ ] Verify duplicate/lost-response commands return one authoritative outcome.
 - [ ] Verify Outgoing Ledger is read-only and scope-filtered.

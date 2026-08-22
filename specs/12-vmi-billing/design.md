@@ -1,184 +1,307 @@
 # VMI Billing — Design
 
 Status: Approved
-Updated: 2026-08-20
+Updated: 2026-08-19 (Full rewrite — see `requirements.md` header for what this supersedes and why)
 
 Cites foundational specs:
 
 - `specs/00-steering/tech.md`
-- `specs/01-core-data-model/` — depends on `parties`, `lots`, `items.volume_cbm`, `lot_location_balances`, `lot_inventory_totals` (view), `inventory_transactions`, `forex_rates`, `wrr_documents`, `pick_lists`
-- `specs/04-services-and-infrastructure/` — PDF artifact pipeline, Resend email delivery
-- `specs/10-pick-list-and-acknowledgement-receipt/` — per-release reference price context only; no billing dependency
+- `specs/01-core-data-model/` — depends on `parties`, `lots`, `items.volume_cbm`, `items.vmi_movement_category` (added 2026-08-19 as a `12`-driven amendment to `01`'s schema — see §2.1 and revision-log.md), `lot_location_balances`, `inventory_transactions` (the movement source — see §2.1), `forex_rates`
+- `specs/02-rbac-roles/` — capabilities, RLS
+- `specs/04-services-and-infrastructure/` — PDF artifact pipeline (all four documents), Resend email delivery; and (added 2026-08-20, see revision-log.md) the Supabase Cron/`pg_cron` + Edge Function scheduling pattern §14.5 locks background work to — the nightly balance job (§2.2) is the first thing in this codebase to actually build that pattern, not a bespoke Vercel Cron route
+- `specs/10-pick-list-and-acknowledgement-receipt/` — `generated_documents` (WHERE `document_type = 'acknowledgement_receipt'`) is the DR/AR reference every `vmi_charge_lines` row keys off; no new reference chain is introduced. **Correction (2026-08-19, pre-implementation):** an earlier draft of this design assumed a dedicated `acknowledgement_receipts` table; `10`'s actual, already-implemented schema (`lib/db/schema/documents.ts`) has no such table — an AR is a `generated_documents` row with `document_type = 'acknowledgement_receipt'`, `source_type` = `'inventory_commitment'` | `'inventory_transaction'`, `source_id` pointing at the actual record. §1.4 below reflects the corrected FK target.
 
 ---
 
 ## 1. Data Model & Schema Definitions
 
-All tables are defined in `lib/db/schema/vmi_billing.ts` and exported via `lib/db/schema/index.ts`.
+All tables are defined in `lib/db/schema/vmi_billing.ts` and exported via `lib/db/schema/index.ts`. This schema does NOT redefine any table from `01-core-data-model`, and it does NOT introduce a second movement-event log — `inventory_transactions` remains the sole immutable IN/OUT ledger; see §2.1.
 
-This schema does NOT redefine any table from `01-core-data-model`. All cross-schema references use imported table identifiers from their canonical schema files.
+### 1.1 `vmi_contract_terms`
 
-### 1.1 `vmi_contracts`
+**Effective-dated version history, not a single mutable row per party.** Replaces `vmi_contracts`. Every rate (storage, handling in/out, threshold config, documentation default) lives on this one versioned row together — mirrors the pattern `13-trading-orders-and-pricing`'s `trading_policies` already uses (`effective_from`/`effective_to`/`is_active`), rather than inventing a second pattern for VMI.
 
-One record per VMI party. Stores the contracted billing rate, currency denomination, optional charge-type flags, and their associated rates.
+This shape exists because a single mutable row can't answer "what rate was in effect on date X" for any date but today — and both the nightly snapshot job (§2.2) and the backfill utility (`vmi-daily-balance-backfill.ts`, Task C.6) need exactly that answer for historical dates, not just "whatever the contract currently says." A rate edit never overwrites history; it closes the current row and inserts a new one.
 
 ```typescript
 import {
-  pgTable, uuid, varchar, decimal, boolean, timestamp,
+  pgTable, uuid, varchar, decimal, timestamp, boolean, pgEnum,
 } from "drizzle-orm/pg-core";
 import { parties } from "./parties";
 
-export const vmiContracts = pgTable("vmi_contracts", {
+export const vmiBillingTimingEnum = pgEnum("vmi_billing_timing", ["beginning_of_day", "end_of_day"]);
+export const vmiCbmThresholdTypeEnum = pgEnum("vmi_cbm_threshold_type", ["none", "minimum_billable", "included_allowance"]);
+
+export const vmiContractTerms = pgTable("vmi_contract_terms", {
   id: uuid("id").primaryKey().defaultRandom(),
-  partyId: uuid("party_id")
-    .references(() => parties.id, { onDelete: "cascade" })
-    .notNull()
-    .unique(), // One active contract per VMI party
-  cbmRateUsd: decimal("cbm_rate_usd", { precision: 10, scale: 6 }).notNull(), // Daily rate per occupied CBM in USD
+  partyId: uuid("party_id").references(() => parties.id, { onDelete: "cascade" }).notNull(),
+
+  storageRatePerCbmDay: decimal("storage_rate_per_cbm_day", { precision: 10, scale: 6 }).notNull(),
+  // Which day's balance storage is priced against. Real June contract evidence
+  // is beginning_of_day; kept per-party configurable, not hardcoded — see
+  // requirements.md FR-1.
+  billingTiming: vmiBillingTimingEnum("billing_timing").notNull().default("beginning_of_day"),
+
+  cbmThresholdType: vmiCbmThresholdTypeEnum("cbm_threshold_type").notNull().default("none"),
+  cbmThreshold: decimal("cbm_threshold", { precision: 12, scale: 4 }), // required when threshold_type != 'none'
+  overThresholdRate: decimal("over_threshold_rate", { precision: 10, scale: 6 }), // required when threshold_type = 'included_allowance'
+
+  // Independently configurable — evidenced equal ($1.40) in June's real
+  // contract, but nothing requires that.
+  handlingInRatePerCbm: decimal("handling_in_rate_per_cbm", { precision: 10, scale: 4 }).notNull(),
+  handlingOutRatePerCbm: decimal("handling_out_rate_per_cbm", { precision: 10, scale: 4 }).notNull(),
+
+  // A DEFAULT, not a locked formula — an authorized user may override the
+  // amount per vmi_charge_lines row (requirements.md FR-4.2).
+  documentationDefaultRateUsd: decimal("documentation_default_rate_usd", { precision: 10, scale: 4 }).notNull(),
+
   billingCurrency: varchar("billing_currency", { length: 3 }).notNull().default("USD"), // 'USD' | 'PHP'
-  cbmThresholdContracted: decimal("cbm_threshold_contracted", { precision: 12, scale: 4 }), // NULL = no surcharge threshold
-  // Inbound handling fee: per confirmed WRR
-  handlingFeeEnabled: boolean("handling_fee_enabled").default(false).notNull(),
-  handlingFeeRateUsd: decimal("handling_fee_rate_usd", { precision: 10, scale: 4 }), // NULL when not enabled
-  // Outbound handling fee: per dispatched pick list
-  outboundHandlingFeeEnabled: boolean("outbound_handling_fee_enabled").default(false).notNull(),
-  outboundHandlingFeeRateUsd: decimal("outbound_handling_fee_rate_usd", { precision: 10, scale: 4 }), // NULL when not enabled
-  // Storage surcharge: per CBM above contracted threshold per day
-  storageSurchargeEnabled: boolean("storage_surcharge_enabled").default(false).notNull(),
-  storageSurchargeRateUsd: decimal("storage_surcharge_rate_usd", { precision: 10, scale: 6 }), // NULL when not enabled
+
+  // Version history fields — same shape as trading_policies.
+  isActive: boolean("is_active").default(true).notNull(),
+  effectiveFrom: timestamp("effective_from").defaultNow().notNull(),
+  effectiveTo: timestamp("effective_to"), // NULL = currently open-ended; set when superseded, never deleted
+
+  createdByUserId: uuid("created_by_user_id").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 ```
 
-**Constraint notes (enforced at application layer):**
+**Constraint notes (application layer):**
+- `cbm_threshold` required when `cbm_threshold_type != 'none'`.
+- `over_threshold_rate` required when `cbm_threshold_type = 'included_allowance'`.
+- No delivery rate field exists on this table by design — delivery is always a `vmi_charge_lines` manual entry (FR-4.3), never contract-derived.
+- **At most one row per `party_id` with `effective_to IS NULL`** (the currently-active version), enforced at the application layer exactly like `trading_policies`' "one active policy per (party, item)" invariant. A rate edit is never an `UPDATE` of rate columns on an existing row — it is: set the current row's `effective_to = NOW()` (or an admin-chosen future effective date), then `INSERT` a new row with `effective_from` = that same boundary. `id` and `created_at` are never reused across versions.
+- Any lookup that needs "the rate in effect on date X" (nightly snapshot, backfill, period-close handling aggregation) queries `WHERE party_id = :p AND effective_from <= X AND (effective_to IS NULL OR effective_to > X)` — never "the current row," even when X happens to be today.
 
-- `handling_fee_rate_usd` MUST be non-null when `handling_fee_enabled = true`.
-- `outbound_handling_fee_rate_usd` MUST be non-null when `outbound_handling_fee_enabled = true`.
-- `storage_surcharge_rate_usd` and `cbm_threshold_contracted` MUST both be non-null when `storage_surcharge_enabled = true`.
-- `billing_currency` MUST be one of `'USD'`, `'PHP'`.
+### 1.2 `vmi_recurring_fee_lines`
 
-### 1.2 `vmi_cbm_ledger`
-
-One row per VMI party per calendar day. The `ending_cbm` column is the authoritative occupied-CBM snapshot; `inbound_cbm` and `outbound_cbm` are informational delta values derived from `inventory_transactions`. **(2026-08-08)** `applied_cbm_rate_usd` and `daily_amount_usd` are captured the same night as `ending_cbm`, using whichever `vmi_contracts.cbm_rate_usd` is in effect at that moment — this is what lets a mid-period rate change bill correctly (each day is priced at the rate that was actually active that day, not retroactively repriced by whatever the rate happens to be at statement-generation time). It also matches the client's own CBM ledger reference format (`DATE | BEGINNING CBM | IN | OUT | ENDING CBM | DAILY AMOUNT`) as a queryable/displayable row, not just an internal aggregate.
+Zero or more flat/recurring charges per party. Replaces the two-flag ad-hoc fields the prior `vmi_contracts` design hardcoded (`handling_fee_enabled`/`outbound_handling_fee_enabled`) — real June data evidences **four** distinct recurring types (LOA, surety bond, trucking admin fee, manpower), so this is an open, typed list, not a fixed pair of booleans.
 
 ```typescript
-import {
-  pgTable, uuid, date, decimal, timestamp, unique,
-} from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, decimal, boolean, timestamp, pgEnum } from "drizzle-orm/pg-core";
 import { parties } from "./parties";
+import { vmiPermits } from "./vmi_billing";
 
-export const vmiCbmLedger = pgTable("vmi_cbm_ledger", {
+export const vmiRecurringFeeTypeEnum = pgEnum("vmi_recurring_fee_type", [
+  "loa", "surety_bond", "trucking_admin_fee", "manpower", "other",
+]);
+
+export const vmiRecurringFeeLines = pgTable("vmi_recurring_fee_lines", {
   id: uuid("id").primaryKey().defaultRandom(),
   partyId: uuid("party_id").references(() => parties.id).notNull(),
-  ledgerDate: date("ledger_date").notNull(), // Calendar date in Asia/Manila timezone
-  beginningCbm: decimal("beginning_cbm", { precision: 12, scale: 4 }).default("0").notNull(),
-  inboundCbm: decimal("inbound_cbm", { precision: 12, scale: 4 }).default("0").notNull(),   // Informational only
-  outboundCbm: decimal("outbound_cbm", { precision: 12, scale: 4 }).default("0").notNull(), // Informational only
-  endingCbm: decimal("ending_cbm", { precision: 12, scale: 4 }).default("0").notNull(),     // Authoritative snapshot
-  appliedCbmRateUsd: decimal("applied_cbm_rate_usd", { precision: 10, scale: 6 }).notNull(), // vmi_contracts.cbm_rate_usd in effect this day
-  dailyAmountUsd: decimal("daily_amount_usd", { precision: 14, scale: 4 }).notNull(),         // ending_cbm × applied_cbm_rate_usd
-  calculatedAt: timestamp("calculated_at").notNull(), // When the CRON snapshot was taken
+  feeType: vmiRecurringFeeTypeEnum("fee_type").notNull(),
+  label: varchar("label", { length: 200 }).notNull(), // e.g. "Letter of Authority", "Surety Bond"
+  isActive: boolean("is_active").default(true).notNull(),
+
+  // Flat monthly amount — used for loa/surety_bond/trucking_admin_fee/other.
+  flatAmountUsd: decimal("flat_amount_usd", { precision: 14, scale: 4 }),
+
+  // Manpower only: hours × rate, rate stored in its native currency (PHP
+  // evidenced). NULL for non-manpower fee types.
+  manpowerRatePerHour: decimal("manpower_rate_per_hour", { precision: 10, scale: 2 }),
+  manpowerCurrency: varchar("manpower_currency", { length: 3 }),
+
+  // LOA only: links to the permit whose monthly_fee_usd this fee line mirrors.
+  relatedPermitId: uuid("related_permit_id").references(() => vmiPermits.id),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+```
+
+### 1.2a `vmi_manpower_hours_log`
+
+Added 2026-08-20, surfaced while implementing Task D.4: design.md §2.5's manpower formula (`hours_logged × rate_per_hour`) needs somewhere to record "hours logged this period" — `vmi_recurring_fee_lines` intentionally holds only the standing hourly rate (a stable, reusable config row), not a per-period variable. Product Owner decision: a dedicated small table, not an extension of `vmi_charge_lines` (manpower isn't tied to one AR/shipment the way Documentation/Delivery are).
+
+```typescript
+import { pgTable, uuid, date, decimal, text, timestamp, unique } from "drizzle-orm/pg-core";
+import { parties } from "./parties";
+import { vmiRecurringFeeLines } from "./vmi_billing";
+
+export const vmiManpowerHoursLog = pgTable("vmi_manpower_hours_log", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  recurringFeeLineId: uuid("recurring_fee_line_id").references(() => vmiRecurringFeeLines.id).notNull(),
+  partyId: uuid("party_id").references(() => parties.id).notNull(), // redundant with recurringFeeLineId's own party, kept for RLS scoping consistency with every other VMI table
+  periodStartDate: date("period_start_date").notNull(),
+  periodEndDate: date("period_end_date").notNull(),
+  hours: decimal("hours", { precision: 10, scale: 2 }).notNull(),
+  notes: text("notes"),
+  recordedByUserId: uuid("recorded_by_user_id").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({
-  uniquePartyDate: unique().on(table.partyId, table.ledgerDate), // Idempotency guard
+  uniquePeriod: unique().on(table.recurringFeeLineId, table.periodStartDate, table.periodEndDate),
 }));
 ```
 
-### 1.3 `vmi_billing_statements`
+**Constraint notes:** one row per `(recurring_fee_line_id, period_start_date, period_end_date)` — re-entering hours for an already-logged period is an edit (application layer), not a second row. No hours logged for a period is the normal, expected case (per the real June fixture — $0 that month), not an error; §2.5's aggregation reads this as "0 if no row exists," never blocking period close.
 
-Immutable monthly billing output. Once `status = 'issued'` the computed amounts and locked exchange rate are permanently sealed.
+### 1.3 `vmi_daily_balance_ledger`
+
+One row per VMI party per calendar day. Replaces `vmi_cbm_ledger`. Source of `beginning_cbm`/`ending_cbm` is **movement replay over `inventory_transactions`**, not a `lot_inventory_totals` read — see §2.1 for why.
 
 ```typescript
-import {
-  pgTable, uuid, varchar, date, decimal, integer, timestamp, check,
-} from "drizzle-orm/pg-core";
+import { pgTable, uuid, date, decimal, timestamp, unique } from "drizzle-orm/pg-core";
+import { parties } from "./parties";
+
+export const vmiDailyBalanceLedger = pgTable("vmi_daily_balance_ledger", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  partyId: uuid("party_id").references(() => parties.id).notNull(),
+  ledgerDate: date("ledger_date").notNull(), // Asia/Manila calendar date
+
+  beginningCbm: decimal("beginning_cbm", { precision: 12, scale: 4 }).default("0").notNull(),
+  inboundCbmFg: decimal("inbound_cbm_fg", { precision: 12, scale: 4 }).default("0").notNull(),
+  inboundCbmRawMaterial: decimal("inbound_cbm_raw_material", { precision: 12, scale: 4 }).default("0").notNull(),
+  outboundCbmFg: decimal("outbound_cbm_fg", { precision: 12, scale: 4 }).default("0").notNull(),
+  outboundCbmRawMaterial: decimal("outbound_cbm_raw_material", { precision: 12, scale: 4 }).default("0").notNull(),
+  endingCbm: decimal("ending_cbm", { precision: 12, scale: 4 }).default("0").notNull(),
+
+  // Whichever of beginning_cbm/ending_cbm contract.billing_timing selects —
+  // this is the value storage_amount_usd was actually priced against.
+  billedBalanceCbm: decimal("billed_balance_cbm", { precision: 12, scale: 4 }).notNull(),
+  appliedStorageRateUsd: decimal("applied_storage_rate_usd", { precision: 10, scale: 6 }).notNull(),
+  storageAmountUsd: decimal("storage_amount_usd", { precision: 14, scale: 4 }).notNull(),
+
+  calculatedAt: timestamp("calculated_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  uniquePartyDate: unique().on(table.partyId, table.ledgerDate),
+}));
+```
+
+### 1.4 `vmi_charge_lines`
+
+Documentation, Delivery, and ad-hoc charges, each attached to one existing `acknowledgement_receipt`. **Warehousing and Handling never appear here** — both are always movement-replay aggregates (requirements.md FR-4.1), not per-shipment entries. This is the resolved reading of an ambiguity in the source pipeline sketch: the real Warehousing Charges schedule and the real Handling totals are both period/day aggregates with no per-DR dollar breakdown anywhere in the evidence.
+
+```typescript
+import { pgTable, uuid, varchar, decimal, date, text, pgEnum } from "drizzle-orm/pg-core";
+import { parties } from "./parties";
+import { generatedDocuments } from "./documents"; // existing 10-owned table; AR = document_type 'acknowledgement_receipt'
+
+export const vmiChargeTypeEnum = pgEnum("vmi_charge_type", [
+  "documentation", "delivery", "handling_and_stripping", "cargo_transfer_fee",
+  "rtv", "admin_fee", "insurance", "other",
+]);
+export const vmiChargeSourceEnum = pgEnum("vmi_charge_source", ["auto", "manual"]);
+
+export const vmiChargeLines = pgTable("vmi_charge_lines", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  // References generated_documents.id, not a dedicated AR table — 10 has none
+  // (design.md §0 correction, 2026-08-19). Application layer validates the
+  // referenced row has document_type = 'acknowledgement_receipt'; a plain FK
+  // can't express that constraint against a shared polymorphic table.
+  acknowledgementReceiptId: uuid("acknowledgement_receipt_id").references(() => generatedDocuments.id).notNull(),
+  partyId: uuid("party_id").references(() => parties.id).notNull(),
+  chargeType: vmiChargeTypeEnum("charge_type").notNull(),
+  amount: decimal("amount", { precision: 14, scale: 4 }).notNull(),
+  currency: varchar("currency", { length: 3 }).notNull(), // PHP (delivery) or USD (everything else)
+  // 'auto' = pre-filled from contract.documentation_default_rate_usd, still
+  // editable; 'manual' = no contract-derived default exists (delivery, and
+  // every ad-hoc type) — see requirements.md FR-4.
+  source: vmiChargeSourceEnum("source").notNull(),
+  chargeDate: date("charge_date").notNull(),
+  notes: text("notes"),
+  recordedByUserId: uuid("recorded_by_user_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+```
+
+### 1.5 `vmi_permits`
+
+```typescript
+import { pgTable, uuid, varchar, text, date, decimal, boolean, timestamp } from "drizzle-orm/pg-core";
+import { parties } from "./parties";
+
+export const vmiPermits = pgTable("vmi_permits", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  partyId: uuid("party_id").references(() => parties.id).notNull(),
+  permitNumber: varchar("permit_number", { length: 100 }).notNull(), // e.g. 'ELSE-LTP1-IE-007994-26E'
+  itemScope: text("item_scope").notNull(), // e.g. "Reel, carrier tape, tray"
+  validFrom: date("valid_from").notNull(),
+  validTo: date("valid_to").notNull(),
+  monthlyFeeUsd: decimal("monthly_fee_usd", { precision: 10, scale: 2 }).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+```
+
+### 1.6 `vmi_billing_periods`
+
+The period-close record. One row per party per calendar month (plus correction revisions). This is what ties the four generated documents together and carries the immutable, issued snapshot.
+
+```typescript
+import { pgTable, uuid, varchar, date, decimal, integer, timestamp, check } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { parties } from "./parties";
 
-export const vmiBillingStatements = pgTable("vmi_billing_statements", {
+export const vmiBillingPeriods = pgTable("vmi_billing_periods", {
   id: uuid("id").primaryKey().defaultRandom(),
-  statementNumber: varchar("statement_number", { length: 50 }).notNull().unique(), // e.g. 'VMI-2026-06-UBOT'
+  periodNumber: varchar("period_number", { length: 50 }).notNull().unique(), // 'VMI-2026-06-{PARTY_CODE}', see §3
   partyId: uuid("party_id").references(() => parties.id).notNull(),
 
-  // Period
-  periodStartDate: date("period_start_date").notNull(), // First day of billing month
-  periodEndDate: date("period_end_date").notNull(),     // Last day of billing month
-  storagePeriodDays: integer("storage_period_days").notNull(), // Calendar days in the period
+  periodStartDate: date("period_start_date").notNull(),
+  periodEndDate: date("period_end_date").notNull(),
 
-  // Storage charge inputs
-  periodAverageCbm: decimal("period_average_cbm", { precision: 14, scale: 4 }).notNull(), // AVG(ending_cbm) for period
-  appliedCbmRateUsd: decimal("applied_cbm_rate_usd", { precision: 10, scale: 6 }).notNull(), // Current contract rate at generation time, for display; NOT used to compute storageChargeUsd (see below) — the effective rate may have varied within the period
-  storageChargeUsd: decimal("storage_charge_usd", { precision: 14, scale: 4 }).notNull(), // SUM(vmi_cbm_ledger.daily_amount_usd) over the period — each day already priced at that day's rate
+  // Billing Statement charge lines (computed at close time, snapshotted)
+  storageChargeUsd: decimal("storage_charge_usd", { precision: 14, scale: 4 }).notNull(),
+  handlingInUsd: decimal("handling_in_usd", { precision: 14, scale: 4 }).notNull(),
+  handlingOutUsd: decimal("handling_out_usd", { precision: 14, scale: 4 }).notNull(),
+  documentationUsd: decimal("documentation_usd", { precision: 14, scale: 4 }).notNull(),
+  deliveryUsd: decimal("delivery_usd", { precision: 14, scale: 4 }).notNull(),
+  recurringFeesUsd: decimal("recurring_fees_usd", { precision: 14, scale: 4 }).notNull(),
+  adHocChargesUsd: decimal("ad_hoc_charges_usd", { precision: 14, scale: 4 }).notNull(),
+  creditsAppliedUsd: decimal("credits_applied_usd", { precision: 14, scale: 4 }).default("0").notNull(),
+  billingStatementTotalUsd: decimal("billing_statement_total_usd", { precision: 14, scale: 4 }).notNull(),
 
-  // Additional charge lines (null = not enabled on contract)
-  handlingFeeCount: integer("handling_fee_count"),           // WRR count in period; null if not enabled
-  handlingFeeRateUsd: decimal("handling_fee_rate_usd", { precision: 10, scale: 4 }), // Snapshotted from contract
-  handlingFeeAmountUsd: decimal("handling_fee_amount_usd", { precision: 14, scale: 4 }), // count × rate; null if not enabled
+  // SOA (requirements.md FR-7) — a real running AR balance across periods.
+  soaOpeningBalanceUsd: decimal("soa_opening_balance_usd", { precision: 14, scale: 4 }).notNull(),
+  soaPaymentsAppliedUsd: decimal("soa_payments_applied_usd", { precision: 14, scale: 4 }).default("0").notNull(),
+  soaClosingBalanceUsd: decimal("soa_closing_balance_usd", { precision: 14, scale: 4 }).notNull(),
 
-  outboundHandlingFeeCount: integer("outbound_handling_fee_count"), // Pick list count in period; null if not enabled
-  outboundHandlingFeeRateUsd: decimal("outbound_handling_fee_rate_usd", { precision: 10, scale: 4 }),
-  outboundHandlingFeeAmountUsd: decimal("outbound_handling_fee_amount_usd", { precision: 14, scale: 4 }),
+  lockedExchangeRatePhp: decimal("locked_exchange_rate_php", { precision: 10, scale: 4 }).notNull(),
+  lockedExchangeRateDate: date("locked_exchange_rate_date").notNull(),
+  billingCurrency: varchar("billing_currency", { length: 3 }).notNull(),
 
-  storageSurchargeAmountUsd: decimal("storage_surcharge_amount_usd", { precision: 14, scale: 4 }), // null if not enabled
+  // Four generated PDF artifacts (04's artifact pipeline) — all four produced
+  // by the same close action (requirements.md FR-9).
+  billingStatementArtifactId: uuid("billing_statement_artifact_id"),
+  warehousingChargesArtifactId: uuid("warehousing_charges_artifact_id"),
+  soaArtifactId: uuid("soa_artifact_id"),
+  loaArtifactId: uuid("loa_artifact_id"),
 
-  // Credits applied
-  creditNotesAppliedUsd: decimal("credit_notes_applied_usd", { precision: 14, scale: 4 }).default("0").notNull(),
-
-  // Totals
-  totalAmountUsd: decimal("total_amount_usd", { precision: 14, scale: 4 }).notNull(), // Sum of all charge lines minus credits
-  lockedExchangeRatePhp: decimal("locked_exchange_rate_php", { precision: 10, scale: 4 }).notNull(), // From forex_rates at generation time
-  lockedExchangeRateDate: date("locked_exchange_rate_date").notNull(), // forex_rates.effective_date used
-  totalAmountPhp: decimal("total_amount_php", { precision: 14, scale: 4 }).notNull(), // totalAmountUsd × lockedExchangeRatePhp
-  billingCurrency: varchar("billing_currency", { length: 3 }).notNull(), // Snapshotted from contract
-
-  // Lifecycle
   status: varchar("status", { length: 20 }).notNull().default("draft"), // 'draft' | 'issued' | 'voided'
-  supersededByStatementId: uuid("superseded_by_statement_id"), // Populated on the voided original when a correction replaces it
-  pdfArtifactId: uuid("pdf_artifact_id"), // Reference to 04's artifact record
+  supersededByPeriodId: uuid("superseded_by_period_id"),
 
-  // Audit
-  generatedByUserId: uuid("generated_by_user_id").notNull(),
-  generatedAt: timestamp("generated_at").defaultNow().notNull(),
-  issuedAt: timestamp("issued_at"),
+  closedByUserId: uuid("closed_by_user_id"),
+  closedAt: timestamp("closed_at"),
   voidedAt: timestamp("voided_at"),
   voidedByUserId: uuid("voided_by_user_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({
-  totalAmountNonNegative: check(
-    "total_amount_non_negative",
-    sql`${table.totalAmountUsd} >= 0`
-  ),
+  totalNonNegative: check("billing_statement_total_non_negative", sql`${table.billingStatementTotalUsd} >= 0`),
 }));
 ```
 
-### 1.4 `vmi_credit_notes`
-
-Credit notes reduce the payable amount on a future period's statement. They are never subtracted from the current-period statement total before issuance.
+### 1.7 `vmi_payments`
 
 ```typescript
-import {
-  pgTable, uuid, varchar, decimal, boolean, text, timestamp,
-} from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, date, decimal, text, timestamp, pgEnum } from "drizzle-orm/pg-core";
 import { parties } from "./parties";
-import { vmiBillingStatements } from "./vmi_billing";
+import { vmiBillingPeriods } from "./vmi_billing";
 
-export const vmiCreditNotes = pgTable("vmi_credit_notes", {
+export const vmiPaymentTypeEnum = pgEnum("vmi_payment_type", ["payment", "credit_memo", "adjustment"]);
+
+export const vmiPayments = pgTable("vmi_payments", {
   id: uuid("id").primaryKey().defaultRandom(),
-  creditNoteNumber: varchar("credit_note_number", { length: 50 }).notNull().unique(), // e.g. 'VMI-CN-2026-001'
   partyId: uuid("party_id").references(() => parties.id).notNull(),
-  relatedStatementId: uuid("related_statement_id")
-    .references(() => vmiBillingStatements.id), // Statement that prompted the credit; optional
-  appliedToStatementId: uuid("applied_to_statement_id")
-    .references(() => vmiBillingStatements.id), // Statement on which this credit was consumed
+  appliedToPeriodId: uuid("applied_to_period_id").references(() => vmiBillingPeriods.id).notNull(),
+  paymentDate: date("payment_date").notNull(),
   amountUsd: decimal("amount_usd", { precision: 14, scale: 4 }).notNull(),
-  amountPhp: decimal("amount_php", { precision: 14, scale: 4 }).notNull(),
-  billingCurrency: varchar("billing_currency", { length: 3 }).notNull(), // Matches contract at time of creation
-  reason: text("reason").notNull(),
-  isApplied: boolean("is_applied").default(false).notNull(),
-  appliedAt: timestamp("applied_at"),
-  isCancelled: boolean("is_cancelled").default(false).notNull(),
-  cancelledAt: timestamp("cancelled_at"),
-  generatedByUserId: uuid("generated_by_user_id").notNull(),
+  type: vmiPaymentTypeEnum("type").notNull().default("payment"),
+  notes: text("notes"),
+  recordedByUserId: uuid("recorded_by_user_id").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 ```
@@ -187,219 +310,213 @@ export const vmiCreditNotes = pgTable("vmi_credit_notes", {
 
 ## 2. System Architecture & Algorithms
 
-### 2.1 Daily CBM Snapshot — CRON Job
+### 2.1 Why `inventory_transactions`, not a new movement-event table
 
-**Schedule:** `59 23 * * *` in `Asia/Manila` time (UTC+8 = `51 15 * * *` UTC).
-
-**Data source:** `lot_inventory_totals` view (defined in `01-core-data-model`) aggregated from `lot_location_balances`. This is the authoritative current-state quantity model. The CRON job does NOT read `inventory_transactions` as the billing source.
-
-**Algorithm:**
+The initial pipeline sketch proposed a standalone "Movement Event" log. `inventory_transactions` already is that log: immutable, one row per IN/OUT, carrying `flowType`, `qty`, `lotId`→`itemId`→`volume_cbm`, and `wrrId`/`pickListId` as the WR/DR reference. A second, parallel event table would duplicate a source of truth this project has an explicit standing rule against. The billing engine reads `inventory_transactions` through a thin, billing-scoped query — it does not touch or extend the table itself.
 
 ```text
-For each party_id where vmi_contracts exists AND parties.is_active = true:
+movementDirection(movementType):
+  'receiving' | 'putaway'  → IN
+  'pick'                   → OUT
+  'transfer', 'inventory_reconciliation' → excluded from party CBM balance
+                                             (internal, doesn't change what
+                                             a VMI party owns)
 
-1. SKIP if vmi_cbm_ledger row already exists for (party_id, today).
+movementCategory: items.vmi_movement_category (FG / RAW_MATERIAL /
+  FOR_PROCESS / REJECT / RE_INSPECT) — a fixed property of the item, not
+  something resolved per lot/transaction (01-core-data-model amendment,
+  2026-08-19; see revision-log.md and design.md §1.1/§1.2 there). Nullable —
+  display/reporting only, never changes the applicable rate; a null category
+  (non-VMI item, or not yet classified) is shown as an "Uncategorized"
+  bucket in the ledger UI rather than silently dropped from the totals.
 
-2. Compute ending_cbm (authoritative snapshot):
-     SELECT SUM(lit.qty_remaining * i.volume_cbm)
-     FROM   lot_inventory_totals lit
-     JOIN   lots l   ON l.id = lit.lot_id
-     JOIN   items i  ON i.id = l.item_id
-     WHERE  l.flow_type    = 'vmi'
-       AND  l.owner_party_id = :party_id
-       AND  l.status       NOT IN ('depleted')
-
-3. Retrieve beginning_cbm:
-     Previous row's ending_cbm from vmi_cbm_ledger
-     WHERE party_id = :party_id ORDER BY ledger_date DESC LIMIT 1.
-     If no prior row exists, beginning_cbm = 0.
-
-4. Compute inbound_cbm (informational):
-     SELECT SUM(t.qty * i.volume_cbm)
-     FROM   inventory_transactions t
-     JOIN   lots  l ON l.id = t.lot_id
-     JOIN   items i ON i.id = t.item_id
-     WHERE  t.flow_type        = 'vmi'
-       AND  l.owner_party_id   = :party_id
-       AND  t.movement_type   IN ('receiving', 'putaway')
-       AND  t.created_at      >= today_start_manila
-       AND  t.created_at       < today_end_manila
-
-5. Compute outbound_cbm (informational):
-     Same join as step 4 but movement_type = 'pick'.
-
-6. applied_cbm_rate_usd = vmi_contracts.cbm_rate_usd for :party_id, read fresh at this
-   moment — this is what makes a rate change take effect only from the day it's
-   changed forward, never retroactively.
-   daily_amount_usd = ending_cbm × applied_cbm_rate_usd
-
-7. INSERT INTO vmi_cbm_ledger
-     (party_id, ledger_date, beginning_cbm, inbound_cbm,
-      outbound_cbm, ending_cbm, applied_cbm_rate_usd, daily_amount_usd, calculated_at)
-   VALUES
-     (:party_id, :today, :beginning_cbm, :inbound_cbm,
-      :outbound_cbm, :ending_cbm, :applied_cbm_rate_usd, :daily_amount_usd, NOW())
-   ON CONFLICT (party_id, ledger_date) DO NOTHING.
+movementCbm = qty × items.volume_cbm
+movementParty = lots.owner_party_id
 ```
 
-**Timezone note:** `today_start_manila` and `today_end_manila` are computed by converting the current UTC timestamp to `Asia/Manila` and taking the midnight boundaries of that calendar day. The `ledger_date` stored is the Manila calendar date, not UTC.
+### 2.2 Daily balance replay — nightly job
 
-### 2.2 Statement Generation
+**Schedule:** `59 23 * * *` Asia/Manila (matches the prior design's cadence).
 
-Triggered by an Office Administrator selecting a party and a billing month.
-
-**Pre-conditions:**
-
-- A `vmi_contracts` record exists for the party.
-- A `forex_rates` row exists where `effective_date = generation_date` (today). If absent, block with a clear error: "No forex rate found for [date]. Please enter today's USD/PHP rate before generating."
-- No existing non-voided statement for the same `(party_id, period_start_date, period_end_date)`.
-
-**Algorithm:**
+**Invocation architecture (added 2026-08-20 — see revision-log.md):** `04-services-and-infrastructure` §14.5 locks all scheduled background work in this project to Supabase Cron (`pg_cron`) triggering Supabase Edge Functions over HTTPS via `pg_net`, never a Next.js `app/api/cron/*` route polled by Vercel Cron. This is the first job in the codebase to actually implement that pattern (no Edge Function infrastructure existed before this task). Kept minimal and specific to this one job, not a general job-queue buildout:
+- `supabase/functions/vmi-daily-balance-trigger/` — a thin Deno Edge Function. Its only job is to be `pg_cron`'s HTTPS invocation target and make one authenticated internal call into the Next.js app; it contains no billing logic itself.
+- `app/api/internal/vmi-daily-balance/route.ts` — a Next.js route holding the real logic: for every active VMI party, calls `getVmiPartyMovements` (§2.1, C.1) then `computeVmiDailyBalance` (C.2/C.3), and `INSERT ... ON CONFLICT (party_id, ledger_date) DO NOTHING` into `vmi_daily_balance_ledger`. This keeps the billing math in exactly one place (already built and unit-tested in `lib/billing/`) rather than re-implementing it a second time in Deno.
+- Auth: a shared secret, generated once and stored in Supabase Vault (read by the Edge Function) and as a Vercel environment variable (read by the Next.js route) — the Edge Function sends it as a header, the route rejects any request missing or mismatching it. Not the full `service_jobs` outbox/lease/retry/dead-letter apparatus from `04` §14.1-14.4, which is designed for async work triggered by a domain mutation (a receiving confirmation, a document request); this job's trigger is calendar time, not a mutation, and its idempotency is already handled by the `ON CONFLICT DO NOTHING` insert — so that heavier machinery doesn't apply here and isn't built for it.
+- `pg_cron` schedule itself is a migration (`cron.schedule(...)` calling `pg_net.http_post` against the Edge Function URL), not application code — per `04` §14.5's "schedule definitions are migrations/configuration, not dashboard-only knowledge."
 
 ```text
-1. period_start = first day of selected month (Asia/Manila)
-   period_end   = last day of selected month (Asia/Manila)
-   storage_period_days = number of calendar days in the month
+For each party_id where vmi_contract_terms exists AND parties.is_active = true:
 
-2. Fetch ledger rows:
-     SELECT ending_cbm, daily_amount_usd FROM vmi_cbm_ledger
-     WHERE party_id = :party_id
-       AND ledger_date BETWEEN :period_start AND :period_end
-     ORDER BY ledger_date
+1. SKIP if vmi_daily_balance_ledger row already exists for (party_id, today).
 
-   If no rows found: the period has no ledger data.
-   The system SHALL warn the administrator and require explicit confirmation
-   before continuing. An empty period is valid (ending_cbm = 0 throughout)
-   but unusual.
+2. beginning_cbm = yesterday's ending_cbm (0 if no prior row exists).
 
-3. period_average_cbm = AVG(ending_cbm) across all fetched rows.
-   (Arithmetic mean. Days with no ledger row are an exception state,
-    not silently treated as zero — see step 2 above. Stored on the
-    statement as a display/reference figure only — it is not used to
-    compute storage_charge_usd, see step 4.)
+3. in_fg, in_raw, out_fg, out_raw = SUM(movementCbm) grouped by
+   direction × category, from inventory_transactions joined to lots/items,
+   WHERE lots.flow_type = 'vmi' AND lots.owner_party_id = :party_id
+     AND created_at within today's Asia/Manila calendar day.
 
-4. storage_charge_usd = SUM(daily_amount_usd) across all fetched rows.
-   (2026-08-08: changed from `period_average_cbm × contract.cbm_rate_usd ×
-   storage_period_days` to summing each day's already-priced
-   `daily_amount_usd`. The two formulas are mathematically identical when
-   the rate is constant for the whole period — but summing the per-day
-   amount is what correctly handles a rate change mid-period, since each
-   `vmi_cbm_ledger` row was already priced at whatever rate was in effect
-   that day, per §2.1 step 6. `applied_cbm_rate_usd` is no longer read
-   fresh from the contract at statement time for this calculation; it is
-   still read fresh for display, so the statement can show the effective
-   blended rate for the period if it varied.)
+4. ending_cbm = beginning_cbm + (in_fg + in_raw) - (out_fg + out_raw)
 
-5. If contract.handling_fee_enabled = true:
-     handling_fee_count = COUNT of wrr_documents WHERE
-       vendor_party_id = :party_id
-       AND flow_type = 'vmi'
-       AND status = 'confirmed'
-       AND confirmed_at BETWEEN :period_start AND :period_end
-     handling_fee_amount_usd = handling_fee_count × contract.handling_fee_rate_usd
+5. billed_balance_cbm = beginning_cbm if contract.billing_timing = 'beginning_of_day'
+                         else ending_cbm
 
-6. If contract.outbound_handling_fee_enabled = true:
-     outbound_handling_fee_count = COUNT of pick_lists WHERE
-       customer_party_id = :party_id
-       AND flow_type = 'vmi'
-       AND status = 'dispatched'
-       AND updated_at BETWEEN :period_start AND :period_end
-     outbound_handling_fee_amount_usd =
-       outbound_handling_fee_count × contract.outbound_handling_fee_rate_usd
+6. applied_storage_rate_usd = vmi_contract_terms.storage_rate_per_cbm_day for
+   :party_id WHERE effective_from <= today AND (effective_to IS NULL OR
+   effective_to > today) — i.e. whichever version was open on this specific
+   calendar day, not simply "the current row." For the normal forward-running
+   nightly job this is always the latest version (today falls after every
+   effective_from), so behavior is unchanged from a flat "read current rate."
+   It only diverges from that for backfill (§ C.6): a day backfilled after a
+   later rate change resolves to the rate that was actually in effect on the
+   backfilled date, not today's rate.
 
-7. If contract.storage_surcharge_enabled = true
-      AND contract.cbm_threshold_contracted IS NOT NULL:
-     surcharge_usd = SUM(
-       (ending_cbm - contract.cbm_threshold_contracted) × contract.storage_surcharge_rate_usd
-     ) for all ledger rows where ending_cbm > contract.cbm_threshold_contracted
+   billed_cbm = apply cbm_threshold_type to billed_balance_cbm per
+     requirements.md FR-3 (no-op when threshold_type = 'none').
 
-8. Sum unapplied credit notes for this party:
-     SELECT SUM(amount_usd) FROM vmi_credit_notes
-     WHERE party_id = :party_id AND is_applied = false AND is_cancelled = false
-   This becomes credit_notes_applied_usd.
+   storage_amount_usd = billed_cbm × applied_storage_rate_usd
 
-9. total_amount_usd =
-       storage_charge_usd
-     + COALESCE(handling_fee_amount_usd, 0)
-     + COALESCE(outbound_handling_fee_amount_usd, 0)
-     + COALESCE(surcharge_usd, 0)
-     - credit_notes_applied_usd
-
-   Clamp to 0 if negative (credit_notes_applied_usd must not exceed
-   the gross amount — enforced by application logic before commit).
-
-10. Fetch forex rate:
-      locked_exchange_rate_php = forex_rates.usd_to_php_rate
-      WHERE effective_date = :generation_date   ← today
-
-11. total_amount_php = total_amount_usd × locked_exchange_rate_php
-
-12. INSERT INTO vmi_billing_statements (all computed fields, status = 'draft').
-
-13. Mark consumed credit notes:
-      UPDATE vmi_credit_notes SET is_applied = true, applied_at = NOW(),
-        applied_to_statement_id = :new_statement_id
-      WHERE id IN (:applied_credit_note_ids)
-
-14. Trigger PDF generation via 04's artifact pipeline.
-    Store returned pdf_artifact_id on the statement.
-
-15. Update statement status to 'issued', set issued_at = NOW().
-
-16. Send PDF to parties.email via Resend.
+7. INSERT INTO vmi_daily_balance_ledger (...) ON CONFLICT (party_id, ledger_date) DO NOTHING.
 ```
 
-### 2.3 Statement Corrections
+**Verified**: with `billing_timing = 'beginning_of_day'`, `cbm_threshold_type = 'none'`, day 1 (`beginning_cbm = 792.02`, no prior row) produces `792.02 × 0.05 = 39.60`, matching the real June 1 figure exactly.
 
-A correction voids the original statement and issues a replacement. The original is never deleted.
+### 2.3 Handling — period aggregate, priced per day against the rate effective that day
+
+Handling is a period aggregate (never a `vmi_charge_lines` row, per requirements.md FR-4.1), but it must still be point-in-time-safe the same way storage is — a mid-period handling-rate change must price only the days after the change at the new rate, never retroactively reprice the whole period. Because `vmi_contract_terms` is now an effective-dated version history (§1.1), this doesn't need its own snapshot column on `vmi_daily_balance_ledger`: each day's IN/OUT CBM is already stored there, so period-close joins each `vmi_daily_balance_ledger.ledger_date` to whichever `vmi_contract_terms` version was effective on that date and prices day-by-day, then sums.
 
 ```text
-1. Validate: original statement must have status = 'issued'.
-   A 'voided' statement cannot be corrected again — correct the replacement instead.
-   A 'draft' statement should be deleted, not corrected.
+For each vmi_daily_balance_ledger row in the period (grouped by ledger_date):
+  day_contract = vmi_contract_terms WHERE party_id = :party_id
+    AND effective_from <= ledger_date AND (effective_to IS NULL OR effective_to > ledger_date)
 
-2. Update original statement:
-     status = 'voided'
-     voided_at = NOW()
-     voided_by_user_id = :requesting_user_id
+  daily_handling_in_usd  = (in_fg + in_raw)   × day_contract.handling_in_rate_per_cbm
+  daily_handling_out_usd = (out_fg + out_raw) × day_contract.handling_out_rate_per_cbm
 
-3. Run the full statement generation algorithm (§2.2) for the same
-   party and period, producing a new statement record with a new
-   statement number (e.g., 'VMI-2026-06-UBOT-R1').
-
-4. Update original statement:
-     superseded_by_statement_id = :new_statement_id
-
-5. Generate PDF and re-deliver.
+handling_in_usd  = SUM(daily_handling_in_usd)  across the period
+handling_out_usd = SUM(daily_handling_out_usd) across the period
 ```
 
-### 2.4 Credit Note Application
+When no rate change occurs within a period, `day_contract` resolves to the same single version for every day and this reduces exactly to `total_cbm × rate` — which is what the June fixture exercises, since no rate change occurred that month.
 
-Credit notes are created independently and are consumed atomically during statement generation (step 8–13 of §2.2). They are never negative-applied to the current statement after issuance. The statement generation transaction applies all unapplied, uncancelled credit notes for the party in a single atomic operation, marking each as applied.
+Verified: `157.18 × 1.40 = 220.05`, `262.96 × 1.40 = 368.14`, both exact (single contract version active the whole period).
+
+### 2.4 Documentation and Delivery — charge lines
+
+```text
+documentation_usd = SUM(vmi_charge_lines.amount WHERE charge_type = 'documentation'
+                         AND charge_date within period)
+  -- Each row defaults to contract.documentation_default_rate_usd at entry
+  -- time (source = 'auto') but is independently editable per line
+  -- (still source = 'auto' — 'manual' is reserved for charge types with no
+  -- contract-derived default at all, i.e. delivery and every ad-hoc type).
+
+delivery_php = SUM(vmi_charge_lines.amount WHERE charge_type = 'delivery'
+                    AND currency = 'PHP' AND charge_date within period)
+delivery_usd = delivery_php / period.locked_exchange_rate_php
+```
+
+Verified: `₱40,896.00 / 61.71 = 662.71`, exact.
+
+### 2.5 Recurring fees and ad-hoc charges
+
+```text
+recurring_fees_usd = SUM(vmi_recurring_fee_lines.flat_amount_usd WHERE is_active
+                          AND fee_type != 'manpower')
+                    + (manpower_hours_logged_this_period × manpower_rate_per_hour
+                       converted to USD, or 0 if no hours logged this period)
+
+ad_hoc_charges_usd = SUM(vmi_charge_lines.amount WHERE charge_type IN
+                          ('handling_and_stripping','cargo_transfer_fee','rtv',
+                           'admin_fee','insurance','other')
+                          AND charge_date within period, converted to USD)
+```
+
+### 2.6 Period close — one action, four documents
+
+```text
+1. Validate: no existing non-voided vmi_billing_periods row for (party_id, month).
+   Validate: forex_rates row exists for today (generation date); block with a
+   clear error if absent.
+
+2. Compute storage_charge_usd = SUM(vmi_daily_balance_ledger.storage_amount_usd
+     for the period) — this specific sum has no owning sibling module (unlike
+     handling/documentation/delivery/recurring-fees, each D.1/D.3/D.4's own
+     job); D.8 owns it directly, per §2.2. Also compute handling_in_usd,
+     handling_out_usd, documentation_usd, delivery_usd, recurring_fees_usd,
+     ad_hoc_charges_usd per §2.2-2.5.
+
+3. credits_applied_usd = SUM(vmi_payments WHERE type IN ('credit_memo','adjustment')
+                              AND applied_to_period_id = this new period's id)
+   Clarified 2026-08-20 (surfaced during Task D.8): `vmi_payments.applied_to_period_id`
+   is already a NOT NULL FK — every credit/adjustment row targets one specific
+   period at entry time, the same way a regular payment does. There is no
+   separate "unapplied credit pool" concept and no field tracking "already
+   applied" independent of that FK; "not yet applied" simply means "targets
+   this period," identical in shape to D.6's soa_payments_applied_usd scoping.
+
+4. billing_statement_total_usd = storage + handling_in + handling_out +
+     documentation + delivery + recurring_fees + ad_hoc_charges - credits_applied
+   Clamp at 0.
+
+5. soa_opening_balance_usd = prior vmi_billing_periods row's soa_closing_balance_usd
+     for this party (0 if this is the party's first period).
+   soa_payments_applied_usd = SUM(vmi_payments WHERE type = 'payment'
+     AND applied_to_period_id = this new period's id)
+   soa_closing_balance_usd = soa_opening_balance_usd + billing_statement_total_usd
+     - soa_payments_applied_usd
+
+6. Lock forex: locked_exchange_rate_php = forex_rates.usd_to_php_rate WHERE
+     effective_date = today.
+
+7. INSERT vmi_billing_periods (status = 'draft', all computed fields).
+
+8. Generate all four PDF artifacts via 04's pipeline:
+     - Billing Statement (charge lines + grand total)
+     - Warehousing Charges (vmi_daily_balance_ledger rows for the period, unrolled)
+     - SOA (opening balance + statement total + payments + closing balance)
+     - Letter of Authority (active vmi_permits row(s) for this party, mail-merged)
+   On any artifact failure: leave status = 'draft'; do not issue. Surface a
+   retry action in the UI — matches the prior design's D.7 failure handling.
+
+9. On all four succeeding: status = 'issued', closed_at = NOW().
+
+10. Send all four PDFs to parties.email via Resend (04's pipeline).
+```
+
+### 2.7 Corrections
+
+```text
+1. Validate: original vmi_billing_periods.status = 'issued'.
+2. original.status = 'voided'; voided_at = NOW(); voided_by_user_id = :user.
+3. Re-run §2.6 for the same party/month, producing a new period record with
+   period_number suffixed '-R{n}'.
+4. original.superseded_by_period_id = new period's id.
+5. Regenerate and re-deliver all four documents.
+```
 
 ---
 
-## 3. Statement Number Format
+## 3. Document Number Format
 
 ```text
 VMI-{YYYY}-{MM}-{PARTY_CODE}
 VMI-{YYYY}-{MM}-{PARTY_CODE}-R{N}   ← correction revision, N starting at 1
 ```
 
-Statement numbers are generated by the application and verified unique against `vmi_billing_statements.statement_number` before insert.
+All four documents generated for one period share this same number as their common reference, distinguished by document type in the artifact's own filename/label.
 
 ---
 
 ## 4. RLS Boundaries (to be defined in `02-rbac-roles`)
 
-The following RLS requirements are noted here for the `02` spec to implement:
+- `vmi_contract_terms`, `vmi_recurring_fee_lines`, `vmi_permits`: readable by Office Admin/Supervisor and the owning party (read-only for party); writeable by Office Admin only. For `vmi_contract_terms`, "writeable" means INSERT of a new version row plus one `UPDATE` limited to closing the prior version's `effective_to` — application layer and RLS both reject any `UPDATE` that touches a rate column on a row that already has `effective_to IS NOT NULL` or predates the current version, since that would rewrite billing history.
+- `vmi_daily_balance_ledger`: readable by Office Admin/Supervisor and the owning party; INSERT by CRON service role only; no UPDATE/DELETE.
+- `vmi_charge_lines`: readable by Office Admin/Supervisor and the owning party; writeable by Office Admin/Supervisor only, and only for `vmi_billing_periods` rows not yet closed.
+- `vmi_billing_periods`: readable by Office Admin/Supervisor and the owning party; INSERT/status-transition by Office Admin only.
+- `vmi_payments`: readable by Office Admin/Supervisor and the owning party; writeable by Office Admin only.
 
-- `vmi_contracts`: readable by Office Admin and the owning party; writeable by Office Admin only.
-- `vmi_cbm_ledger`: readable by Office Admin and the owning party (read-only for party); writeable only by the CRON service role.
-- `vmi_billing_statements`: readable by Office Admin and the owning party; writeable by Office Admin (for generation and correction) and the CRON service role (for PDF artifact update).
-- `vmi_credit_notes`: readable by Office Admin and the owning party; writeable by Office Admin only.
-
-No party may read another party's billing data. Row-level filtering is `party_id = auth.uid()` (or the resolved party of the authenticated user) for all four tables.
+No party may read another party's billing data. Row-level filtering is `party_id = ` the resolved party of the authenticated user, for all seven tables.
 
 ---
 
@@ -407,35 +524,40 @@ No party may read another party's billing data. Row-level filtering is `party_id
 
 | Upstream spec | What `12` consumes |
 | --- | --- |
-| `01-core-data-model` | `lot_inventory_totals` view, `lot_location_balances`, `lots`, `items.volume_cbm`, `inventory_transactions` (informational delta), `forex_rates`, `wrr_documents`, `pick_lists`, `parties` |
-| `04-services-and-infrastructure` | PDF generation artifact pipeline; Resend email delivery |
-| `05-ui-shell-and-navigation` | `/billing-pricing` route entry, office shell (added 2026-08-08, see §6) |
-| `10-pick-list-and-acknowledgement-receipt` | Per-release disclaimer language only; no billing input |
-| `22-parties-portal` | Owns VMI party-facing statement access (`vmi_statements.read`) independently of `/billing-pricing`, which is office-only |
+| `01-core-data-model` | `inventory_transactions` (the movement source — see §2.1), `lots`, `items.volume_cbm`, `forex_rates`, `parties` |
+| `04-services-and-infrastructure` | PDF generation artifact pipeline (all four documents); Resend email delivery |
+| `05-ui-shell-and-navigation` | `/billing-pricing` route entry, office shell |
+| `10-pick-list-and-acknowledgement-receipt` | `generated_documents` (`document_type = 'acknowledgement_receipt'`) — the DR/AR reference every `vmi_charge_lines` row keys off |
+| `22-parties-portal` | Owns VMI party-facing document access (`vmi_statements.read`) independently of `/billing-pricing`, which is office-only |
 
 `12` does NOT consume `pick_list_items.unit_price`. That field is owned by `10` for document display only and is explicitly excluded from all billing calculations here.
 
-**Added 2026-08-20**: for the same reason, `12` does NOT consume `lots.unit_cost` either. That field (`01-core-data-model` design.md's `lots` section) is a per-lot costing/reference snapshot only — for `flow_type = 'vmi'` lots it is never the bill of record, however precise or real-time it looks wherever it is displayed (receiving, incoming ledger, a lot's detail view, a per-release document). The VMI bill of record is always this document's own period-average CBM-occupancy calculation (§1–§2, `vmi_cbm_ledger`/`vmi_billing_statements`), never a single lot's or single document's price total, per the locked decision in `specs/00-steering/CLAUDE.md`. See `01-core-data-model` design.md's corresponding note for the reverse cross-reference.
+**Added 2026-08-20**: for the same reason, `12` does NOT consume `lots.unit_cost` either. That field (`01-core-data-model` design.md's `lots` section) is a per-lot costing/reference snapshot only — for `flow_type = 'vmi'` lots it is never the bill of record, however precise or real-time it looks wherever it is displayed (receiving, incoming ledger, a lot's detail view, a per-release document). The VMI bill of record is always this document's own computed billing output (§1–§4 above), never a single lot's or single document's price total, per the locked decision in `specs/00-steering/CLAUDE.md`. See `01-core-data-model` design.md's corresponding note for the reverse cross-reference.
 
 ---
 
-## 6. UI and shell integration (added 2026-08-08)
+## 6. UI and shell integration
 
-`12` and `13` share one office-surface route, `/billing-pricing`, rather than each owning a separate top-level nav entry — both are financial-ledger views over the same class of data (party-scoped commercial history), and a single Office Admin/Supervisor workflow (`reporting.financial_read`) reviews both. The page is **not** part of `06-party-and-item-enrollment` — enrollment is master-data CRUD gated by `items.manage`/`parties.manage`; this page is read-heavy financial reporting gated by `reporting.financial_read`, a different capability and a different audience. `06`'s party/item detail pages link out to it (a "View billing history" / "View pricing history" action), the same pattern `06` already uses for the transaction-ledger links (§5b/§6a) — enrollment does not embed the ledger itself.
+`12` and `13` share one office-surface route, `/billing-pricing`, per the already-approved rationale (financial-ledger views over party-scoped commercial history, gated `reporting.financial_read`, distinct from `06`'s master-data CRUD).
 
 ```text
 app/(authenticated)/
   billing-pricing/
-    page.tsx                # tab shell: VMI | Trading, redirects to ?tab=vmi by default
-    vmi/page.tsx             # this spec (12): party picker, vmi_cbm_ledger table, statement history/generation
-    trading/page.tsx         # 13-trading-orders-and-pricing: Trading Pricing & Margin Ledger (see 13 §7a)
+    page.tsx                # tab shell: VMI | Trading
+    vmi/
+      page.tsx              # party picker, daily balance ledger, charge-line entry, period history
+      contracts/[partyId]/edit/page.tsx   # vmi_contract_terms + recurring fee lines
+      permits/[partyId]/page.tsx          # vmi_permits CRUD
+      periods/[periodId]/page.tsx         # one period's four-document view + correction action
+    trading/page.tsx        # 13-trading-orders-and-pricing
 ```
 
-**VMI tab** (owned by `12`), **office-only**:
+**VMI tab**, office-only:
 
-- Party picker (Office Admin/Supervisor: any active VMI party).
-- `vmi_cbm_ledger` rendered as a table matching the client's reference format exactly: `DATE | BEGINNING CBM | IN (CBM) | OUT (CBM) | ENDING CBM | DAILY AMOUNT`, one row per `ledger_date`, most recent first, date-range filterable (defaults to the current billing month).
-- Below the ledger: statement history for the selected party (`vmi_billing_statements`, most recent first) and the "Generate Statement" action for a completed month, per §2.2. No new calculation logic is introduced here — this is a read/action surface over what §1-§2 already define.
-- `vmi_contracts` (the rate itself) is shown read-only on this tab for context; editing the contract's `cbm_rate_usd` and charge-type flags is a separate Office Admin form (`billing-pricing/vmi/contracts/[partyId]/edit`, `vmi_contracts.manage`-equivalent capability — reuses the existing `vmi_contracts` write RLS from §4, no new capability invented). A rate change here takes effect from the next CRON snapshot forward only, per §2.1 step 6 — it never rewrites already-written `vmi_cbm_ledger` rows.
+- Party picker (any active VMI party).
+- Daily balance ledger table matching the real reference format: `DATE | BEGINNING CBM | IN (FG) | IN (RAW MTL'S) | OUT (FG) | OUT (RAW MTL'S) | ENDING CBM | RATE | AMOUNT`, most recent first, date-range filterable (default: current billing month). Read-only.
+- Charge-line entry table for the current open period: Documentation (pre-filled from contract default, editable) and Delivery (blank, required manual entry) per `acknowledgement_receipt`, plus ad-hoc types (RTV, Insurance, Cargo Transfer Fee, Admin Fee, Handling & Stripping) as free-entry rows. Locked once the period closes.
+- Period history: all `vmi_billing_periods` for the selected party, most recent first, each linking to its four generated documents. "Close Period" action for the current open month, showing a computed preview before commit, blocked if a non-voided period already exists for that month or no forex rate exists for today.
+- `vmi_contract_terms`/`vmi_recurring_fee_lines`/`vmi_permits` shown read-only for context on the main tab; editing happens on their own sub-routes. Editing `vmi_contract_terms` shows the current version's rates plus an effective-date picker (default: immediately); saving closes the current version and opens a new one — it never overwrites the current row's rate values in place, and a rate history list (all past versions with their effective ranges) is visible alongside the edit form for audit purposes.
 
-Capability gate: `reporting.financial_read`, held by `supervisor`/`administrator` only per `02-rbac-roles` — this is an internal-staff surface. **A VMI party user does not reach `/billing-pricing` at all** — `reporting.financial_read` is not granted to `party_user` (per `02` §3.2), so gating the route by it is safe here, unlike the earlier `/parties`/`/items`/`/locations` bug where the gating capability was *narrower* than the set of legitimate readers. A VMI party's own statement/credit-note visibility already exists as a separate, already-approved surface: `vmi_statements.read` (`assigned_party` scope, `party_user` role — added 2026-08-06 for `22-parties-portal` R4.4). This page does not replace or duplicate that; the portal keeps owning party-facing VMI statement access, and this office page is purely internal.
+Capability gate: `reporting.financial_read` for read access; period close and payment recording require an Administrator-only capability (final identifier owned by `02`). A VMI party user never reaches `/billing-pricing` — their document access is `22-parties-portal`'s separate `vmi_statements.read` surface.

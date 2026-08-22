@@ -22,3 +22,5 @@ export * from "./approvals";
 export * from "./transfers";
 export * from "./documents";
 export * from "./notifications";
+export * from "./trading_pricing";
+export * from "./vmi_billing";

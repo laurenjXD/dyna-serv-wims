@@ -80,6 +80,26 @@ export const commitmentStatusEnum = pgEnum("commitment_status", [
   "expired",            // expires_at passed before execution; reservation released automatically
   "cancelled",          // Manually cancelled before execution
 ]);
+
+// Added 2026-08-19 — 12-vmi-billing amendment (see revision-log.md). VMI's
+// daily balance ledger (design.md §1.2's `items.vmi_movement_category`,
+// consumed by 12-vmi-billing/design.md §2.1) splits IN/OUT CBM by this
+// classification, matching the exact five values found in the real June
+// 2026 CBM ledger fixture. Deliberately NOT the same field as `item_type`
+// (free-text "standard"/"raw_material"/"packaging" etc., already in use for
+// a different purpose) — this is a dedicated, nullable, VMI-scoped
+// classification, fixed per item rather than varying per lot/transaction
+// (Product Owner decision, 2026-08-19: simplest model; REJECT/RE_INSPECT
+// are expected to be rare/unused in practice under this reading, since a
+// lot's post-receiving disposition is tracked separately by
+// `wrr_inspection_logs`/`lot_status`, not by this field).
+export const vmiMovementCategoryEnum = pgEnum("vmi_movement_category", [
+  "fg",
+  "raw_material",
+  "for_process",
+  "reject",
+  "re_inspect",
+]);
 ```
 
 ### 1.2 Table Schemas
@@ -250,6 +270,11 @@ export const items = pgTable("items", {
   description: text("description"),
   barcode: varchar("barcode", { length: 100 }).notNull().unique(),
   itemType: varchar("item_type", { length: 50 }).default("standard").notNull(), // Type (raw_material, packaging, etc.)
+  // Added 2026-08-19 (12-vmi-billing amendment, see revision-log.md): the
+  // FG/raw-material/etc. movement classification used to split VMI's daily
+  // balance ledger IN/OUT columns — see design.md §1.2's own note below for
+  // why this is a distinct field from item_type, not a repurposing of it.
+  vmiMovementCategory: vmiMovementCategoryEnum("vmi_movement_category"), // nullable — only meaningful for VMI-flow items
   categoryId: uuid("category_id").references(() => itemCategories.id), // Category / Subcategory
   defaultSupplierPartyId: uuid("default_supplier_party_id").references(() => parties.id), // Supplier Party
   uom: varchar("uom", { length: 50 }).default("piece").notNull(), // UOM (piece, box, roll, meter)
