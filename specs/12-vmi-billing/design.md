@@ -1,7 +1,7 @@
 # VMI Billing — Design
 
 Status: Approved
-Updated: 2026-08-05
+Updated: 2026-08-20
 
 Cites foundational specs:
 
@@ -414,6 +414,8 @@ No party may read another party's billing data. Row-level filtering is `party_id
 | `22-parties-portal` | Owns VMI party-facing statement access (`vmi_statements.read`) independently of `/billing-pricing`, which is office-only |
 
 `12` does NOT consume `pick_list_items.unit_price`. That field is owned by `10` for document display only and is explicitly excluded from all billing calculations here.
+
+**Added 2026-08-20**: for the same reason, `12` does NOT consume `lots.unit_cost` either. That field (`01-core-data-model` design.md's `lots` section) is a per-lot costing/reference snapshot only — for `flow_type = 'vmi'` lots it is never the bill of record, however precise or real-time it looks wherever it is displayed (receiving, incoming ledger, a lot's detail view, a per-release document). The VMI bill of record is always this document's own period-average CBM-occupancy calculation (§1–§2, `vmi_cbm_ledger`/`vmi_billing_statements`), never a single lot's or single document's price total, per the locked decision in `specs/00-steering/CLAUDE.md`. See `01-core-data-model` design.md's corresponding note for the reverse cross-reference.
 
 ---
 

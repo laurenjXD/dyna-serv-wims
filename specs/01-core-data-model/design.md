@@ -1,6 +1,6 @@
 # Core Data Model — Design
 Status: Approved
-Updated: 2026-08-06
+Updated: 2026-08-20
 Depends on: specs/00-steering/ (tech.md, structure.md), specs/01-core-data-model/requirements.md
 
 ## 1. Data Model & Schema Definitions
@@ -318,6 +318,17 @@ export const lots = pgTable("lots", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 ```
+
+**Why item + lot number + location, not item-only tracking (added 2026-08-20).** This granularity — one `lots` row per received line, keyed to `item_id` + `lot_number`, with physical quantity/placement held in per-location `lot_location_balances` rows (above) — is a deliberate choice over tracking stock as a single pooled balance per `item`. Tightened to this repo's terminology (no "SKU-only" framing):
+
+- **Rotation control**: FEFO/FIFO allocation (§3, workflow 3) is only possible because each lot carries its own `expiry_date`/`created_at`. A pooled per-item balance has no way to prefer the oldest-expiring stock first.
+- **Quarantine precision**: `lots.status = 'quarantined'` (`07-incoming-receiving` design.md §7.3) isolates exactly the affected lot. Every other `available` lot of the same `item` stays allocatable — a pooled per-item balance would have no unit finer than the whole item to quarantine.
+- **Regulatory/customs auditing**: `lots.peza_number`, `commercial_invoice_no`, and `ip_number` (this table) trace every physical lot back to the CIPL/PEZA/import-permit documentation it arrived under, satisfying the customs-auditing requirement that a pooled item balance cannot support (there would be nothing to trace back to a specific shipment).
+- **Financial costing granularity**: `lots.unit_cost` records a per-shipment cost figure rather than one averaged-away number across all receipts of an item. See the note immediately below for the boundary on what this field is — and is not — used for.
+
+This rationale is documentation/context only; it does not change the schema already defined above, and it does not reopen this document's `Approved` status.
+
+**Lot-level `unit_cost` is a costing/reference snapshot, not a billing record (added 2026-08-20).** `lots.unit_cost` (above) and any place it is surfaced downstream — the receiving/incoming ledger, a lot's detail view, or a per-release document — is a costing/reference snapshot tied to that one physical lot. Per the locked, non-negotiable decision in `specs/00-steering/CLAUDE.md` ("Trading's price on a document is final; VMI's is a per-release reference only — the real VMI bill is always the period average, never a single document's total"): for `flow_type = 'trading'` lots, `unit_cost` is a final, authoritative figure once it appears on a document. For `flow_type = 'vmi'` lots, `unit_cost` (optionally converted USD/PHP via `forex_rates`, below) is a reference/costing figure only, wherever it is displayed — it is **never** the VMI bill of record, no matter how "real-time" or "precise" the per-lot figure looks at receiving or on a release document. The authoritative VMI bill of record is always the period-average CBM-occupancy calculation owned by `12-vmi-billing` design.md §1–§2 (`vmi_cbm_ledger`/`vmi_billing_statements`), never a single lot's or single document's price total. See `12-vmi-billing` design.md §5 for the corresponding cross-reference and its explicit statement that VMI billing does not consume this field.
 
 #### `wrr_documents` & `wrr_items` (`lib/db/schema/wrr.ts`)
 ```typescript

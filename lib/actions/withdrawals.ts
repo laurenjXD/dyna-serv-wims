@@ -180,6 +180,8 @@ export async function commitWithdrawal(
           lotNumber: lots.lotNumber,
           lotStatus: lots.status,
           lotFlowType: lots.flowType,
+          receivedAt: lots.createdAt,
+          expiryDate: lots.expiryDate,
           locationId: locations.id,
           locationLabel: locations.label,
         })
@@ -251,12 +253,19 @@ export async function commitWithdrawal(
 
     const pickListId = (insertedPickList as { id: string }).id;
 
+    // Commitment TTL — 24 hours from creation, computed server-side (design.md
+    // §6; revision-log.md "Pick-list expiry enforcement: Option C"; Product
+    // Owner decision). A client-supplied expiresAt on the input, if present,
+    // is never read here — it has no effect on this computed value.
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
     const [insertedCommitment] = await db
       .insert(inventoryCommitments)
       .values({
         commitmentNumber: `CMT-${Date.now()}`,
         pickListId,
         status: "active",
+        expiresAt,
         createdByUserId: userId,
       })
       .returning();
@@ -493,6 +502,7 @@ export async function dispatchPickList(
       .select({
         commitmentId: inventoryCommitments.id,
         commitmentStatus: inventoryCommitments.status,
+        expiresAt: inventoryCommitments.expiresAt,
         commitmentLineId: inventoryCommitmentLines.id,
         commitmentLineStatus: inventoryCommitmentLines.status,
         qtyCommitted: inventoryCommitmentLines.qtyCommitted,
@@ -520,6 +530,46 @@ export async function dispatchPickList(
       )
     ) {
       return { ok: false as const, errors: ["invalid_commitment"] };
+    }
+
+    // Reservation-state recheck (design.md §7) — a commitment past its 24h
+    // TTL is rejected here, in real time, rather than being allowed to
+    // proceed to the physical dispatch writes below. This is the same
+    // `expired` transition the nightly pg_cron sweep (expire_stale_commitments)
+    // writes for commitments that are never attempted; this real-time path is
+    // the primary enforcer, the sweep is the safety net (revision-log.md
+    // "Pick-list expiry enforcement: Option C").
+    const commitmentExpiresAt = commitmentLines[0].expiresAt as Date | string | null;
+    if (commitmentExpiresAt && new Date(commitmentExpiresAt).getTime() < Date.now()) {
+      // Release every reserved balance back to its pre-reservation state —
+      // stock never left the shelf, only the reservation is undone.
+      for (const line of commitmentLines) {
+        await db
+          .update(lotLocationBalances)
+          .set({
+            qtyCommitted: sql`${lotLocationBalances.qtyCommitted} - ${line.qtyCommitted}`,
+            version: sql`${lotLocationBalances.version} + 1`,
+            updatedAt: new Date(),
+          })
+          .where(and(
+            eq(lotLocationBalances.id, line.balanceId),
+            sql`${lotLocationBalances.qtyCommitted} >= ${line.qtyCommitted}`,
+          ));
+
+        await db
+          .update(inventoryCommitmentLines)
+          .set({ status: "expired", updatedAt: new Date() })
+          .where(eq(inventoryCommitmentLines.id, line.commitmentLineId));
+      }
+
+      await db
+        .update(inventoryCommitments)
+        .set({ status: "expired", releasedAt: new Date(), updatedAt: new Date() })
+        .where(eq(inventoryCommitments.id, commitmentLines[0].commitmentId));
+
+      // No dispatch/pick transaction is written — the reservation is gone,
+      // not executed.
+      return { ok: false as const, errors: ["commitment_expired"] };
     }
 
     const scanned = new Set(scannedPickListItemIds);

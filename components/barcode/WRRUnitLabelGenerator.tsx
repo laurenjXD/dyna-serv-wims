@@ -18,7 +18,9 @@ export interface WRRUnitLabelGeneratorProps {
 }
 
 interface UnitLabelData {
-  unitIndex: number; // 1-indexed (e.g., Unit 1 of 5)
+  // No ordinal/sequence field by design: labels are printed as a sheet and
+  // stuck onto whichever carton is at hand, in no particular order. unitId
+  // is the only identity that matters, and it carries no sequence meaning.
   unitId: string; // crypto.randomUUID()
   payload: string; // JSON: {"type": "wrr_item_unit", "wrr_item_id": "...", "unit_id": "..."}
 }
@@ -51,7 +53,6 @@ export function WRRUnitLabelGenerator({
       });
 
       labels.push({
-        unitIndex: i,
         unitId,
         payload,
       });

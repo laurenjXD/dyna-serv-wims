@@ -43,19 +43,23 @@ export function PutawayLocationSelector({
       {selected && (
         <section className="rounded-xl border border-outline-variant/40 bg-surface-light-grey p-3" aria-live="polite">
           <p className="font-label text-body-md text-on-surface">{selected.label} capacity</p>
-          <div className="mt-2 grid grid-cols-2 gap-2 font-body text-body-sm text-text-grey">
+          {/* Floor surface: no text below 16px (ui-ux-design-plan.md §7/§13) —
+              this capacity math is exactly what the operator reads before
+              committing a Store action, so text-body-sm (14px) is not
+              permitted here even though it would be fine on an office screen. */}
+          <div className="mt-2 grid grid-cols-2 gap-2 font-body text-body-md text-text-grey">
             <p>Used: {selected.occupiedCbm.toFixed(2)} / {selected.maxCbmCapacity.toFixed(2)} CBM ({utilization.toFixed(0)}%)</p>
             <p>Remaining: {selected.remainingCbm.toFixed(2)} CBM</p>
             <p className="col-span-2 font-semibold text-on-surface">After storing: {(selected.remainingCbm - requestedCbm).toFixed(2)} CBM remaining</p>
           </div>
           <div className="mt-3 border-t border-outline-variant/30 pt-3">
-            <p className="font-label text-body-sm text-on-surface">Items currently stored here</p>
+            <p className="font-label text-body-md text-on-surface">Items currently stored here</p>
             {storedItems.length === 0 ? (
-              <p className="mt-1 font-body text-body-sm text-text-grey">No stored items. This location is empty.</p>
+              <p className="mt-1 font-body text-body-md text-text-grey">No stored items. This location is empty.</p>
             ) : (
               <ul className="mt-1 space-y-1">
                 {storedItems.map((item) => (
-                  <li key={`${item.itemCode}-${item.lotNumber}`} className="font-body text-body-sm text-text-grey">
+                  <li key={`${item.itemCode}-${item.lotNumber}`} className="font-body text-body-md text-text-grey">
                     <span className="font-mono text-on-surface">{item.itemCode}</span> · {item.lotNumber} · {item.qtyRemaining} remaining
                   </li>
                 ))}

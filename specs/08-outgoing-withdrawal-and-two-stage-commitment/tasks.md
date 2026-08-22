@@ -81,7 +81,7 @@ Testing: Unit commit-precondition/idempotency tests; real-Postgres transaction/c
 - [ ] Generate exactly one operational `pick_list` and `pick_list_items` snapshot on successful commitment.
 - [ ] Preserve requested/committed/executed quantities distinctly where required.
 - [ ] Confirm on-hand inventory and final `pick` transaction remain unchanged at Stage 1.
-- [ ] Implement safe cancellation/release/expiry before dispatch with concurrency protection.
+- [x] Implement safe cancellation/release/expiry before dispatch with concurrency protection. *(Implemented and verified 2026-08-22 — see revision-log.md. Scope per the resolved Task 1 decision ("Option C: no cancellation in v1; expiry only"): manual cancellation stays out of v1 by design, not a gap. What's built: `commitWithdrawal` sets a 24-hour `expires_at` server-side at reservation creation; `dispatchPickList` rejects and releases in real time when expired; a new `expire_stale_commitments()` SQL function (migration `0032`, `pg_cron`-scheduled) sweeps unattempted stale commitments nightly as the safety net. Concurrency-protected: verified against real Postgres including a 3-way multi-commitment collision on a shared `lot_location_balances` row (a genuine `UPDATE...FROM` aggregation bug was found and fixed during verification) and repeat-call idempotency.)*
 - [ ] Integrate with `10` for pick-list generation/presentation without duplicating document templates.
 
 ### 5. Implement floor picking and dispatch scan

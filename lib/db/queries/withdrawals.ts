@@ -23,6 +23,9 @@ import { eq, asc, desc, sql, and, gte, lte } from "drizzle-orm";
 import { pickLists, pickListItems } from "@/lib/db/schema/pick_lists";
 import { inventoryTransactions } from "@/lib/db/schema/transactions";
 import { items } from "@/lib/db/schema/items";
+import { lots } from "@/lib/db/schema/lots";
+import { locations } from "@/lib/db/schema/locations";
+import { parties } from "@/lib/db/schema/parties";
 
 // Minimal structural type that both the real Drizzle db instance and test
 // stubs satisfy. Uses named method properties (not an index signature) so
@@ -67,7 +70,7 @@ export type OutgoingLedgerRow = {
   itemCode: string;
   itemName: string;
   lotNumber: string;
-  qty: string;
+  qty: number;
   fromLocationLabel: string;
   pickListNumber: string | null;
   customerPartyName: string | null;
@@ -323,11 +326,22 @@ export async function listOutgoingLedger(
       transactionId: inventoryTransactions.id,
       createdAt: inventoryTransactions.createdAt,
       transactionNumber: inventoryTransactions.transactionNumber,
+      itemCode: items.code,
+      itemName: items.name,
+      lotNumber: lots.lotNumber,
       qty: inventoryTransactions.qty,
+      fromLocationLabel: locations.label,
+      pickListNumber: pickLists.pickListNumber,
+      customerPartyName: parties.name,
       performedByUserId: inventoryTransactions.performedByUserId,
       pickListId: inventoryTransactions.pickListId,
     })
     .from(inventoryTransactions)
+    .innerJoin(items, eq(items.id, inventoryTransactions.itemId))
+    .innerJoin(lots, eq(lots.id, inventoryTransactions.lotId))
+    .leftJoin(locations, eq(locations.id, inventoryTransactions.fromLocationId))
+    .leftJoin(pickLists, eq(pickLists.id, inventoryTransactions.pickListId))
+    .leftJoin(parties, eq(parties.id, pickLists.customerPartyId))
     .where(pickFilter)
     .orderBy(asc(inventoryTransactions.createdAt))
     .limit(opts.limit)

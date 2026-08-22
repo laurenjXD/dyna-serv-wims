@@ -118,6 +118,28 @@ export async function createItem(
     if (organizationErrors) {
       return { ok: false, fieldErrors: organizationErrors } satisfies ActionCreateResult;
     }
+
+    // Duplicate code/barcode check (both have a DB-level UNIQUE constraint)
+    // — without this, a collision throws a raw, uncaught Postgres
+    // constraint-violation error straight out of the Server Action instead
+    // of a friendly field error. Same pattern as updateItem below.
+    const collisionRows = await db
+      .select({ id: items.id, code: items.code, barcode: items.barcode })
+      .from(items)
+      .where(or(eq(items.code, data.code), eq(items.barcode, data.barcode)));
+
+    const collisions = collisionRows as { id: string; code: string; barcode: string }[];
+    const createFieldErrors: Record<string, string> = {};
+    if (collisions.some((row) => row.code === data.code)) {
+      createFieldErrors.code = "This item code is already in use.";
+    }
+    if (collisions.some((row) => row.barcode === data.barcode)) {
+      createFieldErrors.barcode = "This barcode is already in use.";
+    }
+    if (Object.keys(createFieldErrors).length > 0) {
+      return { ok: false, fieldErrors: createFieldErrors } satisfies ActionCreateResult;
+    }
+
     const [inserted] = await db
       .insert(items)
       .values({

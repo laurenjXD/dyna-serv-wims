@@ -347,7 +347,9 @@ export default async function DispatchConfirmationPage({
                   ? "This pick list was already dispatched."
                   : errorReason === "not_found"
                     ? "Pick list not found. Contact a supervisor."
-                    : `Error: ${errorReason}. Contact a supervisor if this persists.`}
+                    : errorReason === "commitment_expired"
+                      ? "Pick list no longer active — return to queue."
+                      : `Error: ${errorReason}. Contact a supervisor if this persists.`}
               </p>
             </div>
           </div>

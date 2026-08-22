@@ -81,7 +81,13 @@
 // ---------------------------------------------------------------------------
 
 import { describe, expect, it, vi } from "vitest";
+import { getTableName } from "drizzle-orm";
 import { listPickLists, getPickList, listOutgoingLedger } from "../withdrawals";
+import { items } from "@/lib/db/schema/items";
+import { lots } from "@/lib/db/schema/lots";
+import { locations } from "@/lib/db/schema/locations";
+import { pickLists } from "@/lib/db/schema/pick_lists";
+import { parties } from "@/lib/db/schema/parties";
 
 // ---------------------------------------------------------------------------
 // Mock helpers
@@ -506,5 +512,178 @@ describe("listOutgoingLedger — pagination (R9.3, design.md §9)", () => {
 
     expect(result.rows).toHaveLength(2);
     expect(result.total).toBe(42);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// listOutgoingLedger — Bug 2: SELECT never joins items/lots/locations/
+// pick_lists/parties (lib/db/queries/withdrawals.ts listOutgoingLedger,
+// ~lines 313-342)
+//
+// OutgoingLedgerRow (lines 63-75) declares itemCode/itemName/lotNumber/
+// fromLocationLabel/pickListNumber/customerPartyName as present fields, and
+// design.md §9's column list requires them sourced from items.code/
+// items.name/lots.lot_number/locations.label/pick_lists.pick_list_number/
+// parties.name respectively — but the actual SELECT (lines 321-334) projects
+// only inventory_transactions columns, with no joins at all (the file's own
+// comment at lines 290-293 admits this is a placeholder).
+//
+// The "row shape" test above ("(AC: ledger row has required fields)") does
+// NOT catch this: makeListDb's rawOutgoingLedgerRow() fixture fabricates the
+// full row shape directly as the mocked db.select() return value, regardless
+// of what the real query's .select({...}) call actually projects — so it
+// passes today even though the real implementation never joins anything.
+// The tests below instead inspect the actual arguments passed to
+// db.select()/.innerJoin()/.leftJoin() (first test), and — for the "row
+// values are real, not placeholders" claim — use a projection-aware fake
+// select() that only returns a field's value when the projection argument
+// genuinely names a column belonging to the expected joined table (third
+// test), so they can only pass once real joins/projections are added, not
+// merely because a fixture happens to already look right.
+//
+// Traceability:
+//   specs/08-outgoing-withdrawal-and-two-stage-commitment/design.md
+//     §9 — Outgoing ledger design, column list (Item code → items.code,
+//          Item name → items.name, Lot number → lots.lot_number, From
+//          location → locations.label, Pick list # → pick_lists.pick_list_number,
+//          Customer party → parties.name)
+//   specs/08-outgoing-withdrawal-and-two-stage-commitment/requirements.md
+//     R9.2 (carried from this file's own pre-2026-08-14 header, since the
+//     terminology-aligned requirements.md rewrite no longer numbers R9.x
+//     literally — see current requirements.md §3 "Outgoing Ledger: ...
+//     paginated audit view of all outbound inventory transactions" and §5
+//     acceptance criteria, which is the present-day traceable source for
+//     the same ledger-display obligation).
+// ---------------------------------------------------------------------------
+
+describe("listOutgoingLedger — real joins for display fields (Bug 2, design.md §9 column list)", () => {
+  it("(AC: select projects items.code/items.name/lots.lotNumber/locations.label/pickLists.pickListNumber/parties.name, not just inventory_transactions columns) the data query's select() projection references the joined display columns design.md §9's column list requires", async () => {
+    const db = makeListDb([], 0);
+
+    await listOutgoingLedger(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      { limit: 10, offset: 0 },
+    );
+
+    // First db.select() call is the data query (see makeListDb / this
+    // file's header "Mock pattern" note); its argument is the Drizzle
+    // column-projection object.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const dataSelectArg = (db.select as any).mock.calls[0][0] as Record<string, unknown>;
+    const projectedColumns = Object.values(dataSelectArg ?? {});
+
+    // Today's SELECT (lib/db/queries/withdrawals.ts listOutgoingLedger,
+    // ~lines 321-334) projects only inventory_transactions.id/created_at/
+    // transaction_number/qty/performed_by_user_id/pick_list_id — none of
+    // these six joined-table columns are present, so this fails for the
+    // right reason: the joins were never added, not a typo in this test.
+    expect(projectedColumns).toContain(items.code);
+    expect(projectedColumns).toContain(items.name);
+    expect(projectedColumns).toContain(lots.lotNumber);
+    expect(projectedColumns).toContain(locations.label);
+    expect(projectedColumns).toContain(pickLists.pickListNumber);
+    expect(projectedColumns).toContain(parties.name);
+  });
+
+  it("(AC: real innerJoin/leftJoin calls against items/lots/locations/pick_lists/parties) calls innerJoin/leftJoin against the items, lots, locations, pick_lists, and parties tables — not just .from(inventory_transactions) with no joins", async () => {
+    const dataChain = makeDataChain([]);
+    const db = {
+      select: vi
+        .fn()
+        .mockReturnValueOnce(dataChain)
+        .mockReturnValueOnce(makeCountChain(0)),
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await listOutgoingLedger(db as any, { limit: 10, offset: 0 });
+
+    const innerJoinFn = dataChain["innerJoin"] as ReturnType<typeof vi.fn>;
+    const leftJoinFn = dataChain["leftJoin"] as ReturnType<typeof vi.fn>;
+    const joinedTables = [...innerJoinFn.mock.calls, ...leftJoinFn.mock.calls].map(
+      (call) => call[0],
+    );
+
+    // Today, neither innerJoin nor leftJoin is ever called — confirmed by
+    // this test failing with an empty joinedTables array.
+    expect(joinedTables).toContain(items);
+    expect(joinedTables).toContain(lots);
+    expect(joinedTables).toContain(locations);
+    expect(joinedTables).toContain(pickLists);
+    expect(joinedTables).toContain(parties);
+  });
+
+  it("(AC: returned row surfaces real joined values, not undefined placeholders) returns itemCode/itemName/lotNumber/fromLocationLabel/pickListNumber/customerPartyName sourced from the joined tables, given a select() that behaves like a real Postgres round-trip with respect to column projection", async () => {
+    // Raw "database" fixture keyed by `${table}.${column}` (underlying
+    // Postgres names) so items.name and parties.name — both literally
+    // named "name" — don't collide.
+    const rawDb: Record<string, unknown> = {
+      "inventory_transactions.id": "txn-uuid-1",
+      "inventory_transactions.created_at": NOW,
+      "inventory_transactions.transaction_number": "TXN-0001",
+      "inventory_transactions.qty": 10,
+      "inventory_transactions.performed_by_user_id": "user-uuid-staff",
+      "inventory_transactions.pick_list_id": "pick-list-uuid-1",
+      "items.code": "ITEM-A001",
+      "items.name": "Widget Alpha",
+      "lots.lot_number": "LOT-20260801",
+      "locations.label": "Rack A-01",
+      "pick_lists.pick_list_number": "PL-0001",
+      "parties.name": "Acme Corp",
+    };
+
+    const db = {
+      select: vi.fn().mockImplementation((projection?: Record<string, unknown>) => {
+        const proj = projection ?? {};
+        const isCountQuery =
+          "count" in proj && Object.keys(proj).length === 1;
+
+        const chain: Record<string, unknown> = {};
+        for (const method of ["from", "innerJoin", "leftJoin", "where", "orderBy", "limit"]) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (chain as any)[method] = vi.fn(() => chain);
+        }
+
+        if (isCountQuery) {
+          const resolved = Promise.resolve([{ count: "1" }]);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (chain as any)["then"] = resolved.then.bind(resolved);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (chain as any)["catch"] = resolved.catch.bind(resolved);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (chain as any)["finally"] = resolved.finally.bind(resolved);
+          return chain;
+        }
+
+        const row: Record<string, unknown> = {};
+        for (const [key, column] of Object.entries(proj)) {
+          if (column && typeof column === "object" && "name" in column && "table" in column) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const tableName = getTableName((column as any).table);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            row[key] = rawDb[`${tableName}.${(column as any).name}`];
+          }
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (chain as any)["offset"] = vi.fn().mockResolvedValue([row]);
+        return chain;
+      }),
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await listOutgoingLedger(db as any, { limit: 10, offset: 0 });
+
+    expect(result.rows).toHaveLength(1);
+    const r = result.rows[0];
+    // Today: the select() projection has no keys mapping to items.*/lots.*/
+    // locations.*/pick_lists.*/parties.* columns at all, so every one of
+    // these fields is undefined — not the real joined value design.md §9
+    // requires.
+    expect(r.itemCode).toBe("ITEM-A001");
+    expect(r.itemName).toBe("Widget Alpha");
+    expect(r.lotNumber).toBe("LOT-20260801");
+    expect(r.fromLocationLabel).toBe("Rack A-01");
+    expect(r.pickListNumber).toBe("PL-0001");
+    expect(r.customerPartyName).toBe("Acme Corp");
   });
 });
