@@ -95,6 +95,7 @@ import type {
 } from "@/lib/rbac/session";
 import {
   commitWithdrawal,
+  requestFifoOverride,
   dispatchPickList,
   listOutgoingLedger,
 } from "../withdrawals";
@@ -125,6 +126,7 @@ const supervisorContext: AuthorizationContext = {
     { resource: "pick_list", action: "generate", scopeKind: "global" },
     { resource: "dispatch", action: "execute", scopeKind: "global" },
     { resource: "pick_list", action: "read", scopeKind: "global" },
+    { resource: "fifo_override", action: "request", scopeKind: "global" },
   ],
   partyScopes: [],
 };
@@ -189,6 +191,7 @@ function makeWithdrawalDb(
   return {
     _inserted: inserted,
     _updated: updated,
+    execute: vi.fn().mockResolvedValue([]),
 
     select: vi.fn().mockImplementation(() =>
       makeSelectChain(selectRows.shift() ?? pickListRows),
@@ -198,7 +201,7 @@ function makeWithdrawalDb(
       values: vi.fn().mockImplementation((row: unknown) => {
         inserted.push(row);
         return {
-          returning: vi.fn().mockResolvedValue([{ id: "new-uuid-generated" }]),
+          returning: vi.fn().mockResolvedValue([{ id: "new-uuid-generated", requestNumber: "AR-000001" }]),
         };
       }),
     })),
@@ -483,6 +486,49 @@ describe("commitWithdrawal — success (R5.1, R5.3, design.md §6)", () => {
     const result = await commitWithdrawal(supervisorResolver(), input, mockRlsDeps(db).deps);
 
     expect(result).toEqual({ ok: false, errors: ["unable_to_reserve_stock"] });
+    expect(db.insert).not.toHaveBeenCalled();
+  });
+
+  it("uses the exact alternate pallet only when an approval reference is supplied", async () => {
+    const oldest = allocationRow({ lotId: "lot-oldest", lotNumber: "LOT-OLD", receivedAt: new Date("2026-01-01T00:00:00Z") });
+    const newer = allocationRow({ balanceId: "balance-uuid-2", lotId: "lot-newer", lotNumber: "LOT-NEW", locationId: "loc-uuid-2", receivedAt: new Date("2026-02-01T00:00:00Z") });
+    const db = makeWithdrawalDb([], [[oldest, newer]]);
+    const input = validCommitInput();
+    input.lines[0].lotId = "lot-newer";
+    input.lines[0].locationId = "loc-uuid-2";
+    const approvedInput = { ...input, approvalRequestId: "approval-request-uuid" };
+
+    const result = await commitWithdrawal(supervisorResolver(), approvedInput, mockRlsDeps(db).deps);
+
+    expect(result.ok).toBe(true);
+    expect(db.execute).toHaveBeenCalled();
+    expect(db._inserted).toContainEqual(expect.objectContaining({ lotId: "lot-newer", locationId: "loc-uuid-2" }));
+  });
+});
+
+describe("requestFifoOverride — exact alternate pallet approval", () => {
+  it("creates a pending request for an out-of-sequence pallet", async () => {
+    const oldest = allocationRow({ lotId: "lot-oldest", lotNumber: "LOT-OLD", receivedAt: new Date("2026-01-01T00:00:00Z"), allocationVersion: 4 });
+    const newer = allocationRow({ balanceId: "balance-uuid-2", lotId: "lot-newer", lotNumber: "LOT-NEW", locationId: "loc-uuid-2", locationLabel: "B1-02", receivedAt: new Date("2026-02-01T00:00:00Z"), allocationVersion: 7 });
+    const db = makeWithdrawalDb([], [[oldest, newer]]);
+    const input = validCommitInput();
+    input.lines[0].lotId = "lot-newer";
+    input.lines[0].locationId = "loc-uuid-2";
+
+    const result = await requestFifoOverride(supervisorResolver(), input, "Aisle A is temporarily inaccessible.", mockRlsDeps(db).deps);
+
+    expect(result).toEqual({ ok: true, requestId: "new-uuid-generated", requestNumber: "AR-000001" });
+    expect(db._inserted).toContainEqual(expect.objectContaining({
+      approvalType: "fifo_override",
+      targetResourceId: "balance-uuid-2",
+    }));
+  });
+
+  it("rejects an override request when the selected pallet is already the FIFO recommendation", async () => {
+    const db = makeWithdrawalDb([], [[allocationRow()]]);
+    const result = await requestFifoOverride(supervisorResolver(), validCommitInput(), "Use the normally assigned source pallet.", mockRlsDeps(db).deps);
+
+    expect(result).toEqual({ ok: false, errors: ["override_not_required"] });
     expect(db.insert).not.toHaveBeenCalled();
   });
 });

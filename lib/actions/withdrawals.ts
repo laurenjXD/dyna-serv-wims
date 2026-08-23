@@ -28,7 +28,7 @@
 //   specs/00-steering/tech.md — RBAC always from session, never client params.
 
 import { and, asc, eq, sql } from "drizzle-orm";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { RequestAuthorizationResolver } from "@/lib/rbac/session";
 import { requirePermission } from "@/lib/rbac/guard";
 import { validateWithdrawal } from "@/lib/withdrawal/withdrawal-validator";
@@ -44,6 +44,7 @@ import {
 } from "@/lib/db/schema/commitments";
 import { inventoryTransactions } from "@/lib/db/schema/transactions";
 import { generatedDocuments } from "@/lib/db/schema/documents";
+import { approvalRequests } from "@/lib/db/schema/approvals";
 import {
   listOutgoingLedger as queryListOutgoingLedger,
   type OutgoingLedgerRow,
@@ -84,6 +85,10 @@ export type CommitWithdrawalResult =
   | { ok: true; pickListId: string }
   | { ok: false; errors: string[] };
 
+export type RequestFifoOverrideResult =
+  | { ok: true; requestId: string; requestNumber: string }
+  | { ok: false; errors: string[] };
+
 export type DispatchPickListResult =
   | { ok: true }
   | { ok: false; errors: string[] };
@@ -95,6 +100,126 @@ export type MarkPickListPickedResult =
 export type ListOutgoingLedgerResult =
   | { rows: OutgoingLedgerRow[]; total: number }
   | { ok: false; errors: string[] };
+
+/**
+ * Creates a bounded FIFO/FEFO override request for one exact pallet/location.
+ * No stock is reserved here. A later Stage 1 command must consume an approved,
+ * unexpired decision and revalidate the balance version atomically.
+ */
+export async function requestFifoOverride(
+  resolver: RequestAuthorizationResolver,
+  input: unknown,
+  reason: string,
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+): Promise<RequestFifoOverrideResult> {
+  const permission = await requirePermission(resolver, "fifo_override.request");
+  if (permission.kind !== "authorized") return { ok: false, errors: ["forbidden"] };
+
+  const validation = validateWithdrawal(input);
+  if (!validation.ok) return { ok: false, errors: validation.errors };
+  const data = validation.data;
+  const trimmedReason = reason.trim();
+  if (trimmedReason.length < 10) return { ok: false, errors: ["override_reason_too_short"] };
+  if (data.lines.length !== 1) return { ok: false, errors: ["override_single_pallet_required"] };
+
+  try {
+    const result = await withRlsTransaction(rlsDeps, async (tx) => {
+      const database = tx.db as DbLike;
+      const requested = data.lines[0];
+      const rows = (await database
+        .select({
+          balanceId: lotLocationBalances.id,
+          allocationVersion: lotLocationBalances.version,
+          qtyRemaining: lotLocationBalances.qtyRemaining,
+          qtyCommitted: lotLocationBalances.qtyCommitted,
+          itemId: items.id,
+          itemCode: items.code,
+          defaultSupplierPartyId: items.defaultSupplierPartyId,
+          isPerishable: items.isPerishable,
+          lotId: lots.id,
+          lotNumber: lots.lotNumber,
+          lotStatus: lots.status,
+          lotFlowType: lots.flowType,
+          expiryDate: lots.expiryDate,
+          receivedAt: lots.createdAt,
+          locationId: locations.id,
+          locationLabel: locations.label,
+        })
+        .from(lotLocationBalances)
+        .innerJoin(lots, eq(lots.id, lotLocationBalances.lotId))
+        .innerJoin(items, eq(items.id, lots.itemId))
+        .innerJoin(locations, eq(locations.id, lotLocationBalances.locationId))
+        .where(and(
+          eq(lots.itemId, requested.itemId),
+          eq(lots.status, "available"),
+          eq(lots.flowType, data.flowType),
+          sql`${lotLocationBalances.qtyRemaining} - ${lotLocationBalances.qtyCommitted} > 0`,
+        ))) as AnyRecord[];
+
+      const selected = rows.find((row) =>
+        row.lotId === requested.lotId && row.locationId === requested.locationId,
+      );
+      if (!selected || selected.defaultSupplierPartyId !== data.partyId) {
+        throw new Error("unable_to_reserve_stock");
+      }
+      const available = selected.qtyRemaining - selected.qtyCommitted;
+      if (requested.qty > available) throw new Error("unable_to_reserve_stock");
+
+      const standard = allocate(rows.map((row) => ({
+        lotId: row.lotId,
+        locationId: row.locationId,
+        lotStatus: row.lotStatus,
+        qtyRemaining: row.qtyRemaining,
+        qtyCommitted: row.qtyCommitted,
+        receivedAt: row.receivedAt,
+        expiryDate: row.expiryDate ? new Date(`${row.expiryDate}T00:00:00.000Z`) : null,
+      })), requested.qty, selected.isPerishable);
+      if (!standard.ok) throw new Error("unable_to_reserve_stock");
+      if (standard.lines.length === 1 &&
+          standard.lines[0].lotId === requested.lotId &&
+          standard.lines[0].locationId === requested.locationId) {
+        throw new Error("override_not_required");
+      }
+
+      const now = new Date();
+      const [created] = await database.insert(approvalRequests).values({
+        idempotencyKey: data.idempotencyKey ?? randomUUID(),
+        approvalType: "fifo_override",
+        requestedAction: "override_fifo_allocation",
+        targetResourceType: "lot_location_balance",
+        targetResourceId: selected.balanceId,
+        targetSnapshot: {
+          item_id: selected.itemId,
+          item_code: selected.itemCode,
+          lot_id: selected.lotId,
+          lot_number: selected.lotNumber,
+          location_id: selected.locationId,
+          location_code: selected.locationLabel,
+          requested_qty: String(requested.qty),
+          available_qty_at_request: String(available),
+          flow_type: data.flowType,
+          actor_user_id: permission.context.userId,
+          reason: trimmedReason,
+          allocation_version: selected.allocationVersion,
+          requested_at: now.toISOString(),
+        },
+        partyId: data.partyId,
+        requesterUserId: permission.context.userId,
+        reason: trimmedReason,
+        expiryAt: new Date(now.getTime() + 30 * 60 * 1000),
+        sourceCommand: "requestFifoOverride",
+        sourceReference: selected.balanceId,
+      }).returning({ id: approvalRequests.id, requestNumber: approvalRequests.requestNumber });
+
+      return created as { id: string; requestNumber: string };
+    });
+    if (result.kind === "unauthenticated") return { ok: false, errors: ["forbidden"] };
+    return { ok: true, requestId: result.value.id, requestNumber: result.value.requestNumber };
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "override_request_failed";
+    return { ok: false, errors: [code] };
+  }
+}
 
 // ---------------------------------------------------------------------------
 // commitWithdrawal — Stage 1
@@ -153,6 +278,10 @@ export async function commitWithdrawal(
     // that will be reserved. Rebuild each item's FIFO/FEFO allocation against
     // the current authoritative balances inside this transaction.
     const verifiedLines: Array<AnyRecord> = [];
+    const overridePickListId = data.approvalRequestId ? randomUUID() : null;
+    if (data.approvalRequestId && data.lines.length !== 1) {
+      throw new Error("approval_mismatch");
+    }
     const requestedQtyByItem = new Map<string, number>();
     for (const line of data.lines) {
       requestedQtyByItem.set(
@@ -167,6 +296,7 @@ export async function commitWithdrawal(
           balanceId: lotLocationBalances.id,
           qtyRemaining: lotLocationBalances.qtyRemaining,
           qtyCommitted: lotLocationBalances.qtyCommitted,
+          allocationVersion: lotLocationBalances.version,
           itemId: items.id,
           itemCode: items.code,
           itemDescription: items.description,
@@ -180,6 +310,8 @@ export async function commitWithdrawal(
           lotNumber: lots.lotNumber,
           lotStatus: lots.status,
           lotFlowType: lots.flowType,
+          receivedAt: lots.createdAt,
+          expiryDate: lots.expiryDate,
           locationId: locations.id,
           locationLabel: locations.label,
         })
@@ -205,6 +337,32 @@ export async function commitWithdrawal(
           : !item.supplierItemCode;
       if (itemCodeIsProvisional) {
         throw new Error("provisional_item_code");
+      }
+
+      if (data.approvalRequestId) {
+        const requestedLine = data.lines[0];
+        const selected = rows.find((row) =>
+          row.lotId === requestedLine.lotId && row.locationId === requestedLine.locationId,
+        );
+        if (!selected || requestedQty !== requestedLine.qty ||
+            selected.qtyRemaining - selected.qtyCommitted < requestedQty || !db.execute) {
+          throw new Error("approval_mismatch");
+        }
+
+        await db.execute(sql`
+          select public.consume_fifo_override_approval(
+            ${data.approvalRequestId}::uuid,
+            ${itemId}::uuid,
+            ${selected.lotId}::uuid,
+            ${selected.locationId}::uuid,
+            ${data.partyId}::uuid,
+            ${requestedQty}::integer,
+            ${data.flowType}::public.flow_type,
+            ${overridePickListId}::uuid
+          )
+        `);
+        verifiedLines.push({ ...selected, qty: requestedQty });
+        continue;
       }
 
       const allocation = allocate(
@@ -242,6 +400,7 @@ export async function commitWithdrawal(
     const [insertedPickList] = await db
       .insert(pickLists)
       .values({
+        ...(overridePickListId ? { id: overridePickListId } : {}),
         pickListNumber,
         customerPartyId: data.partyId,
         flowType: data.flowType,
@@ -345,12 +504,20 @@ export async function commitWithdrawal(
     });
   } catch (error) {
     console.error("Pick-list reservation failed", error);
+    const message = error instanceof Error ? error.message : "";
+    const approvalError = [
+      "approval_unavailable",
+      "approval_mismatch",
+      "approval_stale",
+      "approval_consumed",
+      "approval_forbidden",
+    ].find((code) => message.includes(code));
     return {
       ok: false,
       errors: [
-        error instanceof Error && error.message === "provisional_item_code"
+        message === "provisional_item_code"
           ? "provisional_item_code"
-          : "unable_to_reserve_stock",
+          : approvalError ?? "unable_to_reserve_stock",
       ],
     };
   }

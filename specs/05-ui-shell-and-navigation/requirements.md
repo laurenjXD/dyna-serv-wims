@@ -1,7 +1,7 @@
 # UI Shell & Navigation — Requirements
 
 Status: Approved
-Updated: 2026-08-14 (Aligned with Unified UI/UX & Visual Design System)
+Updated: 2026-08-23 (Sidebar interaction and visual-hierarchy amendment)
 
 ## 1. Purpose and scope
 
@@ -24,7 +24,7 @@ Across all user-facing shell navigation elements, headers, labels, and documenta
 The shell supports three presentation surfaces:
 
 - **Floor surface** — warehouse staff operating portrait handheld scanners. Mobile-first at approximately 375–430px portrait, touch-first, high-contrast, scan-ready, using Level 1 Solid White (`#FFFFFF`) surfaces, and optimized for one obvious next action in the bottom-third thumb zone.
-- **Office surface** — supervisors, administrators, and office users on larger screens (`md`/`lg` breakpoints). Employs a White or Cream White sidebar with Deep Navy (`#0F172A`) active text, Slate (`#64748B`) inactive text, Vibrant Blue (`#2563EB`) active indicators, wider containers, tables, and hover affordances, while remaining usable on mobile.
+- **Office surface** — supervisors, administrators, and office users on larger screens (`md`/`lg` breakpoints). Employs a Solid White sidebar with Deep Navy (`#0F172A`) active text, Slate (`#64748B`) inactive text, Vibrant Blue (`#2563EB`) active indicators, wider containers, tables, and hover affordances, while remaining usable on mobile.
 - **Organization Portal surface** — external customer and partner users. Uses identical office-tier composition (`AuthenticatedLayout`, `DesktopSidebar`, mobile drawer) with dedicated "your organization" navigation and framing.
 
 A feature declares its surface when registering a route. The shell must not infer floor behavior from a mutable client role string.
@@ -59,7 +59,9 @@ A feature declares its surface when registering a route. The shell must not infe
 
 ### R4. Responsive navigation
 
-1. Office screens SHALL provide the approved desktop sidebar using White or Cream White background, Deep Navy (`#0F172A`) active text, Slate (`#64748B`) inactive text, Vibrant Blue (`#2563EB`) active indicator, and real letter-mark logo asset (no diagonal-cut motif).
+1. Office screens SHALL provide the approved desktop sidebar using a Solid White background, Deep Navy (`#0F172A`) active text, Slate (`#64748B`) inactive text, Vibrant Blue (`#2563EB`) active indicator, and real letter-mark logo asset (no diagonal-cut motif).
+1.1. The active destination SHALL combine a persistent blue indicator rail, selected icon treatment, stronger text weight, `aria-current="page"`, and a cool blue-gray selected surface. Desktop pointer hover SHALL provide a restrained background, icon, shadow, and horizontal-motion affordance while keyboard focus remains a distinct 2px blue ring.
+1.2. Navigation groups SHALL have clear visual separation, office rows SHALL be at least 44px high, and the desktop sidebar SHALL include a bounded signed-in identity summary without duplicating account authorization logic.
 2. Floor screens SHALL not reserve persistent desktop sidebar space by default.
 3. During an active scan-driven floor flow, navigation SHALL be completely hidden and replaced by a feature-owned flow header with only an exit/cancel action. Bottom tabs appear only between scan steps.
 4. Floor navigation SHALL remain fully functional in portrait at the 375–430px base breakpoint without horizontal scrolling.
@@ -68,7 +70,7 @@ A feature declares its surface when registering a route. The shell must not infe
 ### R5. Layout and page context
 
 1. Authenticated feature routes SHALL render inside a shared shell layout unless the approved design explicitly declares a standalone surface.
-2. The shell layout SHALL enforce solid surfaces: Level 0 Cream White (`#FFF7ED`) base application background and Level 1 Solid White (`#FFFFFF`) cards/modals/panels with subtle shadow `0 1px 2px rgba(15, 23, 42, 0.08)`. Glassmorphism and backdrop blur are strictly prohibited.
+2. The shell layout SHALL enforce solid surfaces: Level 0 Cool Blue-Gray (`#F3F6FC`) base application background and Level 1 Solid White (`#FFFFFF`) cards/modals/panels with subtle shadow `0 1px 2px rgba(15, 23, 42, 0.08)`. Glassmorphism and backdrop blur are strictly prohibited.
 3. Shapes SHALL strictly use defined corner radii: `radius-sm` (4px), `radius-default` (8px), `radius-md` (12px), `radius-lg` (16px), and `radius-full` (9999px). Primary buttons use standard rounded corners.
 4. The shell SHALL provide a page-header contract supporting title, optional context, optional breadcrumb/back action, and optional feature-owned primary action.
 5. The shell SHALL preserve the feature's content hierarchy and SHALL not impose a second competing primary action.
@@ -93,7 +95,7 @@ A feature declares its surface when registering a route. The shell must not infe
 2. Floor primary actions SHALL use Vibrant Blue (`#2563EB`), White text, Glacial Indifference Bold typography, minimum 64px height, and full-width placement in the bottom-third thumb zone.
 3. Floor default controls SHALL use at least 56×56px touch targets; office controls SHALL use at least 44×44px touch targets.
 4. Floor screens SHALL use no text below 16px (`body-md` minimum) and SHALL meet contrast requirements, including WCAG AAA contrast for time-critical floor content.
-5. Typography SHALL strictly follow font family roles: **Etna Sans Serif** (Bold/SemiBold) for primary headings and displays; **Glacial Indifference** (Bold/Regular) for body, UI controls, navigation, labels, badges, and buttons. Legacy/monospaced fonts (Epilogue, Inter, JetBrains Mono) are retired.
+5. Typography SHALL strictly follow font family roles: **DM Sans** (Bold/SemiBold) for primary headings and displays; **Glacial Indifference** (Bold/Regular) for body, UI controls, navigation, labels, badges, and buttons. Legacy/monospaced fonts (Epilogue, Inter, JetBrains Mono) are retired.
 6. Every interactive element SHALL expose a 2px visible Vibrant Blue focus ring (`#2563EB`).
 7. Status, active, error, and connectivity states SHALL NOT rely on color alone; iconography and clear wording are required.
 8. Reduced-motion preferences (`prefers-reduced-motion`) SHALL be respected; no essential shell state may depend on animation.
@@ -134,7 +136,7 @@ A feature declares its surface when registering a route. The shell must not infe
 ### R12. Visual Design System & Brand Identity Compliance
 
 1. All shell surfaces, layouts, components, and downstream screens SHALL strictly consume approved design tokens from `specs/00-steering/design.md` and `ui-ux-design-plan.md`.
-2. Color roles SHALL strictly enforce: Primary Vibrant Blue (`#2563EB`), Primary Hover Deep Blue (`#1E3A8A`), Secondary Violet (`#7C3AED`), Neutral Cool Gray (`#94A3B8`), Background Cream White (`#FFF7ED`), Surface Solid White (`#FFFFFF`), Text Primary Deep Navy (`#0F172A`), Text Secondary Slate (`#64748B`), Border Light Blue-Gray (`#E2E8F0`), Success Emerald (`#10B981`), Warning Amber (`#F59E0B`), and Error Red (`#EF4444`).
+2. Color roles SHALL strictly enforce: Primary Vibrant Blue (`#2563EB`), Primary Hover Deep Blue (`#1E3A8A`), Secondary Violet (`#7C3AED`), Neutral Cool Gray (`#94A3B8`), Background Cool Blue-Gray (`#F3F6FC`), Surface Solid White (`#FFFFFF`), Text Primary Deep Navy (`#0F172A`), Text Secondary Slate (`#64748B`), Border Light Blue-Gray (`#E2E8F0`), Success Emerald (`#10B981`), Warning Amber (`#F59E0B`), and Error Red (`#EF4444`).
 3. Text copy (headings, body, labels) SHALL use Text Primary (`#0F172A`) or Text Secondary (`#64748B`), NEVER Primary or Secondary brand colors.
 4. Design tokens SHALL be defined in `tailwind.config.ts`. No arbitrary or undocumented hex colors are permitted in markup.
 
@@ -144,10 +146,10 @@ A feature declares its surface when registering a route. The shell must not infe
 - [ ] Typed navigation registry filters presentation entries from effective capabilities while server authorization remains independent.
 - [ ] Nested routes show the correct active destination without false matches.
 - [ ] Desktop sidebar, narrow office drawer, and floor navigation are usable at 1280px, 768px, 430px, and 375px representative widths.
-- [ ] Sidebar uses White/Cream White background, Deep Navy text, Slate inactive text, Vibrant Blue active indicator, and real letter-mark logo asset.
+- [ ] Sidebar uses Solid White background, Deep Navy text, Slate inactive text, Vibrant Blue active rail/icon, restrained hover feedback, 44px minimum office rows, and the real letter-mark logo asset.
 - [ ] Floor shell controls satisfy touch-target (64px primary CTA, 56px default), contrast (AAA time-critical), font-size (16px minimum), focus (2px Vibrant Blue ring), portrait orientation, and no-hover rules.
-- [ ] Layout strictly enforces Level 0 Cream White (`#FFF7ED`) base background and Level 1 Solid White (`#FFFFFF`) surfaces. Backdrop blur and glassmorphism are absent.
-- [ ] All typography uses Etna Sans Serif (Headings) and Glacial Indifference (Body/UI/Nav/Badges/Buttons). Legacy fonts (Epilogue, Inter, JetBrains Mono) are absent.
+- [ ] Layout strictly enforces Level 0 Cool Blue-Gray (`#F3F6FC`) base background and Level 1 Solid White (`#FFFFFF`) surfaces. Backdrop blur and glassmorphism are absent.
+- [ ] All typography uses DM Sans (Headings) and Glacial Indifference (Body/UI/Nav/Badges/Buttons). Legacy fonts (Epilogue, Inter, JetBrains Mono) are absent.
 - [ ] Error states explicitly display the 3-component structure (What happened, Why it failed, Next Action / Solution).
 - [ ] Expired/revoked/inactive sessions cannot continue viewing protected content.
 - [ ] Loading, error, not-found, forbidden, sign-out, storage attention, and connectivity states are safe and recoverable.

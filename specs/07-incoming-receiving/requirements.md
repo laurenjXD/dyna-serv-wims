@@ -64,7 +64,7 @@ The Receiving page (`/receiving`) features 4 primary sub-tabs:
 ### R4. Authorization, design system & error feedback
 
 1. All protected actions use capability grants (`receiving.view`, `receiving.confirm`).
-2. Floor screens enforce 64px primary CTAs, 16px minimum font size, zero glassmorphism, Level 1 Solid White (`#FFFFFF`) card surfaces on Level 0 Cream White (`#FFF7ED`) background.
+2. Floor screens enforce 64px primary CTAs, 16px minimum font size, zero glassmorphism, Solid White (`#FFFFFF`) card surfaces on a cool blue-gray (`#F3F6FC`) canvas.
 3. All error states display 3-component error feedback (What, Why, Next Action).
 
 ## 5. Acceptance criteria
@@ -74,4 +74,4 @@ The Receiving page (`/receiving`) features 4 primary sub-tabs:
 - [ ] Batch Store All/Hold All validates declared quantity, presence attestation, active locations, and per-location CBM before posting.
 - [ ] Per-line store/hold commits update distributed lot balances and incoming ledger atomically.
 - [ ] 3-component error feedback is displayed on all scan and receiving errors.
-- [ ] Visual design system tokens (#2563EB, #0F172A, #64748B, #FFF7ED, #FFFFFF) and Etna Sans Serif + Glacial Indifference typography are fully applied.
+- [ ] Visual design system tokens (#2563EB, #0F172A, #64748B, #F3F6FC, #FFFFFF) and DM Sans heading + Glacial Indifference body typography are fully applied.

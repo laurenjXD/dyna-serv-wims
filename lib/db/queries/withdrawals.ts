@@ -23,6 +23,7 @@ import { eq, asc, desc, sql, and, gte, lte } from "drizzle-orm";
 import { pickLists, pickListItems } from "@/lib/db/schema/pick_lists";
 import { inventoryTransactions } from "@/lib/db/schema/transactions";
 import { items } from "@/lib/db/schema/items";
+import { parties } from "@/lib/db/schema/parties";
 
 // Minimal structural type that both the real Drizzle db instance and test
 // stubs satisfy. Uses named method properties (not an index signature) so
@@ -39,6 +40,7 @@ export type PickListRow = {
   pickListNumber: string;
   status: string;
   customerPartyId: string;
+  customerPartyName?: string | null;
   flowType: string;
   createdAt: Date;
 };
@@ -94,10 +96,12 @@ export async function listPickLists(
       pickListNumber: pickLists.pickListNumber,
       status: pickLists.status,
       customerPartyId: pickLists.customerPartyId,
+      customerPartyName: parties.name,
       flowType: pickLists.flowType,
       createdAt: pickLists.createdAt,
     })
-    .from(pickLists);
+    .from(pickLists)
+    .leftJoin(parties, eq(parties.id, pickLists.customerPartyId));
 
   const countBase = db
     .select({ count: sql<string>`count(*)` })
@@ -150,10 +154,12 @@ export async function listRecentPickLists(
       pickListNumber: pickLists.pickListNumber,
       status: pickLists.status,
       customerPartyId: pickLists.customerPartyId,
+      customerPartyName: parties.name,
       flowType: pickLists.flowType,
       createdAt: pickLists.createdAt,
     })
     .from(pickLists)
+    .leftJoin(parties, eq(parties.id, pickLists.customerPartyId))
     .orderBy(desc(pickLists.createdAt))
     .limit(opts.limit)) as PickListRow[];
 }

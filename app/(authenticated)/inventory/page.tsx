@@ -21,18 +21,20 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronRight, Download, Search, SlidersHorizontal } from "lucide-react";
+import { CheckCircle2, ChevronRight, Clock3, Download, Search, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { listStockView, type StockViewRow } from "@/lib/db/queries/inventory";
 import { listPickLists } from "@/lib/db/queries/withdrawals";
+import { listRequesterFifoOverrides } from "@/lib/db/queries/approvals";
+import { FifoOverrideSnapshotSchema } from "@/lib/approval/fifo-override-snapshot";
 import type { PickListRow } from "@/lib/db/queries/withdrawals";
 import { listInspectionAndTransferQueue } from "@/lib/db/queries/transfers";
 import { resolveInventoryTab, type TabKey } from "./_lib/resolveInventoryTab";
 import { InspectionTab } from "./_components/InspectionTab";
 import { PickListGenerator } from "./_components/PickListGenerator";
-import { createPickList } from "./actions";
+import { createApprovedPickList, createPickList, requestPickListOverride } from "./actions";
 
 // ─── Status badge colors ─────────────────────────────────────────────────────
 // brand-design-system.md §1.3 semantic color mapping per task spec:
@@ -65,11 +67,11 @@ const TABS: Array<{ key: TabKey; label: string }> = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 interface PageProps {
-  searchParams: Promise<{ tab?: string; q?: string; pickListError?: string }>;
+  searchParams: Promise<{ tab?: string; q?: string; pickListError?: string; overrideRequested?: string }>;
 }
 
 export default async function InventoryPage({ searchParams }: PageProps) {
-  const { tab: tabParam, q, pickListError } = await searchParams;
+  const { tab: tabParam, q, pickListError, overrideRequested } = await searchParams;
 
   const activeTab: TabKey = resolveInventoryTab(tabParam);
 
@@ -134,8 +136,15 @@ export default async function InventoryPage({ searchParams }: PageProps) {
         </div>
       )}
 
+      {overrideRequested && (
+        <div role="status" className="mt-4 flex items-start gap-3 rounded border border-status-available/40 bg-status-available/10 p-4">
+          <CheckCircle2 size={22} className="mt-0.5 shrink-0 text-status-available" aria-hidden="true" />
+          <div><p className="font-heading text-body-md font-bold text-on-surface">Override sent for approval</p><p className="mt-1 font-body text-body-sm text-text-grey">{overrideRequested} is waiting for another supervisor. Return here after approval to generate the locked pick list.</p></div>
+        </div>
+      )}
+
       {activeTab === "stock-view" ? (
-        <StockViewTab query={q} />
+        <StockViewTab query={q} requesterUserId={permResult.context.userId} />
       ) : activeTab === "pick-lists" ? (
         <PickListsTab />
       ) : (
@@ -147,13 +156,32 @@ export default async function InventoryPage({ searchParams }: PageProps) {
 
 // ─── Stock View tab (default) ─────────────────────────────────────────────────
 
-async function StockViewTab({ query }: { query?: string }) {
+async function StockViewTab({ query, requesterUserId }: { query?: string; requesterUserId: string }) {
   const rows = await listStockView(db);
+  const overrides = await listRequesterFifoOverrides(db, requesterUserId, 8);
   const normalizedQuery = query?.trim().toLowerCase() ?? "";
   const items = groupStockByItem(rows).filter((item) => !normalizedQuery || `${item.itemCode} ${item.itemName} ${item.lots.map((lot) => lot.lotNumber).join(" ")}`.toLowerCase().includes(normalizedQuery));
 
   return (
-    <div className="mt-4 min-h-[680px] overflow-x-auto rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+    <div className="mt-5 space-y-5">
+      {overrides.length > 0 && <section className="rounded border border-outline-variant bg-surface-white p-5 shadow-elevation-1">
+        <div><h2 className="font-heading text-title-lg font-bold text-on-surface">Pallet override requests</h2><p className="mt-1 font-body text-body-sm text-text-grey">A different supervisor reviews these in Approvals. Approved requests can be used once and expire if inventory changes.</p></div>
+        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+          {overrides.map((request) => {
+            const parsed = FifoOverrideSnapshotSchema.safeParse(request.targetSnapshot);
+            if (!parsed.success) return null;
+            const snapshot = parsed.data;
+            const isApproved = request.status === "approved" && !request.consumedAt && request.expiryAt > new Date() && Boolean(request.partyId);
+            const payload = JSON.stringify({ partyId: request.partyId, flowType: snapshot.flow_type, approvalRequestId: request.id, lines: [{ itemId: snapshot.item_id, lotId: snapshot.lot_id, locationId: snapshot.location_id, qty: Number(snapshot.requested_qty) }] });
+            return <article key={request.id} className="grid gap-3 rounded border border-outline-variant bg-background p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+              <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="font-mono text-mono-md font-bold text-on-surface">{request.requestNumber}</span><span className={`rounded-full px-2 py-1 font-label text-label font-bold uppercase ${isApproved ? "bg-status-available/15 text-status-available" : request.status === "pending" ? "bg-status-pending/15 text-status-pending" : "bg-status-neutral/15 text-status-neutral"}`}>{request.consumedAt ? "used" : request.status}</span></div><p className="mt-2 font-body text-body-md text-on-surface">{snapshot.item_code} · {snapshot.lot_number} · {snapshot.location_code}</p><p className="mt-1 font-body text-body-sm text-text-grey">Quantity {snapshot.requested_qty} · {request.reason}</p></div>
+              {isApproved ? <form action={createApprovedPickList}><input type="hidden" name="request" value={payload} /><button type="submit" className="inline-flex h-11 items-center gap-2 rounded bg-primary px-4 font-label text-label font-bold text-surface-white"><ShieldCheck size={17} aria-hidden="true" />Generate approved pick list</button></form> : <span className="inline-flex items-center gap-2 font-label text-label font-bold text-text-grey"><Clock3 size={17} aria-hidden="true" />{request.status === "pending" ? "Waiting for review" : "No action available"}</span>}
+            </article>;
+          })}
+        </div>
+      </section>}
+
+    <div className="min-h-[680px] overflow-x-auto rounded border border-outline-variant bg-surface-white shadow-elevation-1">
       {items.length === 0 ? (
         <div className="px-6 py-12 text-center">
           <p className="font-body text-body-md text-text-grey">
@@ -188,8 +216,11 @@ async function StockViewTab({ query }: { query?: string }) {
                     itemId={item.itemId}
                     flowType={item.flowType}
                     organizationId={item.organizationId}
-                    lots={rows.filter((row) => row.itemId === item.itemId).map((row) => ({ lotId: row.lotId, locationId: row.locationId, availableQty: row.qtyRemaining - row.qtyCommitted }))}
-                    action={createPickList}
+                    strategy={item.isPerishable ? "FEFO" : "FIFO"}
+                    uom={item.uom}
+                    pallets={rows.filter((row) => row.itemId === item.itemId).map((row, index) => ({ balanceId: row.balanceId ?? `${row.lotId}:${row.locationId}`, lotId: row.lotId, lotNumber: row.lotNumber, locationId: row.locationId, locationLabel: row.locationLabel, availableQty: row.qtyRemaining - row.qtyCommitted, receivedAt: row.receivedAt.toISOString(), expiryDate: row.expiryDate, priority: index + 1 }))}
+                    createAction={createPickList}
+                    overrideAction={requestPickListOverride}
                   />
                 </div>
                 <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -222,6 +253,7 @@ async function StockViewTab({ query }: { query?: string }) {
           ))}
         </div>
       )}
+    </div>
     </div>
   );
 }

@@ -157,6 +157,32 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
     }
   });
 
+  it("gives the active office destination a persistent rail/icon treatment and inactive rows a hover affordance", () => {
+    render(
+      <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" />,
+    );
+
+    const active = screen.getByTestId("nav-entry-inventory");
+    const inactive = screen.getByTestId("nav-entry-root");
+
+    expect(active).toHaveAttribute("aria-current", "page");
+    expect(active).toHaveAttribute("data-active", "true");
+    expect(active.className).toContain("bg-accent-indigo-50");
+    expect(active.className).toContain("before:bg-primary");
+    expect(within(active).getByText("Master Inventory").previousElementSibling?.className).toContain("bg-primary");
+
+    expect(inactive).not.toHaveAttribute("aria-current");
+    expect(inactive).toHaveAttribute("data-active", "false");
+    expect(inactive.className).toContain("hover:bg-accent-indigo-50");
+  });
+
+  it("keeps compact desktop navigation rows at the approved 44px office target", () => {
+    render(
+      <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" />,
+    );
+    expect(screen.getByTestId("nav-entry-inventory").className).toContain("h-11");
+  });
+
   it("never renders a live link for a featureStatus:'planned' registry entry (e.g. /documents)", () => {
     // 2026-08-17: /reports retired as the example here — it flipped
     // planned -> launch (confirmed fully wired to real data, stale flag).

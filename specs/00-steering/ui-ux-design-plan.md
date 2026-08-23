@@ -150,8 +150,8 @@ Neutral
 #94A3B8
 Disabled/neutral states, secondary icons
 Background
-🥛 Cream White
-#FFF7ED
+Cool Blue-Gray
+#F3F6FC
 Main application background
 Surface
 ⬜ White
@@ -190,7 +190,7 @@ Font
 Weights
 Usage
 Primary Heading
-Etna Sans Serif
+DM Sans
 700, 600
 Page titles, large displays, hero numbers
 Secondary UI & Body
@@ -204,19 +204,19 @@ Family / Weight
 Size
 Line height
 headline-xl
-Etna Sans Serif / Bold
+DM Sans / Bold
 40px
 48px
 headline-lg
-Etna Sans Serif / Bold
+DM Sans / Bold
 32px
 40px
 headline-md
-Etna Sans Serif / SemiBold
+DM Sans / SemiBold
 24px
 32px
 data-display
-Etna Sans Serif / SemiBold
+DM Sans / SemiBold
 20px
 24px
 body-lg
@@ -287,7 +287,7 @@ radius-xl (24px): The default for all primary dashboard Mega-Cards, modals, and 
 radius-full (9999px): Primary buttons, active sidebar navigation items, floating top header, and status badges.
 
 Note: The retired diagonal-cut motif must not be reintroduced.
-10. Surfaces and ElevationGlassmorphism and backdrop blur are completely retired across the application. Use solid surfaces to create the modular Bento layers.LevelSurfaceShadowUse0Cream White (#FFF7ED)noneBase application background canvas1Solid White (#FFFFFF)0 4px 12px rgba(15, 23, 42, 0.05)Floating Sidebar, Top Header, Mega-Cards, ModalsFloor cards use Level 1 solid White surfaces and avoid translucent effects.
+10. Surfaces and ElevationGlassmorphism and backdrop blur are completely retired across the application. Use solid surfaces to create the modular Bento layers.LevelSurfaceShadowUse0Cool Blue-Gray (#F3F6FC)noneBase application background canvas1Solid White (#FFFFFF)0 4px 12px rgba(15, 23, 42, 0.05)Floating Sidebar, Top Header, Mega-Cards, ModalsFloor cards use Level 1 solid White surfaces and avoid translucent effects.
 11. Component Guidance
 
 Buttons:
@@ -344,11 +344,11 @@ Every critical journey includes loading, empty, error, offline/online-required, 
 Design review confirms token usage, contrast, touch targets, focus states, reduced motion, and responsive behavior.
 17. Implementation Guidance
 For a Next.js + Tailwind implementation:
-Define the exact new design tokens (e.g., #2563EB to primary, #FFF7ED to background) in tailwind.config.ts.
+Define the exact new design tokens (e.g., #2563EB to primary, #F3F6FC to background) in tailwind.config.ts.
 Components consume tokens rather than introducing undocumented hex colors.
 SVG/chart libraries must use exact documented tokens.
 Base/unprefixed Tailwind classes represent floor/mobile behavior; md: and lg: progressively enhance larger layouts.
-Load Etna Sans Serif and Glacial Indifference only at required weights. Do not load legacy fonts (Inter, JetBrains Mono).
+Load DM Sans and Glacial Indifference only at required weights. Do not load legacy fonts (Inter, JetBrains Mono).
 Build and test floor components at 375px first.
 Generated pick lists and acknowledgement receipts should follow the same approved design values.
 18. Open Alignment Items
@@ -358,5 +358,4 @@ Planned document, reporting, billing, sync, and Organization Portal areas must r
 This unified document should be used alongside the approved Figma source of truth. New visual values, interaction rules, or component conventions should be documented and reviewed before shipping.
 The guiding rule is simple:
 Workflow determines what the user needs to do. The design system determines how that action is presented. Floor usability and data integrity (Pessimistic UI) take priority whenever the warehouseman performs the task.
-
 

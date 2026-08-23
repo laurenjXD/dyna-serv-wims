@@ -6,7 +6,7 @@
 //   specs/09-approval-queue/design.md §3 (Persistence model), §5 (State machine)
 //   specs/09-approval-queue/tasks.md Testing Matrix §Unit tests
 
-import { eq, and, asc, sql } from "drizzle-orm";
+import { eq, and, asc, desc, sql } from "drizzle-orm";
 import { approvalRequests, approvalDecisions } from "@/lib/db/schema/approvals";
 
 // Minimal structural type that both the real Drizzle db instance and test
@@ -29,6 +29,50 @@ export type ApprovalRequestRow = {
   requesterUserId: string;
   targetSnapshot: unknown;
 };
+
+export type RequesterFifoOverrideRow = {
+  id: string;
+  requestNumber: string;
+  status: string;
+  reason: string;
+  partyId: string | null;
+  expiryAt: Date;
+  createdAt: Date;
+  targetSnapshot: unknown;
+  decisionId: string | null;
+  consumedAt: Date | null;
+};
+
+/** Recent FIFO override requests owned by one requester. The caller supplies
+ * the authenticated user id; database RLS independently enforces the same
+ * requester boundary when this query runs through an RLS transaction. */
+export async function listRequesterFifoOverrides(
+  db: DbLike,
+  requesterUserId: string,
+  limit = 10,
+): Promise<RequesterFifoOverrideRow[]> {
+  return (await db
+    .select({
+      id: approvalRequests.id,
+      requestNumber: approvalRequests.requestNumber,
+      status: approvalRequests.status,
+      reason: approvalRequests.reason,
+      partyId: approvalRequests.partyId,
+      expiryAt: approvalRequests.expiryAt,
+      createdAt: approvalRequests.createdAt,
+      targetSnapshot: approvalRequests.targetSnapshot,
+      decisionId: approvalDecisions.id,
+      consumedAt: approvalDecisions.consumedAt,
+    })
+    .from(approvalRequests)
+    .leftJoin(approvalDecisions, eq(approvalDecisions.requestId, approvalRequests.id))
+    .where(and(
+      eq(approvalRequests.requesterUserId, requesterUserId),
+      eq(approvalRequests.approvalType, "fifo_override"),
+    ))
+    .orderBy(desc(approvalRequests.createdAt))
+    .limit(limit)) as RequesterFifoOverrideRow[];
+}
 
 export type ApprovalDecisionRow = {
   id: string;

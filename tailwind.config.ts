@@ -22,7 +22,7 @@ const config: Config = {
         "primary-hover": "#1E3A8A", // 🔵 Deep Blue
         secondary: "#7C3AED",       // 🟣 Violet
         neutral: "#94A3B8",         // ◻️ Cool Gray
-        background: "#FFFFFF",      // ⬜ White (Level 0) — was Cream White (#FFF7ED)
+        background: "#F3F6FC",      // Cool blue-gray application canvas
         surface: "#FFFFFF",         // ⬜ Solid White (Level 1)
         "text-primary": "#0F172A",  // 🌑 Deep Navy
         "text-secondary": "#64748B",// 🩶 Slate
@@ -35,12 +35,12 @@ const config: Config = {
         "brand-navy": "#0F172A",
         "brand-royal-blue": "#2563EB",
         "brand-red": "#EF4444",
-        "accent-indigo-50": "#FFF7ED",
+        "accent-indigo-50": "#EEF3FF",
         "accent-indigo-300": "#2563EB",
         "accent-indigo-600": "#1E3A8A",
         "text-grey": "#64748B",
         "surface-white": "#FFFFFF",
-        "surface-light-grey": "#FFF7ED",
+        "surface-light-grey": "#F3F6FC",
         "on-surface": "#0F172A",
         "outline-variant": "#E2E8F0",
         "status-available": "#10B981",
@@ -50,8 +50,8 @@ const config: Config = {
       },
       fontFamily: {
         // Typography System (specs/00-steering/design.md)
-        // Etna Sans Serif (headings/displays) + Glacial Indifference (body/UI/nav/badges/buttons)
-        heading: ["var(--font-etna)", "sans-serif"],
+        // DM Sans (headings/displays) + Glacial Indifference (body/UI/nav/badges/buttons)
+        heading: ["var(--font-dm-sans)", "sans-serif"],
         body: ["var(--font-glacial)", "sans-serif"],
         label: ["var(--font-glacial)", "sans-serif"],
         mono: ["var(--font-glacial)", "sans-serif"],

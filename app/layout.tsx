@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { DM_Sans } from "next/font/google";
 import "./globals.css";
 
 // Co-locates every route's serverless function with the Supabase database
@@ -14,14 +15,8 @@ import "./globals.css";
 // convention on Vercel).
 export const preferredRegion = "hnd1";
 
-// Glacial Indifference (body/UI/nav/labels/badges/buttons) & Etna Sans
-// Serif (headings/displays), per specs/00-steering/ui-ux-design-plan.md §7.
-// Legacy Inter fallback retired now that real brand font files are in
-// app/fonts/. Only one Etna weight file is currently supplied
-// (etna-free-font.otf) — it backs both the 600 and 700 weight requests
-// the design system calls for (Bold/SemiBold) until a dedicated SemiBold
-// file is provided; the browser will not synthesize a second real weight
-// from a single static face, so 600/700 currently render identically.
+// Glacial Indifference remains the body/UI face. DM Sans is the heading and
+// bold display face, matching the approved clean operations-dashboard refresh.
 const fontGlacial = localFont({
   variable: "--font-glacial",
   src: [
@@ -30,12 +25,10 @@ const fontGlacial = localFont({
   ],
 });
 
-const fontEtna = localFont({
-  variable: "--font-etna",
-  src: [
-    { path: "./fonts/etna-free-font.otf", weight: "600", style: "normal" },
-    { path: "./fonts/etna-free-font.otf", weight: "700", style: "normal" },
-  ],
+const fontDmSans = DM_Sans({
+  variable: "--font-dm-sans",
+  subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -51,7 +44,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${fontEtna.variable} ${fontGlacial.variable} font-body bg-background text-text-primary antialiased`}
+        className={`${fontDmSans.variable} ${fontGlacial.variable} font-body bg-background text-text-primary antialiased`}
       >
         {children}
       </body>

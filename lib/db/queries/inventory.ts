@@ -15,6 +15,8 @@ import { allocate, type AllocationResult } from "@/lib/withdrawal/allocation";
 export type DbLike = { select: (...args: any[]) => any };
 
 export type StockViewRow = {
+  balanceId?: string;
+  allocationVersion?: number;
   itemId: string;
   itemCode: string;
   itemName: string;
@@ -46,6 +48,8 @@ export type StockAllocationPreview =
 export async function listStockView(db: DbLike): Promise<StockViewRow[]> {
   return (await db
     .select({
+      balanceId: lotLocationBalances.id,
+      allocationVersion: lotLocationBalances.version,
       itemId: items.id,
       itemCode: items.code,
       itemName: items.name,

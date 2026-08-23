@@ -1,7 +1,7 @@
 # Outgoing Withdrawal & Two-Stage Commitment — Requirements
 
 Status: Approved
-Updated: 2026-08-14 (Aligned with Unified UI/UX & Visual Design System)
+Updated: 2026-08-23 (Pallet-selection approval and clean queue amendment)
 
 ## 1. Purpose and scope
 
@@ -49,18 +49,21 @@ The Outgoing page (`/outgoing`) features 2 primary sub-tabs:
 2. FEFO applies to perishable items, FIFO to non-perishable items.
 3. If allocation bypasses FIFO/FEFO, the system SHALL block generation and route an override request to `09-approval-queue`.
 4. Stage 1 commitment atomically reserves stock and increments `qty_committed` without decrementing `qty_remaining`.
+5. The creation UI SHALL show the recommended FIFO/FEFO source by default and offer an explicit **Choose another pallet** path. An alternate selection requires a reason, identifies one exact lot/location/quantity/version, and remains unreserved until another authorized actor approves it.
+6. An approved override SHALL be consumable once only. Pick-list generation SHALL reject an expired, changed, mismatched, self-approved, or already-consumed decision.
 
 ### R3. Stage 2 physical pick & dispatch confirmation
 
 1. Picking executes at `/pick-lists/[id]/pick`; physical dispatch executes at `/pick-lists/[id]/dispatch`.
 2. Scans verify expected item, lot, location, and barcode. Wrong scans produce 3-component error feedback.
 3. Final dispatch confirmation atomically decrements `qty_remaining`, releases `qty_committed`, writes an immutable `pick` transaction, and makes the priced **Delivery Receipt / Acknowledgement Receipt** available for print/download.
+4. The physical pallet is scanned once in the execution path. Dispatch SHALL reuse that accepted evidence and SHALL NOT ask the operator to scan the same pallet again.
 
 ### R4. Visual design & touch target enforcement
 
 1. Floor screens (`/pick-lists/[id]/pick`, `/pick-lists/[id]/dispatch`) enforce 64px full-width primary CTAs in the bottom third thumb zone, 56px default controls, 16px minimum font size, and zero glassmorphism.
 2. Shell navigation is strictly hidden during active scan loops.
-3. Surfaces use Level 0 Cream White (`#FFF7ED`) background and Level 1 Solid White (`#FFFFFF`) cards with `#2563EB` Vibrant Blue primary accents.
+3. Surfaces use the cool blue-gray application canvas (`#F3F6FC`) and Level 1 Solid White (`#FFFFFF`) cards with `#2563EB` Vibrant Blue primary accents. Bold titles use DM Sans.
 
 ## 5. Acceptance criteria
 
@@ -68,4 +71,6 @@ The Outgoing page (`/outgoing`) features 2 primary sub-tabs:
 - [ ] User-facing UI labels use Organization, Inventory Model, Stock View, Delivery Receipt / Acknowledgement Receipt, Outgoing Ledger, and Logistics.
 - [ ] Stage 1 commitment increments `qty_committed`; Stage 2 dispatch decrements `qty_remaining` and generates Delivery Receipt / Acknowledgement Receipt.
 - [ ] 3-component error feedback is displayed on all validation/scan errors.
-- [ ] Visual design system rules (#2563EB, #0F172A, #64748B, #FFF7ED, #FFFFFF, Etna + Glacial typography, 64px floor CTAs) are fully satisfied.
+- [ ] Visual design system rules (#2563EB, #0F172A, #64748B, #F3F6FC, #FFFFFF, DM Sans + Glacial typography, 64px floor CTAs) are fully satisfied.
+- [ ] Alternate-pallet requests cannot reserve stock until approved and can only generate the exact approved one-time allocation.
+- [ ] The operator scans the committed pallet once; dispatch does not repeat the same verification scan.
