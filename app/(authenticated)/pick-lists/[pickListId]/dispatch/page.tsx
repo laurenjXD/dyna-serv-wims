@@ -482,7 +482,7 @@ export default async function DispatchConfirmationPage({
           </div>
         )}
 
-        {/* ── Disclaimer ───────────────────────────────────────────────── */}
+        {/* ── Final-action notice ──────────────────────────────────────── */}
         {/* §1.3: status-held (semantic warning) + icon ensures non-color signal */}
         {!alreadyDispatched && (
           <div className="mb-4 flex items-start gap-2 rounded-xl border border-status-held/30 bg-status-held/10 px-4 py-3">
@@ -493,7 +493,9 @@ export default async function DispatchConfirmationPage({
               className="mt-0.5 shrink-0 text-status-held"
             />
             <p className="font-body text-body-md text-status-held">
-              Dispatching is final. Scan all items to verify before confirming.
+              {allItemsScanned
+                ? "All items are verified. Dispatching is final."
+                : "Dispatching is final. Scan all items once before confirming."}
             </p>
           </div>
         )}
@@ -510,28 +512,49 @@ export default async function DispatchConfirmationPage({
               keyboard on scanner devices; hardware scanner fires keystrokes.
               h-14 (56px) floor secondary input touch target per §3.
               Hidden `scanned` field preserves the current scan set. */}
-          <form action={handleScan} className="mb-3">
-            <input type="hidden" name="scanned" value={scannedQueryValue} />
-            <input
-              autoFocus
-              type="text"
-              name="barcode"
-              inputMode="none"
-              autoComplete="off"
-              aria-label="Scan item barcode"
-              className="h-14 w-full rounded-xl border border-outline-variant/30 bg-surface-white px-4 font-mono text-mono-lg text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              placeholder="Scan barcode..."
-            />
-          </form>
+          {!allItemsScanned && (
+            <>
+              <form action={handleScan} className="mb-3">
+                <input type="hidden" name="scanned" value={scannedQueryValue} />
+                <input
+                  autoFocus
+                  type="text"
+                  name="barcode"
+                  inputMode="none"
+                  autoComplete="off"
+                  aria-label="Scan item barcode"
+                  className="h-14 w-full rounded-xl border border-outline-variant/30 bg-surface-white px-4 font-mono text-mono-lg text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  placeholder="Scan barcode..."
+                />
+              </form>
 
-          {/* Camera scan bridge — secondary input method.
-              extraFields preserves the scanned set across camera-initiated submits. */}
-          <div className="mb-3">
-            <CameraScanBridge
-              action={handleScan}
-              extraFields={{ scanned: scannedQueryValue }}
-            />
-          </div>
+              {/* Camera scan bridge — secondary input method.
+                  extraFields preserves the scanned set across camera-initiated submits. */}
+              <div className="mb-3">
+                <CameraScanBridge
+                  action={handleScan}
+                  extraFields={{ scanned: scannedQueryValue }}
+                />
+              </div>
+            </>
+          )}
+
+          {allItemsScanned && (
+            <div className="mb-3 flex items-start gap-3 rounded-xl border border-status-available/40 bg-status-available/10 px-4 py-3" role="status">
+              <CheckCircle2
+                size={24}
+                strokeWidth={2}
+                aria-hidden="true"
+                className="mt-0.5 shrink-0 text-status-available"
+              />
+              <div>
+                <p className="font-label text-body-md text-on-surface">Verification complete</p>
+                <p className="mt-1 font-body text-body-md text-text-grey">
+                  Every pick-list line has been scanned. Confirm dispatch below.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Scan error feedback — above CTA, only shown for scan-specific errors */}
           {scanError && isScanError && (

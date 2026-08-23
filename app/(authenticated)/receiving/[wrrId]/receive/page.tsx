@@ -637,11 +637,30 @@ export default async function ReceiveFloorPage({
           </form>
           <details className="mt-4 border-t border-outline-variant/30 pt-3">
             <summary className="cursor-pointer font-body text-body-md text-on-surface">
-              Scan each unique QR instead
+              Verify another carton individually
             </summary>
-            <p className="mt-2 font-body text-body-sm text-text-grey">
-              Use this when every carton label must be individually reconciled. It is optional; Store All is the faster batch path.
+            <p className="mt-2 font-body text-body-md text-text-grey">
+              Enter the printed code or use the camera. This is optional for batch putaway.
             </p>
+            <form action={handleScan} className="mt-3 flex gap-2">
+              <label htmlFor="individual-barcode-input" className="sr-only">
+                Enter carton code
+              </label>
+              <input
+                id="individual-barcode-input"
+                name="barcode"
+                type="text"
+                autoComplete="off"
+                placeholder="Enter carton code"
+                className="h-14 min-w-0 flex-1 rounded border-2 border-outline-variant bg-surface-white px-4 font-mono text-mono-lg text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-4 focus:ring-brand-navy"
+              />
+              <button
+                type="submit"
+                className="flex h-14 shrink-0 items-center justify-center rounded border-2 border-primary px-4 font-label text-body-md text-primary focus:outline-none focus:ring-4 focus:ring-brand-navy"
+              >
+                Verify
+              </button>
+            </form>
             <div className="mt-3">
               <CameraScanBridge action={handleScan} />
             </div>
@@ -668,8 +687,8 @@ export default async function ReceiveFloorPage({
                 type="text"
                 autoFocus
                 autoComplete="off"
-                inputMode="none"
-                placeholder="Waiting for scan…"
+                inputMode="text"
+                placeholder="Scan or enter pallet code"
                 className="h-16 flex-1 rounded border-2 border-outline-variant bg-surface-white px-4 font-mono text-mono-lg text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-4 focus:ring-brand-navy"
               />
               <button
