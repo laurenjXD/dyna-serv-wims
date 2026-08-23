@@ -225,12 +225,22 @@ export default async function ReceiveFloorPage({
     const wrrItemId = (formData.get("wrrItemId") as string | null) ?? "";
     const locationId = (formData.get("locationId") as string | null) ?? "";
     const serializedAllocations = (formData.get("allocations") as string | null) ?? "";
+    const serializedUnitLocations = (formData.get("unitLocationIds") as string | null) ?? "";
     let allocations: Array<{ locationId: string; qty: number }> | undefined;
+    let unitLocationIds: string[] | undefined;
     try {
       const parsed = JSON.parse(serializedAllocations || "null");
       if (Array.isArray(parsed)) allocations = parsed;
     } catch {
       // Validation below returns the normal recoverable error.
+    }
+    try {
+      const parsed = JSON.parse(serializedUnitLocations || "null");
+      if (Array.isArray(parsed) && parsed.every((value) => typeof value === "string")) {
+        unitLocationIds = parsed;
+      }
+    } catch {
+      // The server command validates the missing/malformed unit assignment.
     }
     const presenceAttested = formData.get("presenceAttested") === "true";
     if (!wrrItemId || (!locationId && !allocations?.length)) {
@@ -242,6 +252,7 @@ export default async function ReceiveFloorPage({
     const commitResult = await commitWrrLine(actionResolver, wrrId, wrrItemId, {
       locationId,
       allocations,
+      unitLocationIds,
       presenceAttested,
     });
     if (commitResult.ok) {

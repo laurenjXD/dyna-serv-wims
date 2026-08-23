@@ -38,6 +38,8 @@ import { lotLocationBalances } from "@/lib/db/schema/lot_location_balances";
 import { inventoryTransactions } from "@/lib/db/schema/transactions";
 import { locations } from "@/lib/db/schema/locations";
 import { inspectionCases } from "@/lib/db/schema/transfers";
+import { inventoryUnits } from "@/lib/db/schema/inventory_units";
+import { deriveWrrUnitId } from "@/lib/barcode/wrr-unit";
 import { withRlsTransaction } from "@/lib/db/rls-transaction";
 import type { RlsTransactionDeps } from "@/lib/db/rls-transaction";
 import { rlsPool } from "@/lib/db/rls-pool";
@@ -641,6 +643,7 @@ export async function commitWrrLine(
   params: {
     locationId?: string;
     allocations?: Array<{ locationId: string; qty: number }>;
+    unitLocationIds?: string[];
     presenceAttested?: boolean;
   },
   rlsDeps: RlsTransactionDeps = defaultRlsDeps,
@@ -686,9 +689,22 @@ export async function commitWrrLine(
       return { ok: true } satisfies CommitWrrLineResult;
     }
 
-    const batchAllocations = params.allocations?.filter((allocation) =>
+    let batchAllocations = params.allocations?.filter((allocation) =>
       typeof allocation.locationId === "string" && Number.isInteger(allocation.qty) && allocation.qty > 0,
     ) ?? [];
+    const requestedUnitLocations = params.unitLocationIds?.filter(
+      (locationId) => typeof locationId === "string" && locationId.length > 0,
+    );
+    if (requestedUnitLocations && requestedUnitLocations.length !== line.expectedQty) {
+      return { ok: false, errors: ["unit_location_count_mismatch"] } satisfies CommitWrrLineResult;
+    }
+    if (requestedUnitLocations) {
+      const grouped = requestedUnitLocations.reduce<Record<string, number>>((result, locationId) => {
+        result[locationId] = (result[locationId] ?? 0) + 1;
+        return result;
+      }, {});
+      batchAllocations = Object.entries(grouped).map(([locationId, qty]) => ({ locationId, qty }));
+    }
     const isBatch = batchAllocations.length > 0;
     if (isBatch && !params.presenceAttested) {
       return { ok: false, errors: ["presence_attestation_required"] } satisfies CommitWrrLineResult;
@@ -761,6 +777,12 @@ export async function commitWrrLine(
       const committedAllocations = isBatch
         ? batchAllocations
         : [{ locationId: targetLocationIds[0], qty: line.scannedQty }];
+      const committedUnitLocations = requestedUnitLocations
+        ?? (isBatch
+          ? committedAllocations.flatMap((allocation) =>
+              Array.from({ length: allocation.qty }, () => allocation.locationId),
+            )
+          : Array.from({ length: line.expectedQty }, () => targetLocationIds[0]));
 
       if (isBatch && line.disposition === "store") {
         await tx.insert(wrrItemPutawayAllocations).values(
@@ -780,6 +802,17 @@ export async function commitWrrLine(
         qtyRemaining: allocation.qty,
         qtyCommitted: 0,
       })));
+
+      await tx.insert(inventoryUnits).values(
+        committedUnitLocations.map((locationId, index) => ({
+          unitId: deriveWrrUnitId(line.id, index + 1),
+          unitIndex: index + 1,
+          wrrItemId: line.id,
+          lotId: lot.id,
+          locationId,
+          status: line.disposition === "store" ? "available" : "quarantined",
+        })),
+      );
 
       await tx.insert(inventoryTransactions).values(committedAllocations.map((allocation) => ({
         // A WRR item UUID is globally unique and keeps the receipt reference

@@ -24,6 +24,7 @@ import { pickLists, pickListItems } from "@/lib/db/schema/pick_lists";
 import { inventoryTransactions } from "@/lib/db/schema/transactions";
 import { items } from "@/lib/db/schema/items";
 import { parties } from "@/lib/db/schema/parties";
+import { inventoryUnits } from "@/lib/db/schema/inventory_units";
 
 // Minimal structural type that both the real Drizzle db instance and test
 // stubs satisfy. Uses named method properties (not an index signature) so
@@ -60,6 +61,14 @@ export type PickListItemRow = {
   spq: number;
   numberOfBoxes: number;
   unitPrice: string | null;
+};
+
+export type PickUnitSelectionRow = {
+  pickListItemId: string;
+  unitId: string;
+  unitIndex: number;
+  locationId: string;
+  status: string;
 };
 
 export type OutgoingLedgerRow = {
@@ -285,6 +294,25 @@ export async function getPickListItems(
     .orderBy(asc(pickListItems.createdAt))) as PickListItemRow[];
 
   return rows;
+}
+
+/** Physical boxes already selected for a pick list, grouped by their exact line. */
+export async function getPickUnitSelections(
+  db: DbLike,
+  pickListId: string,
+): Promise<PickUnitSelectionRow[]> {
+  return (await db
+    .select({
+      pickListItemId: inventoryUnits.pickListItemId,
+      unitId: inventoryUnits.unitId,
+      unitIndex: inventoryUnits.unitIndex,
+      locationId: inventoryUnits.locationId,
+      status: inventoryUnits.status,
+    })
+    .from(inventoryUnits)
+    .innerJoin(pickListItems, eq(pickListItems.id, inventoryUnits.pickListItemId))
+    .where(eq(pickListItems.pickListId, pickListId))
+    .orderBy(asc(inventoryUnits.unitIndex))) as PickUnitSelectionRow[];
 }
 
 // ---------------------------------------------------------------------------

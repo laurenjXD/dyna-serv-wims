@@ -27,7 +27,7 @@
 //     withdrawal.request, withdrawal.execute, withdrawal.view
 //   specs/00-steering/tech.md — RBAC always from session, never client params.
 
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { createHash, randomUUID } from "node:crypto";
 import type { RequestAuthorizationResolver } from "@/lib/rbac/session";
 import { requirePermission } from "@/lib/rbac/guard";
@@ -45,6 +45,8 @@ import {
 import { inventoryTransactions } from "@/lib/db/schema/transactions";
 import { generatedDocuments } from "@/lib/db/schema/documents";
 import { approvalRequests } from "@/lib/db/schema/approvals";
+import { inventoryUnits } from "@/lib/db/schema/inventory_units";
+import { parseWrrUnitPayload } from "@/lib/barcode/wrr-unit";
 import {
   listOutgoingLedger as queryListOutgoingLedger,
   type OutgoingLedgerRow,
@@ -95,6 +97,10 @@ export type DispatchPickListResult =
 
 export type MarkPickListPickedResult =
   | { ok: true }
+  | { ok: false; errors: string[] };
+
+export type SelectPickUnitResult =
+  | { ok: true; selectedCount: number; requiredCount: number }
   | { ok: false; errors: string[] };
 
 export type ListOutgoingLedgerResult =
@@ -529,75 +535,192 @@ export async function commitWithdrawal(
 }
 
 // ---------------------------------------------------------------------------
+// Exact physical-box selection
+// ---------------------------------------------------------------------------
+
+function unitIdFromScan(rawBarcode: string): string | null {
+  const parsed = parseWrrUnitPayload(rawBarcode);
+  if (parsed) return parsed.unit_id;
+
+  const trimmed = rawBarcode.trim();
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed)
+    ? trimmed.toLowerCase()
+    : null;
+}
+
+/** Selects one exact physical box for one exact lot/location pick line. */
+export async function selectPickUnit(
+  resolver: RequestAuthorizationResolver,
+  pickListId: string,
+  pickListItemId: string,
+  rawBarcode: string,
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+): Promise<SelectPickUnitResult> {
+  const perm = await requirePermission(resolver, "pick_list.execute");
+  if (perm.kind !== "authorized") return { ok: false, errors: ["forbidden"] };
+
+  const unitId = unitIdFromScan(rawBarcode);
+  if (!unitId) return { ok: false, errors: ["invalid_box_qr"] };
+
+  try {
+    const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+      const db = tx.db as DbLike;
+      const lineRows = (await db
+        .select({
+          id: pickListItems.id,
+          lotId: pickListItems.lotId,
+          locationId: pickListItems.locationId,
+          numberOfBoxes: pickListItems.numberOfBoxes,
+          pickListStatus: pickLists.status,
+        })
+        .from(pickListItems)
+        .innerJoin(pickLists, eq(pickLists.id, pickListItems.pickListId))
+        .where(and(eq(pickListItems.id, pickListItemId), eq(pickLists.id, pickListId)))
+        .limit(1)) as AnyRecord[];
+
+      if (lineRows.length === 0) return { ok: false as const, errors: ["line_not_found"] };
+      const line = lineRows[0];
+      if (line.pickListStatus !== "allocated") {
+        return { ok: false as const, errors: ["invalid_status"] };
+      }
+
+      const unitRows = (await db
+        .select({
+          id: inventoryUnits.id,
+          lotId: inventoryUnits.lotId,
+          locationId: inventoryUnits.locationId,
+          status: inventoryUnits.status,
+          pickListItemId: inventoryUnits.pickListItemId,
+        })
+        .from(inventoryUnits)
+        .where(eq(inventoryUnits.unitId, unitId))
+        .limit(1)) as AnyRecord[];
+
+      if (unitRows.length === 0) return { ok: false as const, errors: ["box_not_found"] };
+      const unit = unitRows[0];
+      if (unit.lotId !== line.lotId) return { ok: false as const, errors: ["wrong_lot"] };
+      if (unit.locationId !== line.locationId) {
+        return { ok: false as const, errors: ["wrong_box_location"] };
+      }
+      if (unit.pickListItemId === pickListItemId && unit.status === "selected") {
+        return { ok: false as const, errors: ["duplicate_box_scan"] };
+      }
+      if (unit.status !== "available" || unit.pickListItemId) {
+        return { ok: false as const, errors: ["box_unavailable"] };
+      }
+
+      const selectedRows = (await db
+        .select({ id: inventoryUnits.id })
+        .from(inventoryUnits)
+        .where(and(
+          eq(inventoryUnits.pickListItemId, pickListItemId),
+          eq(inventoryUnits.status, "selected"),
+        ))) as AnyRecord[];
+      const requiredCount = Number(line.numberOfBoxes);
+      if (selectedRows.length >= requiredCount) {
+        return { ok: false as const, errors: ["line_complete"] };
+      }
+
+      const updated = (await db
+        .update(inventoryUnits)
+        .set({ status: "selected", pickListItemId, updatedAt: new Date() })
+        .where(and(eq(inventoryUnits.id, unit.id), eq(inventoryUnits.status, "available")))
+        .returning({ id: inventoryUnits.id })) as AnyRecord[];
+      if (updated.length !== 1) return { ok: false as const, errors: ["box_unavailable"] };
+
+      return {
+        ok: true as const,
+        selectedCount: selectedRows.length + 1,
+        requiredCount,
+      };
+    });
+
+    if (rlsResult.kind === "unauthenticated") return { ok: false, errors: ["forbidden"] };
+    return rlsResult.value;
+  } catch (error) {
+    console.error("Exact box selection failed", error);
+    return { ok: false, errors: ["unable_to_select_box"] };
+  }
+}
+
+/** Advances to dispatch only after every line has its required physical boxes. */
+export async function completeExactPick(
+  resolver: RequestAuthorizationResolver,
+  pickListId: string,
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+): Promise<MarkPickListPickedResult> {
+  const perm = await requirePermission(resolver, "pick_list.execute");
+  if (perm.kind !== "authorized") return { ok: false, errors: ["forbidden"] };
+
+  try {
+    const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+      const db = tx.db as DbLike;
+      const headerRows = (await db
+        .select({ status: pickLists.status })
+        .from(pickLists)
+        .where(eq(pickLists.id, pickListId))
+        .limit(1)) as AnyRecord[];
+      if (headerRows.length === 0) return { ok: false as const, errors: ["not_found"] };
+      if (headerRows[0].status !== "allocated") {
+        return { ok: false as const, errors: ["invalid_status"] };
+      }
+
+      const lineRows = (await db
+        .select({ id: pickListItems.id, numberOfBoxes: pickListItems.numberOfBoxes })
+        .from(pickListItems)
+        .where(eq(pickListItems.pickListId, pickListId))) as Array<{
+          id: string;
+          numberOfBoxes: number;
+        }>;
+      if (lineRows.length === 0) return { ok: false as const, errors: ["no_pick_lines"] };
+
+      const selectedRows = (await db
+        .select({ pickListItemId: inventoryUnits.pickListItemId })
+        .from(inventoryUnits)
+        .where(and(
+          inArray(inventoryUnits.pickListItemId, lineRows.map((line) => line.id)),
+          eq(inventoryUnits.status, "selected"),
+        ))) as Array<{ pickListItemId: string | null }>;
+      const selectedCounts = new Map<string, number>();
+      for (const row of selectedRows) {
+        if (row.pickListItemId) {
+          selectedCounts.set(row.pickListItemId, (selectedCounts.get(row.pickListItemId) ?? 0) + 1);
+        }
+      }
+      if (lineRows.some((line) => (selectedCounts.get(line.id) ?? 0) !== line.numberOfBoxes)) {
+        return { ok: false as const, errors: ["box_scans_incomplete"] };
+      }
+
+      await db
+        .update(pickLists)
+        .set({ status: "picked", updatedAt: new Date() })
+        .where(and(eq(pickLists.id, pickListId), eq(pickLists.status, "allocated")));
+      return { ok: true as const };
+    });
+
+    if (rlsResult.kind === "unauthenticated") return { ok: false, errors: ["forbidden"] };
+    return rlsResult.value;
+  } catch (error) {
+    console.error("Exact pick completion failed", error);
+    return { ok: false, errors: ["unable_to_complete_pick"] };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // markPickListPicked — Stage 1 floor completion marker
 //
-// Transitions a pick_list from 'allocated' to 'picked' once the floor user
-// has confirmed all committed lines against the physical shelf. This is a
-// UX/tracking transition only — design.md §7 and dispatchPickList's own
-// idempotency guard intentionally do not require 'picked' as a precondition
-// for dispatch (R7.8: dispatch proceeds directly once scans are accepted),
-// so a pick list may still be dispatched directly from 'allocated'.
-//
-// Requires pick_list.execute capability (same gate as the floor pick page).
-// Returns { ok: false, errors: ['not_found'] } when the pick list is missing.
-// Returns { ok: false, errors: ['invalid_status'] } when not currently
-// 'allocated' (idempotency / stale-state guard).
+// Compatibility entry point for older callers. Browser-supplied line IDs no
+// longer count as physical evidence; completion delegates to the durable
+// exact-box validation above.
 // ---------------------------------------------------------------------------
 
 export async function markPickListPicked(
   resolver: RequestAuthorizationResolver,
   pickListId: string,
-  confirmedPickListItemIds: string[],
+  _confirmedPickListItemIds: string[],
   rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<MarkPickListPickedResult> {
-  const perm = await requirePermission(resolver, "pick_list.execute");
-  if (perm.kind !== "authorized") {
-    return { ok: false, errors: ["forbidden"] };
-  }
-
-  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
-    const db = tx.db as DbLike;
-
-    const rows = (await db
-      .select({ id: pickLists.id, status: pickLists.status })
-      .from(pickLists)
-      .where(eq(pickLists.id, pickListId))
-      .limit(1)) as AnyRecord[];
-
-    if (rows.length === 0) {
-      return { ok: false as const, errors: ["not_found"] };
-    }
-
-    const current = rows[0];
-    if (current.status !== "allocated") {
-      return { ok: false as const, errors: ["invalid_status"] };
-    }
-
-    const lineRows = (await db
-      .select({ id: pickListItems.id })
-      .from(pickListItems)
-      .where(eq(pickListItems.pickListId, pickListId))) as Array<{ id: string }>;
-    const confirmed = new Set(confirmedPickListItemIds);
-    if (
-      lineRows.length === 0 ||
-      lineRows.some((line) => !confirmed.has(line.id)) ||
-      confirmed.size !== lineRows.length
-    ) {
-      return { ok: false as const, errors: ["scan_evidence_incomplete"] };
-    }
-
-    await db
-      .update(pickLists)
-      .set({ status: "picked", updatedAt: new Date() })
-      .where(eq(pickLists.id, pickListId));
-
-    return { ok: true as const };
-  });
-
-  if (rlsResult.kind === "unauthenticated") {
-    return { ok: false, errors: ["forbidden"] };
-  }
-  return rlsResult.value;
+  return completeExactPick(resolver, pickListId, rlsDeps);
 }
 
 // ---------------------------------------------------------------------------
@@ -652,6 +775,9 @@ export async function dispatchPickList(
     // Step 3: Idempotency guard — duplicate/lost-response protection (R7.6)
     if (pickList.status === "dispatched") {
       return { ok: false as const, errors: ["already_dispatched"] };
+    }
+    if (pickList.status !== "picked") {
+      return { ok: false as const, errors: ["pick_not_completed"] };
     }
 
     // Step 4: Re-load the active reservation lines. These, not browser state,
@@ -728,6 +854,14 @@ export async function dispatchPickList(
           updatedAt: new Date(),
         })
         .where(eq(inventoryCommitmentLines.id, line.commitmentLineId));
+
+      await db
+        .update(inventoryUnits)
+        .set({ status: "dispatched", updatedAt: new Date() })
+        .where(and(
+          eq(inventoryUnits.pickListItemId, line.pickListItemId),
+          eq(inventoryUnits.status, "selected"),
+        ));
 
       const [transaction] = (await db
         .insert(inventoryTransactions)

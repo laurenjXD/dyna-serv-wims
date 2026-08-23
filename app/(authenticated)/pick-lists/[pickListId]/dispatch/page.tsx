@@ -1,4 +1,4 @@
-// Dispatch Confirmation — floor-priority per-item barcode scan dispatch screen.
+// Dispatch Confirmation — confirmation-only handoff after exact box picking.
 //
 // Traceability:
 //   specs/08-outgoing-withdrawal-and-two-stage-commitment/requirements.md
@@ -42,11 +42,8 @@
 // The actual dispatch command (dispatchPickList) is wired. On success the
 // user is returned to /outgoing so the next pick can begin immediately.
 //
-// Scan-progress note: per-item scan progress is tracked via the `scanned`
-// searchParam (comma-separated pick_list_item IDs) — the same
-// redirect-with-searchParams mechanism used by the pick page's `confirmed`
-// param. This is a UI/session-scoped confirmation aid; the authoritative
-// state dispatchPickList relies on is the committed pick_list_items.
+// Physical evidence is recorded once on the pick screen. This page reuses the
+// selected inventory-unit records and never asks the operator to scan again.
 
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -56,7 +53,6 @@ import {
   AlertTriangle,
   Truck,
   CheckCircle2,
-  Circle,
 } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
@@ -64,22 +60,6 @@ import { db } from "@/lib/db/client";
 import { parties } from "@/lib/db/schema/parties";
 import { getPickList, getPickListItems } from "@/lib/db/queries/withdrawals";
 import { dispatchPickList } from "@/lib/actions/withdrawals";
-import { CameraScanBridge } from "@/components/floor/CameraScanBridge";
-
-// ─── Error messaging ──────────────────────────────────────────────────────────
-
-function getDispatchScanErrorMessage(reason: string): string {
-  switch (reason) {
-    case "empty_barcode":
-      return "Barcode cannot be empty";
-    case "no_match":
-      return "Not on this pick list — barcode does not match any item, lot, or location on this order";
-    case "already_scanned":
-      return "Already scanned — this item has already been confirmed for dispatch";
-    default:
-      return `Scan rejected: ${reason}. Contact a supervisor if this persists.`;
-  }
-}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -88,7 +68,6 @@ interface PageProps {
   searchParams: Promise<{
     result?: string;
     reason?: string;
-    scanned?: string;
   }>;
 }
 
@@ -97,11 +76,7 @@ export default async function DispatchConfirmationPage({
   searchParams,
 }: PageProps) {
   const { pickListId } = await params;
-  const {
-    result,
-    reason: reasonParam,
-    scanned: scannedParam,
-  } = await searchParams;
+  const { result, reason: reasonParam } = await searchParams;
 
   const resolver = await createPageResolver();
 
@@ -144,85 +119,7 @@ export default async function DispatchConfirmationPage({
 
   const alreadyDispatched = pickList.status === "dispatched";
 
-  // Scan progress — tracked via `scanned` searchParam (comma-separated item IDs).
-  // Same session-scoped mechanism as the pick page's `confirmed` param.
-  const scannedIds = new Set(
-    scannedParam ? scannedParam.split(",").filter(Boolean) : [],
-  );
-  const scannedQueryValue = Array.from(scannedIds).join(",");
-
   const totalLines = items.length;
-  const scannedLines = items.filter((item) => scannedIds.has(item.id)).length;
-  const allItemsScanned = totalLines > 0 && scannedLines === totalLines;
-
-  // Inline server action — verifies a scan against the real committed
-  // pick_list_items for this pick list (itemCode, lotNumber, or
-  // locationLabel — same matching logic as the pick page, per R7.2).
-  // On match, adds the line to the `scanned` searchParam and redirects back.
-  // On no-match or already-scanned, redirects back with an error reason.
-  async function handleScan(formData: FormData): Promise<void> {
-    "use server";
-    const barcode = (
-      (formData.get("barcode") as string | null) ?? ""
-    ).trim();
-    const scannedRaw = (
-      (formData.get("scanned") as string | null) ?? ""
-    ).trim();
-
-    if (!barcode) {
-      redirect(
-        `/pick-lists/${pickListId}/dispatch?result=error&reason=${encodeURIComponent(
-          "empty_barcode",
-        )}&scanned=${encodeURIComponent(scannedRaw)}`,
-      );
-    }
-
-    const currentlyScanned = new Set(
-      scannedRaw ? scannedRaw.split(",").filter(Boolean) : [],
-    );
-
-    const currentLines = await getPickListItems(db, pickListId);
-
-    // Check if barcode matches any line — including already-scanned ones —
-    // to distinguish "already scanned" from "not on this list".
-    const anyMatch = currentLines.find(
-      (line) =>
-        line.itemCode === barcode ||
-        line.lotNumber === barcode ||
-        line.locationLabel === barcode,
-    );
-
-    if (anyMatch && currentlyScanned.has(anyMatch.id)) {
-      redirect(
-        `/pick-lists/${pickListId}/dispatch?result=error&reason=${encodeURIComponent(
-          "already_scanned",
-        )}&scanned=${encodeURIComponent(scannedRaw)}`,
-      );
-    }
-
-    const match = currentLines.find(
-      (line) =>
-        !currentlyScanned.has(line.id) &&
-        (line.itemCode === barcode ||
-          line.lotNumber === barcode ||
-          line.locationLabel === barcode),
-    );
-
-    if (!match) {
-      redirect(
-        `/pick-lists/${pickListId}/dispatch?result=error&reason=${encodeURIComponent(
-          "no_match",
-        )}&scanned=${encodeURIComponent(scannedRaw)}`,
-      );
-    } else {
-      currentlyScanned.add(match.id);
-      redirect(
-        `/pick-lists/${pickListId}/dispatch?result=scanned&scanned=${encodeURIComponent(
-          Array.from(currentlyScanned).join(","),
-        )}`,
-      );
-    }
-  }
 
   // Inline server action — executes Stage 2 dispatch.
   // design.md §7: atomically decrements qty_remaining, releases qty_committed,
@@ -230,16 +127,13 @@ export default async function DispatchConfirmationPage({
   // transitions pick_list → dispatched, triggers AR generation.
   // On success: redirects to /outgoing (floor user returns to queue).
   // Non-fatal doc-generation failure does not roll back the stock movement (R8.5).
-  async function handleDispatch(formData: FormData): Promise<void> {
+  async function handleDispatch(): Promise<void> {
     "use server";
-    const scannedRaw = (
-      (formData.get("scanned") as string | null) ?? ""
-    ).trim();
     const actionResolver = await createPageResolver();
     const dispatchResult = await dispatchPickList(
       actionResolver,
       pickListId,
-      scannedRaw ? scannedRaw.split(",").filter(Boolean) : [],
+      items.map((item) => item.id),
     );
     if (dispatchResult.ok) {
       // Return to outgoing queue — dispatch is complete.
@@ -248,18 +142,13 @@ export default async function DispatchConfirmationPage({
     redirect(
       `/pick-lists/${pickListId}/dispatch?result=error&reason=${encodeURIComponent(
         dispatchResult.errors[0] ?? "dispatch_failed",
-      )}&scanned=${encodeURIComponent(scannedRaw)}`,
+      )}`,
     );
   }
 
   const dispatchError = result === "error";
-  const scanError = result === "error";
   const errorReason = reasonParam ?? "";
-  const isScanError =
-    errorReason === "empty_barcode" ||
-    errorReason === "no_match" ||
-    errorReason === "already_scanned";
-  const isDispatchError = dispatchError && !isScanError;
+  const isDispatchError = dispatchError;
 
   // Derive flow type badge color from flowType value.
   const flowTypeBadgeClass =
@@ -297,10 +186,10 @@ export default async function DispatchConfirmationPage({
               </p>
             </div>
           </div>
-          {/* Scan progress counter */}
+          {/* Pick-verification progress counter */}
           {!alreadyDispatched && (
             <span className="font-body text-body-md text-text-grey">
-              {scannedLines} / {totalLines} scanned
+              {totalLines} / {totalLines} picked
             </span>
           )}
         </div>
@@ -391,7 +280,6 @@ export default async function DispatchConfirmationPage({
               </p>
             )}
             {items.map((item) => {
-              const isScanned = scannedIds.has(item.id);
               return (
                 <div
                   key={item.id}
@@ -399,19 +287,11 @@ export default async function DispatchConfirmationPage({
                 >
                   {/* Status icon — color + icon per §1.3 floor color-blind rule */}
                   <div className="mt-0.5 shrink-0" aria-hidden="true">
-                    {isScanned ? (
-                      <CheckCircle2
-                        size={24}
-                        strokeWidth={2}
-                        className="text-status-available"
-                      />
-                    ) : (
-                      <Circle
-                        size={24}
-                        strokeWidth={2}
-                        className="text-status-neutral"
-                      />
-                    )}
+                    <CheckCircle2
+                      size={24}
+                      strokeWidth={2}
+                      className="text-status-available"
+                    />
                   </div>
                   <div className="min-w-0 flex-1">
                     {/* Item code — Roboto Mono */}
@@ -431,10 +311,7 @@ export default async function DispatchConfirmationPage({
                       {item.locationLabel}
                     </p>
                   </div>
-                  {/* Scanned/pending label — screen-reader text */}
-                  <span className="sr-only">
-                    {isScanned ? "Scanned" : "Pending scan"}
-                  </span>
+                  <span className="sr-only">Picked and verified</span>
                 </div>
               );
             })}
@@ -493,96 +370,18 @@ export default async function DispatchConfirmationPage({
               className="mt-0.5 shrink-0 text-status-held"
             />
             <p className="font-body text-body-md text-status-held">
-              {allItemsScanned
-                ? "All items are verified. Dispatching is final."
-                : "Dispatching is final. Scan all items once before confirming."}
+              Exact boxes were verified during picking. Dispatching is final and will deduct each line from the location shown above.
             </p>
           </div>
         )}
       </div>
 
-      {/* ── Sticky bottom — scan input + CTA ─────────────────────────────── */}
-      {/* brand-design-system.md §3: primary action in bottom third, full-width,
-          always visible without scrolling. Input priority: scan > tap > type.
-          One primary action per floor screen. */}
+      {/* Exact boxes were already scanned during pick execution. Dispatch is
+          deliberately confirmation-only so operators are not asked twice. */}
       {!alreadyDispatched && (
         <div className="sticky bottom-0 border-t border-outline-variant/30 bg-surface-white px-4 pb-6 pt-4 shadow-elevation-2">
-
-          {/* Scan input — auto-focused, inputMode="none" suppresses virtual
-              keyboard on scanner devices; hardware scanner fires keystrokes.
-              h-14 (56px) floor secondary input touch target per §3.
-              Hidden `scanned` field preserves the current scan set. */}
-          {!allItemsScanned && (
-            <>
-              <form action={handleScan} className="mb-3">
-                <input type="hidden" name="scanned" value={scannedQueryValue} />
-                <input
-                  autoFocus
-                  type="text"
-                  name="barcode"
-                  inputMode="none"
-                  autoComplete="off"
-                  aria-label="Scan item barcode"
-                  className="h-14 w-full rounded-xl border border-outline-variant/30 bg-surface-white px-4 font-mono text-mono-lg text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                  placeholder="Scan barcode..."
-                />
-              </form>
-
-              {/* Camera scan bridge — secondary input method.
-                  extraFields preserves the scanned set across camera-initiated submits. */}
-              <div className="mb-3">
-                <CameraScanBridge
-                  action={handleScan}
-                  extraFields={{ scanned: scannedQueryValue }}
-                />
-              </div>
-            </>
-          )}
-
-          {allItemsScanned && (
-            <div className="mb-3 flex items-start gap-3 rounded-xl border border-status-available/40 bg-status-available/10 px-4 py-3" role="status">
-              <CheckCircle2
-                size={24}
-                strokeWidth={2}
-                aria-hidden="true"
-                className="mt-0.5 shrink-0 text-status-available"
-              />
-              <div>
-                <p className="font-label text-body-md text-on-surface">Verification complete</p>
-                <p className="mt-1 font-body text-body-md text-text-grey">
-                  Every pick-list line has been scanned. Confirm dispatch below.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Scan error feedback — above CTA, only shown for scan-specific errors */}
-          {scanError && isScanError && (
-            <div
-              role="alert"
-              aria-live="assertive"
-              className="mb-3 flex items-center gap-2 rounded-xl bg-status-held/20 border border-status-held/40 px-4 py-3"
-            >
-              <AlertTriangle
-                size={24}
-                strokeWidth={2}
-                aria-hidden="true"
-                className="shrink-0 text-status-held"
-              />
-              <p className="font-body text-body-md text-on-surface">
-                {getDispatchScanErrorMessage(errorReason)}
-              </p>
-            </div>
-          )}
-
-          {/* Confirm Dispatch CTA — active only when all items are scanned.
-              brand-design-system.md §3: 64px (h-16) primary action, full-width.
-              No hover: on floor — active: press feedback only.
-              R7.9: no quality-check branch — confirmation is the only path forward. */}
-          {allItemsScanned ? (
+          {totalLines > 0 ? (
             <form action={handleDispatch}>
-              <input type="hidden" name="scanned" value={scannedQueryValue} />
-              {/* White on brand-red: 7.31:1 (AAA) — resolved 2026-08-12 by darkening brand-red; see brand-design-system.md §1.1. */}
               <button
                 type="submit"
                 className="flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-primary font-label text-body-md uppercase tracking-wide text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
@@ -592,7 +391,6 @@ export default async function DispatchConfirmationPage({
               </button>
             </form>
           ) : (
-            /* Disabled state — not all items scanned yet */
             <button
               type="button"
               disabled
@@ -600,7 +398,7 @@ export default async function DispatchConfirmationPage({
               className="flex h-16 w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-surface-light-grey font-label text-body-md uppercase tracking-wide text-status-neutral"
             >
               <Truck size={24} strokeWidth={2} aria-hidden="true" />
-              Scan All Items to Dispatch
+              No Items to Dispatch
             </button>
           )}
         </div>

@@ -1,317 +1,206 @@
-// Pick Execution — floor-priority pick confirmation screen.
-//
-// Traceability:
-//   specs/08-outgoing-withdrawal-and-two-stage-commitment/requirements.md
-//     R7.1  — The floor workflow presents item, lot, location, quantity, and
-//             safe exception feedback for operator confirmation.
-//     §5 acceptance criterion — Dispatch follows pick confirmation directly,
-//             with no pre-dispatch inspection route or state.
-//   specs/08-outgoing-withdrawal-and-two-stage-commitment/design.md §3 (route),
-//     §7 (Stage 2 physical execution)
-//   specs/00-steering/brand-design-system.md §3 (floor surface rules: mobile-first
-//     375px base, 64px primary CTAs, active: not hover:, no glassmorphism,
-//     solid surfaces, one primary action per screen), §6 (no glassmorphism
-//     on floor — solid surfaces only), §5 (AAA contrast floor rule), §2 (no text
-//     below 16px on floor), §8 (no backdrop-blur, no GPU-heavy animations)
-//   design-system/dyna-serv-wims/MASTER.md — floor primary CTA and status-card patterns
-//
-// Surface: FLOOR. Designed at 375px viewport first. No glassmorphism.
-// Permission gate: pick_list.execute
-//
-// Data source: lib/db/queries/withdrawals.ts getPickList + getPickListItems —
-// the real Stage 1 committed pick_list_items rows, no mock data.
-//
-// Barcode verification belongs to the Dispatch stage. This page presents the
-// allocated lines and records the operator's pick confirmation; the next page
-// is responsible for scanning each line before stock is dispatched.
-
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ChevronLeft, MapPin, CheckCircle2, Circle, AlertTriangle } from "lucide-react";
+import { AlertTriangle, Boxes, CheckCircle2, ChevronLeft, MapPin, ScanLine } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
-import { getPickList, getPickListItems } from "@/lib/db/queries/withdrawals";
-import type { PickListItemRow } from "@/lib/db/queries/withdrawals";
-import { markPickListPicked } from "@/lib/actions/withdrawals";
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
+import { getPickList, getPickListItems, getPickUnitSelections } from "@/lib/db/queries/withdrawals";
+import { completeExactPick, selectPickUnit } from "@/lib/actions/withdrawals";
+import { CameraScanBridge } from "@/components/floor/CameraScanBridge";
 
 interface PageProps {
   params: Promise<{ pickListId: string }>;
   searchParams: Promise<{ result?: string; reason?: string }>;
 }
 
-export default async function PickExecutionPage({
-  params,
-  searchParams,
-}: PageProps) {
+const PICK_ERRORS: Record<string, string> = {
+  invalid_box_qr: "That is not a valid box QR or box ID.",
+  box_not_found: "This box is not registered in inventory. Receive or relabel it first.",
+  wrong_lot: "This box belongs to a different lot. Check the pick instruction.",
+  wrong_box_location: "This box is registered at another location. Scan a box from the location shown.",
+  duplicate_box_scan: "This exact box is already selected for this line.",
+  box_unavailable: "This box is unavailable or already selected for another pick.",
+  line_complete: "This location already has all required boxes selected.",
+  box_scans_incomplete: "Scan every required box before confirming the pick.",
+  invalid_status: "This pick list is no longer available for picking.",
+  unable_to_select_box: "The box could not be selected. Please try again.",
+  unable_to_complete_pick: "The pick could not be completed. Please try again.",
+};
+
+export default async function PickExecutionPage({ params, searchParams }: PageProps) {
   const { pickListId } = await params;
-  const { result, reason: reasonParam } = await searchParams;
-
+  const { result, reason } = await searchParams;
   const resolver = await createPageResolver();
+  const permission = await requirePermission(resolver, "pick_list.execute");
 
-  // Gate: pick_list.execute — floor staff / warehouse operator capability.
-  // Floor-style forbidden: dark navy surface, no redirect loop.
-  const permResult = await requirePermission(resolver, "pick_list.execute");
-  if (permResult.kind !== "authorized") {
-    // Surface: floor forbidden — dark navy, clear message, no sidebar.
+  if (permission.kind !== "authorized") {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-surface-white px-4">
+      <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 text-center">
         <p className="font-heading text-headline-md text-on-surface">Access denied</p>
-        <p className="mt-2 font-body text-body-md text-text-grey">
-          You do not have permission to execute pick lists.
-        </p>
-        <Link
-          href="/outgoing"
-          className="mt-6 inline-flex h-14 items-center gap-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
-        >
-          <ChevronLeft size={24} strokeWidth={2} aria-hidden="true" />
-          Return to Outgoing
+        <p className="mt-2 font-body text-body-md text-text-grey">You do not have permission to execute pick lists.</p>
+        <Link href="/outgoing" className="mt-6 inline-flex h-14 items-center gap-2 text-on-surface">
+          <ChevronLeft size={24} aria-hidden="true" /> Return to Outgoing
         </Link>
       </div>
     );
   }
 
   const pickList = await getPickList(db, pickListId);
-  if (!pickList) {
-    notFound();
+  if (!pickList) notFound();
+
+  const [lines, selections] = await Promise.all([
+    getPickListItems(db, pickListId),
+    getPickUnitSelections(db, pickListId),
+  ]);
+  const selectionsByLine = new Map<string, typeof selections>();
+  for (const selection of selections) {
+    if (!selection.pickListItemId) continue;
+    const existing = selectionsByLine.get(selection.pickListItemId) ?? [];
+    existing.push(selection);
+    selectionsByLine.set(selection.pickListItemId, existing);
   }
 
-  const lines = await getPickListItems(db, pickListId);
-
-  // Only allow picking when status is allocated.
   const isPickable = pickList.status === "allocated";
-  const alreadyAdvanced = pickList.status !== "allocated";
+  const activeLine = isPickable
+    ? lines.find((line) => (selectionsByLine.get(line.id)?.length ?? 0) < line.numberOfBoxes)
+    : undefined;
+  const completedLines = lines.filter(
+    (line) => (selectionsByLine.get(line.id)?.length ?? 0) === line.numberOfBoxes,
+  ).length;
+  const allComplete = lines.length > 0 && completedLines === lines.length;
 
-  const items = lines.map((line) => ({
-    ...line,
-    qtyPicked: alreadyAdvanced ? line.qty : 0,
-  }));
-
-  function getItemStatus(item: PickListItemRow & { qtyPicked: number }): "complete" | "pending" {
-    return item.qtyPicked >= item.qty ? "complete" : "pending";
-  }
-
-  const totalLines = items.length;
-
-  // Inline server action — marks pick complete (allocated → picked) and
-  // advances to dispatch. Calls the real markPickListPicked Server Action.
-  async function handleCompletePick(_formData: FormData): Promise<void> {
+  async function handleBoxScan(formData: FormData): Promise<void> {
     "use server";
     const actionResolver = await createPageResolver();
-    const pickResult = await markPickListPicked(
-      actionResolver,
-      pickListId,
-      lines.map((line) => line.id),
-    );
-    if (!pickResult.ok) {
-      redirect(
-        `/pick-lists/${pickListId}/pick?result=error&reason=${encodeURIComponent(pickResult.errors[0] ?? "complete_pick_failed")}`,
-      );
+    const lineId = String(formData.get("pickListItemId") ?? "");
+    const barcode = String(formData.get("barcode") ?? "");
+    const scanResult = await selectPickUnit(actionResolver, pickListId, lineId, barcode);
+    if (!scanResult.ok) {
+      redirect(`/pick-lists/${pickListId}/pick?result=error&reason=${encodeURIComponent(scanResult.errors[0] ?? "unable_to_select_box")}`);
+    }
+    redirect(`/pick-lists/${pickListId}/pick?result=scanned`);
+  }
+
+  async function handleCompletePick(): Promise<void> {
+    "use server";
+    const actionResolver = await createPageResolver();
+    const completeResult = await completeExactPick(actionResolver, pickListId);
+    if (!completeResult.ok) {
+      redirect(`/pick-lists/${pickListId}/pick?result=error&reason=${encodeURIComponent(completeResult.errors[0] ?? "unable_to_complete_pick")}`);
     }
     redirect(`/pick-lists/${pickListId}/dispatch`);
   }
 
   return (
-    // Floor screen: solid bg-brand-navy, no glassmorphism, 16px padding.
-    // brand-design-system.md §4: floor screens use 16px page padding.
-    // brand-design-system.md §6: floor — no backdrop-blur, solid surfaces.
-    <div className="flex min-h-screen flex-col bg-surface-white">
-
-      {/* ── Top bar (sticky) ──────────────────────────────────────────────── */}
-      {/* brand-design-system.md §3: top bar stays visible during scroll.     */}
-      <div className="sticky top-0 z-10 border-b border-outline-variant/30 bg-surface-white px-4 pb-2 pt-4">
-        <div className="flex items-center justify-between">
-          {/* Back link — h-14 (56px) floor touch target per §3 */}
-          <Link
-            href="/outgoing"
-            className="inline-flex h-14 items-center gap-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
-            aria-label="Back to Outgoing"
-          >
-            <ChevronLeft size={24} strokeWidth={2} aria-hidden="true" />
-            <span>Back</span>
+    <div className="mx-auto w-full max-w-5xl pb-28">
+      <header className="mb-5 flex flex-wrap items-center justify-between gap-4 border-b border-outline-variant/40 pb-5">
+        <div className="flex min-w-0 items-center gap-3">
+          <Link href="/outgoing" aria-label="Back to Outgoing" className="grid size-12 shrink-0 place-items-center rounded-xl border border-outline-variant/50 bg-surface-white text-on-surface shadow-elevation-1 transition-colors hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy">
+            <ChevronLeft size={24} aria-hidden="true" />
           </Link>
-          {/* Pick list reference — Roboto Mono per §2 */}
-          <span className="font-mono text-mono-lg text-on-surface">
-            {pickList.pickListNumber}
-          </span>
+          <div className="min-w-0">
+            <p className="font-mono text-body-md text-text-grey">{pickList.pickListNumber}</p>
+            <h1 className="font-heading text-headline-md font-bold text-on-surface">Pick exact boxes</h1>
+          </div>
         </div>
-        {/* Item progress — secondary label, text-white/70 ≥5.1:1 against navy */}
-        <p className="mt-1 pb-2 font-body text-body-md text-text-grey">
-          {totalLines} {totalLines === 1 ? "line" : "lines"} to pick
-        </p>
-        {/* Status warning if pick list is not in pickable state */}
-        {!isPickable && (
-          <div
-            role="alert"
-            className="mb-2 flex items-center gap-2 rounded-xl border border-status-pending/30 bg-status-pending/10 px-4 py-3"
-          >
-            <AlertTriangle
-              size={24}
-              strokeWidth={2}
-              aria-hidden="true"
-              className="shrink-0 text-status-pending"
-            />
-            {/* Icon + color per §1.3 floor color-blind rule */}
-            <p className="font-body text-body-md text-on-surface">
-              Pick list is not in allocated state — current status:{" "}
-              <span className="font-mono text-mono-lg">{pickList.status}</span>
+        <div className="rounded-xl border border-outline-variant/50 bg-surface-white px-4 py-3 shadow-elevation-1">
+          <p className="font-label text-body-md text-on-surface">{completedLines} / {lines.length} locations complete</p>
+        </div>
+      </header>
+
+      <div className="mb-5 rounded-2xl border border-brand-blue/25 bg-brand-blue/5 p-4">
+        <div className="flex gap-3">
+          <Boxes className="mt-0.5 shrink-0 text-brand-navy" size={24} aria-hidden="true" />
+          <div>
+            <p className="font-heading text-title-md font-bold text-on-surface">Pick by box and location</p>
+            <p className="mt-1 font-body text-body-md text-text-grey">
+              Go to the location shown, then scan the QR on the exact box you are taking. If one pallet is split across locations, each location appears as its own instruction and is deducted separately at dispatch.
             </p>
           </div>
-        )}
+        </div>
       </div>
 
-      {/* ── Items to pick (scrollable middle) ────────────────────────────── */}
-      {/* brand-design-system.md §9: floor tables are a fail case — card list */}
-      <div className="flex-1 overflow-y-auto px-4 py-2">
-        {totalLines === 0 && (
-          <div className="mb-3 rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-2">
-            <p className="font-body text-body-md text-text-grey">
-              No committed lines were found for this pick list.
-            </p>
-          </div>
-        )}
-        {items.map((item) => {
-          const status = getItemStatus(item);
+      {result === "error" && (
+        <div role="alert" className="mb-4 flex gap-3 rounded-xl border border-status-held/35 bg-status-held/10 p-4">
+          <AlertTriangle className="shrink-0 text-status-held" size={24} aria-hidden="true" />
+          <p className="font-body text-body-md text-on-surface">{PICK_ERRORS[reason ?? ""] ?? "The scan could not be accepted."}</p>
+        </div>
+      )}
+
+      <div className="space-y-4">
+        {lines.map((line, index) => {
+          const selected = selectionsByLine.get(line.id) ?? [];
+          const complete = selected.length === line.numberOfBoxes;
+          const current = activeLine?.id === line.id;
           return (
-            <div
-              key={item.id}
-              // Floor card: solid bg-white/10 over navy, no glassmorphism.
-              // Level 2 treatment per §6 floor card rule.
-              className="mb-3 rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-2"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  {/* Item code — Roboto Mono, bold, floor minimum 16px (mono-lg is 18px) */}
-                  <p className="font-mono text-mono-lg font-bold text-on-surface">
-                    {item.itemCode}
-                  </p>
-                  {/* Item name — Outfit Regular, floor minimum text-body-md (16px) */}
-                  <p className="mt-0.5 font-body text-body-md text-on-surface">
-                    {item.itemDescription ?? item.itemCode}
-                  </p>
-                  {/* Lot number — Roboto Mono, secondary text-white/70 */}
-                  <p className="mt-1 font-mono text-mono-lg text-text-grey">
-                    {item.lotNumber}
-                  </p>
-                  {/* Location — Outfit + MapPin icon per §1.3 floor icon rule */}
-                  <div className="mt-1 flex items-center gap-1.5">
-                    <MapPin
-                      size={24}
-                      strokeWidth={2}
-                      aria-hidden="true"
-                      className="shrink-0 text-text-grey"
-                    />
-                    <span className="font-body text-body-md text-text-grey">
-                      {item.locationLabel}
-                    </span>
+            <section key={line.id} className={`overflow-hidden rounded-2xl border bg-surface-white shadow-elevation-2 ${current ? "border-brand-navy" : "border-outline-variant/45"}`}>
+              <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="grid size-8 place-items-center rounded-lg bg-brand-navy font-label text-body-md text-surface-white">{index + 1}</span>
+                    <p className="font-mono text-mono-lg font-bold text-on-surface">{line.itemCode}</p>
+                    {complete && <CheckCircle2 className="text-status-available" size={24} aria-label="Complete" />}
                   </div>
-                  {/* Qty progress */}
-                  <div className="mt-2 flex items-center gap-2">
-                    <span className="font-mono text-mono-lg text-on-surface">
-                      Quantity to pick: {item.qty}
-                    </span>
-                    {/* Progress bar */}
-                    <div
-                      className="h-2 flex-1 rounded-full bg-surface-light-grey"
-                      role="progressbar"
-                      aria-valuenow={item.qtyPicked}
-                      aria-valuemin={0}
-                      aria-valuemax={item.qty}
-                      aria-label={`${item.itemCode} progress`}
-                    >
-                      <div
-                        className={`h-full rounded-full ${
-                          status === "complete"
-                            ? "bg-status-available"
-                            : "bg-status-neutral/30"
-                        }`}
-                        style={{
-                          width: `${Math.min(100, (item.qtyPicked / item.qty) * 100)}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
+                  <p className="mt-2 font-body text-body-md text-text-grey">{line.itemDescription ?? line.itemCode}</p>
+                  <p className="mt-1 font-mono text-body-md text-text-grey">Lot {line.lotNumber}</p>
                 </div>
-                {/* Status icon — color + icon per §1.3 floor color-blind rule */}
-                <div className="shrink-0 pt-1" aria-hidden="true">
-                  {status === "complete" ? (
-                    <CheckCircle2
-                      size={24}
-                      strokeWidth={2}
-                      className="text-status-available"
-                    />
-                  ) : (
-                    <Circle
-                      size={24}
-                      strokeWidth={2}
-                      className="text-status-neutral"
-                    />
-                  )}
+                <div className="rounded-xl bg-brand-navy px-4 py-3 text-surface-white shadow-elevation-1 sm:min-w-52">
+                  <p className="flex items-center gap-2 font-label text-body-md uppercase tracking-wide"><MapPin size={20} aria-hidden="true" /> Pick from</p>
+                  <p className="mt-1 font-mono text-title-lg font-bold">{line.locationLabel}</p>
                 </div>
               </div>
-            </div>
+
+              <div className="border-t border-outline-variant/40 bg-surface-light-grey/40 px-5 py-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-label text-body-md text-on-surface">Boxes selected: {selected.length} of {line.numberOfBoxes}</p>
+                  <p className="font-body text-body-md text-text-grey">Inventory quantity: {line.qty}</p>
+                </div>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-outline-variant/40">
+                  <div className={`h-full rounded-full ${complete ? "bg-status-available" : "bg-brand-blue"}`} style={{ width: `${Math.min(100, (selected.length / Math.max(1, line.numberOfBoxes)) * 100)}%` }} />
+                </div>
+                {selected.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {selected.map((box) => (
+                      <span key={box.unitId} className="rounded-lg border border-status-available/30 bg-status-available/10 px-3 py-1.5 font-mono text-body-md text-on-surface">
+                        Box {box.unitIndex} · {box.unitId.slice(0, 8)}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {current && (
+                <div className="border-t border-brand-navy/20 p-5">
+                  <div className="mb-3 flex items-center gap-2">
+                    <ScanLine size={24} className="text-brand-navy" aria-hidden="true" />
+                    <p className="font-heading text-title-md font-bold text-on-surface">Scan a box at {line.locationLabel}</p>
+                  </div>
+                  <form action={handleBoxScan} className="flex flex-col gap-3 sm:flex-row">
+                    <input type="hidden" name="pickListItemId" value={line.id} />
+                    <input name="barcode" required autoFocus autoComplete="off" placeholder="Scan QR or enter box ID" className="h-14 min-w-0 flex-1 rounded-xl border border-outline-variant bg-surface-white px-4 font-mono text-body-md text-on-surface outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20" />
+                    <button type="submit" className="h-14 rounded-xl bg-brand-navy px-6 font-label text-body-md text-surface-white shadow-elevation-1 transition-colors hover:bg-brand-navy/90">Add Box</button>
+                  </form>
+                  <div className="mt-3"><CameraScanBridge action={handleBoxScan} extraFields={{ pickListItemId: line.id }} /></div>
+                </div>
+              )}
+            </section>
           );
         })}
       </div>
 
-      {/* ── Sticky bottom — pick confirmation ───────────────────────────── */}
-      {isPickable && (
-        <div className="sticky bottom-0 border-t border-outline-variant/30 bg-surface-white px-4 pb-6 pt-4 shadow-elevation-2">
-          {result === "error" && (
-            <div
-              role="alert"
-              aria-live="assertive"
-              className="mb-3 flex items-center gap-2 rounded-xl bg-status-held/20 border border-status-held/40 px-4 py-3"
-            >
-              <AlertTriangle
-                size={24}
-                strokeWidth={2}
-                aria-hidden="true"
-                className="shrink-0 text-status-held"
-              />
-              <p className="font-body text-body-md text-on-surface">
-                Could not confirm this pick list: {reasonParam ?? "try again."}
-              </p>
-            </div>
-          )}
-
-          {totalLines > 0 ? (
-            <form action={handleCompletePick}>
-              {/* White on brand-red: 7.31:1 (AAA) — resolved 2026-08-12 by darkening brand-red to #9A3412; see brand-design-system.md §1.1. */}
-              <button
-                type="submit"
-                className="flex h-16 w-full items-center justify-center rounded-xl bg-primary font-label text-body-md uppercase tracking-wide text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
-              >
-                Confirm Pick
-              </button>
-            </form>
-          ) : (
-            /* No items are available to confirm. */
-            <button
-              type="button"
-              disabled
-              aria-disabled="true"
-              className="flex h-16 w-full cursor-not-allowed items-center justify-center rounded-xl bg-surface-light-grey font-label text-body-md uppercase tracking-wide text-status-neutral"
-            >
-              No Items to Confirm
+      {pickList.status === "picked" ? (
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-outline-variant/50 bg-surface-white p-4 shadow-elevation-2 lg:left-[288px] lg:right-6">
+          <Link href={`/pick-lists/${pickListId}/dispatch`} className="mx-auto flex h-16 max-w-5xl items-center justify-center rounded-xl bg-primary font-label text-body-md uppercase tracking-wide text-surface-white">Continue to Dispatch</Link>
+        </div>
+      ) : isPickable ? (
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-outline-variant/50 bg-surface-white p-4 shadow-elevation-2 lg:left-[288px] lg:right-6">
+          <form action={handleCompletePick} className="mx-auto max-w-5xl">
+            <button type="submit" disabled={!allComplete} className="flex h-16 w-full items-center justify-center rounded-xl bg-primary font-label text-body-md uppercase tracking-wide text-surface-white disabled:cursor-not-allowed disabled:bg-surface-light-grey disabled:text-status-neutral">
+              {allComplete ? "Confirm Exact Pick" : `Scan ${lines.reduce((sum, line) => sum + line.numberOfBoxes, 0) - selections.length} More Boxes`}
             </button>
-          )}
+          </form>
         </div>
-      )}
-
-      {/* Pick already completed for this list — wayfinding to Stage 2. */}
-      {pickList.status === "picked" && (
-        <div className="sticky bottom-0 border-t border-outline-variant/30 bg-surface-white px-4 pb-6 pt-4 shadow-elevation-2">
-          <Link
-            href={`/pick-lists/${pickListId}/dispatch`}
-            className="flex h-16 w-full items-center justify-center rounded-xl bg-primary font-label text-body-md uppercase tracking-wide text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
-          >
-            Continue to Dispatch
-          </Link>
-        </div>
-      )}
+      ) : null}
     </div>
   );
 }

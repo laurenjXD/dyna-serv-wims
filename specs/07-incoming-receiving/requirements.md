@@ -54,10 +54,10 @@ The Receiving page (`/receiving`) features 4 primary sub-tabs:
 
 1. Each carton scan matches against the expected item/line and barcode mapping.
 2. Immediate non-success 3-component error feedback (**What happened**, **Why it failed**, **Next Action / Solution**) is displayed on wrong item, unknown barcode, duplicate carton, or Inventory Model mismatch.
-3. For `store`-disposition lines, staff MAY use **batch putaway** after one accepted line barcode: the system displays one allocation slot per declared physical carton/pallet, without imposing a printed-label sequence. Staff assigns every slot to an active `storage` location before the line commit.
+3. For `store`-disposition lines, staff MAY use **batch putaway** after one accepted line barcode: the system displays one numbered allocation slot per declared physical carton/pallet. Staff assigns every slot to an active `storage` location before line commit; the numbered slot maps to the stable printed box identity for that WRR line.
 4. Each candidate storage location SHALL display current CBM used/capacity, remaining CBM, projected remaining CBM for the proposed allocation, and the item/lot quantities already stored there. A location that cannot fit its proposed allocation SHALL be blocked with a clear capacity error.
-5. Batch putaway SHALL require staff to explicitly attest that all declared physical cartons/pallets for the line are present. The total allocated quantity SHALL equal the line's expected quantity. A single accepted barcode opens allocation; it does not by itself claim that every unique carton label was scanned.
-6. The existing individual-label scan path remains available for operations that require unique-label reconciliation. Each printed QR remains a unique identifier; batch putaway does not alter QR payloads or ordering.
+5. Batch putaway SHALL require staff to explicitly attest that all declared physical cartons/pallets for the line are present. The total allocated quantity SHALL equal the line's expected quantity. A single accepted barcode opens allocation; the attestation confirms presence while each stable numbered identity retains its assigned location for later exact picking.
+6. The existing individual-label scan path remains available for operations that require every label to be scanned at receipt. Each printed QR remains a unique, stable identifier across reprints; batch putaway does not regenerate QR identity.
 7. For `inspect`-disposition lines, staff selects an active non-storage `inspection` location and explicitly uses **Hold All** after the same presence attestation. Storage-location capacity allocation is not used for this path.
 8. Each line's **Store All** or **Hold All** commit is an explicit, per-line server command.
 

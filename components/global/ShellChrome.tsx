@@ -448,7 +448,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
       <main
         id="main-content"
         data-surface={tier}
-        className={`min-h-screen pt-14 transition-[padding-left] duration-150 motion-reduce:transition-none lg:pr-6 lg:pt-[124px] ${
+        className={`min-h-screen pt-14 transition-[padding-left] duration-150 motion-reduce:transition-none lg:pr-6 lg:pt-[84px] ${
           isDesktopOpen ? "lg:pl-[312px]" : "lg:pl-6"
         } ${showFloorTabBar ? "pb-20" : "lg:pb-6"} ${
           tier === "floor" ? "bg-surface" : "bg-background"
@@ -457,8 +457,8 @@ export function ShellChrome({ children }: { children: ReactNode }) {
         <div
           className={
             tier === "floor"
-              ? "px-floor-padding py-6 lg:px-office-margin lg:py-8"
-              : "px-4 py-6 md:px-6 lg:px-office-margin lg:py-8"
+              ? "px-floor-padding py-5 lg:px-office-margin lg:py-6"
+              : "px-4 py-5 md:px-6 lg:px-office-margin lg:py-6"
           }
         >
           {children}

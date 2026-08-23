@@ -313,6 +313,28 @@ describe("createLocation — label uniqueness collision (R3.3, design.md §6a Cr
 });
 
 describe("createLocation — success (R3.1-R3.3, design.md §6a Create)", () => {
+  it("returns a recoverable error instead of crashing when the database rejects creation", async () => {
+    const db = {
+      select: vi.fn().mockReturnValue(makeSelectChain([])),
+      insert: vi.fn().mockReturnValue({
+        values: vi.fn().mockImplementation(() => {
+          throw Object.assign(new Error("permission denied"), { code: "42501" });
+        }),
+      }),
+    };
+
+    const result = await createLocation(
+      authorizedResolver(),
+      validLocationInput,
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      error: "Database access for creating locations is not configured. Ask an administrator to apply the latest database migration.",
+    });
+  });
+
   it("returns { ok: true, data: { id: string, label: string } } on a valid, unique authorized request", async () => {
     const db = {
       // select returns no collision (label is unique)

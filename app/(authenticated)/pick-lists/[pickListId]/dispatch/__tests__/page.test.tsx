@@ -50,10 +50,11 @@ describe("DispatchConfirmationPage (app/(authenticated)/pick-lists/[pickListId]/
     expect(mod.default.name.length).toBeGreaterThan(0);
   });
 
-  it("hides the scan input and camera after all lines are already verified", () => {
+  it("does not require a redundant dispatch scan after exact picking", () => {
     const source = pageSource();
-    expect(source).toContain("!allItemsScanned && (");
-    expect(source).toContain("Verification complete");
-    expect(source).toContain("Every pick-list line has been scanned. Confirm dispatch below.");
+    expect(source).not.toContain('name="barcode"');
+    expect(source).not.toContain("CameraScanBridge");
+    expect(source).toContain("Exact boxes were verified during picking");
+    expect(source).toContain("Confirm Dispatch");
   });
 });

@@ -8,6 +8,7 @@
 
 import { useMemo, useState } from "react";
 import QRCode from "react-qr-code";
+import { createWrrUnitPayload } from "@/lib/barcode/wrr-unit";
 
 export interface WRRUnitLabelGeneratorProps {
   wrrItemId: string;
@@ -19,7 +20,7 @@ export interface WRRUnitLabelGeneratorProps {
 
 interface UnitLabelData {
   unitIndex: number; // 1-indexed (e.g., Unit 1 of 5)
-  unitId: string; // crypto.randomUUID()
+  unitId: string; // Stable identity derived from WRR line + unit index
   payload: string; // JSON: {"type": "wrr_item_unit", "wrr_item_id": "...", "unit_id": "..."}
 }
 
@@ -38,17 +39,9 @@ export function WRRUnitLabelGenerator({
 
     const labels: UnitLabelData[] = [];
     for (let i = 1; i <= expectedQty; i++) {
-      // Standard crypto.randomUUID() or fallback for older browsers
-      const unitId =
-        typeof crypto !== "undefined" && crypto.randomUUID
-          ? crypto.randomUUID()
-          : `unit-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 9)}`;
-
-      const payload = JSON.stringify({
-        type: "wrr_item_unit",
-        wrr_item_id: wrrItemId,
-        unit_id: unitId,
-      });
+      const unitPayload = createWrrUnitPayload(wrrItemId, i);
+      const unitId = unitPayload.unit_id;
+      const payload = JSON.stringify(unitPayload);
 
       labels.push({
         unitIndex: i,
@@ -136,6 +129,9 @@ export function WRRUnitLabelGenerator({
                       </p>
                       <p className="font-mono text-mono-md font-bold text-on-surface">
                         {itemCode}
+                      </p>
+                      <p className="mt-1 font-heading text-body-md font-bold text-on-surface">
+                        Box {unit.unitIndex} of {expectedQty}
                       </p>
                     </div>
 

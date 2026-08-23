@@ -145,9 +145,9 @@ It does not decrement on-hand inventory or insert the final `pick` transaction. 
 
 ## 7. Stage 2 physical execution and dispatch transaction
 
-The floor flow reads the committed pick list and presents one expected scan task at a time. Each accepted scan is associated with the committed item/lot/location and quantity. Local scan observations may be stored as Tier 1 only after `03` approval; they are not final inventory outcomes.
+The floor flow reads the committed pick list and presents one expected location task at a time. Each accepted scan resolves a durable `inventory_units.unit_id` and is accepted only when that exact box is `available` and its lot/location match the current `pick_list_items` row. Acceptance marks the unit `selected` for that pick-list item; duplicate, wrong-lot, wrong-location, and already-selected boxes fail safely. When a lot is split across locations, its committed allocation already produces separate pick-list items, so the UI shows separate location cards and dispatch decrements each corresponding balance row. Local scan observations may be stored as Tier 1 only after `03` approval; they are not final inventory outcomes.
 
-After all pick/scan lines on a pick list are accepted, the floor user or supervisor proceeds directly to Stage 2 dispatch. The dispatch command receives the pick-list ID, expected version, accepted scan/quantity evidence, and idempotency key.
+After every line has exactly `number_of_boxes` selected physical units, the pick list transitions from `allocated` to `picked` and the floor user or supervisor proceeds directly to Stage 2 dispatch. Dispatch reuses this durable accepted evidence and does not ask for the same scan again. The dispatch command receives the pick-list ID and authoritative committed lines; browser-supplied line identifiers do not establish box identity.
 
 **`dispatch` disposition.** The final dispatch command rechecks:
 

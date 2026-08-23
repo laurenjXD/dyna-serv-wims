@@ -70,6 +70,7 @@ export function PutawayLocationSelector({
   return (
     <div className="flex flex-col gap-3">
       <input type="hidden" name="allocations" value={JSON.stringify(allocations)} />
+      <input type="hidden" name="unitLocationIds" value={JSON.stringify(locationsBySlot)} />
 
       <section className="rounded-xl border border-outline-variant/40 bg-surface-white p-4">
         <label htmlFor="all-boxes-location" className="font-label text-body-md text-on-surface">

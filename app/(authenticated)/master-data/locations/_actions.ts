@@ -14,9 +14,6 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
-import { db as _db } from "@/lib/db/client";
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const db = _db as unknown as { [key: string]: (...args: any[]) => any };
 import {
   createLocation,
   updateLocation,

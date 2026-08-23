@@ -55,9 +55,10 @@ The Outgoing page (`/outgoing`) features 2 primary sub-tabs:
 ### R3. Stage 2 physical pick & dispatch confirmation
 
 1. Picking executes at `/pick-lists/[id]/pick`; physical dispatch executes at `/pick-lists/[id]/dispatch`.
-2. Scans verify expected item, lot, location, and barcode. Wrong scans produce 3-component error feedback.
+2. Pick execution scans the QR of each exact physical box selected. The durable box identity MUST match the committed item/lot and the specific source location on that pick-list line; a box registered at another location or already selected for another pick is rejected with recoverable feedback.
 3. Final dispatch confirmation atomically decrements `qty_remaining`, releases `qty_committed`, writes an immutable `pick` transaction, and makes the priced **Delivery Receipt / Acknowledgement Receipt** available for print/download.
 4. The physical pallet is scanned once in the execution path. Dispatch SHALL reuse that accepted evidence and SHALL NOT ask the operator to scan the same pallet again.
+5. When one lot/pallet is stored across multiple locations, picking presents a separate instruction and box count for each committed location. Final dispatch decrements each corresponding `lot_location_balances` row; it MUST NOT choose an unidentified or random box from the lot.
 
 ### R4. Visual design & touch target enforcement
 

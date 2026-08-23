@@ -97,6 +97,7 @@ import {
   commitWithdrawal,
   requestFifoOverride,
   dispatchPickList,
+  selectPickUnit,
   listOutgoingLedger,
 } from "../withdrawals";
 import { mockRlsDeps } from "@/lib/db/__tests__/helpers/mock-rls";
@@ -160,6 +161,18 @@ const warehouseStaffResolver = () =>
 
 const unauthorizedResolver = () =>
   makeResolver({ kind: "authorized", context: unauthorizedContext });
+
+const pickerResolver = () =>
+  makeResolver({
+    kind: "authorized",
+    context: {
+      ...warehouseStaffContext,
+      grants: [
+        ...warehouseStaffContext.grants,
+        { resource: "pick_list", action: "execute", scopeKind: "global" },
+      ],
+    },
+  });
 
 // ---------------------------------------------------------------------------
 // DB mock helpers
@@ -560,6 +573,50 @@ describe("dispatchPickList — unauthorized (R7.5, R10.1, R10.2, design.md §7)"
   });
 });
 
+describe("selectPickUnit — exact physical box and location", () => {
+  const unitId = "12345678-1234-4abc-8def-000000000001";
+
+  it("rejects a real box registered at a different location", async () => {
+    const db = makeWithdrawalDb([], [
+      [{ id: "line-1", lotId: "lot-1", locationId: "loc-a", numberOfBoxes: 1, pickListStatus: "allocated" }],
+      [{ id: "unit-row-1", lotId: "lot-1", locationId: "loc-b", status: "available", pickListItemId: null }],
+    ]);
+
+    const result = await selectPickUnit(
+      pickerResolver(),
+      "pick-list-1",
+      "line-1",
+      unitId,
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result).toEqual({ ok: false, errors: ["wrong_box_location"] });
+    expect(db.update).not.toHaveBeenCalled();
+  });
+
+  it("selects the scanned box for the exact matching line", async () => {
+    const db = makeWithdrawalDb([], [
+      [{ id: "line-1", lotId: "lot-1", locationId: "loc-a", numberOfBoxes: 2, pickListStatus: "allocated" }],
+      [{ id: "unit-row-1", lotId: "lot-1", locationId: "loc-a", status: "available", pickListItemId: null }],
+      [{ id: "already-selected" }],
+    ]);
+
+    const result = await selectPickUnit(
+      pickerResolver(),
+      "pick-list-1",
+      "line-1",
+      unitId,
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result).toEqual({ ok: true, selectedCount: 2, requiredCount: 2 });
+    expect(db._updated).toContainEqual(expect.objectContaining({
+      status: "selected",
+      pickListItemId: "line-1",
+    }));
+  });
+});
+
 // ---------------------------------------------------------------------------
 // dispatchPickList — Pick list not found
 // (R7.5, design.md §7)
@@ -634,8 +691,8 @@ describe("dispatchPickList — already dispatched (R7.6, design.md §7)", () => 
 
 describe("dispatchPickList — success (R7.5, design.md §7)", () => {
   it("rejects dispatch when the committed lines have not all been scanned", async () => {
-    const allocated = pickListRow({ status: "allocated" });
-    const db = makeWithdrawalDb([allocated], [[allocated], [commitmentLineRow()]]);
+    const picked = pickListRow({ status: "picked" });
+    const db = makeWithdrawalDb([picked], [[picked], [commitmentLineRow()]]);
 
     const result = await dispatchPickList(
       supervisorResolver(),
@@ -649,9 +706,9 @@ describe("dispatchPickList — success (R7.5, design.md §7)", () => {
     expect(db.insert).not.toHaveBeenCalled();
   });
 
-  it("(AC: supervisor dispatches allocated pick list) returns { ok: true } when supervisor executes a pick list in allocated status", async () => {
-    const allocated = pickListRow({ status: "allocated" });
-    const db = makeWithdrawalDb([allocated], [[allocated], [commitmentLineRow()]]);
+  it("(AC: supervisor dispatches picked list) returns { ok: true } after exact picking", async () => {
+    const picked = pickListRow({ status: "picked" });
+    const db = makeWithdrawalDb([picked], [[picked], [commitmentLineRow()]]);
 
     const result = await dispatchPickList(
       supervisorResolver(),
@@ -663,9 +720,9 @@ describe("dispatchPickList — success (R7.5, design.md §7)", () => {
     expect(result.ok).toBe(true);
   });
 
-  it("(AC: warehouse_staff dispatches allocated pick list) returns { ok: true } for warehouse_staff with withdrawal.execute capability", async () => {
-    const allocated = pickListRow({ status: "allocated" });
-    const db = makeWithdrawalDb([allocated], [[allocated], [commitmentLineRow()]]);
+  it("(AC: warehouse_staff dispatches picked list) returns { ok: true } for warehouse_staff with execute capability", async () => {
+    const picked = pickListRow({ status: "picked" });
+    const db = makeWithdrawalDb([picked], [[picked], [commitmentLineRow()]]);
 
     const result = await dispatchPickList(
       warehouseStaffResolver(),

@@ -22,3 +22,4 @@ export * from "./approvals";
 export * from "./transfers";
 export * from "./documents";
 export * from "./notifications";
+export * from "./inventory_units";

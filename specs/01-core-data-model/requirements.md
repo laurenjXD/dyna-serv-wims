@@ -47,7 +47,7 @@ The `01` canonical `lot_history_export` read-model contract refreshes daily, ret
    - The database schema MUST NOT contain a `warehouse_id` column anywhere.
 
 2. **Entity Terminology**:
-   - Database tables MUST be named `parties`, `party_roles`, `items`, `item_categories`, `locations`, `lots`, `lot_location_balances`, `inventory_commitments`, `inventory_commitment_lines`, `wrr_documents`, `wrr_items`, `wrr_item_putaway_allocations`, `wrr_inspection_logs`, `forex_rates`, `inventory_transactions`, `pick_lists`, and `pick_list_items`. `lot_inventory_totals` is a derived read model, not a stored table. **Schema amendment (2026-08-06, not yet verified — see design.md §6)**: `wrr_advance_notices` is a new table added after this spec's original approval, originating from `22-parties-portal` R11's supplier-initiated barcode pre-labeling flow; it requires its own `db-migration-verifier` pass before implementation and does not inherit this spec's existing sign-off.
+   - Database tables MUST be named `parties`, `party_roles`, `items`, `item_categories`, `locations`, `lots`, `lot_location_balances`, `inventory_units`, `inventory_commitments`, `inventory_commitment_lines`, `wrr_documents`, `wrr_items`, `wrr_item_putaway_allocations`, `wrr_inspection_logs`, `forex_rates`, `inventory_transactions`, `pick_lists`, and `pick_list_items`. `inventory_units` is the durable physical-box identity/location layer and is not a quantity ledger; `lot_inventory_totals` is a derived read model, not a stored table. **Schema amendment (2026-08-06, not yet verified — see design.md §6)**: `wrr_advance_notices` is a new table added after this spec's original approval, originating from `22-parties-portal` R11's supplier-initiated barcode pre-labeling flow; it requires its own `db-migration-verifier` pass before implementation and does not inherit this spec's existing sign-off.
 
 3. **Party Role Set**:
    - `party_roles` MUST support `'vendor'`, `'supplier'`, `'customer'`, `'end_customer'`, and `'internal_warehouse'`.
@@ -91,6 +91,7 @@ The `01` canonical `lot_history_export` read-model contract refreshes daily, ret
    - Each balance row MUST store `qty_received`, `qty_remaining`, and `qty_committed`, enforce non-negative quantities, and enforce `qty_committed <= qty_remaining`.
    - `qty_available` MUST be derived as `qty_remaining - qty_committed` and MUST NOT be stored.
    - A batch-received WRR line MAY distribute one lot across multiple locations. `wrr_item_putaway_allocations` is a pre-commit plan, not a second inventory ledger; only its successful receipt commit creates authoritative `lot_location_balances` and immutable receiving transactions.
+   - Every received physical box SHALL have one stable `inventory_units.unit_id`, a 1-based source-line box index, and its exact current `location_id`. Reprinting the same WRR box label MUST retain the same identity. Picking selects these rows while authoritative quantities remain exclusively in `lot_location_balances`.
 
 15. **Durable Outbound Reservation**:
    - Stage 1 commitment MUST create `inventory_commitments` and `inventory_commitment_lines` linked to the committed `pick_list` and exact lot/location balance rows.
