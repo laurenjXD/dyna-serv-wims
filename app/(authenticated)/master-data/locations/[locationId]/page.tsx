@@ -7,7 +7,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db/client";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
-import { getLocation } from "@/lib/db/queries/locations";
+import { getLocation, getLocationInventory } from "@/lib/db/queries/locations";
 import { getLocationTransactionLedger } from "@/lib/db/queries/ledgers";
 import { DeactivateLocationSection } from "../_components/location-deactivate";
 
@@ -15,7 +15,7 @@ const LEDGER_PAGE_SIZE = 20;
 
 interface PageProps {
   params: Promise<{ locationId: string }>;
-  searchParams: Promise<{ ledgerPage?: string }>;
+  searchParams: Promise<{ ledgerPage?: string; view?: string }>;
 }
 
 export default async function LocationDetailPage({
@@ -23,7 +23,8 @@ export default async function LocationDetailPage({
   searchParams,
 }: PageProps) {
   const { locationId } = await params;
-  const { ledgerPage } = await searchParams;
+  const { ledgerPage, view } = await searchParams;
+  const activeView = view === "ledger" ? "ledger" : "inventory";
 
   const resolver = await createPageResolver();
 
@@ -37,11 +38,12 @@ export default async function LocationDetailPage({
     notFound();
   }
 
-  const [location, canManage] = await Promise.all([
+  const [location, canManage, inventory] = await Promise.all([
     getLocation(db, locationId),
     requirePermission(resolver, "locations.manage").then(
       (r) => r.kind === "authorized",
     ),
+    getLocationInventory(db, locationId),
   ]);
 
   if (!location) notFound();
@@ -58,6 +60,13 @@ export default async function LocationDetailPage({
     1,
     Math.ceil(ledger.total / LEDGER_PAGE_SIZE),
   );
+  const capacity = Number(location.maxCbmCapacity);
+  const utilization = capacity > 0 ? Math.min(100, (inventory.occupiedCbm / capacity) * 100) : 0;
+  const capacityTone = utilization >= 90
+    ? "bg-status-held"
+    : utilization >= 75
+      ? "bg-status-pending"
+      : "bg-status-available";
 
   return (
     <div className="mx-auto max-w-container">
@@ -164,6 +173,89 @@ export default async function LocationDetailPage({
         </dl>
       </div>
 
+      {/* Location views */}
+      <div className="mt-6 flex flex-wrap gap-2 border-b border-outline-variant/40" role="tablist" aria-label="Location views">
+        <Link
+          href={`/master-data/locations/${locationId}?view=inventory`}
+          role="tab"
+          aria-selected={activeView === "inventory"}
+          className={`inline-flex h-12 items-center gap-2 border-b-2 px-4 font-label text-body-md transition-colors ${activeView === "inventory" ? "border-brand-navy text-brand-navy" : "border-transparent text-text-grey hover:text-on-surface"}`}
+        >
+          Inventory View
+        </Link>
+        <Link
+          href={`/master-data/locations/${locationId}?view=ledger&ledgerPage=1`}
+          role="tab"
+          aria-selected={activeView === "ledger"}
+          className={`inline-flex h-12 items-center gap-2 border-b-2 px-4 font-label text-body-md transition-colors ${activeView === "ledger" ? "border-brand-navy text-brand-navy" : "border-transparent text-text-grey hover:text-on-surface"}`}
+        >
+          Movement Ledger
+        </Link>
+      </div>
+
+      {activeView === "inventory" && (
+        <section className="mt-6 space-y-4" aria-label="Stored inventory">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="rounded-xl border border-outline-variant/40 bg-surface-white p-5 shadow-elevation-1">
+              <p className="font-label text-label uppercase tracking-wide text-text-grey">Items stored</p>
+              <p className="mt-2 font-heading text-headline-lg font-bold text-on-surface">{inventory.itemCount}</p>
+              <p className="mt-1 font-body text-body-sm text-text-grey">Distinct item codes</p>
+            </div>
+            <div className="rounded-xl border border-outline-variant/40 bg-surface-white p-5 shadow-elevation-1">
+              <p className="font-label text-label uppercase tracking-wide text-text-grey">Units stored</p>
+              <p className="mt-2 font-heading text-headline-lg font-bold text-on-surface">{inventory.totalUnits.toLocaleString()}</p>
+              <p className="mt-1 font-body text-body-sm text-text-grey">Across {inventory.rows.length} lot{inventory.rows.length === 1 ? "" : "s"}</p>
+            </div>
+            <div className="rounded-xl border border-outline-variant/40 bg-surface-white p-5 shadow-elevation-1">
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-label text-label uppercase tracking-wide text-text-grey">Capacity used</p>
+                <span className="font-mono text-body-sm font-bold text-on-surface">{utilization.toFixed(0)}%</span>
+              </div>
+              <div className="mt-4 h-3 overflow-hidden rounded-full bg-surface-light-grey" role="progressbar" aria-label="Location capacity used" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(utilization)}>
+                <div className={`h-full rounded-full ${capacityTone}`} style={{ width: `${utilization}%` }} />
+              </div>
+              <p className="mt-2 font-body text-body-sm text-text-grey">{inventory.occupiedCbm.toFixed(2)} / {capacity.toFixed(2)} CBM</p>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-outline-variant/40 bg-surface-white p-6 shadow-elevation-1">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="font-heading font-semibold text-data-display text-on-surface">Items stored here</h2>
+                <p className="mt-1 font-body text-body-sm text-text-grey">Live stock grouped by item and lot.</p>
+              </div>
+              {utilization >= 90 && <span className="rounded-full bg-status-held/10 px-3 py-1 font-label text-label text-status-held">Nearly full</span>}
+            </div>
+            <div className="mt-4 overflow-x-auto">
+              {inventory.rows.length === 0 ? (
+                <p className="py-8 text-center font-body text-body-md text-text-grey">No inventory stored at this location.</p>
+              ) : (
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
+                      <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Item</th>
+                      <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Lot</th>
+                      <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">Units</th>
+                      <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">CBM</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-outline-variant/30">
+                    {inventory.rows.map((row) => (
+                      <tr key={`${row.itemId}-${row.lotNumber}`} className="hover:bg-surface-light-grey/50">
+                        <td className="px-4 py-3"><p className="font-mono text-mono-md font-bold text-on-surface">{row.itemCode}</p><p className="mt-0.5 font-body text-body-sm text-text-grey">{row.itemName}</p></td>
+                        <td className="px-4 py-3 font-mono text-mono-md text-on-surface">{row.lotNumber}</td>
+                        <td className="px-4 py-3 text-right font-mono text-mono-md text-on-surface">{row.qtyRemaining.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-right font-mono text-mono-md text-on-surface">{row.occupiedCbm.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Deactivation zone */}
       {canManage && location.isActive && (
         <div className="mt-6 rounded-xl bg-surface-white shadow-elevation-1 p-6">
@@ -181,7 +273,7 @@ export default async function LocationDetailPage({
       )}
 
       {/* Movement Ledger — design.md §6a Movement Ledger */}
-      <div className="mt-6 rounded-xl bg-surface-white shadow-elevation-1 p-6">
+      {activeView === "ledger" && <div className="mt-6 rounded-xl bg-surface-white shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Movement Ledger
         </h2>
@@ -259,7 +351,7 @@ export default async function LocationDetailPage({
             <div className="flex gap-2">
               {currentLedgerPage > 1 && (
                 <Link
-                  href={`/master-data/locations/${locationId}?ledgerPage=${currentLedgerPage - 1}`}
+                  href={`/master-data/locations/${locationId}?view=ledger&ledgerPage=${currentLedgerPage - 1}`}
                   className="flex h-11 items-center rounded border border-outline-variant/30 px-3 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 >
                   Previous
@@ -267,7 +359,7 @@ export default async function LocationDetailPage({
               )}
               {currentLedgerPage < totalLedgerPages && (
                 <Link
-                  href={`/master-data/locations/${locationId}?ledgerPage=${currentLedgerPage + 1}`}
+                  href={`/master-data/locations/${locationId}?view=ledger&ledgerPage=${currentLedgerPage + 1}`}
                   className="flex h-11 items-center rounded border border-outline-variant/30 px-3 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 >
                   Next
@@ -276,7 +368,7 @@ export default async function LocationDetailPage({
             </div>
           </nav>
         )}
-      </div>
+      </div>}
     </div>
   );
 }

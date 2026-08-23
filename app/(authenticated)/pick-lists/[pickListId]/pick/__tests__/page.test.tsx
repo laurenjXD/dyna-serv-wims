@@ -44,6 +44,9 @@ describe("PickExecutionPage (app/(authenticated)/pick-lists/[pickListId]/pick/pa
     const source = pageSource();
     expect(source).toContain("selectPickUnit");
     expect(source).toContain("Pick exact boxes");
+    expect(source).toContain("boxes picked");
+    expect(source).toContain("Box {box.unitIndex}");
+    expect(source).toContain("Pick one physical box at a time");
     expect(source).toContain("Scan QR or enter box ID");
     expect(source).toContain("line.locationLabel");
     expect(source).toContain("disabled={!allComplete}");

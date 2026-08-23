@@ -75,6 +75,8 @@ export default async function PickExecutionPage({ params, searchParams }: PagePr
   const completedLines = lines.filter(
     (line) => (selectionsByLine.get(line.id)?.length ?? 0) === line.numberOfBoxes,
   ).length;
+  const totalRequiredBoxes = lines.reduce((sum, line) => sum + line.numberOfBoxes, 0);
+  const selectedBoxCount = selections.length;
   const allComplete = lines.length > 0 && completedLines === lines.length;
 
   async function handleBoxScan(formData: FormData): Promise<void> {
@@ -112,7 +114,7 @@ export default async function PickExecutionPage({ params, searchParams }: PagePr
           </div>
         </div>
         <div className="rounded-xl border border-outline-variant/50 bg-surface-white px-4 py-3 shadow-elevation-1">
-          <p className="font-label text-body-md text-on-surface">{completedLines} / {lines.length} locations complete</p>
+          <p className="font-label text-body-md text-on-surface">{selectedBoxCount} / {totalRequiredBoxes} boxes picked</p>
         </div>
       </header>
 
@@ -122,7 +124,7 @@ export default async function PickExecutionPage({ params, searchParams }: PagePr
           <div>
             <p className="font-heading text-title-md font-bold text-on-surface">Pick by box and location</p>
             <p className="mt-1 font-body text-body-md text-text-grey">
-              Go to the location shown, then scan the QR on the exact box you are taking. If one pallet is split across locations, each location appears as its own instruction and is deducted separately at dispatch.
+              Pick one physical box at a time. Every box row identifies the box number, box ID, and its exact location. If boxes from one pallet are split across locations, each box keeps its own location and is deducted from that location at dispatch.
             </p>
           </div>
         </div>
@@ -138,6 +140,14 @@ export default async function PickExecutionPage({ params, searchParams }: PagePr
       <div className="space-y-4">
         {lines.map((line, index) => {
           const selected = selectionsByLine.get(line.id) ?? [];
+          const available = candidatesByLine.get(line.id) ?? [];
+          const selectedIds = new Set(selected.map((box) => box.unitId));
+          const boxTasks = [
+            ...selected.map((box) => ({ ...box, taskStatus: "selected" as const })),
+            ...available
+              .filter((box) => !selectedIds.has(box.unitId))
+              .map((box) => ({ ...box, taskStatus: "available" as const })),
+          ].sort((a, b) => a.unitIndex - b.unitIndex);
           const complete = selected.length === line.numberOfBoxes;
           const current = activeLine?.id === line.id;
           return (
@@ -153,8 +163,8 @@ export default async function PickExecutionPage({ params, searchParams }: PagePr
                   <p className="mt-1 font-mono text-body-md text-text-grey">Lot {line.lotNumber}</p>
                 </div>
                 <div className="rounded-xl bg-brand-navy px-4 py-3 text-surface-white shadow-elevation-1 sm:min-w-52">
-                  <p className="flex items-center gap-2 font-label text-body-md uppercase tracking-wide"><MapPin size={20} aria-hidden="true" /> Pick from</p>
-                  <p className="mt-1 font-mono text-title-lg font-bold">{line.locationLabel}</p>
+                  <p className="font-label text-body-md uppercase tracking-wide">{line.numberOfBoxes} box tasks</p>
+                  <p className="mt-1 font-mono text-body-md">{line.lotNumber}</p>
                 </div>
               </div>
 
@@ -166,22 +176,41 @@ export default async function PickExecutionPage({ params, searchParams }: PagePr
                 <div className="mt-3 h-2 overflow-hidden rounded-full bg-outline-variant/40">
                   <div className={`h-full rounded-full ${complete ? "bg-status-available" : "bg-brand-blue"}`} style={{ width: `${Math.min(100, (selected.length / Math.max(1, line.numberOfBoxes)) * 100)}%` }} />
                 </div>
-                {selected.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {selected.map((box) => (
-                      <span key={box.unitId} className="rounded-lg border border-status-available/30 bg-status-available/10 px-3 py-1.5 font-mono text-body-md text-on-surface">
-                        Box {box.unitIndex} · {box.unitId.slice(0, 8)}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  {boxTasks.map((box) => (
+                    box.taskStatus === "selected" ? (
+                      <div key={box.unitId} className="rounded-xl border border-status-available/35 bg-status-available/10 p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-label text-body-md text-on-surface">Box {box.unitIndex}</p>
+                          <CheckCircle2 size={20} className="text-status-available" aria-label="Picked" />
+                        </div>
+                        <p className="mt-1 font-mono text-body-sm text-text-grey">{box.unitId.slice(0, 12)}…</p>
+                        <p className="mt-2 flex items-center gap-1.5 font-body text-body-md text-on-surface"><MapPin size={18} aria-hidden="true" /> {line.locationLabel}</p>
+                      </div>
+                    ) : (
+                      <form key={box.unitId} action={handleBoxScan}>
+                        <input type="hidden" name="pickListItemId" value={line.id} />
+                        <input type="hidden" name="barcode" value={box.unitId} />
+                        <button type="submit" className="w-full rounded-xl border border-brand-navy/30 bg-surface-white p-3 text-left shadow-elevation-1 transition-colors hover:border-brand-navy hover:bg-brand-blue/5">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="font-label text-body-md text-on-surface">Box {box.unitIndex}</p>
+                            <span className="font-label text-body-sm text-brand-navy">Select</span>
+                          </div>
+                          <p className="mt-1 font-mono text-body-sm text-text-grey">{box.unitId.slice(0, 12)}…</p>
+                          <p className="mt-2 flex items-center gap-1.5 font-body text-body-md text-on-surface"><MapPin size={18} aria-hidden="true" /> {line.locationLabel}</p>
+                        </button>
+                      </form>
+                    )
+                  ))}
+                </div>
               </div>
 
               {current && (
                 <div className="border-t border-brand-navy/20 p-5">
                   <div className="mb-3 flex items-center gap-2">
                     <ScanLine size={24} className="text-brand-navy" aria-hidden="true" />
-                    <p className="font-heading text-title-md font-bold text-on-surface">Scan a box at {line.locationLabel}</p>
+                    <p className="font-heading text-title-md font-bold text-on-surface">Scan the next exact box</p>
+                    <p className="mt-1 font-body text-body-md text-text-grey">The box’s location must match the location shown on its box task below.</p>
                   </div>
                   <form action={handleBoxScan} className="flex flex-col gap-3 sm:flex-row">
                     <input type="hidden" name="pickListItemId" value={line.id} />
@@ -189,26 +218,7 @@ export default async function PickExecutionPage({ params, searchParams }: PagePr
                     <button type="submit" className="h-14 rounded-xl bg-brand-navy px-6 font-label text-body-md text-surface-white shadow-elevation-1 transition-colors hover:bg-brand-navy/90">Add Box</button>
                   </form>
                   <div className="mt-3"><CameraScanBridge action={handleBoxScan} extraFields={{ pickListItemId: line.id }} /></div>
-                  <div className="mt-5 border-t border-outline-variant/40 pt-4">
-                    <p className="font-label text-body-md text-on-surface">Or choose a registered box at this location</p>
-                    <p className="mt-1 font-body text-body-md text-text-grey">This uses the same lot and location checks as scanning. Select only the physical box you are taking.</p>
-                    {(candidatesByLine.get(line.id) ?? []).length > 0 ? (
-                      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                        {(candidatesByLine.get(line.id) ?? []).map((box) => (
-                          <form key={box.unitId} action={handleBoxScan}>
-                            <input type="hidden" name="pickListItemId" value={line.id} />
-                            <input type="hidden" name="barcode" value={box.unitId} />
-                            <button type="submit" className="w-full rounded-xl border border-outline-variant/50 bg-surface-white px-3 py-3 text-left shadow-elevation-1 transition-colors hover:border-brand-navy hover:bg-brand-blue/5">
-                              <span className="block font-label text-body-md text-on-surface">Box {box.unitIndex}</span>
-                              <span className="mt-1 block font-mono text-body-sm text-text-grey">{box.unitId.slice(0, 12)}…</span>
-                            </button>
-                          </form>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="mt-3 rounded-xl border border-status-held/30 bg-status-held/10 p-3 font-body text-body-md text-on-surface">No available registered boxes were found at this location. Apply the inventory-unit migration or relabel this receipt before picking.</p>
-                    )}
-                  </div>
+                  {(available.length === 0 && !complete) && <p className="mt-4 rounded-xl border border-status-held/30 bg-status-held/10 p-3 font-body text-body-md text-on-surface">No unpicked registered boxes are available for this box task. Apply the inventory-unit migration or relabel this receipt before picking.</p>}
                 </div>
               )}
             </section>
