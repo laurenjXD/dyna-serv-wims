@@ -284,6 +284,16 @@ describe(
       },
     );
 
+    it(
+      "AC R3.3-R3.5: one pallet QR is explicitly verified before batch locations are requested",
+      () => {
+        const source = pageSource();
+        expect(source).toContain("Scan one pallet QR to verify the boxes");
+        expect(source).toContain("Pallet QR verified");
+        expect(source).toContain("item.scannedQty >= 1 && !isCommitted");
+      },
+    );
+
     // ── Test 13 (added — design-system-auditor finding 2) ────────────────────
     // brand-design-system.md §9: status badges/pills use Epilogue SemiBold
     // (the `font-label` token), not Outfit body copy.

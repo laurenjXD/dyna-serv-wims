@@ -67,6 +67,18 @@ function getScanErrorMessage(reason: string): string {
 }
 
 function getCommitErrorMessage(reason: string): string {
+  if (reason.includes("presence_attestation_required")) {
+    return "Confirm that every declared box or pallet is physically present before storing.";
+  }
+  if (reason.includes("allocation_qty_must_equal_expected")) {
+    return "Assign a location to every declared box or pallet before storing.";
+  }
+  if (reason.includes("missing_location")) {
+    return "Choose a storage location for every declared box or pallet before storing.";
+  }
+  if (reason.includes("under-scanned")) {
+    return "Scan one QR from this pallet first, then assign its locations.";
+  }
   switch (reason) {
     case "forbidden":
       return "You do not have permission to confirm receipt for this line.";
@@ -425,7 +437,10 @@ export default async function ReceiveFloorPage({
           {wrr.items.map((item: WrrItemRow) => {
             const fullyScanned = item.scannedQty >= item.expectedQty;
             const isCommitted = item.committedAt !== null;
-            const readyToCommit = fullyScanned && !isCommitted;
+            // Batch putaway begins after one accepted physical QR. The final
+            // command still needs the attestation and a complete allocation;
+            // it is not an unverified shortcut around reconciliation.
+            const readyToCommit = item.scannedQty >= 1 && !isCommitted;
             const isPrimaryReady = primaryReadyLine !== null && item.id === primaryReadyLine.id;
 
             return (
@@ -473,7 +488,7 @@ export default async function ReceiveFloorPage({
                       &#10003;
                     </span>
                   ) : (
-                    fullyScanned && (
+                    (fullyScanned || readyToCommit) && (
                       <span
                         aria-label="Fully scanned"
                         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-status-pending text-surface-white font-heading font-bold text-data-display"
@@ -497,7 +512,7 @@ export default async function ReceiveFloorPage({
                       &#8595;
                     </span>
                     <p className="font-label text-body-md text-brand-navy">
-                      Ready to {item.disposition === "store" ? "store" : "hold"} — complete below
+                      QR verified — {item.disposition === "store" ? "assign locations" : "choose the inspection location"} below
                     </p>
                   </div>
                 )}
@@ -508,7 +523,7 @@ export default async function ReceiveFloorPage({
                       &#9679;
                     </span>
                     <p className="font-label text-body-md text-on-surface">
-                      Ready to {item.disposition === "store" ? "store" : "hold"} — complete the current line first
+                      QR verified — complete the current line first
                     </p>
                   </div>
                 )}
@@ -532,6 +547,14 @@ export default async function ReceiveFloorPage({
             <p className="font-mono text-mono-lg font-bold text-on-surface">
               {primaryReadyLine.lotNumber}
             </p>
+            <div className="rounded border-l-4 border-status-available bg-white px-3 py-3">
+              <p className="font-label text-body-md text-on-surface">
+                Pallet QR verified
+              </p>
+              <p className="mt-1 font-body text-body-md text-on-surface">
+                One QR from this pallet matched the expected item. Now assign all {primaryReadyLine.expectedQty} declared boxes before storing.
+              </p>
+            </div>
             {primaryReadyLine.disposition === "store" ? (
               <>
                 {primaryStoreCandidates.length > 0 ? (
@@ -561,7 +584,7 @@ export default async function ReceiveFloorPage({
                   disabled={primaryStoreCandidates.length === 0}
                   className="flex h-16 w-full items-center justify-center rounded bg-primary font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white disabled:opacity-50"
                 >
-                  Store All
+                  Store all {primaryReadyLine.expectedQty} boxes
                 </button>
               </>
             ) : (
@@ -631,8 +654,11 @@ export default async function ReceiveFloorPage({
               htmlFor="barcode-input"
               className="text-body-md font-body text-on-surface"
             >
-              Scan or enter barcode
+              Scan one pallet QR to verify the boxes
             </label>
+            <p className="font-body text-body-md text-text-grey">
+              Scan one QR from the pallet first. We will confirm the item before asking where its declared boxes should be stored.
+            </p>
             <div className="flex gap-2">
               <input
                 id="barcode-input"

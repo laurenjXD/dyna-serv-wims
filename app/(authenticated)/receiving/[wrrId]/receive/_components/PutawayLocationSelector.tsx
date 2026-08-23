@@ -27,7 +27,7 @@ export function PutawayLocationSelector({
   return (
     <div className="flex flex-col gap-3">
       <input type="hidden" name="allocations" value={JSON.stringify(allocations)} />
-      <p className="rounded border border-outline-variant/30 bg-surface-light-grey px-3 py-2 font-body text-body-md text-on-surface">One label opened placement for all {quantity} cartons/pallets. Assign each box; printed QR labels may be in any order.</p>
+      <p className="rounded border border-outline-variant/30 bg-surface-light-grey px-3 py-2 font-body text-body-md text-on-surface">The pallet QR has matched. Confirm every one of the {quantity} declared cartons/pallets is physically present, then assign each box. Printed QR labels may be in any order.</p>
       <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
         {locationsBySlot.map((locationId, index) => (
           <label key={index} className="grid grid-cols-[auto_1fr] items-center gap-3 rounded-lg border border-outline-variant/30 bg-surface-white p-3">
