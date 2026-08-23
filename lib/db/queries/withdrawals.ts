@@ -71,6 +71,13 @@ export type PickUnitSelectionRow = {
   status: string;
 };
 
+export type PickUnitCandidateRow = {
+  pickListItemId: string;
+  unitId: string;
+  unitIndex: number;
+  locationId: string;
+};
+
 export type OutgoingLedgerRow = {
   transactionId: string;
   createdAt: Date;
@@ -313,6 +320,33 @@ export async function getPickUnitSelections(
     .innerJoin(pickListItems, eq(pickListItems.id, inventoryUnits.pickListItemId))
     .where(eq(pickListItems.pickListId, pickListId))
     .orderBy(asc(inventoryUnits.unitIndex))) as PickUnitSelectionRow[];
+}
+
+/** Available physical boxes for each committed line, grouped by exact source location. */
+export async function getPickUnitCandidates(
+  db: DbLike,
+  pickListId: string,
+): Promise<PickUnitCandidateRow[]> {
+  return (await db
+    .select({
+      pickListItemId: pickListItems.id,
+      unitId: inventoryUnits.unitId,
+      unitIndex: inventoryUnits.unitIndex,
+      locationId: inventoryUnits.locationId,
+    })
+    .from(inventoryUnits)
+    .innerJoin(
+      pickListItems,
+      and(
+        eq(pickListItems.lotId, inventoryUnits.lotId),
+        eq(pickListItems.locationId, inventoryUnits.locationId),
+      ),
+    )
+    .where(and(
+      eq(pickListItems.pickListId, pickListId),
+      eq(inventoryUnits.status, "available"),
+    ))
+    .orderBy(asc(inventoryUnits.unitIndex))) as PickUnitCandidateRow[];
 }
 
 // ---------------------------------------------------------------------------

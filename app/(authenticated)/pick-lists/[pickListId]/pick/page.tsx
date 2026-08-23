@@ -4,7 +4,7 @@ import { AlertTriangle, Boxes, CheckCircle2, ChevronLeft, MapPin, ScanLine } fro
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
-import { getPickList, getPickListItems, getPickUnitSelections } from "@/lib/db/queries/withdrawals";
+import { getPickList, getPickListItems, getPickUnitCandidates, getPickUnitSelections } from "@/lib/db/queries/withdrawals";
 import { completeExactPick, selectPickUnit } from "@/lib/actions/withdrawals";
 import { CameraScanBridge } from "@/components/floor/CameraScanBridge";
 
@@ -48,9 +48,10 @@ export default async function PickExecutionPage({ params, searchParams }: PagePr
   const pickList = await getPickList(db, pickListId);
   if (!pickList) notFound();
 
-  const [lines, selections] = await Promise.all([
+  const [lines, selections, candidates] = await Promise.all([
     getPickListItems(db, pickListId),
     getPickUnitSelections(db, pickListId),
+    getPickUnitCandidates(db, pickListId),
   ]);
   const selectionsByLine = new Map<string, typeof selections>();
   for (const selection of selections) {
@@ -58,6 +59,13 @@ export default async function PickExecutionPage({ params, searchParams }: PagePr
     const existing = selectionsByLine.get(selection.pickListItemId) ?? [];
     existing.push(selection);
     selectionsByLine.set(selection.pickListItemId, existing);
+  }
+  const candidatesByLine = new Map<string, typeof candidates>();
+  for (const candidate of candidates) {
+    if (!candidate.pickListItemId) continue;
+    const existing = candidatesByLine.get(candidate.pickListItemId) ?? [];
+    existing.push(candidate);
+    candidatesByLine.set(candidate.pickListItemId, existing);
   }
 
   const isPickable = pickList.status === "allocated";
@@ -181,6 +189,26 @@ export default async function PickExecutionPage({ params, searchParams }: PagePr
                     <button type="submit" className="h-14 rounded-xl bg-brand-navy px-6 font-label text-body-md text-surface-white shadow-elevation-1 transition-colors hover:bg-brand-navy/90">Add Box</button>
                   </form>
                   <div className="mt-3"><CameraScanBridge action={handleBoxScan} extraFields={{ pickListItemId: line.id }} /></div>
+                  <div className="mt-5 border-t border-outline-variant/40 pt-4">
+                    <p className="font-label text-body-md text-on-surface">Or choose a registered box at this location</p>
+                    <p className="mt-1 font-body text-body-md text-text-grey">This uses the same lot and location checks as scanning. Select only the physical box you are taking.</p>
+                    {(candidatesByLine.get(line.id) ?? []).length > 0 ? (
+                      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                        {(candidatesByLine.get(line.id) ?? []).map((box) => (
+                          <form key={box.unitId} action={handleBoxScan}>
+                            <input type="hidden" name="pickListItemId" value={line.id} />
+                            <input type="hidden" name="barcode" value={box.unitId} />
+                            <button type="submit" className="w-full rounded-xl border border-outline-variant/50 bg-surface-white px-3 py-3 text-left shadow-elevation-1 transition-colors hover:border-brand-navy hover:bg-brand-blue/5">
+                              <span className="block font-label text-body-md text-on-surface">Box {box.unitIndex}</span>
+                              <span className="mt-1 block font-mono text-body-sm text-text-grey">{box.unitId.slice(0, 12)}…</span>
+                            </button>
+                          </form>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-3 rounded-xl border border-status-held/30 bg-status-held/10 p-3 font-body text-body-md text-on-surface">No available registered boxes were found at this location. Apply the inventory-unit migration or relabel this receipt before picking.</p>
+                    )}
+                  </div>
                 </div>
               )}
             </section>
