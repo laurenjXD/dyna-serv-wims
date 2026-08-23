@@ -1,7 +1,7 @@
 # Incoming Receiving — Requirements
 
 Status: Approved
-Updated: 2026-08-20
+Updated: 2026-08-23 — automatic WRR queue filtering and simplified page actions
 
 ## 1. Purpose and scope
 
@@ -66,6 +66,8 @@ The Receiving page (`/receiving`) features 4 primary sub-tabs:
 1. All protected actions use capability grants (`receiving.view`, `receiving.confirm`).
 2. Floor screens enforce 64px primary CTAs, 16px minimum font size, zero glassmorphism, Solid White (`#FFFFFF`) card surfaces on a cool blue-gray (`#F3F6FC`) canvas.
 3. All error states display 3-component error feedback (What, Why, Next Action).
+4. The WRR Work Queue status dropdown SHALL apply immediately when its value changes while preserving the selected value in the URL; it SHALL NOT require a separate visible Apply button.
+5. Receiving page headers SHALL omit redundant generic Filter actions when contextual filter controls already exist within the active tab.
 
 ## 5. Acceptance criteria
 
@@ -75,3 +77,4 @@ The Receiving page (`/receiving`) features 4 primary sub-tabs:
 - [ ] Per-line store/hold commits update distributed lot balances and incoming ledger atomically.
 - [ ] 3-component error feedback is displayed on all scan and receiving errors.
 - [ ] Visual design system tokens (#2563EB, #0F172A, #64748B, #F3F6FC, #FFFFFF) and DM Sans heading + Glacial Indifference body typography are fully applied.
+- [ ] WRR status changes refresh the server-filtered queue immediately without a separate Apply action.

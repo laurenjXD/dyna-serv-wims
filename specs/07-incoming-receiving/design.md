@@ -459,6 +459,8 @@ The Incoming Ledger is a server-side query/view over `inventory_transactions` fi
 
 **Reached via `/receiving`, not a separate route (updated 2026-08-09).** The Incoming Ledger is the "Ledger" tab on `receiving/page.tsx` (`?tab=ledger`), confirmed-only with no status filter shown, alongside the default "Work Queue" tab (all statuses, filterable) that was already `receiving/page.tsx`'s existing content. There is no standalone `/incoming-ledger` route — see §3's route block.
 
+The WRR queue status selector submits its server-query form immediately on selection. The selected status remains encoded in the URL for refresh, sharing, pagination, and authorized server-side filtering; there is no separate visible Apply control or redundant page-header Filter action.
+
 **Column list (added 2026-08-08)**, following the same field set and "Reference" column convention already established for `01-core-data-model`'s `location_transaction_ledger`/`party_transaction_ledger` (design.md §3 item 4), so all of this project's transaction-ledger surfaces read consistently:
 
 | Column | Source |

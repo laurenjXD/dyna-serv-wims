@@ -67,6 +67,10 @@ app/(authenticated)/
 
 The final route naming must align with `05` and `10`. The earlier desktop three-panel pattern (`search | cart | summary`) may remain an office request-builder enhancement, but it is not the floor baseline. Floor pick/dispatch uses a single-column, one-task-per-screen pattern at 375–430px with no persistent sidebar during active scanning.
 
+The `/outgoing` page header exposes only actions that have an immediate operational result. A generic Filter button is omitted unless a corresponding filter panel is implemented in the active view; contextual controls belong beside the queue or ledger they affect.
+
+The active work view separates lifecycle phases rather than interleaving them in one list. `status = 'allocated'` renders under **To Pick** with the Start Pick action; `status = 'picked'` renders under **To Dispatch** with the Dispatch action. Each section has an independent count and empty state. Blue/amber cues identify pending picking, while emerald readiness cues distinguish work that can leave the warehouse.
+
 ## 4. State and ownership model
 
 ```text

@@ -197,16 +197,16 @@ function GroupedSections({
   return (
     <>
       {sections.map((section) => (
-        <div key={section.group} className={compact ? "mb-2" : "mb-4"}>
+        <div key={section.group} className={compact ? "mb-1" : "mb-4"}>
           <div
             data-testid={`nav-group-${groupTestId(section.group)}`}
-            className={`${compact ? "px-2.5 pb-1 pt-2" : "px-3 pb-2 pt-3"} flex items-center gap-3 font-label font-bold uppercase tracking-[0.14em] text-text-secondary/70
+            className={`${compact ? "px-2.5 pb-0.5 pt-1.5" : "px-3 pb-2 pt-3"} flex items-center gap-3 font-label font-bold uppercase tracking-[0.14em] text-text-secondary/70
               ${floorText ? "text-mono-md" : "text-mono-sm"}`}
           >
             <span>{section.group}</span>
             <span aria-hidden="true" className="h-px flex-1 bg-border" />
           </div>
-          <div className="flex flex-col gap-1">
+          <div className={`flex flex-col ${compact ? "gap-0.5" : "gap-1"}`}>
             {section.entries.map((entry) => (
               <NavLink
                 key={entry.id}
@@ -357,7 +357,7 @@ export function ShellNavigation({
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-3 py-1.5">
           <GroupedSections sections={sections} activeId={activeId} tier={tier} compact />
         </div>
 

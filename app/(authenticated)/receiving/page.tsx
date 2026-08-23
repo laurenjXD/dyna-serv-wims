@@ -16,12 +16,13 @@
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Barcode, CheckCircle2, ClipboardList, Filter, Plus, Truck, Warehouse } from "lucide-react";
+import { Barcode, CheckCircle2, ClipboardList, Plus, Truck, Warehouse } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { findWrrDocumentByNumber, listWrrDocuments } from "@/lib/db/queries/receiving";
 import type { WrrDocumentRow } from "@/lib/db/queries/receiving";
+import { AutoSubmitSelect } from "./_components/AutoSubmitSelect";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -187,13 +188,6 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link
-            href="/receiving?tab=wrrs"
-            className="inline-flex h-12 items-center justify-center gap-2 rounded border border-outline-variant bg-surface-white px-4 font-label text-body-md font-bold text-on-surface shadow-elevation-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
-          >
-            <Filter size={18} aria-hidden="true" />
-            Filter
-          </Link>
           {canCreate && (
             <Link href="/receiving/new" className="inline-flex h-12 items-center justify-center gap-2 rounded bg-on-surface px-5 font-label text-body-md font-bold text-surface-white shadow-elevation-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy">
               <Plus size={19} aria-hidden="true" />
@@ -317,7 +311,7 @@ async function ReceiveTab({
           §9: floor tables are a fail case — card list is correct here. */}
       <div className="mt-4 space-y-3">
         {rows.length === 0 ? (
-          <div className="rounded border border-outline-variant bg-surface-white px-6 py-12 text-center shadow-elevation-1">
+          <div className="rounded-lg border border-outline-variant bg-surface-white px-6 py-12 text-center shadow-elevation-2">
             <ClipboardList className="mx-auto text-status-neutral" size={30} aria-hidden="true" />
             <p className="font-body text-body-md text-text-grey">
               No WRRs currently in progress.
@@ -330,7 +324,7 @@ async function ReceiveTab({
           rows.map((row: WrrDocumentRow) => (
             <article
               key={row.id}
-              className="rounded border border-outline-variant bg-surface-white p-4 shadow-elevation-1 transition-shadow hover:shadow-elevation-2"
+              className="rounded-lg border border-outline-variant bg-surface-white p-4 shadow-elevation-2 transition-[box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:shadow-elevation-2"
             >
               <div className="grid items-center gap-4 md:grid-cols-[auto_minmax(0,1fr)_auto_auto]">
                 <div className="flex h-12 w-12 items-center justify-center rounded bg-[#E4ECFF] text-brand-navy">
@@ -396,7 +390,7 @@ async function ReceiveTab({
       </section>
 
       <aside className="space-y-6">
-        <section className="rounded border border-outline-variant bg-surface-white p-5 shadow-elevation-1">
+        <section className="rounded-lg border border-outline-variant bg-surface-white p-5 shadow-elevation-2">
           <div className="flex items-center gap-2">
             <Warehouse size={24} className="text-brand-navy" aria-hidden="true" />
             <h2 className="font-heading text-headline-md font-bold text-on-surface">Queue Overview</h2>
@@ -420,7 +414,7 @@ async function ReceiveTab({
           </div>
         </section>
 
-        <section className="rounded border border-[#B9CAEF] bg-[#DCE8FF] p-5 shadow-elevation-1">
+        <section className="rounded-lg border border-[#B9CAEF] bg-[#DCE8FF] p-5 shadow-elevation-2">
           <div className="flex items-center gap-2">
             <Barcode size={25} className="text-brand-navy" aria-hidden="true" />
             <h2 className="font-heading text-headline-md font-bold text-on-surface">Quick Jump</h2>
@@ -496,10 +490,11 @@ async function WrrsTab({
               >
                 Status
               </label>
-              <select
+              <AutoSubmitSelect
                 id="wrrs-status-filter"
                 name="status"
                 defaultValue={statusFilter ?? ""}
+                aria-label="Filter WRRs by status"
                 className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
               >
                 {STATUS_FILTER_OPTIONS.map((opt) => (
@@ -507,14 +502,8 @@ async function WrrsTab({
                     {opt.label}
                   </option>
                 ))}
-              </select>
+              </AutoSubmitSelect>
             </div>
-            <button
-              type="submit"
-              className="flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            >
-              Apply
-            </button>
             {status && (
               <Link
                 href="/receiving?tab=wrrs"
@@ -537,7 +526,7 @@ async function WrrsTab({
       </div>
 
       {/* WRR table — Level 1 office elevation */}
-      <div className="mt-4 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-2 md:shadow-elevation-1">
+      <div className="mt-4 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-2">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="font-body text-body-md text-text-grey">
@@ -680,7 +669,7 @@ async function LedgerTab({ pageParam }: { pageParam?: string }) {
       </p>
 
       {/* Ledger table — Level 1 office elevation per brand-design-system.md §6 */}
-      <div className="mt-4 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-2 md:shadow-elevation-1">
+      <div className="mt-4 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-2">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="font-body text-body-md text-text-grey">

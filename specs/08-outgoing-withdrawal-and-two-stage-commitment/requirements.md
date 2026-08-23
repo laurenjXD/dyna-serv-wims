@@ -1,7 +1,7 @@
 # Outgoing Withdrawal & Two-Stage Commitment — Requirements
 
 Status: Approved
-Updated: 2026-08-23 (Pallet-selection approval and clean queue amendment)
+Updated: 2026-08-23 (Pallet-selection approval, clean queue, and simplified page actions amendment)
 
 ## 1. Purpose and scope
 
@@ -64,6 +64,8 @@ The Outgoing page (`/outgoing`) features 2 primary sub-tabs:
 1. Floor screens (`/pick-lists/[id]/pick`, `/pick-lists/[id]/dispatch`) enforce 64px full-width primary CTAs in the bottom third thumb zone, 56px default controls, 16px minimum font size, and zero glassmorphism.
 2. Shell navigation is strictly hidden during active scan loops.
 3. Surfaces use the cool blue-gray application canvas (`#F3F6FC`) and Level 1 Solid White (`#FFFFFF`) cards with `#2563EB` Vibrant Blue primary accents. Bold titles use DM Sans.
+4. The Outgoing page header SHALL omit a generic Filter button when the active view exposes no corresponding filter panel; only contextual, functioning controls SHALL be displayed.
+5. The active work surface SHALL present allocated documents in a distinct **To Pick** queue and picked documents in a distinct **To Dispatch** queue. Each queue SHALL retain its own count, empty state, status treatment, and phase-correct action.
 
 ## 5. Acceptance criteria
 
@@ -74,3 +76,5 @@ The Outgoing page (`/outgoing`) features 2 primary sub-tabs:
 - [ ] Visual design system rules (#2563EB, #0F172A, #64748B, #F3F6FC, #FFFFFF, DM Sans + Glacial typography, 64px floor CTAs) are fully satisfied.
 - [ ] Alternate-pallet requests cannot reserve stock until approved and can only generate the exact approved one-time allocation.
 - [ ] The operator scans the committed pallet once; dispatch does not repeat the same verification scan.
+- [ ] The Outgoing header contains no non-functional or redundant generic Filter action.
+- [ ] Allocated and picked documents are visually separated into To Pick and To Dispatch queues and cannot expose the wrong phase action.

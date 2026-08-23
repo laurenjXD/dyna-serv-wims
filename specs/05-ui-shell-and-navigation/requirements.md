@@ -62,6 +62,7 @@ A feature declares its surface when registering a route. The shell must not infe
 1. Office screens SHALL provide the approved desktop sidebar using a Solid White background, Deep Navy (`#0F172A`) active text, Slate (`#64748B`) inactive text, Vibrant Blue (`#2563EB`) active indicator, and real letter-mark logo asset (no diagonal-cut motif).
 1.1. The active destination SHALL combine a persistent blue indicator rail, selected icon treatment, stronger text weight, `aria-current="page"`, and a cool blue-gray selected surface. Desktop pointer hover SHALL provide a restrained background, icon, shadow, and horizontal-motion affordance while keyboard focus remains a distinct 2px blue ring.
 1.2. Navigation groups SHALL have clear visual separation, office rows SHALL be at least 44px high, and the desktop sidebar SHALL include a bounded signed-in identity summary without duplicating account authorization logic.
+1.3. At desktop breakpoints, the sidebar SHALL remain fixed to the viewport and SHALL NOT expose an independent vertical scrollbar; its brand, navigation, and identity regions SHALL use compact, deliberate spacing within the available shell height.
 2. Floor screens SHALL not reserve persistent desktop sidebar space by default.
 3. During an active scan-driven floor flow, navigation SHALL be completely hidden and replaced by a feature-owned flow header with only an exit/cancel action. Bottom tabs appear only between scan steps.
 4. Floor navigation SHALL remain fully functional in portrait at the 375–430px base breakpoint without horizontal scrolling.

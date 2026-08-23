@@ -82,6 +82,16 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
     expect(screen.queryByTestId("floor-tab-bar")).not.toBeInTheDocument();
   });
 
+  it("keeps the desktop sidebar navigation fixed without an internal scroll region", () => {
+    render(
+      <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" />,
+    );
+
+    const sidebar = screen.getByTestId("desktop-sidebar");
+    expect(sidebar).toHaveClass("lg:fixed");
+    expect(sidebar.querySelector(".overflow-y-auto")).toBeNull();
+  });
+
   it("renders the desktop sidebar (office composition) for tier='party', per design.md §3.3", () => {
     render(
       <ShellNavigation

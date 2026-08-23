@@ -268,13 +268,13 @@ export function ShellChrome({ children }: { children: ReactNode }) {
               {pageTitle}
             </p>
           </div>
-          <label className="mx-auto flex h-12 w-full max-w-[460px] items-center gap-3 rounded-full border border-border bg-background px-4 shadow-elevation-1 focus-within:ring-2 focus-within:ring-primary">
-            <Search size={20} aria-hidden="true" className="shrink-0 text-text-secondary" />
+          <label className="mx-auto flex h-11 w-full max-w-[420px] items-center gap-2.5 rounded-full border border-border bg-background px-3.5 shadow-elevation-1 focus-within:ring-2 focus-within:ring-primary">
+            <Search size={19} aria-hidden="true" className="shrink-0 text-text-secondary" />
             <input
               type="search"
               aria-label="Search"
               placeholder="Search inventory, organizations, documents…"
-              className="min-w-0 flex-1 border-0 bg-transparent p-0 font-body text-body-md text-text-primary outline-none placeholder:text-text-secondary"
+              className="min-w-0 flex-1 border-0 bg-transparent p-0 font-body text-body-sm text-text-primary outline-none placeholder:text-text-secondary"
             />
           </label>
           <div className="ml-auto flex min-w-0 items-center gap-5">
