@@ -659,7 +659,9 @@ export async function commitWrrLine(
   // transaction that can claim the null-to-timestamp transition may create
   // this line's inventory rows; retries observe the existing successful
   // result instead.
-  const rlsResult = await withRlsTransaction(rlsDeps, async (rlsTx) => {
+  let rlsResult: import("@/lib/db/rls-transaction").RlsTransactionResult<CommitWrrLineResult>;
+  try {
+    rlsResult = await withRlsTransaction(rlsDeps, async (rlsTx) => {
     const tx = rlsTx.db as DbLike;
     const doc = await fetchWrrForAction(tx, wrrId);
     if (doc === null) {
@@ -844,8 +846,21 @@ export async function commitWrrLine(
         ));
     }
 
-    return { ok: true } satisfies CommitWrrLineResult;
-  });
+      return { ok: true } satisfies CommitWrrLineResult;
+    });
+  } catch (error) {
+    // A failed insert/constraint/RLS check must not strand a warehouse worker
+    // on Next's generic application-error page. Keep the actual database
+    // error in server logs and return the operator to the receive screen with
+    // a recoverable result; the surrounding transaction has already rolled
+    // back, so no partial receipt is created.
+    console.error("Unable to commit receiving line", {
+      wrrId,
+      wrrItemId,
+      error,
+    });
+    return { ok: false, errors: ["commit_failed"] };
+  }
 
   if (rlsResult.kind === "unauthenticated") {
     return { ok: false, errors: ["forbidden"] };

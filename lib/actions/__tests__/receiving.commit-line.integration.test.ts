@@ -108,14 +108,12 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import postgres, { type Sql } from "postgres";
-import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import type {
   AuthorizationContext,
   AuthorizationResolution,
   RequestAuthorizationResolver,
 } from "@/lib/rbac/session";
 import type { RlsTransactionDeps } from "@/lib/db/rls-transaction";
-import * as schema from "@/lib/db/schema";
 
 const connectionString = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL ?? "";
 const hasLiveDb = connectionString.length > 0;
@@ -156,7 +154,6 @@ describe.skipIf(!hasLiveDb)(
   "commitWrrLine — real-Postgres per-line commit (design.md §9, requirements.md R7.1-R7.6 amended 2026-08-10)",
   () => {
     let sql: Sql;
-    let db: PostgresJsDatabase<typeof schema>;
 
     // Fixture IDs shared across a test via beforeEach setup helpers.
     let vendorPartyId: string;
@@ -202,6 +199,22 @@ describe.skipIf(!hasLiveDb)(
       // itself; vanilla Postgres needs a minimal stand-in for the migration
       // chain to apply at all. This test does not exercise its contents.
       await sql.unsafe(`CREATE TABLE IF NOT EXISTS auth.users (id uuid PRIMARY KEY)`);
+      // Migration 0030 configures a Supabase Storage bucket and policies.
+      // Storage is platform-owned in production, so provide only the two
+      // minimal relations/columns that its SQL references in this vanilla
+      // Postgres verification database.
+      await sql.unsafe(`CREATE SCHEMA IF NOT EXISTS storage`);
+      await sql.unsafe(`CREATE TABLE IF NOT EXISTS storage.buckets (
+        id text PRIMARY KEY,
+        name text NOT NULL,
+        public boolean NOT NULL DEFAULT false,
+        file_size_limit bigint,
+        allowed_mime_types text[]
+      )`);
+      await sql.unsafe(`CREATE TABLE IF NOT EXISTS storage.objects (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        bucket_id text NOT NULL
+      )`);
       await sql.unsafe(`DO $$ BEGIN
         IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
           CREATE ROLE authenticated;
@@ -225,15 +238,16 @@ describe.skipIf(!hasLiveDb)(
         }
       }
 
-      const client = postgres(connectionString, { prepare: false, max: 5 });
-      db = drizzle(client, { schema });
-
       // Real RBAC rows for confirmContext.userId so the actual RLS policies
       // (rbac_internal.has_permission) genuinely authorize commitWrrLine's
       // writes, not just the app-layer requirePermission mock resolver.
       // warehouse_staff already holds receiving.confirm per
       // 0005_rbac_constraints_and_seed.sql's role_permissions seed -- no new
       // grant needed, just linking this test's fixed userId to that role.
+      await sql`
+        INSERT INTO auth.users (id) VALUES (${confirmContext.userId})
+        ON CONFLICT (id) DO NOTHING
+      `;
       await sql`
         INSERT INTO user_profiles (id, display_name, status)
         VALUES (${confirmContext.userId}, 'Test Confirm User', 'active')
@@ -392,6 +406,46 @@ describe.skipIf(!hasLiveDb)(
       // Line B is untouched, so the WRR must NOT flip to confirmed yet.
       const wrrRow = await sql`SELECT status FROM wrr_documents WHERE id = ${wrrId}`;
       expect(wrrRow[0].status).toBe("receiving_in_progress");
+    });
+
+    it("(AC R3.3-R3.5) batch Store All accepts one verified pallet QR, requires the declared allocation, and commits every box across its selected locations", async () => {
+      const { commitWrrLine } = await import("../receiving");
+      const { wrrId, lineIds } = await createWrrFixture([
+        { lotNumber: "LOT-PALLET", expectedQty: 5, scannedQty: 1, disposition: "store" },
+      ]);
+
+      const result = await commitWrrLine(
+        authorizedConfirmResolver(),
+        wrrId,
+        lineIds[0],
+        {
+          allocations: [
+            { locationId: storageLocationId, qty: 2 },
+            { locationId: otherStorageLocationId, qty: 3 },
+          ],
+          presenceAttested: true,
+        },
+        await rlsDepsFor(confirmContext.userId),
+      );
+      expect(result.ok).toBe(true);
+
+      const itemRows = await sql`SELECT scanned_qty, committed_at FROM wrr_items WHERE id = ${lineIds[0]}`;
+      expect(itemRows[0].scanned_qty).toBe(5);
+      expect(itemRows[0].committed_at).not.toBeNull();
+
+      const allocationRows = await sql`
+        SELECT location_id, qty FROM wrr_item_putaway_allocations
+        WHERE wrr_item_id = ${lineIds[0]} ORDER BY qty
+      `;
+      expect(allocationRows).toHaveLength(2);
+      expect(allocationRows.map((row) => Number(row.qty))).toEqual([2, 3]);
+
+      const balanceRows = await sql`
+        SELECT qty_received FROM lot_location_balances
+        WHERE lot_id = (SELECT id FROM lots WHERE wrr_item_id = ${lineIds[0]})
+        ORDER BY qty_received
+      `;
+      expect(balanceRows.map((row) => Number(row.qty_received))).toEqual([2, 3]);
     });
 
     // -----------------------------------------------------------------

@@ -84,6 +84,8 @@ function getCommitErrorMessage(reason: string): string {
       return "You do not have permission to confirm receipt for this line.";
     case "not_found":
       return "This line could not be found.";
+    case "commit_failed":
+      return "The receipt could not be saved. Nothing was stored. Try again; if it continues, contact a supervisor with the WRR number.";
     default:
       return `Could not complete this line: ${reason}. Contact a supervisor if this persists.`;
   }
