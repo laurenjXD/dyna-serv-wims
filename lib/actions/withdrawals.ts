@@ -659,14 +659,48 @@ export async function selectPickUnit(
         ))
         .limit(1)) as AnyRecord[];
 
-      if (unitRows.length === 0) return { ok: false as const, errors: ["box_unavailable"] };
-      const unit = unitRows[0];
-      const updated = (await db
-        .update(inventoryUnits)
-        .set({ status: "selected", pickListItemId: line.id, updatedAt: new Date() })
-        .where(and(eq(inventoryUnits.id, unit.id), eq(inventoryUnits.status, "available")))
-        .returning({ id: inventoryUnits.id })) as AnyRecord[];
-      if (updated.length !== 1) return { ok: false as const, errors: ["box_unavailable"] };
+      if (unitRows.length > 0) {
+        const unit = unitRows[0];
+        const updated = (await db
+          .update(inventoryUnits)
+          .set({ status: "selected", pickListItemId: line.id, updatedAt: new Date() })
+          .where(and(eq(inventoryUnits.id, unit.id), eq(inventoryUnits.status, "available")))
+          .returning({ id: inventoryUnits.id })) as AnyRecord[];
+        if (updated.length !== 1) return { ok: false as const, errors: ["box_unavailable"] };
+      } else {
+        // Older aggregate receipts can have a confirmed lot balance but fewer
+        // internal unit rows than physical boxes. A shared QR still represents
+        // one committed box, so reconstruct the missing internal accounting
+        // row from the authoritative lot source rather than rejecting a valid
+        // scan. The reservation remains the stock authority.
+        const sourceRows = (await db
+          .select({
+            wrrItemId: lots.wrrItemId,
+            unitIndex: inventoryUnits.unitIndex,
+          })
+          .from(lots)
+          .leftJoin(inventoryUnits, eq(inventoryUnits.lotId, lots.id))
+          .where(eq(lots.id, line.lotId))) as Array<{
+          wrrItemId: string;
+          unitIndex: number | null;
+        }>;
+        const wrrItemId = sourceRows[0]?.wrrItemId;
+        if (!wrrItemId) return { ok: false as const, errors: ["box_unavailable"] };
+        const nextUnitIndex = Math.max(0, ...sourceRows.map((row) => row.unitIndex ?? 0)) + 1;
+        const reconstructed = (await db
+          .insert(inventoryUnits)
+          .values({
+            unitId: randomUUID(),
+            unitIndex: nextUnitIndex,
+            wrrItemId,
+            lotId: line.lotId,
+            locationId: line.locationId,
+            status: "selected",
+            pickListItemId: line.id,
+          })
+          .returning({ id: inventoryUnits.id })) as AnyRecord[];
+        if (reconstructed.length !== 1) return { ok: false as const, errors: ["box_unavailable"] };
+      }
 
       return {
         ok: true as const,

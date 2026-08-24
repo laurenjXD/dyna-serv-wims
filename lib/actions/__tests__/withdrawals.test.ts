@@ -660,6 +660,31 @@ describe("selectPickUnit — WRR-style shared QR dispatch counting", () => {
       pickListItemId: "line-2",
     }));
   });
+
+  it("counts a committed shared-QR box when a legacy lot is missing its internal unit row", async () => {
+    const db = makeWithdrawalDb([], [
+      [{ id: "line-1", itemCode: "ITEM-1", itemBarcode: "ITEM-1", lotId: "lot-1", lotNumber: "LOT-1", locationId: "loc-a", numberOfBoxes: 2, pickListStatus: "picked" }],
+      [{ id: "already-selected" }],
+      [],
+      [{ wrrItemId: "wrr-item-1", unitIndex: 1 }],
+    ]);
+
+    const result = await selectPickUnit(
+      pickerResolver(),
+      "pick-list-1",
+      sharedItemQr,
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result).toEqual({ ok: true, selectedCount: 2, requiredCount: 2 });
+    expect(db._inserted).toContainEqual(expect.objectContaining({
+      wrrItemId: "wrr-item-1",
+      lotId: "lot-1",
+      locationId: "loc-a",
+      status: "selected",
+      pickListItemId: "line-1",
+    }));
+  });
 });
 
 // ---------------------------------------------------------------------------
