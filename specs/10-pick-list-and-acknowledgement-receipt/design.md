@@ -1,7 +1,7 @@
 # Pick List & Acknowledgement Receipt — Design
 
 Status: Approved
-Updated: 2026-08-24 — Master Inventory-backed pick-list field contract
+Updated: 2026-08-25 — Multi-item pick-list draft and generation amendment
 
 ## 1. Design intent
 
@@ -74,6 +74,8 @@ Generation validates the event and reloads authoritative source data. A repeated
 ### 4.1 Pick list snapshot
 
 The pick list snapshot includes operational identity and instructions required by the floor: item code/description, barcode where approved, customer item code, canonical `lot_number`, source location, quantity/UOM, SPQ/boxes, flow, references, and price fields required by the settled document model.
+
+One snapshot may contain multiple item-code lines and, where stock is distributed, multiple source lot/location rows for an item. It carries one destination Organization and Inventory Model from the committed parent `pick_list`. The PDF table renders every committed row in the same order as the authoritative snapshot; it does not render or depend on the editable pre-commit draft.
 
 ### 4.2 Acknowledgement receipt snapshot
 

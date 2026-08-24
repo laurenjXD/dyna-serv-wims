@@ -1,7 +1,7 @@
 # Pick List & Delivery Receipt / Acknowledgement Receipt — Requirements
 
 Status: Approved
-Updated: 2026-08-24 — Master Inventory-backed pick-list field contract
+Updated: 2026-08-25 — Multi-item pick-list draft and generation amendment
 
 ## 1. Purpose and scope
 
@@ -11,6 +11,10 @@ This feature defines the content, generation, storage, printing, access, and lif
 - **`acknowledgement_receipt` (Delivery Receipt / Acknowledgement Receipt)** — a priced document generated in-system and printed for physical signature at handoff.
 
 Documents are generated synchronously inline from authoritative workflow snapshots; nightly background cleanup purges orphan transient artifacts. Document records (`generated_documents`) are retained **permanently via tiered retention** (3 years hot in Supabase, then archived off-platform with hash verification before removing the hot copy).
+
+### Multi-item pick-list source rule
+
+One generated pick list represents one committed outbound request for one Organization and Inventory Model, and may contain multiple item-code lines and multiple lot/location source lines. The pre-generation draft belongs to `08`'s Master Inventory Pick Lists tab and is not a document or inventory record. The PDF is generated only from the committed multi-line `pick_list` snapshot; it never authorizes or substitutes for the reservation command.
 
 ### Terminology Alignment
 Across all user-facing document screens, forms, headers, previews, and PDFs:

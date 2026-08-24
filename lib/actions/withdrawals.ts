@@ -388,6 +388,27 @@ export async function commitWithdrawal(
         throw new Error("unable_to_reserve_stock");
       }
 
+      // A Pick Lists-tab draft names the exact lot/location rows the operator
+      // reviewed. It may only commit those sources directly when they are the
+      // current FIFO/FEFO allocation; a different source remains an approval
+      // path and is never silently substituted or reserved.
+      const requestedBySource = new Map<string, number>();
+      for (const requestedLine of data.lines.filter((line) => line.itemId === itemId)) {
+        const key = `${requestedLine.lotId}:${requestedLine.locationId}`;
+        requestedBySource.set(key, (requestedBySource.get(key) ?? 0) + requestedLine.qty);
+      }
+      const allocatedBySource = new Map<string, number>();
+      for (const allocatedLine of allocation.lines) {
+        const key = `${allocatedLine.lotId}:${allocatedLine.locationId}`;
+        allocatedBySource.set(key, (allocatedBySource.get(key) ?? 0) + allocatedLine.qtyAllocated);
+      }
+      const sourceSelectionMatchesPlan =
+        requestedBySource.size === allocatedBySource.size &&
+        [...allocatedBySource.entries()].every(([key, qty]) => requestedBySource.get(key) === qty);
+      if (data.enforceSourceSelection && !sourceSelectionMatchesPlan) {
+        throw new Error("fifo_override_required");
+      }
+
       for (const allocatedLine of allocation.lines) {
         const source = rows.find(
           (row) =>
@@ -445,7 +466,10 @@ export async function commitWithdrawal(
           locationLabel: line.locationLabel,
           qty: line.qty,
           spq: line.spq,
-          numberOfBoxes: Math.ceil(line.qty / line.spq),
+          // Pick-list quantities are entered and reserved as physical boxes.
+          // SPQ describes pieces per box for display/reporting; it must not
+          // reduce the number of QR-labelled boxes required at dispatch.
+          numberOfBoxes: line.qty,
         })
         .returning();
       const pickListItemId = (insertedPickListItem as { id: string }).id;

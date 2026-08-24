@@ -25,6 +25,7 @@ export type ValidatedWithdrawal = {
   lines: ValidatedWithdrawalLine[];
   idempotencyKey?: string;
   approvalRequestId?: string;
+  enforceSourceSelection?: boolean;
 };
 
 export type WithdrawalValidationResult =
@@ -76,6 +77,13 @@ export function validateWithdrawal(input: unknown): WithdrawalValidationResult {
     errors.push("approvalRequestId must be a non-empty string when provided");
   }
 
+  if (
+    raw["enforceSourceSelection"] !== undefined &&
+    typeof raw["enforceSourceSelection"] !== "boolean"
+  ) {
+    errors.push("enforceSourceSelection must be a boolean when provided");
+  }
+
   // Validate lines
   const rawLines = raw["lines"];
   const validatedLines: ValidatedWithdrawalLine[] = [];
@@ -107,6 +115,9 @@ export function validateWithdrawal(input: unknown): WithdrawalValidationResult {
   }
   if (typeof raw["approvalRequestId"] === "string") {
     data.approvalRequestId = raw["approvalRequestId"].trim();
+  }
+  if (typeof raw["enforceSourceSelection"] === "boolean") {
+    data.enforceSourceSelection = raw["enforceSourceSelection"];
   }
 
   return { ok: true, data };

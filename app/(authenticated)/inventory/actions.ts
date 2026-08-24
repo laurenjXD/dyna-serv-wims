@@ -20,13 +20,13 @@ export async function createPickList(formData: FormData): Promise<void> {
     redirect(`/inventory?pickListError=${encodeURIComponent(result.errors.join(","))}`);
   }
 
-  // Refresh every queue that presents the committed pick list before
-  // navigating. The warehouse operator starts from Active Picks, then
-  // explicitly enters the floor scan flow for the selected list.
+  // Refresh the Master Inventory queue before returning to the Pick Lists tab.
+  // The generated document is linked from this committed queue; floor work
+  // starts only when the operator explicitly selects the list to pick.
   revalidatePath("/inventory");
   revalidatePath("/outgoing");
   revalidatePath("/pick-lists");
-  redirect("/outgoing");
+  redirect(`/inventory?tab=pick-lists&pickListCreated=${encodeURIComponent(result.pickListId)}`);
 }
 
 export async function requestPickListOverride(formData: FormData): Promise<void> {

@@ -33,7 +33,7 @@ import type { PickListRow } from "@/lib/db/queries/withdrawals";
 import { listInspectionAndTransferQueue } from "@/lib/db/queries/transfers";
 import { resolveInventoryTab, type TabKey } from "./_lib/resolveInventoryTab";
 import { InspectionTab } from "./_components/InspectionTab";
-import { PickListGenerator } from "./_components/PickListGenerator";
+import { MultiItemPickListDraft } from "./_components/MultiItemPickListDraft";
 import { LotQrViewer } from "./_components/LotQrViewer";
 import { createApprovedPickList, createPickList, requestPickListOverride } from "./actions";
 
@@ -68,11 +68,11 @@ const TABS: Array<{ key: TabKey; label: string }> = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 interface PageProps {
-  searchParams: Promise<{ tab?: string; q?: string; pickListError?: string; overrideRequested?: string }>;
+  searchParams: Promise<{ tab?: string; q?: string; pickListError?: string; overrideRequested?: string; pickListCreated?: string }>;
 }
 
 export default async function InventoryPage({ searchParams }: PageProps) {
-  const { tab: tabParam, q, pickListError, overrideRequested } = await searchParams;
+  const { tab: tabParam, q, pickListError, overrideRequested, pickListCreated } = await searchParams;
 
   const activeTab: TabKey = resolveInventoryTab(tabParam);
 
@@ -132,8 +132,8 @@ export default async function InventoryPage({ searchParams }: PageProps) {
       {pickListError && (
         <div role="alert" className="mt-4 rounded-lg border-l-4 border-status-held bg-surface-white p-4 shadow-elevation-1">
           <p className="font-heading text-body-md font-semibold text-on-surface">Pick list was not created</p>
-          <p className="mt-1 font-body text-body-md text-on-surface">{pickListError === "forbidden" ? "Your account does not have permission to generate pick lists." : `Reason: ${pickListError.replaceAll(",", ", ")}`}</p>
-          <p className="mt-1 font-body text-body-md text-text-grey">Check the destination organization and available quantity, then try again.</p>
+          <p className="mt-1 font-body text-body-md text-on-surface">{pickListError === "forbidden" ? "Your account does not have permission to generate pick lists." : pickListError === "fifo_override_required" ? "The selected location is not the current FIFO/FEFO source." : `Reason: ${pickListError.replaceAll(",", ", ")}`}</p>
+          <p className="mt-1 font-body text-body-md text-text-grey">{pickListError === "fifo_override_required" ? "Choose the recommended source location or submit the required FIFO/FEFO override request before generating the pick list." : "Check the destination organization and available quantity, then try again."}</p>
         </div>
       )}
 
@@ -147,7 +147,7 @@ export default async function InventoryPage({ searchParams }: PageProps) {
       {activeTab === "stock-view" ? (
         <StockViewTab query={q} requesterUserId={permResult.context.userId} />
       ) : activeTab === "pick-lists" ? (
-        <PickListsTab />
+        <PickListsTab createdPickListId={pickListCreated} />
       ) : (
         <InspectionTabSection />
       )}
@@ -217,16 +217,12 @@ async function StockViewTab({ query, requesterUserId }: { query?: string; reques
                   <p className="font-body text-body-md text-text-grey">
                     Lots are shown in {item.isPerishable ? "FEFO" : "FIFO"} order.
                   </p>
-                  <PickListGenerator
-                    itemId={item.itemId}
-                    flowType={item.flowType}
-                    organizationId={item.organizationId}
-                    strategy={item.isPerishable ? "FEFO" : "FIFO"}
-                    uom={item.uom}
-                    pallets={rows.filter((row) => row.itemId === item.itemId).map((row, index) => ({ balanceId: row.balanceId ?? `${row.lotId}:${row.locationId}`, lotId: row.lotId, lotNumber: row.lotNumber, locationId: row.locationId, locationLabel: row.locationLabel, availableQty: row.qtyRemaining - row.qtyCommitted, receivedAt: row.receivedAt.toISOString(), expiryDate: row.expiryDate, priority: index + 1 }))}
-                    createAction={createPickList}
-                    overrideAction={requestPickListOverride}
-                  />
+                  <Link
+                    href="/inventory?tab=pick-lists"
+                    className="inline-flex h-11 items-center gap-2 rounded bg-brand-navy px-4 font-label text-label font-bold text-surface-white shadow-elevation-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    Create Pick List
+                  </Link>
                 </div>
                 <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   {item.lots.map((lot) => (
@@ -400,13 +396,39 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
 
 // ─── Pick Lists tab ───────────────────────────────────────────────────────────
 
-async function PickListsTab() {
+async function PickListsTab({ createdPickListId }: { createdPickListId?: string }) {
   // Filter to allocated status — these are the pick lists ready for floor execution.
   // Dispatched pick lists are in the Outgoing Ledger on /outgoing.
-  const { rows } = await listPickLists(db, { limit: 50, offset: 0, status: "allocated" });
+  const [{ rows }, stockRows] = await Promise.all([
+    listPickLists(db, { limit: 50, offset: 0, status: "allocated" }),
+    listStockView(db),
+  ]);
 
   return (
-    <div className="mt-6 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+    <div className="mt-6 space-y-6">
+      {createdPickListId && <section role="status" className="rounded-lg border border-status-available/30 bg-status-available/10 p-4"><p className="font-heading text-body-md font-bold text-on-surface">Pick list generated</p><p className="mt-1 font-body text-body-sm text-text-grey">The committed list is now in the queue. Open its print view to save or print the table as a PDF.</p><div className="mt-3 flex flex-wrap gap-3"><Link href={`/pick-lists/${createdPickListId}/print`} className="inline-flex h-11 items-center rounded bg-primary px-4 font-label text-label font-bold text-surface-white">View / Print PDF</Link><Link href={`/pick-lists/${createdPickListId}/pick`} className="inline-flex h-11 items-center rounded border border-outline-variant bg-surface-white px-4 font-label text-label font-bold text-on-surface">Go to Pick</Link></div></section>}
+      <MultiItemPickListDraft
+        stock={stockRows.map((row, index) => ({
+          itemId: row.itemId,
+          itemCode: row.itemCode,
+          itemName: row.itemName,
+          customerItemCode: row.customerItemCode ?? null,
+          organizationId: row.organizationId ?? null,
+          organizationName: row.organizationName ?? null,
+          flowType: row.flowType,
+          uom: row.uom,
+          spq: row.spq ?? 1,
+          balanceId: row.balanceId ?? `${row.lotId}:${row.locationId}`,
+          lotId: row.lotId,
+          lotNumber: row.lotNumber,
+          locationId: row.locationId,
+          locationLabel: row.locationLabel,
+          availableQty: row.qtyRemaining - row.qtyCommitted,
+          priority: index + 1,
+        }))}
+        createAction={createPickList}
+      />
+    <div className="overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
       {rows.length === 0 ? (
         <div className="px-6 py-12 text-center">
           <p className="font-body text-body-md text-text-grey">
@@ -495,6 +517,7 @@ async function PickListsTab() {
         </div>
         </>
       )}
+    </div>
     </div>
   );
 }

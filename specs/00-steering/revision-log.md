@@ -2,6 +2,18 @@
 
 Every merge conflict and major revision, dated, with the resolution. This is the audit trail for "why does the spec say X" when X isn't obvious from the doc alone.
 
+## Multi-item Pick Lists-tab workflow (2026-08-25) — approved
+
+The Product Owner approved a change from direct, single-item Stock View generation to a table-like draft in Master Inventory's **Pick Lists** tab:
+
+- One draft belongs to exactly one destination Organization and one Inventory Model, but can contain many item-code rows.
+- Each row selects its authoritative lot/location source and quantity in boxes; item/customer codes, description, UOM, and SPQ are displayed from Master Inventory.
+- Editing the draft changes no inventory state. One **Generate Pick List** command validates and reserves every row atomically, producing one `pick_list` number and one committed multi-line snapshot.
+- The operational Pick List PDF is generated from that committed snapshot and becomes available for preview/download/print. It is never a source of reservation authority, and a document-rendering failure does not reverse a successful commitment.
+- The committed list enters **To Pick**; after its non-scan pick confirmation it enters **Dispatch**, where the per-box QR scan gate remains unchanged.
+
+This amends `08-outgoing-withdrawal-and-two-stage-commitment` and `10-pick-list-and-acknowledgement-receipt`. Both required approvals were granted in conversation on 2026-08-25; implementation is authorized.
+
 ## WRR-owned input and Master Inventory-backed pick-list fields (2026-08-24) — pending reapproval
 
 The Product Owner clarified the field ownership for the supplied Warehouse Receiving Report and Pick List templates.

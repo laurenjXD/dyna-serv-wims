@@ -1,7 +1,7 @@
 # Pick List & Acknowledgement Receipt — Implementation Plan
 
 Status: Approved
-Updated: 2026-08-24 — Master Inventory-backed pick-list field contract
+Updated: 2026-08-25 — Multi-item pick-list draft and generation amendment
 
 ## Implementation gate
 
@@ -91,6 +91,7 @@ Testing: Unit snapshot/price/template tests; integration dispatch-event/idempote
 Testing: Unit rendering/metadata tests; Storage integration; Playwright print/retry flows; manual printer QA.
 
 - [ ] Implement approved PDF/document renderer using only brand-system values and print-safe layout.
+- [ ] Render every committed item-code and source lot/location line for a multi-item pick list in the approved table layout, with one Organization and Inventory Model document header.
 - [ ] Validate artifact MIME, size, hash, page count, and required content before marking generated.
 - [ ] Upload to private Storage with server-generated path and source-authorized access.
 - [ ] Implement bounded idempotent retry and attention state for render/upload failures.
@@ -166,3 +167,5 @@ Testing: Full matrix below.
 - [x] Second approver approval — Name/Role: Lauren Date: 2026-08-05
 - [x] Master Inventory-backed pick-list field amendment approval — Product owner: Granted in conversation, 2026-08-24
 - [x] Master Inventory-backed pick-list field amendment approval — Second approver: Granted in conversation, 2026-08-24
+- [x] Multi-item Pick Lists-tab amendment approval — Product owner: Granted in conversation, 2026-08-25
+- [x] Multi-item Pick Lists-tab amendment approval — Second approver: Granted in conversation, 2026-08-25
