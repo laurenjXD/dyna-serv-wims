@@ -27,8 +27,8 @@
 //     withdrawal.request, withdrawal.execute, withdrawal.view
 //   specs/00-steering/tech.md — RBAC always from session, never client params.
 
-import { and, asc, eq, sql } from "drizzle-orm";
-import { createHash } from "node:crypto";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { createHash, randomUUID } from "node:crypto";
 import type { RequestAuthorizationResolver } from "@/lib/rbac/session";
 import { requirePermission } from "@/lib/rbac/guard";
 import { validateWithdrawal } from "@/lib/withdrawal/withdrawal-validator";
@@ -44,6 +44,9 @@ import {
 } from "@/lib/db/schema/commitments";
 import { inventoryTransactions } from "@/lib/db/schema/transactions";
 import { generatedDocuments } from "@/lib/db/schema/documents";
+import { approvalRequests } from "@/lib/db/schema/approvals";
+import { inventoryUnits } from "@/lib/db/schema/inventory_units";
+import { parseWrrUnitPayload } from "@/lib/barcode/wrr-unit";
 import {
   listOutgoingLedger as queryListOutgoingLedger,
   type OutgoingLedgerRow,
@@ -109,6 +112,10 @@ export type CommitWithdrawalResult =
   | { ok: true; pickListId: string }
   | { ok: false; errors: string[] };
 
+export type RequestFifoOverrideResult =
+  | { ok: true; requestId: string; requestNumber: string }
+  | { ok: false; errors: string[] };
+
 export type DispatchPickListResult =
   | { ok: true }
   | { ok: false; errors: string[] };
@@ -117,9 +124,133 @@ export type MarkPickListPickedResult =
   | { ok: true }
   | { ok: false; errors: string[] };
 
+export type SelectPickUnitResult =
+  | { ok: true; selectedCount: number; requiredCount: number }
+  | { ok: false; errors: string[] };
+
 export type ListOutgoingLedgerResult =
   | { rows: OutgoingLedgerRow[]; total: number }
   | { ok: false; errors: string[] };
+
+/**
+ * Creates a bounded FIFO/FEFO override request for one exact pallet/location.
+ * No stock is reserved here. A later Stage 1 command must consume an approved,
+ * unexpired decision and revalidate the balance version atomically.
+ */
+export async function requestFifoOverride(
+  resolver: RequestAuthorizationResolver,
+  input: unknown,
+  reason: string,
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+): Promise<RequestFifoOverrideResult> {
+  const permission = await requirePermission(resolver, "fifo_override.request");
+  if (permission.kind !== "authorized") return { ok: false, errors: ["forbidden"] };
+
+  const validation = validateWithdrawal(input);
+  if (!validation.ok) return { ok: false, errors: validation.errors };
+  const data = validation.data;
+  const trimmedReason = reason.trim();
+  if (trimmedReason.length < 10) return { ok: false, errors: ["override_reason_too_short"] };
+  if (data.lines.length !== 1) return { ok: false, errors: ["override_single_pallet_required"] };
+
+  try {
+    const result = await withRlsTransaction(rlsDeps, async (tx) => {
+      const database = tx.db as DbLike;
+      const requested = data.lines[0];
+      const rows = (await database
+        .select({
+          balanceId: lotLocationBalances.id,
+          allocationVersion: lotLocationBalances.version,
+          qtyRemaining: lotLocationBalances.qtyRemaining,
+          qtyCommitted: lotLocationBalances.qtyCommitted,
+          itemId: items.id,
+          itemCode: items.code,
+          defaultSupplierPartyId: items.defaultSupplierPartyId,
+          isPerishable: items.isPerishable,
+          lotId: lots.id,
+          lotNumber: lots.lotNumber,
+          lotStatus: lots.status,
+          lotFlowType: lots.flowType,
+          expiryDate: lots.expiryDate,
+          receivedAt: lots.createdAt,
+          locationId: locations.id,
+          locationLabel: locations.label,
+        })
+        .from(lotLocationBalances)
+        .innerJoin(lots, eq(lots.id, lotLocationBalances.lotId))
+        .innerJoin(items, eq(items.id, lots.itemId))
+        .innerJoin(locations, eq(locations.id, lotLocationBalances.locationId))
+        .where(and(
+          eq(lots.itemId, requested.itemId),
+          eq(lots.status, "available"),
+          eq(lots.flowType, data.flowType),
+          sql`${lotLocationBalances.qtyRemaining} - ${lotLocationBalances.qtyCommitted} > 0`,
+        ))) as AnyRecord[];
+
+      const selected = rows.find((row) =>
+        row.lotId === requested.lotId && row.locationId === requested.locationId,
+      );
+      if (!selected || selected.defaultSupplierPartyId !== data.partyId) {
+        throw new Error("unable_to_reserve_stock");
+      }
+      const available = selected.qtyRemaining - selected.qtyCommitted;
+      if (requested.qty > available) throw new Error("unable_to_reserve_stock");
+
+      const standard = allocate(rows.map((row) => ({
+        lotId: row.lotId,
+        locationId: row.locationId,
+        lotStatus: row.lotStatus,
+        qtyRemaining: row.qtyRemaining,
+        qtyCommitted: row.qtyCommitted,
+        receivedAt: row.receivedAt,
+        expiryDate: row.expiryDate ? new Date(`${row.expiryDate}T00:00:00.000Z`) : null,
+      })), requested.qty, selected.isPerishable);
+      if (!standard.ok) throw new Error("unable_to_reserve_stock");
+      if (standard.lines.length === 1 &&
+          standard.lines[0].lotId === requested.lotId &&
+          standard.lines[0].locationId === requested.locationId) {
+        throw new Error("override_not_required");
+      }
+
+      const now = new Date();
+      const [created] = await database.insert(approvalRequests).values({
+        idempotencyKey: data.idempotencyKey ?? randomUUID(),
+        approvalType: "fifo_override",
+        requestedAction: "override_fifo_allocation",
+        targetResourceType: "lot_location_balance",
+        targetResourceId: selected.balanceId,
+        targetSnapshot: {
+          item_id: selected.itemId,
+          item_code: selected.itemCode,
+          lot_id: selected.lotId,
+          lot_number: selected.lotNumber,
+          location_id: selected.locationId,
+          location_code: selected.locationLabel,
+          requested_qty: String(requested.qty),
+          available_qty_at_request: String(available),
+          flow_type: data.flowType,
+          actor_user_id: permission.context.userId,
+          reason: trimmedReason,
+          allocation_version: selected.allocationVersion,
+          requested_at: now.toISOString(),
+        },
+        partyId: data.partyId,
+        requesterUserId: permission.context.userId,
+        reason: trimmedReason,
+        expiryAt: new Date(now.getTime() + 30 * 60 * 1000),
+        sourceCommand: "requestFifoOverride",
+        sourceReference: selected.balanceId,
+      }).returning({ id: approvalRequests.id, requestNumber: approvalRequests.requestNumber });
+
+      return created as { id: string; requestNumber: string };
+    });
+    if (result.kind === "unauthenticated") return { ok: false, errors: ["forbidden"] };
+    return { ok: true, requestId: result.value.id, requestNumber: result.value.requestNumber };
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "override_request_failed";
+    return { ok: false, errors: [code] };
+  }
+}
 
 // ---------------------------------------------------------------------------
 // commitWithdrawal — Stage 1
@@ -178,6 +309,10 @@ export async function commitWithdrawal(
     // that will be reserved. Rebuild each item's FIFO/FEFO allocation against
     // the current authoritative balances inside this transaction.
     const verifiedLines: Array<AnyRecord> = [];
+    const overridePickListId = data.approvalRequestId ? randomUUID() : null;
+    if (data.approvalRequestId && data.lines.length !== 1) {
+      throw new Error("approval_mismatch");
+    }
     const requestedQtyByItem = new Map<string, number>();
     for (const line of data.lines) {
       requestedQtyByItem.set(
@@ -192,6 +327,7 @@ export async function commitWithdrawal(
           balanceId: lotLocationBalances.id,
           qtyRemaining: lotLocationBalances.qtyRemaining,
           qtyCommitted: lotLocationBalances.qtyCommitted,
+          allocationVersion: lotLocationBalances.version,
           itemId: items.id,
           itemCode: items.code,
           itemDescription: items.description,
@@ -234,6 +370,32 @@ export async function commitWithdrawal(
         throw new Error("provisional_item_code");
       }
 
+      if (data.approvalRequestId) {
+        const requestedLine = data.lines[0];
+        const selected = rows.find((row) =>
+          row.lotId === requestedLine.lotId && row.locationId === requestedLine.locationId,
+        );
+        if (!selected || requestedQty !== requestedLine.qty ||
+            selected.qtyRemaining - selected.qtyCommitted < requestedQty || !db.execute) {
+          throw new Error("approval_mismatch");
+        }
+
+        await db.execute(sql`
+          select public.consume_fifo_override_approval(
+            ${data.approvalRequestId}::uuid,
+            ${itemId}::uuid,
+            ${selected.lotId}::uuid,
+            ${selected.locationId}::uuid,
+            ${data.partyId}::uuid,
+            ${requestedQty}::integer,
+            ${data.flowType}::public.flow_type,
+            ${overridePickListId}::uuid
+          )
+        `);
+        verifiedLines.push({ ...selected, qty: requestedQty });
+        continue;
+      }
+
       const allocation = allocate(
         rows.map((row) => ({
           lotId: row.lotId,
@@ -269,6 +431,7 @@ export async function commitWithdrawal(
     const [insertedPickList] = await db
       .insert(pickLists)
       .values({
+        ...(overridePickListId ? { id: overridePickListId } : {}),
         pickListNumber,
         customerPartyId: data.partyId,
         flowType: data.flowType,
@@ -379,12 +542,20 @@ export async function commitWithdrawal(
     });
   } catch (error) {
     console.error("Pick-list reservation failed", error);
+    const message = error instanceof Error ? error.message : "";
+    const approvalError = [
+      "approval_unavailable",
+      "approval_mismatch",
+      "approval_stale",
+      "approval_consumed",
+      "approval_forbidden",
+    ].find((code) => message.includes(code));
     return {
       ok: false,
       errors: [
-        error instanceof Error && error.message === "provisional_item_code"
+        message === "provisional_item_code"
           ? "provisional_item_code"
-          : "unable_to_reserve_stock",
+          : approvalError ?? "unable_to_reserve_stock",
       ],
     };
   }
@@ -396,75 +567,171 @@ export async function commitWithdrawal(
 }
 
 // ---------------------------------------------------------------------------
+// Exact physical-box selection
+// ---------------------------------------------------------------------------
+
+function unitIdFromScan(rawBarcode: string): string | null {
+  const parsed = parseWrrUnitPayload(rawBarcode);
+  if (parsed) return parsed.unit_id;
+
+  const trimmed = rawBarcode.trim();
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed)
+    ? trimmed.toLowerCase()
+    : null;
+}
+
+/** Records one exact physical box scan for one exact lot/location dispatch line. */
+export async function selectPickUnit(
+  resolver: RequestAuthorizationResolver,
+  pickListId: string,
+  pickListItemId: string,
+  rawBarcode: string,
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+): Promise<SelectPickUnitResult> {
+  const perm = await requirePermission(resolver, "dispatch.execute");
+  if (perm.kind !== "authorized") return { ok: false, errors: ["forbidden"] };
+
+  const unitId = unitIdFromScan(rawBarcode);
+  if (!unitId) return { ok: false, errors: ["invalid_box_qr"] };
+
+  try {
+    const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+      const db = tx.db as DbLike;
+      const lineRows = (await db
+        .select({
+          id: pickListItems.id,
+          lotId: pickListItems.lotId,
+          locationId: pickListItems.locationId,
+          numberOfBoxes: pickListItems.numberOfBoxes,
+          pickListStatus: pickLists.status,
+        })
+        .from(pickListItems)
+        .innerJoin(pickLists, eq(pickLists.id, pickListItems.pickListId))
+        .where(and(eq(pickListItems.id, pickListItemId), eq(pickLists.id, pickListId)))
+        .limit(1)) as AnyRecord[];
+
+      if (lineRows.length === 0) return { ok: false as const, errors: ["line_not_found"] };
+      const line = lineRows[0];
+      if (line.pickListStatus !== "picked") {
+        return { ok: false as const, errors: ["invalid_status"] };
+      }
+
+      const unitRows = (await db
+        .select({
+          id: inventoryUnits.id,
+          lotId: inventoryUnits.lotId,
+          locationId: inventoryUnits.locationId,
+          status: inventoryUnits.status,
+          pickListItemId: inventoryUnits.pickListItemId,
+        })
+        .from(inventoryUnits)
+        .where(eq(inventoryUnits.unitId, unitId))
+        .limit(1)) as AnyRecord[];
+
+      if (unitRows.length === 0) return { ok: false as const, errors: ["box_not_found"] };
+      const unit = unitRows[0];
+      if (unit.lotId !== line.lotId) return { ok: false as const, errors: ["wrong_lot"] };
+      if (unit.locationId !== line.locationId) {
+        return { ok: false as const, errors: ["wrong_box_location"] };
+      }
+      if (unit.pickListItemId === pickListItemId && unit.status === "selected") {
+        return { ok: false as const, errors: ["duplicate_box_scan"] };
+      }
+      if (unit.status !== "available" || unit.pickListItemId) {
+        return { ok: false as const, errors: ["box_unavailable"] };
+      }
+
+      const selectedRows = (await db
+        .select({ id: inventoryUnits.id })
+        .from(inventoryUnits)
+        .where(and(
+          eq(inventoryUnits.pickListItemId, pickListItemId),
+          eq(inventoryUnits.status, "selected"),
+        ))) as AnyRecord[];
+      const requiredCount = Number(line.numberOfBoxes);
+      if (selectedRows.length >= requiredCount) {
+        return { ok: false as const, errors: ["line_complete"] };
+      }
+
+      const updated = (await db
+        .update(inventoryUnits)
+        .set({ status: "selected", pickListItemId, updatedAt: new Date() })
+        .where(and(eq(inventoryUnits.id, unit.id), eq(inventoryUnits.status, "available")))
+        .returning({ id: inventoryUnits.id })) as AnyRecord[];
+      if (updated.length !== 1) return { ok: false as const, errors: ["box_unavailable"] };
+
+      return {
+        ok: true as const,
+        selectedCount: selectedRows.length + 1,
+        requiredCount,
+      };
+    });
+
+    if (rlsResult.kind === "unauthenticated") return { ok: false, errors: ["forbidden"] };
+    return rlsResult.value;
+  } catch (error) {
+    console.error("Exact box selection failed", error);
+    return { ok: false, errors: ["unable_to_select_box"] };
+  }
+}
+
+/** Marks the non-scan physical staging step complete and advances to dispatch. */
+export async function completeExactPick(
+  resolver: RequestAuthorizationResolver,
+  pickListId: string,
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+): Promise<MarkPickListPickedResult> {
+  const perm = await requirePermission(resolver, "pick_list.execute");
+  if (perm.kind !== "authorized") return { ok: false, errors: ["forbidden"] };
+
+  try {
+    const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+      const db = tx.db as DbLike;
+      const headerRows = (await db
+        .select({ status: pickLists.status })
+        .from(pickLists)
+        .where(eq(pickLists.id, pickListId))
+        .limit(1)) as AnyRecord[];
+      if (headerRows.length === 0) return { ok: false as const, errors: ["not_found"] };
+      if (headerRows[0].status !== "allocated") {
+        return { ok: false as const, errors: ["invalid_status"] };
+      }
+
+      const lineRows = (await db
+        .select({ id: pickListItems.id })
+        .from(pickListItems)
+        .where(eq(pickListItems.pickListId, pickListId))) as Array<{ id: string }>;
+      if (lineRows.length === 0) return { ok: false as const, errors: ["no_pick_lines"] };
+
+      await db
+        .update(pickLists)
+        .set({ status: "picked", updatedAt: new Date() })
+        .where(and(eq(pickLists.id, pickListId), eq(pickLists.status, "allocated")));
+      return { ok: true as const };
+    });
+
+    if (rlsResult.kind === "unauthenticated") return { ok: false, errors: ["forbidden"] };
+    return rlsResult.value;
+  } catch (error) {
+    console.error("Exact pick completion failed", error);
+    return { ok: false, errors: ["unable_to_complete_pick"] };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // markPickListPicked — Stage 1 floor completion marker
 //
-// Transitions a pick_list from 'allocated' to 'picked' once the floor user
-// has confirmed all committed lines against the physical shelf. This is a
-// UX/tracking transition only — design.md §7 and dispatchPickList's own
-// idempotency guard intentionally do not require 'picked' as a precondition
-// for dispatch (R7.8: dispatch proceeds directly once scans are accepted),
-// so a pick list may still be dispatched directly from 'allocated'.
-//
-// Requires pick_list.execute capability (same gate as the floor pick page).
-// Returns { ok: false, errors: ['not_found'] } when the pick list is missing.
-// Returns { ok: false, errors: ['invalid_status'] } when not currently
-// 'allocated' (idempotency / stale-state guard).
+// Compatibility entry point for older callers. Browser-supplied line IDs do
+// not establish physical identity; scans are recorded later at dispatch.
 // ---------------------------------------------------------------------------
 
 export async function markPickListPicked(
   resolver: RequestAuthorizationResolver,
   pickListId: string,
-  confirmedPickListItemIds: string[],
+  _confirmedPickListItemIds: string[],
   rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<MarkPickListPickedResult> {
-  const perm = await requirePermission(resolver, "pick_list.execute");
-  if (perm.kind !== "authorized") {
-    return { ok: false, errors: ["forbidden"] };
-  }
-
-  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
-    const db = tx.db as DbLike;
-
-    const rows = (await db
-      .select({ id: pickLists.id, status: pickLists.status })
-      .from(pickLists)
-      .where(eq(pickLists.id, pickListId))
-      .limit(1)) as AnyRecord[];
-
-    if (rows.length === 0) {
-      return { ok: false as const, errors: ["not_found"] };
-    }
-
-    const current = rows[0];
-    if (current.status !== "allocated") {
-      return { ok: false as const, errors: ["invalid_status"] };
-    }
-
-    const lineRows = (await db
-      .select({ id: pickListItems.id })
-      .from(pickListItems)
-      .where(eq(pickListItems.pickListId, pickListId))) as Array<{ id: string }>;
-    const confirmed = new Set(confirmedPickListItemIds);
-    if (
-      lineRows.length === 0 ||
-      lineRows.some((line) => !confirmed.has(line.id)) ||
-      confirmed.size !== lineRows.length
-    ) {
-      return { ok: false as const, errors: ["scan_evidence_incomplete"] };
-    }
-
-    await db
-      .update(pickLists)
-      .set({ status: "picked", updatedAt: new Date() })
-      .where(eq(pickLists.id, pickListId));
-
-    return { ok: true as const };
-  });
-
-  if (rlsResult.kind === "unauthenticated") {
-    return { ok: false, errors: ["forbidden"] };
-  }
-  return rlsResult.value;
+  return completeExactPick(resolver, pickListId, rlsDeps);
 }
 
 // ---------------------------------------------------------------------------
@@ -543,6 +810,15 @@ export async function dispatchPickList(
       if (pickList.status === "dispatched") {
         return { ok: false as const, errors: ["already_dispatched"] };
       }
+      // fix-it-felix (exact-box picking, spec 08 R3.3 2026-08-24): dispatch
+      // may only proceed once the pick stage has been explicitly completed
+      // (markPickListPicked / completeExactPick transitions status to
+      // 'picked'), not merely "not yet dispatched" — this is what guarantees
+      // the exact-box-count check below is checking a state that was
+      // actually finalized, not a still-in-progress pick.
+      if (pickList.status !== "picked") {
+        return { ok: false as const, errors: ["pick_not_completed"] };
+      }
 
       // Step 4a: Load pick_list_items — one row per requested line, iterated
       // below per design.md §7's per-line "for each affected row" framing.
@@ -553,6 +829,7 @@ export async function dispatchPickList(
           lotId: pickListItems.lotId,
           locationId: pickListItems.locationId,
           qty: pickListItems.qty,
+          numberOfBoxes: pickListItems.numberOfBoxes,
         })
         .from(pickListItems)
         .where(eq(pickListItems.pickListId, pickListId))) as AnyRecord[];
@@ -659,6 +936,36 @@ export async function dispatchPickList(
         return { ok: false as const, errors: ["scan_evidence_incomplete"] };
       }
 
+      // Exact-box-count completeness (fix-it-felix, spec 08 R3.3 2026-08-24):
+      // scan evidence above confirms every LINE was addressed; this confirms
+      // the RIGHT NUMBER of specific physical boxes (durable inventory_units
+      // rows) was selected for each line during picking — a line with
+      // numberOfBoxes = 3 must have exactly 3 'selected' inventory_units rows
+      // pointing at its pick_list_item_id, no more, no fewer.
+      const selectedUnitRows = (await db
+        .select({ pickListItemId: inventoryUnits.pickListItemId })
+        .from(inventoryUnits)
+        .where(and(
+          inArray(inventoryUnits.pickListItemId, items.map((line) => line.id)),
+          eq(inventoryUnits.status, "selected"),
+        ))) as Array<{ pickListItemId: string | null }>;
+      const selectedCounts = new Map<string, number>();
+      for (const row of selectedUnitRows) {
+        if (row.pickListItemId) {
+          selectedCounts.set(
+            row.pickListItemId,
+            (selectedCounts.get(row.pickListItemId) ?? 0) + 1,
+          );
+        }
+      }
+      if (
+        items.some(
+          (line) => (selectedCounts.get(line.id) ?? 0) !== line.numberOfBoxes,
+        )
+      ) {
+        return { ok: false as const, errors: ["scan_evidence_incomplete"] };
+      }
+
       const insertedTransactions: AnyRecord[] = [];
 
       // Steps 1-3, 5 (design.md §7): for each pick_list_items line, atomically
@@ -761,6 +1068,19 @@ export async function dispatchPickList(
             updatedAt: new Date(),
           })
           .where(eq(inventoryCommitmentLines.id, commitLine.id));
+
+        // fix-it-felix (exact-box picking): the specific physical boxes
+        // selected for this line during picking are now physically leaving
+        // the warehouse — transition their durable inventory_units rows from
+        // 'selected' to 'dispatched', closing out the per-box lifecycle this
+        // same transaction's exact-box-count check above required.
+        await db
+          .update(inventoryUnits)
+          .set({ status: "dispatched", updatedAt: new Date() })
+          .where(and(
+            eq(inventoryUnits.pickListItemId, line.id),
+            eq(inventoryUnits.status, "selected"),
+          ));
 
         // Step 5: insert the immutable inventory_transactions pick row for
         // this line. pick_list_id is the symmetric link to the customer party

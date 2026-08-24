@@ -24,6 +24,7 @@ export type ValidatedWithdrawal = {
   flowType: "vmi" | "trading" | "supplies";
   lines: ValidatedWithdrawalLine[];
   idempotencyKey?: string;
+  approvalRequestId?: string;
 };
 
 export type WithdrawalValidationResult =
@@ -68,6 +69,13 @@ export function validateWithdrawal(input: unknown): WithdrawalValidationResult {
     errors.push("idempotencyKey must be a string when provided");
   }
 
+  if (
+    raw["approvalRequestId"] !== undefined &&
+    (typeof raw["approvalRequestId"] !== "string" || raw["approvalRequestId"].trim() === "")
+  ) {
+    errors.push("approvalRequestId must be a non-empty string when provided");
+  }
+
   // Validate lines
   const rawLines = raw["lines"];
   const validatedLines: ValidatedWithdrawalLine[] = [];
@@ -96,6 +104,9 @@ export function validateWithdrawal(input: unknown): WithdrawalValidationResult {
 
   if (typeof raw["idempotencyKey"] === "string") {
     data.idempotencyKey = raw["idempotencyKey"];
+  }
+  if (typeof raw["approvalRequestId"] === "string") {
+    data.approvalRequestId = raw["approvalRequestId"].trim();
   }
 
   return { ok: true, data };

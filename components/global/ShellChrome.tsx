@@ -457,8 +457,8 @@ export function ShellChrome({ children }: { children: ReactNode }) {
         <div
           className={
             tier === "floor"
-              ? "px-floor-padding py-6 lg:px-office-margin lg:py-8"
-              : "px-4 py-6 md:px-6 lg:px-office-margin lg:py-8"
+              ? "px-floor-padding py-5 lg:px-office-margin lg:py-6"
+              : "px-4 py-5 md:px-6 lg:px-office-margin lg:py-6"
           }
         >
           {children}

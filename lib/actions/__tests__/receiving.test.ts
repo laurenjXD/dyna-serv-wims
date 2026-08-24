@@ -177,13 +177,7 @@ function makeReceivingDb(
       const chain = makeSelectChain(allRows);
       chain.from.mockImplementation((table: Record<PropertyKey, unknown>) => {
         if (table[Symbol.for("drizzle:Name")] === "locations") {
-          // Active 'storage' location shape — extended 2026-08-20 (was just
-          // { id } before) so commitWrrLine's per-unit tests below can reach
-          // validateLineCommit's location branch instead of failing
-          // structurally on undefined isActive/locationType fields.
-          return makeSelectChain([
-            { id: "location-storage-uuid", isActive: true, locationType: "storage" },
-          ]);
+          return makeSelectChain([{ id: "location-storage-uuid" }]);
         }
         return chain;
       });
@@ -570,18 +564,8 @@ describe("recordScan — WRR document QR", () => {
 // ---------------------------------------------------------------------------
 
 describe("recordScan — valid scan (R3.1, R3.2, design.md §5.2, §6)", () => {
-  // AMENDED 2026-08-20: recordScan no longer writes wrr_items.scanned_qty at
-  // all (design.md §6.2/§9's per-unit re-scoping — scanned_qty now means
-  // "units committed so far", written only by commitWrrLine). These two
-  // tests previously asserted `db.update` WAS called after a matched scan;
-  // that assertion is the old whole-line-scan-then-batch-commit behavior
-  // this amendment supersedes, so it is updated (not deleted) to assert the
-  // opposite: a plain barcode match calls matchScan (unchanged) and returns
-  // its result, but writes nothing to wrr_items.
-  it("(AC design.md §6.2/§9 amended 2026-08-20, R3.10) returns { ok: true, remainingQty, disposition: 'store' } when barcode matches an in-progress WRR line, WITHOUT writing wrr_items.scanned_qty", async () => {
-    // Item has expectedQty=10, scannedQty=5 (now "5 units committed so far",
-    // not "5 scanned so far") — matchScan's own remainingQty arithmetic is
-    // unchanged; only the DB write after the match is removed.
+  it("(AC: scannedQty incremented, remainingQty returned) returns { ok: true, remainingQty, disposition: 'store' } when barcode matches an in-progress WRR line", async () => {
+    // Item has expectedQty=10, scannedQty=5 → after scan: scannedQty=6, remaining=4
     const item = wrrItemRow({
       barcode: "MATCH-BARCODE-001",
       expectedQty: 10,
@@ -602,17 +586,12 @@ describe("recordScan — valid scan (R3.1, R3.2, design.md §5.2, §6)", () => {
       expect(typeof result.remainingQty).toBe("number");
       expect(result.remainingQty).toBeGreaterThanOrEqual(0);
       expect(result.disposition).toBe("store");
-      // The floor page has no other durable signal for "which line was just
-      // matched" now that scanned_qty doesn't change at scan time — it must
-      // carry wrrItemId through the redirect to show that line's commit form.
-      expect(result.wrrItemId).toBe(item.id);
     }
-    // recordScan must NOT increment wrr_items.scanned_qty anymore — only
-    // commitWrrLine's per-unit commit writes to wrr_items now.
-    expect(db.update).not.toHaveBeenCalled();
+    // scannedQty must have been updated in the DB.
+    expect(db.update).toHaveBeenCalled();
   });
 
-  it("(AC design.md §6.2/§9 amended 2026-08-20) matches the enrolled item's registered barcode from the WRR item join WITHOUT writing wrr_items.scanned_qty", async () => {
+  it("matches the enrolled item's registered barcode from the WRR item join", async () => {
     const catalogBarcode = "QR-REGISTERED-ITEM-001";
     const wrr = wrrDocRow();
     const line = wrrItemRow({ barcode: undefined, itemCode: "SUPPLIER-PART-001" });
@@ -632,80 +611,7 @@ describe("recordScan — valid scan (R3.1, R3.2, design.md §5.2, §6)", () => {
     );
 
     expect(result.ok).toBe(true);
-    expect(db.update).not.toHaveBeenCalled();
-  });
-
-  it("(AC design.md §9's per-unit duplicate-label check, Spec 18 §2.2 — UNCHANGED) still writes wrr_item_unit_scans for a wrr_item_unit payload's unit_id on a successful match, while still never writing wrr_items", async () => {
-    const item = wrrItemRow({
-      id: "wrr-item-uuid-1",
-      expectedQty: 10,
-      scannedQty: 3,
-      disposition: "store",
-    });
-    const db = makeReceivingDb([wrrDocRow()], [item]);
-    const barcode = JSON.stringify({
-      type: "wrr_item_unit",
-      wrr_item_id: item.id,
-      unit_id: "UNIT-STICKER-001",
-    });
-
-    const result = await recordScan(
-      scanOnlyResolver(),
-      "wrr-uuid-existing",
-      barcode,
-      mockRlsDeps(db).deps,
-    );
-
-    expect(result.ok).toBe(true);
-    // The per-unit duplicate-label insert (Spec 18 §2.2) is explicitly
-    // unaffected by this amendment and must still happen...
-    expect(db.insert).toHaveBeenCalled();
-    // ...but wrr_items.scanned_qty must still never be touched by recordScan.
-    expect(db.update).not.toHaveBeenCalled();
-  });
-});
-
-describe("recordScan — inspect-disposition line UNCHANGED by 2026-08-20 amendment (R3.1, R3.2, design.md §6.3)", () => {
-  // Bug-fix RED test: the 2026-08-20 per-unit amendment removed recordScan's
-  // wrr_items.scanned_qty write, but design.md §6.3 is explicit that this
-  // removal applies only to store-disposition lines — inspect-disposition
-  // lines "are unchanged by the 2026-08-20 amendment" and are still
-  // committed as a whole line via commitInspectLine, gated on
-  // `scanned_qty >= expected_qty` exactly as before. commitInspectLine has
-  // never written wrr_items.scanned_qty itself — that has always been
-  // recordScan's job for inspect lines (R3.2's "system SHALL track scanned
-  // versus expected quantity per WRR line"). The current implementation
-  // wrongly removed the write unconditionally for both dispositions, so
-  // this line's scanned_qty can now never reach expected_qty through
-  // scanning, which breaks the Hold workflow entirely.
-  it("(AC R3.1, R3.2, design.md §6.3) calls db.update to increment wrr_items.scanned_qty by the matched scan quantity when barcode matches an inspect-disposition line", async () => {
-    const item = wrrItemRow({
-      id: "wrr-item-uuid-inspect-1",
-      barcode: "MATCH-BARCODE-INSPECT-001",
-      expectedQty: 10,
-      scannedQty: 5,
-      disposition: "inspect",
-    });
-    const db = makeReceivingDb([wrrDocRow()], [item]);
-
-    const result = await recordScan(
-      scanOnlyResolver(),
-      "wrr-uuid-existing",
-      "MATCH-BARCODE-INSPECT-001",
-      mockRlsDeps(db).deps,
-    );
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.disposition).toBe("inspect");
-    }
-    // Unlike store-disposition lines (amended 2026-08-20, see the "valid
-    // scan" describe block above, which correctly asserts db.update is NOT
-    // called there), an inspect-disposition line's scanned_qty is still
-    // written by recordScan itself — this is the pre-amendment behavior,
-    // explicitly preserved for inspect lines only by design.md §6.3.
-    expect(db.update).toHaveBeenCalledTimes(1);
-    expect(db._updated[0]).toMatchObject({ scannedQty: 6 });
+    expect(db.update).toHaveBeenCalled();
   });
 });
 
@@ -737,73 +643,6 @@ describe("recordScan — legacy multi-pallet QR", () => {
 // lib/actions/__tests__/receiving.commit-line.integration.test.ts, since its
 // conditional-UPDATE idempotency gate and per-line isolation are not
 // meaningfully verifiable against this file's hand-rolled DB mock.
-//
-// AMENDED 2026-08-20: two narrow, shape-level tests are added below for
-// commitWrrLine's per-unit store-line contract — deliberately narrow because
-// this file's generic single-shape select() mock cannot reliably simulate
-// the "does a lot already exist for this wrr_item_id yet" reuse-lookup a
-// per-unit commit needs for anything past a line's FIRST committed unit (see
-// design.md §9 step 3). Multi-unit sequencing, lot reuse, the
-// create-or-increment lot_location_balances write, the multi-location split
-// (§6.2b), and idempotent-retry-without-committed_at (§9's re-scoping) are
-// all real-Postgres-only concerns and live exclusively in
-// receiving.commit-line.integration.test.ts, per this file's own established
-// convention above.
-describe("commitWrrLine — per-unit store commit contract (design.md §9 amended 2026-08-20, requirements.md R7.3/R3.10)", () => {
-  it("(AC R7.3/R3.10 amended 2026-08-20) commits exactly ONE unit for a store line's first commit — posts qty=1 to lot_location_balances and inventory_transactions, not the line's full expectedQty/scannedQty", async () => {
-    const { commitWrrLine } = await import("../receiving");
-
-    // scannedQty=0: nothing committed yet on this line — its very first
-    // unit-commit. Under the CURRENT (pre-amendment) implementation this is
-    // rejected outright as under-scanned (old validateLineCommit requires
-    // scannedQty >= expectedQty before ANY commit), so this call is expected
-    // to fail today for that reason — no lot/balance/transaction row is
-    // ever inserted, and result.ok is false rather than true.
-    const item = wrrItemRow({ expectedQty: 10, scannedQty: 0, disposition: "store" });
-    const db = makeReceivingDb([wrrDocRow()], [item]);
-
-    const result = await commitWrrLine(
-      authorizedConfirmResolver(),
-      "wrr-uuid-existing",
-      item.id,
-      { locationId: "location-storage-uuid", idempotencyKey: "unit-commit-key-1" },
-      mockRlsDeps(db).deps,
-    );
-
-    expect(result.ok).toBe(true);
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const inserted = db._inserted as any[];
-    const balanceInsert = inserted.find((row) => "qtyReceived" in row);
-    const txnInsert = inserted.find((row) => "movementType" in row);
-    expect(balanceInsert?.qtyReceived).toBe(1);
-    expect(balanceInsert?.qtyRemaining).toBe(1);
-    expect(txnInsert?.qty).toBe(1);
-  });
-
-  it("(AC R7.5 amended 2026-08-20) rejects a store-disposition unit-commit call missing idempotencyKey, distinctly from validateLineCommit's ordinary errors", async () => {
-    const { commitWrrLine } = await import("../receiving");
-
-    const item = wrrItemRow({ expectedQty: 10, scannedQty: 5, disposition: "store" });
-    const db = makeReceivingDb([wrrDocRow()], [item]);
-
-    const result = await commitWrrLine(
-      authorizedConfirmResolver(),
-      "wrr-uuid-existing",
-      item.id,
-      // No idempotencyKey supplied — per design.md §9's re-scoped
-      // idempotency paragraph, each store unit-commit is scoped to its own
-      // idempotency key, not committed_at.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      { locationId: "location-storage-uuid" } as any,
-      mockRlsDeps(db).deps,
-    );
-
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.errors.some((e) => /idempotency/i.test(e))).toBe(true);
-  });
-});
 
 // ---------------------------------------------------------------------------
 // startReceiving — Authorization

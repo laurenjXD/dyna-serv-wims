@@ -22,7 +22,6 @@
 // the same redirect-with-searchParams pattern: `result=committed&line=ID` on
 // success, `result=commit_error&line=ID&reason=...` on failure.
 
-import { randomUUID } from "crypto";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
@@ -68,11 +67,25 @@ function getScanErrorMessage(reason: string): string {
 }
 
 function getCommitErrorMessage(reason: string): string {
+  if (reason.includes("presence_attestation_required")) {
+    return "Confirm that every declared box or pallet is physically present before storing.";
+  }
+  if (reason.includes("allocation_qty_must_equal_expected")) {
+    return "Assign a location to every declared box or pallet before storing.";
+  }
+  if (reason.includes("missing_location")) {
+    return "Choose a storage location for every declared box or pallet before storing.";
+  }
+  if (reason.includes("under-scanned")) {
+    return "Scan one QR from this pallet first, then assign its locations.";
+  }
   switch (reason) {
     case "forbidden":
       return "You do not have permission to confirm receipt for this line.";
     case "not_found":
       return "This line could not be found.";
+    case "commit_failed":
+      return "The receipt could not be saved. Nothing was stored. Try again; if it continues, contact a supervisor with the WRR number.";
     default:
       return `Could not complete this line: ${reason}. Contact a supervisor if this persists.`;
   }
@@ -88,7 +101,6 @@ interface PageProps {
     disposition?: string;
     reason?: string;
     line?: string;
-    wrrItemId?: string;
   }>;
 }
 
@@ -103,7 +115,6 @@ export default async function ReceiveFloorPage({
     disposition: dispositionParam,
     reason: reasonParam,
     line: lineParam,
-    wrrItemId: wrrItemIdParam,
   } = await searchParams;
 
   const resolver = await createPageResolver();
@@ -143,46 +154,36 @@ export default async function ReceiveFloorPage({
   ).length;
   const allLinesScanned = totalLines > 0 && fullyScannedLines === totalLines;
 
-  // Lines that are fully scanned but not yet committed need their commit UI.
-  // Kept as a fallback signal (§6.3 inspect lines are unaffected by the
-  // 2026-08-20 per-unit amendment and still rely on this whole-line gate).
+  // One accepted label may open batch placement for a whole declared line.
   const readyLines = wrr.items.filter(
     (item: WrrItemRow) =>
-      item.scannedQty >= item.expectedQty && item.committedAt === null
+      item.scannedQty >= 1 && item.committedAt === null
   );
-  // Amended 2026-08-20 (design.md §6.2/§9): recordScan no longer writes
-  // wrr_items.scannedQty at scan time, so the whole-line scannedQty >=
-  // expectedQty gate above no longer fires per-unit for a store-disposition
-  // line. The just-scanned line's id comes back through the wrrItemId
-  // search param (Test 16's redirect) instead — resolve it against the
-  // current WRR items, guarded by committedAt === null so a stale/replayed
-  // URL param can never resurrect a commit form for an already-fully-
-  // committed line.
-  const primaryReadyLine: WrrItemRow | null =
-    (wrrItemIdParam
-      ? wrr.items.find(
-          (item: WrrItemRow) => item.id === wrrItemIdParam && item.committedAt === null
-        )
-      : undefined) ?? (readyLines.length > 0 ? readyLines[0] : null);
+  const primaryReadyLine: WrrItemRow | null = readyLines.length > 0 ? readyLines[0] : null;
 
-  // Fetch putaway suggestions (store) / active inspection locations (inspect)
+  // Fetch putaway suggestions (store) / active inspection locations (inspect).
+  // Candidate data includes remainingCbm and the selector renders it per box.
   // only for the single primary ready line.
   let primaryStoreCandidates: PutawayCandidate[] = [];
   let primaryStoreContents: Record<string, Awaited<ReturnType<typeof getPutawayLocationContents>>[string]> = {};
   let inspectionLocations: Array<{ id: string; label: string }> = [];
   if (primaryReadyLine?.disposition === "store") {
-    // Amended 2026-08-20 (design.md §6.2/§6.2a): the suggestion is now
-    // requested per individually scanned unit, not once for the whole
-    // line's remaining expected quantity — request capacity for exactly
-    // ONE unit.
-    primaryStoreCandidates = await suggestPutawayLocations(db, {
-      itemUnitCbm: primaryReadyLine.unitCbm,
-      requestedQty: 1,
-    });
-    primaryStoreContents = await getPutawayLocationContents(
-      db,
-      primaryStoreCandidates.map((candidate) => candidate.id),
-    );
+    // A location-preview failure must never remove the scan screen. It is a
+    // recoverable placement error, not a reason to fail the entire WRR route.
+    try {
+      primaryStoreCandidates = await suggestPutawayLocations(db, {
+        itemUnitCbm: primaryReadyLine.unitCbm,
+        requestedQty: 1,
+        limit: 50,
+      });
+      primaryStoreContents = await getPutawayLocationContents(
+        db,
+        primaryStoreCandidates.map((candidate) => candidate.id),
+      );
+    } catch {
+      primaryStoreCandidates = [];
+      primaryStoreContents = {};
+    }
   } else if (primaryReadyLine?.disposition === "inspect") {
     inspectionLocations = (await db
       .select({ id: locations.id, label: locations.label })
@@ -192,15 +193,6 @@ export default async function ReceiveFloorPage({
       label: string;
     }>;
   }
-
-  // Amended 2026-08-20 (design.md §9, R7.5): commitWrrLine's idempotencyKey
-  // is REQUIRED for a store-disposition unit commit. Generated fresh on
-  // every page render, so a double-tap of the same rendered Store button
-  // submits the same key (idempotent retry against commitStoreUnit's
-  // per-unit idempotency lookup) but the NEXT unit's fresh render (after the
-  // redirect back to this page) gets a fresh key. Unused for inspect lines
-  // (§6.3, unchanged — still gated solely by committed_at).
-  const storeIdempotencyKey = randomUUID();
 
   // Inline server action — closes over wrrId from the page component.
   // On success: redirects with scan result encoded in URL.
@@ -216,12 +208,8 @@ export default async function ReceiveFloorPage({
     const actionResolver = await createPageResolver();
     const scanResult = await recordScan(actionResolver, wrrId, barcode);
     if (scanResult.ok) {
-      // Amended 2026-08-20 (design.md §6.2/§9): scanned_qty no longer
-      // updates at scan time, so wrrItemId is the only durable signal for
-      // "which line's commit form to show next" — carry it through so the
-      // next render can resolve primaryReadyLine from it.
       redirect(
-        `/receiving/${wrrId}/receive?result=scanned&wrrItemId=${scanResult.wrrItemId}&remaining=${scanResult.remainingQty}&disposition=${scanResult.disposition}`
+        `/receiving/${wrrId}/receive?result=scanned&remaining=${scanResult.remainingQty}&disposition=${scanResult.disposition}`
       );
     } else {
       redirect(
@@ -231,15 +219,31 @@ export default async function ReceiveFloorPage({
   }
 
   // Inline server action — per-line commit ("Store" or "Hold"). Closes over
-  // wrrId. locationId comes from the line's select input. idempotencyKey
-  // (store-disposition units only, §9/R7.5) comes from the form's hidden
-  // field, generated fresh per page render.
+  // wrrId. locationId comes from the line's select input.
   async function handleCommitLine(formData: FormData): Promise<void> {
     "use server";
     const wrrItemId = (formData.get("wrrItemId") as string | null) ?? "";
     const locationId = (formData.get("locationId") as string | null) ?? "";
-    const idempotencyKey = (formData.get("idempotencyKey") as string | null) ?? undefined;
-    if (!wrrItemId || !locationId) {
+    const serializedAllocations = (formData.get("allocations") as string | null) ?? "";
+    const serializedUnitLocations = (formData.get("unitLocationIds") as string | null) ?? "";
+    let allocations: Array<{ locationId: string; qty: number }> | undefined;
+    let unitLocationIds: string[] | undefined;
+    try {
+      const parsed = JSON.parse(serializedAllocations || "null");
+      if (Array.isArray(parsed)) allocations = parsed;
+    } catch {
+      // Validation below returns the normal recoverable error.
+    }
+    try {
+      const parsed = JSON.parse(serializedUnitLocations || "null");
+      if (Array.isArray(parsed) && parsed.every((value) => typeof value === "string")) {
+        unitLocationIds = parsed;
+      }
+    } catch {
+      // The server command validates the missing/malformed unit assignment.
+    }
+    const presenceAttested = formData.get("presenceAttested") === "true";
+    if (!wrrItemId || (!locationId && !allocations?.length)) {
       redirect(
         `/receiving/${wrrId}/receive?result=commit_error&line=${encodeURIComponent(wrrItemId)}&reason=${encodeURIComponent("missing_location")}`
       );
@@ -247,12 +251,11 @@ export default async function ReceiveFloorPage({
     const actionResolver = await createPageResolver();
     const commitResult = await commitWrrLine(actionResolver, wrrId, wrrItemId, {
       locationId,
-      idempotencyKey: idempotencyKey ?? undefined,
+      allocations,
+      unitLocationIds,
+      presenceAttested,
     });
     if (commitResult.ok) {
-      // Amended 2026-08-20: return to the plain scan-input state — do NOT
-      // carry wrrItemId forward, so the next scan can happen and a
-      // stale/replayed URL can never re-show a resolved line's commit form.
       redirect(
         `/receiving/${wrrId}/receive?result=committed&line=${encodeURIComponent(wrrItemId)}`
       );
@@ -272,16 +275,6 @@ export default async function ReceiveFloorPage({
   const dispositionResult = dispositionParam;
   const errorReason = reasonParam ?? "";
   const feedbackLineId = lineParam ?? null;
-
-  // The commit-success message must distinguish "one unit stored, more to
-  // go" from "line fully complete" for store-disposition lines (design.md
-  // §6.2 — a per-unit "committed" success state, distinct from the line's
-  // eventual terminal state). Inspect-disposition lines are unaffected —
-  // their single Hold action always completes the whole line at once.
-  const committedLine = feedbackLineId
-    ? wrr.items.find((item: WrrItemRow) => item.id === feedbackLineId) ?? null
-    : null;
-  const committedLineIsDone = committedLine?.committedAt != null;
 
   // ─── Receipt complete: all lines committed, WRR already confirmed server-side ───
   if (isComplete) {
@@ -345,18 +338,12 @@ export default async function ReceiveFloorPage({
           <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
             Scan Items
           </h1>
-          {/* Progress — no text below 16px (body-md) on floor screens per §2.
-              Amended 2026-08-21: the prior header wording claimed every
-              counted line was "scanned," disposition-blind — for STORE
-              lines scannedQty now means units committed, not scanned, so
-              this summary can no longer make that claim unconditionally.
-              "complete" matches this page's existing vocabulary (the
-              scanSuccess block's "Line complete." copy). */}
+          {/* Progress — no text below 16px (body-md) on floor screens per §2 */}
           <p className="mt-2 font-body text-body-md text-on-surface">
             <span className="font-mono text-mono-lg">
               {fullyScannedLines} / {totalLines}
             </span>{" "}
-            lines complete
+            lines fully scanned
           </p>
           {!isReceivable && (
             <div
@@ -427,25 +414,12 @@ export default async function ReceiveFloorPage({
             aria-live="assertive"
             className="mt-4 rounded-md bg-white border-l-4 border-status-available px-4 py-4 shadow-elevation-2"
           >
-            {committedLine?.disposition === "store" && !committedLineIsDone ? (
-              <>
-                <p className="font-heading font-semibold text-headline-md text-on-surface">
-                  &#10003; Unit committed
-                </p>
-                <p className="mt-1 font-body text-body-md text-on-surface">
-                  {committedLine.scannedQty} / {committedLine.expectedQty} committed to storage. Scan the next unit.
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="font-heading font-semibold text-headline-md text-on-surface">
-                  &#10003; Line committed
-                </p>
-                <p className="mt-1 font-body text-body-md text-on-surface">
-                  This line has been posted to inventory.
-                </p>
-              </>
-            )}
+            <p className="font-heading font-semibold text-headline-md text-on-surface">
+              &#10003; Line committed
+            </p>
+            <p className="mt-1 font-body text-body-md text-on-surface">
+              This line has been posted to inventory.
+            </p>
           </div>
         )}
 
@@ -476,14 +450,10 @@ export default async function ReceiveFloorPage({
           {wrr.items.map((item: WrrItemRow) => {
             const fullyScanned = item.scannedQty >= item.expectedQty;
             const isCommitted = item.committedAt !== null;
-            // Amended 2026-08-21: for a STORE line, commitWrrLine's single
-            // atomic UPDATE sets committed_at in the SAME write that brings
-            // scanned_qty up to expected_qty (design.md §9 step 8), so
-            // `fullyScanned && !isCommitted` can never be observably true
-            // for STORE again — scope this secondary indicator to INSPECT,
-            // where scanning and committing remain separate steps (§6.3).
-            const readyToCommit =
-              fullyScanned && !isCommitted && item.disposition === "inspect";
+            // Batch putaway begins after one accepted physical QR. The final
+            // command still needs the attestation and a complete allocation;
+            // it is not an unverified shortcut around reconciliation.
+            const readyToCommit = item.scannedQty >= 1 && !isCommitted;
             const isPrimaryReady = primaryReadyLine !== null && item.id === primaryReadyLine.id;
 
             return (
@@ -498,24 +468,9 @@ export default async function ReceiveFloorPage({
                     <p className="font-mono text-mono-lg font-bold text-on-surface">
                       {item.lotNumber}
                     </p>
-                    {/* Qty progress — amended 2026-08-21: scanned_qty means
-                        "units committed so far" for STORE-disposition lines
-                        (commitWrrLine's atomic per-unit UPDATE is the only
-                        writer), so the "scanned" label is inaccurate there —
-                        a scanned-but-not-yet-committed unit would otherwise
-                        read as an unchanged count, hiding real progress.
-                        INSPECT lines are unaffected; recordScan still writes
-                        their scanned_qty, so "scanned" stays correct there. */}
+                    {/* Qty progress */}
                     <p className="mt-1 font-body text-body-md text-on-surface">
-                      {item.disposition === "store" ? (
-                        <>
-                          {item.scannedQty} / {item.expectedQty} committed to storage
-                        </>
-                      ) : (
-                        <>
-                          {item.scannedQty} / {item.expectedQty} scanned
-                        </>
-                      )}
+                      {item.scannedQty} / {item.expectedQty} scanned
                     </p>
                     {/* Disposition — label + badge with icon, never color alone per §1.3 floor rule */}
                     <div className="mt-1 flex items-center gap-2">
@@ -546,7 +501,7 @@ export default async function ReceiveFloorPage({
                       &#10003;
                     </span>
                   ) : (
-                    fullyScanned && (
+                    (fullyScanned || readyToCommit) && (
                       <span
                         aria-label="Fully scanned"
                         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-status-pending text-surface-white font-heading font-bold text-data-display"
@@ -570,7 +525,7 @@ export default async function ReceiveFloorPage({
                       &#8595;
                     </span>
                     <p className="font-label text-body-md text-brand-navy">
-                      Ready to {item.disposition === "store" ? "store" : "hold"} — complete below
+                      QR verified — {item.disposition === "store" ? "assign locations" : "choose the inspection location"} below
                     </p>
                   </div>
                 )}
@@ -581,7 +536,7 @@ export default async function ReceiveFloorPage({
                       &#9679;
                     </span>
                     <p className="font-label text-body-md text-on-surface">
-                      Ready to {item.disposition === "store" ? "store" : "hold"} — complete the current line first
+                      QR verified — complete the current line first
                     </p>
                   </div>
                 )}
@@ -605,38 +560,26 @@ export default async function ReceiveFloorPage({
             <p className="font-mono text-mono-lg font-bold text-on-surface">
               {primaryReadyLine.lotNumber}
             </p>
+            <div className="rounded border-l-4 border-status-available bg-white px-3 py-3">
+              <p className="font-label text-body-md text-on-surface">
+                Pallet QR verified
+              </p>
+              <p className="mt-1 font-body text-body-md text-on-surface">
+                One QR from this pallet matched the expected item. Now assign all {primaryReadyLine.expectedQty} declared boxes before storing.
+              </p>
+            </div>
             {primaryReadyLine.disposition === "store" ? (
               <>
-                {/* Store-disposition unit commit: idempotencyKey is
-                    REQUIRED (design.md §9, R7.5) — generated fresh per page
-                    render above (storeIdempotencyKey), so a double-tap of
-                    this rendered Store button retries idempotently but the
-                    next unit's fresh render gets a fresh key. */}
-                <input type="hidden" name="idempotencyKey" value={storeIdempotencyKey} />
                 {primaryStoreCandidates.length > 0 ? (
                   <>
-                  {/* Level-1 floor-card convention (solid bg-white +
-                      shadow-elevation-2), matching every other top-level
-                      status/feedback block on this screen. Purely
-                      informational (not semantic), so no border-l-4/icon.
-                      Copy trimmed 2026-08-21: the location label is already
-                      shown by the selector below (its default option text
-                      and expanded capacity panel), so it is dropped here to
-                      avoid stating the same label/remaining-CBM pairing a
-                      third time — this block now renders once per physical
-                      unit, so the repetition compounds across the scan
-                      loop. The remaining-CBM figure itself stays, since it
-                      answers "will this fit" before the operator opens the
-                      selector. */}
-                  <p className="rounded bg-white px-3 py-2 shadow-elevation-2 font-body text-body-md text-on-surface">
-                    This unit needs {primaryReadyLine.unitCbm.toFixed(2)} CBM — the best match has{" "}
-                    {primaryStoreCandidates[0].remainingCbm.toFixed(2)} CBM remaining.{" "}
-                    Choose a location below, review its capacity and current contents, then store.
+                  <p className="rounded border border-outline-variant/30 bg-surface-light-grey px-3 py-2 font-body text-body-md text-on-surface">
+                    This receipt needs {(primaryReadyLine.unitCbm * primaryReadyLine.expectedQty).toFixed(2)} CBM. Choose a location, review its capacity and current contents, then store.
                   </p>
                   <PutawayLocationSelector
                     candidates={primaryStoreCandidates}
                     contents={primaryStoreContents}
-                    requestedCbm={primaryReadyLine.unitCbm}
+                    quantity={primaryReadyLine.expectedQty}
+                    unitCbm={primaryReadyLine.unitCbm}
                   />
                   </>
                 ) : (
@@ -654,7 +597,7 @@ export default async function ReceiveFloorPage({
                   disabled={primaryStoreCandidates.length === 0}
                   className="flex h-16 w-full items-center justify-center rounded bg-primary font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white disabled:opacity-50"
                 >
-                  Store
+                  Store all {primaryReadyLine.expectedQty} boxes
                 </button>
               </>
             ) : (
@@ -703,6 +646,36 @@ export default async function ReceiveFloorPage({
               </>
             )}
           </form>
+          <details className="mt-4 border-t border-outline-variant/30 pt-3">
+            <summary className="cursor-pointer font-body text-body-md text-on-surface">
+              Verify another carton individually
+            </summary>
+            <p className="mt-2 font-body text-body-md text-text-grey">
+              Enter the printed code or use the camera. This is optional for batch putaway.
+            </p>
+            <form action={handleScan} className="mt-3 flex gap-2">
+              <label htmlFor="individual-barcode-input" className="sr-only">
+                Enter carton code
+              </label>
+              <input
+                id="individual-barcode-input"
+                name="barcode"
+                type="text"
+                autoComplete="off"
+                placeholder="Enter carton code"
+                className="h-14 min-w-0 flex-1 rounded border-2 border-outline-variant bg-surface-white px-4 font-mono text-mono-lg text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-4 focus:ring-brand-navy"
+              />
+              <button
+                type="submit"
+                className="flex h-14 shrink-0 items-center justify-center rounded border-2 border-primary px-4 font-label text-body-md text-primary focus:outline-none focus:ring-4 focus:ring-brand-navy"
+              >
+                Verify
+              </button>
+            </form>
+            <div className="mt-3">
+              <CameraScanBridge action={handleScan} />
+            </div>
+          </details>
         </div>
       )}
 
@@ -713,8 +686,11 @@ export default async function ReceiveFloorPage({
               htmlFor="barcode-input"
               className="text-body-md font-body text-on-surface"
             >
-              Scan or enter barcode
+              Scan one pallet QR to verify the boxes
             </label>
+            <p className="font-body text-body-md text-text-grey">
+              Scan one QR from the pallet first. We will confirm the item before asking where its declared boxes should be stored.
+            </p>
             <div className="flex gap-2">
               <input
                 id="barcode-input"
@@ -722,8 +698,8 @@ export default async function ReceiveFloorPage({
                 type="text"
                 autoFocus
                 autoComplete="off"
-                inputMode="none"
-                placeholder="Waiting for scan…"
+                inputMode="text"
+                placeholder="Scan or enter pallet code"
                 className="h-16 flex-1 rounded border-2 border-outline-variant bg-surface-white px-4 font-mono text-mono-lg text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-4 focus:ring-brand-navy"
               />
               <button

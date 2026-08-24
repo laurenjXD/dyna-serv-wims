@@ -15,11 +15,14 @@
 // New WRR button). Permission gate: receiving.confirm for all tabs.
 
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { Barcode, CheckCircle2, ClipboardList, Plus, Truck, Warehouse } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
-import { listWrrDocuments } from "@/lib/db/queries/receiving";
+import { findWrrDocumentByNumber, listWrrDocuments } from "@/lib/db/queries/receiving";
 import type { WrrDocumentRow } from "@/lib/db/queries/receiving";
+import { AutoSubmitSelect } from "./_components/AutoSubmitSelect";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -60,8 +63,8 @@ const STATUS_FILTER_OPTIONS = [
 type TabKey = "receive" | "wrrs" | "ledger";
 
 const TABS: Array<{ key: TabKey; label: string }> = [
-  { key: "receive", label: "Receive" },
-  { key: "wrrs", label: "WRRs" },
+  { key: "wrrs", label: "WRRs (Work Queue)" },
+  { key: "receive", label: "Receive (Quick Jump)" },
   { key: "ledger", label: "Incoming Ledger" },
 ];
 
@@ -131,7 +134,7 @@ function WrrMobileCards({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 interface PageProps {
-  searchParams: Promise<{ tab?: string; status?: string; page?: string }>;
+  searchParams: Promise<{ tab?: string; status?: string; page?: string; jump?: string }>;
 }
 
 export default async function ReceivingListPage({ searchParams }: PageProps) {
@@ -139,6 +142,7 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
     tab: tabParam,
     status: statusFilter,
     page: pageParam,
+    jump: jumpResult,
   } = await searchParams;
 
   const activeTab: TabKey =
@@ -173,21 +177,24 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
   const canCreate = (await requirePermission(resolver, "receiving.confirm")).kind === "authorized";
 
   return (
-    <div className="mx-auto max-w-container">
+    <div className="mx-auto max-w-container pb-10">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
+          <h1 className="font-heading font-bold text-headline-lg tracking-tight text-on-surface">
             Inbound Management
           </h1>
           <p className="mt-1 font-body text-body-md text-text-grey">
             Manage incoming shipments, WRRs, and dock scheduling.
           </p>
         </div>
-        {canCreate && (
-          <Link href="/receiving/new" className="inline-flex h-11 items-center justify-center rounded bg-on-surface px-4 font-label text-label font-bold text-surface-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy">
-            + Start New WRR
-          </Link>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {canCreate && (
+            <Link href="/receiving/new" className="inline-flex h-12 items-center justify-center gap-2 rounded bg-on-surface px-5 font-label text-body-md font-bold text-surface-white shadow-elevation-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy">
+              <Plus size={19} aria-hidden="true" />
+              Start New WRR
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* Tab switcher — office pattern per brand-design-system.md §3 */}
@@ -223,7 +230,7 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
       </div>
 
       {activeTab === "receive" ? (
-        <ReceiveTab statusFilter={statusFilter} pageParam={pageParam} />
+        <ReceiveTab statusFilter={statusFilter} pageParam={pageParam} jumpResult={jumpResult} />
       ) : activeTab === "wrrs" ? (
         <WrrsTab statusFilter={statusFilter} pageParam={pageParam} canCreate={canCreate} />
       ) : (
@@ -244,9 +251,11 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
 async function ReceiveTab({
   statusFilter,
   pageParam,
+  jumpResult,
 }: {
   statusFilter?: string;
   pageParam?: string;
+  jumpResult?: string;
 }) {
   const currentPage = Math.max(1, Number(pageParam ?? "1") || 1);
   const offset = (currentPage - 1) * QUEUE_PAGE_SIZE;
@@ -263,14 +272,38 @@ async function ReceiveTab({
 
   const totalPages = Math.ceil(total / QUEUE_PAGE_SIZE);
 
+  async function handleQuickJump(formData: FormData): Promise<void> {
+    "use server";
+    const actionResolver = await createPageResolver();
+    const permission = await requirePermission(actionResolver, "receiving.view");
+    if (permission.kind !== "authorized") {
+      redirect("/receiving?jump=forbidden");
+    }
+
+    const wrrNumber = ((formData.get("wrrNumber") as string | null) ?? "").trim();
+    if (!wrrNumber) redirect("/receiving?jump=empty");
+
+    const match = await findWrrDocumentByNumber(db, wrrNumber);
+    if (!match) redirect("/receiving?jump=not_found");
+
+    const destination =
+      match.status === "confirmed" || match.status === "cancelled"
+        ? `/receiving/${match.id}`
+        : `/receiving/${match.id}/receive`;
+    redirect(destination);
+  }
+
   return (
-    <div>
-      {/* Intro message for floor workers */}
-      <p className="mt-6 font-body text-body-md text-text-grey">
-        {rows.length === 0
-          ? "No WRRs are currently in progress. Check the WRRs tab for staged shipments."
-          : `${total} WRR${total !== 1 ? "s" : ""} in progress — tap to continue receiving.`}
-      </p>
+    <div className="mt-7 grid gap-7 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <section className="min-w-0">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-heading text-headline-md font-bold text-on-surface">
+            Active Warehouse Receipt Requests
+          </h2>
+          <span className="shrink-0 rounded-full bg-[#DCE6FF] px-3 py-1 font-label text-label font-bold text-brand-navy">
+            {total} active
+          </span>
+        </div>
 
       {/* WRR cards — floor-first layout. No dense table here; floor workers
           need one large CTA per row at 64px (min-h-16), not a multi-column table.
@@ -278,7 +311,8 @@ async function ReceiveTab({
           §9: floor tables are a fail case — card list is correct here. */}
       <div className="mt-4 space-y-3">
         {rows.length === 0 ? (
-          <div className="rounded-xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-2">
+          <div className="rounded-lg border border-outline-variant bg-surface-white px-6 py-12 text-center shadow-elevation-2">
+            <ClipboardList className="mx-auto text-status-neutral" size={30} aria-hidden="true" />
             <p className="font-body text-body-md text-text-grey">
               No WRRs currently in progress.
             </p>
@@ -290,37 +324,36 @@ async function ReceiveTab({
           rows.map((row: WrrDocumentRow) => (
             <article
               key={row.id}
-              className="overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-2"
+              className="rounded-lg border border-outline-variant bg-surface-white p-4 shadow-elevation-2 transition-[box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:shadow-elevation-2"
             >
-              {/* Left accent bar — brand-design-system.md §1.1 signature pattern:
-                  in-progress receives the status-pending (amber) accent since they
-                  need attention; staged gets on-surface (neutral). */}
-              <div className={`border-l-4 ${row.status === "receiving_in_progress" ? "border-l-status-pending" : "border-l-on-surface"} p-4`}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-mono text-mono-lg font-bold text-on-surface">
-                      {row.wrrNumber}
-                    </p>
-                    <p className="mt-1 font-body text-body-md text-text-grey">
-                      {row.vendorPartyName ?? row.vendorPartyId} &middot; {FLOW_LABELS[row.flowType] ?? row.flowType}
-                    </p>
-                    <p className="mt-0.5 font-body text-body-md text-text-grey">
-                      {row.createdAt.toLocaleDateString()}
-                    </p>
-                  </div>
-                  <span
-                    className={`inline-flex shrink-0 items-center rounded-full px-2 py-1 font-label text-label uppercase ${STATUS_CLASSES[row.status] ?? "bg-status-neutral/10 text-status-neutral"}`}
-                  >
-                    {STATUS_LABELS[row.status] ?? row.status.toUpperCase()}
-                  </span>
+              <div className="grid items-center gap-4 md:grid-cols-[auto_minmax(0,1fr)_auto_auto]">
+                <div className="flex h-12 w-12 items-center justify-center rounded bg-[#E4ECFF] text-brand-navy">
+                  <Truck size={24} aria-hidden="true" />
                 </div>
-                {/* Floor primary CTA: min-h-14 (56px) for non-primary, min-h-16 (64px) for primary.
-                    active: press feedback per brand-design-system.md §10 (no hover). */}
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-mono text-mono-md font-bold text-on-surface">{row.wrrNumber}</p>
+                    <span
+                      className={`inline-flex items-center rounded border border-outline-variant px-2 py-1 font-label text-label uppercase ${STATUS_CLASSES[row.status] ?? "bg-status-neutral/10 text-status-neutral"}`}
+                    >
+                      {STATUS_LABELS[row.status] ?? row.status.toUpperCase()}
+                    </span>
+                  </div>
+                  <p className="mt-1 truncate font-body text-body-md text-on-surface">
+                    {row.vendorPartyName ?? row.vendorPartyId} · {FLOW_LABELS[row.flowType] ?? row.flowType}
+                  </p>
+                </div>
+                <div className="md:text-right">
+                  <p className="font-label text-label font-bold uppercase tracking-wide text-text-grey">Created</p>
+                  <p className="mt-1 font-body text-body-md font-bold text-on-surface">
+                    {row.createdAt.toLocaleDateString()}
+                  </p>
+                </div>
                 <Link
                   href={`/receiving/${row.id}/receive`}
-                  className="mt-4 flex min-h-16 w-full items-center justify-center rounded bg-primary px-4 font-label text-body-md uppercase tracking-wide text-surface-white active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2"
+                  className="flex h-12 items-center justify-center rounded border border-brand-navy bg-surface-white px-4 font-label text-body-md font-bold text-brand-navy active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 >
-                  Continue Receiving
+                  Begin Receiving
                 </Link>
               </div>
             </article>
@@ -354,6 +387,67 @@ async function ReceiveTab({
           </div>
         </div>
       )}
+      </section>
+
+      <aside className="space-y-6">
+        <section className="rounded-lg border border-outline-variant bg-surface-white p-5 shadow-elevation-2">
+          <div className="flex items-center gap-2">
+            <Warehouse size={24} className="text-brand-navy" aria-hidden="true" />
+            <h2 className="font-heading text-headline-md font-bold text-on-surface">Queue Overview</h2>
+          </div>
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <div className="rounded border border-[#C9D8FF] bg-[#EDF2FF] p-4">
+              <p className="font-label text-label font-bold uppercase tracking-wide text-text-grey">Active</p>
+              <p className="mt-2 font-heading text-headline-lg font-bold text-brand-navy">{total}</p>
+            </div>
+            <div className="rounded bg-brand-navy p-4 text-surface-white">
+              <p className="font-label text-label font-bold uppercase tracking-wide text-[#AFC5FF]">Showing</p>
+              <p className="mt-2 font-heading text-headline-lg font-bold">{rows.length}</p>
+            </div>
+          </div>
+          <div className="mt-3 flex items-center justify-between rounded border border-[#C9D8FF] bg-[#DCE6FF] px-4 py-3">
+            <div>
+              <p className="font-label text-label font-bold uppercase tracking-wide text-text-grey">Status</p>
+              <p className="mt-1 font-heading text-data-display font-bold text-brand-navy">Receiving in progress</p>
+            </div>
+            <CheckCircle2 size={28} className="text-brand-navy" aria-hidden="true" />
+          </div>
+        </section>
+
+        <section className="rounded-lg border border-[#B9CAEF] bg-[#DCE8FF] p-5 shadow-elevation-2">
+          <div className="flex items-center gap-2">
+            <Barcode size={25} className="text-brand-navy" aria-hidden="true" />
+            <h2 className="font-heading text-headline-md font-bold text-on-surface">Quick Jump</h2>
+          </div>
+          <p className="mt-2 font-body text-body-md text-on-surface">
+            Scan or enter an exact WRR number to open receiving directly.
+          </p>
+          <form action={handleQuickJump} className="mt-4 flex rounded border-2 border-brand-navy bg-surface-white p-1">
+            <label htmlFor="quick-jump-wrr" className="sr-only">WRR number</label>
+            <input
+              id="quick-jump-wrr"
+              name="wrrNumber"
+              type="text"
+              autoComplete="off"
+              placeholder="Scan WRR number"
+              className="h-12 min-w-0 flex-1 bg-transparent px-3 font-mono text-mono-md text-on-surface outline-none placeholder:font-body placeholder:text-status-neutral"
+            />
+            <button type="submit" className="flex h-12 w-12 items-center justify-center rounded bg-brand-navy text-surface-white focus:outline-none focus:ring-2 focus:ring-primary">
+              <Barcode size={21} aria-hidden="true" />
+              <span className="sr-only">Open WRR</span>
+            </button>
+          </form>
+          {jumpResult && (
+            <p role="alert" className="mt-3 font-body text-body-md font-bold text-status-held">
+              {jumpResult === "not_found"
+                ? "No WRR matches that number."
+                : jumpResult === "empty"
+                  ? "Enter or scan a WRR number first."
+                  : "You do not have permission to open that WRR."}
+            </p>
+          )}
+        </section>
+      </aside>
     </div>
   );
 }
@@ -396,10 +490,11 @@ async function WrrsTab({
               >
                 Status
               </label>
-              <select
+              <AutoSubmitSelect
                 id="wrrs-status-filter"
                 name="status"
                 defaultValue={statusFilter ?? ""}
+                aria-label="Filter WRRs by status"
                 className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
               >
                 {STATUS_FILTER_OPTIONS.map((opt) => (
@@ -407,14 +502,8 @@ async function WrrsTab({
                     {opt.label}
                   </option>
                 ))}
-              </select>
+              </AutoSubmitSelect>
             </div>
-            <button
-              type="submit"
-              className="flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            >
-              Apply
-            </button>
             {status && (
               <Link
                 href="/receiving?tab=wrrs"
@@ -437,7 +526,7 @@ async function WrrsTab({
       </div>
 
       {/* WRR table — Level 1 office elevation */}
-      <div className="mt-4 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-2 md:shadow-elevation-1">
+      <div className="mt-4 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-2">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="font-body text-body-md text-text-grey">
@@ -580,7 +669,7 @@ async function LedgerTab({ pageParam }: { pageParam?: string }) {
       </p>
 
       {/* Ledger table — Level 1 office elevation per brand-design-system.md §6 */}
-      <div className="mt-4 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-2 md:shadow-elevation-1">
+      <div className="mt-4 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-2">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="font-body text-body-md text-text-grey">

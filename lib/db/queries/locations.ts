@@ -171,6 +171,68 @@ export type LocationStoredItem = {
   qtyRemaining: number;
 };
 
+export type LocationInventoryRow = LocationStoredItem & {
+  itemId: string;
+  volumeCbm: number;
+  occupiedCbm: number;
+};
+
+export type LocationInventory = {
+  rows: LocationInventoryRow[];
+  itemCount: number;
+  totalUnits: number;
+  occupiedCbm: number;
+};
+
+/** Returns the live stock currently held at one location, with capacity usage. */
+export async function getLocationInventory(
+  db: DbLike,
+  locationId: string,
+): Promise<LocationInventory> {
+  const rawRows = await db
+    .select({
+      itemId: items.id,
+      itemCode: items.code,
+      itemName: items.name,
+      lotNumber: lots.lotNumber,
+      qtyRemaining: lotLocationBalances.qtyRemaining,
+      volumeCbm: items.volumeCbm,
+    })
+    .from(lotLocationBalances)
+    .innerJoin(lots, eq(lots.id, lotLocationBalances.lotId))
+    .innerJoin(items, eq(items.id, lots.itemId))
+    .where(and(eq(lotLocationBalances.locationId, locationId), gt(lotLocationBalances.qtyRemaining, 0)))
+    .orderBy(items.code, lots.lotNumber);
+
+  const rows = (rawRows as Array<{
+    itemId: string;
+    itemCode: string;
+    itemName: string;
+    lotNumber: string;
+    qtyRemaining: number | string;
+    volumeCbm: number | string | null;
+  }>).map((row) => {
+    const qtyRemaining = Number(row.qtyRemaining ?? 0);
+    const volumeCbm = Number(row.volumeCbm ?? 0);
+    return {
+      itemId: row.itemId,
+      itemCode: row.itemCode,
+      itemName: row.itemName,
+      lotNumber: row.lotNumber,
+      qtyRemaining,
+      volumeCbm,
+      occupiedCbm: qtyRemaining * volumeCbm,
+    } satisfies LocationInventoryRow;
+  });
+
+  return {
+    rows,
+    itemCount: new Set(rows.map((row) => row.itemId)).size,
+    totalUnits: rows.reduce((sum, row) => sum + row.qtyRemaining, 0),
+    occupiedCbm: rows.reduce((sum, row) => sum + row.occupiedCbm, 0),
+  };
+}
+
 /**
  * Returns the live stock held in each suggested storage location so an
  * operator can verify the putaway choice before confirming Store.

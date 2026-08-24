@@ -147,7 +147,10 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     surface: "office",
     capability: "reporting.financial_read",
     featureSpecs: ["12-vmi-billing", "13-trading-orders-and-pricing"],
-    launchStatus: "planned",
+    // Was "planned" — corrected 2026-08-24: the page now reads real data via
+    // getVmiCbmLedgerSummary/getTradingMarginLedger (lib/billing/queries/),
+    // no mock arrays remain. See revision-log.md.
+    launchStatus: "launch",
     group: "Master Data",
   },
   {

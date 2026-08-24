@@ -19,6 +19,7 @@ import type {
   inventoryCommitmentLines,
   wrrDocuments,
   wrrItems,
+  wrrItemPutawayAllocations,
   wrrInspectionLogs,
   forexRates,
   inventoryTransactions,
@@ -70,6 +71,9 @@ export type NewWrrDocument = typeof wrrDocuments.$inferInsert;
 // wrr_items
 export type WrrItem = typeof wrrItems.$inferSelect;
 export type NewWrrItem = typeof wrrItems.$inferInsert;
+
+export type WrrItemPutawayAllocation = typeof wrrItemPutawayAllocations.$inferSelect;
+export type NewWrrItemPutawayAllocation = typeof wrrItemPutawayAllocations.$inferInsert;
 
 // wrr_inspection_logs
 export type WrrInspectionLog = typeof wrrInspectionLogs.$inferSelect;

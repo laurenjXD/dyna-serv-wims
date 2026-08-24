@@ -1,7 +1,7 @@
 # Outgoing Withdrawal & Two-Stage Commitment — Implementation Plan
 
 Status: Approved
-Updated: 2026-08-07
+Updated: 2026-08-24 (Dispatch-time barcode scanning amendment)
 
 ## Implementation gate
 
@@ -88,8 +88,9 @@ Testing: Unit commit-precondition/idempotency tests; real-Postgres transaction/c
 
 Testing: Unit scan/state tests; Playwright simulated scanner and real browser IndexedDB; integration tests for server validation.
 
-- [ ] Build the floor pick/dispatch flow at 375px first: one task per screen, scanner-ready input, card/list content, solid surfaces, and 64px primary action.
-- [ ] Match scans against committed pick-list item, barcode, lot, location, and quantity.
+- [ ] Build the floor pick/dispatch flow at 375px first: the pick screen is a non-scan staging confirmation; the dispatch screen is scanner-ready and validates exact boxes; both use one task per screen, card/list content, solid surfaces, and a 64px primary action.
+- [ ] Do not render or accept barcode/QR scan input in the pick view. Transition to `picked` only through the explicit non-scan pick-complete confirmation.
+- [ ] Match dispatch scans against committed pick-list item, barcode, lot, location, and quantity.
 - [ ] Reject wrong, duplicate, over-pick, under-pick, stale, and mismatched scans with recoverable feedback.
 - [ ] Define physical `dispatch` movement/handoff behavior with the approved location/transaction design.
 - [ ] Implement the final online dispatch command that rechecks commitment and current domain state.
@@ -167,8 +168,9 @@ Testing: Full applicable matrix below.
 - [ ] Verify VMI/Trading SPQ and Supplies piece rules.
 - [ ] Verify FIFO override routes to approval and blocks commitment until approved.
 - [ ] Verify Stage 1 pick list/reservation without on-hand decrement.
-- [ ] Simulate floor pick/dispatch scans and verify wrong/duplicate/over/under/stale handling.
-- [ ] Verify the post-pick flow proceeds directly to dispatch with no pre-dispatch inspection route, state, or block.
+- [ ] Simulate dispatch-only floor scans and verify wrong/duplicate/over/under/stale handling.
+- [ ] Verify the pick view has no barcode/QR scan control, then proceeds directly to dispatch with no pre-dispatch inspection route, state, or block.
+- [ ] Verify each exact box is scanned and accepted at dispatch before final confirmation; wrong/duplicate/over/under/stale scans are rejected there.
 - [ ] Verify final dispatch produces one decrement, one pick transaction, released reservation, and acknowledgement-receipt availability.
 - [ ] Verify document failure/retry does not reverse inventory.
 - [ ] Verify offline observations, reconnect replay, rejection/conflict, and Tier 2 blocking.
@@ -188,5 +190,5 @@ Testing: Full applicable matrix below.
 - [x] Pricing/document boundaries with `10`, `12`, and `13` are reconciled.
 - [x] All applicable tests pass, including real-Postgres verification.
 - [x] Design-system review passes.
-- [x] Product owner approval — Name: Lauren Date: 2026-08-05
-- [x] Second approver approval — Name/Role: Lauren Date: 2026-08-05
+- [x] Product owner approval — Name: Granted in conversation Date: 2026-08-24
+- [x] Second approver approval — Name/Role: Granted in conversation Date: 2026-08-24

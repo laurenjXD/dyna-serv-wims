@@ -213,6 +213,20 @@ export async function listRecentWrrDocuments(
     .limit(opts.limit)) as WrrDocumentRow[];
 }
 
+/** Resolve an exact WRR number for the receiving queue's quick-jump control. */
+export async function findWrrDocumentByNumber(
+  db: DbLike,
+  wrrNumber: string,
+): Promise<{ id: string; status: string } | null> {
+  const rows = (await db
+    .select({ id: wrrDocuments.id, status: wrrDocuments.status })
+    .from(wrrDocuments)
+    .where(eq(wrrDocuments.wrrNumber, wrrNumber.trim()))
+    .limit(1)) as Array<{ id: string; status: string }>;
+
+  return rows[0] ?? null;
+}
+
 // ---------------------------------------------------------------------------
 // getWrrDocument
 // ---------------------------------------------------------------------------

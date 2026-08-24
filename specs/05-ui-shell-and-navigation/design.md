@@ -1,7 +1,7 @@
 # UI Shell & Navigation — Design
 
 Status: Approved
-Updated: 2026-08-14 (Aligned with Unified UI/UX & Visual Design System)
+Updated: 2026-08-23 (Sidebar interaction and visual-hierarchy amendment)
 
 ## 1. Design intent
 
@@ -56,7 +56,7 @@ app/
     reports/                   # feature-owned route (16)
     documents/                 # feature-owned route (10)
     portal/                    # feature-owned route (22 - Organization Portal)
-  layout.tsx                   # document metadata, fonts (Etna Sans Serif + Glacial Indifference), providers
+  layout.tsx                   # document metadata, fonts (DM Sans + Glacial Indifference), providers
 ```
 
 The authenticated layout resolves the server session and passes a typed, minimal shell context to client components. It must not pass raw access tokens or trust client-provided role/Organization/capability values.
@@ -87,7 +87,7 @@ The table below lists every authenticated route planned at launch. Each route na
 | `/master-data/parties` | office | `parties.read` | `06-party-and-item-enrollment` | Launch |
 | `/master-data/items` | office | `items.read` | `06-party-and-item-enrollment` | Launch |
 | `/master-data/locations` | office | `locations.read` | `06-party-and-item-enrollment` | Launch |
-| `/billing-pricing` | office | `reporting.financial_read` | `12-vmi-billing`, `13-trading-orders-and-pricing` | Planned |
+| `/billing-pricing` | office | `reporting.financial_read` | `12-vmi-billing`, `13-trading-orders-and-pricing` | Launch (corrected 2026-08-24 — page reads real data via `lib/billing/queries/`, see revision-log.md) |
 | `/reports` | office | `reporting.read` | `16-reporting-and-analytics` | Planned |
 | `/portal` | party | none | `22-parties-portal` | Planned |
 | `/portal/inventory` | party | `reporting.read` | `22-parties-portal` | Planned |
@@ -134,7 +134,7 @@ The table below lists every authenticated route planned at launch. Each route na
 **Shell adaptation by surface:**
 
 - **Floor routes**: Single-column layout targeting 375–430px portrait. Persistent sidebar is omitted. During active scan flows, navigation is completely hidden and replaced by a feature-owned flow header. Bottom tabs appear only between scan steps. Floor primary CTA is Vibrant Blue (`#2563EB`), full-width, minimum 64px height, positioned in the bottom third thumb zone.
-- **Office routes**: Desktop sidebar rendered on `md`/`lg` viewports. Sidebar features White or Cream White background, Deep Navy (`#0F172A`) active text, Slate (`#64748B`) inactive text, Vibrant Blue (`#2563EB`) active indicator line, Glacial Indifference Bold 14px labels, and real letter-mark logo asset (no diagonal cut). Collapses to a mobile drawer on narrow viewports.
+- **Office routes**: Desktop sidebar rendered on `md`/`lg` viewports. Sidebar features a Solid White background, Deep Navy (`#0F172A`) active text, Slate (`#64748B`) inactive text, Vibrant Blue (`#2563EB`) active rail and icon tile, Glacial Indifference Bold labels, 44px minimum rows, restrained hover motion/shadow, clear group dividers, and the real letter-mark logo asset. A bounded signed-in identity summary anchors the bottom. The desktop sidebar is viewport-fixed and uses no independent vertical scroll region. It collapses to a left-side mobile drawer on narrow viewports using the same active/hover semantics.
 - **Shared routes**: Default to floor-first layout and touch targets. Enhance to desktop sidebar only on `lg` viewports where explicitly specified.
 - **Organization Portal routes (`"party"`)**: Consume office-tier composition (`AuthenticatedLayout`, `DesktopSidebar`, mobile drawer) with dedicated Organization Portal navigation entries and explicit "your organization" framing.
 
@@ -169,7 +169,7 @@ AuthenticatedLayout
 ├── SessionBoundary (server)
 ├── ShellProvider (minimal client state)
 ├── DesktopSidebar (office / organization portal enhancement)
-│   ├── Brand Logo (real letter-mark logo, Etna Sans Serif style, no diagonal cut)
+│   ├── Brand Logo (real letter-mark logo, DM Sans heading style, no diagonal cut)
 │   ├── NavigationItems (Glacial Indifference Bold 14px, Deep Navy active, Slate inactive)
 │   └── OrganizationScopeIndicator (Organization Portal surface)
 ├── MobileFloorNavigation (floor mode: bottom tabs between steps; hidden during active scan loops)
@@ -178,7 +178,7 @@ AuthenticatedLayout
 │   ├── ConnectivityIndicator (optional, read-only: online/offline/checking)
 │   └── AccountControl (displayName, email, Organization scope, Sign Out)
 ├── StatusRegion (storage / synchronization attention alerts)
-└── MainContent slot (Level 0 Cream White #FFF7ED background, Level 1 Solid White #FFFFFF cards)
+└── MainContent slot (Level 0 Cool Blue-Gray #F3F6FC background, Level 1 Solid White #FFFFFF cards)
 ```
 
 ## 5. Navigation registry contract
@@ -236,7 +236,7 @@ Entries with missing capabilities are hidden from navigation presentation (not g
 | **Primary Hover** | 🔵 Deep Blue | `#1E3A8A` | Button hover and pressed states |
 | **Secondary** | 🟣 Violet | `#7C3AED` | Secondary accents, selected highlights |
 | **Neutral** | ◻️ Cool Gray | `#94A3B8` | Disabled states, secondary icons |
-| **Background** | 🥛 Cream White | `#FFF7ED` | Main application background (Level 0) |
+| **Background** | Cool Blue-Gray | `#F3F6FC` | Main application background (Level 0) |
 | **Surface** | ⬜ Solid White | `#FFFFFF` | Cards, tables, modals, sidebar (Level 1) |
 | **Text Primary** | 🌑 Deep Navy | `#0F172A` | Headings, labels, body text, active nav text |
 | **Text Secondary** | 🩶 Slate | `#64748B` | Subtitles, helper text, inactive nav text |
@@ -253,14 +253,14 @@ Only two type families establish the entire application hierarchy:
 
 | Family Role | Font Family | Weights | Usage |
 | --- | --- | --- | --- |
-| **Primary Heading** | Etna Sans Serif | 700 (Bold), 600 (SemiBold) | Page titles, hero displays, large KPI numbers |
+| **Primary Heading** | DM Sans | 700 (Bold), 600 (SemiBold) | Page titles, hero displays, large KPI numbers |
 | **Secondary UI & Body** | Glacial Indifference | 700 (Bold), 400 (Regular) | Body copy, navigation, labels, badges, buttons, table headers, data entry |
 
 #### Type Scale
-- `headline-xl`: Etna Sans Serif Bold, 40px (line-height 48px)
-- `headline-lg`: Etna Sans Serif Bold, 32px (line-height 40px)
-- `headline-md`: Etna Sans Serif SemiBold, 24px (line-height 32px)
-- `data-display`: Etna Sans Serif SemiBold, 20px (line-height 24px)
+- `headline-xl`: DM Sans Bold, 40px (line-height 48px)
+- `headline-lg`: DM Sans Bold, 32px (line-height 40px)
+- `headline-md`: DM Sans SemiBold, 24px (line-height 32px)
+- `data-display`: DM Sans SemiBold, 20px (line-height 24px)
 - `body-lg`: Glacial Indifference Regular, 18px (line-height 28px)
 - `body-md`: Glacial Indifference Regular, 16px (line-height 24px)
 - `body-sm`: Glacial Indifference Regular, 14px (line-height 20px - Office only)
@@ -279,7 +279,7 @@ Only two type families establish the entire application hierarchy:
 
 ### 6.4 Surfaces and Elevation
 Glassmorphism and backdrop blur are completely retired across the application.
-- **Level 0 Background**: Cream White (`#FFF7ED`), shadow `none` — Base application container.
+- **Level 0 Background**: Cool Blue-Gray (`#F3F6FC`), shadow `none` — Base application container.
 - **Level 1 Surface**: Solid White (`#FFFFFF`), shadow `0 1px 2px rgba(15, 23, 42, 0.08)` — Cards, modals, panels, sidebar.
 
 ## 7. Authentication and authorization boundary
@@ -344,7 +344,7 @@ Feature specs `06`–`22` consume this shell design for:
 ## 12. Design verification before approval
 
 - [x] Reconcile route inventory with approved feature specs and Gantt mapping.
-- [x] Integrate unified visual design system (Etna Sans Serif + Glacial Indifference, Vibrant Blue `#2563EB`, Solid White surfaces, 3-component error feedback).
+- [x] Integrate unified visual design system (DM Sans + Glacial Indifference, Vibrant Blue `#2563EB`, Solid White surfaces, 3-component error feedback).
 - [x] Enforce approved terminology (Organization, Inventory Model, Organization Portal, Inspection).
 - [x] Ground RBAC capability context in approved `02-rbac-roles` catalog.
 - [x] Confirm Auth session integration against `04-services-and-infrastructure`.

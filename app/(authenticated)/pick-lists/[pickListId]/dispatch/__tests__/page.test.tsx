@@ -25,6 +25,12 @@
 // Expected failure mode: "Cannot find module '../page'" — page does not exist.
 
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pageSource = () => readFileSync(resolve(__dirname, "../page.tsx"), "utf8");
 
 describe("DispatchConfirmationPage (app/(authenticated)/pick-lists/[pickListId]/dispatch/page.tsx)", () => {
   // R7.5, R7.8 — page must exist as a module and export a default component
@@ -42,5 +48,14 @@ describe("DispatchConfirmationPage (app/(authenticated)/pick-lists/[pickListId]/
   it("AC R7.9: default export has a non-empty function name (no anonymous wrapper)", async () => {
     const mod = await import("../page");
     expect(mod.default.name.length).toBeGreaterThan(0);
+  });
+
+  it("requires exact-box scans at dispatch", () => {
+    const source = pageSource();
+    expect(source).toContain('name="barcode"');
+    expect(source).toContain("CameraScanBridge");
+    expect(source).toContain("selectPickUnit");
+    expect(source).toContain("Scan boxes for dispatch");
+    expect(source).toContain("Confirm Dispatch");
   });
 });

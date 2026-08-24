@@ -24,3 +24,4 @@ export * from "./documents";
 export * from "./notifications";
 export * from "./trading_pricing";
 export * from "./vmi_billing";
+export * from "./inventory_units";

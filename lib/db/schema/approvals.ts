@@ -36,7 +36,10 @@ export const approvalRequests = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     // DB-generated from approval_request_number_seq; do not supply on INSERT.
-    requestNumber: text("request_number").notNull().unique(),
+    requestNumber: text("request_number")
+      .notNull()
+      .unique()
+      .default(sql`('AR-' || lpad(nextval('approval_request_number_seq')::text, 6, '0'))`),
     // Caller-supplied; UNIQUE prevents duplicate pending submissions.
     idempotencyKey: text("idempotency_key").notNull().unique(),
     // 'fifo_override' for v1; future types registered per design.md §5 gate.

@@ -18,6 +18,12 @@
 // Expected failure mode: "Cannot find module '../page'" — page does not exist.
 
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pageSource = () => readFileSync(resolve(__dirname, "../page.tsx"), "utf8");
 
 describe("PickExecutionPage (app/(authenticated)/pick-lists/[pickListId]/pick/page.tsx)", () => {
   // R7.1, R7.2 — page must exist as a module and export a default component
@@ -32,5 +38,17 @@ describe("PickExecutionPage (app/(authenticated)/pick-lists/[pickListId]/pick/pa
   it("AC R7.1: default export has a non-empty function name", async () => {
     const mod = await import("../page");
     expect(mod.default.name.length).toBeGreaterThan(0);
+  });
+
+  it("stages exact locations without exposing a scanner", () => {
+    const source = pageSource();
+    expect(source).not.toContain("selectPickUnit");
+    expect(source).not.toContain("CameraScanBridge");
+    expect(source).not.toContain('name="barcode"');
+    expect(source).toContain("Stage pick list");
+    expect(source).toContain("Stage the committed boxes");
+    expect(source).toContain("Confirm boxes staged");
+    expect(source).toContain("line.locationLabel");
+    expect(source).toContain("completeExactPick");
   });
 });

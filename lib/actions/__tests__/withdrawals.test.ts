@@ -95,7 +95,9 @@ import type {
 } from "@/lib/rbac/session";
 import {
   commitWithdrawal,
+  requestFifoOverride,
   dispatchPickList,
+  selectPickUnit,
   listOutgoingLedger,
 } from "../withdrawals";
 import { mockRlsDeps } from "@/lib/db/__tests__/helpers/mock-rls";
@@ -106,6 +108,7 @@ import {
 } from "@/lib/db/schema/commitments";
 import { lotLocationBalances } from "@/lib/db/schema/lot_location_balances";
 import { inventoryTransactions } from "@/lib/db/schema/transactions";
+import { inventoryUnits } from "@/lib/db/schema/inventory_units";
 
 // ---------------------------------------------------------------------------
 // Resolver mock helpers
@@ -132,6 +135,7 @@ const supervisorContext: AuthorizationContext = {
     { resource: "pick_list", action: "generate", scopeKind: "global" },
     { resource: "dispatch", action: "execute", scopeKind: "global" },
     { resource: "pick_list", action: "read", scopeKind: "global" },
+    { resource: "fifo_override", action: "request", scopeKind: "global" },
   ],
   partyScopes: [],
 };
@@ -165,6 +169,18 @@ const warehouseStaffResolver = () =>
 
 const unauthorizedResolver = () =>
   makeResolver({ kind: "authorized", context: unauthorizedContext });
+
+const pickerResolver = () =>
+  makeResolver({
+    kind: "authorized",
+    context: {
+      ...warehouseStaffContext,
+      grants: [
+        ...warehouseStaffContext.grants,
+        { resource: "pick_list", action: "execute", scopeKind: "global" },
+      ],
+    },
+  });
 
 // ---------------------------------------------------------------------------
 // DB mock helpers
@@ -211,6 +227,7 @@ function makeWithdrawalDb(
     _inserted: inserted,
     _updated: updated,
     _forCalls: forCalls,
+    execute: vi.fn().mockResolvedValue([]),
 
     select: vi.fn().mockImplementation(() =>
       makeSelectChain(selectRows.shift() ?? pickListRows, forCalls),
@@ -220,7 +237,7 @@ function makeWithdrawalDb(
       values: vi.fn().mockImplementation((row: unknown) => {
         inserted.push(row);
         return {
-          returning: vi.fn().mockResolvedValue([{ id: "new-uuid-generated" }]),
+          returning: vi.fn().mockResolvedValue([{ id: "new-uuid-generated", requestNumber: "AR-000001" }]),
         };
       }),
     })),
@@ -505,6 +522,49 @@ describe("commitWithdrawal — success (R5.1, R5.3, design.md §6)", () => {
     const result = await commitWithdrawal(supervisorResolver(), input, mockRlsDeps(db).deps);
 
     expect(result).toEqual({ ok: false, errors: ["unable_to_reserve_stock"] });
+    expect(db.insert).not.toHaveBeenCalled();
+  });
+
+  it("uses the exact alternate pallet only when an approval reference is supplied", async () => {
+    const oldest = allocationRow({ lotId: "lot-oldest", lotNumber: "LOT-OLD", receivedAt: new Date("2026-01-01T00:00:00Z") });
+    const newer = allocationRow({ balanceId: "balance-uuid-2", lotId: "lot-newer", lotNumber: "LOT-NEW", locationId: "loc-uuid-2", receivedAt: new Date("2026-02-01T00:00:00Z") });
+    const db = makeWithdrawalDb([], [[oldest, newer]]);
+    const input = validCommitInput();
+    input.lines[0].lotId = "lot-newer";
+    input.lines[0].locationId = "loc-uuid-2";
+    const approvedInput = { ...input, approvalRequestId: "approval-request-uuid" };
+
+    const result = await commitWithdrawal(supervisorResolver(), approvedInput, mockRlsDeps(db).deps);
+
+    expect(result.ok).toBe(true);
+    expect(db.execute).toHaveBeenCalled();
+    expect(db._inserted).toContainEqual(expect.objectContaining({ lotId: "lot-newer", locationId: "loc-uuid-2" }));
+  });
+});
+
+describe("requestFifoOverride — exact alternate pallet approval", () => {
+  it("creates a pending request for an out-of-sequence pallet", async () => {
+    const oldest = allocationRow({ lotId: "lot-oldest", lotNumber: "LOT-OLD", receivedAt: new Date("2026-01-01T00:00:00Z"), allocationVersion: 4 });
+    const newer = allocationRow({ balanceId: "balance-uuid-2", lotId: "lot-newer", lotNumber: "LOT-NEW", locationId: "loc-uuid-2", locationLabel: "B1-02", receivedAt: new Date("2026-02-01T00:00:00Z"), allocationVersion: 7 });
+    const db = makeWithdrawalDb([], [[oldest, newer]]);
+    const input = validCommitInput();
+    input.lines[0].lotId = "lot-newer";
+    input.lines[0].locationId = "loc-uuid-2";
+
+    const result = await requestFifoOverride(supervisorResolver(), input, "Aisle A is temporarily inaccessible.", mockRlsDeps(db).deps);
+
+    expect(result).toEqual({ ok: true, requestId: "new-uuid-generated", requestNumber: "AR-000001" });
+    expect(db._inserted).toContainEqual(expect.objectContaining({
+      approvalType: "fifo_override",
+      targetResourceId: "balance-uuid-2",
+    }));
+  });
+
+  it("rejects an override request when the selected pallet is already the FIFO recommendation", async () => {
+    const db = makeWithdrawalDb([], [[allocationRow()]]);
+    const result = await requestFifoOverride(supervisorResolver(), validCommitInput(), "Use the normally assigned source pallet.", mockRlsDeps(db).deps);
+
+    expect(result).toEqual({ ok: false, errors: ["override_not_required"] });
     expect(db.insert).not.toHaveBeenCalled();
   });
 });
@@ -876,6 +936,50 @@ describe("dispatchPickList — unauthorized (R7.5, R10.1, R10.2, design.md §7)"
   });
 });
 
+describe("selectPickUnit — exact physical box and location", () => {
+  const unitId = "12345678-1234-4abc-8def-000000000001";
+
+  it("rejects a real box registered at a different location", async () => {
+    const db = makeWithdrawalDb([], [
+      [{ id: "line-1", lotId: "lot-1", locationId: "loc-a", numberOfBoxes: 1, pickListStatus: "picked" }],
+      [{ id: "unit-row-1", lotId: "lot-1", locationId: "loc-b", status: "available", pickListItemId: null }],
+    ]);
+
+    const result = await selectPickUnit(
+      pickerResolver(),
+      "pick-list-1",
+      "line-1",
+      unitId,
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result).toEqual({ ok: false, errors: ["wrong_box_location"] });
+    expect(db.update).not.toHaveBeenCalled();
+  });
+
+  it("selects the scanned box for the exact matching line", async () => {
+    const db = makeWithdrawalDb([], [
+      [{ id: "line-1", lotId: "lot-1", locationId: "loc-a", numberOfBoxes: 2, pickListStatus: "picked" }],
+      [{ id: "unit-row-1", lotId: "lot-1", locationId: "loc-a", status: "available", pickListItemId: null }],
+      [{ id: "already-selected" }],
+    ]);
+
+    const result = await selectPickUnit(
+      pickerResolver(),
+      "pick-list-1",
+      "line-1",
+      unitId,
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result).toEqual({ ok: true, selectedCount: 2, requiredCount: 2 });
+    expect(db._updated).toContainEqual(expect.objectContaining({
+      status: "selected",
+      pickListItemId: "line-1",
+    }));
+  });
+});
+
 // ---------------------------------------------------------------------------
 // dispatchPickList — Pick list not found
 // (R7.5, design.md §7)
@@ -1006,8 +1110,12 @@ describe("dispatchPickList — row lock on initial pick_lists lookup (R3.3, desi
 
 describe("dispatchPickList — success (R7.5, design.md §7)", () => {
   it("rejects dispatch when the committed lines have not all been scanned", async () => {
-    const allocated = pickListRow({ status: "allocated" });
-    const db = makeWithdrawalDb([allocated], [[allocated], [commitmentLineRow()]]);
+    const picked = pickListRow({ status: "picked" });
+    const db = makeWithdrawalDb([picked], [
+      [picked],
+      [{ id: "pick-list-item-uuid-1", numberOfBoxes: 1 }],
+      [{ id: "commitment-uuid-1", status: "active", expiresAt: null }],
+    ]);
 
     const result = await dispatchPickList(
       supervisorResolver(),
@@ -1021,28 +1129,37 @@ describe("dispatchPickList — success (R7.5, design.md §7)", () => {
     expect(db.insert).not.toHaveBeenCalled();
   });
 
-  // dispatchPickList's happy-path select sequence: (1) pick_lists,
-  // (2) pick_list_items, (3) inventory_commitments header, then per-line
-  // (4) lot_location_balances, (5) inventory_commitment_lines.
-  function fullDispatchSelectSequence(allocated: AnyRecord) {
+  // dispatchPickList's happy-path select sequence, per its current merged
+  // implementation: (1) pick_lists (FOR UPDATE), (2) pick_list_items
+  // (includes numberOfBoxes, used by the exact-box-count check below),
+  // (3) inventory_commitments header (expiresAt — null here, non-expired
+  // path), (4) inventory_units rows already 'selected' for this line (the
+  // fix-it-felix exact-box-count check — count must equal numberOfBoxes),
+  // then per-line: (5) lot_location_balances, (6) inventory_commitment_lines.
+  // Status must be 'picked', not 'allocated' — dispatch now requires the
+  // exact-picking stage (markPickListPicked/completeExactPick) to have
+  // already completed (fix-it-felix, spec 08 R3.3 2026-08-24).
+  function fullDispatchSelectSequence(picked: AnyRecord) {
     return [
-      [allocated],
+      [picked],
       [{
         id: "pick-list-item-uuid-1",
         itemId: "item-uuid-1",
         lotId: "lot-uuid-1",
         locationId: "loc-uuid-1",
         qty: 10,
+        numberOfBoxes: 1,
       }],
       [{ id: "commitment-uuid-1", status: "active", expiresAt: null }],
+      [{ pickListItemId: "pick-list-item-uuid-1" }],
       [{ id: "balance-uuid-1", qtyRemaining: 50, qtyCommitted: 10 }],
       [{ id: "commitment-line-uuid-1" }],
     ];
   }
 
-  it("(AC: supervisor dispatches allocated pick list) returns { ok: true } when supervisor executes a pick list in allocated status", async () => {
-    const allocated = pickListRow({ status: "allocated" });
-    const db = makeWithdrawalDb([allocated], fullDispatchSelectSequence(allocated));
+  it("(AC: supervisor dispatches picked list) returns { ok: true } after exact picking", async () => {
+    const picked = pickListRow({ status: "picked" });
+    const db = makeWithdrawalDb([picked], fullDispatchSelectSequence(picked));
 
     const result = await dispatchPickList(
       supervisorResolver(),
@@ -1054,9 +1171,9 @@ describe("dispatchPickList — success (R7.5, design.md §7)", () => {
     expect(result.ok).toBe(true);
   });
 
-  it("(AC: warehouse_staff dispatches allocated pick list) returns { ok: true } for warehouse_staff with withdrawal.execute capability", async () => {
-    const allocated = pickListRow({ status: "allocated" });
-    const db = makeWithdrawalDb([allocated], fullDispatchSelectSequence(allocated));
+  it("(AC: warehouse_staff dispatches picked list) returns { ok: true } for warehouse_staff with execute capability", async () => {
+    const picked = pickListRow({ status: "picked" });
+    const db = makeWithdrawalDb([picked], fullDispatchSelectSequence(picked));
 
     const result = await dispatchPickList(
       warehouseStaffResolver(),
@@ -1118,10 +1235,11 @@ describe("dispatchPickList — commitment expiry enforcement (24-hour TTL PO dec
     lotId: "lot-uuid-1",
     locationId: "loc-uuid-1",
     qty: 10,
+    numberOfBoxes: 1,
   };
 
   it("(AC: expired commitment rejected in real time, no dispatch write) returns { ok: false, errors: ['commitment_expired'] } and inserts NO inventory_transactions 'pick' row when the commitment's expires_at is in the past", async () => {
-    const allocated = pickListRow({ status: "allocated" });
+    const allocated = pickListRow({ status: "picked" });
     const commitmentHeader = {
       id: "commitment-uuid-1",
       status: "active",
@@ -1154,7 +1272,7 @@ describe("dispatchPickList — commitment expiry enforcement (24-hour TTL PO dec
   });
 
   it("(AC: expiry side effects ARE written in the same rejection path) transitions the expired commitment to status 'expired' and releases its qty_committed, in the same transaction that rejects the dispatch", async () => {
-    const allocated = pickListRow({ status: "allocated" });
+    const allocated = pickListRow({ status: "picked" });
     const commitmentHeader = {
       id: "commitment-uuid-1",
       status: "active",
@@ -1195,7 +1313,7 @@ describe("dispatchPickList — commitment expiry enforcement (24-hour TTL PO dec
   });
 
   it("(AC: non-expired commitment still dispatches normally — regression guard) returns { ok: true } when the commitment's expires_at is still in the future", async () => {
-    const allocated = pickListRow({ status: "allocated" });
+    const allocated = pickListRow({ status: "picked" });
     const commitmentHeader = {
       id: "commitment-uuid-1",
       status: "active",
@@ -1209,7 +1327,14 @@ describe("dispatchPickList — commitment expiry enforcement (24-hour TTL PO dec
     const commitLine = { id: "commitment-line-uuid-1" };
     const db = makeWithdrawalDb(
       [allocated],
-      [[allocated], [pliRow], [commitmentHeader], [balanceRow], [commitLine]],
+      [
+        [allocated],
+        [pliRow],
+        [commitmentHeader],
+        [{ pickListItemId: "pick-list-item-uuid-1" }],
+        [balanceRow],
+        [commitLine],
+      ],
     );
 
     const result = await dispatchPickList(
@@ -1478,7 +1603,7 @@ function makeCapturingUpdate(opts: {
 // Two-line dispatch fixture shared by the tests below.
 // Line A: item-uuid-1 / lot-uuid-1 / loc-uuid-1, qty 10.
 // Line B: item-uuid-2 / lot-uuid-2 / loc-uuid-2, qty 4.
-const dispatchPickListRow = pickListRow({ status: "allocated" });
+const dispatchPickListRow = pickListRow({ status: "picked" });
 
 const lineA = {
   id: "pli-uuid-1",
@@ -1487,6 +1612,7 @@ const lineA = {
   lotId: "lot-uuid-1",
   locationId: "loc-uuid-1",
   qty: 10,
+  numberOfBoxes: 1,
 };
 const lineB = {
   id: "pli-uuid-2",
@@ -1495,6 +1621,7 @@ const lineB = {
   lotId: "lot-uuid-2",
   locationId: "loc-uuid-2",
   qty: 4,
+  numberOfBoxes: 1,
 };
 
 const balanceA = {
@@ -1554,10 +1681,18 @@ function makeFullDispatchDb(
   const queues = new Map<TableRef, unknown[][]>();
   queues.set(pickLists, [[dispatchPickListRow]]);
   queues.set(pickListItems, [[lineA, lineB]]);
+  queues.set(inventoryCommitments, [[commitmentHeader]]);
+  // Exact-box-count check (fix-it-felix): one 'selected' inventory_units row
+  // per line, matching each line's numberOfBoxes: 1.
+  queues.set(inventoryUnits, [
+    [
+      { pickListItemId: "pli-uuid-1" },
+      { pickListItemId: "pli-uuid-2" },
+    ],
+  ]);
   // Consumed once per line, in pick_list_items order (lineA then lineB).
   queues.set(lotLocationBalances, [[balanceA], [balanceB]]);
   queues.set(inventoryCommitmentLines, [[commitLineA], [commitLineB]]);
-  queues.set(inventoryCommitments, [[commitmentHeader]]);
 
   const forCalls: Array<{ table: TableRef; strength: string }> = [];
   const select = makeQueuedSelect(queues, forCalls);

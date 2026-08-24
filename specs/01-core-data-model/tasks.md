@@ -1,6 +1,6 @@
 # Core Data Model — Tasks
 Status: Approved
-Updated: 2026-08-07
+Updated: 2026-08-20
 
 ## Implementation Tasks
 
@@ -15,6 +15,7 @@ Updated: 2026-08-07
   - [x] Define the `master_inventory_tracking` and `lot_history_export` derived read-model contracts, including `lot_number` aging, the `displayed_item_code`/`item_code_is_provisional` flow-based item-code resolution, connected event identity, and financial projection separation (Req 16, Design 3.4) — **and** the `location_transaction_ledger`/`party_transaction_ledger` read models added 2026-08-07 (Design 3 item 4). Implemented as five views in `supabase/migrations/0003_derived_read_models.sql` (financial fields split into a separate `master_inventory_tracking_financial` view, no computed margin/profit/revenue — that calculation remains unsettled VMI/Trading billing logic owned downstream, not guessed at here). Independently real-Postgres verified by `db-migration-verifier`, including the double-counting edge case for a party that is simultaneously a vendor and a VMI lot owner.
   - [x] Define `inventory_commitments` and `inventory_commitment_lines` as the durable Stage 1 reservation relation, including uniqueness, lifecycle, expiry, release, execution, and concurrency constraints (Req 14, Design 1.2)
   - [x] Define `wrr_documents` and `wrr_items` tables in `lib/db/schema/wrr.ts` with `cipl_file_url`, `peza_number`, `commercial_invoice_no`, `ip_number`, `mawb_mbl_number`, and (2026-08-09 amendment) nullable staging `putaway_location_id` (Req 2.4, Design 1.2)
+  - [ ] **Added 2026-08-20, blocked pending reapproval**: define `wrr_item_putaway_allocations` in `lib/db/schema/wrr.ts`, with one row per WRR-line/location, positive quantity, immutable-after-line-commit enforcement, authorized/RLS-scoped staged writes, and a migration verified on real Postgres. The cross-row total and current capacity remain final-transaction invariants, not unsafe client checks.
   - [x] Define `wrr_inspection_logs` table in `lib/db/schema/wrr.ts` with `conformance_status`, `non_conformance_reason`, `remarks`, `evidence_photo_url`, and `action_taken` (Req 9, Design 1.2, Design 3.14)
   - [x] Define `forex_rates` daily exchange rate table in `lib/db/schema/forex.ts` (Req 2.7, Design 1.2)
   - [x] Define `inventory_transactions` immutable ledger table in `lib/db/schema/transactions.ts` (Req 2.6, Design 1.2), including the `pick_list_id` column added 2026-08-07 (mirrors `wrr_id` for outgoing/dispatch movements)
@@ -55,6 +56,8 @@ The 2026-08-06 Master Inventory read-model amendment is documented but requires 
 - [x] All applicable testing layers above pass — real-Postgres design verification (the only testing layer applicable before any code exists) passed on 2026-08-05; unit/E2E/manual QA are code-dependent and apply once Implementation Tasks 1-2 are executed, not before this sign-off gate.
 - [x] Product owner approval — Name: User / System Date: 2026-08-05
 - [x] Second approver approval — Name/Role: User / System (auto-sign-off per standing instruction — see `revision-log.md`) Date: 2026-08-05
+- [x] Batch putaway allocation amendment approval — Product owner: User, 2026-08-20
+- [x] Batch putaway allocation amendment approval — Second approver: System (standing auto-sign-off), 2026-08-20
 
 ## Resolution note
 

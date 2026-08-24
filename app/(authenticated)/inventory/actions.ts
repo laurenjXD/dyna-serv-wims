@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createPageResolver } from "@/lib/auth/page-resolver";
-import { commitWithdrawal } from "@/lib/actions/withdrawals";
+import { commitWithdrawal, requestFifoOverride } from "@/lib/actions/withdrawals";
 
 export async function createPickList(formData: FormData): Promise<void> {
   const raw = formData.get("request");
@@ -27,4 +27,50 @@ export async function createPickList(formData: FormData): Promise<void> {
   revalidatePath("/outgoing");
   revalidatePath("/pick-lists");
   redirect("/outgoing");
+}
+
+export async function requestPickListOverride(formData: FormData): Promise<void> {
+  const raw = formData.get("request");
+  const reason = formData.get("reason");
+  if (typeof raw !== "string" || typeof reason !== "string") {
+    redirect("/inventory?pickListError=invalid_override_request");
+  }
+
+  let result: Awaited<ReturnType<typeof requestFifoOverride>>;
+  try {
+    result = await requestFifoOverride(
+      await createPageResolver(),
+      JSON.parse(raw),
+      reason,
+    );
+  } catch {
+    redirect("/inventory?pickListError=override_request_failed");
+  }
+  if (!result.ok) {
+    redirect(`/inventory?pickListError=${encodeURIComponent(result.errors.join(","))}`);
+  }
+
+  revalidatePath("/inventory");
+  revalidatePath("/approvals");
+  redirect(`/inventory?overrideRequested=${encodeURIComponent(result.requestNumber)}`);
+}
+
+export async function createApprovedPickList(formData: FormData): Promise<void> {
+  const raw = formData.get("request");
+  if (typeof raw !== "string") redirect("/inventory?pickListError=invalid_approval");
+
+  let result: Awaited<ReturnType<typeof commitWithdrawal>>;
+  try {
+    result = await commitWithdrawal(await createPageResolver(), JSON.parse(raw));
+  } catch {
+    redirect("/inventory?pickListError=approval_unavailable");
+  }
+  if (!result.ok) {
+    redirect(`/inventory?pickListError=${encodeURIComponent(result.errors.join(","))}`);
+  }
+
+  revalidatePath("/inventory");
+  revalidatePath("/outgoing");
+  revalidatePath("/approvals");
+  redirect(`/pick-lists/${result.pickListId}/pick`);
 }

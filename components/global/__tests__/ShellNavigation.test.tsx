@@ -82,6 +82,16 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
     expect(screen.queryByTestId("floor-tab-bar")).not.toBeInTheDocument();
   });
 
+  it("keeps the desktop sidebar navigation fixed without an internal scroll region", () => {
+    render(
+      <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" />,
+    );
+
+    const sidebar = screen.getByTestId("desktop-sidebar");
+    expect(sidebar).toHaveClass("lg:fixed");
+    expect(sidebar.querySelector(".overflow-y-auto")).toBeNull();
+  });
+
   it("renders the desktop sidebar (office composition) for tier='party', per design.md §3.3", () => {
     render(
       <ShellNavigation
@@ -138,7 +148,7 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
     expect(screen.getByTestId("nav-entry-inventory")).toBeInTheDocument();
   });
 
-  it("marks only the resolved active entry with aria-current='page', including for a dynamic-segment path (R3.6/R3.7)", () => {
+  it("keeps Receiving highlighted for a dynamic receiving-detail route (R3.6/R3.7)", () => {
     const contextWithReceiving: Pick<AuthorizationContext, "grants"> = {
       grants: [{ resource: "receiving", action: "view", scopeKind: "global" }],
     };
@@ -149,19 +159,43 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
         currentPath="/receiving/wrr-123"
       />,
     );
-    // /receiving/wrr-123 resolves to the "receiving-detail" entry, not the
-    // "receiving" list entry (active-route.ts's dynamic-segment matching).
-    const receivingLink = screen.queryByTestId("nav-entry-receiving");
-    if (receivingLink) {
-      expect(receivingLink).not.toHaveAttribute("aria-current", "page");
-    }
+    const receivingLink = screen.getByTestId("nav-entry-receiving");
+    expect(receivingLink).toHaveAttribute("aria-current", "page");
+  });
+
+  it("gives the active office destination a persistent rail/icon treatment and inactive rows a hover affordance", () => {
+    render(
+      <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" />,
+    );
+
+    const active = screen.getByTestId("nav-entry-inventory");
+    const inactive = screen.getByTestId("nav-entry-root");
+
+    expect(active).toHaveAttribute("aria-current", "page");
+    expect(active).toHaveAttribute("data-active", "true");
+    expect(active.className).toContain("bg-accent-indigo-50");
+    expect(active.className).toContain("before:bg-primary");
+    expect(within(active).getByText("Master Inventory").previousElementSibling?.className).toContain("bg-primary");
+
+    expect(inactive).not.toHaveAttribute("aria-current");
+    expect(inactive).toHaveAttribute("data-active", "false");
+    expect(inactive.className).toContain("hover:bg-accent-indigo-50");
+  });
+
+  it("keeps compact desktop navigation rows at the approved 44px office target", () => {
+    render(
+      <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" />,
+    );
+    expect(screen.getByTestId("nav-entry-inventory").className).toContain("h-11");
   });
 
   it("never renders a live link for a featureStatus:'planned' registry entry (e.g. /documents)", () => {
     // 2026-08-17: /reports retired as the example here — it flipped
     // planned -> launch (confirmed fully wired to real data, stale flag).
-    // /documents is still genuinely planned (billing-pricing's real
-    // backend, P11, hasn't landed) — see revision-log.md.
+    // 2026-08-24: /billing-pricing also flipped planned -> launch (real
+    // query modules wired) — see revision-log.md. /documents is still
+    // genuinely planned (10-pick-list-and-acknowledgement-receipt's own
+    // backend hasn't landed).
     render(
       <ShellNavigation
         tier="office"

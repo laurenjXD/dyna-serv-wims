@@ -357,7 +357,8 @@ This rationale is documentation/context only; it does not change the schema alre
 
 #### `wrr_documents` & `wrr_items` (`lib/db/schema/wrr.ts`)
 ```typescript
-import { pgTable, uuid, varchar, text, integer, decimal, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, text, integer, decimal, timestamp, unique, check } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { flowTypeEnum, wrrStatusEnum, conformanceStatusEnum, nonConformanceReasonEnum } from "./enums";
 import { parties } from "./parties";
 import { items } from "./items";
@@ -393,8 +394,8 @@ export const wrrItems = pgTable("wrr_items", {
   unitCbm: decimal("unit_cbm", { precision: 10, scale: 4 }).notNull(),
   uom: varchar("uom", { length: 50 }).notNull(),
   disposition: text("disposition").default("store").notNull(),
-  // Added 2026-08-09: selected for store lines during staging; confirmation
-  // resolves inspection lines to the active inspection location instead.
+  // Legacy/single-location compatibility field. Split receiving uses the
+  // allocation table below as the sole putaway source of truth.
   putawayLocationId: uuid("putaway_location_id").references(() => locations.id),
   // Added 2026-08-10 (migration 0021_wrr_item_committed_at.sql): per-line
   // immediate-commit idempotency gate, per the 07 receiving reversal (design.md
@@ -409,6 +410,26 @@ export const wrrItems = pgTable("wrr_items", {
   committedAt: timestamp("committed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// Added 2026-08-20, pending reapproval: staged operational placement plan.
+// It creates no inventory on its own. The receiving transaction validates it
+// and turns every committed allocation into a lot_location_balances row plus
+// one immutable receiving transaction.
+export const wrrItemPutawayAllocations = pgTable("wrr_item_putaway_allocations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  wrrItemId: uuid("wrr_item_id")
+    .references(() => wrrItems.id, { onDelete: "cascade" })
+    .notNull(),
+  locationId: uuid("location_id").references(() => locations.id).notNull(),
+  qty: integer("qty").notNull(),
+  createdByUserId: uuid("created_by_user_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  oneAllocationPerLineLocation: unique("wrr_item_putaway_allocations_line_location_unique")
+    .on(table.wrrItemId, table.locationId),
+  qtyPositive: check("wrr_item_putaway_allocations_qty_positive", sql`${table.qty} > 0`),
+}));
 
 export const wrrInspectionLogs = pgTable("wrr_inspection_logs", {
   id: uuid("id").primaryKey().defaultRandom(),

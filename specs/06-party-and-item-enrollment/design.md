@@ -251,7 +251,7 @@ Hard deletion is unavailable for a location referenced by any `lot_location_bala
 
 ### Location type and capacity
 
-`location_type` distinguishes physical zones (`receiving_bay`, `inspection`, `storage`, `picking`, `dispatch`) per the approved `01` enum. This feature does not implement putaway recommendation, occupied-CBM computation, or capacity-preview UI — those consume `locations.max_cbm_capacity` and are owned by `01-core-data-model`'s read models and `07-incoming-receiving`'s putaway design. This feature's responsibility ends at storing a correct, validated `max_cbm_capacity` value on the `locations` row.
+`location_type` distinguishes physical zones (`receiving_bay`, `inspection`, `storage`, `picking`, `dispatch`) per the approved `01` enum. Putaway recommendation remains owned by `07-incoming-receiving`, but the location detail view includes a read-only stored-inventory projection: distinct item count, total units, live occupied CBM, capacity utilization, and item/lot rows sourced from `lot_location_balances` joined to `lots` and `items`. This is a location-scoped view of authoritative stock, not a second ledger or capacity calculation. Capacity is displayed as a progress bar with warning treatment when utilization reaches 75%/90%.
 
 ### Movement Ledger (added 2026-08-07)
 
@@ -266,7 +266,7 @@ This is a read-only view. No new capability is introduced: the ledger is gated b
 - Detail views show lifecycle status and safe related references. They do not become an inventory dashboard or expose lots/transactions without the owning feature's authorization.
 - Realtime, if enabled, invalidates the relevant list/detail query and triggers an authoritative refetch. It is not used as the sole source of truth.
 - Empty, loading, error, and stale-edit states use the shared shell and feature contracts from `05`.
-- **(Added 2026-08-07)** Location list/search matches normalized `zone`, `rack`, `level`, `position`, `label`, and `location_type`; results are filtered by `locations.read` scope. Location detail shows lifecycle status but does not become an occupied-CBM or inventory dashboard — that projection belongs to `01`'s Master Inventory read model and `16-reporting-and-analytics`.
+- **(Added 2026-08-07)** Location list/search matches normalized `zone`, `rack`, `level`, `position`, `label`, and `location_type`; results are filtered by `locations.read` scope. Location detail shows lifecycle status and provides a read-only Inventory View beside the Movement Ledger. It does not mutate stock or replace `01`'s Master Inventory projection.
 
 ## 8. Authorization and RLS
 

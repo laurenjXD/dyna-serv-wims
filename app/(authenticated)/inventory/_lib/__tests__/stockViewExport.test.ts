@@ -21,6 +21,7 @@ describe("toStockViewSpreadsheetXml", () => {
         locationLabel: "A-01",
         qtyRemaining: 12,
         qtyCommitted: 2,
+        spq: 1,
       },
     ]);
 

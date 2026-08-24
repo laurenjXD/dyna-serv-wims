@@ -128,7 +128,10 @@ const EXPECTED_ROUTES: Array<{
   { id: "enrollment", path: "/enrollment", surface: "office", capability: "parties.read", featureSpecs: ["06-party-and-item-enrollment"], launchStatus: "launch" },
   // 2026-08-09: added — was already in 05's design.md route table (Planned)
   // but had never been added to this registry. See revision-log.md.
-  { id: "billing-pricing", path: "/billing-pricing", surface: "office", capability: "reporting.financial_read", featureSpecs: ["12-vmi-billing", "13-trading-orders-and-pricing"], launchStatus: "planned" },
+  // 2026-08-24: launchStatus corrected planned -> launch — the page now
+  // reads real data via getVmiCbmLedgerSummary/getTradingMarginLedger
+  // (lib/billing/queries/), no mock arrays remain. See revision-log.md.
+  { id: "billing-pricing", path: "/billing-pricing", surface: "office", capability: "reporting.financial_read", featureSpecs: ["12-vmi-billing", "13-trading-orders-and-pricing"], launchStatus: "launch" },
   // 2026-08-17: launchStatus corrected planned -> launch — the page is
   // fully wired to real query modules, no TODO/mock markers. See revision-log.md.
   { id: "reports", path: "/reports", surface: "office", capability: "reporting.read", featureSpecs: ["16-reporting-and-analytics"], launchStatus: "launch" },

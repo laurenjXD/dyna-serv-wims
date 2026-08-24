@@ -96,37 +96,6 @@
 //     line: WrrLine,
 //     location: CommitLocation | null
 //   ): CommitValidationResult
-//
-// ---------------------------------------------------------------------------
-// AMENDED 2026-08-20 — per-unit store commit (RED step, second pass)
-// ---------------------------------------------------------------------------
-//
-// Traceability for this amendment:
-//   specs/07-incoming-receiving/design.md §9 ("Amended 2026-08-20: the atomic
-//     step is now the unit, not the line") — for a `store` line,
-//     validateLineCommit must no longer require scannedQty >= expectedQty
-//     before a commit attempt is valid. Instead it must ACCEPT a commit
-//     attempt whenever scannedQty < expectedQty (at least one more unit
-//     remains) with a valid active `storage` location, and REJECT — with a
-//     distinct, clear error, not the old "under-scanned" message — an
-//     attempt to commit a store line that is already fully committed
-//     (scannedQty >= expectedQty), so a stray extra commit call cannot
-//     silently create a 6th unit on a 5-unit line.
-//   specs/07-incoming-receiving/requirements.md R7.2 (amended 2026-08-20) —
-//     each per-unit store commit validates that unit's prerequisites before
-//     posting that unit alone; the line is not required to be fully scanned
-//     first (R3.10).
-//   specs/07-incoming-receiving/design.md §6.3 — inspect-disposition
-//     validation is explicitly UNCHANGED by this amendment: it still
-//     requires the whole line's scannedQty >= expectedQty before its single
-//     whole-line "Hold" commit.
-//
-// THIS IS ALSO A BEHAVIOR-CHANGE REWRITE for the store-disposition case: the
-// current lib/receiving/commit-validation.ts (from the 2026-08-10 pass)
-// still requires scannedQty >= expectedQty for EVERY disposition, including
-// store. Every store-specific test below that exercises the new
-// partial-scan-accepted / fully-committed-rejected split is expected to fail
-// against that current implementation.
 
 import { describe, expect, it } from "vitest";
 
@@ -162,15 +131,7 @@ const makeLine = (
   itemBarcode: "BC-ALPHA-001",
   lotNumber: "LOT-2026-001",
   expectedQty: 10,
-  // AMENDED 2026-08-20: default changed from 10 (fully scanned) to 4
-  // (partially committed, units remain) so the default fixture represents
-  // the NEW normal in-progress per-unit-commit state for a store line
-  // (design.md §9's per-unit re-scoping) rather than the old
-  // fully-scanned-required precondition. Tests that specifically need a
-  // fully-scanned/complete line (inspect's unchanged whole-line gate, or the
-  // store "already fully committed" rejection case) override this
-  // explicitly below.
-  scannedQty: 4,
+  scannedQty: 10,
   disposition: "store" as const,
   putawayLocationId: "location-storage-uuid",
   ...overrides,
@@ -194,8 +155,8 @@ const makeInspectionLocation = (
   ...overrides,
 });
 
-describe("validateLineCommit — a store line with units remaining (scannedQty < expectedQty) returns { ok: true } (design.md §9/§6.2 amended 2026-08-20, requirements.md R7.2 amended 2026-08-20, R3.10)", () => {
-  it("AC-R7.2/R3.10 (amended 2026-08-20): returns { ok: true } for a partially-committed store line (scannedQty < expectedQty) with a resolved item and an active storage location — a store line's units may commit one at a time; the line is not required to be fully scanned before its first (or any subsequent) unit commits", async () => {
+describe("validateLineCommit — a fully valid store line returns { ok: true } (design.md §9, requirements.md R7.2)", () => {
+  it("AC-R7.2: returns { ok: true } for a fully-scanned store line with a resolved item and an active storage location", async () => {
     const { validateLineCommit } = await import("@/lib/receiving/commit-validation");
 
     const result = validateLineCommit(makeWrr(), makeLine(), makeStorageLocation());
@@ -204,42 +165,11 @@ describe("validateLineCommit — a store line with units remaining (scannedQty <
   });
 });
 
-describe("validateLineCommit — a store line already fully committed (scannedQty >= expectedQty) is rejected as a distinct error, not silently accepted (design.md §9 2026-08-20 amendment, requirements.md R7.2 amended 2026-08-20)", () => {
-  it("AC-R7.2 (amended 2026-08-20): returns { ok: false } with an error distinct from the 'under-scanned' message when scannedQty === expectedQty for a store line — a stray extra commit call must not silently create a 6th unit on a 5-unit line", async () => {
-    const { validateLineCommit } = await import("@/lib/receiving/commit-validation");
-
-    const line = makeLine({ scannedQty: 10, expectedQty: 10 });
-    const result = validateLineCommit(makeWrr(), line, makeStorageLocation());
-
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.errors.length).toBeGreaterThan(0);
-    // Must be a DISTINCT rejection reason from "under-scanned" — this line
-    // has too MANY committed units already, not too few.
-    expect(result.errors.some((e) => /under-scanned/i.test(e))).toBe(false);
-    expect(
-      result.errors.some((e) => /already.*committed|fully committed/i.test(e)),
-    ).toBe(true);
-  });
-
-  it("AC-R7.2 (amended 2026-08-20): returns { ok: false } when scannedQty > expectedQty for a store line (corrupted/over-committed state is rejected the same as exactly-complete)", async () => {
-    const { validateLineCommit } = await import("@/lib/receiving/commit-validation");
-
-    const line = makeLine({ scannedQty: 11, expectedQty: 10 });
-    const result = validateLineCommit(makeWrr(), line, makeStorageLocation());
-
-    expect(result.ok).toBe(false);
-  });
-});
-
-describe("validateLineCommit — a fully valid inspect line returns { ok: true } (design.md §9/§6.3, requirements.md R7.2 — unaffected by the 2026-08-20 per-unit amendment, which is store-only)", () => {
+describe("validateLineCommit — a fully valid inspect line returns { ok: true } (design.md §9, requirements.md R7.2)", () => {
   it("AC-R7.2: returns { ok: true } for a fully-scanned inspect line with a resolved item and an active inspection location", async () => {
     const { validateLineCommit } = await import("@/lib/receiving/commit-validation");
 
-    // scannedQty explicit here (10 === expectedQty): the 2026-08-20 amendment
-    // widened the STORE default to a partial scan (see makeLine above);
-    // inspect's whole-line gate is unchanged and still requires full scan.
-    const line = makeLine({ disposition: "inspect", putawayLocationId: null, scannedQty: 10 });
+    const line = makeLine({ disposition: "inspect", putawayLocationId: null });
     const result = validateLineCommit(makeWrr(), line, makeInspectionLocation());
 
     expect(result.ok).toBe(true);
@@ -283,35 +213,16 @@ describe("validateLineCommit — line must have a resolved itemId (requirements.
   });
 });
 
-describe("validateLineCommit — under-scanned handling now differs by disposition (design.md §5.2/§9/§6.2/§6.3 amended 2026-08-20, requirements.md R7.2 amended 2026-08-20)", () => {
-  // SUPERSEDES the pre-2026-08-20 version of this test, which asserted
-  // { ok: false } for a store line with scannedQty(7) < expectedQty(10) —
-  // that was the old whole-line-batch gate. Per-unit store commits now
-  // REQUIRE exactly this state (units remain) to be committable.
-  it("AC-R7.2 (amended 2026-08-20): a store line with scannedQty < expectedQty is NOT blocked — it is exactly the normal per-unit-commit-in-progress state, not an error", async () => {
+describe("validateLineCommit — line must be fully scanned (design.md §5.2, requirements.md R7.2)", () => {
+  it("AC-R7.2: returns { ok: false } when scannedQty < expectedQty for this line", async () => {
     const { validateLineCommit } = await import("@/lib/receiving/commit-validation");
 
-    const line = makeLine({ expectedQty: 10, scannedQty: 7, disposition: "store" });
+    const line = makeLine({ expectedQty: 10, scannedQty: 7 });
     const result = validateLineCommit(makeWrr(), line, makeStorageLocation());
-
-    expect(result.ok).toBe(true);
-  });
-
-  it("AC-R7.2 (unchanged for inspect, design.md §6.3): an inspect line with scannedQty < expectedQty is still blocked — the whole-line 'Hold' sequence is unaffected by the per-unit amendment, which is store-only", async () => {
-    const { validateLineCommit } = await import("@/lib/receiving/commit-validation");
-
-    const line = makeLine({
-      expectedQty: 10,
-      scannedQty: 7,
-      disposition: "inspect",
-      putawayLocationId: null,
-    });
-    const result = validateLineCommit(makeWrr(), line, makeInspectionLocation());
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.errors.length).toBeGreaterThan(0);
-    expect(result.errors.some((e) => /under-scanned/i.test(e))).toBe(true);
   });
 });
 
@@ -377,9 +288,7 @@ describe("validateLineCommit — inspect disposition requires an active 'inspect
   it("AC-R7.2: returns { ok: false } when an inspect line's location is null (no inspection location confirmed before scanning)", async () => {
     const { validateLineCommit } = await import("@/lib/receiving/commit-validation");
 
-    // scannedQty explicit (== expectedQty): inspect's whole-line gate is
-    // unchanged; the 2026-08-20 amendment only widened the STORE default.
-    const line = makeLine({ disposition: "inspect", putawayLocationId: null, scannedQty: 10 });
+    const line = makeLine({ disposition: "inspect", putawayLocationId: null });
     const result = validateLineCommit(makeWrr(), line, null);
 
     expect(result.ok).toBe(false);
@@ -390,7 +299,7 @@ describe("validateLineCommit — inspect disposition requires an active 'inspect
   it("AC-R7.2: returns { ok: false } when an inspect line's location has locationType 'storage' instead of 'inspection'", async () => {
     const { validateLineCommit } = await import("@/lib/receiving/commit-validation");
 
-    const line = makeLine({ disposition: "inspect", putawayLocationId: null, scannedQty: 10 });
+    const line = makeLine({ disposition: "inspect", putawayLocationId: null });
     const result = validateLineCommit(makeWrr(), line, makeStorageLocation());
 
     expect(result.ok).toBe(false);

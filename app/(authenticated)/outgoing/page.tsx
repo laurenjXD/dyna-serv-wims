@@ -25,31 +25,10 @@ import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { listPickLists } from "@/lib/db/queries/withdrawals";
-import type { PickListRow } from "@/lib/db/queries/withdrawals";
 import { listOutgoingLedger } from "@/lib/actions/withdrawals";
 import type { OutgoingLedgerRow } from "@/lib/db/queries/withdrawals";
-
-// ─── Status badge colors ─────────────────────────────────────────────────────
-// design.md §1.3 semantic color mapping:
-// allocated → status-pending (amber); picked → brand-navy; dispatched → status-available.
-
-const STATUS_CLASSES: Record<string, string> = {
-  allocated: "bg-status-pending text-on-surface",
-  picked: "bg-brand-navy text-surface-white",
-  dispatched: "bg-status-available text-on-surface",
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  allocated: "ALLOCATED",
-  picked: "PICKED",
-  dispatched: "DISPATCHED",
-};
-
-const FLOW_LABELS: Record<string, string> = {
-  vmi: "VMI",
-  trading: "Trading",
-  supplies: "Supplies",
-};
+import { Boxes, Truck } from "lucide-react";
+import { PickQueueSection } from "./_components/PickQueueSection";
 
 type TabKey = "active-picks" | "ledger";
 
@@ -83,22 +62,18 @@ export default async function OutgoingPage({ searchParams }: PageProps) {
     (await requirePermission(resolver, "pick_list.execute")).kind === "authorized";
 
   return (
-    <div className="mx-auto max-w-container">
+    <div className="mx-auto max-w-container pb-10">
       {/* Page header */}
-      <div>
-        <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
-          Outgoing Work Queue
-        </h1>
-        <p className="mt-1 font-body text-body-md text-text-grey">
-          Manage active picks and dispatch ledgers.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div><h1 className="font-heading text-headline-lg font-bold tracking-tight text-on-surface">Pick List Management</h1><p className="mt-1 font-body text-body-md text-text-grey">Review allocated stock, execute picks, and confirm dispatch.</p></div>
+        <div className="flex gap-2"><Link href="/inventory" className="inline-flex h-12 items-center gap-2 rounded bg-brand-navy px-5 font-label text-body-md font-bold text-surface-white shadow-elevation-1"><Boxes size={19} aria-hidden="true" />Stock View</Link></div>
       </div>
 
       {/* Tab switcher — office pattern per design.md §3 */}
       <div
         role="tablist"
         aria-label="Outgoing sections"
-        className="mt-6 flex gap-2 overflow-x-auto border-b border-outline-variant/30"
+        className="mt-6 flex gap-7 overflow-x-auto border-b border-outline-variant"
       >
         {TABS.map((tab) => {
           const isActive = tab.key === activeTab;
@@ -110,7 +85,7 @@ export default async function OutgoingPage({ searchParams }: PageProps) {
               href={href}
               role="tab"
               aria-selected={isActive}
-              className={`flex h-14 shrink-0 items-center border-b-2 px-4 font-label text-body-md uppercase tracking-[0.05em] focus:outline-none focus:ring-2 focus:ring-brand-navy md:h-11 md:text-label ${
+              className={`flex h-12 shrink-0 items-center border-b-2 px-1 font-label text-body-md font-bold focus:outline-none focus:ring-2 focus:ring-brand-navy ${
                 isActive
                   ? "border-on-surface text-on-surface"
                   : "border-transparent text-text-grey hover:text-on-surface"
@@ -140,132 +115,16 @@ async function ActivePicksTab({ canExecute }: { canExecute: boolean }) {
     listPickLists(db, { limit: 50, offset: 0, status: "allocated" }),
     listPickLists(db, { limit: 50, offset: 0, status: "picked" }),
   ]);
-  const rows = [...allocatedRows, ...pickedRows].sort(
-    (first, second) => first.createdAt.getTime() - second.createdAt.getTime(),
-  );
+  const allocatedCount = allocatedRows.length;
+  const pickedCount = pickedRows.length;
 
   return (
-    <div className="mt-6 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-2 md:shadow-elevation-1">
-      {rows.length === 0 ? (
-        <div className="px-6 py-12 text-center">
-          <p className="font-body text-body-md text-text-grey">
-            No active pick lists.
-          </p>
-          <p className="mt-2 font-body text-body-sm text-text-grey">
-            Allocated and picked lists stay here until their dispatch is complete.
-          </p>
-        </div>
-      ) : (
-        <>
-          <div className="divide-y divide-outline-variant/30 md:hidden">
-            {rows.map((row: PickListRow) => (
-              <article key={row.id} className="space-y-4 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-label text-body-md uppercase tracking-[0.05em] text-text-grey">
-                      {FLOW_LABELS[row.flowType] ?? row.flowType}
-                    </p>
-                    <p className="mt-1 font-mono text-mono-md text-on-surface">
-                      {row.customerPartyId}
-                    </p>
-                  </div>
-                  <span
-                    className={`inline-flex items-center rounded-full px-2 py-1 font-label text-label uppercase ${STATUS_CLASSES[row.status] ?? "bg-status-neutral text-on-surface"}`}
-                  >
-                    {STATUS_LABELS[row.status] ?? row.status.toUpperCase()}
-                  </span>
-                </div>
-                <p className="font-body text-body-md text-text-grey">
-                  Created {row.createdAt.toLocaleString()}
-                </p>
-                {canExecute ? (
-                  <Link
-                    href={
-                      row.status === "picked"
-                        ? `/pick-lists/${row.id}/dispatch`
-                        : `/pick-lists/${row.id}/pick`
-                    }
-                    className="flex min-h-16 w-full items-center justify-center rounded bg-primary px-4 font-label text-body-md uppercase tracking-wide text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2"
-                  >
-                    {row.status === "picked" ? "Continue to Dispatch" : "Start picking"}
-                  </Link>
-                ) : (
-                  <p className="font-body text-body-md text-text-grey">
-                    View only — you do not have permission to execute picks.
-                  </p>
-                )}
-              </article>
-            ))}
-          </div>
-          <div className="hidden overflow-x-auto md:block">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                  {/* Epilogue SemiBold uppercase headers per §9 tables */}
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Flow Type
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Customer Organization
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Created
-                  </th>
-                  <th className="sr-only px-4 py-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/30">
-                {rows.map((row: PickListRow) => (
-                  <tr key={row.id} className="hover:bg-surface-light-grey/50">
-                    <td className="px-4 py-3">
-                      {/* Status badge — radius-full, §1.3 semantic colors */}
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase ${STATUS_CLASSES[row.status] ?? "bg-status-neutral text-on-surface"}`}
-                      >
-                        {STATUS_LABELS[row.status] ?? row.status.toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                      {FLOW_LABELS[row.flowType] ?? row.flowType}
-                    </td>
-                    {/* Roboto Mono for party IDs per §9 */}
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {row.customerPartyId}
-                    </td>
-                    <td className="px-4 py-3 font-body text-body-md text-text-grey">
-                      {row.createdAt.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {/* Execute link — h-11 (44px) office touch target, gated pick_list.execute */}
-                      {canExecute ? (
-                        <Link
-                          href={
-                            row.status === "picked"
-                              ? `/pick-lists/${row.id}/dispatch`
-                              : `/pick-lists/${row.id}/pick`
-                          }
-                          className="inline-flex h-11 items-center font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                        >
-                          {row.status === "picked" ? "Continue to Dispatch" : "Execute"}
-                        </Link>
-                      ) : (
-                        <span className="font-label text-label text-text-grey">View only</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="border-t border-outline-variant/30 px-4 py-4 font-body text-body-md text-text-grey md:px-6 md:py-3 md:text-body-sm">
-            Confirm the pick, then dispatch it. The acknowledgement receipt is
-            generated only after dispatch.
-          </p>
-        </>
-      )}
+    <div className="mt-7 grid gap-7 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <section className="min-w-0 space-y-9" aria-label="Active pick-list queues">
+        <PickQueueSection mode="pick" rows={allocatedRows} canExecute={canExecute} />
+        <PickQueueSection mode="dispatch" rows={pickedRows} canExecute={canExecute} />
+      </section>
+      <aside className="space-y-5"><section className="rounded-lg border border-outline-variant bg-surface-white p-5 shadow-elevation-2"><div className="flex items-center gap-2"><Truck size={23} className="text-brand-navy" aria-hidden="true" /><h2 className="font-heading text-title-lg font-bold text-on-surface">Queue Overview</h2></div><div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded border border-[#C9D8FF] bg-[#EEF3FF] p-4"><p className="font-label text-label font-bold uppercase text-text-grey">To Pick</p><p className="mt-2 font-heading text-headline-lg font-bold text-brand-navy">{allocatedCount}</p></div><div className="rounded bg-brand-navy p-4 text-surface-white"><p className="font-label text-label font-bold uppercase text-[#AFC5FF]">To Dispatch</p><p className="mt-2 font-heading text-headline-lg font-bold">{pickedCount}</p></div></div><p className="mt-4 font-body text-body-sm text-text-grey">Pallet verification happens once during execution. Dispatch becomes available after every committed line is confirmed.</p></section></aside>
     </div>
   );
 }
@@ -300,7 +159,7 @@ async function OutgoingLedgerTab({
           design.md §9: item code is the prominent first field in office review.
           Card wrapper matches Active Picks tab's pattern (border + responsive
           shadow) for cross-tab visual consistency. */}
-      <div className="mt-6 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-2 md:shadow-elevation-1">
+      <div className="mt-6 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-2">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="font-body text-body-md text-text-grey">

@@ -15,17 +15,23 @@ import { allocate, type AllocationResult } from "@/lib/withdrawal/allocation";
 export type DbLike = { select: (...args: any[]) => any };
 
 export type StockViewRow = {
+  balanceId?: string;
+  allocationVersion?: number;
   itemId: string;
   itemCode: string;
+  customerItemCode?: string | null;
   itemName: string;
   organizationId?: string | null;
   defaultSupplierPartyId: string | null;
   uom: string;
+  spq: number;
+  spqMeter?: string | number | null;
   isPerishable: boolean;
   flowType: "vmi" | "trading" | "supplies";
   lotId: string;
   lotNumber: string;
   lotStatus: string;
+  manufactureDate?: string | null;
   expiryDate: string | null;
   receivedAt: Date;
   locationId: string;
@@ -46,17 +52,23 @@ export type StockAllocationPreview =
 export async function listStockView(db: DbLike): Promise<StockViewRow[]> {
   return (await db
     .select({
+      balanceId: lotLocationBalances.id,
+      allocationVersion: lotLocationBalances.version,
       itemId: items.id,
       itemCode: items.code,
+      customerItemCode: items.customerItemCode,
       itemName: items.name,
       organizationId: items.defaultSupplierPartyId,
       defaultSupplierPartyId: items.defaultSupplierPartyId,
       uom: items.uom,
+      spq: items.spq,
+      spqMeter: items.spqMeter,
       isPerishable: items.isPerishable,
       lotId: lots.id,
       flowType: lots.flowType,
       lotNumber: lots.lotNumber,
       lotStatus: lots.status,
+      manufactureDate: lots.manufactureDate,
       expiryDate: lots.expiryDate,
       receivedAt: lots.createdAt,
       locationId: locations.id,

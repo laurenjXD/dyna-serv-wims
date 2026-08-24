@@ -26,6 +26,7 @@ import { items } from "@/lib/db/schema/items";
 import { lots } from "@/lib/db/schema/lots";
 import { locations } from "@/lib/db/schema/locations";
 import { parties } from "@/lib/db/schema/parties";
+import { inventoryUnits } from "@/lib/db/schema/inventory_units";
 
 // Minimal structural type that both the real Drizzle db instance and test
 // stubs satisfy. Uses named method properties (not an index signature) so
@@ -42,6 +43,7 @@ export type PickListRow = {
   pickListNumber: string;
   status: string;
   customerPartyId: string;
+  customerPartyName?: string | null;
   flowType: string;
   createdAt: Date;
 };
@@ -59,8 +61,25 @@ export type PickListItemRow = {
   locationLabel: string;
   qty: number;
   spq: number;
+  spqMeter?: string | number | null;
   numberOfBoxes: number;
+  manufactureDate?: string | null;
   unitPrice: string | null;
+};
+
+export type PickUnitSelectionRow = {
+  pickListItemId: string;
+  unitId: string;
+  unitIndex: number;
+  locationId: string;
+  status: string;
+};
+
+export type PickUnitCandidateRow = {
+  pickListItemId: string;
+  unitId: string;
+  unitIndex: number;
+  locationId: string;
 };
 
 export type OutgoingLedgerRow = {
@@ -97,10 +116,12 @@ export async function listPickLists(
       pickListNumber: pickLists.pickListNumber,
       status: pickLists.status,
       customerPartyId: pickLists.customerPartyId,
+      customerPartyName: parties.name,
       flowType: pickLists.flowType,
       createdAt: pickLists.createdAt,
     })
-    .from(pickLists);
+    .from(pickLists)
+    .leftJoin(parties, eq(parties.id, pickLists.customerPartyId));
 
   const countBase = db
     .select({ count: sql<string>`count(*)` })
@@ -153,10 +174,12 @@ export async function listRecentPickLists(
       pickListNumber: pickLists.pickListNumber,
       status: pickLists.status,
       customerPartyId: pickLists.customerPartyId,
+      customerPartyName: parties.name,
       flowType: pickLists.flowType,
       createdAt: pickLists.createdAt,
     })
     .from(pickLists)
+    .leftJoin(parties, eq(parties.id, pickLists.customerPartyId))
     .orderBy(desc(pickLists.createdAt))
     .limit(opts.limit)) as PickListRow[];
 }
@@ -273,15 +296,64 @@ export async function getPickListItems(
       locationLabel: pickListItems.locationLabel,
       qty: pickListItems.qty,
       spq: pickListItems.spq,
+      spqMeter: items.spqMeter,
       numberOfBoxes: pickListItems.numberOfBoxes,
+      manufactureDate: lots.manufactureDate,
       unitPrice: pickListItems.unitPrice,
     })
     .from(pickListItems)
     .leftJoin(items, eq(items.id, pickListItems.itemId))
+    .leftJoin(lots, eq(lots.id, pickListItems.lotId))
     .where(eq(pickListItems.pickListId, pickListId))
     .orderBy(asc(pickListItems.createdAt))) as PickListItemRow[];
 
   return rows;
+}
+
+/** Physical boxes already selected for a pick list, grouped by their exact line. */
+export async function getPickUnitSelections(
+  db: DbLike,
+  pickListId: string,
+): Promise<PickUnitSelectionRow[]> {
+  return (await db
+    .select({
+      pickListItemId: inventoryUnits.pickListItemId,
+      unitId: inventoryUnits.unitId,
+      unitIndex: inventoryUnits.unitIndex,
+      locationId: inventoryUnits.locationId,
+      status: inventoryUnits.status,
+    })
+    .from(inventoryUnits)
+    .innerJoin(pickListItems, eq(pickListItems.id, inventoryUnits.pickListItemId))
+    .where(eq(pickListItems.pickListId, pickListId))
+    .orderBy(asc(inventoryUnits.unitIndex))) as PickUnitSelectionRow[];
+}
+
+/** Available physical boxes for each committed line, grouped by exact source location. */
+export async function getPickUnitCandidates(
+  db: DbLike,
+  pickListId: string,
+): Promise<PickUnitCandidateRow[]> {
+  return (await db
+    .select({
+      pickListItemId: pickListItems.id,
+      unitId: inventoryUnits.unitId,
+      unitIndex: inventoryUnits.unitIndex,
+      locationId: inventoryUnits.locationId,
+    })
+    .from(inventoryUnits)
+    .innerJoin(
+      pickListItems,
+      and(
+        eq(pickListItems.lotId, inventoryUnits.lotId),
+        eq(pickListItems.locationId, inventoryUnits.locationId),
+      ),
+    )
+    .where(and(
+      eq(pickListItems.pickListId, pickListId),
+      eq(inventoryUnits.status, "available"),
+    ))
+    .orderBy(asc(inventoryUnits.unitIndex))) as PickUnitCandidateRow[];
 }
 
 // ---------------------------------------------------------------------------

@@ -11,82 +11,15 @@
 // The real VMI bill is always the period average (vmi_cbm_ledger).
 // Trading prices shown are final.
 // Offline: billing data is Tier 2 — online only, never cached.
-// TODO: wire VMI tab to vmi_cbm_ledger table query
-// TODO: wire Trading tab to pick_list_items pricing query
 
 import Link from "next/link";
 import { Download, Printer, Receipt } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
-
-// ─── Mock data ────────────────────────────────────────────────────────────────
-
-// VMI CBM ledger mock rows
-// TODO: wire to vmi_cbm_ledger table query
-const MOCK_VMI_ROWS = [
-  {
-    id: "vmi-001",
-    party: "Acme Logistics Co.",
-    lotsInStorage: 3,
-    avgDailyCbm: 12.4,
-    ratePerCbm: 4.5,
-    subtotal: 55.8,
-  },
-  {
-    id: "vmi-002",
-    party: "Global Parts Inc.",
-    lotsInStorage: 5,
-    avgDailyCbm: 28.7,
-    ratePerCbm: 4.5,
-    subtotal: 129.15,
-  },
-  {
-    id: "vmi-003",
-    party: "Pacific Supply Group",
-    lotsInStorage: 1,
-    avgDailyCbm: 3.2,
-    ratePerCbm: 4.5,
-    subtotal: 14.4,
-  },
-];
-
-// Trading margin ledger mock rows
-// TODO: wire to pick_list_items pricing query
-const MOCK_TRADING_ROWS = [
-  {
-    id: "trd-001",
-    orderNumber: "PL-2026-002",
-    party: "Nexus Distribution Ltd.",
-    item: "Hydraulic Seal Kit 75mm",
-    lot: "LOT-2026-003",
-    qty: 12,
-    sellPrice: 48.0,
-    cogs: 32.0,
-    marginPct: 33.3,
-  },
-  {
-    id: "trd-002",
-    orderNumber: "PL-2026-004",
-    party: "Nexus Distribution Ltd.",
-    item: "Pneumatic Cylinder 50mm",
-    lot: "LOT-2026-002",
-    qty: 5,
-    sellPrice: 210.0,
-    cogs: 145.0,
-    marginPct: 30.95,
-  },
-  {
-    id: "trd-003",
-    orderNumber: "PL-2026-005",
-    party: "Arcadia Industrial",
-    item: "Industrial Grade Bearing 6205",
-    lot: "LOT-2026-001",
-    qty: 50,
-    sellPrice: 12.5,
-    cogs: 8.2,
-    marginPct: 34.4,
-  },
-];
+import type { AuthorizationContext } from "@/lib/rbac/session";
+import { getVmiCbmLedgerSummary, type VmiCbmLedgerRow } from "@/lib/billing/queries/vmi-ledger";
+import { getTradingMarginLedger, type TradingMarginRow } from "@/lib/billing/queries/trading-margin";
+import { hasTradingPriceInternalVisibility } from "@/lib/rbac/trading-visibility";
 
 // Months for period selector
 const MONTHS = [
@@ -194,7 +127,11 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
         {activeTab === "vmi" ? (
           <VmiBillingTab selectedMonth={selectedMonth} selectedYear={selectedYear} />
         ) : (
-          <TradingMarginTab selectedMonth={selectedMonth} selectedYear={selectedYear} />
+          <TradingMarginTab
+            selectedMonth={selectedMonth}
+            selectedYear={selectedYear}
+            context={permResult.context}
+          />
         )}
       </div>
     </div>
@@ -208,8 +145,13 @@ interface TabProps {
   selectedYear: number;
 }
 
-function VmiBillingTab({ selectedMonth, selectedYear }: TabProps) {
-  const vmiTotal = MOCK_VMI_ROWS.reduce((sum, r) => sum + r.subtotal, 0);
+interface TradingTabProps extends TabProps {
+  context: AuthorizationContext;
+}
+
+async function VmiBillingTab({ selectedMonth, selectedYear }: TabProps) {
+  const vmiRows: VmiCbmLedgerRow[] = await getVmiCbmLedgerSummary(selectedMonth, selectedYear);
+  const vmiTotal = vmiRows.reduce((sum, r) => sum + r.subtotal, 0);
 
   return (
     <div className="flex flex-col gap-4">
@@ -281,15 +223,15 @@ function VmiBillingTab({ selectedMonth, selectedYear }: TabProps) {
               CBM Usage (avg/day)
             </p>
             <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
-              {MOCK_VMI_ROWS.reduce((s, r) => s + r.avgDailyCbm, 0).toFixed(1)} m³
+              {vmiRows.reduce((s, r) => s + r.avgDailyCbm, 0).toFixed(1)} m³
             </p>
           </div>
           <div>
             <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
-              Daily Storage Rate
+              Parties Billed
             </p>
             <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
-              $4.50 / m³
+              {vmiRows.length}
             </p>
           </div>
           <div>
@@ -354,28 +296,38 @@ function VmiBillingTab({ selectedMonth, selectedYear }: TabProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/30">
-              {/* TODO: wire to vmi_cbm_ledger table query */}
-              {MOCK_VMI_ROWS.map((row) => (
-                <tr key={row.id} className="hover:bg-surface-light-grey/50">
-                  {/* Party name — body font */}
-                  <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                    {row.party}
-                  </td>
-                  {/* Numeric columns — Roboto Mono per §9 */}
-                  <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                    {row.lotsInStorage}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                    {row.avgDailyCbm.toFixed(1)}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                    ${row.ratePerCbm.toFixed(2)}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                    ${row.subtotal.toFixed(2)}
+              {vmiRows.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="px-4 py-6 text-center font-body text-body-md text-text-grey"
+                  >
+                    No VMI storage activity for {MONTHS[selectedMonth]} {selectedYear}.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                vmiRows.map((row) => (
+                  <tr key={row.id} className="hover:bg-surface-light-grey/50">
+                    {/* Party name — body font */}
+                    <td className="px-4 py-3 font-body text-body-md text-on-surface">
+                      {row.party}
+                    </td>
+                    {/* Numeric columns — Roboto Mono per §9 */}
+                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
+                      {row.lotsInStorage}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
+                      {row.avgDailyCbm.toFixed(1)}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
+                      ${row.ratePerCbm.toFixed(2)}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
+                      ${row.subtotal.toFixed(2)}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
             <tfoot>
               <tr className="border-t-2 border-outline-variant/30 bg-surface-light-grey">
@@ -399,12 +351,23 @@ function VmiBillingTab({ selectedMonth, selectedYear }: TabProps) {
 
 // ─── Trading Margin tab ───────────────────────────────────────────────────────
 
-function TradingMarginTab({ selectedMonth, selectedYear }: TabProps) {
-  const totalRevenue = MOCK_TRADING_ROWS.reduce(
+async function TradingMarginTab({ selectedMonth, selectedYear, context }: TradingTabProps) {
+  const tradingRows: TradingMarginRow[] = await getTradingMarginLedger(
+    selectedMonth,
+    selectedYear,
+    context,
+  );
+  // design.md §5/§7a: UNIT COST/COST AMOUNT/MARGIN/MARGIN % additionally
+  // require trading_prices.read_internal (= trading.margin_view) or
+  // trading_prices.override — the query has already omitted cogs/marginPct
+  // from every row without it; this gate decides whether to render the
+  // columns/summary stats referencing them at all.
+  const canSeeMargin = hasTradingPriceInternalVisibility(context);
+  const totalRevenue = tradingRows.reduce(
     (s, r) => s + r.sellPrice * r.qty,
     0,
   );
-  const totalCogs = MOCK_TRADING_ROWS.reduce((s, r) => s + r.cogs * r.qty, 0);
+  const totalCogs = tradingRows.reduce((s, r) => s + (r.cogs ?? 0) * r.qty, 0);
   const grossMarginPct =
     totalRevenue > 0 ? ((totalRevenue - totalCogs) / totalRevenue) * 100 : 0;
 
@@ -476,7 +439,7 @@ function TradingMarginTab({ selectedMonth, selectedYear }: TabProps) {
               Total Orders
             </p>
             <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
-              {MOCK_TRADING_ROWS.length}
+              {tradingRows.length}
             </p>
           </div>
           <div>
@@ -487,22 +450,26 @@ function TradingMarginTab({ selectedMonth, selectedYear }: TabProps) {
               ${totalRevenue.toFixed(2)}
             </p>
           </div>
-          <div>
-            <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
-              Total COGS
-            </p>
-            <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
-              ${totalCogs.toFixed(2)}
-            </p>
-          </div>
-          <div>
-            <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
-              Gross Margin
-            </p>
-            <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
-              {grossMarginPct.toFixed(1)}%
-            </p>
-          </div>
+          {canSeeMargin && (
+            <>
+              <div>
+                <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  Total COGS
+                </p>
+                <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
+                  ${totalCogs.toFixed(2)}
+                </p>
+              </div>
+              <div>
+                <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                  Gross Margin
+                </p>
+                <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
+                  {grossMarginPct.toFixed(1)}%
+                </p>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -544,49 +511,67 @@ function TradingMarginTab({ selectedMonth, selectedYear }: TabProps) {
                 <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                   Sell Price
                 </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                  COGS
-                </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                  Margin %
-                </th>
+                {canSeeMargin && (
+                  <>
+                    <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                      COGS
+                    </th>
+                    <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                      Margin %
+                    </th>
+                  </>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/30">
-              {/* TODO: wire to pick_list_items pricing query */}
-              {MOCK_TRADING_ROWS.map((row) => (
-                <tr key={row.id} className="hover:bg-surface-light-grey/50">
-                  {/* Order # — Roboto Mono for codes */}
-                  <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                    {row.orderNumber}
-                  </td>
-                  {/* Party — body font */}
-                  <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                    {row.party}
-                  </td>
-                  {/* Item — body font */}
-                  <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                    {row.item}
-                  </td>
-                  {/* Lot — Roboto Mono */}
-                  <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                    {row.lot}
-                  </td>
-                  {/* Numeric columns — Roboto Mono per §9 */}
-                  <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                    {row.qty}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                    ${row.sellPrice.toFixed(2)}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                    ${row.cogs.toFixed(2)}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                    {row.marginPct.toFixed(1)}%
+              {tradingRows.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={canSeeMargin ? 8 : 6}
+                    className="px-4 py-6 text-center font-body text-body-md text-text-grey"
+                  >
+                    No Trading sales for {MONTHS[selectedMonth]} {selectedYear}.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                tradingRows.map((row) => (
+                  <tr key={row.id} className="hover:bg-surface-light-grey/50">
+                    {/* Order # — Roboto Mono for codes */}
+                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
+                      {row.orderNumber}
+                    </td>
+                    {/* Party — body font */}
+                    <td className="px-4 py-3 font-body text-body-md text-on-surface">
+                      {row.party}
+                    </td>
+                    {/* Item — body font */}
+                    <td className="px-4 py-3 font-body text-body-md text-on-surface">
+                      {row.item}
+                    </td>
+                    {/* Lot — Roboto Mono */}
+                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
+                      {row.lot}
+                    </td>
+                    {/* Numeric columns — Roboto Mono per §9 */}
+                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
+                      {row.qty}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
+                      ${row.sellPrice.toFixed(2)}
+                    </td>
+                    {canSeeMargin && (
+                      <>
+                        <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
+                          ${(row.cogs ?? 0).toFixed(2)}
+                        </td>
+                        <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
+                          {(row.marginPct ?? 0).toFixed(1)}%
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

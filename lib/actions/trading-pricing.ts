@@ -50,11 +50,9 @@
 
 import { createHash, randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
-import type {
-  AuthorizationContext,
-  RequestAuthorizationResolver,
-} from "@/lib/rbac/session";
+import type { RequestAuthorizationResolver } from "@/lib/rbac/session";
 import { requirePermission } from "@/lib/rbac/guard";
+import { hasTradingPriceInternalVisibility } from "@/lib/rbac/trading-visibility";
 import { withRlsTransaction } from "@/lib/db/rls-transaction";
 import type { RlsTransactionDeps } from "@/lib/db/rls-transaction";
 import { rlsPool } from "@/lib/db/rls-pool";
@@ -120,25 +118,13 @@ export type TradingPriceSnapshot = {
 // ---------------------------------------------------------------------------
 // Internal-pricing visibility gate (design.md §5's margin-visibility rule)
 //
-// Gates on trading_prices.read_internal OR trading_prices.override. Per
-// supabase/migrations/0038_trading_pricing_rbac_capabilities.sql, these two
-// capabilities are always co-granted to the same two roles (supervisor,
-// administrator) and never granted independently in this codebase's seed
-// data — a caller authorized to override a resolved sell price is, by
-// construction, always also authorized to view the cost/margin it is priced
-// against. Checked directly against the already-resolved AuthorizationContext
-// (no second resolver round trip) rather than a fresh requirePermission call,
-// since both capabilities are global-scoped (no party/flow narrowing
-// applies here).
+// Extracted to lib/rbac/trading-visibility.ts (2026-08-24) — this file's
+// "use server" directive requires every export to be an async Server
+// Action, which a pure sync predicate can't be; lib/billing/queries/
+// trading-margin.ts needs to call this same check without becoming a Server
+// Action itself. Imported here, used locally, not re-exported from this
+// file (a re-export would trip the same constraint).
 // ---------------------------------------------------------------------------
-
-function hasTradingPriceInternalVisibility(context: AuthorizationContext): boolean {
-  return context.grants.some(
-    (grant) =>
-      grant.resource === "trading_prices" &&
-      (grant.action === "read_internal" || grant.action === "override"),
-  );
-}
 
 export type FreezeTradingPriceInput = {
   partyId: string;

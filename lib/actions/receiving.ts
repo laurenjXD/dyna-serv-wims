@@ -31,20 +31,22 @@ import { matchScan } from "@/lib/receiving/scan-matcher";
 import type { WrrLine } from "@/lib/receiving/scan-matcher";
 import { validateLineCommit } from "@/lib/receiving/commit-validation";
 import type { CommitLocation } from "@/lib/receiving/commit-validation";
-import { wrrDocuments, wrrItems, wrrItemUnitScans } from "@/lib/db/schema/wrr";
+import { wrrDocuments, wrrItems, wrrItemUnitScans, wrrItemPutawayAllocations } from "@/lib/db/schema/wrr";
 import { items as itemCatalog } from "@/lib/db/schema/items";
 import { lots } from "@/lib/db/schema/lots";
 import { lotLocationBalances } from "@/lib/db/schema/lot_location_balances";
 import { inventoryTransactions } from "@/lib/db/schema/transactions";
 import { locations } from "@/lib/db/schema/locations";
 import { inspectionCases } from "@/lib/db/schema/transfers";
+import { inventoryUnits } from "@/lib/db/schema/inventory_units";
+import { deriveWrrUnitId } from "@/lib/barcode/wrr-unit";
 import { withRlsTransaction } from "@/lib/db/rls-transaction";
 import type { RlsTransactionDeps } from "@/lib/db/rls-transaction";
 import { rlsPool } from "@/lib/db/rls-pool";
 import { getAuthenticatedSession } from "@/lib/auth/get-authenticated-session";
 import { getStorageClient } from "@/lib/supabase/storage";
 import { validateCiplFile, buildCiplObjectPath } from "@/lib/receiving/cipl-upload";
-import { randomUUID, createHash } from "node:crypto";
+import { randomUUID } from "node:crypto";
 
 // Every action below binds its DB work to the caller's RLS-claimed
 // transaction (specs/02-rbac-roles/design.md §6.3) rather than an
@@ -62,47 +64,8 @@ type DbLike = {
   insert: (...args: any[]) => any;
   update: (...args: any[]) => any;
   transaction: (callback: (tx: DbLike) => Promise<unknown>) => Promise<unknown>;
-  // Optional: only the real Drizzle `PostgresJsDatabase` (lib/db/rls-pool.ts)
-  // provides this — used exclusively by commitStoreUnit's SAVEPOINT-based
-  // concurrency recovery below. Hand-rolled unit-test doubles never
-  // implement it, and commitStoreUnit feature-detects its absence to fall
-  // back to un-savepointed writes rather than requiring every test double in
-  // the codebase to grow a raw SQL escape hatch it never exercises.
-  execute?: (query: unknown) => Promise<unknown>;
 };
 /* eslint-enable @typescript-eslint/no-explicit-any */
-
-// True only for the exact Postgres unique-violation (23505) on
-// inventory_transactions' own transaction_number uniqueness constraint —
-// commitStoreUnit's genuine-concurrency recovery path (see writeUnit's
-// SAVEPOINT wrapping below) must never treat any OTHER error, including a
-// unique-violation on some unrelated constraint, as this specific
-// "someone else already committed this exact unit" condition.
-//
-// Fixed 2026-08-21 (db-migration-verifier, Bug A): Drizzle's postgres-js
-// driver wraps every real driver error in a DrizzleQueryError — the actual
-// Postgres error (carrying the real `.code`/`.constraint_name`) lives on
-// `error.cause`, not on the caught error itself. Checking only the
-// top-level error meant this function always returned false against a real
-// concurrent unique-violation, so the SAVEPOINT recovery below never
-// triggered and the raw Postgres error propagated as an unhandled
-// rejection — exactly the failure this mechanism exists to prevent. Both
-// shapes are checked now (top-level first, then `.cause`), since some call
-// sites/driver versions may not wrap at all.
-function isUnitCommitConflict(error: unknown): boolean {
-  const matchesShape = (candidate: unknown): boolean => {
-    const e = candidate as { code?: unknown; constraint_name?: unknown } | null | undefined;
-    return (
-      e != null &&
-      typeof e === "object" &&
-      e.code === "23505" &&
-      e.constraint_name === "inventory_transactions_transaction_number_unique"
-    );
-  };
-  if (matchesShape(error)) return true;
-  const cause = (error as { cause?: unknown } | null | undefined)?.cause;
-  return matchesShape(cause);
-}
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -113,7 +76,7 @@ export type CreateWrrActionResult =
   | { ok: false; errors: string[] };
 
 export type RecordScanResult =
-  | { ok: true; wrrItemId: string; remainingQty: number; disposition: "store" | "inspect" }
+  | { ok: true; remainingQty: number; disposition: "store" | "inspect" }
   | { ok: false; reason: string };
 
 export type CommitWrrLineResult = { ok: true } | { ok: false; errors: string[] };
@@ -586,29 +549,16 @@ export async function recordScan(
 
     const line = matchResult.line;
 
-    // Amended 2026-08-20 (design.md §6.2/§9's per-unit re-scoping) — STORE
-    // lines only: recordScan no longer increments wrr_items.scanned_qty for
-    // a store-disposition line. scanned_qty now means "units committed so
-    // far" for that disposition, and the sole writer of that column for a
-    // store line is commitWrrLine's per-unit commit.
-    //
-    // INSPECT-disposition lines are UNCHANGED by that amendment (design.md
-    // §6.3): they are still committed as one whole line via
-    // commitInspectLine, gated on `scanned_qty >= expected_qty`, and
-    // commitInspectLine has never written wrr_items.scanned_qty itself —
-    // that has always been recordScan's job for inspect lines. So the write
-    // below is conditional on disposition, not removed outright.
-    if (line.disposition === "inspect") {
-      await db
-        .update(wrrItems)
-        .set({ scannedQty: line.scannedQty + matchResult.scanQty })
-        .where(eq(wrrItems.id, line.id));
-    }
+    // 5. Increment scannedQty. Every accepted QR represents exactly one
+    // physical pallet or unit.
+    await db
+      .update(wrrItems)
+      .set({ scannedQty: line.scannedQty + matchResult.scanQty })
+      .where(eq(wrrItems.id, line.id));
 
     // 5a. Persist the per-unit scan record for a successful wrr_item_unit
-    // match (Spec 18 §2.2, unchanged) — this is the only wrr_item_unit_scans
-    // write in this action and is independent of the (now removed)
-    // scanned_qty increment.
+    // match, in the same transaction as the scannedQty increment above —
+    // both succeed or both roll back together.
     if (matchResult.unitId) {
       await db.insert(wrrItemUnitScans).values({
         wrrItemId: line.id,
@@ -617,13 +567,9 @@ export async function recordScan(
       });
     }
 
-    // 6. Return success. wrrItemId lets the caller (the floor scan page) show
-    // this specific line's Store/Hold form next — scanned_qty no longer
-    // changes at scan time, so there is no other durable signal for "which
-    // line was just matched" to carry through the redirect.
+    // 6. Return success
     return {
       ok: true,
-      wrrItemId: line.id,
       remainingQty: matchResult.remainingQty,
       disposition: line.disposition,
     } satisfies RecordScanResult;
@@ -747,439 +693,45 @@ async function reevaluateWrrCompletion(
   }
 }
 
-/** Deterministic, length-safe (schema's 50-char transaction_number limit)
- * identifier for one unit-commit event, derived from the line and the
- * caller-supplied idempotencyKey. Doubles as both this unit-commit's
- * inventory_transactions.transaction_number value and the lookup key used
- * to detect a retried request before any write — no new table/column is
- * introduced for this (design.md §9's own note that the storage mechanism
- * is an implementation-level detail). A UUID wrr_item_id concatenated
- * directly with an arbitrary-length caller idempotencyKey could exceed the
- * column's 50-character limit, so both are hashed together instead. */
-function unitCommitTransactionNumber(wrrItemId: string, idempotencyKey: string): string {
-  const digest = createHash("sha256").update(`${wrrItemId}:${idempotencyKey}`).digest("hex");
-  return `RCV-${digest.slice(0, 40)}`;
-}
 
 /**
- * Commits ONE physical unit of a `store`-disposition line (design.md §9,
- * amended 2026-08-20). On the line's first committed unit, creates the lot
- * (status 'available'); on every subsequent unit, reuses it (resolved via
- * wrr_item_id). For the chosen location, creates a new lot_location_balances
- * row (qty=1) or increments an existing one by 1 (§9 step 4 / §6.2b's
- * multi-location split). Inserts one inventory_transactions row (qty=1).
- * Increments wrr_items.scanned_qty (now "units committed so far") by 1 and
- * sets committed_at only once that count reaches expected_qty.
+ * Commits a WRR line's receipt — the whole declared quantity in one call,
+ * per fix-it-felix's batch-receiving model (2026-08-24, supersedes the
+ * per-physical-unit scan-suggest-commit loop this file previously
+ * implemented for the 2026-08-20 amendment; see
+ * specs/00-steering/revision-log.md for the reconciliation).
  *
- * Per-unit idempotency (R7.5, re-scoped 2026-08-20): scoped to
- * params.idempotencyKey, which is REQUIRED for a store line — NOT to
- * committed_at, which now marks only the line's terminal completion.
- */
-async function commitStoreUnit(
-  tx: DbLike,
-  doc: { id: string; status: string; flowType: string; vendorPartyId: string; pezaNumber: string | null; commercialInvoiceNo: string | null; ipNumber: string | null },
-  line: WrrLine,
-  params: { locationId: string; idempotencyKey?: string },
-  userId: string,
-): Promise<CommitWrrLineResult> {
-  if (!params.idempotencyKey || params.idempotencyKey.trim() === "") {
-    return {
-      ok: false,
-      errors: [
-        "idempotencyKey is required for a store-disposition unit commit (design.md §9, R7.5)",
-      ],
-    };
-  }
-
-  // Real Postgres-backed Drizzle client only (see DbLike's own doc comment
-  // above): used below for (1) the row lock that serializes every
-  // concurrent commit — identical AND distinct idempotencyKey — against
-  // this exact WRR line, (2) the atomic scanned_qty increment, and (3) the
-  // SAVEPOINT defense-in-depth kept around the lot/balance/transaction
-  // write. A hand-rolled test double with no raw `.execute` skips all
-  // three and runs exactly the pre-fix, un-locked/un-savepointed sequence
-  // — concurrency is never exercised against those mocked call sites.
-  const rawExecutor = tx as unknown as { execute?: (query: unknown) => Promise<unknown> };
-  const canUseRawSql = typeof rawExecutor.execute === "function";
-  const executor = rawExecutor as { execute: (query: unknown) => Promise<unknown> };
-
-  // Row-lock this line FIRST — before the idempotency check, before the lot
-  // lookup, before anything else touches it (db-migration-verifier,
-  // 2026-08-20 second follow-up: Bug B). This closes TWO genuine-concurrency
-  // races among DISTINCT-idempotencyKey unit-commits on the SAME line (the
-  // normal multi-unit-in-flight case, not a double-submit):
-  //   (a) the lot lookup below is a plain
-  //       `SELECT lots WHERE wrr_item_id = line.id` followed, several
-  //       statements later, by `INSERT INTO lots` — with no unique
-  //       constraint on lots.wrr_item_id, several simultaneous callers can
-  //       each observe "no lot yet" and each insert their own phantom lot.
-  //   (b) the final wrr_items.scanned_qty update used to be computed from a
-  //       stale snapshot fetched once at the top of commitWrrLine's own
-  //       transaction, then written via an absolute SET — the last
-  //       committing transaction silently overwrote every other racer's
-  //       increment.
-  // A Postgres row lock (SELECT ... FOR UPDATE) on this exact wrr_items row
-  // serializes every concurrent commit attempt for this line: a second
-  // caller blocks until the first transaction commits or rolls back, then
-  // its own SELECT ... FOR UPDATE re-reads the row's latest COMMITTED
-  // value once unblocked — closing (a) by making the lot lookup's
-  // check-then-act critical section mutually exclusive per line, and
-  // enabling (b) by giving the scanned_qty update below a value read AFTER
-  // the lock is held, rather than the stale pre-call snapshot.
-  //
-  // This also makes the SAME-idempotencyKey race (the "6b" test) naturally
-  // safe without ever reaching the SAVEPOINT/isUnitCommitConflict recovery
-  // path below: the second caller unblocks only once the first has already
-  // committed the deterministic transaction_number row, so its own
-  // idempotency SELECT a few lines down finds that row and takes the
-  // graceful { ok: true } early-return — it never reaches the duplicate
-  // INSERT that mechanism exists to recover from. That mechanism is kept
-  // below anyway as defense-in-depth (belt-and-suspenders against the
-  // invariant "the lock is always acquired before any write for this line"
-  // ever being violated by a future change to this function) — fixed for
-  // its own, separate, already-confirmed bug (Bug A: isUnitCommitConflict
-  // never actually matched a real driver error — see its own updated doc
-  // comment above) rather than removed, since removing it could not be
-  // re-verified against live Postgres in this change.
-  let currentScannedQty = line.scannedQty;
-  if (canUseRawSql) {
-    const lockRows = (await executor.execute(
-      sql`select scanned_qty from wrr_items where id = ${line.id} for update`,
-    )) as unknown as Array<{ scanned_qty: number }>;
-    if (lockRows.length === 1) {
-      currentScannedQty = lockRows[0].scanned_qty;
-    }
-  }
-
-  const location = await resolveCommitLocation(tx, params.locationId);
-
-  const validation = validateLineCommit(
-    { id: doc.id, status: doc.status, flowType: doc.flowType, vendorPartyId: doc.vendorPartyId },
-    // Validate against the freshly-locked scannedQty, not the (possibly
-    // stale, concurrently-modified-by-another-caller) snapshot
-    // fetchWrrForAction captured once at the top of commitWrrLine's own
-    // transaction.
-    { ...line, scannedQty: currentScannedQty },
-    location,
-  );
-  if (!validation.ok) {
-    return { ok: false, errors: validation.errors };
-  }
-
-  // Per-unit idempotency lookup: a retry with the SAME idempotencyKey for
-  // this SAME line must return the original authoritative outcome without
-  // writing anything a second time.
-  const unitTxnNumber = unitCommitTransactionNumber(line.id, params.idempotencyKey);
-  const existingUnitTxn = await tx
-    .select({ id: inventoryTransactions.id })
-    .from(inventoryTransactions)
-    .where(eq(inventoryTransactions.transactionNumber, unitTxnNumber));
-  if (existingUnitTxn.length === 1) {
-    return { ok: true };
-  }
-
-  // The write sequence below (lot create-or-reuse, balance create-or-
-  // increment, inventory_transactions insert) is wrapped in a SAVEPOINT when
-  // the bound `tx` is a real Postgres-backed Drizzle client. This closes a
-  // genuine-concurrency race (db-migration-verifier, 2026-08-20 follow-up):
-  // two simultaneous calls with the IDENTICAL idempotencyKey can both pass
-  // the SELECT-based idempotency check above before either commits, then
-  // both attempt this write sequence. The loser's final INSERT into
-  // inventory_transactions hits inventory_transactions_transaction_number_
-  // unique (its transactionNumber is deterministic from
-  // line.id+idempotencyKey, so both racers compute the identical value) —
-  // a real Postgres unique-violation aborts the surrounding transaction for
-  // every statement afterward unless recovered via ROLLBACK TO SAVEPOINT,
-  // which this block does before returning the same graceful { ok: true }
-  // a sequential retry already returns above. Any other error (or a
-  // conflict on a different constraint) is re-thrown unchanged, never
-  // swallowed. As explained in the row-lock comment above, this path is
-  // expected to be unreachable now that the lock precedes it — kept as
-  // defense-in-depth, not removed.
-  const writeUnit = async (): Promise<void> => {
-    // On this line's first committed unit, create the lot; on every
-    // subsequent unit, reuse it (design.md §9 step 3).
-    const existingLotRows = await tx
-      .select({ id: lots.id })
-      .from(lots)
-      .where(eq(lots.wrrItemId, line.id));
-
-    let lotId: string;
-    if (existingLotRows.length === 1) {
-      lotId = existingLotRows[0].id as string;
-    } else {
-      const [newLot] = await tx
-        .insert(lots)
-        .values({
-          lotNumber: line.lotNumber,
-          wrrItemId: line.id,
-          itemId: line.itemId!,
-          flowType: doc.flowType as "vmi" | "trading" | "supplies",
-          ownerPartyId: doc.flowType === "vmi" ? doc.vendorPartyId : null,
-          status: "available",
-          pezaNumber: doc.pezaNumber,
-          commercialInvoiceNo: doc.commercialInvoiceNo,
-          ipNumber: doc.ipNumber,
-        })
-        .returning({ id: lots.id });
-      lotId = newLot.id as string;
-    }
-
-    // Create-or-increment the lot_location_balances row for this unit's
-    // chosen location (design.md §9 step 4 / §6.2b's multi-location split).
-    const existingBalanceRows = await tx
-      .select({
-        id: lotLocationBalances.id,
-        qtyReceived: lotLocationBalances.qtyReceived,
-        qtyRemaining: lotLocationBalances.qtyRemaining,
-      })
-      .from(lotLocationBalances)
-      .where(and(eq(lotLocationBalances.lotId, lotId), eq(lotLocationBalances.locationId, params.locationId)));
-
-    if (existingBalanceRows.length === 1) {
-      const existing = existingBalanceRows[0];
-      await tx
-        .update(lotLocationBalances)
-        .set({
-          qtyReceived: (existing.qtyReceived as number) + 1,
-          qtyRemaining: (existing.qtyRemaining as number) + 1,
-          updatedAt: new Date(),
-        })
-        .where(eq(lotLocationBalances.id, existing.id as string));
-    } else {
-      await tx.insert(lotLocationBalances).values({
-        lotId,
-        locationId: params.locationId,
-        qtyReceived: 1,
-        qtyRemaining: 1,
-        qtyCommitted: 0,
-      });
-    }
-
-    // One immutable inventory_transactions row per committed unit (qty=1).
-    await tx.insert(inventoryTransactions).values({
-      transactionNumber: unitTxnNumber,
-      lotId,
-      itemId: line.itemId!,
-      movementType: "receiving",
-      toLocationId: params.locationId,
-      qty: 1,
-      flowType: doc.flowType as "vmi" | "trading" | "supplies",
-      commercialInvoiceNo: doc.commercialInvoiceNo,
-      wrrId: doc.id,
-      performedByUserId: userId,
-    });
-  };
-
-  if (canUseRawSql) {
-    await executor.execute(sql`savepoint unit_commit`);
-    try {
-      await writeUnit();
-    } catch (error) {
-      // Recover the transaction from Postgres's aborted-until-rollback state
-      // before doing anything else with it — a plain try/catch around the
-      // INSERT alone cannot do this; only ROLLBACK TO SAVEPOINT undoes the
-      // error AND the lot/balance rows this attempt already wrote earlier in
-      // this same (otherwise un-savepointed) transaction, so the loser never
-      // leaves an orphaned duplicate lot/balance behind.
-      await executor.execute(sql`rollback to savepoint unit_commit`);
-      if (isUnitCommitConflict(error)) {
-        // Someone else's concurrent call with this exact idempotencyKey won
-        // the race and already committed this unit (and already incremented
-        // wrr_items.scanned_qty) — graceful idempotent no-op, the same
-        // outcome a sequential retry gets from the SELECT check above.
-        return { ok: true };
-      }
-      throw error;
-    }
-  } else {
-    // Test-double DB with no raw `.execute` escape hatch: run the same
-    // writes directly, unchanged from this function's pre-fix behavior.
-    await writeUnit();
-  }
-
-  // wrr_items.scanned_qty now means "units committed so far" (design.md §9's
-  // 2026-08-20 re-scoping) — increment by 1, and record this unit's chosen
-  // location as the line's most-recently-used putaway location (§5.1's
-  // re-interpretation; the authoritative record is always
-  // lot_location_balances, not this column). committed_at is set only once
-  // this brings the line to its terminal state.
-  //
-  // Fixed 2026-08-21 (db-migration-verifier, Bug B, part 2): re-derived from
-  // a value read AFTER this transaction's own row lock above (or, when no
-  // lock is available, expressed as a single atomic `scanned_qty + 1` SQL
-  // read-modify-write RETURNING the post-increment row) — not the pre-call
-  // `line.scannedQty` snapshot, which under real concurrency let the last
-  // committing transaction's absolute `SET scanned_qty = <stale + 1>`
-  // silently overwrite every other racer's already-applied increment.
-  // `isTerminal` is likewise re-derived from the actual post-increment
-  // scanned_qty/committed_at the database now holds, never the pre-call
-  // snapshot.
-  let isTerminal: boolean;
-  if (canUseRawSql) {
-    const updateRows = (await executor.execute(sql`
-      update wrr_items
-      set scanned_qty = scanned_qty + 1,
-          putaway_location_id = ${params.locationId},
-          committed_at = case when scanned_qty + 1 >= expected_qty then now() else committed_at end
-      where id = ${line.id}
-      returning scanned_qty, committed_at
-    `)) as unknown as Array<{ scanned_qty: number; committed_at: Date | string | null }>;
-    isTerminal = updateRows[0]?.committed_at != null;
-  } else {
-    // Test-double DB path, unchanged from this function's pre-fix behavior
-    // (no concurrency is exercised against mocked call sites — see the
-    // module-level DbLike doc comment).
-    const newCommittedCount = line.scannedQty + 1;
-    isTerminal = newCommittedCount >= line.expectedQty;
-    await tx
-      .update(wrrItems)
-      .set({
-        scannedQty: newCommittedCount,
-        putawayLocationId: params.locationId,
-        ...(isTerminal ? { committedAt: new Date() } : {}),
-      })
-      .where(eq(wrrItems.id, line.id));
-  }
-
-  if (isTerminal) {
-    await reevaluateWrrCompletion(tx, doc.id, userId);
-  }
-
-  return { ok: true };
-}
-
-/**
- * Commits a whole `inspect`-disposition line as one event (design.md §6.3,
- * §9 — UNCHANGED by the 2026-08-20 per-unit amendment, which is store-only).
- * Still gated on the full scanned_qty being reached first, and still uses
- * committed_at as its own per-line idempotency gate (a conditional UPDATE
- * claims the NULL-to-timestamp transition before any inventory row posts).
- */
-async function commitInspectLine(
-  tx: DbLike,
-  doc: { id: string; status: string; flowType: string; vendorPartyId: string; pezaNumber: string | null; commercialInvoiceNo: string | null; ipNumber: string | null },
-  line: WrrLine,
-  params: { locationId: string },
-  userId: string,
-): Promise<CommitWrrLineResult> {
-  // Idempotency short-circuit (R7.5, unchanged from 2026-08-10): once a line
-  // has committed, its own committed_at is authoritative on its own,
-  // independent of the WRR's current status.
-  const existingRows = await tx
-    .select({ committedAt: wrrItems.committedAt })
-    .from(wrrItems)
-    .where(eq(wrrItems.id, line.id));
-  if (existingRows.length === 1 && existingRows[0].committedAt !== null) {
-    return { ok: true };
-  }
-
-  const location = await resolveCommitLocation(tx, params.locationId);
-
-  const validation = validateLineCommit(
-    { id: doc.id, status: doc.status, flowType: doc.flowType, vendorPartyId: doc.vendorPartyId },
-    line,
-    location,
-  );
-  if (!validation.ok) {
-    return { ok: false, errors: validation.errors };
-  }
-
-  // Conditional claim: only the caller who flips committed_at from NULL to
-  // now() may post this line's inventory rows below.
-  const claimed = await tx
-    .update(wrrItems)
-    .set({ committedAt: new Date() })
-    .where(and(eq(wrrItems.id, line.id), isNull(wrrItems.committedAt)))
-    .returning({ id: wrrItems.id });
-
-  if (claimed.length === 1) {
-    const [lot] = await tx
-      .insert(lots)
-      .values({
-        lotNumber: line.lotNumber,
-        wrrItemId: line.id,
-        itemId: line.itemId!,
-        flowType: doc.flowType as "vmi" | "trading" | "supplies",
-        ownerPartyId: doc.flowType === "vmi" ? doc.vendorPartyId : null,
-        status: "quarantined",
-        pezaNumber: doc.pezaNumber,
-        commercialInvoiceNo: doc.commercialInvoiceNo,
-        ipNumber: doc.ipNumber,
-      })
-      .returning({ id: lots.id });
-
-    await tx.insert(lotLocationBalances).values({
-      lotId: lot.id,
-      locationId: params.locationId,
-      qtyReceived: line.scannedQty,
-      qtyRemaining: line.scannedQty,
-      qtyCommitted: 0,
-    });
-
-    await tx.insert(inventoryTransactions).values({
-      // A WRR item UUID is globally unique and keeps the receipt reference
-      // below the schema's 50-character limit, unlike concatenating two
-      // full UUIDs. It also makes a retried commit deterministically refer
-      // to the same physical line.
-      transactionNumber: `RCV-${line.id}`,
-      lotId: lot.id,
-      itemId: line.itemId!,
-      movementType: "receiving",
-      toLocationId: params.locationId,
-      qty: line.scannedQty,
-      flowType: doc.flowType as "vmi" | "trading" | "supplies",
-      commercialInvoiceNo: doc.commercialInvoiceNo,
-      wrrId: doc.id,
-      performedByUserId: userId,
-    });
-
-    // An inspect-disposition receipt is not complete when the lot is merely
-    // quarantined. It must also open the shared inbound inspection case that
-    // drives Master Inventory's Inspection tab and the subsequent resolution
-    // workflow. Keeping this in the same transaction means a successfully
-    // committed held lot can never be stranded without an inspection task.
-    await tx.insert(inspectionCases).values({
-      contextType: "inbound",
-      sourceRefType: "wrr_item",
-      sourceRefId: line.id,
-      lotId: lot.id,
-      itemId: line.itemId!,
-      partyId: doc.vendorPartyId,
-      flowType: doc.flowType as "vmi" | "trading" | "supplies",
-      status: "open",
-      openedBy: userId,
-    });
-  }
-  // If claimed.length === 0, this line was already committed by a prior
-  // call — idempotent retry; nothing more to post for this line.
-
-  await reevaluateWrrCompletion(tx, doc.id, userId);
-
-  return { ok: true };
-}
-
-/**
- * Commits either ONE physical unit of a `store`-disposition line (per-unit,
- * design.md §9 amended 2026-08-20) or the WHOLE of an `inspect`-disposition
- * line (per-line, unchanged) — dispatched on `line.disposition`. Once every
- * line on the WRR has reached its terminal committed state, the WRR
- * transitions to 'confirmed'; until then it remains 'receiving_in_progress'.
+ * Two placement shapes are accepted:
+ * - Single location: `params.locationId` — the whole line goes to one place.
+ * - Batch split: `params.allocations` (explicit per-location quantities) or
+ *   `params.unitLocationIds` (one location per physical box, index-aligned
+ *   with the line's expected quantity — derives `allocations` by grouping).
+ *   A batch commit requires `params.presenceAttested === true` (the floor
+ *   operator confirms every declared box/pallet is physically present
+ *   before storing) and the allocation total must equal the line's
+ *   expected quantity exactly.
+ *
+ * Idempotent via the same `wrr_items.committed_at IS NULL` conditional
+ * claim this file has always used for whole-line commits — a retried call
+ * against an already-committed line observes the prior success rather than
+ * re-posting inventory.
+ *
+ * Also posts one durable `inventory_units` row per physical box (derived,
+ * stable id via `deriveWrrUnitId`) so later outbound picking can select
+ * exact registered boxes rather than only an aggregate quantity.
+ *
  * Requires receiving.confirm capability.
- *
- * `params.idempotencyKey` is REQUIRED for a `store` line (each unit-commit's
- * own idempotency key, R7.5) and unused for an `inspect` line (which
- * continues to use wrr_items.committed_at as its sole per-line idempotency
- * gate, unchanged from 2026-08-10).
- *
- * See specs/07-incoming-receiving/design.md §9 (Reversed 2026-08-10,
- * amended 2026-08-20).
  */
 export async function commitWrrLine(
   resolver: RequestAuthorizationResolver,
   wrrId: string,
   wrrItemId: string,
-  params: { locationId: string; idempotencyKey?: string },
+  params: {
+    locationId?: string;
+    allocations?: Array<{ locationId: string; qty: number }>;
+    unitLocationIds?: string[];
+    presenceAttested?: boolean;
+  },
   rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<CommitWrrLineResult> {
   // 1. Authorization
@@ -1190,26 +742,223 @@ export async function commitWrrLine(
 
   const userId = perm.context.userId;
 
-  // Every read, validation, and inventory write for this one unit/line
-  // occurs through one RLS-claimed transaction.
-  const rlsResult = await withRlsTransaction(rlsDeps, async (rlsTx) => {
-    const tx = rlsTx.db as DbLike;
-    const doc = await fetchWrrForAction(tx, wrrId);
-    if (doc === null) {
-      return { ok: false, errors: ["not_found"] } satisfies CommitWrrLineResult;
-    }
+  // Every read, validation, conditional claim, and inventory write for this
+  // one line occurs through one RLS-claimed transaction. The conditional
+  // UPDATE on committed_at IS NULL is the idempotency gate: only the
+  // transaction that can claim the null-to-timestamp transition may create
+  // this line's inventory rows; retries observe the existing successful
+  // result instead.
+  let rlsResult: import("@/lib/db/rls-transaction").RlsTransactionResult<CommitWrrLineResult>;
+  try {
+    rlsResult = await withRlsTransaction(rlsDeps, async (rlsTx) => {
+      const tx = rlsTx.db as DbLike;
+      const doc = await fetchWrrForAction(tx, wrrId);
+      if (doc === null) {
+        return { ok: false, errors: ["not_found"] } satisfies CommitWrrLineResult;
+      }
 
-    const line = doc.items.find((item) => item.id === wrrItemId);
-    if (!line) {
-      return { ok: false, errors: ["not_found"] } satisfies CommitWrrLineResult;
-    }
+      const line = doc.items.find((item) => item.id === wrrItemId);
+      if (!line) {
+        return { ok: false, errors: ["not_found"] } satisfies CommitWrrLineResult;
+      }
 
-    if (line.disposition === "store") {
-      return commitStoreUnit(tx, doc, line, params, userId);
-    }
+      // Idempotency short-circuit (R7.5): once a line has committed, its own
+      // committed_at is authoritative on its own, independent of the WRR's
+      // current status (which may have already advanced to 'confirmed' once
+      // every line committed). Re-validating against the now-'confirmed' WRR
+      // status would incorrectly reject an already-successful retry.
+      const existingRows = await tx
+        .select({ committedAt: wrrItems.committedAt })
+        .from(wrrItems)
+        .where(eq(wrrItems.id, wrrItemId));
+      if (existingRows.length === 1 && existingRows[0].committedAt !== null) {
+        return { ok: true } satisfies CommitWrrLineResult;
+      }
 
-    return commitInspectLine(tx, doc, line, params, userId);
-  });
+      let batchAllocations = params.allocations?.filter((allocation) =>
+        typeof allocation.locationId === "string" && Number.isInteger(allocation.qty) && allocation.qty > 0,
+      ) ?? [];
+      const requestedUnitLocations = params.unitLocationIds?.filter(
+        (locationId) => typeof locationId === "string" && locationId.length > 0,
+      );
+      if (requestedUnitLocations && requestedUnitLocations.length !== line.expectedQty) {
+        return { ok: false, errors: ["unit_location_count_mismatch"] } satisfies CommitWrrLineResult;
+      }
+      if (requestedUnitLocations) {
+        const grouped = requestedUnitLocations.reduce<Record<string, number>>((result, locationId) => {
+          result[locationId] = (result[locationId] ?? 0) + 1;
+          return result;
+        }, {});
+        batchAllocations = Object.entries(grouped).map(([locationId, qty]) => ({ locationId, qty }));
+      }
+      const isBatch = batchAllocations.length > 0;
+      if (isBatch && !params.presenceAttested) {
+        return { ok: false, errors: ["presence_attestation_required"] } satisfies CommitWrrLineResult;
+      }
+      if (isBatch && batchAllocations.reduce((sum, allocation) => sum + allocation.qty, 0) !== line.expectedQty) {
+        return { ok: false, errors: ["allocation_qty_must_equal_expected"] } satisfies CommitWrrLineResult;
+      }
+
+      const targetLocationIds = isBatch
+        ? batchAllocations.map((allocation) => allocation.locationId)
+        : params.locationId ? [params.locationId] : [];
+      if (targetLocationIds.length === 0) {
+        return { ok: false, errors: ["missing_location"] } satisfies CommitWrrLineResult;
+      }
+
+      const locationRows = await tx
+        .select({
+          id: locations.id,
+          isActive: locations.isActive,
+          locationType: locations.locationType,
+        })
+        .from(locations)
+        .where(or(...targetLocationIds.map((id) => eq(locations.id, id))));
+      const normalizedLocationRows = locationRows as Array<{ id: string; isActive: boolean; locationType: string }>;
+      const locationsById = new Map(normalizedLocationRows.map((row) => [row.id, row]));
+      const validationLine = isBatch ? { ...line, scannedQty: line.expectedQty } : line;
+      for (const targetLocationId of targetLocationIds) {
+        const row = locationsById.get(targetLocationId);
+        const location: CommitLocation | null = row
+          ? { id: row.id, isActive: row.isActive, locationType: row.locationType }
+          : null;
+        const validation = validateLineCommit(
+          { id: doc.id, status: doc.status, flowType: doc.flowType, vendorPartyId: doc.vendorPartyId },
+          validationLine,
+          location,
+        );
+        if (!validation.ok) {
+          return { ok: false, errors: validation.errors } satisfies CommitWrrLineResult;
+        }
+      }
+
+      // Conditional claim: only the caller who flips committed_at from NULL to
+      // now() may post this line's inventory rows below.
+      const claimed = await tx
+        .update(wrrItems)
+        .set({
+          committedAt: new Date(),
+          ...(line.disposition === "store" && !isBatch ? { putawayLocationId: targetLocationIds[0] } : {}),
+          ...(isBatch ? { scannedQty: line.expectedQty } : {}),
+        })
+        .where(and(eq(wrrItems.id, wrrItemId), isNull(wrrItems.committedAt)))
+        .returning({ id: wrrItems.id });
+
+      if (claimed.length === 1) {
+        const [lot] = await tx
+          .insert(lots)
+          .values({
+            lotNumber: line.lotNumber,
+            wrrItemId: line.id,
+            itemId: line.itemId!,
+            flowType: doc.flowType as "vmi" | "trading" | "supplies",
+            ownerPartyId: doc.flowType === "vmi" ? doc.vendorPartyId : null,
+            status: line.disposition === "store" ? "available" : "quarantined",
+            pezaNumber: doc.pezaNumber,
+            commercialInvoiceNo: doc.commercialInvoiceNo,
+            ipNumber: doc.ipNumber,
+          })
+          .returning({ id: lots.id });
+
+        const committedAllocations = isBatch
+          ? batchAllocations
+          : [{ locationId: targetLocationIds[0], qty: line.scannedQty }];
+        const committedUnitLocations = requestedUnitLocations
+          ?? (isBatch
+            ? committedAllocations.flatMap((allocation) =>
+                Array.from({ length: allocation.qty }, () => allocation.locationId),
+              )
+            : Array.from({ length: line.expectedQty }, () => targetLocationIds[0]));
+
+        if (isBatch && line.disposition === "store") {
+          await tx.insert(wrrItemPutawayAllocations).values(
+            committedAllocations.map((allocation) => ({
+              wrrItemId: line.id,
+              locationId: allocation.locationId,
+              qty: allocation.qty,
+              createdByUserId: userId,
+            })),
+          );
+        }
+
+        await tx.insert(lotLocationBalances).values(committedAllocations.map((allocation) => ({
+          lotId: lot.id,
+          locationId: allocation.locationId,
+          qtyReceived: allocation.qty,
+          qtyRemaining: allocation.qty,
+          qtyCommitted: 0,
+        })));
+
+        await tx.insert(inventoryUnits).values(
+          committedUnitLocations.map((locationId, index) => ({
+            unitId: deriveWrrUnitId(line.id, index + 1),
+            unitIndex: index + 1,
+            wrrItemId: line.id,
+            lotId: lot.id,
+            locationId,
+            status: line.disposition === "store" ? "available" : "quarantined",
+          })),
+        );
+
+        await tx.insert(inventoryTransactions).values(committedAllocations.map((allocation) => ({
+          // A WRR item UUID is globally unique and keeps the receipt reference
+          // below the schema's 50-character limit, unlike concatenating two
+          // full UUIDs. It also makes a retried commit deterministically refer
+          // to the same physical line.
+          transactionNumber: `RCV-${line.id.slice(0, 8)}-${allocation.locationId.slice(0, 8)}`,
+          lotId: lot.id,
+          itemId: line.itemId!,
+          movementType: "receiving",
+          toLocationId: allocation.locationId,
+          qty: allocation.qty,
+          flowType: doc.flowType as "vmi" | "trading" | "supplies",
+          commercialInvoiceNo: doc.commercialInvoiceNo,
+          wrrId: doc.id,
+          performedByUserId: userId,
+        })));
+
+        // An inspect-disposition receipt is not complete when the lot is merely
+        // quarantined. It must also open the shared inbound inspection case that
+        // drives Master Inventory's Inspection tab and the subsequent resolution
+        // workflow. Keeping this in the same transaction means a successfully
+        // committed held lot can never be stranded without an inspection task.
+        if (line.disposition === "inspect") {
+          await tx.insert(inspectionCases).values({
+            contextType: "inbound",
+            sourceRefType: "wrr_item",
+            sourceRefId: line.id,
+            lotId: lot.id,
+            itemId: line.itemId!,
+            partyId: doc.vendorPartyId,
+            flowType: doc.flowType as "vmi" | "trading" | "supplies",
+            status: "open",
+            openedBy: userId,
+          });
+        }
+      }
+      // If claimed.length === 0, this line was already committed by a prior
+      // call — idempotent retry; nothing more to post for this line.
+
+      // Re-evaluate WRR-level completion: flip to 'confirmed' only once every
+      // line on this WRR has committed_at set. Left as receiving_in_progress
+      // otherwise (no intermediate status value is introduced).
+      await reevaluateWrrCompletion(tx, wrrId, userId);
+
+      return { ok: true } satisfies CommitWrrLineResult;
+    });
+  } catch (error) {
+    // A failed insert/constraint/RLS check must not strand a warehouse worker
+    // on Next's generic application-error page. Keep the actual database
+    // error in server logs and return the operator to the receive screen with
+    // a recoverable result; the surrounding transaction has already rolled
+    // back, so no partial receipt is created.
+    console.error("Unable to commit receiving line", {
+      wrrId,
+      wrrItemId,
+      error,
+    });
+    return { ok: false, errors: ["commit_failed"] };
+  }
 
   if (rlsResult.kind === "unauthenticated") {
     return { ok: false, errors: ["forbidden"] };

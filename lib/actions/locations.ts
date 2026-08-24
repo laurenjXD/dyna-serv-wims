@@ -104,49 +104,66 @@ export async function createLocation(
   // Server-compute the canonical label (design.md §6a Create step 3)
   const label = generateLocationLabel(data.rack, data.level, data.position);
 
-  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
-    const db = tx.db as DbLike;
+  try {
+    const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+      const db = tx.db as DbLike;
 
-    // Label uniqueness check (design.md §6a Create step 4)
-    const existing = await db
-      .select({ id: locations.id })
-      .from(locations)
-      .where(eq(locations.label, label));
+      // Label uniqueness check (design.md §6a Create step 4)
+      const existing = await db
+        .select({ id: locations.id })
+        .from(locations)
+        .where(eq(locations.label, label));
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if ((existing as any[]).length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((existing as any[]).length > 0) {
+        return {
+          ok: false,
+          fieldErrors: { label: "Label already in use" },
+        } satisfies ActionCreateLocationResult;
+      }
+
+      const [inserted] = await db
+        .insert(locations)
+        .values({
+          zone: data.zone,
+          rack: data.rack,
+          level: data.level,
+          position: data.position,
+          label,
+          locationType: data.locationType,
+          maxCbmCapacity: data.maxCbmCapacity,
+          isActive: data.isActive,
+        })
+        .returning({ id: locations.id, label: locations.label });
+
+      const row = inserted as { id: string; label: string };
+
+      return {
+        ok: true,
+        data: { id: row.id, label: row.label },
+      } satisfies ActionCreateLocationResult;
+    });
+
+    if (rlsResult.kind === "unauthenticated") {
+      return { ok: false, error: "Forbidden" };
+    }
+    return rlsResult.value;
+  } catch (error) {
+    console.error("Location creation failed", error);
+    const code = typeof error === "object" && error !== null && "code" in error
+      ? String(error.code)
+      : "";
+    if (code === "23505") {
+      return { ok: false, fieldErrors: { label: "Label already in use" } };
+    }
+    if (code === "42501") {
       return {
         ok: false,
-        fieldErrors: { label: "Label already in use" },
-      } satisfies ActionCreateLocationResult;
+        error: "Database access for creating locations is not configured. Ask an administrator to apply the latest database migration.",
+      };
     }
-
-    const [inserted] = await db
-      .insert(locations)
-      .values({
-        zone: data.zone,
-        rack: data.rack,
-        level: data.level,
-        position: data.position,
-        label,
-        locationType: data.locationType,
-        maxCbmCapacity: data.maxCbmCapacity,
-        isActive: data.isActive,
-      })
-      .returning({ id: locations.id, label: locations.label });
-
-    const row = inserted as { id: string; label: string };
-
-    return {
-      ok: true,
-      data: { id: row.id, label: row.label },
-    } satisfies ActionCreateLocationResult;
-  });
-
-  if (rlsResult.kind === "unauthenticated") {
-    return { ok: false, error: "Forbidden" };
+    return { ok: false, error: "Location could not be created. Please try again." };
   }
-  return rlsResult.value;
 }
 
 // ---------------------------------------------------------------------------

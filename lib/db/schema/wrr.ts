@@ -4,7 +4,8 @@
 // independently `db-migration-verifier`-verified schema amendment and is
 // intentionally NOT scaffolded here — it is added once its own
 // verification pass is complete.
-import { pgTable, uuid, varchar, text, integer, decimal, timestamp, index, unique } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, text, integer, decimal, timestamp, index, unique, check } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { flowTypeEnum, wrrStatusEnum, conformanceStatusEnum, nonConformanceReasonEnum } from "./enums";
 import { parties } from "./parties";
 import { items } from "./items";
@@ -40,9 +41,8 @@ export const wrrItems = pgTable("wrr_items", {
   unitCbm: decimal("unit_cbm", { precision: 10, scale: 4 }).notNull(),
   uom: varchar("uom", { length: 50 }).notNull(),
   disposition: text("disposition").default("store").notNull(), // 'store' | 'inspect'; CHECK constraint in migration 0012
-  // Selected during pre-receiving for store lines. Nullable while staged and
-  // intentionally unused by inspect lines, which always post to the one
-  // active inspection location resolved by the confirmation command.
+  // Legacy single-location compatibility field. Split receiving uses
+  // wrrItemPutawayAllocations as the placement source of truth.
   putawayLocationId: uuid("putaway_location_id").references(() => locations.id),
   // Added 2026-08-10 (migration 0021): per-line immediate-commit idempotency
   // gate. Set once, via a conditional UPDATE ... WHERE committed_at IS NULL,
@@ -51,6 +51,21 @@ export const wrrItems = pgTable("wrr_items", {
   committedAt: timestamp("committed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+/** Staged, non-inventory putaway plan for a split WRR line receipt. */
+export const wrrItemPutawayAllocations = pgTable("wrr_item_putaway_allocations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  wrrItemId: uuid("wrr_item_id").references(() => wrrItems.id, { onDelete: "cascade" }).notNull(),
+  locationId: uuid("location_id").references(() => locations.id).notNull(),
+  qty: integer("qty").notNull(),
+  createdByUserId: uuid("created_by_user_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  oneLocationPerLine: unique("wrr_item_putaway_allocations_line_location_unique").on(table.wrrItemId, table.locationId),
+  positiveQty: check("wrr_item_putaway_allocations_qty_positive", sql`${table.qty} > 0`),
+  lineIndex: index("wrr_item_putaway_allocations_wrr_item_id_idx").on(table.wrrItemId),
+}));
 
 export const wrrInspectionLogs = pgTable("wrr_inspection_logs", {
   id: uuid("id").primaryKey().defaultRandom(),
