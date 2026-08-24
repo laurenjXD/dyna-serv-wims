@@ -16,11 +16,11 @@
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Barcode, CheckCircle2, ClipboardList, Plus, Truck, Warehouse } from "lucide-react";
+import { ClipboardList, Plus, Truck, Warehouse } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
-import { findWrrDocumentByNumber, listWrrDocuments } from "@/lib/db/queries/receiving";
+import { listWrrDocuments } from "@/lib/db/queries/receiving";
 import type { WrrDocumentRow } from "@/lib/db/queries/receiving";
 import { AutoSubmitSelect } from "./_components/AutoSubmitSelect";
 
@@ -64,7 +64,7 @@ type TabKey = "receive" | "wrrs" | "ledger";
 
 const TABS: Array<{ key: TabKey; label: string }> = [
   { key: "wrrs", label: "WRRs (Work Queue)" },
-  { key: "receive", label: "Receive (Quick Jump)" },
+  { key: "receive", label: "Receive" },
   { key: "ledger", label: "Incoming Ledger" },
 ];
 
@@ -134,7 +134,7 @@ function WrrMobileCards({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 interface PageProps {
-  searchParams: Promise<{ tab?: string; status?: string; page?: string; jump?: string }>;
+  searchParams: Promise<{ tab?: string; status?: string; page?: string }>;
 }
 
 export default async function ReceivingListPage({ searchParams }: PageProps) {
@@ -142,7 +142,6 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
     tab: tabParam,
     status: statusFilter,
     page: pageParam,
-    jump: jumpResult,
   } = await searchParams;
 
   const activeTab: TabKey =
@@ -230,7 +229,7 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
       </div>
 
       {activeTab === "receive" ? (
-        <ReceiveTab statusFilter={statusFilter} pageParam={pageParam} jumpResult={jumpResult} />
+        <ReceiveTab statusFilter={statusFilter} pageParam={pageParam} />
       ) : activeTab === "wrrs" ? (
         <WrrsTab statusFilter={statusFilter} pageParam={pageParam} canCreate={canCreate} />
       ) : (
@@ -251,11 +250,9 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
 async function ReceiveTab({
   statusFilter,
   pageParam,
-  jumpResult,
 }: {
   statusFilter?: string;
   pageParam?: string;
-  jumpResult?: string;
 }) {
   const currentPage = Math.max(1, Number(pageParam ?? "1") || 1);
   const offset = (currentPage - 1) * QUEUE_PAGE_SIZE;
@@ -271,27 +268,6 @@ async function ReceiveTab({
   });
 
   const totalPages = Math.ceil(total / QUEUE_PAGE_SIZE);
-
-  async function handleQuickJump(formData: FormData): Promise<void> {
-    "use server";
-    const actionResolver = await createPageResolver();
-    const permission = await requirePermission(actionResolver, "receiving.view");
-    if (permission.kind !== "authorized") {
-      redirect("/receiving?jump=forbidden");
-    }
-
-    const wrrNumber = ((formData.get("wrrNumber") as string | null) ?? "").trim();
-    if (!wrrNumber) redirect("/receiving?jump=empty");
-
-    const match = await findWrrDocumentByNumber(db, wrrNumber);
-    if (!match) redirect("/receiving?jump=not_found");
-
-    const destination =
-      match.status === "confirmed" || match.status === "cancelled"
-        ? `/receiving/${match.id}`
-        : `/receiving/${match.id}/receive`;
-    redirect(destination);
-  }
 
   return (
     <div className="mt-7 grid gap-7 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -405,47 +381,6 @@ async function ReceiveTab({
               <p className="mt-2 font-heading text-headline-lg font-bold">{rows.length}</p>
             </div>
           </div>
-          <div className="mt-3 flex items-center justify-between rounded border border-[#C9D8FF] bg-[#DCE6FF] px-4 py-3">
-            <div>
-              <p className="font-label text-label font-bold uppercase tracking-wide text-text-grey">Status</p>
-              <p className="mt-1 font-heading text-data-display font-bold text-brand-navy">Receiving in progress</p>
-            </div>
-            <CheckCircle2 size={28} className="text-brand-navy" aria-hidden="true" />
-          </div>
-        </section>
-
-        <section className="rounded-lg border border-[#B9CAEF] bg-[#DCE8FF] p-5 shadow-elevation-2">
-          <div className="flex items-center gap-2">
-            <Barcode size={25} className="text-brand-navy" aria-hidden="true" />
-            <h2 className="font-heading text-headline-md font-bold text-on-surface">Quick Jump</h2>
-          </div>
-          <p className="mt-2 font-body text-body-md text-on-surface">
-            Scan or enter an exact WRR number to open receiving directly.
-          </p>
-          <form action={handleQuickJump} className="mt-4 flex rounded border-2 border-brand-navy bg-surface-white p-1">
-            <label htmlFor="quick-jump-wrr" className="sr-only">WRR number</label>
-            <input
-              id="quick-jump-wrr"
-              name="wrrNumber"
-              type="text"
-              autoComplete="off"
-              placeholder="Scan WRR number"
-              className="h-12 min-w-0 flex-1 bg-transparent px-3 font-mono text-mono-md text-on-surface outline-none placeholder:font-body placeholder:text-status-neutral"
-            />
-            <button type="submit" className="flex h-12 w-12 items-center justify-center rounded bg-brand-navy text-surface-white focus:outline-none focus:ring-2 focus:ring-primary">
-              <Barcode size={21} aria-hidden="true" />
-              <span className="sr-only">Open WRR</span>
-            </button>
-          </form>
-          {jumpResult && (
-            <p role="alert" className="mt-3 font-body text-body-md font-bold text-status-held">
-              {jumpResult === "not_found"
-                ? "No WRR matches that number."
-                : jumpResult === "empty"
-                  ? "Enter or scan a WRR number first."
-                  : "You do not have permission to open that WRR."}
-            </p>
-          )}
         </section>
       </aside>
     </div>

@@ -1,7 +1,7 @@
 # Incoming Receiving — Implementation Plan
 
 Status: Approved
-Updated: 2026-08-20
+Updated: 2026-08-24 — WRR document-field ownership amendment
 
 ## Implementation gate
 
@@ -37,6 +37,7 @@ Testing: Documentation/schema review; no implementation tests.
 - [x] **Reopened 2026-08-10, resolved 2026-08-10**: the 2026-08-09 per-line-immediate-commit generalization (design.md §9) makes "some lines committed, some not" the *normal* mid-flight state, not just a cancellation edge case. Product Owner decided no new `wrr_status` value is needed — `receiving_in_progress` already covers this window; per-line completion is tracked on `wrr_items`, not the parent status. Also corrects the 2026-08-09 entry's stale "`partial` status" wording — no such enum value exists or will be added; a cancelled-with-partial-completion WRR closes as `cancelled`. See revision-log.md's 2026-08-10 entry.
 - [x] Finalize whether CIPL remains an attached reference plus manually encoded `wrr_items`, or whether structured CIPL parsing is required. — Confirmed: CIPL is an attached external reference stored privately; structured parsing is not in scope for v1 (design.md §5).
 - [x] Finalize expected-line fields, scan/reconciliation storage, inspection-log fields, discrepancy states, and lot inheritance rules. — Expected-line field table added (design.md §5.1); discrepancy states defined (§5.2); inspection-log fields confirmed from `01` schema; `lot_number` confirmed as the single canonical identifier inherited verbatim at commit.
+- [ ] **Added 2026-08-24, pending reapproval**: add WRR-only CRUD for the documented invoice/MAWB/IP/source-organization and expected-line values, including manufacture date and remarks. Read-only WRR/print views must render the persisted values and system-derived actual receipt values; scan results remain non-editable.
 - [x] Define the exact receipt commit invariant: what must be complete before confirmation and what can remain pending for putaway. — Defined in design.md §9: all scan totals, conformance decisions, and disposition values must be valid; putaway is a post-commit handoff, not a commit prerequisite.
 - [x] Define whether non-conformant quantities can be committed to a non-available state or must remain outside the committed receipt. — Defined: `inspect` disposition commits the quantity as a `quarantined` lot at the `inspection` location (non-available); `returned_to_vendor` action in `wrr_inspection_logs` means the line is not committed at all (design.md §7, §8).
 - [ ] Define party/flow and item activation rules at staging, scanning, and commit time.
@@ -183,3 +184,5 @@ Testing: Full applicable matrix below.
 - [x] Second approver approval — Name/Role: User / System (auto-sign-off per standing instruction) Date: 2026-08-06
 - [x] Batch putaway allocation amendment approval — Product owner: User, 2026-08-20
 - [x] Batch putaway allocation amendment approval — Second approver: System (standing auto-sign-off), 2026-08-20
+- [x] WRR document-field amendment approval — Product owner: Granted in conversation, 2026-08-24
+- [x] WRR document-field amendment approval — Second approver: Granted in conversation, 2026-08-24

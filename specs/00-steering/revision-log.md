@@ -2,6 +2,17 @@
 
 Every merge conflict and major revision, dated, with the resolution. This is the audit trail for "why does the spec say X" when X isn't obvious from the doc alone.
 
+## WRR-owned input and Master Inventory-backed pick-list fields (2026-08-24) — pending reapproval
+
+The Product Owner clarified the field ownership for the supplied Warehouse Receiving Report and Pick List templates.
+
+- **WRR is the only CRUD surface.** While a WRR is staged, authorized receiving users may create, edit, and delete the commercial/header data (Organization, invoice/CIPL, MAWB/MBL, and IP) and expected-line data (selected item, supplier/Dyna-Serv/customer codes, shipping lot, manufacture date, expected in-transit quantity/UOM, and remarks). The WRR detail and print routes are read-only projections of that persisted data.
+- **Actual receipt is not free-form CRUD.** Actual received quantity/UOM and received date are derived from accepted scans and receipt confirmation; allowing users to type those values would bypass the inventory transaction safety boundary. Manufacture date and remarks require new nullable WRR-line fields; manufacture date is copied to the confirmed lot and remarks remain non-quantity evidence.
+- **Pick lists have no editable line data.** Their item code, customer item code, description, lot, location, quantity, SPQ, and package count are selected from Master Inventory by the approved allocation/commitment flow and frozen in `pick_list_items`. Party name/address is read from the selected Organization snapshot. Totals are derived from the snapshot.
+- **Delivery-only template fields are not invented.** Client D.R. No., DGC D.R. No., delivery date, and delivery instructions cannot be derived from Master Inventory and remain unavailable in v1 until an approved owning workflow exists; `19-dispatch-scheduling-and-delivery-tracking` remains deferred. The pick-list number must not be misrepresented as a delivery-receipt number.
+
+This affects `01-core-data-model` (new WRR-line persistence), `07-incoming-receiving` (WRR form/read-only/print contract), and `10-pick-list-and-acknowledgement-receipt` (document field/source contract). Both approvals were granted in conversation on 2026-08-24; all three specifications are **Approved** and implementation is authorized.
+
 ## Track B Milestone 2 scope calls: Logistics tab deferred, bulk location generator in scope (2026-08-17)
 
 Two scope decisions made with the Product Owner before starting Milestone 2 punch-list items 4 and 5 (Outgoing, Master Data), per `multi-agent-work-division.md`'s instruction to record the Logistics-tab call explicitly rather than silently drop or build it.

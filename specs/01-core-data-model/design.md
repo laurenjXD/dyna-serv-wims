@@ -1,6 +1,6 @@
 # Core Data Model — Design
 Status: Approved
-Updated: 2026-08-20
+Updated: 2026-08-24 — WRR document-field ownership amendment
 Depends on: specs/00-steering/ (tech.md, structure.md), specs/01-core-data-model/requirements.md
 
 ## 1. Data Model & Schema Definitions
@@ -321,7 +321,7 @@ export const lots = pgTable("lots", {
 
 #### `wrr_documents` & `wrr_items` (`lib/db/schema/wrr.ts`)
 ```typescript
-import { pgTable, uuid, varchar, text, integer, decimal, timestamp, unique, check } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, text, integer, decimal, date, timestamp, unique, check } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { flowTypeEnum, wrrStatusEnum, conformanceStatusEnum, nonConformanceReasonEnum } from "./enums";
 import { parties } from "./parties";
@@ -353,6 +353,8 @@ export const wrrItems = pgTable("wrr_items", {
   itemCode: varchar("item_code", { length: 100 }), // Supplier Part Number from CIPL
   customerItemCode: varchar("customer_item_code", { length: 100 }), // Customer Part Number from CIPL
   lotNumber: varchar("lot_number", { length: 100 }).notNull(), // Source business lot number from the WRR
+  manufactureDate: date("manufacture_date"), // Supplier-declared manufacturing date, copied to lots at receipt
+  remarks: text("remarks"), // Receiving/CIPL line remarks; never an inventory adjustment
   expectedQty: integer("expected_qty").notNull(),
   scannedQty: integer("scanned_qty").default(0).notNull(),
   unitCbm: decimal("unit_cbm", { precision: 10, scale: 4 }).notNull(),

@@ -1,7 +1,7 @@
 # Incoming Receiving — Design
 
 Status: Approved
-Updated: 2026-08-20
+Updated: 2026-08-24 — WRR document-field ownership amendment
 
 ## 1. Design intent
 
@@ -134,10 +134,12 @@ All fields confirmed from the approved `01-core-data-model` schema, plus the `di
 | Supplier part number | `wrr_items.item_code` | From CIPL. |
 | Customer part number | `wrr_items.customer_item_code` | From CIPL. |
 | Lot number | `wrr_items.lot_number` | **Single canonical business lot identifier.** `NOT NULL`. Copied verbatim to `lots.lot_number` at commit. There is no vendor lot number field; this is the only lot identifier on the line. |
+| Manufacture date | `wrr_items.manufacture_date` | Optional supplier-declared date. Copied to `lots.manufacture_date` at commit. |
 | Expected quantity | `wrr_items.expected_qty` | Expected carton/unit count. |
 | Scanned quantity | `wrr_items.scanned_qty` | Running scan total; updated by scan commands, default 0. |
 | Unit CBM | `wrr_items.unit_cbm` | Per-carton CBM for putaway calculations. |
 | UOM | `wrr_items.uom` | Unit of measure. |
+| Remarks | `wrr_items.remarks` | Optional CIPL/receiving note. It is evidence only and cannot adjust quantity. |
 | Disposition | `wrr_items.disposition` | `store` or `inspect`. Determines lot status and posting location at commit. To be added to `01` via schema amendment. |
 | Putaway location | `wrr_items.putaway_location_id` | **Reversed 2026-08-10 (supersedes the 2026-08-09 Product Owner decision — see `specs/00-steering/revision-log.md`).** No longer required, set, or even meaningfully choosable at WRR-creation time — at staging time the system does not yet know what will actually be scanned, so a location cannot be suggested against real item CBM/capacity data. The column (already nullable in `01`'s schema; no migration proposed by this amendment) is now populated per line at scan/store time, per §6. `store`-disposition lines carry `putaway_location_id = NULL` from WRR creation through the start of receiving. |
 
@@ -162,38 +164,39 @@ Visual inspection is an explicit floor step after scan reconciliation and before
 
 The generated WRR document SHALL include the following fields:
 
-**Header section:**
+**Header section (all values are rendered from the WRR record, never re-entered in the print/read-only view):**
 
 - WRR number rendered as a scannable barcode (e.g. `WRR-2026-00001`)
-- Date of document generation
-- CIPL/commercial invoice reference number
-- Source party (vendor) name and code
+- Received date — `confirmed_at` when confirmed; otherwise `Pending receipt`
+- CIPL/commercial invoice reference number (Invoice #)
+- Source Organization name and code (Customer Name)
 - Flow type (`vmi` / `trading` / `supplies`)
 - PEZA permit number and import permit (IP) number where applicable
 - MAWB/MBL (Master Air Waybill / Bill of Lading) number where applicable
 
 **Per-line section (one row per `wrr_items` record):**
 
-- Item code (Dyna-Serv item code)
+- Item code — supplier PN (`wrr_items.item_code`) and Dyna-Serv code (`items.code`)
+- Customer item code
 - Item name/description
-- Lot number
-- Expected quantity and UOM
-- Unit CBM
-- Disposition (`STORE` or `INSPECT`)
-- Scanned quantity column (blank at print time; completed on the floor)
+- Shipping lot / canonical lot number
+- Manufacturing date
+- In-transit quantity and UOM — expected quantity/UOM
+- Actual item received quantity and UOM — scan/commit-derived; blank until receiving starts
+- Remarks
 
 **Footer section:**
 
-- Received by — signature line
-- Checked by — signature line
-- Supervisor — signature line
+- Prepared by and date — staged-by user and WRR creation date
+- Inspected by and date — inspector/inspection timestamp when an inspection record exists
+- Total in-transit quantity and total actual received quantity, grouped by UOM
 - Warehouse stamp area
 
 ### 5.4 Print and reprint behavior
 
 Printing is generated from the staged server record and does not create a receipt outcome. Any user with the `receiving.view` capability MAY reprint a WRR at any lifecycle status. A reprint SHALL be visibly watermarked "REPRINT" with the reprint timestamp and the identity of the reprinting user. Reprinting does not change WRR status, does not create inventory, and does not alter the scan baseline.
 
-The form supports draft validation before save, server uniqueness/relationship checks, and an explicit transition to staged status. Editing is allowed while staged; once receiving starts, the scan baseline is immutable or changes through a visible versioned correction flow.
+The WRR form is the sole CRUD surface for these commercial/header and expected-line values. It supports draft validation before save, server uniqueness/relationship checks, and an explicit transition to staged status. The WRR detail, receipt view, and print route are read-only projections of the persisted values. Editing is allowed while staged; once receiving starts, the scan baseline and actual receipt values are immutable or change only through a visible versioned correction flow.
 
 ### 5.5 Supplier advance-notice intake
 

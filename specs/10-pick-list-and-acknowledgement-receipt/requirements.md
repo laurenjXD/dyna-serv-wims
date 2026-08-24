@@ -1,7 +1,7 @@
 # Pick List & Delivery Receipt / Acknowledgement Receipt — Requirements
 
 Status: Approved
-Updated: 2026-08-14 (Aligned with Unified UI/UX & Visual Design System)
+Updated: 2026-08-24 — Master Inventory-backed pick-list field contract
 
 ## 1. Purpose and scope
 
@@ -42,7 +42,7 @@ The Documents page (`/documents`) provides an integrated document archive for:
 
 1. Pick lists and Delivery Receipts / Acknowledgement Receipts are generated from committed snapshots in `08`.
 2. Synchronous inline PDF generation returns preview links immediately; orphan cleanup runs nightly.
-3. Documents include Organization, Inventory Model, line items, quantities, UOMs, prices, and signature blocks.
+3. Documents include Organization, Inventory Model, line items, quantities, UOMs, prices, and signature blocks. A pick list is read-only: its item, customer-item, lot, location, quantity, SPQ, and package values are selected from Master Inventory by the approved allocation/commitment flow and frozen in the pick-list snapshot; users do not CRUD those values on the pick-list document.
 4. Trading document prices are final (`13-trading-orders-and-pricing`). VMI prices are per-release reference values (`12-vmi-billing`).
 
 ### R2. Permanent tiered retention policy
@@ -61,3 +61,4 @@ The Documents page (`/documents`) provides an integrated document archive for:
 - [ ] User-facing UI labels use Organization, Inventory Model, Organization Portal, and Delivery Receipt / Acknowledgement Receipt exclusively.
 - [ ] Permanent tiered retention policy (3 years hot in Supabase, then archived off-platform) is enforced for all generated document artifacts.
 - [ ] 3-component error feedback is present on all document generation/download errors.
+- [ ] Pick-list detail and print views display Master Inventory-backed item/lot/location/package values without an editable line-data surface.

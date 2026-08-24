@@ -10,7 +10,7 @@
 //
 // Manages a stateful array of lines. Each line is rendered as a group of
 // form inputs named `line_N_fieldName`. A hidden `lineCount` input tells the
-// server action how many lines to parse. Fields default to { disposition: "store" }.
+// server action how many lines to parse. The disposition is submitted as `store`.
 
 import { useEffect, useState } from "react";
 import type { WrrItemOption } from "@/lib/db/queries/items";
@@ -20,9 +20,10 @@ interface LineState {
   expectedQty: string;
   unitCbm: string;
   uom: string;
-  disposition: "store" | "inspect";
   itemCode: string;
   customerItemCode: string;
+  manufactureDate: string;
+  remarks: string;
   itemId: string;
 }
 
@@ -31,9 +32,10 @@ const EMPTY_LINE: LineState = {
   expectedQty: "",
   unitCbm: "",
   uom: "",
-  disposition: "store",
   itemCode: "",
   customerItemCode: "",
+  manufactureDate: "",
+  remarks: "",
   itemId: "",
 };
 
@@ -225,36 +227,8 @@ export function WrrLineItems({ flowType, vendorPartyId, itemOptions }: { flowTyp
               />
             </div>
 
-            {/* Disposition — required, defaults to store per design.md §7.1 */}
-            <div className="order-6">
-              <label
-                htmlFor={`line-${index}-disposition`}
-                className="block font-label text-label text-text-grey"
-              >
-                Disposition{" "}
-                <span aria-hidden="true" className="text-brand-red">
-                  *
-                </span>
-                <span className="sr-only">(required)</span>
-              </label>
-              <select
-                id={`line-${index}-disposition`}
-                name={`line_${index}_disposition`}
-                required
-                value={line.disposition}
-                onChange={(e) =>
-                  updateLine(
-                    index,
-                    "disposition",
-                    e.target.value as "store" | "inspect"
-                  )
-                }
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              >
-                <option value="store">Store</option>
-                <option value="inspect">Inspect</option>
-              </select>
-            </div>
+            {/* WRR creation always stages for store; inspection remains a later workflow. */}
+            <input type="hidden" name={`line_${index}_disposition`} value="store" />
 
             {/* Item Code — limited to items registered under the selected vendor organization. */}
             <div className="order-3">
@@ -284,7 +258,7 @@ export function WrrLineItems({ flowType, vendorPartyId, itemOptions }: { flowTyp
             </div>
 
             {/* Customer Item Code — optional */}
-            <div className="order-7">
+            <div className="order-6">
               <label
                 htmlFor={`line-${index}-customerItemCode`}
                 className="block font-label text-label text-text-grey"
@@ -300,6 +274,35 @@ export function WrrLineItems({ flowType, vendorPartyId, itemOptions }: { flowTyp
                 </select>
                 <input id={`line-${index}-customerItemCode`} name={`line_${index}_customerItemCode`} value={line.customerItemCode} onChange={(e) => updateLine(index, "customerItemCode", e.target.value)} placeholder="Or type customer item code manually" className="mt-2 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy" />
               </>}
+            </div>
+
+            <div className="order-7">
+              <label htmlFor={`line-${index}-manufactureDate`} className="block font-label text-label text-text-grey">
+                Manufacturing Date
+              </label>
+              <input
+                id={`line-${index}-manufactureDate`}
+                name={`line_${index}_manufactureDate`}
+                type="date"
+                value={line.manufactureDate}
+                onChange={(e) => updateLine(index, "manufactureDate", e.target.value)}
+                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              />
+            </div>
+
+            <div className="order-8 sm:col-span-2 lg:col-span-3">
+              <label htmlFor={`line-${index}-remarks`} className="block font-label text-label text-text-grey">
+                Remarks
+              </label>
+              <textarea
+                id={`line-${index}-remarks`}
+                name={`line_${index}_remarks`}
+                value={line.remarks}
+                onChange={(e) => updateLine(index, "remarks", e.target.value)}
+                rows={2}
+                placeholder="Optional receiving or CIPL note"
+                className="mt-1 w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              />
             </div>
           </div>
         </div>

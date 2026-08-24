@@ -21,12 +21,13 @@
 // KPI/financial analytics remain on /reports; this page owns operational queues.
 
 import { eq } from "drizzle-orm";
+import { redirect } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { resolveSessionPresentationTier } from "@/lib/shell/surface";
 import { db } from "@/lib/db/client";
 import { userProfiles } from "@/lib/db/schema";
-import { listWrrDocuments, listRecentWrrDocuments } from "@/lib/db/queries/receiving";
+import { findWrrDocumentByNumber, listWrrDocuments, listRecentWrrDocuments } from "@/lib/db/queries/receiving";
 import type { WrrDocumentRow } from "@/lib/db/queries/receiving";
 import { listPickLists, listRecentPickLists } from "@/lib/db/queries/withdrawals";
 import type { PickListRow } from "@/lib/db/queries/withdrawals";
@@ -157,6 +158,18 @@ export default async function Home() {
     (await requirePermission(resolver, "reporting.read")).kind === "authorized";
   const hasFinancialAccess =
     (await requirePermission(resolver, "reporting.financial_read")).kind === "authorized";
+
+  async function handleQuickJump(formData: FormData): Promise<void> {
+    "use server";
+    const actionResolver = await createPageResolver();
+    const permission = await requirePermission(actionResolver, "receiving.view");
+    if (permission.kind !== "authorized") redirect("/");
+    const wrrNumber = ((formData.get("wrrNumber") as string | null) ?? "").trim();
+    if (!wrrNumber) redirect("/");
+    const match = await findWrrDocumentByNumber(db, wrrNumber);
+    if (!match) redirect("/");
+    redirect(match.status === "confirmed" || match.status === "cancelled" ? `/receiving/${match.id}` : `/receiving/${match.id}/receive`);
+  }
 
   // ─── Display name for greeting ───────────────────────────────────────
   const profileRows = await db
@@ -384,6 +397,7 @@ export default async function Home() {
       pendingApprovals={pendingApprovals}
       inventoryKpis={inventoryKpis}
       hasReceivingAccess={hasReceivingAccess}
+      quickJumpAction={hasReceivingAccess ? handleQuickJump : undefined}
       hasPickListAccess={hasPickListAccess}
       hasTransferAccess={hasTransferAccess}
       hasInspectionAccess={hasInspectionAccess}

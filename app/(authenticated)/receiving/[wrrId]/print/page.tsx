@@ -155,9 +155,7 @@ export default async function WrrPrintPage({ params }: PageProps) {
                 <p className="mt-1 font-label text-label uppercase tracking-[0.05em] text-brand-royal-blue">
                   Warehouse Receipt Record
                 </p>
-                <p className="mt-3 font-body text-body-sm text-text-grey">
-                  Date of Generation: {new Date().toLocaleString()}
-                </p>
+                <p className="mt-3 font-body text-body-sm text-text-grey">Received Date: {wrr.confirmedAt?.toLocaleString() ?? "Pending receipt"}</p>
               </div>
               {/* This QR identifies the WRR document. It deliberately does
                   not represent a physical unit and must not be used in the
@@ -275,7 +273,13 @@ export default async function WrrPrintPage({ params }: PageProps) {
                         Item Name
                       </th>
                       <th className="border border-outline-variant/30 px-3 py-2 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                        Customer Code
+                      </th>
+                      <th className="border border-outline-variant/30 px-3 py-2 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                         Lot Number
+                      </th>
+                      <th className="border border-outline-variant/30 px-3 py-2 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                        Mfg. Date
                       </th>
                       <th className="border border-outline-variant/30 px-3 py-2 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
                         Expected Qty / UOM
@@ -286,11 +290,11 @@ export default async function WrrPrintPage({ params }: PageProps) {
                       <th className="border border-outline-variant/30 px-3 py-2 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                         Disposition
                       </th>
-                      {/* Blank at print time — completed on the floor by hand
-                          per design.md §5.3. Never pre-filled with the live
-                          scannedQty count, even for a mid-cycle reprint. */}
                       <th className="border border-outline-variant/30 px-3 py-2 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                        Scanned Qty
+                        Actual Qty / UOM
+                      </th>
+                      <th className="border border-outline-variant/30 px-3 py-2 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                        Remarks
                       </th>
                     </tr>
                   </thead>
@@ -298,14 +302,17 @@ export default async function WrrPrintPage({ params }: PageProps) {
                     {wrr.items.map((item: WrrItemRow) => (
                       <tr key={item.id} className="border-b border-outline-variant/30">
                         <td className="border border-outline-variant/30 px-3 py-2 font-mono text-mono-md text-on-surface">
-                          {item.itemCode ?? "—"}
+                          <span className="block">Dyna-Serv: {item.itemCode ?? "—"}</span>
+                          <span className="block text-text-grey">Supplier: {item.supplierItemCode ?? "—"}</span>
                         </td>
                         <td className="border border-outline-variant/30 px-3 py-2 font-body text-body-sm text-on-surface">
                           {item.itemName ?? "—"}
                         </td>
+                        <td className="border border-outline-variant/30 px-3 py-2 font-mono text-mono-md text-on-surface">{item.customerItemCode ?? "—"}</td>
                         <td className="border border-outline-variant/30 px-3 py-2 font-mono text-mono-md text-on-surface">
                           {item.lotNumber}
                         </td>
+                        <td className="border border-outline-variant/30 px-3 py-2 font-body text-body-sm text-on-surface">{item.manufactureDate ?? "—"}</td>
                         <td className="border border-outline-variant/30 px-3 py-2 text-right font-mono text-mono-md text-on-surface">
                           {item.expectedQty} {item.uom}
                         </td>
@@ -317,8 +324,9 @@ export default async function WrrPrintPage({ params }: PageProps) {
                             item.disposition.toUpperCase()}
                         </td>
                         <td className="border border-outline-variant/30 px-3 py-2 text-right font-mono text-mono-md text-on-surface">
-                          {/* Intentionally blank — see design.md §5.3 note above thead. */}
+                          {item.scannedQty > 0 ? `${item.scannedQty} ${item.uom}` : "—"}
                         </td>
+                        <td className="border border-outline-variant/30 px-3 py-2 font-body text-body-sm text-on-surface">{item.remarks ?? "—"}</td>
                       </tr>
                     ))}
                   </tbody>
