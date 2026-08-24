@@ -165,7 +165,7 @@ export function StockViewInteractiveTable({
                 <div className="border-t border-outline-variant/30 bg-surface-light-grey/45 px-4 py-4 md:px-6">
                   <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
                     <p className="font-body text-body-md text-text-grey">
-                      Lots are shown in {item.isPerishable ? "FEFO" : "FIFO"} order. Click <strong>"+ Add to Pick List"</strong> to add this item code to your draft pick list.
+                      Lots are shown in {item.isPerishable ? "FEFO" : "FIFO"} order. Click <strong>&quot;+ Add to Pick List&quot;</strong> to add this item code to your draft pick list.
                     </p>
                   </div>
                   <div className="overflow-x-auto rounded border border-outline-variant/40 bg-surface-white">

@@ -74,7 +74,7 @@ export function MultiPickListBuilder({
           Multi-Item Pick List Builder
         </p>
         <p className="mt-1 font-body text-body-sm text-text-grey">
-          Select a customer party below and click <strong>"+ Add to Pick List"</strong> on any lot row in the table to queue multiple item codes.
+          Select a customer party below and click <strong>&quot;+ Add to Pick List&quot;</strong> on any lot row in the table to queue multiple item codes.
         </p>
       </div>
     );
