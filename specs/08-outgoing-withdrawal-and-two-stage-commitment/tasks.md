@@ -1,7 +1,7 @@
 # Outgoing Withdrawal & Two-Stage Commitment — Implementation Plan
 
 Status: Approved
-Updated: 2026-08-25 (Direct-to-dispatch pick-list amendment)
+Updated: 2026-08-25 (WRR-style shared-QR dispatch amendment)
 
 ## Implementation gate
 
@@ -198,3 +198,5 @@ Testing: Full applicable matrix below.
 - [x] Multi-item Pick Lists-tab amendment — Second approver approval: Granted in conversation, 2026-08-25
 - [x] Direct-to-dispatch pick-list amendment — Product owner approval: Granted in conversation, 2026-08-25
 - [x] Direct-to-dispatch pick-list amendment — Second approver approval: Granted in conversation, 2026-08-25
+- [x] WRR-style shared-QR dispatch amendment — Product owner approval: Granted in conversation, 2026-08-25
+- [x] WRR-style shared-QR dispatch amendment — Second approver approval: Granted in conversation, 2026-08-25

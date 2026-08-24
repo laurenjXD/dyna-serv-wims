@@ -117,8 +117,8 @@ function QuickAccessSection({
             {openPickLists.map((pl) => (
               <div key={pl.id} className="flex items-center justify-between gap-3 px-4 py-3">
                 <p className="font-mono text-mono-md font-bold text-on-surface">{pl.pickListNumber}</p>
-                <Link href={`/pick-lists/${pl.id}/pick`} className="shrink-0 inline-flex h-9 items-center rounded bg-primary px-3 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy">
-                  Go to Pick
+                <Link href={`/pick-lists/${pl.id}/dispatch`} className="shrink-0 inline-flex h-9 items-center rounded bg-primary px-3 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy">
+                  Dispatch
                 </Link>
               </div>
             ))}

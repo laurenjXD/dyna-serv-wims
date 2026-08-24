@@ -1,7 +1,7 @@
 # Pick List & Acknowledgement Receipt — Implementation Plan
 
 Status: Approved
-Updated: 2026-08-25 — Direct-to-dispatch pick-list amendment
+Updated: 2026-08-25 — WRR-style shared-QR dispatch amendment
 
 ## Implementation gate
 
@@ -171,3 +171,5 @@ Testing: Full matrix below.
 - [x] Multi-item Pick Lists-tab amendment approval — Second approver: Granted in conversation, 2026-08-25
 - [x] Direct-to-dispatch pick-list amendment approval — Product owner: Granted in conversation, 2026-08-25
 - [x] Direct-to-dispatch pick-list amendment approval — Second approver: Granted in conversation, 2026-08-25
+- [x] WRR-style shared-QR dispatch amendment approval — Product owner: Granted in conversation, 2026-08-25
+- [x] WRR-style shared-QR dispatch amendment approval — Second approver: Granted in conversation, 2026-08-25

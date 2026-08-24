@@ -20,12 +20,12 @@ export async function createPickList(formData: FormData): Promise<void> {
     redirect(`/inventory?pickListError=${encodeURIComponent(result.errors.join(","))}`);
   }
 
-  // Refresh the queues before entering the sole scan gate. The generated PDF
-  // remains available from Master Inventory's Pick Lists tab.
+  // Refresh the queues before returning to the Pick Lists confirmation. The
+  // operator explicitly chooses Dispatch beside the generated PDF.
   revalidatePath("/inventory");
   revalidatePath("/outgoing");
   revalidatePath("/pick-lists");
-  redirect(`/pick-lists/${result.pickListId}/dispatch`);
+  redirect(`/inventory?tab=pick-lists&pickListCreated=${encodeURIComponent(result.pickListId)}`);
 }
 
 export async function requestPickListOverride(formData: FormData): Promise<void> {
@@ -71,5 +71,5 @@ export async function createApprovedPickList(formData: FormData): Promise<void> 
   revalidatePath("/inventory");
   revalidatePath("/outgoing");
   revalidatePath("/approvals");
-  redirect(`/pick-lists/${result.pickListId}/dispatch`);
+  redirect(`/inventory?tab=pick-lists&pickListCreated=${encodeURIComponent(result.pickListId)}`);
 }

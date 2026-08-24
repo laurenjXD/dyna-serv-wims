@@ -513,10 +513,10 @@ export function OfficeLanding({
                         {pl.pickListNumber}
                       </p>
                       <Link
-                        href={`/pick-lists/${pl.id}/pick`}
+                        href={`/pick-lists/${pl.id}/dispatch`}
                         className="shrink-0 inline-flex h-9 items-center rounded bg-primary px-3 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy"
                       >
-                        Pick
+                        Dispatch
                       </Link>
                     </div>
                   ))}

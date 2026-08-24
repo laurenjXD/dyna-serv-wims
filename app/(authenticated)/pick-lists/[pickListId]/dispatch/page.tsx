@@ -142,7 +142,6 @@ export default async function DispatchConfirmationPage({
     const scanResult = await selectPickUnit(
       actionResolver,
       pickListId,
-      String(formData.get("pickListItemId") ?? ""),
       String(formData.get("barcode") ?? ""),
     );
     if (!scanResult.ok) redirect(`/pick-lists/${pickListId}/dispatch?result=error&reason=${encodeURIComponent(scanResult.errors[0] ?? "unable_to_select_box")}`);
@@ -197,9 +196,9 @@ export default async function DispatchConfirmationPage({
           <div className="flex items-center gap-3">
             {/* Back link — h-14 (56px) floor touch target per §3 */}
             <Link
-              href={`/pick-lists/${pickListId}/pick`}
+              href="/inventory?tab=pick-lists"
               className="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-outline-variant/30 bg-surface-white text-on-surface shadow-elevation-2 focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
-              aria-label="Back to pick execution"
+              aria-label="Back to Pick Lists"
             >
               <ChevronLeft size={24} strokeWidth={2} aria-hidden="true" />
             </Link>
@@ -264,6 +263,10 @@ export default async function DispatchConfirmationPage({
                   ? "This pick list was already dispatched."
                   : errorReason === "not_found"
                     ? "Pick list not found. Contact a supervisor."
+                    : errorReason === "wrong_item_or_lot_qr"
+                      ? "This QR does not match an unfinished item or lot on this Pick List."
+                      : errorReason === "line_complete"
+                        ? "This item has already reached its required box count. Continue with the next line."
                     : `Error: ${errorReason}. Contact a supervisor if this persists.`}
               </p>
             </div>
@@ -351,9 +354,9 @@ export default async function DispatchConfirmationPage({
 
         {!alreadyDispatched && activeItem && (
           <section className="mb-3 rounded-2xl border border-brand-blue/30 bg-brand-blue/5 p-4">
-            <div className="flex items-start gap-3"><ScanLine size={24} className="mt-0.5 shrink-0 text-brand-navy" aria-hidden="true" /><div><h2 className="font-heading text-title-md font-bold text-on-surface">Scan boxes for dispatch</h2><p className="mt-1 font-body text-body-md text-text-grey">{activeItem.itemCode} · Lot {activeItem.lotNumber} · {activeItem.locationLabel}. Scan {activeItem.numberOfBoxes - (selectionCountByLine.get(activeItem.id) ?? 0)} more box(es).</p></div></div>
-            <form action={handleBoxScan} className="mt-4 flex flex-col gap-3 sm:flex-row"><input type="hidden" name="pickListItemId" value={activeItem.id} /><input name="barcode" required autoFocus autoComplete="off" placeholder="Scan QR or enter box ID" className="h-14 min-w-0 flex-1 rounded-xl border border-outline-variant bg-surface-white px-4 font-mono text-body-md text-on-surface outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20" /><button type="submit" className="h-14 rounded-xl bg-brand-navy px-6 font-label text-body-md text-surface-white">Add box</button></form>
-            <div className="mt-3"><CameraScanBridge action={handleBoxScan} extraFields={{ pickListItemId: activeItem.id }} /></div>
+            <div className="flex items-start gap-3"><ScanLine size={24} className="mt-0.5 shrink-0 text-brand-navy" aria-hidden="true" /><div><h2 className="font-heading text-title-md font-bold text-on-surface">Scan QR for dispatch</h2><p className="mt-1 font-body text-body-md text-text-grey">Scan any item or lot QR on this Pick List. The matching unfinished line is counted automatically. Next: {activeItem.itemCode} · Lot {activeItem.lotNumber} · {activeItem.locationLabel}.</p></div></div>
+            <form action={handleBoxScan} className="mt-4 flex flex-col gap-3 sm:flex-row"><input name="barcode" required autoFocus autoComplete="off" placeholder="Scan item or lot QR" className="h-14 min-w-0 flex-1 rounded-xl border border-outline-variant bg-surface-white px-4 font-mono text-body-md text-on-surface outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20" /><button type="submit" className="h-14 rounded-xl bg-brand-navy px-6 font-label text-body-md text-surface-white">Count box</button></form>
+            <div className="mt-3"><CameraScanBridge action={handleBoxScan} /></div>
           </section>
         )}
 

@@ -50,12 +50,15 @@ describe("DispatchConfirmationPage (app/(authenticated)/pick-lists/[pickListId]/
     expect(mod.default.name.length).toBeGreaterThan(0);
   });
 
-  it("requires exact-box scans at dispatch", () => {
+  it("counts repeated shared item or lot QR scans at dispatch", () => {
     const source = pageSource();
     expect(source).toContain('name="barcode"');
     expect(source).toContain("CameraScanBridge");
     expect(source).toContain("selectPickUnit");
-    expect(source).toContain("Scan boxes for dispatch");
+    expect(source).toContain("Scan QR for dispatch");
+    expect(source).toContain("Scan item or lot QR");
+    expect(source).toContain("matching unfinished line is counted automatically");
+    expect(source).not.toContain('name="pickListItemId"');
     expect(source).toContain("Confirm Dispatch");
   });
 });

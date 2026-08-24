@@ -573,39 +573,36 @@ describe("dispatchPickList — unauthorized (R7.5, R10.1, R10.2, design.md §7)"
   });
 });
 
-describe("selectPickUnit — exact physical box and location", () => {
-  const unitId = "12345678-1234-4abc-8def-000000000001";
+describe("selectPickUnit — WRR-style shared QR dispatch counting", () => {
+  const sharedItemQr = "ITEM-1";
 
-  it("rejects a real box registered at a different location", async () => {
+  it("rejects a QR that does not match any Pick List item or lot", async () => {
     const db = makeWithdrawalDb([], [
-      [{ id: "line-1", lotId: "lot-1", locationId: "loc-a", numberOfBoxes: 1, pickListStatus: "picked" }],
-      [{ id: "unit-row-1", lotId: "lot-1", locationId: "loc-b", status: "available", pickListItemId: null }],
+      [{ id: "line-1", itemCode: "ITEM-1", itemBarcode: "ITEM-1", lotId: "lot-1", lotNumber: "LOT-1", locationId: "loc-a", numberOfBoxes: 1, pickListStatus: "picked" }],
     ]);
 
     const result = await selectPickUnit(
       pickerResolver(),
       "pick-list-1",
-      "line-1",
-      unitId,
+      "WRONG-ITEM",
       mockRlsDeps(db).deps,
     );
 
-    expect(result).toEqual({ ok: false, errors: ["wrong_box_location"] });
+    expect(result).toEqual({ ok: false, errors: ["wrong_item_or_lot_qr"] });
     expect(db.update).not.toHaveBeenCalled();
   });
 
-  it("selects the scanned box for the exact matching line", async () => {
+  it("counts a repeated matching QR against its matching line", async () => {
     const db = makeWithdrawalDb([], [
-      [{ id: "line-1", lotId: "lot-1", locationId: "loc-a", numberOfBoxes: 2, pickListStatus: "picked" }],
-      [{ id: "unit-row-1", lotId: "lot-1", locationId: "loc-a", status: "available", pickListItemId: null }],
+      [{ id: "line-1", itemCode: "ITEM-1", itemBarcode: "ITEM-1", lotId: "lot-1", lotNumber: "LOT-1", locationId: "loc-a", numberOfBoxes: 2, pickListStatus: "picked" }],
       [{ id: "already-selected" }],
+      [{ id: "unit-row-1", lotId: "lot-1", locationId: "loc-a", status: "available", pickListItemId: null }],
     ]);
 
     const result = await selectPickUnit(
       pickerResolver(),
       "pick-list-1",
-      "line-1",
-      unitId,
+      sharedItemQr,
       mockRlsDeps(db).deps,
     );
 
@@ -613,6 +610,30 @@ describe("selectPickUnit — exact physical box and location", () => {
     expect(db._updated).toContainEqual(expect.objectContaining({
       status: "selected",
       pickListItemId: "line-1",
+    }));
+  });
+
+  it("chooses the matching Pick List line instead of a client-selected active line", async () => {
+    const db = makeWithdrawalDb([], [
+      [
+        { id: "line-1", itemCode: "ITEM-1", itemBarcode: "ITEM-1", lotId: "lot-1", lotNumber: "LOT-1", locationId: "loc-a", numberOfBoxes: 1, pickListStatus: "picked" },
+        { id: "line-2", itemCode: "ITEM-2", itemBarcode: "ITEM-2", lotId: "lot-2", lotNumber: "LOT-2", locationId: "loc-b", numberOfBoxes: 1, pickListStatus: "picked" },
+      ],
+      [],
+      [{ id: "unit-row-2", lotId: "lot-2", locationId: "loc-b", status: "available", pickListItemId: null }],
+    ]);
+
+    const result = await selectPickUnit(
+      pickerResolver(),
+      "pick-list-1",
+      "ITEM-2",
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result).toEqual({ ok: true, selectedCount: 1, requiredCount: 1 });
+    expect(db._updated).toContainEqual(expect.objectContaining({
+      status: "selected",
+      pickListItemId: "line-2",
     }));
   });
 });

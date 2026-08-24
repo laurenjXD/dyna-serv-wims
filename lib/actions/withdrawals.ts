@@ -46,7 +46,6 @@ import { inventoryTransactions } from "@/lib/db/schema/transactions";
 import { generatedDocuments } from "@/lib/db/schema/documents";
 import { approvalRequests } from "@/lib/db/schema/approvals";
 import { inventoryUnits } from "@/lib/db/schema/inventory_units";
-import { parseWrrUnitPayload } from "@/lib/barcode/wrr-unit";
 import {
   listOutgoingLedger as queryListOutgoingLedger,
   type OutgoingLedgerRow,
@@ -562,32 +561,27 @@ export async function commitWithdrawal(
 }
 
 // ---------------------------------------------------------------------------
-// Exact physical-box selection
+// WRR-style shared-QR dispatch counting
 // ---------------------------------------------------------------------------
 
-function unitIdFromScan(rawBarcode: string): string | null {
-  const parsed = parseWrrUnitPayload(rawBarcode);
-  if (parsed) return parsed.unit_id;
-
-  const trimmed = rawBarcode.trim();
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed)
-    ? trimmed.toLowerCase()
-    : null;
-}
-
-/** Records one exact physical box scan for one exact lot/location dispatch line. */
+/**
+ * Counts one shared item/lot QR scan for its matching committed dispatch line.
+ * Like WRR receiving, the same matching QR may be scanned repeatedly until
+ * the line's required box count is reached. A physical inventory-unit row is
+ * assigned server-side only to retain the existing commitment/accounting
+ * invariant; its individual ID is never supplied or validated by the scanner.
+ */
 export async function selectPickUnit(
   resolver: RequestAuthorizationResolver,
   pickListId: string,
-  pickListItemId: string,
   rawBarcode: string,
   rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<SelectPickUnitResult> {
   const perm = await requirePermission(resolver, "dispatch.execute");
   if (perm.kind !== "authorized") return { ok: false, errors: ["forbidden"] };
 
-  const unitId = unitIdFromScan(rawBarcode);
-  if (!unitId) return { ok: false, errors: ["invalid_box_qr"] };
+  const scannedValue = rawBarcode.trim();
+  if (!scannedValue) return { ok: false, errors: ["invalid_qr"] };
 
   try {
     const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
@@ -595,22 +589,59 @@ export async function selectPickUnit(
       const lineRows = (await db
         .select({
           id: pickListItems.id,
+          itemCode: pickListItems.itemCode,
+          itemBarcode: items.barcode,
           lotId: pickListItems.lotId,
+          lotNumber: pickListItems.lotNumber,
           locationId: pickListItems.locationId,
           numberOfBoxes: pickListItems.numberOfBoxes,
           pickListStatus: pickLists.status,
         })
         .from(pickListItems)
+        .leftJoin(items, eq(items.id, pickListItems.itemId))
         .innerJoin(pickLists, eq(pickLists.id, pickListItems.pickListId))
-        .where(and(eq(pickListItems.id, pickListItemId), eq(pickLists.id, pickListId)))
-        .limit(1)) as AnyRecord[];
+        .where(eq(pickLists.id, pickListId))) as AnyRecord[];
 
       if (lineRows.length === 0) return { ok: false as const, errors: ["line_not_found"] };
-      const line = lineRows[0];
-      if (line.pickListStatus !== "picked") {
+      if (lineRows[0].pickListStatus !== "picked") {
         return { ok: false as const, errors: ["invalid_status"] };
       }
 
+      // The scan determines the target line. Like WRR receiving, one shared
+      // item or lot QR may be scanned repeatedly. When an item appears on
+      // multiple lines, scan the lot QR to target a specific lot; otherwise
+      // the first incomplete matching line is counted.
+      const matchingLines = lineRows.filter((candidate) => [
+        candidate.itemBarcode,
+        candidate.itemCode,
+        candidate.lotId,
+        candidate.lotNumber,
+      ].some((value) => value === scannedValue));
+      if (matchingLines.length === 0) {
+        return { ok: false as const, errors: ["wrong_item_or_lot_qr"] };
+      }
+
+      let line: AnyRecord | undefined;
+      let selectedRows: AnyRecord[] = [];
+      for (const candidate of matchingLines) {
+        const candidateSelections = (await db
+          .select({ id: inventoryUnits.id })
+          .from(inventoryUnits)
+          .where(and(
+            eq(inventoryUnits.pickListItemId, candidate.id),
+            eq(inventoryUnits.status, "selected"),
+          ))) as AnyRecord[];
+        if (candidateSelections.length < Number(candidate.numberOfBoxes)) {
+          line = candidate;
+          selectedRows = candidateSelections;
+          break;
+        }
+      }
+      if (!line) return { ok: false as const, errors: ["line_complete"] };
+      const requiredCount = Number(line.numberOfBoxes);
+
+      // Shared QR labels do not identify an individual box. Assign the next
+      // available physical unit from this committed lot/location instead.
       const unitRows = (await db
         .select({
           id: inventoryUnits.id,
@@ -620,37 +651,19 @@ export async function selectPickUnit(
           pickListItemId: inventoryUnits.pickListItemId,
         })
         .from(inventoryUnits)
-        .where(eq(inventoryUnits.unitId, unitId))
+        .where(and(
+          eq(inventoryUnits.lotId, line.lotId),
+          eq(inventoryUnits.locationId, line.locationId),
+          eq(inventoryUnits.status, "available"),
+          sql`${inventoryUnits.pickListItemId} IS NULL`,
+        ))
         .limit(1)) as AnyRecord[];
 
-      if (unitRows.length === 0) return { ok: false as const, errors: ["box_not_found"] };
+      if (unitRows.length === 0) return { ok: false as const, errors: ["box_unavailable"] };
       const unit = unitRows[0];
-      if (unit.lotId !== line.lotId) return { ok: false as const, errors: ["wrong_lot"] };
-      if (unit.locationId !== line.locationId) {
-        return { ok: false as const, errors: ["wrong_box_location"] };
-      }
-      if (unit.pickListItemId === pickListItemId && unit.status === "selected") {
-        return { ok: false as const, errors: ["duplicate_box_scan"] };
-      }
-      if (unit.status !== "available" || unit.pickListItemId) {
-        return { ok: false as const, errors: ["box_unavailable"] };
-      }
-
-      const selectedRows = (await db
-        .select({ id: inventoryUnits.id })
-        .from(inventoryUnits)
-        .where(and(
-          eq(inventoryUnits.pickListItemId, pickListItemId),
-          eq(inventoryUnits.status, "selected"),
-        ))) as AnyRecord[];
-      const requiredCount = Number(line.numberOfBoxes);
-      if (selectedRows.length >= requiredCount) {
-        return { ok: false as const, errors: ["line_complete"] };
-      }
-
       const updated = (await db
         .update(inventoryUnits)
-        .set({ status: "selected", pickListItemId, updatedAt: new Date() })
+        .set({ status: "selected", pickListItemId: line.id, updatedAt: new Date() })
         .where(and(eq(inventoryUnits.id, unit.id), eq(inventoryUnits.status, "available")))
         .returning({ id: inventoryUnits.id })) as AnyRecord[];
       if (updated.length !== 1) return { ok: false as const, errors: ["box_unavailable"] };
@@ -665,7 +678,7 @@ export async function selectPickUnit(
     if (rlsResult.kind === "unauthenticated") return { ok: false, errors: ["forbidden"] };
     return rlsResult.value;
   } catch (error) {
-    console.error("Exact box selection failed", error);
+    console.error("Shared QR dispatch count failed", error);
     return { ok: false, errors: ["unable_to_select_box"] };
   }
 }

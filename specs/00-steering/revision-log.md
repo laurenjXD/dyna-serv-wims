@@ -16,7 +16,11 @@ This amends `08-outgoing-withdrawal-and-two-stage-commitment` and `10-pick-list-
 
 ## Direct-to-dispatch generated pick lists (2026-08-25) — approved
 
-Both approvers authorized removal of the separate in-application “Confirm boxes staged” step. Generation now makes a pick list dispatch-ready, directs the operator to Dispatch, and leaves the PDF as the physical non-scan staging instruction. The Pick Lists queue replaces “Go to Pick” with **View / PDF**. QR scanning remains exclusively at Dispatch.
+Both approvers authorized removal of the separate in-application “Confirm boxes staged” step. Generation now makes a pick list dispatch-ready, confirms it in the Pick Lists tab, and leaves the PDF as the physical non-scan staging instruction. The Pick Lists queue replaces “Go to Pick” with **View / PDF** and an explicit **Dispatch** action. QR scanning remains exclusively at Dispatch.
+
+## WRR-style shared-QR dispatch reconciliation (2026-08-25) — approved
+
+Both approvers clarified that there is one shared QR per item/lot context, not a unique QR printed for every box. Dispatch now follows WRR reconciliation: it accepts the matching shared item QR/code or lot QR repeatedly, automatically selects the corresponding incomplete Pick List line, increments it one box per accepted scan, and stops at the committed quantity. A lot QR targets its exact lot/location line; a shared item QR that appears on multiple lines counts the first incomplete match. Wrong item/lot/location values and over-quantity scans remain blocked, but duplicate unique-box detection is intentionally removed because a unique box label does not exist.
 
 ## WRR-owned input and Master Inventory-backed pick-list fields (2026-08-24) — pending reapproval
 

@@ -1,8 +1,8 @@
 // Pick Lists — dedicated operational queue for committed outbound work.
 //
 // The Stock View on /inventory remains the authoritative generation surface.
-// This index provides the read-only queue and hands staff into the existing
-// floor pick flow without duplicating allocation or commitment logic.
+// This index provides a read-only document queue and hands staff into the
+// direct dispatch flow without duplicating allocation or commitment logic.
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -28,23 +28,23 @@ function statusLabel(status: string) {
 }
 
 function PickListAction({ row, canExecute }: { row: PickListRow; canExecute: boolean }) {
-  if (row.status === "allocated" && canExecute) {
+  if (row.status === "picked" && canExecute) {
     return (
       <Link
-        href={`/pick-lists/${row.id}/pick`}
+        href={`/pick-lists/${row.id}/dispatch`}
         className="inline-flex min-h-14 items-center justify-center rounded bg-primary px-4 font-label text-body-md font-semibold uppercase tracking-wide text-surface-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2 active:scale-[0.97] md:min-h-11 md:text-label"
       >
-        Start picking
+        Dispatch
       </Link>
     );
   }
 
   return (
     <Link
-      href={`/pick-lists/${row.id}/pick`}
+      href={`/pick-lists/${row.id}/print`}
       className="inline-flex min-h-14 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-body-md font-semibold text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2 active:scale-[0.97] md:min-h-11 md:text-label"
     >
-      View pick list
+      View / PDF
     </Link>
   );
 }
@@ -69,7 +69,7 @@ export default async function PickListsIndexPage() {
             Pick Lists
           </h1>
           <p className="mt-1 font-body text-body-md text-text-grey">
-            Review committed outbound work and begin the floor picking flow.
+            Review committed outbound work and open the PDF or direct dispatch flow.
           </p>
         </div>
         <Link

@@ -37,22 +37,6 @@ import { MultiItemPickListDraft } from "./_components/MultiItemPickListDraft";
 import { LotQrViewer } from "./_components/LotQrViewer";
 import { createApprovedPickList, createPickList, requestPickListOverride } from "./actions";
 
-// ─── Status badge colors ─────────────────────────────────────────────────────
-// brand-design-system.md §1.3 semantic color mapping per task spec:
-// allocated → status-pending (amber); picked → brand-navy; dispatched → status-available.
-
-const STATUS_CLASSES: Record<string, string> = {
-  allocated: "bg-status-pending text-on-surface",
-  picked: "bg-brand-navy text-surface-white",
-  dispatched: "bg-status-available text-on-surface",
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  allocated: "ALLOCATED",
-  picked: "PICKED",
-  dispatched: "DISPATCHED",
-};
-
 const FLOW_LABELS: Record<string, string> = {
   vmi: "VMI",
   trading: "Trading",
@@ -406,7 +390,7 @@ async function PickListsTab({ createdPickListId }: { createdPickListId?: string 
 
   return (
     <div className="mt-6 space-y-6">
-      {createdPickListId && <section role="status" className="rounded-lg border border-status-available/30 bg-status-available/10 p-4"><p className="font-heading text-body-md font-bold text-on-surface">Pick list generated</p><p className="mt-1 font-body text-body-sm text-text-grey">The committed list is now in the queue. Open its print view to save or print the table as a PDF.</p><div className="mt-3 flex flex-wrap gap-3"><Link href={`/pick-lists/${createdPickListId}/print`} className="inline-flex h-11 items-center rounded bg-primary px-4 font-label text-label font-bold text-surface-white">View / Print PDF</Link><Link href={`/pick-lists/${createdPickListId}/pick`} className="inline-flex h-11 items-center rounded border border-outline-variant bg-surface-white px-4 font-label text-label font-bold text-on-surface">Go to Pick</Link></div></section>}
+      {createdPickListId && <section role="status" className="rounded-lg border border-status-available/30 bg-status-available/10 p-4"><p className="font-heading text-body-md font-bold text-on-surface">Pick list generated</p><p className="mt-1 font-body text-body-sm text-text-grey">The list is ready for dispatch. Review or save its PDF, then start Dispatch when the boxes are ready.</p><div className="mt-3 flex flex-wrap gap-3"><Link href={`/pick-lists/${createdPickListId}/print`} className="inline-flex h-11 items-center rounded border border-outline-variant bg-surface-white px-4 font-label text-label font-bold text-on-surface">View / PDF</Link><Link href={`/pick-lists/${createdPickListId}/dispatch`} className="inline-flex h-11 items-center rounded bg-primary px-4 font-label text-label font-bold text-surface-white">Dispatch</Link></div></section>}
       <MultiItemPickListDraft
         stock={stockRows.map((row, index) => ({
           itemId: row.itemId,
@@ -457,9 +441,6 @@ async function PickListsTab({ createdPickListId }: { createdPickListId?: string 
                   Pick List #
                 </th>
                 <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                   Flow Type
                 </th>
                 <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
@@ -478,14 +459,6 @@ async function PickListsTab({ createdPickListId }: { createdPickListId?: string 
                   <td className="px-4 py-3 font-mono text-mono-md font-bold text-on-surface">
                     {row.pickListNumber}
                   </td>
-                  <td className="px-4 py-3">
-                    {/* Status badge — radius-full, §1.3 semantic colors */}
-                    <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase ${STATUS_CLASSES[row.status] ?? "bg-status-neutral text-on-surface"}`}
-                    >
-                      {STATUS_LABELS[row.status] ?? row.status.toUpperCase()}
-                    </span>
-                  </td>
                   <td className="px-4 py-3 font-body text-body-md text-on-surface">
                     {FLOW_LABELS[row.flowType] ?? row.flowType}
                   </td>
@@ -497,13 +470,20 @@ async function PickListsTab({ createdPickListId }: { createdPickListId?: string 
                     {row.createdAt.toLocaleString()}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {/* Go to Pick — h-11 (44px) office touch target */}
-                    <Link
-                      href={`/pick-lists/${row.id}/print`}
-                      className="inline-flex h-11 items-center gap-1 rounded bg-primary px-3 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                    >
-                      View / PDF
-                    </Link>
+                    <div className="flex justify-end gap-2">
+                      <Link
+                        href={`/pick-lists/${row.id}/print`}
+                        className="inline-flex h-11 items-center gap-1 rounded border border-outline-variant bg-surface-white px-3 font-label text-label font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                      >
+                        View / PDF
+                      </Link>
+                      {row.status === "picked" && <Link
+                        href={`/pick-lists/${row.id}/dispatch`}
+                        className="inline-flex h-11 items-center gap-1 rounded bg-primary px-3 font-label text-label font-bold text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                      >
+                        Dispatch
+                      </Link>}
+                    </div>
                   </td>
                 </tr>
               ))}
