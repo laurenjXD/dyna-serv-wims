@@ -481,7 +481,7 @@ async function PickListsTab({ createdPickListId, pickedPickListId }: { createdPi
                     <div className="flex justify-end gap-2">
                       <Link
                         href={`/pick-lists/${row.id}/print`}
-                        className="inline-flex h-11 items-center gap-1 rounded border border-outline-variant bg-surface-white px-3 font-label text-label font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                        className="inline-flex h-11 shrink-0 items-center gap-1 whitespace-nowrap rounded border border-outline-variant bg-surface-white px-3 font-label text-label font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
                       >
                         View / PDF
                       </Link>

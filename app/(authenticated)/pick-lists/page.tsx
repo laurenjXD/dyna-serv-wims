@@ -42,7 +42,7 @@ function PickListAction({ row, canExecute }: { row: PickListRow; canExecute: boo
   return (
     <Link
       href={`/pick-lists/${row.id}/print`}
-      className="inline-flex min-h-14 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-body-md font-semibold text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2 active:scale-[0.97] md:min-h-11 md:text-label"
+        className="inline-flex min-h-14 shrink-0 items-center justify-center whitespace-nowrap rounded border border-outline-variant/30 px-4 font-label text-body-md font-semibold text-on-surface focus:outline-none focus-visible:ring-2 focus:ring-brand-navy focus:ring-offset-2 active:scale-[0.97] md:min-h-11 md:text-label"
     >
       View / PDF
     </Link>
