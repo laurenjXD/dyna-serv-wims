@@ -1,7 +1,7 @@
 # Outgoing Withdrawal & Two-Stage Commitment — Implementation Plan
 
 Status: Approved
-Updated: 2026-08-25 (Multi-item Pick Lists tab workflow amendment)
+Updated: 2026-08-25 (Direct-to-dispatch pick-list amendment)
 
 ## Implementation gate
 
@@ -196,3 +196,5 @@ Testing: Full applicable matrix below.
 - [x] Second approver approval — Name/Role: Granted in conversation Date: 2026-08-24
 - [x] Multi-item Pick Lists-tab amendment — Product owner approval: Granted in conversation, 2026-08-25
 - [x] Multi-item Pick Lists-tab amendment — Second approver approval: Granted in conversation, 2026-08-25
+- [x] Direct-to-dispatch pick-list amendment — Product owner approval: Granted in conversation, 2026-08-25
+- [x] Direct-to-dispatch pick-list amendment — Second approver approval: Granted in conversation, 2026-08-25

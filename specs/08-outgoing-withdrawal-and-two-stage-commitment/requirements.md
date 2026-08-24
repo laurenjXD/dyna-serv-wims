@@ -1,7 +1,7 @@
 # Outgoing Withdrawal & Two-Stage Commitment — Requirements
 
 Status: Approved
-Updated: 2026-08-25 (Multi-item Pick Lists tab workflow amendment)
+Updated: 2026-08-25 (Direct-to-dispatch pick-list amendment)
 
 ## 1. Purpose and scope
 
@@ -58,8 +58,8 @@ The Outgoing page (`/outgoing`) features 2 primary sub-tabs:
 
 ### R3. Physical picking and Stage 2 dispatch confirmation
 
-1. Picking executes at `/pick-lists/[id]/pick`; physical dispatch executes at `/pick-lists/[id]/dispatch`.
-2. Pick execution is a non-scan preparation step: it presents the committed item, lot, source location, and box-count instructions, then allows the operator to confirm that all committed boxes are staged. It SHALL NOT request, accept, or validate a barcode/QR scan.
+1. Pick-list generation produces the operational PDF instructions and immediately creates a dispatch-ready `pick_list`. The Pick Lists tab exposes **View / PDF**; it does not expose a separate “Go to Pick” action.
+2. Physical dispatch executes at `/pick-lists/[id]/dispatch`. The generated PDF is the non-scan preparation instruction; there is no separate in-application staging confirmation step.
 3. Dispatch is the sole scan gate. Before final confirmation, the operator SHALL scan the QR of each exact physical box being dispatched. Each durable box identity MUST match the committed item/lot and the specific source location on that pick-list line; a box registered at another location, already selected for another pick list, duplicate, or otherwise mismatched is rejected with recoverable feedback.
 4. Final dispatch confirmation is enabled only after every committed box has been accepted at dispatch. It atomically decrements `qty_remaining`, releases `qty_committed`, writes an immutable `pick` transaction, and makes the priced **Delivery Receipt / Acknowledgement Receipt** available for print/download.
 5. A physical box is scanned once, at dispatch; the system SHALL retain that accepted dispatch evidence for the final command and SHALL NOT require a duplicate verification scan.
@@ -83,7 +83,7 @@ The Outgoing page (`/outgoing`) features 2 primary sub-tabs:
 - [ ] 3-component error feedback is displayed on all validation/scan errors.
 - [ ] Visual design system rules (#2563EB, #0F172A, #64748B, #F3F6FC, #FFFFFF, DM Sans + Glacial typography, 64px floor CTAs) are fully satisfied.
 - [ ] Alternate-pallet requests cannot reserve stock until approved and can only generate the exact approved one-time allocation.
-- [ ] Picking provides no barcode/QR scan input; scanning begins only after the pick list enters the To Dispatch queue.
+- [ ] Generating a pick list creates a dispatch-ready document and redirects directly to Dispatch; scanning begins only there.
 - [ ] The operator scans every committed physical box once at dispatch; the final dispatch command reuses that accepted evidence without a duplicate verification scan.
 - [ ] The Outgoing header contains no non-functional or redundant generic Filter action.
 - [ ] Allocated and picked documents are visually separated into To Pick and To Dispatch queues and cannot expose the wrong phase action.

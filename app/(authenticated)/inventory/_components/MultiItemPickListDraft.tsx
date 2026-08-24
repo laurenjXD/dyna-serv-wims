@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronRight, PackagePlus, Trash2 } from "lucide-react";
+import { AlertTriangle, ChevronRight, PackagePlus, ShieldCheck, Trash2 } from "lucide-react";
 
 type StockSource = {
   itemId: string;
@@ -27,9 +27,11 @@ type DraftLine = { id: string; itemId: string; balanceId: string; qty: string };
 export function MultiItemPickListDraft({
   stock,
   createAction,
+  overrideAction,
 }: {
   stock: StockSource[];
   createAction: (formData: FormData) => void;
+  overrideAction: (formData: FormData) => void;
 }) {
   const organizations = useMemo(() => {
     const unique = new Map<string, string>();
@@ -41,6 +43,7 @@ export function MultiItemPickListDraft({
   const [organizationId, setOrganizationId] = useState("");
   const [flowType, setFlowType] = useState<"" | "vmi" | "trading" | "supplies">("");
   const [lines, setLines] = useState<DraftLine[]>([]);
+  const [overrideReason, setOverrideReason] = useState("");
 
   const catalog = useMemo(() => {
     const grouped = new Map<string, StockSource[]>();
@@ -84,6 +87,21 @@ export function MultiItemPickListDraft({
       idempotencyKey: crypto.randomUUID(),
     });
   }, [flowType, lineDetails, organizationId]);
+  const alternateLines = lineDetails.filter(({ source }) => (source?.priority ?? 1) > 1);
+  const requiresOverride = alternateLines.length > 0;
+  const canRequestOverride = requiresOverride && lines.length === 1 && alternateLines.length === 1;
+  const overrideRequest = useMemo(() => {
+    const alternate = alternateLines[0];
+    if (!canRequestOverride || !organizationId || !flowType || !alternate?.source) return "";
+    const qty = Number(alternate.line.qty);
+    if (!Number.isInteger(qty) || qty <= 0 || qty > alternate.source.availableQty) return "";
+    return JSON.stringify({
+      partyId: organizationId,
+      flowType,
+      lines: [{ itemId: alternate.line.itemId, lotId: alternate.source.lotId, locationId: alternate.source.locationId, qty }],
+      idempotencyKey: crypto.randomUUID(),
+    });
+  }, [alternateLines, canRequestOverride, flowType, organizationId]);
 
   const addLine = () => setLines((current) => [...current, { id: crypto.randomUUID(), itemId: "", balanceId: "", qty: "" }]);
   const updateLine = (id: string, patch: Partial<DraftLine>) => setLines((current) => current.map((line) => line.id === id ? { ...line, ...patch } : line));
@@ -144,11 +162,13 @@ export function MultiItemPickListDraft({
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <button type="button" disabled={!organizationId || !flowType} onClick={addLine} className="inline-flex h-11 items-center gap-2 rounded border border-brand-navy px-4 font-label text-label font-bold text-brand-navy focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:border-outline-variant disabled:text-text-grey"><PackagePlus size={18} aria-hidden="true" />Add item line</button>
-        <form action={createAction}>
-          <input type="hidden" name="request" value={request} />
-          <button type="submit" disabled={!request} className="inline-flex h-12 items-center gap-2 rounded bg-primary px-5 font-label text-body-md font-bold text-surface-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy disabled:cursor-not-allowed disabled:opacity-45">Generate Pick List <ChevronRight size={18} aria-hidden="true" /></button>
+        <form action={requiresOverride ? overrideAction : createAction}>
+          <input type="hidden" name="request" value={requiresOverride ? overrideRequest : request} />
+          {requiresOverride && <input type="hidden" name="reason" value={overrideReason} />}
+          <button type="submit" disabled={requiresOverride ? !canRequestOverride || !overrideRequest || overrideReason.trim().length < 10 : !request} className="inline-flex h-12 items-center gap-2 rounded bg-primary px-5 font-label text-body-md font-bold text-surface-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy disabled:cursor-not-allowed disabled:opacity-45">{requiresOverride ? "Request Approval" : "Generate Pick List"}{requiresOverride ? <ShieldCheck size={18} aria-hidden="true" /> : <ChevronRight size={18} aria-hidden="true" />}</button>
         </form>
       </div>
+      {requiresOverride && <div className="mt-4 rounded-lg border border-status-pending/40 bg-status-pending/5 p-4"><div className="flex items-start gap-3"><AlertTriangle size={21} className="mt-0.5 shrink-0 text-status-pending" aria-hidden="true" /><div className="min-w-0"><p className="font-heading text-body-md font-bold text-on-surface">FIFO/FEFO override approval required</p><p className="mt-1 font-body text-body-sm text-text-grey">This source is not the recommended location. An approved request is locked to the selected item, lot, location, and box quantity.</p></div></div>{canRequestOverride ? <label className="mt-4 grid gap-2 font-label text-label font-bold text-on-surface">Reason for choosing this location<textarea value={overrideReason} onChange={(event) => setOverrideReason(event.target.value)} minLength={10} rows={3} placeholder="Explain why the recommended source cannot be used." className="rounded border border-outline-variant bg-surface-white px-3 py-2 font-body text-body-md font-normal text-on-surface outline-none focus:ring-2 focus:ring-primary" /><span className="font-body text-body-sm font-normal text-text-grey">At least 10 characters are required.</span></label> : <p className="mt-4 font-body text-body-sm text-status-held">Request an approval for one alternate source at a time before adding other draft lines.</p>}</div>}
     </section>
   );
 }

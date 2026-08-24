@@ -14,6 +14,10 @@ The Product Owner approved a change from direct, single-item Stock View generati
 
 This amends `08-outgoing-withdrawal-and-two-stage-commitment` and `10-pick-list-and-acknowledgement-receipt`. Both required approvals were granted in conversation on 2026-08-25; implementation is authorized.
 
+## Direct-to-dispatch generated pick lists (2026-08-25) — approved
+
+Both approvers authorized removal of the separate in-application “Confirm boxes staged” step. Generation now makes a pick list dispatch-ready, directs the operator to Dispatch, and leaves the PDF as the physical non-scan staging instruction. The Pick Lists queue replaces “Go to Pick” with **View / PDF**. QR scanning remains exclusively at Dispatch.
+
 ## WRR-owned input and Master Inventory-backed pick-list fields (2026-08-24) — pending reapproval
 
 The Product Owner clarified the field ownership for the supplied Warehouse Receiving Report and Pick List templates.
