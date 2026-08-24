@@ -150,3 +150,64 @@ export async function getVmiCbmLedgerSummary(
 
   return rows;
 }
+
+export type VmiDailyBalanceRow = {
+  id: string;
+  ledgerDate: string;
+  beginningCbm: number;
+  inFgCbm: number;
+  inRawCbm: number;
+  outFgCbm: number;
+  outRawCbm: number;
+  endingCbm: number;
+  billedBalanceCbm: number;
+  appliedStorageRateUsd: number;
+  storageAmountUsd: number;
+};
+
+export async function getVmiDailyBalanceRows(
+  partyId: string,
+  month: number,
+  year: number,
+  database: DbLike = db,
+): Promise<VmiDailyBalanceRow[]> {
+  const { start, end } = monthDateBounds(month, year);
+
+  const rawRows = (await database
+    .select({
+      id: vmiDailyBalanceLedger.id,
+      ledgerDate: vmiDailyBalanceLedger.ledgerDate,
+      beginningCbm: vmiDailyBalanceLedger.beginningCbm,
+      inFgCbm: vmiDailyBalanceLedger.inboundCbmFg,
+      inRawCbm: vmiDailyBalanceLedger.inboundCbmRawMaterial,
+      outFgCbm: vmiDailyBalanceLedger.outboundCbmFg,
+      outRawCbm: vmiDailyBalanceLedger.outboundCbmRawMaterial,
+      endingCbm: vmiDailyBalanceLedger.endingCbm,
+      billedBalanceCbm: vmiDailyBalanceLedger.billedBalanceCbm,
+      appliedStorageRateUsd: vmiDailyBalanceLedger.appliedStorageRateUsd,
+      storageAmountUsd: vmiDailyBalanceLedger.storageAmountUsd,
+    })
+    .from(vmiDailyBalanceLedger)
+    .where(
+      and(
+        eq(vmiDailyBalanceLedger.partyId, partyId),
+        gte(vmiDailyBalanceLedger.ledgerDate, start),
+        lt(vmiDailyBalanceLedger.ledgerDate, end),
+      ),
+    )) as Record<string, string>[];
+
+  return rawRows.map((r) => ({
+    id: r.id,
+    ledgerDate: r.ledgerDate,
+    beginningCbm: Number(r.beginningCbm),
+    inFgCbm: Number(r.inFgCbm),
+    inRawCbm: Number(r.inRawCbm),
+    outFgCbm: Number(r.outFgCbm),
+    outRawCbm: Number(r.outRawCbm),
+    endingCbm: Number(r.endingCbm),
+    billedBalanceCbm: Number(r.billedBalanceCbm),
+    appliedStorageRateUsd: Number(r.appliedStorageRateUsd),
+    storageAmountUsd: Number(r.storageAmountUsd),
+  }));
+}
+
