@@ -152,7 +152,7 @@ export function parseItemInput(input: unknown): ParseResult<ItemInput> {
   }
 
   // ── uom: enum ['piece', 'roll', 'meter'], defaults to 'piece' ───────────────
-  const rawUom = raw["uom"];
+  const rawUom = raw["uom"] === "pallet" ? "piece" : raw["uom"];
   let uom: ItemInput["uom"] = "piece";
   if (rawUom !== undefined && rawUom !== null) {
     if (typeof rawUom !== "string" || !(VALID_UOM as readonly string[]).includes(rawUom)) {

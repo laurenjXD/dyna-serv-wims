@@ -445,7 +445,7 @@ async function ItemsTab({
                       {item.barcode}
                     </td>
                     <td className="px-4 py-3 font-body text-body-md text-text-grey uppercase">
-                      {item.uom}
+                      {item.uom.toLowerCase() === "pallet" ? "piece" : item.uom}
                     </td>
                     <td className="px-4 py-3">
                       {item.isActive ? (

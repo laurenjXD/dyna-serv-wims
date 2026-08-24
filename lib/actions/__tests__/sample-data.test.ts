@@ -133,9 +133,9 @@ describe("seedSampleData", () => {
     expect(updated[3]).toMatchObject({
       dsgcItemNumber: "SAMPLE-DSGC-001",
       supplierItemCode: "SAMPLE-SUPPLIER-001",
-      uom: "pallet",
+      uom: "piece",
       volumeCbm: "1.2000",
     });
-    expect(updated[7]).toMatchObject({ expectedQty: 3, uom: "pallet" });
+    expect(updated[7]).toMatchObject({ expectedQty: 3, uom: "piece" });
   });
 });

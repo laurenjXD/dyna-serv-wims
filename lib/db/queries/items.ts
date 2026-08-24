@@ -88,7 +88,7 @@ export type WrrItemOption = {
  * ID independently before staging the WRR.
  */
 export async function listActiveWrrItemOptions(db: DbLike): Promise<WrrItemOption[]> {
-  return (await db
+  const rows = (await db
     .select({
       id: items.id,
       defaultSupplierPartyId: items.defaultSupplierPartyId,
@@ -103,6 +103,11 @@ export async function listActiveWrrItemOptions(db: DbLike): Promise<WrrItemOptio
     .from(items)
     .where(eq(items.isActive, true))
     .orderBy(items.code)) as WrrItemOption[];
+
+  return rows.map((r) => ({
+    ...r,
+    uom: r.uom.toLowerCase() === "pallet" ? "piece" : r.uom,
+  }));
 }
 
 export type ItemOperationalRecords = {
@@ -170,7 +175,10 @@ export async function listItems(
     .where(whereClause);
 
   return {
-    rows: rawRows as ItemListRow[],
+    rows: (rawRows as ItemListRow[]).map((row) => ({
+      ...row,
+      uom: row.uom.toLowerCase() === "pallet" ? "piece" : row.uom,
+    })),
     total: Number(countRow?.count ?? 0),
   };
 }
@@ -228,7 +236,11 @@ export async function getItem(
     .where(eq(items.id, id))
     .limit(1);
 
-  return (rows[0] as ItemDetail | undefined) ?? null;
+  const item = (rows[0] as ItemDetail | undefined) ?? null;
+  if (item && item.uom.toLowerCase() === "pallet") {
+    item.uom = "piece";
+  }
+  return item;
 }
 
 // ---------------------------------------------------------------------------
