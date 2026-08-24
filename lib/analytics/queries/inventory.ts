@@ -9,14 +9,14 @@ export async function getInventoryKpis(executor: AnalyticsExecutor = defaultAnal
     WITH low_stock AS (
       SELECT i.id
       FROM items i
-      JOIN lots l ON l.item_id = i.id AND l.status = 'available'
+      JOIN lots l ON l.item_id = i.id AND l.status = 'available'::lot_status
       JOIN lot_inventory_totals lit ON lit.lot_id = l.id
       GROUP BY i.id, i.min_reorder_level
       HAVING SUM(lit.qty_available) < i.min_reorder_level
     )
     SELECT
-      (SELECT COUNT(*) FROM lots WHERE status = 'available') AS total_lots_in_stock,
-      (SELECT COALESCE(SUM(lit.qty_committed), 0) FROM lot_inventory_totals lit JOIN lots l ON l.id = lit.lot_id WHERE l.status = 'available') AS total_committed_qty,
+      (SELECT COUNT(*) FROM lots WHERE status = 'available'::lot_status) AS total_lots_in_stock,
+      (SELECT COALESCE(SUM(lit.qty_committed), 0) FROM lot_inventory_totals lit JOIN lots l ON l.id = lit.lot_id WHERE l.status = 'available'::lot_status) AS total_committed_qty,
       (SELECT COUNT(*) FROM low_stock) AS low_stock_items_count
   `);
   return { totalLotsInStock: toNumber(row?.total_lots_in_stock ?? 0), totalCommittedQty: toNumber(row?.total_committed_qty ?? 0), lowStockItemsCount: toNumber(row?.low_stock_items_count ?? 0) };
@@ -30,7 +30,7 @@ export async function getStockLevelSummary(flow: AnalyticsFlow, executor: Analyt
     FROM lot_inventory_totals lit
     JOIN lots l ON l.id = lit.lot_id
     JOIN items i ON i.id = l.item_id
-    WHERE l.status = 'available' AND (${flow === "all" ? sql`TRUE` : sql`l.flow_type = ${flow}::flow_type`})
+    WHERE l.status = 'available'::lot_status AND (${flow === "all" ? sql`TRUE` : sql`l.flow_type = ${flow}::flow_type`})
     ORDER BY l.created_at ASC
   `);
 }
@@ -43,7 +43,7 @@ export async function getLowStockItems(flow: AnalyticsFlow, executor: AnalyticsE
   return executor.execute(sql`
     SELECT i.id, i.code, i.name, l.flow_type, i.min_reorder_level, SUM(lit.qty_available) AS qty_available
     FROM items i
-    JOIN lots l ON l.item_id = i.id AND l.status = 'available'
+    JOIN lots l ON l.item_id = i.id AND l.status = 'available'::lot_status
     JOIN lot_inventory_totals lit ON lit.lot_id = l.id
     WHERE (${flow === "all" ? sql`TRUE` : sql`l.flow_type = ${flow}::flow_type`})
     GROUP BY i.id, i.code, i.name, l.flow_type, i.min_reorder_level
@@ -61,7 +61,7 @@ export async function getFifoFefoQueueHealth(executor: AnalyticsExecutor = defau
     FROM lots l
     JOIN items i ON i.id = l.item_id
     JOIN lot_inventory_totals lit ON lit.lot_id = l.id AND lit.qty_available > 0
-    WHERE l.status = 'available'
+    WHERE l.status = 'available'::lot_status
     ORDER BY l.item_id, l.flow_type, CASE WHEN i.is_perishable THEN l.expiry_date END ASC NULLS LAST, l.created_at ASC
   `);
 }
@@ -74,7 +74,7 @@ export async function getFlowPartitionSummary(executor: AnalyticsExecutor = defa
     FROM lots l
     JOIN items i ON i.id = l.item_id
     JOIN lot_inventory_totals lit ON lit.lot_id = l.id
-    WHERE l.status = 'available'
+    WHERE l.status = 'available'::lot_status
     GROUP BY l.flow_type
     ORDER BY l.flow_type
   `);
