@@ -6,6 +6,7 @@
 
 import { and, asc, eq, gt, sql } from "drizzle-orm";
 import { items } from "@/lib/db/schema/items";
+import { parties } from "@/lib/db/schema/parties";
 import { locations } from "@/lib/db/schema/locations";
 import { lotLocationBalances } from "@/lib/db/schema/lot_location_balances";
 import { lots } from "@/lib/db/schema/lots";
@@ -20,6 +21,10 @@ export type StockViewRow = {
   itemId: string;
   itemCode: string;
   itemName: string;
+  supplierItemCode?: string | null;
+  customerItemCode?: string | null;
+  dsgcItemNumber?: string | null;
+  customerName?: string | null;
   organizationId?: string | null;
   defaultSupplierPartyId: string | null;
   uom: string;
@@ -34,6 +39,9 @@ export type StockViewRow = {
   locationLabel: string;
   qtyRemaining: number;
   qtyCommitted: number;
+  qtyReceived?: number;
+  spq?: number;
+  volumeCbm?: string | number;
 };
 
 export type StockAllocationPreview =
@@ -53,6 +61,10 @@ export async function listStockView(db: DbLike): Promise<StockViewRow[]> {
       itemId: items.id,
       itemCode: items.code,
       itemName: items.name,
+      supplierItemCode: items.supplierItemCode,
+      customerItemCode: items.customerItemCode,
+      dsgcItemNumber: items.dsgcItemNumber,
+      customerName: parties.name,
       organizationId: items.defaultSupplierPartyId,
       defaultSupplierPartyId: items.defaultSupplierPartyId,
       uom: items.uom,
@@ -67,11 +79,15 @@ export async function listStockView(db: DbLike): Promise<StockViewRow[]> {
       locationLabel: locations.label,
       qtyRemaining: lotLocationBalances.qtyRemaining,
       qtyCommitted: lotLocationBalances.qtyCommitted,
+      qtyReceived: lotLocationBalances.qtyReceived,
+      spq: items.spq,
+      volumeCbm: items.volumeCbm,
     })
     .from(lotLocationBalances)
     .innerJoin(lots, eq(lotLocationBalances.lotId, lots.id))
     .innerJoin(items, eq(lots.itemId, items.id))
     .innerJoin(locations, eq(lotLocationBalances.locationId, locations.id))
+    .leftJoin(parties, eq(lots.ownerPartyId, parties.id))
     .where(and(
       eq(lots.status, "available"),
       gt(sql`${lotLocationBalances.qtyRemaining} - ${lotLocationBalances.qtyCommitted}`, 0),

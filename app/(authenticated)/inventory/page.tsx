@@ -193,18 +193,24 @@ async function StockViewTab({ query, requesterUserId }: { query?: string; reques
           </p>
         </div>
       ) : (
-        <div className="min-w-[760px] divide-y divide-outline-variant/30">
-          <div className="grid grid-cols-[210px_minmax(220px,1fr)_120px_150px_170px] items-center gap-x-3 bg-accent-indigo-50 px-5 py-3 font-label text-label font-semibold tracking-[0.04em] text-text-grey">
-            <span>Item Code</span><span>Description</span><span>UOM</span><span className="text-right">Stock Level</span><span className="pl-6">Status</span>
+        <div className="min-w-[2050px] divide-y divide-outline-variant/30">
+          <div className="grid grid-cols-[210px_minmax(220px,1fr)_160px_160px_160px_180px_110px_110px_130px_130px_140px] items-center gap-x-3 bg-accent-indigo-50 px-5 py-3 font-label text-label font-semibold tracking-[0.04em] text-text-grey">
+            <span>Item Code</span><span>Description</span><span>Codes</span><span>Lot No.</span><span>Location</span><span>Customer</span><span className="text-right">Total In</span><span className="text-right">Total Out</span><span className="text-right">Pcs on Hand</span><span className="text-right">Boxes on Hand</span><span className="text-right">CBM Occupied</span>
           </div>
           {items.map((item) => (
             <details key={item.itemId} className="group">
-              <summary className="grid cursor-pointer list-none grid-cols-[210px_minmax(220px,1fr)_120px_150px_170px] items-center gap-x-3 px-5 py-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy hover:bg-surface-light-grey/40">
+              <summary className="grid cursor-pointer list-none grid-cols-[210px_minmax(220px,1fr)_160px_160px_160px_180px_110px_110px_130px_130px_140px] items-center gap-x-3 px-5 py-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy hover:bg-surface-light-grey/40">
                 <p className="flex items-center gap-2 font-mono text-mono-md font-bold text-on-surface"><ChevronRight size={22} aria-hidden="true" className="shrink-0 text-text-grey transition-transform group-open:rotate-90" />{item.itemCode}</p>
                 <p className="font-body text-body-md text-on-surface">{item.itemName}</p>
-                <p className="font-body text-body-md text-text-grey">{item.uom}</p>
-                <p className="text-right font-mono text-mono-lg font-bold text-on-surface">{item.availableQty.toLocaleString()}</p>
-                <span className="ml-6 inline-flex w-fit items-center rounded-full bg-on-surface px-3 py-1 font-label text-label tracking-[0.06em] text-surface-white">ON HAND</span>
+                <p className="truncate font-mono text-mono-md text-on-surface" title={item.codes || undefined}>{item.codes || "—"}</p>
+                <p className="truncate font-mono text-mono-md text-on-surface" title={item.lotNumbers}>{item.lotNumbers}</p>
+                <p className="truncate font-mono text-mono-md text-on-surface" title={item.locationLabels}>{item.locationLabels}</p>
+                <p className="truncate font-body text-body-md text-on-surface" title={item.customerName || undefined}>{item.customerName || "—"}</p>
+                <p className="text-right font-mono text-mono-md text-on-surface">{item.totalIn.toLocaleString()}</p>
+                <p className="text-right font-mono text-mono-md text-on-surface">{item.totalOut.toLocaleString()}</p>
+                <p className="text-right font-mono text-mono-md font-bold text-on-surface">{item.pcsOnHand.toLocaleString()}</p>
+                <p className="text-right font-mono text-mono-md text-on-surface">{item.boxesOnHand.toLocaleString()}</p>
+                <p className="text-right font-mono text-mono-md text-on-surface">{item.cbmOccupied.toFixed(3)}</p>
               </summary>
               <div className="border-t border-outline-variant/30 bg-surface-light-grey/45 px-4 py-4 md:px-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -282,6 +288,15 @@ type GroupedItem = {
   flowType: "vmi" | "trading" | "supplies";
   organizationId: string | null;
   availableQty: number;
+  codes: string;
+  customerName: string | null;
+  lotNumbers: string;
+  locationLabels: string;
+  totalIn: number;
+  totalOut: number;
+  pcsOnHand: number;
+  boxesOnHand: number;
+  cbmOccupied: number;
   lots: AggregatedLot[];
 };
 
@@ -291,6 +306,7 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
   // so FEFO/FIFO order is preserved by the insertion sequence.
   const itemMap = new Map<string, {
     itemId: string; itemCode: string; itemName: string; uom: string; isPerishable: boolean; flowType: "vmi" | "trading" | "supplies"; organizationId: string | null;
+    codes: string; customerName: string | null; totalIn: number; totalOut: number; pcsOnHand: number; boxesOnHand: number; cbmOccupied: number;
     lotMap: Map<string, { lot: AggregatedLot }>;
     insertionOrder: string[]; // lot IDs in FEFO/FIFO order
   }>();
@@ -308,11 +324,26 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
         isPerishable: row.isPerishable,
         flowType: row.flowType ?? "trading",
         organizationId: row.organizationId ?? null,
+        codes: [row.supplierItemCode, row.customerItemCode, row.dsgcItemNumber].filter(Boolean).join(" · "),
+        customerName: row.customerName ?? null,
+        totalIn: 0,
+        totalOut: 0,
+        pcsOnHand: 0,
+        boxesOnHand: 0,
+        cbmOccupied: 0,
         lotMap: new Map(),
         insertionOrder: [],
       };
       itemMap.set(row.itemId, itemEntry);
     }
+
+    const spq = row.spq ?? 1;
+    const qtyReceived = row.qtyReceived ?? row.qtyRemaining;
+    itemEntry.totalIn += qtyReceived * spq;
+    itemEntry.totalOut += Math.max(0, qtyReceived - row.qtyRemaining) * spq;
+    itemEntry.pcsOnHand += row.qtyRemaining * spq;
+    itemEntry.boxesOnHand += row.qtyRemaining;
+    itemEntry.cbmOccupied += row.qtyRemaining * Number(row.volumeCbm ?? 0);
 
     // Aggregate location rows for the same lot (stacked location tag).
     let lotEntry = itemEntry.lotMap.get(row.lotId);
@@ -353,6 +384,15 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
       flowType: entry.flowType,
       organizationId: entry.organizationId,
       availableQty: lots.reduce((sum, l) => sum + l.availableQty, 0),
+      codes: entry.codes,
+      customerName: entry.customerName,
+      lotNumbers: lots.map((lot) => lot.lotNumber).join(", "),
+      locationLabels: [...new Set(lots.flatMap((lot) => lot.locationLabels))].join(", "),
+      totalIn: entry.totalIn,
+      totalOut: entry.totalOut,
+      pcsOnHand: entry.pcsOnHand,
+      boxesOnHand: entry.boxesOnHand,
+      cbmOccupied: entry.cbmOccupied,
       lots,
     };
   });
