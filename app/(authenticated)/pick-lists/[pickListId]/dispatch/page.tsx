@@ -127,6 +127,7 @@ export default async function DispatchConfirmationPage({
   const partyName = partyRows[0]?.name ?? "Unknown Organization";
 
   const alreadyDispatched = pickList.status === "dispatched";
+  const awaitingPickCompletion = pickList.status === "allocated";
 
   const totalLines = items.length;
   const totalRequiredBoxes = items.reduce((sum, item) => sum + item.numberOfBoxes, 0);
@@ -142,7 +143,6 @@ export default async function DispatchConfirmationPage({
     const scanResult = await selectPickUnit(
       actionResolver,
       pickListId,
-      String(formData.get("pickListItemId") ?? ""),
       String(formData.get("barcode") ?? ""),
     );
     if (!scanResult.ok) redirect(`/pick-lists/${pickListId}/dispatch?result=error&reason=${encodeURIComponent(scanResult.errors[0] ?? "unable_to_select_box")}`);
@@ -197,9 +197,9 @@ export default async function DispatchConfirmationPage({
           <div className="flex items-center gap-3">
             {/* Back link — h-14 (56px) floor touch target per §3 */}
             <Link
-              href={`/pick-lists/${pickListId}/pick`}
+              href="/inventory?tab=pick-lists"
               className="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-outline-variant/30 bg-surface-white text-on-surface shadow-elevation-2 focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
-              aria-label="Back to pick execution"
+              aria-label="Back to Pick Lists"
             >
               <ChevronLeft size={24} strokeWidth={2} aria-hidden="true" />
             </Link>
@@ -242,6 +242,18 @@ export default async function DispatchConfirmationPage({
           </div>
         )}
 
+        {awaitingPickCompletion && (
+          <div className="mb-3 rounded-xl border border-status-pending/40 bg-status-pending/10 px-4 py-4">
+            <p className="font-heading text-headline-md font-bold text-on-surface">Waiting to be picked</p>
+            <p className="mt-1 font-body text-body-md text-text-grey">
+              Review the Pick List PDF and mark this list as picked before starting Dispatch.
+            </p>
+            <Link href="/inventory?tab=pick-lists" className="mt-3 inline-flex h-11 items-center rounded bg-brand-navy px-4 font-label text-label font-bold text-surface-white">
+              Back to To Pick
+            </Link>
+          </div>
+        )}
+
         {/* Dispatch error feedback (non-scan errors: e.g. already_dispatched, not_found) */}
         {isDispatchError && (
           <div
@@ -266,7 +278,11 @@ export default async function DispatchConfirmationPage({
                     ? "Pick list not found. Contact a supervisor."
                     : errorReason === "commitment_expired"
                       ? "Pick list no longer active — return to queue."
-                      : `Error: ${errorReason}. Contact a supervisor if this persists.`}
+                      : errorReason === "wrong_item_or_lot_qr"
+                        ? "This QR does not match an unfinished item or lot on this Pick List."
+                        : errorReason === "line_complete"
+                          ? "This item has already reached its required box count. Continue with the next line."
+                          : `Error: ${errorReason}. Contact a supervisor if this persists.`}
               </p>
             </div>
           </div>
@@ -351,11 +367,11 @@ export default async function DispatchConfirmationPage({
           </div>
         </div>
 
-        {!alreadyDispatched && activeItem && (
+        {!alreadyDispatched && !awaitingPickCompletion && activeItem && (
           <section className="mb-3 rounded-2xl border border-brand-blue/30 bg-brand-blue/5 p-4">
-            <div className="flex items-start gap-3"><ScanLine size={24} className="mt-0.5 shrink-0 text-brand-navy" aria-hidden="true" /><div><h2 className="font-heading text-title-md font-bold text-on-surface">Scan boxes for dispatch</h2><p className="mt-1 font-body text-body-md text-text-grey">{activeItem.itemCode} · Lot {activeItem.lotNumber} · {activeItem.locationLabel}. Scan {activeItem.numberOfBoxes - (selectionCountByLine.get(activeItem.id) ?? 0)} more box(es).</p></div></div>
-            <form action={handleBoxScan} className="mt-4 flex flex-col gap-3 sm:flex-row"><input type="hidden" name="pickListItemId" value={activeItem.id} /><input name="barcode" required autoFocus autoComplete="off" placeholder="Scan QR or enter box ID" className="h-14 min-w-0 flex-1 rounded-xl border border-outline-variant bg-surface-white px-4 font-mono text-body-md text-on-surface outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20" /><button type="submit" className="h-14 rounded-xl bg-brand-navy px-6 font-label text-body-md text-surface-white">Add box</button></form>
-            <div className="mt-3"><CameraScanBridge action={handleBoxScan} extraFields={{ pickListItemId: activeItem.id }} /></div>
+            <div className="flex items-start gap-3"><ScanLine size={24} className="mt-0.5 shrink-0 text-brand-navy" aria-hidden="true" /><div><h2 className="font-heading text-title-md font-bold text-on-surface">Scan QR for dispatch</h2><p className="mt-1 font-body text-body-md text-text-grey">Scan any item or lot QR on this Pick List. The matching unfinished line is counted automatically. Next: {activeItem.itemCode} · Lot {activeItem.lotNumber} · {activeItem.locationLabel}.</p></div></div>
+            <form action={handleBoxScan} className="mt-4 flex flex-col gap-3 sm:flex-row"><input name="barcode" required autoFocus autoComplete="off" placeholder="Scan item or lot QR" className="h-14 min-w-0 flex-1 rounded-xl border border-outline-variant bg-surface-white px-4 font-mono text-body-md text-on-surface outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20" /><button type="submit" className="h-14 rounded-xl bg-brand-navy px-6 font-label text-body-md text-surface-white">Count box</button></form>
+            <div className="mt-3"><CameraScanBridge action={handleBoxScan} /></div>
           </section>
         )}
 

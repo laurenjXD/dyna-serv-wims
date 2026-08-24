@@ -1,7 +1,7 @@
 # Pick List & Acknowledgement Receipt — Design
 
 Status: Approved
-Updated: 2026-08-25 — Direct-to-dispatch pick-list amendment
+Updated: 2026-08-25 — allocated-to-picked queue amendment
 
 ## 1. Design intent
 
@@ -77,7 +77,7 @@ The pick list snapshot includes operational identity and instructions required b
 
 One snapshot may contain multiple item-code lines and, where stock is distributed, multiple source lot/location rows for an item. It carries one destination Organization and Inventory Model from the committed parent `pick_list`. The PDF table renders every committed row in the same order as the authoritative snapshot; it does not render or depend on the editable pre-commit draft.
 
-Once generated, the PDF is the physical staging instruction and the parent pick list is dispatch-ready. The queue links to **View / PDF**, while the operational QR scan occurs only at the direct Dispatch route.
+Once generated, the PDF is the physical picking instruction and the parent pick list remains `allocated`. The **To Pick** queue links to **View / PDF** and **Mark as Picked**. The user’s explicit Picked confirmation moves the document to **To Dispatch**, where the explicit **Dispatch** action becomes available; operational QR scanning occurs only at the direct Dispatch route.
 
 ### 4.2 Acknowledgement receipt snapshot
 

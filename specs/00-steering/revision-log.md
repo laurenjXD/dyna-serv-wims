@@ -274,7 +274,11 @@ This amends `08-outgoing-withdrawal-and-two-stage-commitment` and `10-pick-list-
 
 ## Direct-to-dispatch generated pick lists (2026-08-25) — approved
 
-Both approvers authorized removal of the separate in-application “Confirm boxes staged” step. Generation now makes a pick list dispatch-ready, directs the operator to Dispatch, and leaves the PDF as the physical non-scan staging instruction. The Pick Lists queue replaces “Go to Pick” with **View / PDF**. QR scanning remains exclusively at Dispatch.
+Both approvers authorized removal of the separate in-application “Confirm boxes staged” step. Generation now makes a pick list dispatch-ready, confirms it in the Pick Lists tab, and leaves the PDF as the physical non-scan staging instruction. The Pick Lists queue replaces “Go to Pick” with **View / PDF** and an explicit **Dispatch** action. QR scanning remains exclusively at Dispatch.
+
+## WRR-style shared-QR dispatch reconciliation (2026-08-25) — approved
+
+Both approvers clarified that there is one shared QR per item/lot context, not a unique QR printed for every box. Dispatch now follows WRR reconciliation: it accepts the matching shared item QR/code or lot QR repeatedly, automatically selects the corresponding incomplete Pick List line, increments it one box per accepted scan, and stops at the committed quantity. A lot QR targets its exact lot/location line; a shared item QR that appears on multiple lines counts the first incomplete match. Wrong item/lot/location values and over-quantity scans remain blocked, but duplicate unique-box detection is intentionally removed because a unique box label does not exist.
 
 ## WRR-owned input and Master Inventory-backed pick-list fields (2026-08-24) — pending reapproval
 
@@ -1597,3 +1601,6 @@ The Product Owner requested visibility into what is currently stored at each enr
 Product direction changed the outbound scan point: warehouse staff no longer scan boxes in the active pick-list/picking view. Picking is now a non-scan staging confirmation that moves a completed list into **To Dispatch**. The dispatch view is the sole exact-box QR scan gate; every committed box must be accepted there before the final dispatch command can decrement inventory. The final command reuses those accepted dispatch scans and never asks for a duplicate scan.
 
 This changes the approved execution boundary in `08` requirements R3, design §7, and the floor-picking/dispatch task and E2E checklist. The former 2026-08-05 sign-offs were cleared while the amendment awaited review. Both approvals were granted in conversation on 2026-08-24; the three `08` documents are again `Approved`, and implementation may proceed.
+## Allocated-to-picked Pick List queue (2026-08-25) — approved
+
+The Product Owner clarified that Pick List generation must not mean that warehouse picking is complete. Generation reserves stock and creates an `allocated` list in **To Pick**, with **View / PDF** and **Mark as Picked**. After staff physically pick the PDF’s lines, an authorized user explicitly marks that one list as picked. Only then does it move to **To Dispatch** and expose **Dispatch**. This remains non-scan picking; QR reconciliation remains exclusively at Dispatch. Both amendment sign-offs were granted in conversation; `08` and `10` remain Approved.

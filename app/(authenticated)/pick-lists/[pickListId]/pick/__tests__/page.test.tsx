@@ -1,4 +1,4 @@
-// RED test — PickExecutionPage does not exist yet.
+// Retired pick-execution route — retained only to redirect old bookmarks.
 //
 // Traceability:
 //   specs/08-outgoing-withdrawal-and-two-stage-commitment/requirements.md
@@ -25,9 +25,7 @@ import { dirname, resolve } from "node:path";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pageSource = () => readFileSync(resolve(__dirname, "../page.tsx"), "utf8");
 
-describe("PickExecutionPage (app/(authenticated)/pick-lists/[pickListId]/pick/page.tsx)", () => {
-  // R7.1, R7.2 — page must exist as a module and export a default component
-  // so the floor workflow can render the one-task-per-screen scanner surface.
+describe("Retired pick route (app/(authenticated)/pick-lists/[pickListId]/pick/page.tsx)", () => {
   it("AC R7.1/R7.2: exports a default component", async () => {
     const mod = await import("../page");
     expect(typeof mod.default).toBe("function");
@@ -40,15 +38,10 @@ describe("PickExecutionPage (app/(authenticated)/pick-lists/[pickListId]/pick/pa
     expect(mod.default.name.length).toBeGreaterThan(0);
   });
 
-  it("stages exact locations without exposing a scanner", () => {
+  it("redirects legacy pick URLs to the direct Dispatch route", () => {
     const source = pageSource();
-    expect(source).not.toContain("selectPickUnit");
-    expect(source).not.toContain("CameraScanBridge");
-    expect(source).not.toContain('name="barcode"');
-    expect(source).toContain("Stage pick list");
-    expect(source).toContain("Stage the committed boxes");
-    expect(source).toContain("Confirm boxes staged");
-    expect(source).toContain("line.locationLabel");
-    expect(source).toContain("completeExactPick");
+    expect(source).toContain('redirect(`/pick-lists/${pickListId}/dispatch`)');
+    expect(source).not.toContain("Stage pick list");
+    expect(source).not.toContain("Confirm boxes staged");
   });
 });

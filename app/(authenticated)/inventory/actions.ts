@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createPageResolver } from "@/lib/auth/page-resolver";
-import { commitWithdrawal, requestFifoOverride } from "@/lib/actions/withdrawals";
+import { commitWithdrawal, markPickListPicked, requestFifoOverride } from "@/lib/actions/withdrawals";
 
 export async function createPickList(formData: FormData): Promise<void> {
   const raw = formData.get("request");
@@ -20,12 +20,12 @@ export async function createPickList(formData: FormData): Promise<void> {
     redirect(`/inventory?pickListError=${encodeURIComponent(result.errors.join(","))}`);
   }
 
-  // Refresh the queues before entering the sole scan gate. The generated PDF
-  // remains available from Master Inventory's Pick Lists tab.
+  // Refresh the queues before returning to the Pick Lists confirmation. The
+  // operator explicitly chooses Dispatch beside the generated PDF.
   revalidatePath("/inventory");
   revalidatePath("/outgoing");
   revalidatePath("/pick-lists");
-  redirect(`/pick-lists/${result.pickListId}/dispatch`);
+  redirect(`/inventory?tab=pick-lists&pickListCreated=${encodeURIComponent(result.pickListId)}`);
 }
 
 export async function requestPickListOverride(formData: FormData): Promise<void> {
@@ -71,5 +71,26 @@ export async function createApprovedPickList(formData: FormData): Promise<void> 
   revalidatePath("/inventory");
   revalidatePath("/outgoing");
   revalidatePath("/approvals");
-  redirect(`/pick-lists/${result.pickListId}/dispatch`);
+  redirect(`/inventory?tab=pick-lists&pickListCreated=${encodeURIComponent(result.pickListId)}`);
+}
+
+export async function markPickListReadyForDispatch(formData: FormData): Promise<void> {
+  const pickListId = formData.get("pickListId");
+  if (typeof pickListId !== "string" || !pickListId) {
+    redirect("/inventory?tab=pick-lists&pickListError=invalid_pick_list");
+  }
+
+  const result = await markPickListPicked(
+    await createPageResolver(),
+    pickListId,
+    [],
+  );
+  if (!result.ok) {
+    redirect(`/inventory?tab=pick-lists&pickListError=${encodeURIComponent(result.errors.join(","))}`);
+  }
+
+  revalidatePath("/inventory");
+  revalidatePath("/outgoing");
+  revalidatePath("/pick-lists");
+  redirect(`/inventory?tab=pick-lists&pickListPicked=${encodeURIComponent(pickListId)}`);
 }
