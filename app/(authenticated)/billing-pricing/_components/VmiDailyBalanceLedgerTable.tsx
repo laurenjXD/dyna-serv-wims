@@ -1,13 +1,31 @@
 "use client";
 
+import { useState } from "react";
+import { Calculator } from "lucide-react";
 import type { VmiDailyBalanceRow, VmiCbmLedgerRow } from "@/lib/billing/queries/vmi-ledger";
+import { PeriodCloseModal } from "../vmi/periods/_components/PeriodCloseModal";
+
+type Option = { id: string; name: string; code: string };
 
 interface Props {
   summary: VmiCbmLedgerRow | null;
   dailyRows: VmiDailyBalanceRow[];
+  parties?: Option[];
+  selectedPartyId?: string;
+  selectedMonth?: number;
+  selectedYear?: number;
 }
 
-export function VmiDailyBalanceLedgerTable({ summary, dailyRows }: Props) {
+export function VmiDailyBalanceLedgerTable({
+  summary,
+  dailyRows,
+  parties = [],
+  selectedPartyId = "",
+  selectedMonth = new Date().getMonth(),
+  selectedYear = new Date().getFullYear(),
+}: Props) {
+  const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
+
   if (!summary && dailyRows.length === 0) {
     return (
       <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-12 text-center shadow-elevation-1">
@@ -25,6 +43,25 @@ export function VmiDailyBalanceLedgerTable({ summary, dailyRows }: Props) {
 
   return (
     <div className="space-y-4">
+      {/* Header action bar */}
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
+        <div>
+          <h3 className="font-heading text-title-md font-bold text-on-surface">
+            VMI Daily Balance Storage Ledger
+          </h3>
+          <p className="font-body text-body-sm text-text-grey">
+            Nightly-computed CBM balances and storage amounts.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsCloseModalOpen(true)}
+          className="inline-flex h-11 items-center gap-2 rounded bg-primary px-4 font-label text-label font-bold text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy"
+        >
+          <Calculator size={18} />
+          Generate Period Billing &amp; SOA
+        </button>
+      </div>
       {/* Summary KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
@@ -135,6 +172,15 @@ export function VmiDailyBalanceLedgerTable({ summary, dailyRows }: Props) {
           </table>
         </div>
       </div>
+
+      <PeriodCloseModal
+        isOpen={isCloseModalOpen}
+        onClose={() => setIsCloseModalOpen(false)}
+        parties={parties}
+        selectedPartyId={selectedPartyId}
+        selectedMonth={selectedMonth}
+        selectedYear={selectedYear}
+      />
     </div>
   );
 }

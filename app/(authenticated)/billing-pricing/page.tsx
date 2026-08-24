@@ -346,6 +346,10 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
             <VmiDailyBalanceLedgerTable
               summary={vmiSummary}
               dailyRows={vmiDailyRows}
+              parties={partyOptions}
+              selectedPartyId={selectedPartyId}
+              selectedMonth={selectedMonth}
+              selectedYear={selectedYear}
             />
           </>
         )}
