@@ -1,7 +1,7 @@
 # Pick List & Acknowledgement Receipt — Implementation Plan
 
 Status: Approved
-Updated: 2026-08-25 — Multi-item pick-list draft and generation amendment
+Updated: 2026-08-25 — Direct-to-dispatch pick-list amendment
 
 ## Implementation gate
 
@@ -169,3 +169,5 @@ Testing: Full matrix below.
 - [x] Master Inventory-backed pick-list field amendment approval — Second approver: Granted in conversation, 2026-08-24
 - [x] Multi-item Pick Lists-tab amendment approval — Product owner: Granted in conversation, 2026-08-25
 - [x] Multi-item Pick Lists-tab amendment approval — Second approver: Granted in conversation, 2026-08-25
+- [x] Direct-to-dispatch pick-list amendment approval — Product owner: Granted in conversation, 2026-08-25
+- [x] Direct-to-dispatch pick-list amendment approval — Second approver: Granted in conversation, 2026-08-25

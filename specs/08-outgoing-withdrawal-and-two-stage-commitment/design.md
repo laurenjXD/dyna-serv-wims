@@ -1,7 +1,7 @@
 # Outgoing Withdrawal & Two-Stage Commitment — Design
 
 Status: Approved
-Updated: 2026-08-25 (Multi-item Pick Lists tab workflow amendment)
+Updated: 2026-08-25 (Direct-to-dispatch pick-list amendment)
 
 ## 1. Design intent
 
@@ -80,7 +80,7 @@ Pick Lists tab
   → Generate Pick List (one server command)
   → atomic reservations + one pick_list + one committed line set
   → request pick-list PDF from the immutable committed snapshot
-  → To Pick queue
+  → dispatch-ready queue + View / PDF
 ```
 
 Each row displays item code, customer item code, item description, lot number, selected location, boxes, UOM/SPQ, and source availability. The UI may show the FIFO/FEFO recommendation, but every selection is revalidated by the server. The draft can contain many item codes, but only one Organization and Inventory Model; a mixed-organization or mixed-model request is rejected before any reservation is made.
@@ -104,13 +104,11 @@ Available lots + current FEFO/FIFO plan
 Committed reservation + pick_list(allocated)
     │ qty_committed incremented on lot_location_balances
     │ qty_remaining unchanged
-    │ non-scan physical pick confirmation
+    │ pick-list PDF provides physical staging instructions
     ▼
 picked / dispatch_ready
     │
-    ├── dispatch disposition
-    │       ▼
-    │  exact-box dispatch scans → authoritative dispatch commit
+    └── exact-box dispatch scans → authoritative dispatch commit
     │       ├── qty_remaining decremented on lot_location_balances
     │       ├── qty_committed released (decremented) on lot_location_balances
     │       ├── inventory_commitment_lines → executed
@@ -118,7 +116,6 @@ picked / dispatch_ready
     │       ├── pick_list → dispatched
     │       └── acknowledgement_receipt generation request → 10
     │
-    └── direct dispatch scanning after non-scan pick confirmation
 ```
 
 Ownership boundaries:

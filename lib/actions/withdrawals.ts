@@ -456,7 +456,10 @@ export async function commitWithdrawal(
         pickListNumber,
         customerPartyId: data.partyId,
         flowType: data.flowType,
-        status: "allocated",
+        // The generated pick-list PDF is the non-scan staging instruction.
+        // A committed list therefore enters the dispatch queue immediately;
+        // the exact physical-box scan remains enforced only at Dispatch.
+        status: "picked",
       })
       .returning();
 

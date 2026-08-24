@@ -1,7 +1,7 @@
 # Pick List & Acknowledgement Receipt — Design
 
 Status: Approved
-Updated: 2026-08-25 — Multi-item pick-list draft and generation amendment
+Updated: 2026-08-25 — Direct-to-dispatch pick-list amendment
 
 ## 1. Design intent
 
@@ -76,6 +76,8 @@ Generation validates the event and reloads authoritative source data. A repeated
 The pick list snapshot includes operational identity and instructions required by the floor: item code/description, barcode where approved, customer item code, canonical `lot_number`, source location, quantity/UOM, SPQ/boxes, flow, references, and price fields required by the settled document model.
 
 One snapshot may contain multiple item-code lines and, where stock is distributed, multiple source lot/location rows for an item. It carries one destination Organization and Inventory Model from the committed parent `pick_list`. The PDF table renders every committed row in the same order as the authoritative snapshot; it does not render or depend on the editable pre-commit draft.
+
+Once generated, the PDF is the physical staging instruction and the parent pick list is dispatch-ready. The queue links to **View / PDF**, while the operational QR scan occurs only at the direct Dispatch route.
 
 ### 4.2 Acknowledgement receipt snapshot
 

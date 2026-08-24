@@ -204,7 +204,7 @@ async function PickListsTab({ createdPickListId }: { createdPickListId?: string 
   // Filter to allocated status — these are the pick lists ready for floor execution.
   // Dispatched pick lists are in the Outgoing Ledger on /outgoing.
   const [{ rows }, stockRows] = await Promise.all([
-    listPickLists(db, { limit: 50, offset: 0, status: "allocated" }),
+    listPickLists(db, { limit: 50, offset: 0 }),
     listStockView(db),
   ]);
 
@@ -231,6 +231,7 @@ async function PickListsTab({ createdPickListId }: { createdPickListId?: string 
           priority: index + 1,
         }))}
         createAction={createPickList}
+        overrideAction={requestPickListOverride}
       />
     <div className="overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
       {rows.length === 0 ? (
@@ -302,10 +303,10 @@ async function PickListsTab({ createdPickListId }: { createdPickListId?: string 
                   <td className="px-4 py-3 text-right">
                     {/* Go to Pick — h-11 (44px) office touch target */}
                     <Link
-                      href={`/pick-lists/${row.id}/pick`}
+                      href={`/pick-lists/${row.id}/print`}
                       className="inline-flex h-11 items-center gap-1 rounded bg-primary px-3 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy"
                     >
-                      Go to Pick
+                      View / PDF
                     </Link>
                   </td>
                 </tr>
@@ -315,7 +316,8 @@ async function PickListsTab({ createdPickListId }: { createdPickListId?: string 
         </div>
         <div className="border-t border-outline-variant/30 px-4 py-3 md:px-5">
           <p className="font-body text-body-sm text-text-grey">
-            Showing active (allocated) pick lists. Completed and dispatched pick lists are in the{" "}
+            View or print any pick list here. Dispatch-ready lists appear in the{" "}
+            <Link href="/outgoing" className="font-label text-label font-semibold text-on-surface underline">Dispatch queue</Link>; dispatched stock movements are in the{" "}
             <Link href="/outgoing?tab=ledger" className="font-label text-label font-semibold text-on-surface underline">Outgoing Ledger</Link>.
           </p>
         </div>
