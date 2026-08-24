@@ -1,4 +1,4 @@
-// Outgoing — read-only dispatch ledger. Pick-list work lives in Master Inventory.
+// Outgoing — read-only dispatch ledger.
 //
 // Traceability:
 //   specs/08-outgoing-withdrawal-and-two-stage-commitment/design.md §3 (route),
@@ -19,16 +19,24 @@
 // R9.4: the Outgoing Ledger tab's content is read-only; this module exports
 // ONLY the default component (no mutation side-exports).
 
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { listOutgoingLedger } from "@/lib/actions/withdrawals";
-import type { OutgoingLedgerRow } from "@/lib/db/queries/withdrawals";
+import { listPickLists, type OutgoingLedgerRow } from "@/lib/db/queries/withdrawals";
+import { PickQueueSection } from "./_components/PickQueueSection";
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default async function OutgoingPage() {
+type TabKey = "dispatch" | "ledger";
+
+export default async function OutgoingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const resolver = await createPageResolver();
 
   // Gate: pick_list.read is required for the outgoing ledger.
@@ -37,13 +45,70 @@ export default async function OutgoingPage() {
     notFound();
   }
 
+  const canExecute =
+    (await requirePermission(resolver, "pick_list.execute")).kind === "authorized";
+  const { tab } = await searchParams;
+  const activeTab: TabKey = tab === "ledger" ? "ledger" : "dispatch";
+
   return (
     <div className="mx-auto max-w-container pb-10">
       <div>
-        <h1 className="font-heading text-headline-lg font-bold tracking-tight text-on-surface">Outgoing Ledger</h1>
-        <p className="mt-1 font-body text-body-md text-text-grey">Read-only record of dispatched inventory. Create and manage pick lists in Master Inventory.</p>
+        <div>
+          <h1 className="font-heading text-headline-lg font-bold tracking-tight text-on-surface">
+            Outgoing
+          </h1>
+          <p className="mt-1 font-body text-body-md text-text-grey">
+            Release completed picks for dispatch and review outbound inventory.
+          </p>
+        </div>
       </div>
-      <OutgoingLedgerTab resolver={resolver} />
+
+      <div className="mt-6 flex gap-1 border-b border-outline-variant/30" role="tablist" aria-label="Outgoing sections">
+        <Link
+          href="/outgoing"
+          role="tab"
+          aria-selected={activeTab === "dispatch"}
+          className={`border-b-2 px-4 py-3 font-label text-label font-bold transition-colors ${
+            activeTab === "dispatch"
+              ? "border-brand-primary text-brand-primary"
+              : "border-transparent text-text-grey hover:text-on-surface"
+          }`}
+        >
+          Dispatch
+        </Link>
+        <Link
+          href="/outgoing?tab=ledger"
+          role="tab"
+          aria-selected={activeTab === "ledger"}
+          className={`border-b-2 px-4 py-3 font-label text-label font-bold transition-colors ${
+            activeTab === "ledger"
+              ? "border-brand-primary text-brand-primary"
+              : "border-transparent text-text-grey hover:text-on-surface"
+          }`}
+        >
+          Outgoing Ledger
+        </Link>
+      </div>
+
+      {activeTab === "dispatch" ? (
+        <DispatchTab canExecute={canExecute} />
+      ) : (
+        <OutgoingLedgerTab resolver={resolver} />
+      )}
+    </div>
+  );
+}
+
+async function DispatchTab({ canExecute }: { canExecute: boolean }) {
+  const { rows } = await listPickLists(db, {
+    limit: 50,
+    offset: 0,
+    status: "picked",
+  });
+
+  return (
+    <div className="mt-6">
+      <PickQueueSection mode="dispatch" rows={rows} canExecute={canExecute} />
     </div>
   );
 }
