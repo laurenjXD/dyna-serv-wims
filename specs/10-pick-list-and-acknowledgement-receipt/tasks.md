@@ -1,7 +1,7 @@
 # Pick List & Acknowledgement Receipt — Implementation Plan
 
 Status: Approved
-Updated: 2026-08-25 — WRR-style shared-QR dispatch amendment
+Updated: 2026-08-25 — allocated-to-picked queue amendment
 
 ## Implementation gate
 
@@ -173,3 +173,5 @@ Testing: Full matrix below.
 - [x] Direct-to-dispatch pick-list amendment approval — Second approver: Granted in conversation, 2026-08-25
 - [x] WRR-style shared-QR dispatch amendment approval — Product owner: Granted in conversation, 2026-08-25
 - [x] WRR-style shared-QR dispatch amendment approval — Second approver: Granted in conversation, 2026-08-25
+- [x] Allocated-to-picked queue amendment approval — Product owner: Granted in conversation, 2026-08-25
+- [x] Allocated-to-picked queue amendment approval — Second approver: Granted in conversation, 2026-08-25

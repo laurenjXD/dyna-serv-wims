@@ -1,7 +1,7 @@
 # Outgoing Withdrawal & Two-Stage Commitment — Implementation Plan
 
 Status: Approved
-Updated: 2026-08-25 (WRR-style shared-QR dispatch amendment)
+Updated: 2026-08-25 (allocated-to-picked queue amendment)
 
 ## Implementation gate
 
@@ -172,6 +172,7 @@ Testing: Full applicable matrix below.
 - [ ] Verify Stage 1 pick list/reservation without on-hand decrement.
 - [ ] Simulate dispatch-only floor scans and verify wrong/duplicate/over/under/stale handling.
 - [ ] Verify the pick view has no barcode/QR scan control, then proceeds directly to dispatch with no pre-dispatch inspection route, state, or block.
+- [ ] Generate pick lists as `allocated`; show them only in To Pick with View / PDF and Mark as Picked. Verify Mark as Picked is authorized, idempotent, does not alter stock/reservations, and moves exactly one list into To Dispatch, where Dispatch becomes available.
 - [ ] Verify each exact box is scanned and accepted at dispatch before final confirmation; wrong/duplicate/over/under/stale scans are rejected there.
 - [ ] Verify final dispatch produces one decrement, one pick transaction, released reservation, and acknowledgement-receipt availability.
 - [ ] Verify document failure/retry does not reverse inventory.
@@ -200,3 +201,5 @@ Testing: Full applicable matrix below.
 - [x] Direct-to-dispatch pick-list amendment — Second approver approval: Granted in conversation, 2026-08-25
 - [x] WRR-style shared-QR dispatch amendment — Product owner approval: Granted in conversation, 2026-08-25
 - [x] WRR-style shared-QR dispatch amendment — Second approver approval: Granted in conversation, 2026-08-25
+- [x] Allocated-to-picked queue amendment — Product owner approval: Granted in conversation, 2026-08-25
+- [x] Allocated-to-picked queue amendment — Second approver approval: Granted in conversation, 2026-08-25

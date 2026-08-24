@@ -1,7 +1,7 @@
 # Outgoing Withdrawal & Two-Stage Commitment — Requirements
 
 Status: Approved
-Updated: 2026-08-25 (WRR-style shared-QR dispatch amendment)
+Updated: 2026-08-25 (allocated-to-picked queue amendment)
 
 ## 1. Purpose and scope
 
@@ -58,8 +58,8 @@ The Outgoing page (`/outgoing`) features 2 primary sub-tabs:
 
 ### R3. Physical picking and Stage 2 dispatch confirmation
 
-1. Pick-list generation produces the operational PDF instructions and immediately creates a dispatch-ready `pick_list`. It returns to the Pick Lists tab with a confirmation and exposes **View / PDF** and **Dispatch** beside the list; it does not expose a separate “Go to Pick” action.
-2. Physical dispatch executes at `/pick-lists/[id]/dispatch`. The generated PDF is the non-scan preparation instruction; there is no separate in-application staging confirmation step.
+1. Pick-list generation produces the operational PDF instructions and creates an `allocated` `pick_list`, not a dispatch-ready one. It returns to the Pick Lists tab with a confirmation and exposes **View / PDF** and **Mark as Picked** beside the list.
+2. After the warehouse team physically picks the PDF’s committed lines, an authorized user SHALL use **Mark as Picked**. The system transitions only that list from `allocated` to `picked`; it does not scan, decrement inventory, or alter the reservation. Only then does the list appear in the **To Dispatch** queue and expose **Dispatch**.
 3. Dispatch is the sole scan gate. It SHALL follow WRR-style reconciliation: each scan accepts the shared registered item QR/code or the committed lot QR, automatically matches it to the corresponding incomplete committed item/lot/location line, and increments that line’s dispatched-box count by one. The same shared QR may be scanned repeatedly until the required box count is reached.
 4. Final dispatch confirmation is enabled only after every committed box has been accepted at dispatch. It atomically decrements `qty_remaining`, releases `qty_committed`, writes an immutable `pick` transaction, and makes the priced **Delivery Receipt / Acknowledgement Receipt** available for print/download.
 5. A shared QR scan is counted as one box at dispatch. The system SHALL retain the aggregate accepted count for the final command, reject wrong item/lot/location QR values and over-quantity scans, and SHALL NOT require a second verification scan.
@@ -87,3 +87,4 @@ The Outgoing page (`/outgoing`) features 2 primary sub-tabs:
 - [ ] The operator scans every committed physical box once at dispatch; the final dispatch command reuses that accepted evidence without a duplicate verification scan.
 - [ ] The Outgoing header contains no non-functional or redundant generic Filter action.
 - [ ] Allocated and picked documents are visually separated into To Pick and To Dispatch queues and cannot expose the wrong phase action.
+- [ ] Generation creates an allocated list in To Pick; only the explicit non-scan Mark as Picked action moves it to To Dispatch and enables Dispatch.

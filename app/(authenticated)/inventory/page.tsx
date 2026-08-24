@@ -35,7 +35,7 @@ import { resolveInventoryTab, type TabKey } from "./_lib/resolveInventoryTab";
 import { InspectionTab } from "./_components/InspectionTab";
 import { MultiItemPickListDraft } from "./_components/MultiItemPickListDraft";
 import { LotQrViewer } from "./_components/LotQrViewer";
-import { createApprovedPickList, createPickList, requestPickListOverride } from "./actions";
+import { createApprovedPickList, createPickList, markPickListReadyForDispatch, requestPickListOverride } from "./actions";
 
 const FLOW_LABELS: Record<string, string> = {
   vmi: "VMI",
@@ -52,11 +52,11 @@ const TABS: Array<{ key: TabKey; label: string }> = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 interface PageProps {
-  searchParams: Promise<{ tab?: string; q?: string; pickListError?: string; overrideRequested?: string; pickListCreated?: string }>;
+  searchParams: Promise<{ tab?: string; q?: string; pickListError?: string; overrideRequested?: string; pickListCreated?: string; pickListPicked?: string }>;
 }
 
 export default async function InventoryPage({ searchParams }: PageProps) {
-  const { tab: tabParam, q, pickListError, overrideRequested, pickListCreated } = await searchParams;
+  const { tab: tabParam, q, pickListError, overrideRequested, pickListCreated, pickListPicked } = await searchParams;
 
   const activeTab: TabKey = resolveInventoryTab(tabParam);
 
@@ -131,7 +131,7 @@ export default async function InventoryPage({ searchParams }: PageProps) {
       {activeTab === "stock-view" ? (
         <StockViewTab query={q} requesterUserId={permResult.context.userId} />
       ) : activeTab === "pick-lists" ? (
-        <PickListsTab createdPickListId={pickListCreated} />
+        <PickListsTab createdPickListId={pickListCreated} pickedPickListId={pickListPicked} />
       ) : (
         <InspectionTabSection />
       )}
@@ -380,17 +380,18 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
 
 // ─── Pick Lists tab ───────────────────────────────────────────────────────────
 
-async function PickListsTab({ createdPickListId }: { createdPickListId?: string }) {
-  // Filter to allocated status — these are the pick lists ready for floor execution.
-  // Dispatched pick lists are in the Outgoing Ledger on /outgoing.
+async function PickListsTab({ createdPickListId, pickedPickListId }: { createdPickListId?: string; pickedPickListId?: string }) {
+  // Only allocated lists belong in this To Pick view. Picked lists move to the
+  // Dispatch queue and dispatched records remain in the Outgoing Ledger.
   const [{ rows }, stockRows] = await Promise.all([
-    listPickLists(db, { limit: 50, offset: 0 }),
+    listPickLists(db, { limit: 50, offset: 0, status: "allocated" }),
     listStockView(db),
   ]);
 
   return (
     <div className="mt-6 space-y-6">
-      {createdPickListId && <section role="status" className="rounded-lg border border-status-available/30 bg-status-available/10 p-4"><p className="font-heading text-body-md font-bold text-on-surface">Pick list generated</p><p className="mt-1 font-body text-body-sm text-text-grey">The list is ready for dispatch. Review or save its PDF, then start Dispatch when the boxes are ready.</p><div className="mt-3 flex flex-wrap gap-3"><Link href={`/pick-lists/${createdPickListId}/print`} className="inline-flex h-11 items-center rounded border border-outline-variant bg-surface-white px-4 font-label text-label font-bold text-on-surface">View / PDF</Link><Link href={`/pick-lists/${createdPickListId}/dispatch`} className="inline-flex h-11 items-center rounded bg-primary px-4 font-label text-label font-bold text-surface-white">Dispatch</Link></div></section>}
+      {createdPickListId && <section role="status" className="rounded-lg border border-status-available/30 bg-status-available/10 p-4"><p className="font-heading text-body-md font-bold text-on-surface">Pick list generated</p><p className="mt-1 font-body text-body-sm text-text-grey">The list is now in To Pick. Review or print its PDF, physically pick the boxes, then mark it as picked to enable Dispatch.</p><div className="mt-3 flex flex-wrap gap-3"><Link href={`/pick-lists/${createdPickListId}/print`} className="inline-flex h-11 items-center rounded border border-outline-variant bg-surface-white px-4 font-label text-label font-bold text-on-surface">View / PDF</Link><form action={markPickListReadyForDispatch}><input type="hidden" name="pickListId" value={createdPickListId} /><button type="submit" className="inline-flex h-11 items-center rounded bg-primary px-4 font-label text-label font-bold text-surface-white">Mark as Picked</button></form></div></section>}
+      {pickedPickListId && <section role="status" className="rounded-lg border border-status-available/30 bg-status-available/10 p-4"><p className="font-heading text-body-md font-bold text-on-surface">Pick list is ready for Dispatch</p><p className="mt-1 font-body text-body-sm text-text-grey">Physical picking is recorded. Continue in the Dispatch queue to scan the committed boxes.</p><Link href="/outgoing" className="mt-3 inline-flex h-11 items-center rounded bg-primary px-4 font-label text-label font-bold text-surface-white">Open Dispatch queue</Link></section>}
       <MultiItemPickListDraft
         stock={stockRows.map((row, index) => ({
           itemId: row.itemId,
@@ -413,7 +414,14 @@ async function PickListsTab({ createdPickListId }: { createdPickListId?: string 
         createAction={createPickList}
         overrideAction={requestPickListOverride}
       />
-    <div className="overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+    <section aria-labelledby="to-pick-heading" className="overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-outline-variant/30 px-4 py-4 md:px-5">
+        <div>
+          <h2 id="to-pick-heading" className="font-heading text-title-lg font-bold text-on-surface">To Pick</h2>
+          <p className="mt-1 font-body text-body-sm text-text-grey">Review the PDF, physically pick the boxes, then mark the list as picked.</p>
+        </div>
+        <span className="rounded-full bg-status-pending/15 px-3 py-1 font-label text-label font-bold text-status-pending">{rows.length} waiting</span>
+      </div>
       {rows.length === 0 ? (
         <div className="px-6 py-12 text-center">
           <p className="font-body text-body-md text-text-grey">
@@ -477,12 +485,12 @@ async function PickListsTab({ createdPickListId }: { createdPickListId?: string 
                       >
                         View / PDF
                       </Link>
-                      {row.status === "picked" && <Link
-                        href={`/pick-lists/${row.id}/dispatch`}
-                        className="inline-flex h-11 items-center gap-1 rounded bg-primary px-3 font-label text-label font-bold text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                      >
-                        Dispatch
-                      </Link>}
+                      <form action={markPickListReadyForDispatch}>
+                        <input type="hidden" name="pickListId" value={row.id} />
+                        <button type="submit" className="inline-flex h-11 items-center gap-1 rounded bg-primary px-3 font-label text-label font-bold text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy">
+                          Mark as Picked
+                        </button>
+                      </form>
                     </div>
                   </td>
                 </tr>
@@ -492,14 +500,14 @@ async function PickListsTab({ createdPickListId }: { createdPickListId?: string 
         </div>
         <div className="border-t border-outline-variant/30 px-4 py-3 md:px-5">
           <p className="font-body text-body-sm text-text-grey">
-            View or print any pick list here. Dispatch-ready lists appear in the{" "}
+            These allocated lists are waiting to be picked. After marking a list as picked, it appears in the{" "}
             <Link href="/outgoing" className="font-label text-label font-semibold text-on-surface underline">Dispatch queue</Link>; dispatched stock movements are in the{" "}
             <Link href="/outgoing?tab=ledger" className="font-label text-label font-semibold text-on-surface underline">Outgoing Ledger</Link>.
           </p>
         </div>
         </>
       )}
-    </div>
+    </section>
     </div>
   );
 }

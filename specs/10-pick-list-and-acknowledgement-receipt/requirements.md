@@ -1,7 +1,7 @@
 # Pick List & Delivery Receipt / Acknowledgement Receipt — Requirements
 
 Status: Approved
-Updated: 2026-08-25 — WRR-style shared-QR dispatch amendment
+Updated: 2026-08-25 — allocated-to-picked queue amendment
 
 ## 1. Purpose and scope
 
@@ -16,7 +16,7 @@ Documents are generated synchronously inline from authoritative workflow snapsho
 
 One generated pick list represents one committed outbound request for one Organization and Inventory Model, and may contain multiple item-code lines and multiple lot/location source lines. The pre-generation draft belongs to `08`'s Master Inventory Pick Lists tab and is not a document or inventory record. The PDF is generated only from the committed multi-line `pick_list` snapshot; it never authorizes or substitutes for the reservation command.
 
-The Pick Lists queue exposes the committed document as **View / PDF** beside an explicit **Dispatch** action. Generation confirms the list in that queue and makes it dispatch-ready; the document serves as the non-scan physical staging instruction before the WRR-style shared-QR count gate at Dispatch.
+Generation confirms the committed document in the **To Pick** queue with **View / PDF** and **Mark as Picked**. The document is the non-scan physical picking instruction. Only the explicit Picked confirmation moves it to **To Dispatch** and exposes **Dispatch** before the WRR-style shared-QR count gate.
 
 ### Terminology Alignment
 Across all user-facing document screens, forms, headers, previews, and PDFs:

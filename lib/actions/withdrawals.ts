@@ -430,10 +430,10 @@ export async function commitWithdrawal(
         pickListNumber,
         customerPartyId: data.partyId,
         flowType: data.flowType,
-        // The generated pick-list PDF is the non-scan staging instruction.
-        // A committed list therefore enters the dispatch queue immediately;
-        // the exact physical-box scan remains enforced only at Dispatch.
-        status: "picked",
+        // Commitment reserves the stock but does not certify that warehouse
+        // picking is complete. The explicit Mark as Picked command is the
+        // only path from allocated into the Dispatch queue.
+        status: "allocated",
       })
       .returning();
 
@@ -711,10 +711,12 @@ export async function completeExactPick(
         .where(eq(pickListItems.pickListId, pickListId))) as Array<{ id: string }>;
       if (lineRows.length === 0) return { ok: false as const, errors: ["no_pick_lines"] };
 
-      await db
+      const updated = (await db
         .update(pickLists)
         .set({ status: "picked", updatedAt: new Date() })
-        .where(and(eq(pickLists.id, pickListId), eq(pickLists.status, "allocated")));
+        .where(and(eq(pickLists.id, pickListId), eq(pickLists.status, "allocated")))
+        .returning({ id: pickLists.id })) as AnyRecord[];
+      if (updated.length !== 1) return { ok: false as const, errors: ["invalid_status"] };
       return { ok: true as const };
     });
 

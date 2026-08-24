@@ -1,7 +1,7 @@
 # Outgoing Withdrawal & Two-Stage Commitment — Design
 
 Status: Approved
-Updated: 2026-08-25 (WRR-style shared-QR dispatch amendment)
+Updated: 2026-08-25 (allocated-to-picked queue amendment)
 
 ## 1. Design intent
 
@@ -80,7 +80,7 @@ Pick Lists tab
   → Generate Pick List (one server command)
   → atomic reservations + one pick_list + one committed line set
   → request pick-list PDF from the immutable committed snapshot
-  → dispatch-ready queue + confirmation + View / PDF + Dispatch
+  → To Pick queue + confirmation + View / PDF + Mark as Picked
 ```
 
 Each row displays item code, customer item code, item description, lot number, selected location, boxes, UOM/SPQ, and source availability. The UI may show the FIFO/FEFO recommendation, but every selection is revalidated by the server. The draft can contain many item codes, but only one Organization and Inventory Model; a mixed-organization or mixed-model request is rejected before any reservation is made.
@@ -162,7 +162,7 @@ It does not decrement on-hand inventory or insert the final `pick` transaction. 
 
 ## 7. Physical pick confirmation and Stage 2 dispatch scan/transaction
 
-Pick-list generation creates a dispatch-ready list. Its PDF provides the non-scan physical staging instructions; there is no separate in-application pick-complete confirmation, staging state, or “To Dispatch” queue.
+Pick-list generation creates an `allocated` list in the **To Pick** queue. Its PDF provides the non-scan physical picking instructions. Once the warehouse team has completed that physical task, an authorized user selects **Mark as Picked** on that exact list. This explicit, non-scan command transitions only that list to `picked`; it neither decrements inventory nor changes the reservation. The list then moves to the **To Dispatch** queue, where **Dispatch** becomes available. No QR scan occurs before Dispatch.
 
 The dispatch view presents the committed location tasks and requires one shared item/lot QR scan per committed box. The scanner does not receive a browser-selected line identifier: it matches each item or lot QR to an incomplete `pick_list_items` line itself. A lot QR selects that exact lot/location line; if a shared item QR matches several lines, the server chooses the first incomplete matching line. Each accepted scan assigns the next available internal `inventory_units` row for that committed lot/location to `selected`, preserving the accounting invariant without treating its private unit ID as scanned evidence. Wrong item/lot values, over-quantity scans, and unavailable stock fail safely. When a lot is split across locations, its committed allocation produces separate pick-list items and the lot QR targets the appropriate one. Local scan observations may be stored as Tier 1 only after `03` approval; they are not final inventory outcomes.
 

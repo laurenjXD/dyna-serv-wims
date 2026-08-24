@@ -95,6 +95,7 @@ import type {
 } from "@/lib/rbac/session";
 import {
   commitWithdrawal,
+  markPickListPicked,
   requestFifoOverride,
   dispatchPickList,
   selectPickUnit,
@@ -468,6 +469,9 @@ describe("commitWithdrawal — success (R5.1, R5.3, design.md §6)", () => {
       expect(result.pickListId.length).toBeGreaterThan(0);
     }
     expect(db.insert).toHaveBeenCalled();
+    expect(db._inserted).toContainEqual(expect.objectContaining({
+      status: "allocated",
+    }));
   });
 
   it("rebuilds FIFO allocation server-side instead of trusting the requested lot", async () => {
@@ -569,6 +573,26 @@ describe("dispatchPickList — unauthorized (R7.5, R10.1, R10.2, design.md §7)"
     }
     // No DB mutation must occur when forbidden
     expect(db.update).not.toHaveBeenCalled();
+    expect(db.insert).not.toHaveBeenCalled();
+  });
+});
+
+describe("markPickListPicked — physical pick completion", () => {
+  it("moves an allocated Pick List to picked without changing inventory", async () => {
+    const db = makeWithdrawalDb([], [
+      [{ status: "allocated" }],
+      [{ id: "line-1" }],
+    ]);
+
+    const result = await markPickListPicked(
+      pickerResolver(),
+      "pick-list-1",
+      [],
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result).toEqual({ ok: true });
+    expect(db._updated).toContainEqual(expect.objectContaining({ status: "picked" }));
     expect(db.insert).not.toHaveBeenCalled();
   });
 });
