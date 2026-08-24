@@ -179,25 +179,27 @@ export function parseItemInput(input: unknown): ParseResult<ItemInput> {
     }
   }
 
-  // ── spqMeter: required and positive when uom='roll'; must be null otherwise ──
+  // ── spqMeter: required when uom='roll'; optional when uom='meter'; null otherwise ──
   const rawSpqMeter = raw["spqMeter"];
   let spqMeter: string | null = null;
-  if (uom === "roll") {
-    if (rawSpqMeter === undefined || rawSpqMeter === null) {
+  if (uom === "roll" || uom === "meter") {
+    if (uom === "roll" && (rawSpqMeter === undefined || rawSpqMeter === null || rawSpqMeter === "")) {
       errors.push({
         field: "spqMeter",
         message: "SPQ Meter is required and must be a positive value when UOM is 'roll'.",
       });
-    } else if (typeof rawSpqMeter !== "string" || !isPositiveDecimalString(rawSpqMeter)) {
-      errors.push({
-        field: "spqMeter",
-        message: "SPQ Meter must be a positive decimal value when UOM is 'roll'.",
-      });
-    } else {
-      spqMeter = rawSpqMeter;
+    } else if (rawSpqMeter !== undefined && rawSpqMeter !== null && rawSpqMeter !== "") {
+      if (typeof rawSpqMeter !== "string" || !isPositiveDecimalString(rawSpqMeter)) {
+        errors.push({
+          field: "spqMeter",
+          message: "SPQ Meter must be a positive decimal value.",
+        });
+      } else {
+        spqMeter = rawSpqMeter;
+      }
     }
   } else {
-    // non-roll: spqMeter must be null/absent
+    // non-roll/meter: spqMeter must be null/absent
     if (rawSpqMeter !== undefined && rawSpqMeter !== null) {
       errors.push({
         field: "spqMeter",

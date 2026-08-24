@@ -287,12 +287,9 @@ describe("parseItemInput — spqMeter conditional (R4.3, design.md §6 spq_meter
     }
   });
 
-  it("rejects uom='meter' with spqMeter provided (must be null for non-roll)", () => {
+  it("accepts uom='meter' with spqMeter provided for roll/meter conversion", () => {
     const result = parseItemInput({ ...VALID_BASE, uom: "meter", spqMeter: "10.00" });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.errors.find((e) => e.field === "spqMeter")).toBeDefined();
-    }
+    expect(result.success).toBe(true);
   });
 
   it("accepts uom='piece' with spqMeter null (valid omission for non-roll)", () => {

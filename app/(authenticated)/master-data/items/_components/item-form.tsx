@@ -11,6 +11,7 @@
 
 import { useActionState, useState, useEffect } from "react";
 import Link from "next/link";
+import { RefreshCw } from "lucide-react";
 import type { ItemFormState } from "../_actions";
 import type { ItemDetail, CategoryOption, SupplierPartyOption } from "@/lib/db/queries/items";
 
@@ -153,7 +154,34 @@ export function ItemForm({
     }
   }, [lengthCm, widthCm, heightCm]);
 
-  const showSpqMeter = uom === "roll";
+  const showSpqMeter = uom === "roll" || uom === "meter";
+
+  const [spqMeterInput, setSpqMeterInput] = useState(item?.spqMeter ? String(item.spqMeter) : "");
+  const [calcRolls, setCalcRolls] = useState("1");
+  const [calcMeters, setCalcMeters] = useState("");
+
+  const factor = parseFloat(spqMeterInput);
+  const isValidFactor = !isNaN(factor) && factor > 0;
+
+  const handleRollsChange = (val: string) => {
+    setCalcRolls(val);
+    const r = parseFloat(val);
+    if (!isNaN(r) && isValidFactor) {
+      setCalcMeters(String(Math.round(r * factor * 100) / 100));
+    } else {
+      setCalcMeters("");
+    }
+  };
+
+  const handleMetersChange = (val: string) => {
+    setCalcMeters(val);
+    const m = parseFloat(val);
+    if (!isNaN(m) && isValidFactor) {
+      setCalcRolls(String(Math.round((m / factor) * 10000) / 10000));
+    } else {
+      setCalcRolls("");
+    }
+  };
 
   const fieldError = (name: string) =>
     state.fieldErrors?.[name] ? (
@@ -492,7 +520,7 @@ export function ItemForm({
             <div>
               <label htmlFor="spqMeter" className="block font-label text-label text-on-surface">
                 SPQ Meter (m/roll){" "}
-                <span aria-hidden="true" className="text-brand-red">*</span>
+                {uom === "roll" && <span aria-hidden="true" className="text-brand-red">*</span>}
               </label>
               <input
                 id="spqMeter"
@@ -500,11 +528,82 @@ export function ItemForm({
                 type="number"
                 min="0.01"
                 step="0.01"
-                defaultValue={item?.spqMeter ?? ""}
+                value={spqMeterInput}
+                onChange={(e) => {
+                  setSpqMeterInput(e.target.value);
+                  const f = parseFloat(e.target.value);
+                  if (!isNaN(f) && f > 0) {
+                    const r = parseFloat(calcRolls || "1");
+                    if (!isNaN(r)) setCalcMeters(String(Math.round(r * f * 100) / 100));
+                  }
+                }}
+                placeholder="e.g. 750"
                 className={inputClass("spqMeter")}
                 {...ariaProps("spqMeter")}
               />
               {fieldError("spqMeter")}
+            </div>
+          )}
+
+          {showSpqMeter && (
+            <div className="md:col-span-3 rounded-lg border border-brand-navy/20 bg-brand-navy/5 p-4 mt-2">
+              <div className="flex items-center gap-2">
+                <RefreshCw size={18} className="text-brand-navy" />
+                <h4 className="font-heading text-title-sm font-bold text-on-surface">
+                  Automatic Roll <span className="text-brand-navy">↔</span> Meter Unit Conversion
+                </h4>
+              </div>
+              <p className="mt-1 font-body text-body-sm text-text-grey">
+                {uom === "roll"
+                  ? "Roll UOM Selected: 1 Roll × SPQ Meter = Total Meters | Total Meters ÷ SPQ Meter = Total Rolls"
+                  : "Meter UOM Selected: Total Meters ÷ SPQ Meter = Total Rolls | Total Rolls × SPQ Meter = Total Meters"}
+              </p>
+
+              {isValidFactor ? (
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded border border-outline-variant bg-surface-white p-3">
+                    <label htmlFor="calc-rolls" className="block font-label text-label font-bold text-on-surface">
+                      Rolls (Count)
+                    </label>
+                    <input
+                      id="calc-rolls"
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={calcRolls}
+                      onChange={(e) => handleRollsChange(e.target.value)}
+                      className="mt-1 block w-full rounded border border-outline-variant/40 bg-surface-white px-3 py-1.5 font-mono text-mono-md font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                    />
+                    <p className="mt-1.5 font-body text-body-xs text-text-grey">
+                      Calculation: <span className="font-mono">{calcRolls || "0"} Roll(s) × {factor}m = </span>
+                      <strong className="font-mono text-on-surface">{(parseFloat(calcRolls || "0") * factor).toLocaleString()} Meters</strong>
+                    </p>
+                  </div>
+
+                  <div className="rounded border border-outline-variant bg-surface-white p-3">
+                    <label htmlFor="calc-meters" className="block font-label text-label font-bold text-on-surface">
+                      Meters (Meterage)
+                    </label>
+                    <input
+                      id="calc-meters"
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={calcMeters || String(parseFloat(calcRolls || "1") * factor)}
+                      onChange={(e) => handleMetersChange(e.target.value)}
+                      className="mt-1 block w-full rounded border border-outline-variant/40 bg-surface-white px-3 py-1.5 font-mono text-mono-md font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                    />
+                    <p className="mt-1.5 font-body text-body-xs text-text-grey">
+                      Calculation: <span className="font-mono">{calcMeters || String(factor)}m ÷ {factor}m = </span>
+                      <strong className="font-mono text-on-surface">{factor > 0 ? (parseFloat(calcMeters || String(factor)) / factor).toFixed(4) : 0} Rolls</strong>
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-2 font-body text-body-sm font-semibold text-status-pending">
+                  Enter an SPQ Meter value (e.g. 750) above to enable live Roll ↔ Meter conversion preview (1 Roll × 750 = 750 Meters | 750 Meters / 750 = 1 Roll).
+                </p>
+              )}
             </div>
           )}
 

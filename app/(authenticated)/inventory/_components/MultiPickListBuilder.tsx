@@ -183,7 +183,22 @@ export function MultiPickListBuilder({
                         />
                       </td>
                       <td className="px-3 py-2.5 text-right font-mono text-on-surface">{spq}</td>
-                      <td className="px-3 py-2.5 text-right font-mono font-bold text-brand-navy">{numPckgs}</td>
+                      <td className="px-3 py-2.5 text-right font-mono font-bold text-brand-navy">
+                        <div className="inline-flex items-center justify-end gap-1">
+                          <input
+                            type="number"
+                            min={1}
+                            max={Math.ceil(line.availableQty / spq)}
+                            value={numPckgs}
+                            onChange={(e) => {
+                              const boxes = Math.max(1, Number(e.target.value) || 1);
+                              const computedQty = Math.min(line.availableQty, boxes * spq);
+                              onUpdateQty(line.balanceId, computedQty);
+                            }}
+                            className="w-20 rounded border border-outline-variant px-2 py-1 text-right font-mono text-mono-md font-bold text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                          />
+                        </div>
+                      </td>
                       <td className="px-3 py-2.5 font-mono font-bold text-on-surface">{line.itemCode}</td>
                       <td className="px-3 py-2.5 font-mono text-text-grey">{line.customerItemCode ?? "—"}</td>
                       <td className="px-3 py-2.5 text-on-surface">{line.itemDescription}</td>
