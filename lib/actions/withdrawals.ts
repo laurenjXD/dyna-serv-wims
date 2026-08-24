@@ -548,7 +548,7 @@ function unitIdFromScan(rawBarcode: string): string | null {
     : null;
 }
 
-/** Selects one exact physical box for one exact lot/location pick line. */
+/** Records one exact physical box scan for one exact lot/location dispatch line. */
 export async function selectPickUnit(
   resolver: RequestAuthorizationResolver,
   pickListId: string,
@@ -556,7 +556,7 @@ export async function selectPickUnit(
   rawBarcode: string,
   rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<SelectPickUnitResult> {
-  const perm = await requirePermission(resolver, "pick_list.execute");
+  const perm = await requirePermission(resolver, "dispatch.execute");
   if (perm.kind !== "authorized") return { ok: false, errors: ["forbidden"] };
 
   const unitId = unitIdFromScan(rawBarcode);
@@ -580,7 +580,7 @@ export async function selectPickUnit(
 
       if (lineRows.length === 0) return { ok: false as const, errors: ["line_not_found"] };
       const line = lineRows[0];
-      if (line.pickListStatus !== "allocated") {
+      if (line.pickListStatus !== "picked") {
         return { ok: false as const, errors: ["invalid_status"] };
       }
 
@@ -643,7 +643,7 @@ export async function selectPickUnit(
   }
 }
 
-/** Advances to dispatch only after every line has its required physical boxes. */
+/** Marks the non-scan physical staging step complete and advances to dispatch. */
 export async function completeExactPick(
   resolver: RequestAuthorizationResolver,
   pickListId: string,
@@ -666,30 +666,10 @@ export async function completeExactPick(
       }
 
       const lineRows = (await db
-        .select({ id: pickListItems.id, numberOfBoxes: pickListItems.numberOfBoxes })
+        .select({ id: pickListItems.id })
         .from(pickListItems)
-        .where(eq(pickListItems.pickListId, pickListId))) as Array<{
-          id: string;
-          numberOfBoxes: number;
-        }>;
+        .where(eq(pickListItems.pickListId, pickListId))) as Array<{ id: string }>;
       if (lineRows.length === 0) return { ok: false as const, errors: ["no_pick_lines"] };
-
-      const selectedRows = (await db
-        .select({ pickListItemId: inventoryUnits.pickListItemId })
-        .from(inventoryUnits)
-        .where(and(
-          inArray(inventoryUnits.pickListItemId, lineRows.map((line) => line.id)),
-          eq(inventoryUnits.status, "selected"),
-        ))) as Array<{ pickListItemId: string | null }>;
-      const selectedCounts = new Map<string, number>();
-      for (const row of selectedRows) {
-        if (row.pickListItemId) {
-          selectedCounts.set(row.pickListItemId, (selectedCounts.get(row.pickListItemId) ?? 0) + 1);
-        }
-      }
-      if (lineRows.some((line) => (selectedCounts.get(line.id) ?? 0) !== line.numberOfBoxes)) {
-        return { ok: false as const, errors: ["box_scans_incomplete"] };
-      }
 
       await db
         .update(pickLists)
@@ -709,9 +689,8 @@ export async function completeExactPick(
 // ---------------------------------------------------------------------------
 // markPickListPicked — Stage 1 floor completion marker
 //
-// Compatibility entry point for older callers. Browser-supplied line IDs no
-// longer count as physical evidence; completion delegates to the durable
-// exact-box validation above.
+// Compatibility entry point for older callers. Browser-supplied line IDs do
+// not establish physical identity; scans are recorded later at dispatch.
 // ---------------------------------------------------------------------------
 
 export async function markPickListPicked(
@@ -820,6 +799,34 @@ export async function dispatchPickList(
       commitmentLines.some((line) => !scanned.has(line.pickListItemId)) ||
       scanned.size !== commitmentLines.length
     ) {
+      return { ok: false as const, errors: ["scan_evidence_incomplete"] };
+    }
+
+    const selectedRows = (await db
+      .select({ pickListItemId: inventoryUnits.pickListItemId })
+      .from(inventoryUnits)
+      .where(and(
+        inArray(inventoryUnits.pickListItemId, commitmentLines.map((line) => line.pickListItemId)),
+        eq(inventoryUnits.status, "selected"),
+      ))) as Array<{ pickListItemId: string | null }>;
+    const selectedCounts = new Map<string, number>();
+    for (const row of selectedRows) {
+      if (row.pickListItemId) {
+        selectedCounts.set(row.pickListItemId, (selectedCounts.get(row.pickListItemId) ?? 0) + 1);
+      }
+    }
+    const requiredBoxesByLine = new Map<string, number>();
+    const itemRows = (await db
+      .select({ id: pickListItems.id, numberOfBoxes: pickListItems.numberOfBoxes })
+      .from(pickListItems)
+      .where(inArray(pickListItems.id, commitmentLines.map((line) => line.pickListItemId)))) as Array<{
+        id: string;
+        numberOfBoxes: number;
+      }>;
+    for (const item of itemRows) requiredBoxesByLine.set(item.id, item.numberOfBoxes);
+    if (commitmentLines.some((line) =>
+      (selectedCounts.get(line.pickListItemId) ?? 0) !== requiredBoxesByLine.get(line.pickListItemId),
+    )) {
       return { ok: false as const, errors: ["scan_evidence_incomplete"] };
     }
 

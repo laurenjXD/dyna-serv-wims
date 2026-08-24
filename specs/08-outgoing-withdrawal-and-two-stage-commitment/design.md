@@ -1,7 +1,7 @@
 # Outgoing Withdrawal & Two-Stage Commitment — Design
 
 Status: Approved
-Updated: 2026-08-07
+Updated: 2026-08-24 (Dispatch-time barcode scanning amendment)
 
 ## 1. Design intent
 
@@ -84,13 +84,13 @@ Available lots + current FEFO/FIFO plan
 Committed reservation + pick_list(allocated)
     │ qty_committed incremented on lot_location_balances
     │ qty_remaining unchanged
-    │ physical pick/dispatch scans
+    │ non-scan physical pick confirmation
     ▼
 picked / dispatch_ready
     │
     ├── dispatch disposition
     │       ▼
-    │  Authoritative dispatch commit
+    │  exact-box dispatch scans → authoritative dispatch commit
     │       ├── qty_remaining decremented on lot_location_balances
     │       ├── qty_committed released (decremented) on lot_location_balances
     │       ├── inventory_commitment_lines → executed
@@ -98,7 +98,7 @@ picked / dispatch_ready
     │       ├── pick_list → dispatched
     │       └── acknowledgement_receipt generation request → 10
     │
-    └── direct dispatch after all accepted pick scans
+    └── direct dispatch scanning after non-scan pick confirmation
 ```
 
 Ownership boundaries:
@@ -143,17 +143,19 @@ Within one authoritative transaction it:
 
 It does not decrement on-hand inventory or insert the final `pick` transaction. A duplicate idempotency key returns the existing committed result. A stale selection/plan returns a conflict requiring fresh allocation.
 
-## 7. Stage 2 physical execution and dispatch transaction
+## 7. Physical pick confirmation and Stage 2 dispatch scan/transaction
 
-The floor flow reads the committed pick list and presents one expected location task at a time. Each accepted scan resolves a durable `inventory_units.unit_id` and is accepted only when that exact box is `available` and its lot/location match the current `pick_list_items` row. Acceptance marks the unit `selected` for that pick-list item; duplicate, wrong-lot, wrong-location, and already-selected boxes fail safely. When a lot is split across locations, its committed allocation already produces separate pick-list items, so the UI shows separate location cards and dispatch decrements each corresponding balance row. Local scan observations may be stored as Tier 1 only after `03` approval; they are not final inventory outcomes.
+The floor pick view reads the committed pick list and presents one expected location task at a time. It is a preparation view only: the operator stages the committed boxes and confirms the pick is complete. It does not expose a barcode/QR input, camera scanner, scan-validation command, or box-selection mutation. That confirmation transitions the pick list from `allocated` to `picked` and places it in the To Dispatch queue; it does not establish physical-unit identity or alter inventory.
 
-After every line has exactly `number_of_boxes` selected physical units, the pick list transitions from `allocated` to `picked` and the floor user or supervisor proceeds directly to Stage 2 dispatch. Dispatch reuses this durable accepted evidence and does not ask for the same scan again. The dispatch command receives the pick-list ID and authoritative committed lines; browser-supplied line identifiers do not establish box identity.
+The dispatch view presents the same separate location tasks and requires the exact-box scan for each committed `number_of_boxes`. Each accepted scan resolves a durable `inventory_units.unit_id` and is accepted only when that exact box is `available` and its lot/location match the current `pick_list_items` row. Acceptance marks the unit `selected` for that pick-list item; duplicate, wrong-lot, wrong-location, and already-selected boxes fail safely. When a lot is split across locations, its committed allocation already produces separate pick-list items, so the UI shows separate location cards and dispatch decrements each corresponding balance row. Local scan observations may be stored as Tier 1 only after `03` approval; they are not final inventory outcomes.
+
+After every line has exactly `number_of_boxes` accepted dispatch scans, the floor user or supervisor can submit the final dispatch command. The command receives the pick-list ID and server-recorded accepted units; browser-supplied line identifiers do not establish box identity. It reuses the accepted dispatch evidence and does not request a second scan.
 
 **`dispatch` disposition.** The final dispatch command rechecks:
 
 - current actor/capability/scope;
 - pick-list status and commitment ownership;
-- item/barcode/lot/location identity;
+- accepted dispatch-scan, item/barcode/lot/location identity;
 - quantities and any approved partial/exception rule;
 - current lot status, selected lot/location balance, and reservation state;
 - required pricing/document snapshot availability.

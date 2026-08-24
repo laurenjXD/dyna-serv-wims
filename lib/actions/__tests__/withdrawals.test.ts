@@ -578,7 +578,7 @@ describe("selectPickUnit — exact physical box and location", () => {
 
   it("rejects a real box registered at a different location", async () => {
     const db = makeWithdrawalDb([], [
-      [{ id: "line-1", lotId: "lot-1", locationId: "loc-a", numberOfBoxes: 1, pickListStatus: "allocated" }],
+      [{ id: "line-1", lotId: "lot-1", locationId: "loc-a", numberOfBoxes: 1, pickListStatus: "picked" }],
       [{ id: "unit-row-1", lotId: "lot-1", locationId: "loc-b", status: "available", pickListItemId: null }],
     ]);
 
@@ -596,7 +596,7 @@ describe("selectPickUnit — exact physical box and location", () => {
 
   it("selects the scanned box for the exact matching line", async () => {
     const db = makeWithdrawalDb([], [
-      [{ id: "line-1", lotId: "lot-1", locationId: "loc-a", numberOfBoxes: 2, pickListStatus: "allocated" }],
+      [{ id: "line-1", lotId: "lot-1", locationId: "loc-a", numberOfBoxes: 2, pickListStatus: "picked" }],
       [{ id: "unit-row-1", lotId: "lot-1", locationId: "loc-a", status: "available", pickListItemId: null }],
       [{ id: "already-selected" }],
     ]);
@@ -692,7 +692,7 @@ describe("dispatchPickList — already dispatched (R7.6, design.md §7)", () => 
 describe("dispatchPickList — success (R7.5, design.md §7)", () => {
   it("rejects dispatch when the committed lines have not all been scanned", async () => {
     const picked = pickListRow({ status: "picked" });
-    const db = makeWithdrawalDb([picked], [[picked], [commitmentLineRow()]]);
+    const db = makeWithdrawalDb([picked], [[picked], [commitmentLineRow()], [{ pickListItemId: "pick-list-item-uuid-1" }], [{ id: "pick-list-item-uuid-1", numberOfBoxes: 1 }]]);
 
     const result = await dispatchPickList(
       supervisorResolver(),
@@ -708,7 +708,7 @@ describe("dispatchPickList — success (R7.5, design.md §7)", () => {
 
   it("(AC: supervisor dispatches picked list) returns { ok: true } after exact picking", async () => {
     const picked = pickListRow({ status: "picked" });
-    const db = makeWithdrawalDb([picked], [[picked], [commitmentLineRow()]]);
+    const db = makeWithdrawalDb([picked], [[picked], [commitmentLineRow()], [{ pickListItemId: "pick-list-item-uuid-1" }], [{ id: "pick-list-item-uuid-1", numberOfBoxes: 1 }]]);
 
     const result = await dispatchPickList(
       supervisorResolver(),
@@ -722,7 +722,7 @@ describe("dispatchPickList — success (R7.5, design.md §7)", () => {
 
   it("(AC: warehouse_staff dispatches picked list) returns { ok: true } for warehouse_staff with execute capability", async () => {
     const picked = pickListRow({ status: "picked" });
-    const db = makeWithdrawalDb([picked], [[picked], [commitmentLineRow()]]);
+    const db = makeWithdrawalDb([picked], [[picked], [commitmentLineRow()], [{ pickListItemId: "pick-list-item-uuid-1" }], [{ id: "pick-list-item-uuid-1", numberOfBoxes: 1 }]]);
 
     const result = await dispatchPickList(
       warehouseStaffResolver(),

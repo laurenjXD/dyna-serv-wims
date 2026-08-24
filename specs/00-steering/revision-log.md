@@ -1307,3 +1307,8 @@ Migration `0034_inventory_unit_tracking_and_location_write_fix.sql` adds this re
 # Location inventory view amendment (2026-08-23)
 
 The Product Owner requested visibility into what is currently stored at each enrolled location. The location detail route now has an **Inventory View** beside the existing Movement Ledger. It is read-only and derives item/lot quantities and occupied CBM directly from `lot_location_balances` joined to `lots` and `items`; it shows distinct item count, total units, capacity utilization, a progress bar, and a warning when a location is nearly full. No new ledger or mutation capability is introduced.
+## `08` dispatch-time barcode scanning amendment — approval renewal required (2026-08-24)
+
+Product direction changed the outbound scan point: warehouse staff no longer scan boxes in the active pick-list/picking view. Picking is now a non-scan staging confirmation that moves a completed list into **To Dispatch**. The dispatch view is the sole exact-box QR scan gate; every committed box must be accepted there before the final dispatch command can decrement inventory. The final command reuses those accepted dispatch scans and never asks for a duplicate scan.
+
+This changes the approved execution boundary in `08` requirements R3, design §7, and the floor-picking/dispatch task and E2E checklist. The former 2026-08-05 sign-offs were cleared while the amendment awaited review. Both approvals were granted in conversation on 2026-08-24; the three `08` documents are again `Approved`, and implementation may proceed.

@@ -40,15 +40,15 @@ describe("PickExecutionPage (app/(authenticated)/pick-lists/[pickListId]/pick/pa
     expect(mod.default.name.length).toBeGreaterThan(0);
   });
 
-  it("requires exact box identity and displays the source location", () => {
+  it("stages exact locations without exposing a scanner", () => {
     const source = pageSource();
-    expect(source).toContain("selectPickUnit");
-    expect(source).toContain("Pick exact boxes");
-    expect(source).toContain("boxes picked");
-    expect(source).toContain("Box {box.unitIndex}");
-    expect(source).toContain("Pick one physical box at a time");
-    expect(source).toContain("Scan QR or enter box ID");
+    expect(source).not.toContain("selectPickUnit");
+    expect(source).not.toContain("CameraScanBridge");
+    expect(source).not.toContain('name="barcode"');
+    expect(source).toContain("Stage pick list");
+    expect(source).toContain("Stage the committed boxes");
+    expect(source).toContain("Confirm boxes staged");
     expect(source).toContain("line.locationLabel");
-    expect(source).toContain("disabled={!allComplete}");
+    expect(source).toContain("completeExactPick");
   });
 });

@@ -33,7 +33,7 @@ The current Gantt timeline tracks the **Spec Definition Phase** (Drafting Requir
 | 2.2 | Item classification and flow validation | `17-product-categorization-and-classification` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
 | 2.3 | Barcode and QR item identification | `18-barcode-integration` | **Approved** (all three documents and both sign-offs complete 2026-08-06; FR-2.3 scoped 1D exception reconciled) | Ready for Dev |
 | 2.4 | FIFO/FEFO pick-list generation | `10-pick-list-and-acknowledgement-receipt` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
-| 2.5 | Inventory picking and quantity verification | `08-outgoing-withdrawal-and-two-stage-commitment` | **Approved** (2026-08-06 direct post-picking dispatch amendment; pre-dispatch inspection removed) | Ready for Dev |
+| 2.5 | Inventory picking and quantity verification | `08-outgoing-withdrawal-and-two-stage-commitment` | **Approved** (2026-08-24 dispatch-time barcode-scanning amendment; both approvals granted in conversation) | Ready for Dev |
 | 2.6 | Receiving-to-picking inventory process integration | Cross-cutting | **Not Started** | Not Started |
 | 2.7 | Classification and picking testing/fixes | `testing.md` | **Process Approved** | Not Started |
 | 2.8 | Milestone 2 inventory processing review and launch | Sign-off gate | **Not Started** | Not Started |

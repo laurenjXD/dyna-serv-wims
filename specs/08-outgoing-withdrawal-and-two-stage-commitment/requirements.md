@@ -1,7 +1,7 @@
 # Outgoing Withdrawal & Two-Stage Commitment — Requirements
 
 Status: Approved
-Updated: 2026-08-23 (Pallet-selection approval, clean queue, and simplified page actions amendment)
+Updated: 2026-08-24 (Dispatch-time barcode scanning amendment)
 
 ## 1. Purpose and scope
 
@@ -52,13 +52,14 @@ The Outgoing page (`/outgoing`) features 2 primary sub-tabs:
 5. The creation UI SHALL show the recommended FIFO/FEFO source by default and offer an explicit **Choose another pallet** path. An alternate selection requires a reason, identifies one exact lot/location/quantity/version, and remains unreserved until another authorized actor approves it.
 6. An approved override SHALL be consumable once only. Pick-list generation SHALL reject an expired, changed, mismatched, self-approved, or already-consumed decision.
 
-### R3. Stage 2 physical pick & dispatch confirmation
+### R3. Physical picking and Stage 2 dispatch confirmation
 
 1. Picking executes at `/pick-lists/[id]/pick`; physical dispatch executes at `/pick-lists/[id]/dispatch`.
-2. Pick execution scans the QR of each exact physical box selected. The durable box identity MUST match the committed item/lot and the specific source location on that pick-list line; a box registered at another location or already selected for another pick is rejected with recoverable feedback.
-3. Final dispatch confirmation atomically decrements `qty_remaining`, releases `qty_committed`, writes an immutable `pick` transaction, and makes the priced **Delivery Receipt / Acknowledgement Receipt** available for print/download.
-4. The physical pallet is scanned once in the execution path. Dispatch SHALL reuse that accepted evidence and SHALL NOT ask the operator to scan the same pallet again.
-5. When one lot/pallet is stored across multiple locations, picking presents a separate instruction and box count for each committed location. Final dispatch decrements each corresponding `lot_location_balances` row; it MUST NOT choose an unidentified or random box from the lot.
+2. Pick execution is a non-scan preparation step: it presents the committed item, lot, source location, and box-count instructions, then allows the operator to confirm that all committed boxes are staged. It SHALL NOT request, accept, or validate a barcode/QR scan.
+3. Dispatch is the sole scan gate. Before final confirmation, the operator SHALL scan the QR of each exact physical box being dispatched. Each durable box identity MUST match the committed item/lot and the specific source location on that pick-list line; a box registered at another location, already selected for another pick list, duplicate, or otherwise mismatched is rejected with recoverable feedback.
+4. Final dispatch confirmation is enabled only after every committed box has been accepted at dispatch. It atomically decrements `qty_remaining`, releases `qty_committed`, writes an immutable `pick` transaction, and makes the priced **Delivery Receipt / Acknowledgement Receipt** available for print/download.
+5. A physical box is scanned once, at dispatch; the system SHALL retain that accepted dispatch evidence for the final command and SHALL NOT require a duplicate verification scan.
+6. When one lot/pallet is stored across multiple locations, picking and dispatch both present a separate instruction and box count for each committed location. Dispatch decrements each corresponding `lot_location_balances` row; it MUST NOT choose an unidentified or random box from the lot.
 
 ### R4. Visual design & touch target enforcement
 
@@ -76,6 +77,7 @@ The Outgoing page (`/outgoing`) features 2 primary sub-tabs:
 - [ ] 3-component error feedback is displayed on all validation/scan errors.
 - [ ] Visual design system rules (#2563EB, #0F172A, #64748B, #F3F6FC, #FFFFFF, DM Sans + Glacial typography, 64px floor CTAs) are fully satisfied.
 - [ ] Alternate-pallet requests cannot reserve stock until approved and can only generate the exact approved one-time allocation.
-- [ ] The operator scans the committed pallet once; dispatch does not repeat the same verification scan.
+- [ ] Picking provides no barcode/QR scan input; scanning begins only after the pick list enters the To Dispatch queue.
+- [ ] The operator scans every committed physical box once at dispatch; the final dispatch command reuses that accepted evidence without a duplicate verification scan.
 - [ ] The Outgoing header contains no non-functional or redundant generic Filter action.
 - [ ] Allocated and picked documents are visually separated into To Pick and To Dispatch queues and cannot expose the wrong phase action.

@@ -1,4 +1,4 @@
-// Dispatch Confirmation — confirmation-only handoff after exact box picking.
+// Dispatch Confirmation — exact-box scan and final handoff.
 //
 // Traceability:
 //   specs/08-outgoing-withdrawal-and-two-stage-commitment/requirements.md
@@ -42,8 +42,8 @@
 // The actual dispatch command (dispatchPickList) is wired. On success the
 // user is returned to /outgoing so the next pick can begin immediately.
 //
-// Physical evidence is recorded once on the pick screen. This page reuses the
-// selected inventory-unit records and never asks the operator to scan again.
+// Physical evidence is recorded here, at dispatch. The pick screen only stages
+// committed boxes and never prompts for a barcode/QR scan.
 
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -53,13 +53,15 @@ import {
   AlertTriangle,
   Truck,
   CheckCircle2,
+  ScanLine,
 } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { parties } from "@/lib/db/schema/parties";
-import { getPickList, getPickListItems } from "@/lib/db/queries/withdrawals";
-import { dispatchPickList } from "@/lib/actions/withdrawals";
+import { getPickList, getPickListItems, getPickUnitSelections } from "@/lib/db/queries/withdrawals";
+import { dispatchPickList, selectPickUnit } from "@/lib/actions/withdrawals";
+import { CameraScanBridge } from "@/components/floor/CameraScanBridge";
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -108,7 +110,14 @@ export default async function DispatchConfirmationPage({
     notFound();
   }
 
-  const items = await getPickListItems(db, pickListId);
+  const [items, selections] = await Promise.all([
+    getPickListItems(db, pickListId),
+    getPickUnitSelections(db, pickListId),
+  ]);
+  const selectionCountByLine = new Map<string, number>();
+  for (const selection of selections) {
+    if (selection.pickListItemId) selectionCountByLine.set(selection.pickListItemId, (selectionCountByLine.get(selection.pickListItemId) ?? 0) + 1);
+  }
 
   const partyRows = (await db
     .select({ id: parties.id, name: parties.name })
@@ -120,6 +129,25 @@ export default async function DispatchConfirmationPage({
   const alreadyDispatched = pickList.status === "dispatched";
 
   const totalLines = items.length;
+  const totalRequiredBoxes = items.reduce((sum, item) => sum + item.numberOfBoxes, 0);
+  const selectedBoxCount = selections.length;
+  const activeItem = pickList.status === "picked"
+    ? items.find((item) => (selectionCountByLine.get(item.id) ?? 0) < item.numberOfBoxes)
+    : undefined;
+  const allBoxesScanned = items.length > 0 && !activeItem;
+
+  async function handleBoxScan(formData: FormData): Promise<void> {
+    "use server";
+    const actionResolver = await createPageResolver();
+    const scanResult = await selectPickUnit(
+      actionResolver,
+      pickListId,
+      String(formData.get("pickListItemId") ?? ""),
+      String(formData.get("barcode") ?? ""),
+    );
+    if (!scanResult.ok) redirect(`/pick-lists/${pickListId}/dispatch?result=error&reason=${encodeURIComponent(scanResult.errors[0] ?? "unable_to_select_box")}`);
+    redirect(`/pick-lists/${pickListId}/dispatch?result=scanned`);
+  }
 
   // Inline server action — executes Stage 2 dispatch.
   // design.md §7: atomically decrements qty_remaining, releases qty_committed,
@@ -189,7 +217,7 @@ export default async function DispatchConfirmationPage({
           {/* Pick-verification progress counter */}
           {!alreadyDispatched && (
             <span className="font-body text-body-md text-text-grey">
-              {totalLines} / {totalLines} picked
+              {selectedBoxCount} / {totalRequiredBoxes} scanned
             </span>
           )}
         </div>
@@ -280,6 +308,8 @@ export default async function DispatchConfirmationPage({
               </p>
             )}
             {items.map((item) => {
+              const scannedCount = selectionCountByLine.get(item.id) ?? 0;
+              const complete = scannedCount === item.numberOfBoxes;
               return (
                 <div
                   key={item.id}
@@ -290,7 +320,7 @@ export default async function DispatchConfirmationPage({
                     <CheckCircle2
                       size={24}
                       strokeWidth={2}
-                      className="text-status-available"
+                      className={complete ? "text-status-available" : "text-status-neutral"}
                     />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -310,13 +340,22 @@ export default async function DispatchConfirmationPage({
                     <p className="mt-0.5 font-body text-body-md text-text-grey">
                       {item.locationLabel}
                     </p>
+                    <p className="mt-1 font-body text-body-md text-text-grey">{scannedCount} / {item.numberOfBoxes} boxes scanned</p>
                   </div>
-                  <span className="sr-only">Picked and verified</span>
+                  <span className="sr-only">{complete ? "Dispatch scan complete" : "Dispatch scan pending"}</span>
                 </div>
               );
             })}
           </div>
         </div>
+
+        {!alreadyDispatched && activeItem && (
+          <section className="mb-3 rounded-2xl border border-brand-blue/30 bg-brand-blue/5 p-4">
+            <div className="flex items-start gap-3"><ScanLine size={24} className="mt-0.5 shrink-0 text-brand-navy" aria-hidden="true" /><div><h2 className="font-heading text-title-md font-bold text-on-surface">Scan boxes for dispatch</h2><p className="mt-1 font-body text-body-md text-text-grey">{activeItem.itemCode} · Lot {activeItem.lotNumber} · {activeItem.locationLabel}. Scan {activeItem.numberOfBoxes - (selectionCountByLine.get(activeItem.id) ?? 0)} more box(es).</p></div></div>
+            <form action={handleBoxScan} className="mt-4 flex flex-col gap-3 sm:flex-row"><input type="hidden" name="pickListItemId" value={activeItem.id} /><input name="barcode" required autoFocus autoComplete="off" placeholder="Scan QR or enter box ID" className="h-14 min-w-0 flex-1 rounded-xl border border-outline-variant bg-surface-white px-4 font-mono text-body-md text-on-surface outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20" /><button type="submit" className="h-14 rounded-xl bg-brand-navy px-6 font-label text-body-md text-surface-white">Add box</button></form>
+            <div className="mt-3"><CameraScanBridge action={handleBoxScan} extraFields={{ pickListItemId: activeItem.id }} /></div>
+          </section>
+        )}
 
         {/* ── Optional fields ──────────────────────────────────────────── */}
         {/* Vehicle/driver reference and notes — optional, floor style.
@@ -370,24 +409,24 @@ export default async function DispatchConfirmationPage({
               className="mt-0.5 shrink-0 text-status-held"
             />
             <p className="font-body text-body-md text-status-held">
-              Exact boxes were verified during picking. Dispatching is final and will deduct each line from the location shown above.
+              Scan every committed box here before dispatching. Dispatching is final and will deduct each line from the location shown above.
             </p>
           </div>
         )}
       </div>
 
-      {/* Exact boxes were already scanned during pick execution. Dispatch is
-          deliberately confirmation-only so operators are not asked twice. */}
+      {/* Exact boxes are scanned here, immediately before the final dispatch. */}
       {!alreadyDispatched && (
         <div className="sticky bottom-0 border-t border-outline-variant/30 bg-surface-white px-4 pb-6 pt-4 shadow-elevation-2">
           {totalLines > 0 ? (
             <form action={handleDispatch}>
               <button
                 type="submit"
+                disabled={!allBoxesScanned}
                 className="flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-primary font-label text-body-md uppercase tracking-wide text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
               >
                 <Truck size={24} strokeWidth={2} aria-hidden="true" />
-                Confirm Dispatch
+                {allBoxesScanned ? "Confirm Dispatch" : `Scan ${totalRequiredBoxes - selectedBoxCount} More Boxes`}
               </button>
             </form>
           ) : (

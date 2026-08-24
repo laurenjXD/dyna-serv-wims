@@ -50,11 +50,12 @@ describe("DispatchConfirmationPage (app/(authenticated)/pick-lists/[pickListId]/
     expect(mod.default.name.length).toBeGreaterThan(0);
   });
 
-  it("does not require a redundant dispatch scan after exact picking", () => {
+  it("requires exact-box scans at dispatch", () => {
     const source = pageSource();
-    expect(source).not.toContain('name="barcode"');
-    expect(source).not.toContain("CameraScanBridge");
-    expect(source).toContain("Exact boxes were verified during picking");
+    expect(source).toContain('name="barcode"');
+    expect(source).toContain("CameraScanBridge");
+    expect(source).toContain("selectPickUnit");
+    expect(source).toContain("Scan boxes for dispatch");
     expect(source).toContain("Confirm Dispatch");
   });
 });
