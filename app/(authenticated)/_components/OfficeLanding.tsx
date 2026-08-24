@@ -50,7 +50,9 @@ import {
   FlaskConical,
   TrendingDown,
   ShieldAlert,
+  Barcode,
 } from "lucide-react";
+import { QuickJumpScanner } from "@/app/(authenticated)/receiving/_components/QuickJumpScanner";
 import { KpiTile } from "@/components/analytics/KpiTile";
 import { DonutChart } from "@/components/analytics/DonutChart";
 import { BarChart } from "@/components/analytics/BarChart";
@@ -93,6 +95,7 @@ export function OfficeLanding({
   pendingApprovals,
   inventoryKpis,
   hasReceivingAccess,
+  quickJumpAction,
   hasPickListAccess,
   hasTransferAccess,
   hasInspectionAccess,
@@ -127,6 +130,7 @@ export function OfficeLanding({
   pendingApprovals: number;
   inventoryKpis: { totalLotsInStock: number; totalCommittedQty: number; lowStockItemsCount: number } | null;
   hasReceivingAccess: boolean;
+  quickJumpAction?: (formData: FormData) => void;
   hasPickListAccess: boolean;
   hasTransferAccess: boolean;
   hasInspectionAccess: boolean;
@@ -154,6 +158,8 @@ export function OfficeLanding({
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">{dateString}</p>
       </header>
+
+      {hasReceivingAccess && quickJumpAction && <section className="mb-4 rounded-xl border border-[#B9CAEF] bg-[#DCE8FF] p-5 shadow-elevation-1 sm:mb-6"><div className="flex items-center gap-2"><Barcode size={24} className="text-brand-navy" aria-hidden="true" /><h2 className="font-heading text-headline-md font-bold text-on-surface">Quick Jump</h2></div><p className="mt-2 font-body text-body-md text-on-surface">Scan or enter an exact WRR number to open Receiving directly.</p><QuickJumpScanner action={quickJumpAction} /></section>}
 
       {/* ── Bento row: Dispatch Rate ring + Weekly Trend + Monthly stat ────
           Compact single column on mobile; 4-column bento on desktop

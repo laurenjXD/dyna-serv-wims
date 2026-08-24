@@ -5,11 +5,15 @@
 //   specs/08-outgoing-withdrawal-and-two-stage-commitment/requirements.md R3
 
 import { and, asc, eq, gt, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { items } from "@/lib/db/schema/items";
+import { parties } from "@/lib/db/schema/parties";
 import { locations } from "@/lib/db/schema/locations";
 import { lotLocationBalances } from "@/lib/db/schema/lot_location_balances";
 import { lots } from "@/lib/db/schema/lots";
 import { allocate, type AllocationResult } from "@/lib/withdrawal/allocation";
+
+const defaultSupplierParties = alias(parties, "default_supplier_parties");
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type DbLike = { select: (...args: any[]) => any };
@@ -21,6 +25,11 @@ export type StockViewRow = {
   itemCode: string;
   customerItemCode?: string | null;
   itemName: string;
+  supplierItemCode?: string | null;
+  customerItemCode?: string | null;
+  dsgcItemNumber?: string | null;
+  customerName?: string | null;
+  organizationName?: string | null;
   organizationId?: string | null;
   defaultSupplierPartyId: string | null;
   uom: string;
@@ -38,6 +47,9 @@ export type StockViewRow = {
   locationLabel: string;
   qtyRemaining: number;
   qtyCommitted: number;
+  qtyReceived?: number;
+  spq?: number;
+  volumeCbm?: string | number;
 };
 
 export type StockAllocationPreview =
@@ -58,6 +70,11 @@ export async function listStockView(db: DbLike): Promise<StockViewRow[]> {
       itemCode: items.code,
       customerItemCode: items.customerItemCode,
       itemName: items.name,
+      supplierItemCode: items.supplierItemCode,
+      customerItemCode: items.customerItemCode,
+      dsgcItemNumber: items.dsgcItemNumber,
+      customerName: parties.name,
+      organizationName: defaultSupplierParties.name,
       organizationId: items.defaultSupplierPartyId,
       defaultSupplierPartyId: items.defaultSupplierPartyId,
       uom: items.uom,
@@ -75,11 +92,16 @@ export async function listStockView(db: DbLike): Promise<StockViewRow[]> {
       locationLabel: locations.label,
       qtyRemaining: lotLocationBalances.qtyRemaining,
       qtyCommitted: lotLocationBalances.qtyCommitted,
+      qtyReceived: lotLocationBalances.qtyReceived,
+      spq: items.spq,
+      volumeCbm: items.volumeCbm,
     })
     .from(lotLocationBalances)
     .innerJoin(lots, eq(lotLocationBalances.lotId, lots.id))
     .innerJoin(items, eq(lots.itemId, items.id))
     .innerJoin(locations, eq(lotLocationBalances.locationId, locations.id))
+    .leftJoin(parties, eq(lots.ownerPartyId, parties.id))
+    .leftJoin(defaultSupplierParties, eq(items.defaultSupplierPartyId, defaultSupplierParties.id))
     .where(and(
       eq(lots.status, "available"),
       gt(sql`${lotLocationBalances.qtyRemaining} - ${lotLocationBalances.qtyCommitted}`, 0),

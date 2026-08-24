@@ -26,6 +26,8 @@ export type CreateWrrLine = {
   itemId?: string | null;
   itemCode?: string | null;
   customerItemCode?: string | null;
+  manufactureDate?: string | null;
+  remarks?: string | null;
   barcode?: string | null;
 };
 
@@ -195,6 +197,20 @@ function validateLine(
     errors.push(`Line[${index}]: putawayLocationId must be a non-empty string when provided`);
   }
 
+  const manufactureDate = line["manufactureDate"];
+  if (
+    manufactureDate !== undefined &&
+    manufactureDate !== null &&
+    (typeof manufactureDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(manufactureDate))
+  ) {
+    errors.push(`Line[${index}]: manufactureDate must be an ISO date (YYYY-MM-DD) when provided`);
+  }
+
+  const remarks = line["remarks"];
+  if (remarks !== undefined && remarks !== null && typeof remarks !== "string") {
+    errors.push(`Line[${index}]: remarks must be text when provided`);
+  }
+
   if (errors.length > 0) {
     return { errors, line: null };
   }
@@ -212,6 +228,8 @@ function validateLine(
       itemId: (line["itemId"] as string | null | undefined) ?? null,
       itemCode: (line["itemCode"] as string | null | undefined) ?? null,
       customerItemCode: (line["customerItemCode"] as string | null | undefined) ?? null,
+      manufactureDate: (manufactureDate as string | null | undefined) || null,
+      remarks: (remarks as string | null | undefined)?.trim() || null,
       barcode: (line["barcode"] as string | null | undefined) ?? null,
     },
   };

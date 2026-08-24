@@ -2,6 +2,10 @@
 
 Every merge conflict and major revision, dated, with the resolution. This is the audit trail for "why does the spec say X" when X isn't obvious from the doc alone.
 
+## Fix-it-Felix branch merged into `v1` (2026-08-25)
+
+Merged `origin/fix-it-felix` changes including multi-item draft pick list builder, QR code viewer updates, WRR manufacture date/remarks, and location inventory views.
+
 ## `12-vmi-billing`/`13-trading-orders-and-pricing` migrations applied to production (2026-08-25)
 
 **What broke**: after flipping `/billing-pricing`'s `launchStatus` to `launch` and wiring it to real queries (previous entries below), the deployed page 500'd — "Application error: a server-side exception has occurred." Connecting directly to the production Supabase Postgres instance (`DATABASE_URL`) confirmed `vmi_daily_balance_ledger`, `vmi_contract_terms`, and `trading_invoice_lines` did not exist there at all. The Supabase CLI's own migration-tracking table (`supabase_migrations.schema_migrations`) stops at version `0022` — everything from `0023` onward, including all of `12`/`13`'s schema (`0033`–`0040`), had been committed to this repo but never applied to this database, even though later, unrelated migrations in that same range (`inventory_units`, `wrr_item_putaway_allocations`, etc.) clearly *had* been applied through some other, untracked mechanism.
@@ -255,6 +259,30 @@ Both specs' prior `Status: Approved` versions (2026-08-06) are superseded in ful
 **`13-trading-orders-and-pricing`**: retires the `trading_orders` → `trading_order_items` → `trading_price_snapshots` order lifecycle entirely — no order entity exists in the new model. Replaced with a pre-configured `trading_policies` rate card keyed by `(party_id, item_id)`; a missing rate card blocks pick-list generation for that line rather than silently defaulting to `items.selling_price`. Price freezes into an immutable, hashed `trading_invoice_lines` row at pick-list generation, before `08` Stage 1 commitment.
 
 **Approved with one item explicitly still open**: `13`'s Task 1 — taxes, discounts, returns, and post-dispatch corrections for the new pricing model — was not carried over from the prior order-based design and has not been resolved. Product Owner decision: approve now rather than block on it; resolve as part of completing Task 4 (price resolution and freeze) during implementation, not before. Both specs' `tasks.md` sign-off lines completed 2026-08-19; `specs/00-steering/gantt-mapping.md` rows 3.6/3.6a updated to reflect the rewrite and re-approval.
+=======
+## Multi-item Pick Lists-tab workflow (2026-08-25) — approved
+
+The Product Owner approved a change from direct, single-item Stock View generation to a table-like draft in Master Inventory's **Pick Lists** tab:
+
+- One draft belongs to exactly one destination Organization and one Inventory Model, but can contain many item-code rows.
+- Each row selects its authoritative lot/location source and quantity in boxes; item/customer codes, description, UOM, and SPQ are displayed from Master Inventory.
+- Editing the draft changes no inventory state. One **Generate Pick List** command validates and reserves every row atomically, producing one `pick_list` number and one committed multi-line snapshot.
+- The operational Pick List PDF is generated from that committed snapshot and becomes available for preview/download/print. It is never a source of reservation authority, and a document-rendering failure does not reverse a successful commitment.
+- The committed list enters **To Pick**; after its non-scan pick confirmation it enters **Dispatch**, where the per-box QR scan gate remains unchanged.
+
+This amends `08-outgoing-withdrawal-and-two-stage-commitment` and `10-pick-list-and-acknowledgement-receipt`. Both required approvals were granted in conversation on 2026-08-25; implementation is authorized.
+
+## WRR-owned input and Master Inventory-backed pick-list fields (2026-08-24) — pending reapproval
+
+The Product Owner clarified the field ownership for the supplied Warehouse Receiving Report and Pick List templates.
+
+- **WRR is the only CRUD surface.** While a WRR is staged, authorized receiving users may create, edit, and delete the commercial/header data (Organization, invoice/CIPL, MAWB/MBL, and IP) and expected-line data (selected item, supplier/Dyna-Serv/customer codes, shipping lot, manufacture date, expected in-transit quantity/UOM, and remarks). The WRR detail and print routes are read-only projections of that persisted data.
+- **Actual receipt is not free-form CRUD.** Actual received quantity/UOM and received date are derived from accepted scans and receipt confirmation; allowing users to type those values would bypass the inventory transaction safety boundary. Manufacture date and remarks require new nullable WRR-line fields; manufacture date is copied to the confirmed lot and remarks remain non-quantity evidence.
+- **Pick lists have no editable line data.** Their item code, customer item code, description, lot, location, quantity, SPQ, and package count are selected from Master Inventory by the approved allocation/commitment flow and frozen in `pick_list_items`. Party name/address is read from the selected Organization snapshot. Totals are derived from the snapshot.
+- **Delivery-only template fields are not invented.** Client D.R. No., DGC D.R. No., delivery date, and delivery instructions cannot be derived from Master Inventory and remain unavailable in v1 until an approved owning workflow exists; `19-dispatch-scheduling-and-delivery-tracking` remains deferred. The pick-list number must not be misrepresented as a delivery-receipt number.
+
+This affects `01-core-data-model` (new WRR-line persistence), `07-incoming-receiving` (WRR form/read-only/print contract), and `10-pick-list-and-acknowledgement-receipt` (document field/source contract). Both approvals were granted in conversation on 2026-08-24; all three specifications are **Approved** and implementation is authorized.
+>>>>>>> origin/fix-it-felix
 
 ## Track B Milestone 2 scope calls: Logistics tab deferred, bulk location generator in scope (2026-08-17)
 

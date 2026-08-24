@@ -1,6 +1,6 @@
 # Core Data Model — Requirements
 Status: Approved
-Updated: 2026-08-20
+Updated: 2026-08-24 — WRR document-field ownership amendment
 Depends on: specs/00-steering/ (product.md, tech.md, structure.md)
 
 ## 1. Overview
@@ -18,7 +18,7 @@ The Core Data Model defines the foundational database entities, relationships, c
 - **WHEN** warehouse managers configure storage slots, **THE SYSTEM SHALL** enforce a location label structure formatted as `Rack+Level-Position` (e.g., `A1-01` for Rack `A`, Level `1`, Position `01`) with `max_cbm_capacity` and assign a `location_type` (`'receiving_bay'`, `'inspection'`, `'storage'`, `'picking'`, `'dispatch'`), **SO THAT** physical capacity and putaway algorithms operate on clear location boundaries without `warehouse_id` references, while holding pre-received inspection stock in `'inspection'` prior to inventory balance increment.
 
 ### Pre-Receiving Staging (CIPL / WRR)
-- **WHEN** back-office staff encode an incoming Commercial Invoice & Packing List (CIPL), **THE SYSTEM SHALL** create a `wrr_document` in `staged_pending_arrival` status with expected `wrr_items`, optional attached physical CIPL file document (`cipl_file_url`), `peza_number` (PEZA permit reference), `commercial_invoice_no`, and `ip_number` (Import Permit number), **SO THAT** incoming stock is declared pre-arrival with full regulatory and supplier document references.
+- **WHEN** back-office staff encode an incoming Commercial Invoice & Packing List (CIPL), **THE SYSTEM SHALL** create a `wrr_document` in `staged_pending_arrival` status with expected `wrr_items`, optional attached physical CIPL file document (`cipl_file_url`), `peza_number` (PEZA permit reference), `commercial_invoice_no`, `mawb_mbl_number`, and `ip_number` (Import Permit number), and SHALL retain per-line shipping lot, manufacture date, and receiving remarks, **SO THAT** incoming stock is declared pre-arrival with full regulatory, supplier, and warehouse-receiving-report references.
 
 ### Lot Creation & Business Partitioning
 - **WHEN** floor staff physically receive and confirm a staged WRR, **THE SYSTEM SHALL** create physical `lots` partitioned by `flow_type` (`'vmi'`, `'trading'`, `'supplies'`), copying the single canonical `lot_number` and its source `wrr_item_id` from the WRR, inheriting `peza_number`, `commercial_invoice_no`, and `ip_number`, and storing `manufacture_date`, `expiry_date`, `unit_price` (in USD), and owner `party_id`, **SO THAT** FEFO/FIFO rotation, regulatory compliance, and valuation remain strictly maintained.
@@ -63,6 +63,7 @@ The `01` canonical `lot_history_export` read-model contract refreshes daily, ret
    - `lots.lot_number` MUST be copied from the confirmed WRR item and linked by `lots.wrr_item_id`; it MUST NOT be system-generated.
    - The internal UUID remains the database identity. `lot_number` MUST NOT be globally unique because the same business lot number may recur across distinct WRR receipts or items; uniqueness MUST be scoped to the relevant WRR item/lot context. No second vendor-lot field is permitted.
    - **Amended 2026-08-20, pending reapproval:** `wrr_items.putaway_location_id` MAY remain null and is not authoritative for a split receipt. `store`-disposition lines use one or more staged `wrr_item_putaway_allocations`; their positive quantities must total the line's expected quantity and target active `storage` locations before receipt confirmation. `inspect` lines leave it null and are posted to one active `inspection` location by `07`'s confirmation command.
+   - **Amended 2026-08-24, pending reapproval:** `wrr_items` MUST retain optional `manufacture_date` and `remarks` entered during WRR staging. On receipt commit, `manufacture_date` MUST be copied to `lots.manufacture_date`. `remarks` remains WRR evidence and MUST NOT alter inventory quantity or availability.
 
 7. **Partition-Based Withdrawal SPQ Enforcement**:
    - Validation engines MUST reject withdrawal requests for `vmi` or `trading` lots if the requested piece quantity is not an exact multiple of `items.spq` ($\text{qty} \pmod{\text{spq}} = 0$).

@@ -1,4 +1,4 @@
-// Outgoing — floor pick execution hub: Active Picks + Outgoing Ledger tabs.
+// Outgoing — read-only dispatch ledger.
 //
 // Traceability:
 //   specs/08-outgoing-withdrawal-and-two-stage-commitment/design.md §3 (route),
@@ -24,81 +24,74 @@ import { notFound } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
-import { listPickLists } from "@/lib/db/queries/withdrawals";
 import { listOutgoingLedger } from "@/lib/actions/withdrawals";
-import type { OutgoingLedgerRow } from "@/lib/db/queries/withdrawals";
-import { Boxes, Truck } from "lucide-react";
+import { listPickLists, type OutgoingLedgerRow } from "@/lib/db/queries/withdrawals";
 import { PickQueueSection } from "./_components/PickQueueSection";
-
-type TabKey = "active-picks" | "ledger";
-
-const TABS: Array<{ key: TabKey; label: string }> = [
-  { key: "active-picks", label: "Active Picks" },
-  { key: "ledger", label: "Outgoing Ledger" },
-];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-interface PageProps {
+type TabKey = "dispatch" | "ledger";
+
+export default async function OutgoingPage({
+  searchParams,
+}: {
   searchParams: Promise<{ tab?: string }>;
-}
-
-export default async function OutgoingPage({ searchParams }: PageProps) {
-  const { tab: tabParam } = await searchParams;
-  const activeTab: TabKey = tabParam === "ledger" ? "ledger" : "active-picks";
-
+}) {
   const resolver = await createPageResolver();
 
-  // Gate: pick_list.read required for both tabs.
+  // Gate: pick_list.read is required for the outgoing ledger.
   const permResult = await requirePermission(resolver, "pick_list.read");
   if (permResult.kind !== "authorized") {
     notFound();
   }
 
-  // Separate permission check for the execute action — used to show/hide the
-  // "Start picking" CTA. pick_list.read already gate the page; pick_list.execute
-  // gates the action button itself.
-  const canExecutePick =
+  const canExecute =
     (await requirePermission(resolver, "pick_list.execute")).kind === "authorized";
+  const { tab } = await searchParams;
+  const activeTab: TabKey = tab === "ledger" ? "ledger" : "dispatch";
 
   return (
     <div className="mx-auto max-w-container pb-10">
-      {/* Page header */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div><h1 className="font-heading text-headline-lg font-bold tracking-tight text-on-surface">Pick List Management</h1><p className="mt-1 font-body text-body-md text-text-grey">Review allocated stock, execute picks, and confirm dispatch.</p></div>
-        <div className="flex gap-2"><Link href="/inventory" className="inline-flex h-12 items-center gap-2 rounded bg-brand-navy px-5 font-label text-body-md font-bold text-surface-white shadow-elevation-1"><Boxes size={19} aria-hidden="true" />Stock View</Link></div>
+      <div>
+        <div>
+          <h1 className="font-heading text-headline-lg font-bold tracking-tight text-on-surface">
+            Outgoing
+          </h1>
+          <p className="mt-1 font-body text-body-md text-text-grey">
+            Release completed picks for dispatch and review outbound inventory.
+          </p>
+        </div>
       </div>
 
-      {/* Tab switcher — office pattern per design.md §3 */}
-      <div
-        role="tablist"
-        aria-label="Outgoing sections"
-        className="mt-6 flex gap-7 overflow-x-auto border-b border-outline-variant"
-      >
-        {TABS.map((tab) => {
-          const isActive = tab.key === activeTab;
-          const href =
-            tab.key === "active-picks" ? "/outgoing" : "/outgoing?tab=ledger";
-          return (
-            <Link
-              key={tab.key}
-              href={href}
-              role="tab"
-              aria-selected={isActive}
-              className={`flex h-12 shrink-0 items-center border-b-2 px-1 font-label text-body-md font-bold focus:outline-none focus:ring-2 focus:ring-brand-navy ${
-                isActive
-                  ? "border-on-surface text-on-surface"
-                  : "border-transparent text-text-grey hover:text-on-surface"
-              }`}
-            >
-              {tab.label}
-            </Link>
-          );
-        })}
+      <div className="mt-6 flex gap-1 border-b border-outline-variant/30" role="tablist" aria-label="Outgoing sections">
+        <Link
+          href="/outgoing"
+          role="tab"
+          aria-selected={activeTab === "dispatch"}
+          className={`border-b-2 px-4 py-3 font-label text-label font-bold transition-colors ${
+            activeTab === "dispatch"
+              ? "border-brand-primary text-brand-primary"
+              : "border-transparent text-text-grey hover:text-on-surface"
+          }`}
+        >
+          Dispatch
+        </Link>
+        <Link
+          href="/outgoing?tab=ledger"
+          role="tab"
+          aria-selected={activeTab === "ledger"}
+          className={`border-b-2 px-4 py-3 font-label text-label font-bold transition-colors ${
+            activeTab === "ledger"
+              ? "border-brand-primary text-brand-primary"
+              : "border-transparent text-text-grey hover:text-on-surface"
+          }`}
+        >
+          Outgoing Ledger
+        </Link>
       </div>
 
-      {activeTab === "active-picks" ? (
-        <ActivePicksTab canExecute={canExecutePick} />
+      {activeTab === "dispatch" ? (
+        <DispatchTab canExecute={canExecute} />
       ) : (
         <OutgoingLedgerTab resolver={resolver} />
       )}
@@ -106,25 +99,16 @@ export default async function OutgoingPage({ searchParams }: PageProps) {
   );
 }
 
-// ─── Active Picks tab (default) ───────────────────────────────────────────────
-
-async function ActivePicksTab({ canExecute }: { canExecute: boolean }) {
-  // Both allocated and picked documents are still active work. A picked list
-  // has not affected stock yet, so it belongs here until Dispatch succeeds.
-  const [{ rows: allocatedRows }, { rows: pickedRows }] = await Promise.all([
-    listPickLists(db, { limit: 50, offset: 0, status: "allocated" }),
-    listPickLists(db, { limit: 50, offset: 0, status: "picked" }),
-  ]);
-  const allocatedCount = allocatedRows.length;
-  const pickedCount = pickedRows.length;
+async function DispatchTab({ canExecute }: { canExecute: boolean }) {
+  const { rows } = await listPickLists(db, {
+    limit: 50,
+    offset: 0,
+    status: "picked",
+  });
 
   return (
-    <div className="mt-7 grid gap-7 lg:grid-cols-[minmax(0,1fr)_340px]">
-      <section className="min-w-0 space-y-9" aria-label="Active pick-list queues">
-        <PickQueueSection mode="pick" rows={allocatedRows} canExecute={canExecute} />
-        <PickQueueSection mode="dispatch" rows={pickedRows} canExecute={canExecute} />
-      </section>
-      <aside className="space-y-5"><section className="rounded-lg border border-outline-variant bg-surface-white p-5 shadow-elevation-2"><div className="flex items-center gap-2"><Truck size={23} className="text-brand-navy" aria-hidden="true" /><h2 className="font-heading text-title-lg font-bold text-on-surface">Queue Overview</h2></div><div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded border border-[#C9D8FF] bg-[#EEF3FF] p-4"><p className="font-label text-label font-bold uppercase text-text-grey">To Pick</p><p className="mt-2 font-heading text-headline-lg font-bold text-brand-navy">{allocatedCount}</p></div><div className="rounded bg-brand-navy p-4 text-surface-white"><p className="font-label text-label font-bold uppercase text-[#AFC5FF]">To Dispatch</p><p className="mt-2 font-heading text-headline-lg font-bold">{pickedCount}</p></div></div><p className="mt-4 font-body text-body-sm text-text-grey">Pallet verification happens once during execution. Dispatch becomes available after every committed line is confirmed.</p></section></aside>
+    <div className="mt-6">
+      <PickQueueSection mode="dispatch" rows={rows} canExecute={canExecute} />
     </div>
   );
 }

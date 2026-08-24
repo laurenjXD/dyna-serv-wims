@@ -40,6 +40,7 @@ export type WrrDocumentRow = {
   vendorPartyName: string | null;
   stagedByUserId: string;
   createdAt: Date;
+  confirmedAt: Date | null;
 };
 
 // Extended header fields consumed by getWrrDocument's print-contract callers
@@ -74,6 +75,10 @@ export type WrrItemRow = {
   // items.name — resolved via the same join as itemCode above. Required by
   // design.md §5.3's printed per-line field contract ("item name/description").
   itemName: string | null;
+  supplierItemCode: string | null;
+  customerItemCode: string | null;
+  manufactureDate: string | null;
+  remarks: string | null;
   // wrr_items.uom — not resolved via a join, a native column on this table.
   uom: string;
   unitCbm: number;
@@ -98,6 +103,7 @@ type RawJoinRow = {
   vendorPartyId: string;
   stagedByUserId: string;
   createdAt: Date;
+  confirmedAt: Date | null;
   commercialInvoiceNo: string | null;
   ciplFileUrl: string | null;
   pezaNumber: string | null;
@@ -116,6 +122,10 @@ type RawJoinRow = {
   itemItemId: string | null;
   itemItemCode: string | null;
   itemItemName: string | null;
+  itemSupplierItemCode: string | null;
+  itemCustomerItemCode: string | null;
+  itemManufactureDate: string | null;
+  itemRemarks: string | null;
   itemUom: string | null;
   itemUnitCbm: string | number | null;
   itemPutawayLocationId: string | null;
@@ -149,6 +159,7 @@ export async function listWrrDocuments(
       vendorPartyName: partiesTable.name,
       stagedByUserId: wrrDocuments.stagedByUserId,
       createdAt: wrrDocuments.createdAt,
+      confirmedAt: wrrDocuments.confirmedAt,
     })
     .from(wrrDocuments)
     .leftJoin(partiesTable, eq(partiesTable.id, wrrDocuments.vendorPartyId));
@@ -206,6 +217,7 @@ export async function listRecentWrrDocuments(
       vendorPartyName: partiesTable.name,
       stagedByUserId: wrrDocuments.stagedByUserId,
       createdAt: wrrDocuments.createdAt,
+      confirmedAt: wrrDocuments.confirmedAt,
     })
     .from(wrrDocuments)
     .leftJoin(partiesTable, eq(partiesTable.id, wrrDocuments.vendorPartyId))
@@ -270,6 +282,10 @@ export async function getWrrDocument(
       itemItemId: wrrItems.itemId,
       itemItemCode: itemsTable.code,
       itemItemName: itemsTable.name,
+      itemSupplierItemCode: wrrItems.itemCode,
+      itemCustomerItemCode: wrrItems.customerItemCode,
+      itemManufactureDate: wrrItems.manufactureDate,
+      itemRemarks: wrrItems.remarks,
       itemUom: wrrItems.uom,
       itemUnitCbm: wrrItems.unitCbm,
       itemPutawayLocationId: wrrItems.putawayLocationId,
@@ -301,6 +317,10 @@ export async function getWrrDocument(
       itemId: row.itemItemId,
       itemCode: row.itemItemCode,
       itemName: row.itemItemName,
+      supplierItemCode: row.itemSupplierItemCode,
+      customerItemCode: row.itemCustomerItemCode,
+      manufactureDate: row.itemManufactureDate,
+      remarks: row.itemRemarks,
       uom: row.itemUom ?? "",
       unitCbm: Number(row.itemUnitCbm ?? 0),
       putawayLocationId: row.itemPutawayLocationId,
@@ -323,6 +343,7 @@ export async function getWrrDocument(
     stagedByUserId: first.stagedByUserId,
     stagedByDisplayName: first.stagedByDisplayName,
     createdAt: first.createdAt,
+    confirmedAt: first.confirmedAt,
     items,
   };
 }

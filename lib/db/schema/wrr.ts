@@ -4,7 +4,7 @@
 // independently `db-migration-verifier`-verified schema amendment and is
 // intentionally NOT scaffolded here — it is added once its own
 // verification pass is complete.
-import { pgTable, uuid, varchar, text, integer, decimal, timestamp, index, unique, check } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, text, integer, decimal, date, timestamp, index, unique, check } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { flowTypeEnum, wrrStatusEnum, conformanceStatusEnum, nonConformanceReasonEnum } from "./enums";
 import { parties } from "./parties";
@@ -36,6 +36,8 @@ export const wrrItems = pgTable("wrr_items", {
   itemCode: varchar("item_code", { length: 100 }), // Supplier Part Number from CIPL
   customerItemCode: varchar("customer_item_code", { length: 100 }), // Customer Part Number from CIPL
   lotNumber: varchar("lot_number", { length: 100 }).notNull(), // Source business lot number from the WRR
+  manufactureDate: date("manufacture_date"), // Supplier-declared date, copied to lots on receipt
+  remarks: text("remarks"), // CIPL/receiving note; never an inventory adjustment
   expectedQty: integer("expected_qty").notNull(),
   scannedQty: integer("scanned_qty").default(0).notNull(),
   unitCbm: decimal("unit_cbm", { precision: 10, scale: 4 }).notNull(),

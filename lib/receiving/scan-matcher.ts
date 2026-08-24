@@ -23,6 +23,7 @@ export type WrrLine = {
   /** Visible item code accepted as the camera-free manual fallback. */
   itemCode?: string | null;
   lotNumber: string;
+  manufactureDate?: string | null;
   expectedQty: number;
   scannedQty: number;
   disposition: "store" | "inspect";

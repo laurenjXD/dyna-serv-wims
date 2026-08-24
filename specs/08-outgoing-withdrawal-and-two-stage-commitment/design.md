@@ -1,7 +1,7 @@
 # Outgoing Withdrawal & Two-Stage Commitment — Design
 
 Status: Approved
-Updated: 2026-08-24 (Dispatch-time barcode scanning amendment)
+Updated: 2026-08-25 (Multi-item Pick Lists tab workflow amendment)
 
 ## 1. Design intent
 
@@ -66,6 +66,26 @@ app/(authenticated)/
 **2026-08-09 restructuring — what actually exists today.** `inventory/page.tsx` now exists and matches this route block's originally-approved path (superseding the 2026-08-08 registry note that had temporarily renamed it to `/pick-lists`). It currently holds exactly two tabs, moved verbatim from what had briefly existed as standalone sibling routes: **Pick Lists** (the list of committed pick lists, formerly `pick-lists/page.tsx`) and **Ledger** (the read-only Outgoing Ledger, formerly `outgoing-ledger/page.tsx`). The item-selection/FIFO-allocation/pick-list-generation UI this section's original text describes ("item selection and pick-list generation") is **not yet built** — this is an open gap, tracked here rather than silently treated as done. The former standalone `outgoing-ledger/page.tsx` route no longer exists as a separate sibling; it is the Ledger tab on `inventory/page.tsx`. The floor pick/dispatch execution routes under `pick-lists/[pickListId]/...` are unchanged and were not moved.
 
 The final route naming must align with `05` and `10`. The earlier desktop three-panel pattern (`search | cart | summary`) may remain an office request-builder enhancement, but it is not the floor baseline. Floor pick/dispatch uses a single-column, one-task-per-screen pattern at 375–430px with no persistent sidebar during active scanning.
+
+### 3.1 Multi-item Pick Lists-tab draft
+
+The **Pick Lists** tab is the office creation surface. It starts with an empty, client-local draft and does not create a database record or reservation while the user is adding, changing, or removing lines.
+
+```text
+Pick Lists tab
+  → choose one Organization + Inventory Model
+  → add multiple item-code rows
+  → select the source lot/location and boxes for each row
+  → review the table-like draft queue
+  → Generate Pick List (one server command)
+  → atomic reservations + one pick_list + one committed line set
+  → request pick-list PDF from the immutable committed snapshot
+  → To Pick queue
+```
+
+Each row displays item code, customer item code, item description, lot number, selected location, boxes, UOM/SPQ, and source availability. The UI may show the FIFO/FEFO recommendation, but every selection is revalidated by the server. The draft can contain many item codes, but only one Organization and Inventory Model; a mixed-organization or mixed-model request is rejected before any reservation is made.
+
+The existing direct single-item Stock View control is replaced by a navigation affordance to this draft. It must not create a one-line list through a separate implementation path.
 
 The `/outgoing` page header exposes only actions that have an immediate operational result. A generic Filter button is omitted unless a corresponding filter panel is implemented in the active view; contextual controls belong beside the queue or ledger they affect.
 

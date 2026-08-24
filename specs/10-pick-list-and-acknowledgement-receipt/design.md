@@ -1,7 +1,7 @@
 # Pick List & Acknowledgement Receipt — Design
 
 Status: Approved
-Updated: 2026-08-05
+Updated: 2026-08-25 — Multi-item pick-list draft and generation amendment
 
 ## 1. Design intent
 
@@ -75,6 +75,8 @@ Generation validates the event and reloads authoritative source data. A repeated
 
 The pick list snapshot includes operational identity and instructions required by the floor: item code/description, barcode where approved, customer item code, canonical `lot_number`, source location, quantity/UOM, SPQ/boxes, flow, references, and price fields required by the settled document model.
 
+One snapshot may contain multiple item-code lines and, where stock is distributed, multiple source lot/location rows for an item. It carries one destination Organization and Inventory Model from the committed parent `pick_list`. The PDF table renders every committed row in the same order as the authoritative snapshot; it does not render or depend on the editable pre-commit draft.
+
 ### 4.2 Acknowledgement receipt snapshot
 
 The acknowledgement receipt snapshot includes the dispatched result, destination/party, line quantities/UOMs, approved lot/reference fields, document references, pricing, totals, date/time, and signature/handoff fields.
@@ -123,6 +125,8 @@ Document generation failure never rolls back a committed inventory transaction. 
 
 ### 6.1 Pick List printed fields
 
+The pick-list form/detail/print view is a read-only snapshot. Its operational line values are derived by `08` from available Master Inventory (`items`, `lots`, and `lot_location_balances`/locations) when allocation is committed, then frozen in `pick_list_items`; no document-side CRUD is permitted.
+
 | Field | Source | Format / Notes |
 | --- | --- | --- |
 | Document number | server-generated | `PL-{YYYY}-{NNNNNN}`, e.g. `PL-2026-000001` |
@@ -131,6 +135,7 @@ Document generation failure never rolls back a committed inventory transaction. 
 | Warehouse address | configuration | |
 | Party name | `parties.name` snapshot | Rendered value frozen at generation |
 | Party code | `parties.code` snapshot | |
+| Delivery to / address | `parties.name`, `address_1`, and `address_2` snapshot | Organization master data; no pick-list entry field |
 | Flow type | `pick_lists.flow_type` | Displayed as: VMI / Trading / Supplies |
 | *Per line:* item code | `pick_list_items.item_code` | Roboto Mono; first/most-prominent column |
 | *Per line:* item name | `pick_list_items.item_description` snapshot | |
@@ -139,6 +144,11 @@ Document generation failure never rolls back a committed inventory transaction. 
 | *Per line:* qty to pick | `pick_list_items.qty` | Roboto Mono |
 | *Per line:* UOM | `items.uom` snapshot | |
 | *Per line:* unit CBM | `items.volume_cbm` snapshot | 4 decimal places |
+| *Per line:* SPQ | `pick_list_items.spq` | Master Inventory packaging snapshot |
+| *Per line:* number of packages | `pick_list_items.number_of_boxes` | Master Inventory/allocation-derived box count |
+| Totals | `pick_list_items` quantities and package counts grouped by UOM | Derived, never typed into the pick list |
+| Delivery instructions / remarks | N/A in v1 | This is not inferable from Master Inventory and remains outside the pick-list document until a separately approved delivery-instruction owner exists. |
+| Client D.R. No. / DGC D.R. No. / delivery date | N/A in v1 | These are delivery-scheduling references, not Master Inventory data; `19` remains deferred. Do not substitute the pick-list number or invent a value. |
 | Commitment reference | `inventory_commitments.commitment_number` | |
 | Authorized by | display name of pick-list generator user | |
 | Printed by | actor recorded in `document_events` at print time | |

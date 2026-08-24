@@ -83,6 +83,18 @@ export type CommitWrrLineResult = { ok: true } | { ok: false; errors: string[] }
 export type CancelWrrResult = { ok: true } | { ok: false; errors: string[] };
 export type UpdateWrrResult = { ok: true } | { ok: false; errors: string[] };
 
+export type UpdateWrrLineInput = {
+  id: string;
+  lotNumber: string;
+  expectedQty: number;
+  unitCbm: number;
+  uom: string;
+  itemCode?: string | null;
+  customerItemCode?: string | null;
+  manufactureDate?: string | null;
+  remarks?: string | null;
+};
+
 // ---------------------------------------------------------------------------
 // Internal: fetch WRR document with items for action context
 // ---------------------------------------------------------------------------
@@ -140,6 +152,7 @@ async function fetchWrrForAction(
       // a camera or hardware scanner is unavailable.
       itemCode: (enrolledItem?.code ?? line.itemCode ?? null) as string | null,
       lotNumber: line.lotNumber as string,
+      manufactureDate: (line.manufactureDate ?? null) as string | null,
       expectedQty: line.expectedQty as number,
       scannedQty: line.scannedQty as number,
       disposition: line.disposition as "store" | "inspect",
@@ -274,6 +287,8 @@ export async function createWrr(
           itemCode: line.itemCode ?? null,
           customerItemCode: line.customerItemCode ?? null,
           lotNumber: line.lotNumber,
+          manufactureDate: line.manufactureDate ?? null,
+          remarks: line.remarks ?? null,
           expectedQty: line.expectedQty,
           unitCbm: String(line.unitCbm),
           uom: line.uom,
@@ -362,6 +377,44 @@ export async function updateWrrHeader(
       updatedAt: new Date(),
     }).where(and(eq(wrrDocuments.id, wrrId), eq(wrrDocuments.status, "staged_pending_arrival"))).returning({ id: wrrDocuments.id });
     return updated.length === 1 ? { ok: true } satisfies UpdateWrrResult : { ok: false, errors: ["Only staged WRRs can be edited."] } satisfies UpdateWrrResult;
+  });
+  return result.kind === "unauthenticated" ? { ok: false, errors: ["forbidden"] } : result.value;
+}
+
+/** Updates expected-line document values only while the WRR remains staged. */
+export async function updateWrrLines(
+  resolver: RequestAuthorizationResolver,
+  wrrId: string,
+  lines: UpdateWrrLineInput[],
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+): Promise<UpdateWrrResult> {
+  const permission = await requirePermission(resolver, "receiving.confirm");
+  if (permission.kind !== "authorized") return { ok: false, errors: ["forbidden"] };
+  if (!Array.isArray(lines) || lines.length === 0) return { ok: false, errors: ["At least one expected line is required."] };
+  for (const line of lines) {
+    if (!line.id || !line.lotNumber.trim() || !line.uom.trim() || line.expectedQty <= 0 || line.unitCbm <= 0) {
+      return { ok: false, errors: ["Each expected line needs a lot, quantity, UOM, and unit CBM."] };
+    }
+    if (line.manufactureDate && !/^\d{4}-\d{2}-\d{2}$/.test(line.manufactureDate)) {
+      return { ok: false, errors: ["Manufacturing dates must use YYYY-MM-DD."] };
+    }
+  }
+
+  const result = await withRlsTransaction(rlsDeps, async (tx) => {
+    const database = tx.db as DbLike;
+    const documents = await database.select({ status: wrrDocuments.status }).from(wrrDocuments).where(eq(wrrDocuments.id, wrrId));
+    if (documents.length !== 1 || documents[0].status !== "staged_pending_arrival") {
+      return { ok: false, errors: ["Expected lines can only be edited while the WRR is staged."] } satisfies UpdateWrrResult;
+    }
+    for (const line of lines) {
+      const changed = await database.update(wrrItems).set({
+        lotNumber: line.lotNumber.trim(), expectedQty: line.expectedQty, unitCbm: String(line.unitCbm), uom: line.uom.trim(),
+        itemCode: line.itemCode?.trim() || null, customerItemCode: line.customerItemCode?.trim() || null,
+        manufactureDate: line.manufactureDate || null, remarks: line.remarks?.trim() || null,
+      }).where(and(eq(wrrItems.id, line.id), eq(wrrItems.wrrId, wrrId))).returning({ id: wrrItems.id });
+      if (changed.length !== 1) return { ok: false, errors: ["One or more expected lines no longer belong to this WRR."] } satisfies UpdateWrrResult;
+    }
+    return { ok: true } satisfies UpdateWrrResult;
   });
   return result.kind === "unauthenticated" ? { ok: false, errors: ["forbidden"] } : result.value;
 }
@@ -857,6 +910,7 @@ export async function commitWrrLine(
             pezaNumber: doc.pezaNumber,
             commercialInvoiceNo: doc.commercialInvoiceNo,
             ipNumber: doc.ipNumber,
+            manufactureDate: line.manufactureDate,
           })
           .returning({ id: lots.id });
 

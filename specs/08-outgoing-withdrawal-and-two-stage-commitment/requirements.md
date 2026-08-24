@@ -1,7 +1,7 @@
 # Outgoing Withdrawal & Two-Stage Commitment — Requirements
 
 Status: Approved
-Updated: 2026-08-24 (Dispatch-time barcode scanning amendment)
+Updated: 2026-08-25 (Multi-item Pick Lists tab workflow amendment)
 
 ## 1. Purpose and scope
 
@@ -39,9 +39,13 @@ The Outgoing page (`/outgoing`) features 2 primary sub-tabs:
 
 ### R1. Pick-list generation from Stock View
 
-1. An authorized user SHALL initiate pick-list generation directly from **Stock View** (`/inventory`) specifying destination Organization, **Inventory Model** (`vmi`, `trading`, `supplies`), and item quantities.
-2. The command SHALL validate active item references, Organization/Inventory Model scope, UOM, and SPQ rules.
-3. The command SHALL refuse allocation if `item_code_is_provisional` is true for any requested line, displaying a 3-component error (**What happened**, **Why it failed**, **Next Action / Solution**).
+1. An authorized user SHALL initiate pick-list generation from the **Pick Lists** tab of Master Inventory (`/inventory?tab=pick-lists`). One draft selects exactly one destination Organization and one **Inventory Model** (`vmi`, `trading`, `supplies`).
+2. A draft SHALL allow multiple item-code lines. Each line records item code, selected lot/location, quantity in boxes, UOM/SPQ, customer item code, and description. The same item may occupy multiple lines only when a distinct source lot/location is required.
+3. The user SHALL review the draft in a table-like queue before generation. Removing or editing a draft line changes only the draft; it does not reserve stock.
+4. **Generate Pick List** SHALL validate and commit every draft line atomically into one `pick_list`. It SHALL either reserve all lines and create one document number, or reserve none.
+5. On a successful commitment, the system SHALL create the operational pick-list PDF from the committed snapshot and expose it for preview/download/print. A PDF failure must surface document attention without reversing the committed pick list.
+6. The command SHALL validate active item references, Organization/Inventory Model scope, UOM, and SPQ rules.
+7. The command SHALL refuse allocation if `item_code_is_provisional` is true for any requested line, displaying a 3-component error (**What happened**, **Why it failed**, **Next Action / Solution**).
 
 ### R2. FIFO/FEFO allocation & Stage 1 commitment
 
@@ -72,6 +76,8 @@ The Outgoing page (`/outgoing`) features 2 primary sub-tabs:
 ## 5. Acceptance criteria
 
 - [ ] Pick list generation initiates directly from Stock View (`/inventory`).
+- [ ] A Pick Lists-tab draft supports one Organization and multiple item-code/source-location lines, then commits them as one atomic pick list.
+- [ ] A successful committed multi-item pick list exposes its generated PDF without using the PDF as the source of inventory truth.
 - [ ] User-facing UI labels use Organization, Inventory Model, Stock View, Delivery Receipt / Acknowledgement Receipt, Outgoing Ledger, and Logistics.
 - [ ] Stage 1 commitment increments `qty_committed`; Stage 2 dispatch decrements `qty_remaining` and generates Delivery Receipt / Acknowledgement Receipt.
 - [ ] 3-component error feedback is displayed on all validation/scan errors.

@@ -9,7 +9,6 @@
 // Surface: Office. Permission gate: receiving.confirm.
 // The createWrr action stages the WRR header and every expected line together.
 
-import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
@@ -18,6 +17,7 @@ import type { UploadCiplFileResult } from "@/lib/actions/receiving";
 import { db } from "@/lib/db/client";
 import { getActiveSupplierParties, listActiveWrrItemOptions } from "@/lib/db/queries/items";
 import { WrrNewForm } from "./_components/wrr-new-form";
+import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 
 // ─── Inline server action ─────────────────────────────────────────────────────
 
@@ -51,6 +51,10 @@ async function handleCreateWrr(formData: FormData): Promise<void> {
         (formData.get(`line_${i}_itemCode`) as string | null) || null,
       customerItemCode:
         (formData.get(`line_${i}_customerItemCode`) as string | null) || null,
+      manufactureDate:
+        (formData.get(`line_${i}_manufactureDate`) as string | null) || null,
+      remarks:
+        (formData.get(`line_${i}_remarks`) as string | null) || null,
     });
   }
 
@@ -136,23 +140,7 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
 
   return (
     <div className="mx-auto max-w-container">
-      {/* Breadcrumb */}
-      <nav aria-label="Breadcrumb" className="mb-4">
-        <ol className="flex items-center gap-1 font-body text-body-sm text-text-grey">
-          <li>
-            <Link
-              href="/receiving"
-              className="inline-flex h-11 items-center rounded hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            >
-              Receiving Queue
-            </Link>
-          </li>
-          <li aria-hidden="true">/</li>
-          <li aria-current="page" className="font-body text-body-sm text-on-surface">
-            New WRR
-          </li>
-        </ol>
-      </nav>
+      <PageBreadcrumb backHref="/receiving" backLabel="Receiving Queue" currentLabel="New WRR" />
 
       <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
         New Warehouse Receipt Record

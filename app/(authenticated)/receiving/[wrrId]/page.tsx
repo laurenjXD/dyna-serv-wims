@@ -26,6 +26,7 @@ import { startReceiving, getCiplSignedUrl, cancelWrr } from "@/lib/actions/recei
 import type { WrrItemRow } from "@/lib/db/queries/receiving";
 import { WRRUnitLabelGenerator } from "@/components/barcode/WRRUnitLabelGenerator";
 import { CiplDocumentLink, type SignedUrlResult } from "./_components/CiplDocumentLink";
+import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -112,26 +113,7 @@ export default async function WrrDetailPage({ params }: PageProps) {
 
   return (
     <div className="mx-auto max-w-container">
-      {/* Breadcrumb */}
-      <nav aria-label="Breadcrumb" className="mb-4">
-        <ol className="flex items-center gap-1 font-body text-body-sm text-text-grey">
-          <li>
-            <Link
-              href="/receiving"
-              className="inline-flex h-11 items-center rounded hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            >
-              Receiving Queue
-            </Link>
-          </li>
-          <li aria-hidden="true">/</li>
-          <li
-            aria-current="page"
-            className="font-mono text-mono-md text-on-surface"
-          >
-            {wrr.wrrNumber}
-          </li>
-        </ol>
-      </nav>
+      <PageBreadcrumb backHref="/receiving" backLabel="Receiving Queue" currentLabel={wrr.wrrNumber} monoCurrent />
 
       {/* Page heading + status badge */}
       <div className="flex flex-wrap items-center gap-3">
@@ -186,6 +168,10 @@ export default async function WrrDetailPage({ params }: PageProps) {
             <dd className="mt-1 font-body text-body-md text-on-surface">
               {wrr.createdAt.toLocaleString()}
             </dd>
+          </div>
+          <div>
+            <dt className="font-label text-label text-text-grey">Received Date</dt>
+            <dd className="mt-1 font-body text-body-md text-on-surface">{wrr.confirmedAt?.toLocaleString() ?? "Pending receipt"}</dd>
           </div>
           <div>
             <dt className="font-label text-label text-text-grey">Status</dt>
@@ -272,6 +258,12 @@ export default async function WrrDetailPage({ params }: PageProps) {
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                     Item Code
                   </th>
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                    Customer Code
+                  </th>
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                    Mfg. Date
+                  </th>
                   <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
                     Expected Qty
                   </th>
@@ -280,6 +272,9 @@ export default async function WrrDetailPage({ params }: PageProps) {
                   </th>
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                     Disposition
+                  </th>
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                    Remarks
                   </th>
                   <th className="px-4 py-3 text-center font-label text-label uppercase tracking-[0.05em] text-text-grey">
                     Labels
@@ -293,10 +288,11 @@ export default async function WrrDetailPage({ params }: PageProps) {
                       {item.lotNumber}
                     </td>
                     <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {item.itemCode ?? (
-                        <span className="text-status-neutral">—</span>
-                      )}
+                      <span className="block">Dyna-Serv: {item.itemCode ?? "—"}</span>
+                      <span className="mt-1 block text-text-grey">Supplier: {item.supplierItemCode ?? "—"}</span>
                     </td>
+                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">{item.customerItemCode ?? "—"}</td>
+                    <td className="px-4 py-3 font-body text-body-md text-on-surface">{item.manufactureDate ?? "—"}</td>
                     <td className="px-4 py-3 text-right font-mono text-mono-md text-on-surface">
                       {item.expectedQty}
                     </td>
@@ -310,6 +306,7 @@ export default async function WrrDetailPage({ params }: PageProps) {
                         {item.disposition === "store" ? "STORE" : "INSPECT"}
                       </span>
                     </td>
+                    <td className="max-w-56 px-4 py-3 font-body text-body-md text-text-grey">{item.remarks ?? "—"}</td>
                     <td className="px-4 py-3 text-center">
                       <WRRUnitLabelGenerator
                         wrrItemId={item.id}

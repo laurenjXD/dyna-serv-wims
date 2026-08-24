@@ -19,6 +19,7 @@ import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { createTransfer } from "@/lib/actions/transfers";
 import { TransferLineItems } from "./_components/transfer-line-items";
+import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 
 // ─── Inline server action ─────────────────────────────────────────────────────
 
@@ -87,23 +88,7 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
 
   return (
     <div className="mx-auto max-w-container">
-      {/* Breadcrumb */}
-      <nav aria-label="Breadcrumb" className="mb-4">
-        <ol className="flex items-center gap-1 font-body text-body-sm text-text-grey">
-          <li>
-            <Link
-              href="/transfers"
-              className="inline-flex h-11 items-center rounded hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            >
-              Transfer Queue
-            </Link>
-          </li>
-          <li aria-hidden="true">/</li>
-          <li aria-current="page" className="font-body text-body-sm text-on-surface">
-            New Transfer
-          </li>
-        </ol>
-      </nav>
+      <PageBreadcrumb backHref="/transfers" backLabel="Transfer Queue" currentLabel="New Transfer" />
 
       <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
         New Transfer Request

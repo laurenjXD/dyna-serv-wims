@@ -1,7 +1,7 @@
 # Outgoing Withdrawal & Two-Stage Commitment — Implementation Plan
 
 Status: Approved
-Updated: 2026-08-24 (Dispatch-time barcode scanning amendment)
+Updated: 2026-08-25 (Multi-item Pick Lists tab workflow amendment)
 
 ## Implementation gate
 
@@ -77,6 +77,10 @@ Testing: Unit allocation/validation tests; real-Postgres concurrency/RLS integra
 Testing: Unit commit-precondition/idempotency tests; real-Postgres transaction/concurrency/RLS integration; Playwright commit flows.
 
 - [ ] Implement the online commit command with actor/scope, request version, allocation, current lots, SPQ/UOM, approval, and idempotency validation.
+- [ ] Build the Pick Lists-tab multi-item draft: one Organization/Inventory Model header, repeatable item-code rows, per-row lot/location and box selection, and a table-like review queue.
+- [ ] Replace the direct single-item Stock View generation path with the multi-item draft submission path; keep no parallel commit behavior.
+- [ ] Submit every draft line through one all-or-nothing commitment command and create exactly one `pick_list` for the draft.
+- [ ] Request the pick-list PDF from the committed snapshot and expose document readiness/attention without rolling back the reservation.
 - [ ] Write durable reservation/commitment state using the approved core representation.
 - [ ] Generate exactly one operational `pick_list` and `pick_list_items` snapshot on successful commitment.
 - [ ] Preserve requested/committed/executed quantities distinctly where required.
@@ -192,3 +196,5 @@ Testing: Full applicable matrix below.
 - [x] Design-system review passes.
 - [x] Product owner approval — Name: Granted in conversation Date: 2026-08-24
 - [x] Second approver approval — Name/Role: Granted in conversation Date: 2026-08-24
+- [x] Multi-item Pick Lists-tab amendment — Product owner approval: Granted in conversation, 2026-08-25
+- [x] Multi-item Pick Lists-tab amendment — Second approver approval: Granted in conversation, 2026-08-25

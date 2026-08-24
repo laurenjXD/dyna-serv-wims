@@ -1,7 +1,7 @@
 # Incoming Receiving — Requirements
 
 Status: Approved
-Updated: 2026-08-24 (Product Owner decision: batch putaway model adopted, per-unit model retired) — resolves the `fix-it-felix` merge contradiction flagged the same day (§5a Item 3, now closed). R2a's batch putaway allocation is now the sole authoritative `store`/`inspect`-line commit model, implemented in `commitWrrLine` (`lib/actions/receiving.ts`). The 2026-08-20/21 per-unit scan-suggest-commit-per-unit model (the prior R3.8-R3.13 wording, `commitStoreUnit`/`commitInspectLine`, and the per-unit idempotency-key machinery) is retired, removed from this document, and deleted from the codebase. See `specs/00-steering/revision-log.md`'s 2026-08-24 entry for the full account. This also retains the 2026-08-23 automatic WRR queue filtering/simplified page actions (R2b), which are unaffected by this change.
+Updated: 2026-08-24 (Product Owner decision: batch putaway model adopted; WRR document-field ownership amendment) — resolves the `fix-it-felix` merge contradiction.
 
 ## 1. Purpose and scope
 
@@ -40,8 +40,8 @@ The Receiving page (`/receiving`) features 4 primary sub-tabs:
 
 ### R1. CIPL/WRR pre-receiving staging
 
-1. An authorized back-office user SHALL create a WRR capturing WRR number, CIPL/invoice reference, source Organization, and **Inventory Model** (`vmi`, `trading`, `supplies`).
-2. Each expected line SHALL specify item, WRR `lot_number`, expected quantity, UOM, and inbound **disposition** (`store` or `inspect`).
+1. An authorized back-office user SHALL create, edit, and delete a pre-receiving WRR capturing its CIPL/invoice reference, MAWB/MBL, IP reference, source Organization, and **Inventory Model** (`vmi`, `trading`, `supplies`). The actual received date is system-recorded at receipt confirmation, not manually editable.
+2. Each expected line SHALL specify the selected item (showing Dyna-Serv and supplier item codes), customer item code, WRR `lot_number` (the shipping lot), optional manufacture date, expected in-transit quantity/UOM, and optional remarks. Actual received quantity/UOM is derived from accepted scans/receipt confirmation and is never a free-form inventory adjustment.
 3. Staged WRRs SHALL NOT increment active inventory or available lots.
 
 ### R2. Supplier advance-notice intake
@@ -187,6 +187,7 @@ The Receiving page (`/receiving`) features 4 primary sub-tabs:
 
 ## 5. Acceptance criteria
 
+<<<<<<< HEAD
 - [ ] A staged WRR with CIPL reference and expected lines can be created, reviewed, and printed without affecting active inventory.
 - [ ] Floor scans match expected WRR lines, visibly track remaining quantities, and reject wrong/duplicate/over-quantity/unknown/flow-type-mismatch scans safely.
 - [ ] Unknown item handling routes to online authorized enrollment or an explicit exception; it never silently creates an item offline.
@@ -233,3 +234,13 @@ The Receiving page (`/receiving`) features 4 primary sub-tabs:
 3. All error states SHALL display 3-component error feedback (What happened, Why it failed, Next Action / Solution), consistent with R3.3's scan-exception feedback.
 4. The Work Queue's status dropdown SHALL apply its filter immediately when its value changes, while preserving the selected value in the URL for refresh/sharing/pagination; it SHALL NOT require a separate visible Apply button.
 5. Receiving page headers SHALL omit a generic Filter action when contextual filter controls already exist within the active tab.
+=======
+- [ ] Receiving sub-tabs (Work Queue, Receive, WRRs, Incoming Ledger) render cleanly.
+- [ ] A staged WRR form supports CRUD of its documented commercial/header and expected-line fields; its read-only detail and printable view show the same values plus system-derived actual receipt values.
+- [ ] User-facing UI labels use Organization, Inventory Model, Organization Portal, and Inspection exclusively.
+- [ ] Batch Store All/Hold All validates declared quantity, presence attestation, active locations, and per-location CBM before posting.
+- [ ] Per-line store/hold commits update distributed lot balances and incoming ledger atomically.
+- [ ] 3-component error feedback is displayed on all scan and receiving errors.
+- [ ] Visual design system tokens (#2563EB, #0F172A, #64748B, #F3F6FC, #FFFFFF) and DM Sans heading + Glacial Indifference body typography are fully applied.
+- [ ] WRR status changes refresh the server-filtered queue immediately without a separate Apply action.
+>>>>>>> origin/fix-it-felix
