@@ -61,15 +61,15 @@ export function PickListGenerator({ itemId, flowType, organizationId, strategy, 
   return (
     <div className="basis-full rounded border border-outline-variant bg-surface-white p-4 shadow-elevation-1 md:p-5">
       <div className="flex items-start justify-between gap-3">
-        <div><h3 className="font-heading text-title-lg font-bold text-on-surface">Create pick list</h3><p className="mt-1 font-body text-body-sm text-text-grey">Enter a quantity, then accept the safe {strategy} plan or request another pallet.</p></div>
+        <div><h3 className="font-heading text-title-lg font-bold text-on-surface">Create pick list</h3><p className="mt-1 font-body text-body-sm text-text-grey">Enter the number of boxes, then accept the safe {strategy} plan or request another pallet.</p></div>
         <button type="button" onClick={() => setOpen(false)} className="h-10 rounded border border-outline-variant px-3 font-label text-label font-bold text-on-surface">Close</button>
       </div>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
-        <label className="grid content-start gap-2 font-label text-label font-bold text-on-surface">Quantity to pick
+        <label className="grid content-start gap-2 font-label text-label font-bold text-on-surface">Boxes to pick
           <div className="flex h-12 items-center rounded border border-outline-variant bg-surface-white px-3 focus-within:ring-2 focus-within:ring-primary">
             <input value={qty} onChange={(event) => setQty(event.target.value)} inputMode="numeric" min="1" max={totalAvailable} type="number" className="min-w-0 flex-1 bg-transparent font-mono text-mono-md text-on-surface outline-none" placeholder={`Max ${totalAvailable}`} />
-            <span className="font-body text-body-sm text-text-grey">{uom}</span>
+            <span className="font-body text-body-sm text-text-grey">boxes</span>
           </div>
         </label>
 

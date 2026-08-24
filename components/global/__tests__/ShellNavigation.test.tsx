@@ -148,7 +148,7 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
     expect(screen.getByTestId("nav-entry-inventory")).toBeInTheDocument();
   });
 
-  it("marks only the resolved active entry with aria-current='page', including for a dynamic-segment path (R3.6/R3.7)", () => {
+  it("keeps Receiving highlighted for a dynamic receiving-detail route (R3.6/R3.7)", () => {
     const contextWithReceiving: Pick<AuthorizationContext, "grants"> = {
       grants: [{ resource: "receiving", action: "view", scopeKind: "global" }],
     };
@@ -159,12 +159,8 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
         currentPath="/receiving/wrr-123"
       />,
     );
-    // /receiving/wrr-123 resolves to the "receiving-detail" entry, not the
-    // "receiving" list entry (active-route.ts's dynamic-segment matching).
-    const receivingLink = screen.queryByTestId("nav-entry-receiving");
-    if (receivingLink) {
-      expect(receivingLink).not.toHaveAttribute("aria-current", "page");
-    }
+    const receivingLink = screen.getByTestId("nav-entry-receiving");
+    expect(receivingLink).toHaveAttribute("aria-current", "page");
   });
 
   it("gives the active office destination a persistent rail/icon treatment and inactive rows a hover affordance", () => {

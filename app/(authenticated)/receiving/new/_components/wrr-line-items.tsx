@@ -124,7 +124,7 @@ export function WrrLineItems({ flowType, vendorPartyId, itemOptions }: { flowTyp
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <input type="hidden" name={`line_${index}_itemId`} value={line.itemId} />
             {/* Lot Number — required */}
-            <div>
+            <div className="order-1">
               <label
                 htmlFor={`line-${index}-lotNumber`}
                 className="block font-label text-label text-text-grey"
@@ -148,7 +148,7 @@ export function WrrLineItems({ flowType, vendorPartyId, itemOptions }: { flowTyp
             </div>
 
             {/* Expected Qty — required */}
-            <div>
+            <div className="order-2">
               <label
                 htmlFor={`line-${index}-expectedQty`}
                 className="block font-label text-label text-text-grey"
@@ -176,7 +176,7 @@ export function WrrLineItems({ flowType, vendorPartyId, itemOptions }: { flowTyp
             </div>
 
             {/* Unit CBM — required */}
-            <div>
+            <div className="order-4">
               <label
                 htmlFor={`line-${index}-unitCbm`}
                 className="block font-label text-label text-text-grey"
@@ -202,7 +202,7 @@ export function WrrLineItems({ flowType, vendorPartyId, itemOptions }: { flowTyp
             </div>
 
             {/* UOM — required */}
-            <div>
+            <div className="order-5">
               <label
                 htmlFor={`line-${index}-uom`}
                 className="block font-label text-label text-text-grey"
@@ -226,7 +226,7 @@ export function WrrLineItems({ flowType, vendorPartyId, itemOptions }: { flowTyp
             </div>
 
             {/* Disposition — required, defaults to store per design.md §7.1 */}
-            <div>
+            <div className="order-6">
               <label
                 htmlFor={`line-${index}-disposition`}
                 className="block font-label text-label text-text-grey"
@@ -257,7 +257,7 @@ export function WrrLineItems({ flowType, vendorPartyId, itemOptions }: { flowTyp
             </div>
 
             {/* Item Code — limited to items registered under the selected vendor organization. */}
-            <div>
+            <div className="order-3">
               <label
                 htmlFor={`line-${index}-itemCode`}
                 className="block font-label text-label text-text-grey"
@@ -284,7 +284,7 @@ export function WrrLineItems({ flowType, vendorPartyId, itemOptions }: { flowTyp
             </div>
 
             {/* Customer Item Code — optional */}
-            <div>
+            <div className="order-7">
               <label
                 htmlFor={`line-${index}-customerItemCode`}
                 className="block font-label text-label text-text-grey"

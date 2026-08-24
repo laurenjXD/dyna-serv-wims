@@ -110,11 +110,11 @@ describe("EnrollmentPage (app/(authenticated)/enrollment/page.tsx)", () => {
     expect(source).toContain('"locations.manage"');
   });
 
-  it("shows the sample-data control only when its three required capabilities are available", () => {
+  it("does not render the sample-data control", () => {
     const source = pageSource();
-    expect(source).toContain("SampleDataButton");
-    expect(source).toContain('"receiving.confirm"');
-    expect(source).toContain("canAddSampleData");
+    expect(source).not.toContain("SampleDataButton");
+    expect(source).not.toContain('"receiving.confirm"');
+    expect(source).not.toContain("canAddSampleData");
   });
 
   // ── Entry points still land on the real /master-data/* routes — the tab

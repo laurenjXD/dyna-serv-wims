@@ -34,6 +34,7 @@ import { listInspectionAndTransferQueue } from "@/lib/db/queries/transfers";
 import { resolveInventoryTab, type TabKey } from "./_lib/resolveInventoryTab";
 import { InspectionTab } from "./_components/InspectionTab";
 import { PickListGenerator } from "./_components/PickListGenerator";
+import { LotQrViewer } from "./_components/LotQrViewer";
 import { createApprovedPickList, createPickList, requestPickListOverride } from "./actions";
 
 // ─── Status badge colors ─────────────────────────────────────────────────────
@@ -245,6 +246,7 @@ async function StockViewTab({ query, requesterUserId }: { query?: string; reques
                         <div><dt className="font-label text-label uppercase text-text-grey">Received</dt><dd className="mt-1 font-body text-body-md text-on-surface">{new Date(lot.receivedAt).toLocaleDateString()}</dd></div>
                         <div><dt className="font-label text-label uppercase text-text-grey">Status</dt><dd className="mt-1 font-mono text-mono-md text-on-surface">{lot.lotStatus}</dd></div>
                       </dl>
+                      <LotQrViewer lotId={lot.lotId} lotNumber={lot.lotNumber} itemCode={item.itemCode} />
                     </article>
                   ))}
                 </div>

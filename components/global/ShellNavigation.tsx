@@ -118,6 +118,17 @@ function isNavigableEntry(entry: RouteRegistryEntry): boolean {
   return !entry.path.includes("[");
 }
 
+/**
+ * Detail and creation routes intentionally do not appear as separate sidebar
+ * destinations. Keep their owning work area highlighted instead of leaving
+ * the user without an active navigation cue.
+ */
+function resolveNavigationActiveId(currentPath: string, activeId: string | null): string | null {
+  const path = currentPath.split("?")[0].split("#")[0].replace(/\/$/, "");
+  if (path === "/receiving" || path.startsWith("/receiving/")) return "receiving";
+  return activeId;
+}
+
 function NavLink({
   entry,
   isActive,
@@ -278,7 +289,7 @@ export function ShellNavigation({
     (entry) => entry.launchStatus !== "planned",
   );
   const presented = selectRoutesForPresentation(visible, tier).filter(isNavigableEntry);
-  const activeId = resolveActiveRouteId(currentPath);
+  const activeId = resolveNavigationActiveId(currentPath, resolveActiveRouteId(currentPath));
   const sections = groupRoutesForSidebar(presented);
   const roleLabel = roleDisplayLabel(activeRoleKeys);
 
