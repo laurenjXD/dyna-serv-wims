@@ -23,7 +23,6 @@ export type StockViewRow = {
   allocationVersion?: number;
   itemId: string;
   itemCode: string;
-  customerItemCode?: string | null;
   itemName: string;
   supplierItemCode?: string | null;
   customerItemCode?: string | null;
@@ -48,7 +47,6 @@ export type StockViewRow = {
   qtyRemaining: number;
   qtyCommitted: number;
   qtyReceived?: number;
-  spq?: number;
   volumeCbm?: string | number;
 };
 
@@ -68,7 +66,6 @@ export async function listStockView(db: DbLike): Promise<StockViewRow[]> {
       allocationVersion: lotLocationBalances.version,
       itemId: items.id,
       itemCode: items.code,
-      customerItemCode: items.customerItemCode,
       itemName: items.name,
       supplierItemCode: items.supplierItemCode,
       customerItemCode: items.customerItemCode,
@@ -93,7 +90,6 @@ export async function listStockView(db: DbLike): Promise<StockViewRow[]> {
       qtyRemaining: lotLocationBalances.qtyRemaining,
       qtyCommitted: lotLocationBalances.qtyCommitted,
       qtyReceived: lotLocationBalances.qtyReceived,
-      spq: items.spq,
       volumeCbm: items.volumeCbm,
     })
     .from(lotLocationBalances)

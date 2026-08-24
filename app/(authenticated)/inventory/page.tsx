@@ -186,6 +186,8 @@ async function StockViewTab({ query, requesterUserId }: { query?: string; reques
             </article>;
           })}
         </div>
+      </section>}
+
       <StockViewInteractiveTable
         rows={filteredRows}
         customers={customers}
