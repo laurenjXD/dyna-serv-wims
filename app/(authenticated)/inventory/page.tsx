@@ -194,15 +194,13 @@ async function StockViewTab({ query, requesterUserId }: { query?: string; reques
         </div>
       ) : (
         <div className="min-w-[760px] divide-y divide-outline-variant/30">
-          <div className="grid grid-cols-[40px_210px_minmax(220px,1fr)_120px_150px_170px] items-center gap-x-3 bg-accent-indigo-50 px-5 py-3 font-label text-label font-semibold tracking-[0.04em] text-text-grey">
-            <span aria-hidden="true" />
-            <span>Item Code</span><span>Name</span><span>UOM</span><span className="text-right">Stock Level</span><span className="pl-6">Status</span>
+          <div className="grid grid-cols-[210px_minmax(220px,1fr)_120px_150px_170px] items-center gap-x-3 bg-accent-indigo-50 px-5 py-3 font-label text-label font-semibold tracking-[0.04em] text-text-grey">
+            <span>Item Code</span><span>Description</span><span>UOM</span><span className="text-right">Stock Level</span><span className="pl-6">Status</span>
           </div>
           {items.map((item) => (
             <details key={item.itemId} className="group">
-              <summary className="grid cursor-pointer list-none grid-cols-[40px_210px_minmax(220px,1fr)_120px_150px_170px] items-center gap-x-3 px-5 py-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy hover:bg-surface-light-grey/40">
-                <ChevronRight size={22} aria-hidden="true" className="text-text-grey transition-transform group-open:rotate-90" />
-                <p className="font-mono text-mono-md font-bold text-on-surface">{item.itemCode}</p>
+              <summary className="grid cursor-pointer list-none grid-cols-[210px_minmax(220px,1fr)_120px_150px_170px] items-center gap-x-3 px-5 py-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy hover:bg-surface-light-grey/40">
+                <p className="flex items-center gap-2 font-mono text-mono-md font-bold text-on-surface"><ChevronRight size={22} aria-hidden="true" className="shrink-0 text-text-grey transition-transform group-open:rotate-90" />{item.itemCode}</p>
                 <p className="font-body text-body-md text-on-surface">{item.itemName}</p>
                 <p className="font-body text-body-md text-text-grey">{item.uom}</p>
                 <p className="text-right font-mono text-mono-lg font-bold text-on-surface">{item.availableQty.toLocaleString()}</p>

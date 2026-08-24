@@ -229,7 +229,7 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
           </div>
 
           {/* MAWB/MBL Number — optional */}
-          <div className="md:col-span-2">
+          <div>
             <label
               htmlFor="mawbMblNumber"
               className="block font-label text-label text-text-grey"

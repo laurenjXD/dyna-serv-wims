@@ -248,7 +248,7 @@ export function WrrLineItems({ flowType, vendorPartyId, itemOptions }: { flowTyp
               <input type="hidden" name={`line_${index}_itemCode`} value={line.itemCode} />
             </div>
 
-            <div className="order-4 sm:col-span-2 lg:col-span-3">
+            <div className="order-4">
               <label htmlFor={`line-${index}-itemDescription`} className="block font-label text-label text-text-grey">Item Description</label>
               <input id={`line-${index}-itemDescription`} value={line.itemDescription} readOnly placeholder="Select an item code to fill this automatically" className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-light-grey px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral" />
             </div>
@@ -278,18 +278,18 @@ export function WrrLineItems({ flowType, vendorPartyId, itemOptions }: { flowTyp
               />
             </div>
 
-            <div className="order-9 sm:col-span-2 lg:col-span-3">
+            <div className="order-9">
               <label htmlFor={`line-${index}-remarks`} className="block font-label text-label text-text-grey">
                 Remarks
               </label>
-              <textarea
+              <input
                 id={`line-${index}-remarks`}
                 name={`line_${index}_remarks`}
                 value={line.remarks}
                 onChange={(e) => updateLine(index, "remarks", e.target.value)}
-                rows={2}
+                type="text"
                 placeholder="Optional receiving or CIPL note"
-                className="mt-1 w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
               />
             </div>
           </div>
