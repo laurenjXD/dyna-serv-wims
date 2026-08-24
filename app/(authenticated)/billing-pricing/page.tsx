@@ -7,7 +7,7 @@
 //     §2 (typography — font-mono for numeric columns per §9)
 
 import Link from "next/link";
-import { Receipt } from "lucide-react";
+import { Download, Printer, Receipt } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
@@ -24,10 +24,15 @@ import {
   listTradingPolicies,
   type TradingPolicyRow,
 } from "@/lib/db/queries/trading-policies";
+import {
+  listVmiContractTerms,
+  type VmiContractTermsRow,
+} from "@/lib/db/queries/vmi-contracts";
 import { listParties } from "@/lib/db/queries/parties";
 import { listItems } from "@/lib/db/queries/items";
 import { hasTradingPriceInternalVisibility } from "@/lib/rbac/trading-visibility";
 import { VmiDailyBalanceLedgerTable } from "./_components/VmiDailyBalanceLedgerTable";
+import { VmiContractTermsTable } from "./_components/VmiContractTermsTable";
 import { TradingMarginLedgerTable } from "./_components/TradingMarginLedgerTable";
 import { TradingRateCardsTable } from "./_components/TradingRateCardsTable";
 
@@ -96,6 +101,8 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
       ? "trading"
       : tabParam === "policies"
       ? "policies"
+      : tabParam === "vmi-contracts"
+      ? "vmi-contracts"
       : "vmi";
 
   const currentYear = new Date().getFullYear();
@@ -112,15 +119,17 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
   const selectedPartyId = partyIdParam ?? partyOptions[0]?.id ?? "";
 
   // Fetch data for active tab
+  let vmiSummaryRows: VmiCbmLedgerRow[] = [];
   let vmiSummary: VmiCbmLedgerRow | null = null;
   let vmiDailyRows: Awaited<ReturnType<typeof getVmiDailyBalanceRows>> = [];
+  let vmiContractRows: VmiContractTermsRow[] = [];
   let tradingRows: TradingMarginRow[] = [];
   let policyRows: TradingPolicyRow[] = [];
   let itemOptions: { id: string; name: string; code: string }[] = [];
 
   if (activeTab === "vmi") {
-    const summaries = await getVmiCbmLedgerSummary(selectedMonth, selectedYear);
-    vmiSummary = summaries.find((s) => s.id === selectedPartyId) ?? summaries[0] ?? null;
+    vmiSummaryRows = await getVmiCbmLedgerSummary(selectedMonth, selectedYear);
+    vmiSummary = vmiSummaryRows.find((s) => s.id === selectedPartyId) ?? vmiSummaryRows[0] ?? null;
     if (selectedPartyId) {
       vmiDailyRows = await getVmiDailyBalanceRows(
         selectedPartyId,
@@ -128,6 +137,8 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
         selectedYear,
       );
     }
+  } else if (activeTab === "vmi-contracts") {
+    vmiContractRows = await listVmiContractTerms(db);
   } else if (activeTab === "trading") {
     tradingRows = await getTradingMarginLedger(
       selectedMonth,
@@ -146,6 +157,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
   }
 
   const canSeeMargin = hasTradingPriceInternalVisibility(permResult.context);
+  const vmiTotal = vmiSummaryRows.reduce((sum, r) => sum + r.subtotal, 0);
 
   return (
     <div className="mx-auto max-w-container">
@@ -155,7 +167,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
           Billing &amp; Pricing
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">
-          VMI daily balance storage ledger, Trading margin ledger, and Rate Card management.
+          VMI daily balance storage ledger, VMI contracts, Trading margin ledger, and Rate Card management.
         </p>
       </div>
 
@@ -176,6 +188,18 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
           }`}
         >
           VMI Storage Ledger
+        </Link>
+        <Link
+          href="/billing-pricing?tab=vmi-contracts"
+          role="tab"
+          aria-selected={activeTab === "vmi-contracts"}
+          className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-brand-navy ${
+            activeTab === "vmi-contracts"
+              ? "border-b-2 border-on-surface text-on-surface font-bold"
+              : "text-text-grey hover:text-on-surface"
+          }`}
+        >
+          VMI Contract Terms
         </Link>
         <Link
           href="/billing-pricing?tab=trading"
@@ -206,7 +230,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
       {/* Main Content Area */}
       <div className="mt-5 space-y-5">
         {/* Controls / Period filters for VMI and Trading */}
-        {activeTab !== "policies" && (
+        {(activeTab === "vmi" || activeTab === "trading") && (
           <form method="GET" className="flex flex-wrap items-end gap-3 rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
             <input type="hidden" name="tab" value={activeTab} />
             
@@ -275,14 +299,66 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
           </form>
         )}
 
-        {/* Tab Renderers */}
+        {/* VMI Tab: Read-Only Reference Summary Card & CBM Ledger Table */}
         {activeTab === "vmi" && (
-          <VmiDailyBalanceLedgerTable
-            summary={vmiSummary}
-            dailyRows={vmiDailyRows}
+          <>
+            <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
+              <h2 className="font-heading font-semibold text-headline-md text-on-surface">
+                {MONTHS[selectedMonth]} {selectedYear} — Summary
+              </h2>
+              <p className="mt-1 font-body text-body-sm text-text-grey">
+                VMI amounts are period averages — reference only, not your final bill.
+                The real VMI invoice is the period average from{" "}
+                <span className="font-mono text-mono-md">vmi_cbm_ledger</span>.
+              </p>
+
+              <div className="mt-4 flex flex-wrap gap-6">
+                <div>
+                  <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                    CBM Usage (avg/day)
+                  </p>
+                  <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
+                    {vmiSummaryRows.reduce((s, r) => s + r.avgDailyCbm, 0).toFixed(1)} m³
+                  </p>
+                </div>
+                <div>
+                  <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                    Parties Billed
+                  </p>
+                  <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
+                    {vmiSummaryRows.length}
+                  </p>
+                </div>
+                <div>
+                  <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                    Projected Billing Total
+                  </p>
+                  <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
+                    ${vmiTotal.toFixed(2)}
+                  </p>
+                  <p className="mt-0.5 font-body text-body-sm text-text-grey">
+                    Reference amount, not your final bill
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <VmiDailyBalanceLedgerTable
+              summary={vmiSummary}
+              dailyRows={vmiDailyRows}
+            />
+          </>
+        )}
+
+        {/* VMI Contract Terms Tab */}
+        {activeTab === "vmi-contracts" && (
+          <VmiContractTermsTable
+            rows={vmiContractRows}
+            parties={partyOptions}
           />
         )}
 
+        {/* Trading Margin Ledger Tab */}
         {activeTab === "trading" && (
           <TradingMarginLedgerTable
             rows={tradingRows}
@@ -290,6 +366,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
           />
         )}
 
+        {/* Trading Rate Cards Tab */}
         {activeTab === "policies" && (
           <TradingRateCardsTable
             rows={policyRows}
