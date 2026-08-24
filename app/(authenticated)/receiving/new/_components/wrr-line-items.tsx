@@ -21,6 +21,7 @@ interface LineState {
   unitCbm: string;
   uom: string;
   itemCode: string;
+  itemDescription: string;
   customerItemCode: string;
   manufactureDate: string;
   remarks: string;
@@ -33,6 +34,7 @@ const EMPTY_LINE: LineState = {
   unitCbm: "",
   uom: "",
   itemCode: "",
+  itemDescription: "",
   customerItemCode: "",
   manufactureDate: "",
   remarks: "",
@@ -56,7 +58,7 @@ export function WrrLineItems({ flowType, vendorPartyId, itemOptions }: { flowTyp
   // confusing in the form, retaining it would let a stale hidden itemId be
   // submitted after the operator changes vendor.
   useEffect(() => {
-    setLines((prev) => prev.map((line) => ({ ...line, itemId: "", itemCode: "", customerItemCode: "" })));
+    setLines((prev) => prev.map((line) => ({ ...line, itemId: "", itemCode: "", itemDescription: "", customerItemCode: "" })));
   }, [vendorPartyId]);
 
   const availableItems = vendorPartyId
@@ -76,6 +78,7 @@ export function WrrLineItems({ flowType, vendorPartyId, itemOptions }: { flowTyp
       ...line,
       itemId: item.id,
       itemCode: codeFor(item),
+      itemDescription: item.name,
       customerItemCode: item.customerItemCode ?? "",
       uom: item.uom,
       unitCbm: item.volumeCbm,
@@ -123,7 +126,7 @@ export function WrrLineItems({ flowType, vendorPartyId, itemOptions }: { flowTyp
             )}
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <input type="hidden" name={`line_${index}_itemId`} value={line.itemId} />
             {/* Lot Number — required */}
             <div className="order-1">
@@ -178,7 +181,7 @@ export function WrrLineItems({ flowType, vendorPartyId, itemOptions }: { flowTyp
             </div>
 
             {/* Unit CBM — required */}
-            <div className="order-4">
+            <div className="order-5">
               <label
                 htmlFor={`line-${index}-unitCbm`}
                 className="block font-label text-label text-text-grey"
@@ -204,7 +207,7 @@ export function WrrLineItems({ flowType, vendorPartyId, itemOptions }: { flowTyp
             </div>
 
             {/* UOM — required */}
-            <div className="order-5">
+            <div className="order-6">
               <label
                 htmlFor={`line-${index}-uom`}
                 className="block font-label text-label text-text-grey"
@@ -230,7 +233,7 @@ export function WrrLineItems({ flowType, vendorPartyId, itemOptions }: { flowTyp
             {/* WRR creation always stages for store; inspection remains a later workflow. */}
             <input type="hidden" name={`line_${index}_disposition`} value="store" />
 
-            {/* Item Code — limited to items registered under the selected vendor organization. */}
+            {/* Item code selection drives the read-only item description and defaults. */}
             <div className="order-3">
               <label
                 htmlFor={`line-${index}-itemCode`}
@@ -238,45 +241,30 @@ export function WrrLineItems({ flowType, vendorPartyId, itemOptions }: { flowTyp
               >
                 {itemCodeLabel(flowType)}
               </label>
-              {flowType === "trading" ? (
-                <input
-                  id={`line-${index}-itemCode`}
-                  name={`line_${index}_itemCode`}
-                  type="text"
-                  value={line.itemCode}
-                  onChange={(e) => updateLine(index, "itemCode", e.target.value)}
-                  placeholder="Enter DSGC item number"
-                  className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                />
-              ) : <>
-                <select aria-label={`Registered ${itemCodeLabel(flowType)} options`} value={line.itemId} disabled={!vendorPartyId} onChange={(e) => chooseItem(index, e.target.value)} className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface disabled:cursor-not-allowed disabled:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy">
-                  <option value="">{vendorPartyId ? "Select registered item…" : "Select organization first"}</option>
-                  {availableItems.map((item) => <option key={item.id} value={item.id}>{codeFor(item)} — {item.name}</option>)}
-                </select>
-                <input id={`line-${index}-itemCode`} name={`line_${index}_itemCode`} value={line.itemCode} onChange={(e) => updateLine(index, "itemCode", e.target.value)} placeholder="Or type item code manually" className="mt-2 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy" />
-              </>}
+              <select id={`line-${index}-itemCode`} aria-label={`Registered ${itemCodeLabel(flowType)} options`} value={line.itemId} disabled={!vendorPartyId} onChange={(e) => chooseItem(index, e.target.value)} className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface disabled:cursor-not-allowed disabled:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy">
+                <option value="">{vendorPartyId ? "Select item code…" : "Select organization first"}</option>
+                {availableItems.map((item) => <option key={item.id} value={item.id}>{codeFor(item)} — {item.name}</option>)}
+              </select>
+              <input type="hidden" name={`line_${index}_itemCode`} value={line.itemCode} />
+            </div>
+
+            <div className="order-4 sm:col-span-2 lg:col-span-3">
+              <label htmlFor={`line-${index}-itemDescription`} className="block font-label text-label text-text-grey">Item Description</label>
+              <input id={`line-${index}-itemDescription`} value={line.itemDescription} readOnly placeholder="Select an item code to fill this automatically" className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-light-grey px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral" />
             </div>
 
             {/* Customer Item Code — optional */}
-            <div className="order-6">
+            <div className="order-7">
               <label
                 htmlFor={`line-${index}-customerItemCode`}
                 className="block font-label text-label text-text-grey"
               >
                 Customer Item Code
               </label>
-              {flowType === "trading" ? (
-                <input id={`line-${index}-customerItemCode`} name={`line_${index}_customerItemCode`} type="text" value={line.customerItemCode} onChange={(e) => updateLine(index, "customerItemCode", e.target.value)} placeholder="Enter customer item code" className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy" />
-              ) : <>
-                <select aria-label="Registered customer item code options" value={line.itemId} disabled={!vendorPartyId} onChange={(e) => chooseItem(index, e.target.value)} className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface disabled:cursor-not-allowed disabled:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy">
-                  <option value="">{vendorPartyId ? "Select registered customer code…" : "Select organization first"}</option>
-                  {availableItems.filter((item) => item.customerItemCode).map((item) => <option key={item.id} value={item.id}>{item.customerItemCode} — {item.name}</option>)}
-                </select>
-                <input id={`line-${index}-customerItemCode`} name={`line_${index}_customerItemCode`} value={line.customerItemCode} onChange={(e) => updateLine(index, "customerItemCode", e.target.value)} placeholder="Or type customer item code manually" className="mt-2 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy" />
-              </>}
+              <input id={`line-${index}-customerItemCode`} name={`line_${index}_customerItemCode`} value={line.customerItemCode} onChange={(e) => updateLine(index, "customerItemCode", e.target.value)} placeholder="Filled from selected item; editable if needed" className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy" />
             </div>
 
-            <div className="order-7">
+            <div className="order-8">
               <label htmlFor={`line-${index}-manufactureDate`} className="block font-label text-label text-text-grey">
                 Manufacturing Date
               </label>
@@ -290,7 +278,7 @@ export function WrrLineItems({ flowType, vendorPartyId, itemOptions }: { flowTyp
               />
             </div>
 
-            <div className="order-8 sm:col-span-2 lg:col-span-3">
+            <div className="order-9 sm:col-span-2 lg:col-span-3">
               <label htmlFor={`line-${index}-remarks`} className="block font-label text-label text-text-grey">
                 Remarks
               </label>
