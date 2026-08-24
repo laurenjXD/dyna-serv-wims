@@ -154,13 +154,23 @@ export function ItemForm({
     }
   }, [lengthCm, widthCm, heightCm]);
 
-  const showSpqMeter = uom === "roll" || uom === "meter";
+  const isTradingModel = inventoryModel === "trading";
 
   const [spqMeterInput, setSpqMeterInput] = useState(item?.spqMeter ? String(item.spqMeter) : "");
+
+  useEffect(() => {
+    if (inventoryModel === "trading") {
+      setSpqMeterInput("750");
+    }
+  }, [inventoryModel]);
+
+  const showSpqMeter = uom === "roll" || uom === "meter";
+
   const [calcRolls, setCalcRolls] = useState("1");
   const [calcMeters, setCalcMeters] = useState("");
 
-  const factor = parseFloat(spqMeterInput);
+  const effectiveSpqMeterStr = isTradingModel ? "750" : spqMeterInput;
+  const factor = parseFloat(effectiveSpqMeterStr);
   const isValidFactor = !isNaN(factor) && factor > 0;
 
   const handleRollsChange = (val: string) => {
@@ -520,27 +530,48 @@ export function ItemForm({
             <div>
               <label htmlFor="spqMeter" className="block font-label text-label text-on-surface">
                 SPQ Meter (m/roll){" "}
-                {uom === "roll" && <span aria-hidden="true" className="text-brand-red">*</span>}
+                {(uom === "roll" || isTradingModel) && <span aria-hidden="true" className="text-brand-red">*</span>}
               </label>
-              <input
-                id="spqMeter"
-                name="spqMeter"
-                type="number"
-                min="0.01"
-                step="0.01"
-                value={spqMeterInput}
-                onChange={(e) => {
-                  setSpqMeterInput(e.target.value);
-                  const f = parseFloat(e.target.value);
-                  if (!isNaN(f) && f > 0) {
-                    const r = parseFloat(calcRolls || "1");
-                    if (!isNaN(r)) setCalcMeters(String(Math.round(r * f * 100) / 100));
-                  }
-                }}
-                placeholder="e.g. 750"
-                className={inputClass("spqMeter")}
-                {...ariaProps("spqMeter")}
-              />
+              {isTradingModel ? (
+                <>
+                  <input
+                    id="spqMeter-display"
+                    type="number"
+                    value="750"
+                    readOnly
+                    className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-light-grey/70 px-3 py-2 font-body text-body-md text-on-surface cursor-not-allowed font-bold"
+                  />
+                  <input type="hidden" name="spqMeter" value="750" />
+                  <p className="mt-1 font-body text-body-sm text-brand-navy font-medium">
+                    Fixed at 750 m/roll for Trading items.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <input
+                    id="spqMeter"
+                    name="spqMeter"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    value={spqMeterInput}
+                    onChange={(e) => {
+                      setSpqMeterInput(e.target.value);
+                      const f = parseFloat(e.target.value);
+                      if (!isNaN(f) && f > 0) {
+                        const r = parseFloat(calcRolls || "1");
+                        if (!isNaN(r)) setCalcMeters(String(Math.round(r * f * 100) / 100));
+                      }
+                    }}
+                    placeholder="e.g. 750"
+                    className={inputClass("spqMeter")}
+                    {...ariaProps("spqMeter")}
+                  />
+                  <p className="mt-1 font-body text-body-sm text-text-grey">
+                    Enter the custom SPQ Meter (m/roll) for VMI.
+                  </p>
+                </>
+              )}
               {fieldError("spqMeter")}
             </div>
           )}
