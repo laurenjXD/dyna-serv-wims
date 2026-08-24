@@ -27,6 +27,7 @@ import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { listStockView, type StockViewRow } from "@/lib/db/queries/inventory";
 import { listPickLists } from "@/lib/db/queries/withdrawals";
+import { listParties } from "@/lib/db/queries/parties";
 import { listRequesterFifoOverrides } from "@/lib/db/queries/approvals";
 import { FifoOverrideSnapshotSchema } from "@/lib/approval/fifo-override-snapshot";
 import type { PickListRow } from "@/lib/db/queries/withdrawals";
@@ -35,6 +36,7 @@ import { resolveInventoryTab, type TabKey } from "./_lib/resolveInventoryTab";
 import { InspectionTab } from "./_components/InspectionTab";
 import { PickListGenerator } from "./_components/PickListGenerator";
 import { LotQrViewer } from "./_components/LotQrViewer";
+import { StockViewInteractiveTable } from "./_components/StockViewInteractiveTable";
 import { createApprovedPickList, createPickList, requestPickListOverride } from "./actions";
 
 // ─── Status badge colors ─────────────────────────────────────────────────────
@@ -159,9 +161,13 @@ export default async function InventoryPage({ searchParams }: PageProps) {
 
 async function StockViewTab({ query, requesterUserId }: { query?: string; requesterUserId: string }) {
   const rows = await listStockView(db);
+  const customersResult = await listParties(db, { limit: 100 });
+  const customers = customersResult.rows.map((c) => ({ id: c.id, code: c.code, name: c.name }));
   const overrides = await listRequesterFifoOverrides(db, requesterUserId, 8);
   const normalizedQuery = query?.trim().toLowerCase() ?? "";
-  const items = groupStockByItem(rows).filter((item) => !normalizedQuery || `${item.itemCode} ${item.itemName} ${item.lots.map((lot) => lot.lotNumber).join(" ")}`.toLowerCase().includes(normalizedQuery));
+  const filteredRows = normalizedQuery
+    ? rows.filter((r) => `${r.itemCode} ${r.itemName} ${r.lotNumber}`.toLowerCase().includes(normalizedQuery))
+    : rows;
 
   return (
     <div className="mt-5 space-y-5">
@@ -182,222 +188,14 @@ async function StockViewTab({ query, requesterUserId }: { query?: string; reques
         </div>
       </section>}
 
-    <div className="min-h-[680px] overflow-x-auto rounded border border-outline-variant bg-surface-white shadow-elevation-1">
-      {items.length === 0 ? (
-        <div className="px-6 py-12 text-center">
-          <p className="font-body text-body-md text-text-grey">
-            No available stock is ready for allocation.
-          </p>
-          <p className="mt-2 font-body text-body-sm text-text-grey">
-            Confirmed receipts appear here when their lots are available for picking.
-          </p>
-        </div>
-      ) : (
-        <div className="min-w-[760px] divide-y divide-outline-variant/30">
-          <div className="grid grid-cols-[40px_210px_minmax(220px,1fr)_120px_150px_170px] items-center gap-x-3 bg-accent-indigo-50 px-5 py-3 font-label text-label font-semibold tracking-[0.04em] text-text-grey">
-            <span aria-hidden="true" />
-            <span>Item Code</span><span>Name</span><span>UOM</span><span className="text-right">Stock Level</span><span className="pl-6">Status</span>
-          </div>
-          {items.map((item) => (
-            <details key={item.itemId} className="group">
-              <summary className="grid cursor-pointer list-none grid-cols-[40px_210px_minmax(220px,1fr)_120px_150px_170px] items-center gap-x-3 px-5 py-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy hover:bg-surface-light-grey/40">
-                <ChevronRight size={22} aria-hidden="true" className="text-text-grey transition-transform group-open:rotate-90" />
-                <p className="font-mono text-mono-md font-bold text-on-surface">{item.itemCode}</p>
-                <p className="font-body text-body-md text-on-surface">{item.itemName}</p>
-                <p className="font-body text-body-md text-text-grey">{item.uom}</p>
-                <p className="text-right font-mono text-mono-lg font-bold text-on-surface">{item.availableQty.toLocaleString()}</p>
-                <span className="ml-6 inline-flex w-fit items-center rounded-full bg-on-surface px-3 py-1 font-label text-label tracking-[0.06em] text-surface-white">ON HAND</span>
-              </summary>
-              <div className="border-t border-outline-variant/30 bg-surface-light-grey/45 px-4 py-4 md:px-6">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="font-body text-body-md text-text-grey">
-                    Lots are shown in {item.isPerishable ? "FEFO" : "FIFO"} order.
-                  </p>
-                  <PickListGenerator
-                    itemId={item.itemId}
-                    flowType={item.flowType}
-                    organizationId={item.organizationId}
-                    strategy={item.isPerishable ? "FEFO" : "FIFO"}
-                    uom={item.uom}
-                    pallets={rows.filter((row) => row.itemId === item.itemId).map((row, index) => ({ balanceId: row.balanceId ?? `${row.lotId}:${row.locationId}`, lotId: row.lotId, lotNumber: row.lotNumber, locationId: row.locationId, locationLabel: row.locationLabel, availableQty: row.qtyRemaining - row.qtyCommitted, receivedAt: row.receivedAt.toISOString(), expiryDate: row.expiryDate, priority: index + 1 }))}
-                    createAction={createPickList}
-                    overrideAction={requestPickListOverride}
-                  />
-                </div>
-                <div className="mt-4 overflow-x-auto rounded border border-outline-variant/40 bg-surface-white">
-                  <table className="w-full min-w-[1000px] border-collapse text-left font-body text-body-md">
-                    <thead>
-                      <tr className="border-b border-outline-variant bg-accent-indigo-50/60 font-label text-label font-bold text-text-grey uppercase">
-                        <th className="px-3 py-2.5 text-right">Qty</th>
-                        <th className="px-3 py-2.5 text-right">SPQ</th>
-                        <th className="px-3 py-2.5 text-right">No. of Pckgs</th>
-                        <th className="px-3 py-2.5 font-mono">ITEM CODE</th>
-                        <th className="px-3 py-2.5 font-mono">CUST PN</th>
-                        <th className="px-3 py-2.5">ITEM DESCRIPTION</th>
-                        <th className="px-3 py-2.5 text-right">METERAGE</th>
-                        <th className="px-3 py-2.5 font-mono">LOT NUMBER</th>
-                        <th className="px-3 py-2.5 font-mono">MFG DATE</th>
-                        <th className="px-3 py-2.5">LOCATION</th>
-                        <th className="px-3 py-2.5 text-center">ACTION</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-outline-variant/30 font-body text-body-sm">
-                      {item.lots.map((lot) => {
-                        const spq = item.spq || 1;
-                        const numPckgs = Math.ceil(lot.availableQty / spq);
-                        return (
-                          <tr key={lot.lotId} className="hover:bg-surface-light-grey/30">
-                            <td className="px-3 py-2.5 text-right font-mono font-bold text-on-surface">
-                              {lot.availableQty.toLocaleString()} <span className="font-sans text-text-grey font-normal">{item.uom}</span>
-                            </td>
-                            <td className="px-3 py-2.5 text-right font-mono text-on-surface">{spq}</td>
-                            <td className="px-3 py-2.5 text-right font-mono text-on-surface">{numPckgs}</td>
-                            <td className="px-3 py-2.5 font-mono font-bold text-on-surface">{item.itemCode}</td>
-                            <td className="px-3 py-2.5 font-mono text-text-grey">{item.customerItemCode ?? "—"}</td>
-                            <td className="px-3 py-2.5 text-on-surface">{item.itemName}</td>
-                            <td className="px-3 py-2.5 text-right font-mono text-text-grey">
-                              {item.spqMeter ? `${item.spqMeter}m` : "—"}
-                            </td>
-                            <td className="px-3 py-2.5 font-mono font-bold text-on-surface">
-                              {lot.lotNumber}
-                              <span className="ml-2 inline-flex items-center rounded bg-on-surface px-1.5 py-0.5 font-label text-[10px] text-surface-white">
-                                {item.isPerishable ? "FEFO" : "FIFO"} #{lot.priority}
-                              </span>
-                            </td>
-                            <td className="px-3 py-2.5 font-mono text-text-grey">
-                              {lot.manufactureDate ? new Date(lot.manufactureDate).toLocaleDateString() : "—"}
-                            </td>
-                            <td className="px-3 py-2.5 font-body text-on-surface">
-                              {lot.locationLabels.join(", ")}
-                            </td>
-                            <td className="px-3 py-2.5 text-center">
-                              <LotQrViewer lotId={lot.lotId} lotNumber={lot.lotNumber} itemCode={item.itemCode} />
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </details>
-          ))}
-        </div>
-      )}
-    </div>
+      <StockViewInteractiveTable
+        rows={filteredRows}
+        customers={customers}
+        createAction={createPickList}
+        overrideAction={requestPickListOverride}
+      />
     </div>
   );
-}
-
-// Aggregated lot shape after stacking multiple location rows for the same lot.
-type AggregatedLot = {
-  lotId: string;
-  lotNumber: string;
-  lotStatus: string;
-  manufactureDate?: string | null;
-  expiryDate: string | null;
-  receivedAt: Date;
-  // Stacked location tag: all locations this lot spans, comma-separated.
-  locationLabels: string[];
-  // Total available qty across all locations for this lot.
-  availableQty: number;
-  // FEFO/FIFO priority within the item (1 = pick first).
-  priority: number;
-};
-
-type GroupedItem = {
-  itemId: string;
-  itemCode: string;
-  customerItemCode?: string | null;
-  itemName: string;
-  uom: string;
-  spq: number;
-  spqMeter?: string | number | null;
-  isPerishable: boolean;
-  flowType: "vmi" | "trading" | "supplies";
-  organizationId: string | null;
-  availableQty: number;
-  lots: AggregatedLot[];
-};
-
-function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
-  // First pass: group rows by itemId, then by lotId within each item.
-  // The query already orders by (items.code, lots.expiry_date, lots.created_at)
-  // so FEFO/FIFO order is preserved by the insertion sequence.
-  const itemMap = new Map<string, {
-    itemId: string; itemCode: string; customerItemCode?: string | null; itemName: string; uom: string; spq: number; spqMeter?: string | number | null; isPerishable: boolean; flowType: "vmi" | "trading" | "supplies"; organizationId: string | null;
-    lotMap: Map<string, { lot: AggregatedLot }>;
-    insertionOrder: string[]; // lot IDs in FEFO/FIFO order
-  }>();
-
-  for (const row of rows) {
-    const availableQty = row.qtyRemaining - row.qtyCommitted;
-
-    let itemEntry = itemMap.get(row.itemId);
-    if (!itemEntry) {
-      itemEntry = {
-        itemId: row.itemId,
-        itemCode: row.itemCode,
-        customerItemCode: row.customerItemCode ?? null,
-        itemName: row.itemName,
-        uom: row.uom,
-        spq: row.spq || 1,
-        spqMeter: row.spqMeter ?? null,
-        isPerishable: row.isPerishable,
-        flowType: row.flowType ?? "trading",
-        organizationId: row.organizationId ?? null,
-        lotMap: new Map(),
-        insertionOrder: [],
-      };
-      itemMap.set(row.itemId, itemEntry);
-    }
-
-    // Aggregate location rows for the same lot (stacked location tag).
-    let lotEntry = itemEntry.lotMap.get(row.lotId);
-    if (!lotEntry) {
-      itemEntry.insertionOrder.push(row.lotId);
-      lotEntry = {
-        lot: {
-          lotId: row.lotId,
-          lotNumber: row.lotNumber,
-          lotStatus: row.lotStatus,
-          manufactureDate: row.manufactureDate ?? null,
-          expiryDate: row.expiryDate,
-          receivedAt: row.receivedAt,
-          locationLabels: [],
-          availableQty: 0,
-          priority: 0, // assigned in second pass
-        },
-      };
-      itemEntry.lotMap.set(row.lotId, lotEntry);
-    }
-
-    lotEntry.lot.locationLabels.push(row.locationLabel);
-    lotEntry.lot.availableQty += availableQty;
-  }
-
-  // Second pass: flatten into the final shape, assigning FEFO/FIFO priority
-  // index (1-based) based on the insertion order the query already sorted.
-  return [...itemMap.values()].map((entry) => {
-    const lots = entry.insertionOrder.map((lotId, idx) => {
-      const lot = entry.lotMap.get(lotId)!.lot;
-      return { ...lot, priority: idx + 1 };
-    });
-    return {
-      itemId: entry.itemId,
-      itemCode: entry.itemCode,
-      customerItemCode: entry.customerItemCode,
-      itemName: entry.itemName,
-      uom: entry.uom,
-      spq: entry.spq,
-      spqMeter: entry.spqMeter,
-      isPerishable: entry.isPerishable,
-      flowType: entry.flowType,
-      organizationId: entry.organizationId,
-      availableQty: lots.reduce((sum, l) => sum + l.availableQty, 0),
-      lots,
-    };
-  });
 }
 
 // ─── Pick Lists tab ───────────────────────────────────────────────────────────
