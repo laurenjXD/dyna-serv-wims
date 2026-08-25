@@ -27,7 +27,6 @@ import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { listStockView, type StockViewRow } from "@/lib/db/queries/inventory";
 import { listPickLists } from "@/lib/db/queries/withdrawals";
-import { listParties } from "@/lib/db/queries/parties";
 import { listRequesterFifoOverrides } from "@/lib/db/queries/approvals";
 import { FifoOverrideSnapshotSchema } from "@/lib/approval/fifo-override-snapshot";
 import type { PickListRow } from "@/lib/db/queries/withdrawals";
@@ -36,24 +35,7 @@ import { resolveInventoryTab, type TabKey } from "./_lib/resolveInventoryTab";
 import { InspectionTab } from "./_components/InspectionTab";
 import { MultiItemPickListDraft } from "./_components/MultiItemPickListDraft";
 import { LotQrViewer } from "./_components/LotQrViewer";
-import { StockViewInteractiveTable } from "./_components/StockViewInteractiveTable";
 import { createApprovedPickList, createPickList, markPickListReadyForDispatch, requestPickListOverride } from "./actions";
-
-// ─── Status badge colors ─────────────────────────────────────────────────────
-// brand-design-system.md §1.3 semantic color mapping per task spec:
-// allocated → status-pending (amber); picked → brand-navy; dispatched → status-available.
-
-const STATUS_CLASSES: Record<string, string> = {
-  allocated: "bg-status-pending text-on-surface",
-  picked: "bg-brand-navy text-surface-white",
-  dispatched: "bg-status-available text-on-surface",
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  allocated: "ALLOCATED",
-  picked: "PICKED",
-  dispatched: "DISPATCHED",
-};
 
 const FLOW_LABELS: Record<string, string> = {
   vmi: "VMI",
@@ -161,13 +143,9 @@ export default async function InventoryPage({ searchParams }: PageProps) {
 
 async function StockViewTab({ query, requesterUserId }: { query?: string; requesterUserId: string }) {
   const rows = await listStockView(db);
-  const customersResult = await listParties(db, { limit: 100 });
-  const customers = customersResult.rows.map((c) => ({ id: c.id, code: c.code, name: c.name }));
   const overrides = await listRequesterFifoOverrides(db, requesterUserId, 8);
   const normalizedQuery = query?.trim().toLowerCase() ?? "";
-  const filteredRows = normalizedQuery
-    ? rows.filter((r) => `${r.itemCode} ${r.itemName} ${r.lotNumber}`.toLowerCase().includes(normalizedQuery))
-    : rows;
+  const items = groupStockByItem(rows).filter((item) => !normalizedQuery || `${item.itemCode} ${item.itemName} ${item.lots.map((lot) => lot.lotNumber).join(" ")}`.toLowerCase().includes(normalizedQuery));
 
   return (
     <div className="mt-5 space-y-5">
@@ -188,14 +166,216 @@ async function StockViewTab({ query, requesterUserId }: { query?: string; reques
         </div>
       </section>}
 
-      <StockViewInteractiveTable
-        rows={filteredRows}
-        customers={customers}
-        createAction={createPickList}
-        overrideAction={requestPickListOverride}
-      />
+    <div className="min-h-[680px] overflow-x-auto rounded border border-outline-variant bg-surface-white shadow-elevation-1">
+      {items.length === 0 ? (
+        <div className="px-6 py-12 text-center">
+          <p className="font-body text-body-md text-text-grey">
+            No available stock is ready for allocation.
+          </p>
+          <p className="mt-2 font-body text-body-sm text-text-grey">
+            Confirmed receipts appear here when their lots are available for picking.
+          </p>
+        </div>
+      ) : (
+        <div className="min-w-[2050px] divide-y divide-outline-variant/30">
+          <div className="grid grid-cols-[210px_minmax(220px,1fr)_160px_160px_160px_180px_110px_110px_130px_130px_140px] items-center gap-x-3 bg-accent-indigo-50 px-5 py-3 font-label text-label font-semibold tracking-[0.04em] text-text-grey">
+            <span>Item Code</span><span>Description</span><span>Codes</span><span>Lot No.</span><span>Location</span><span>Customer</span><span className="text-right">Total In</span><span className="text-right">Total Out</span><span className="text-right">Pcs on Hand</span><span className="text-right">Boxes on Hand</span><span className="text-right">CBM Occupied</span>
+          </div>
+          {items.map((item) => (
+            <details key={item.itemId} className="group">
+              <summary className="grid cursor-pointer list-none grid-cols-[210px_minmax(220px,1fr)_160px_160px_160px_180px_110px_110px_130px_130px_140px] items-center gap-x-3 px-5 py-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy hover:bg-surface-light-grey/40">
+                <p className="flex items-center gap-2 font-mono text-mono-md font-bold text-on-surface"><ChevronRight size={22} aria-hidden="true" className="shrink-0 text-text-grey transition-transform group-open:rotate-90" />{item.itemCode}</p>
+                <p className="font-body text-body-md text-on-surface">{item.itemName}</p>
+                <p className="truncate font-mono text-mono-md text-on-surface" title={item.codes || undefined}>{item.codes || "—"}</p>
+                <p className="truncate font-mono text-mono-md text-on-surface" title={item.lotNumbers}>{item.lotNumbers}</p>
+                <p className="truncate font-mono text-mono-md text-on-surface" title={item.locationLabels}>{item.locationLabels}</p>
+                <p className="truncate font-body text-body-md text-on-surface" title={item.customerName || undefined}>{item.customerName || "—"}</p>
+                <p className="text-right font-mono text-mono-md text-on-surface">{item.totalIn.toLocaleString()}</p>
+                <p className="text-right font-mono text-mono-md text-on-surface">{item.totalOut.toLocaleString()}</p>
+                <p className="text-right font-mono text-mono-md font-bold text-on-surface">{item.pcsOnHand.toLocaleString()}</p>
+                <p className="text-right font-mono text-mono-md text-on-surface">{item.boxesOnHand.toLocaleString()}</p>
+                <p className="text-right font-mono text-mono-md text-on-surface">{item.cbmOccupied.toFixed(3)}</p>
+              </summary>
+              <div className="border-t border-outline-variant/30 bg-surface-light-grey/45 px-4 py-4 md:px-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="font-body text-body-md text-text-grey">
+                    Lots are shown in {item.isPerishable ? "FEFO" : "FIFO"} order.
+                  </p>
+                  <Link
+                    href="/inventory?tab=pick-lists"
+                    className="inline-flex h-11 items-center gap-2 rounded bg-brand-navy px-4 font-label text-label font-bold text-surface-white shadow-elevation-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    Create Pick List
+                  </Link>
+                </div>
+                <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {item.lots.map((lot) => (
+                    <article key={lot.lotId} className="rounded-xl border border-outline-variant/30 bg-surface-white p-4">
+                      {/* FEFO/FIFO priority badge — left accent bar signal */}
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-mono text-mono-md font-bold text-on-surface">{lot.lotNumber}</p>
+                        <span className="inline-flex shrink-0 items-center rounded-full bg-on-surface px-2 py-0.5 font-label text-label text-surface-white">
+                          {item.isPerishable ? "FEFO" : "FIFO"} #{lot.priority}
+                        </span>
+                      </div>
+                      {/* Stacked location tag — all locations this lot spans */}
+                      <p className="mt-1 font-body text-body-md text-text-grey">
+                        {lot.locationLabels.length === 1
+                          ? `Location ${lot.locationLabels[0]}`
+                          : `Locations ${lot.locationLabels.join(", ")}`}
+                      </p>
+                      <dl className="mt-3 grid grid-cols-2 gap-3 font-body text-body-md">
+                        <div><dt className="font-label text-label uppercase text-text-grey">Available</dt><dd className="mt-1 text-on-surface">{lot.availableQty.toLocaleString()} {item.uom}</dd></div>
+                        <div><dt className="font-label text-label uppercase text-text-grey">Expiry</dt><dd className="mt-1 text-on-surface">{lot.expiryDate ?? "Not dated"}</dd></div>
+                        <div><dt className="font-label text-label uppercase text-text-grey">Received</dt><dd className="mt-1 font-body text-body-md text-on-surface">{new Date(lot.receivedAt).toLocaleDateString()}</dd></div>
+                        <div><dt className="font-label text-label uppercase text-text-grey">Status</dt><dd className="mt-1 font-mono text-mono-md text-on-surface">{lot.lotStatus}</dd></div>
+                      </dl>
+                      <LotQrViewer lotId={lot.lotId} lotNumber={lot.lotNumber} itemCode={item.itemCode} />
+                    </article>
+                  ))}
+                </div>
+              </div>
+            </details>
+          ))}
+        </div>
+      )}
+    </div>
     </div>
   );
+}
+
+// Aggregated lot shape after stacking multiple location rows for the same lot.
+type AggregatedLot = {
+  lotId: string;
+  lotNumber: string;
+  lotStatus: string;
+  expiryDate: string | null;
+  receivedAt: Date;
+  // Stacked location tag: all locations this lot spans, comma-separated.
+  locationLabels: string[];
+  // Total available qty across all locations for this lot.
+  availableQty: number;
+  // FEFO/FIFO priority within the item (1 = pick first).
+  priority: number;
+};
+
+type GroupedItem = {
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  uom: string;
+  isPerishable: boolean;
+  flowType: "vmi" | "trading" | "supplies";
+  organizationId: string | null;
+  availableQty: number;
+  codes: string;
+  customerName: string | null;
+  lotNumbers: string;
+  locationLabels: string;
+  totalIn: number;
+  totalOut: number;
+  pcsOnHand: number;
+  boxesOnHand: number;
+  cbmOccupied: number;
+  lots: AggregatedLot[];
+};
+
+function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
+  // First pass: group rows by itemId, then by lotId within each item.
+  // The query already orders by (items.code, lots.expiry_date, lots.created_at)
+  // so FEFO/FIFO order is preserved by the insertion sequence.
+  const itemMap = new Map<string, {
+    itemId: string; itemCode: string; itemName: string; uom: string; isPerishable: boolean; flowType: "vmi" | "trading" | "supplies"; organizationId: string | null;
+    codes: string; customerName: string | null; totalIn: number; totalOut: number; pcsOnHand: number; boxesOnHand: number; cbmOccupied: number;
+    lotMap: Map<string, { lot: AggregatedLot }>;
+    insertionOrder: string[]; // lot IDs in FEFO/FIFO order
+  }>();
+
+  for (const row of rows) {
+    const availableQty = row.qtyRemaining - row.qtyCommitted;
+
+    let itemEntry = itemMap.get(row.itemId);
+    if (!itemEntry) {
+      itemEntry = {
+        itemId: row.itemId,
+        itemCode: row.itemCode,
+        itemName: row.itemName,
+        uom: row.uom,
+        isPerishable: row.isPerishable,
+        flowType: row.flowType ?? "trading",
+        organizationId: row.organizationId ?? null,
+        codes: [row.supplierItemCode, row.customerItemCode, row.dsgcItemNumber].filter(Boolean).join(" · "),
+        customerName: row.customerName ?? null,
+        totalIn: 0,
+        totalOut: 0,
+        pcsOnHand: 0,
+        boxesOnHand: 0,
+        cbmOccupied: 0,
+        lotMap: new Map(),
+        insertionOrder: [],
+      };
+      itemMap.set(row.itemId, itemEntry);
+    }
+
+    const spq = row.spq ?? 1;
+    const qtyReceived = row.qtyReceived ?? row.qtyRemaining;
+    itemEntry.totalIn += qtyReceived * spq;
+    itemEntry.totalOut += Math.max(0, qtyReceived - row.qtyRemaining) * spq;
+    itemEntry.pcsOnHand += row.qtyRemaining * spq;
+    itemEntry.boxesOnHand += row.qtyRemaining;
+    itemEntry.cbmOccupied += row.qtyRemaining * Number(row.volumeCbm ?? 0);
+
+    // Aggregate location rows for the same lot (stacked location tag).
+    let lotEntry = itemEntry.lotMap.get(row.lotId);
+    if (!lotEntry) {
+      itemEntry.insertionOrder.push(row.lotId);
+      lotEntry = {
+        lot: {
+          lotId: row.lotId,
+          lotNumber: row.lotNumber,
+          lotStatus: row.lotStatus,
+          expiryDate: row.expiryDate,
+          receivedAt: row.receivedAt,
+          locationLabels: [],
+          availableQty: 0,
+          priority: 0, // assigned in second pass
+        },
+      };
+      itemEntry.lotMap.set(row.lotId, lotEntry);
+    }
+
+    lotEntry.lot.locationLabels.push(row.locationLabel);
+    lotEntry.lot.availableQty += availableQty;
+  }
+
+  // Second pass: flatten into the final shape, assigning FEFO/FIFO priority
+  // index (1-based) based on the insertion order the query already sorted.
+  return [...itemMap.values()].map((entry) => {
+    const lots = entry.insertionOrder.map((lotId, idx) => {
+      const lot = entry.lotMap.get(lotId)!.lot;
+      return { ...lot, priority: idx + 1 };
+    });
+    return {
+      itemId: entry.itemId,
+      itemCode: entry.itemCode,
+      itemName: entry.itemName,
+      uom: entry.uom,
+      isPerishable: entry.isPerishable,
+      flowType: entry.flowType,
+      organizationId: entry.organizationId,
+      availableQty: lots.reduce((sum, l) => sum + l.availableQty, 0),
+      codes: entry.codes,
+      customerName: entry.customerName,
+      lotNumbers: lots.map((lot) => lot.lotNumber).join(", "),
+      locationLabels: [...new Set(lots.flatMap((lot) => lot.locationLabels))].join(", "),
+      totalIn: entry.totalIn,
+      totalOut: entry.totalOut,
+      pcsOnHand: entry.pcsOnHand,
+      boxesOnHand: entry.boxesOnHand,
+      cbmOccupied: entry.cbmOccupied,
+      lots,
+    };
+  });
 }
 
 // ─── Pick Lists tab ───────────────────────────────────────────────────────────

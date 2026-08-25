@@ -19,9 +19,9 @@ describe("toStockViewSpreadsheetXml", () => {
         receivedAt: new Date("2026-08-17T00:00:00.000Z"),
         locationId: "loc-1",
         locationLabel: "A-01",
+        spq: 1,
         qtyRemaining: 12,
         qtyCommitted: 2,
-        spq: 1,
       },
     ]);
 
