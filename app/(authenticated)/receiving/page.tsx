@@ -371,11 +371,7 @@ async function ReceiveTab({
             <Warehouse size={24} className="text-brand-navy" aria-hidden="true" />
             <h2 className="font-heading text-headline-md font-bold text-on-surface">Queue Overview</h2>
           </div>
-          <div className="mt-5 grid grid-cols-2 gap-3">
-            <div className="rounded border border-[#C9D8FF] bg-[#EDF2FF] p-4">
-              <p className="font-label text-label font-bold uppercase tracking-wide text-text-grey">Active</p>
-              <p className="mt-2 font-heading text-headline-lg font-bold text-brand-navy">{total}</p>
-            </div>
+          <div className="mt-5">
             <div className="rounded bg-brand-navy p-4 text-surface-white">
               <p className="font-label text-label font-bold uppercase tracking-wide text-[#AFC5FF]">Showing</p>
               <p className="mt-2 font-heading text-headline-lg font-bold">{rows.length}</p>
