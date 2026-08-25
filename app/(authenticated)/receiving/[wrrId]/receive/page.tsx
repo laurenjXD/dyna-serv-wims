@@ -32,7 +32,7 @@ import { locations } from "@/lib/db/schema/locations";
 import { getWrrDocument } from "@/lib/db/queries/receiving";
 import { getPutawayLocationContents, suggestPutawayLocations } from "@/lib/db/queries/locations";
 import type { PutawayCandidate } from "@/lib/db/queries/locations";
-import { recordScan, startReceiving, commitWrrLine } from "@/lib/actions/receiving";
+import { recordScan, startReceiving, commitWrrLine, setWrrLineDisposition } from "@/lib/actions/receiving";
 import type { WrrItemRow } from "@/lib/db/queries/receiving";
 import { CameraScanBridge } from "./_components/CameraScanBridge";
 import { PutawayLocationSelector } from "./_components/PutawayLocationSelector";
@@ -266,6 +266,25 @@ export default async function ReceiveFloorPage({
     }
   }
 
+  // A receiving operator can route an unscanned line to inspection directly
+  // from the floor workflow. The subsequent hold flow requires an inspection
+  // location and commits the lot as quarantined, never as available stock.
+  async function handleSetDisposition(formData: FormData): Promise<void> {
+    "use server";
+    const wrrItemId = String(formData.get("wrrItemId") ?? "");
+    const disposition = formData.get("disposition");
+    if (disposition !== "store" && disposition !== "inspect") {
+      redirect(`/receiving/${wrrId}/receive`);
+    }
+    await setWrrLineDisposition(
+      await createPageResolver(),
+      wrrId,
+      wrrItemId,
+      disposition,
+    );
+    redirect(`/receiving/${wrrId}/receive`);
+  }
+
   // Determine feedback state from search params.
   const scanSuccess = result === "scanned";
   const scanError = result === "error";
@@ -491,6 +510,15 @@ export default async function ReceiveFloorPage({
                         {item.disposition === "store" ? "STORE" : "INSPECT"}
                       </span>
                     </div>
+                    {!isCommitted && item.scannedQty === 0 && (
+                      <button
+                        type="submit"
+                        form={`set-disposition-${item.id}`}
+                        className="mt-3 inline-flex min-h-11 items-center justify-center rounded border border-status-pending px-3 font-label text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97]"
+                      >
+                        {item.disposition === "inspect" ? "Return to Store" : "Hold for Inspection"}
+                      </button>
+                    )}
                   </div>
                   {/* Completion / committed indicator — visible, accessible */}
                   {isCommitted ? (
@@ -717,6 +745,21 @@ export default async function ReceiveFloorPage({
               action rule: this must never compete with the manual input. */}
           <CameraScanBridge action={handleScan} />
         </div>
+      )}
+
+      {/* These forms sit outside the scan cards and sticky primary-action
+          region. Their linked buttons are compact secondary controls. */}
+      {wrr.items.map((item: WrrItemRow) =>
+        item.committedAt === null && item.scannedQty === 0 ? (
+          <form key={item.id} id={`set-disposition-${item.id}`} action={handleSetDisposition}>
+            <input type="hidden" name="wrrItemId" value={item.id} />
+            <input
+              type="hidden"
+              name="disposition"
+              value={item.disposition === "inspect" ? "store" : "inspect"}
+            />
+          </form>
+        ) : null,
       )}
     </div>
   );
