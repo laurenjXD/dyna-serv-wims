@@ -82,6 +82,7 @@ export type RecordScanResult =
 export type CommitWrrLineResult = { ok: true } | { ok: false; errors: string[] };
 export type CancelWrrResult = { ok: true } | { ok: false; errors: string[] };
 export type UpdateWrrResult = { ok: true } | { ok: false; errors: string[] };
+export type SetWrrLineDispositionResult = { ok: true } | { ok: false; errors: string[] };
 
 export type UpdateWrrLineInput = {
   id: string;
@@ -417,6 +418,47 @@ export async function updateWrrLines(
     return { ok: true } satisfies UpdateWrrResult;
   });
   return result.kind === "unauthenticated" ? { ok: false, errors: ["forbidden"] } : result.value;
+}
+
+/**
+ * Marks an unscanned receiving line for normal storage or inbound inspection.
+ * Inspection is selected before physical reconciliation so the floor flow can
+ * require an inspection location and commit the line as quarantined stock.
+ */
+export async function setWrrLineDisposition(
+  resolver: RequestAuthorizationResolver,
+  wrrId: string,
+  wrrItemId: string,
+  disposition: "store" | "inspect",
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+): Promise<SetWrrLineDispositionResult> {
+  const perm = await requirePermission(resolver, "receiving.confirm");
+  if (perm.kind !== "authorized") return { ok: false, errors: ["forbidden"] };
+  if (!wrrId || !wrrItemId || !["store", "inspect"].includes(disposition)) {
+    return { ok: false, errors: ["Choose a valid receiving disposition."] };
+  }
+
+  const result = await withRlsTransaction(rlsDeps, async (tx) => {
+    const database = tx.db as DbLike;
+    const updated = await database
+      .update(wrrItems)
+      .set({ disposition })
+      .where(and(
+        eq(wrrItems.id, wrrItemId),
+        eq(wrrItems.wrrId, wrrId),
+        eq(wrrItems.scannedQty, 0),
+        isNull(wrrItems.committedAt),
+      ))
+      .returning({ id: wrrItems.id });
+
+    return updated.length === 1
+      ? { ok: true } satisfies SetWrrLineDispositionResult
+      : { ok: false, errors: ["Only an unscanned line can be changed. Start a new WRR line for goods already scanned."] } satisfies SetWrrLineDispositionResult;
+  });
+
+  return result.kind === "unauthenticated"
+    ? { ok: false, errors: ["forbidden"] }
+    : result.value;
 }
 
 // ---------------------------------------------------------------------------
