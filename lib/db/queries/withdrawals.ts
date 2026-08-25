@@ -23,6 +23,8 @@ import { eq, asc, desc, sql, and, gte, lte } from "drizzle-orm";
 import { pickLists, pickListItems } from "@/lib/db/schema/pick_lists";
 import { inventoryTransactions } from "@/lib/db/schema/transactions";
 import { items } from "@/lib/db/schema/items";
+import { lots } from "@/lib/db/schema/lots";
+import { locations } from "@/lib/db/schema/locations";
 import { parties } from "@/lib/db/schema/parties";
 import { inventoryUnits } from "@/lib/db/schema/inventory_units";
 
@@ -391,11 +393,21 @@ export async function listOutgoingLedger(
       transactionId: inventoryTransactions.id,
       createdAt: inventoryTransactions.createdAt,
       transactionNumber: inventoryTransactions.transactionNumber,
+      itemCode: items.code,
+      itemName: items.name,
+      lotNumber: lots.lotNumber,
       qty: inventoryTransactions.qty,
+      fromLocationLabel: locations.label,
       performedByUserId: inventoryTransactions.performedByUserId,
-      pickListId: inventoryTransactions.pickListId,
+      pickListNumber: pickLists.pickListNumber,
+      customerPartyName: parties.name,
     })
     .from(inventoryTransactions)
+    .leftJoin(items, eq(items.id, inventoryTransactions.itemId))
+    .leftJoin(lots, eq(lots.id, inventoryTransactions.lotId))
+    .leftJoin(locations, eq(locations.id, inventoryTransactions.fromLocationId))
+    .leftJoin(pickLists, eq(pickLists.id, inventoryTransactions.pickListId))
+    .leftJoin(parties, eq(parties.id, pickLists.customerPartyId))
     .where(pickFilter)
     .orderBy(asc(inventoryTransactions.createdAt))
     .limit(opts.limit)
