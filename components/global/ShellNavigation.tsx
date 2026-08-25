@@ -149,20 +149,24 @@ function NavLink({
   const floorText = tier === "floor";
 
   if (tier === "floor" && variant === "tab") {
+    const tabLabel = entry.id === "inventory" ? "Inventory" : label;
     return (
       <Link
         href={entry.path}
         data-testid={`nav-entry-${entry.id}`}
         aria-current={isActive ? "page" : undefined}
         onClick={onNavigate}
-        className={`flex min-h-14 flex-1 flex-col items-center justify-center gap-1 px-2
-          font-label uppercase tracking-wide
+        title={label}
+        className={`flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-1
+          font-label tracking-normal
           active:scale-[0.97] active:opacity-75
           focus:outline-none focus-visible:ring-2 focus-visible:ring-primary
           ${isActive ? "bg-primary/10 text-primary" : "text-text-secondary"}`}
       >
-        <Icon size={22} aria-hidden="true" />
-        <span className="text-mono-md font-label">{label}</span>
+        <Icon size={19} className="shrink-0" aria-hidden="true" />
+        <span className="w-full truncate text-center text-mono-md font-label font-medium leading-none tracking-normal">
+          {tabLabel}
+        </span>
       </Link>
     );
   }
@@ -315,10 +319,10 @@ export function ShellNavigation({
               type="button"
               onClick={() => setMoreOpen(true)}
               aria-label="More navigation options"
-              className="flex min-h-14 flex-1 flex-col items-center justify-center gap-1 px-2 font-label uppercase tracking-wide text-text-secondary active:scale-[0.97] active:opacity-75 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-1 font-label tracking-normal text-text-secondary active:scale-[0.97] active:opacity-75 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              <Menu size={22} aria-hidden="true" />
-              <span className="text-mono-md font-label">More</span>
+              <Menu size={19} className="shrink-0" aria-hidden="true" />
+              <span className="w-full truncate text-center text-mono-md font-label font-medium leading-none tracking-normal">More</span>
             </button>
           )}
         </nav>
