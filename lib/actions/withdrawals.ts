@@ -1265,7 +1265,7 @@ export async function dispatchPickList(
 
 export async function listOutgoingLedger(
   resolver: RequestAuthorizationResolver,
-  opts: { limit: number; offset: number },
+  opts: { limit: number; offset: number; deliveryReceiptStatus?: "missing" | "uploaded" },
   rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<ListOutgoingLedgerResult> {
   // Authorization — pick_list.read required (R9.1, R10.1).

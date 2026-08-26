@@ -177,123 +177,76 @@ async function StockViewTab({ query, requesterUserId }: { query?: string; reques
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {items.map((item) => (
-            <article
-              key={item.itemId}
-              className="flex flex-col justify-between rounded-xl border border-outline-variant/40 bg-surface-white p-5 shadow-elevation-1 transition-shadow hover:shadow-elevation-2"
-            >
-              <div>
-                {/* Header */}
-                <div className="flex flex-wrap items-start justify-between gap-2 border-b border-outline-variant/30 pb-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-mono-lg font-bold text-on-surface">{item.itemCode}</span>
-                      <span className="rounded-full bg-accent-indigo-50 px-2.5 py-0.5 font-label text-mono-sm font-bold uppercase text-brand-navy">
-                        {item.flowType}
-                      </span>
-                    </div>
-                    <h3 className="mt-1 font-heading text-title-md font-bold text-on-surface">{item.itemName}</h3>
-                    {item.customerName && (
-                      <p className="mt-0.5 font-body text-body-sm text-text-grey">{item.customerName}</p>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <p className="font-label text-mono-sm font-bold uppercase tracking-wider text-text-grey">Pcs On Hand</p>
-                    <p className="font-mono text-mono-xl font-bold text-on-surface">
-                      {item.pcsOnHand.toLocaleString()} <span className="font-sans text-body-sm font-normal text-text-grey">{item.uom}</span>
-                    </p>
-                  </div>
-                </div>
-
-                {/* Stock Metrics Grid */}
-                <dl className="mt-4 grid grid-cols-2 gap-3 rounded-lg bg-surface-light-grey/60 p-3 font-body text-body-sm sm:grid-cols-4">
-                  <div>
-                    <dt className="font-label text-mono-sm font-bold uppercase text-text-grey">Boxes</dt>
-                    <dd className="mt-0.5 font-mono text-mono-md font-bold text-on-surface">{item.boxesOnHand.toLocaleString()}</dd>
-                  </div>
-                  <div>
-                    <dt className="font-label text-mono-sm font-bold uppercase text-text-grey">Total In</dt>
-                    <dd className="mt-0.5 font-mono text-mono-md text-on-surface">{item.totalIn.toLocaleString()}</dd>
-                  </div>
-                  <div>
-                    <dt className="font-label text-mono-sm font-bold uppercase text-text-grey">Total Out</dt>
-                    <dd className="mt-0.5 font-mono text-mono-md text-on-surface">{item.totalOut.toLocaleString()}</dd>
-                  </div>
-                  <div>
-                    <dt className="font-label text-mono-sm font-bold uppercase text-text-grey">CBM</dt>
-                    <dd className="mt-0.5 font-mono text-mono-md text-on-surface">{item.cbmOccupied.toFixed(3)}</dd>
-                  </div>
-                </dl>
-
-                {/* Details list */}
-                <div className="mt-3 space-y-1 font-body text-body-sm text-text-grey">
-                  {item.codes && (
-                    <p><strong className="font-label text-mono-sm font-bold uppercase text-on-surface">Codes:</strong> {item.codes}</p>
-                  )}
-                  {item.locationLabels && (
-                    <p><strong className="font-label text-mono-sm font-bold uppercase text-on-surface">Locations:</strong> {item.locationLabels}</p>
-                  )}
-                  {item.lotNumbers && (
-                    <p><strong className="font-label text-mono-sm font-bold uppercase text-on-surface">Lots:</strong> {item.lotNumbers}</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Accordion / Granular Lots */}
-              <details className="group mt-4 border-t border-outline-variant/30 pt-3">
-                <summary className="flex cursor-pointer items-center justify-between font-label text-label font-bold text-brand-navy focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-                  <span className="flex items-center gap-1.5">
-                    <ChevronRight size={18} aria-hidden="true" className="transition-transform group-open:rotate-90" />
-                    Granular Lots ({item.lots.length})
-                  </span>
-                  <span className="font-mono text-mono-sm font-normal text-text-grey">
-                    {item.isPerishable ? "FEFO" : "FIFO"}
-                  </span>
-                </summary>
-                <div className="mt-3 space-y-3 pt-1">
-                  <div className="flex items-center justify-between">
-                    <p className="font-body text-body-sm text-text-grey">
-                      {item.isPerishable ? "FEFO" : "FIFO"} order
-                    </p>
-                    <Link
-                      href="/inventory?tab=pick-lists"
-                      className="inline-flex h-9 items-center gap-1.5 rounded bg-brand-navy px-3 font-label text-mono-sm font-bold text-surface-white shadow-elevation-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    >
-                      Create Pick List
-                    </Link>
-                  </div>
-                  {item.lots.map((lot) => (
-                    <div key={lot.lotId} className="rounded-lg border border-outline-variant/30 bg-background p-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="font-mono text-mono-md font-bold text-on-surface">{lot.lotNumber}</p>
-                        <span className="rounded-full bg-on-surface px-2 py-0.5 font-label text-mono-sm text-surface-white">
-                          {item.isPerishable ? "FEFO" : "FIFO"} #{lot.priority}
-                        </span>
-                      </div>
-                      <p className="mt-1 font-body text-body-sm text-text-grey">
-                        {lot.locationLabels.length === 1
-                          ? `Location ${lot.locationLabels[0]}`
-                          : `Locations ${lot.locationLabels.join(", ")}`}
-                      </p>
-                      <dl className="mt-2 grid grid-cols-2 gap-2 font-body text-body-sm">
-                        <div><dt className="font-label text-mono-sm uppercase text-text-grey">Available</dt><dd className="font-mono text-on-surface">{lot.availableQty.toLocaleString()} {item.uom}</dd></div>
-                        <div><dt className="font-label text-mono-sm uppercase text-text-grey">Expiry</dt><dd className="text-on-surface">{lot.expiryDate ?? "Not dated"}</dd></div>
-                        <div><dt className="font-label text-mono-sm uppercase text-text-grey">Received</dt><dd className="text-on-surface">{new Date(lot.receivedAt).toLocaleDateString()}</dd></div>
-                        <div><dt className="font-label text-mono-sm uppercase text-text-grey">Status</dt><dd className="font-mono text-on-surface">{lot.lotStatus}</dd></div>
-                      </dl>
-                      <div className="mt-2">
-                        <LotQrViewer lotId={lot.lotId} lotNumber={lot.lotNumber} itemCode={item.itemCode} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </details>
-            </article>
-          ))}
-        </div>
+        <InventoryRegister items={items} />
       )}
     </div>
+    </div>
+  );
+}
+
+function InventoryRegister({ items }: { items: GroupedItem[] }) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-outline-variant/50 bg-surface-white shadow-elevation-1">
+      <div className="hidden overflow-x-auto md:block">
+        <div className="min-w-[980px]">
+          <div role="row" className="grid grid-cols-[1.15fr_1.8fr_1.8fr_1.35fr_1.2fr] gap-4 bg-[#EDF2FF] px-5 py-3 font-label text-label font-bold tracking-[0.04em] text-text-grey">
+            <span>Item Code</span><span>Description</span><span>Codes</span><span>Lot No.</span><span>Location</span>
+          </div>
+          {items.map((item) => (
+            <details key={item.itemId} className="group border-t border-outline-variant/30">
+              <summary className="grid cursor-pointer list-none grid-cols-[1.15fr_1.8fr_1.8fr_1.35fr_1.2fr] gap-4 px-5 py-4 font-body text-body-md text-on-surface outline-none transition-colors hover:bg-[#F7F9FF] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy [&::-webkit-details-marker]:hidden">
+                <span className="flex min-w-0 items-center gap-3 font-heading font-bold"><ChevronRight size={21} aria-hidden="true" className="shrink-0 text-text-grey transition-transform group-open:rotate-90" /><span className="truncate">{item.itemCode}</span></span>
+                <span className="truncate">{item.itemName}<span className="ml-2 text-body-sm text-text-grey">{FLOW_LABELS[item.flowType]}</span></span>
+                <span className="truncate text-text-grey" title={item.codes || undefined}>{item.codes || "—"}</span>
+                <span className="truncate text-text-grey" title={item.lotNumbers}>{item.lotNumbers || "—"}</span>
+                <span className="truncate text-text-grey" title={item.locationLabels}>{item.locationLabels || "—"}</span>
+              </summary>
+              <InventoryItemDetails item={item} />
+            </details>
+          ))}
+        </div>
+      </div>
+
+      <div className="divide-y divide-outline-variant/30 md:hidden">
+        {items.map((item) => (
+          <details key={item.itemId} className="group">
+            <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-4 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy [&::-webkit-details-marker]:hidden">
+              <ChevronRight size={21} aria-hidden="true" className="shrink-0 text-text-grey transition-transform group-open:rotate-90" />
+              <span className="min-w-0"><span className="block truncate font-heading text-title-md font-bold text-on-surface">{item.itemCode}</span><span className="mt-1 block truncate font-body text-body-sm text-text-grey">{item.itemName} · {item.lots.length} lot{item.lots.length === 1 ? "" : "s"}</span></span>
+            </summary>
+            <InventoryItemDetails item={item} />
+          </details>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function InventoryItemDetails({ item }: { item: GroupedItem }) {
+  return (
+    <div className="border-t border-outline-variant/20 bg-[#F8FAFF] px-4 py-5 sm:px-6">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <p className="font-body text-body-sm text-text-grey">Lots are shown in {item.isPerishable ? "FEFO" : "FIFO"} order.</p>
+        <div className="flex items-center gap-3">
+          <span className="font-label text-mono-sm text-text-grey">{item.pcsOnHand.toLocaleString()} {item.uom} available</span>
+          <Link href="/inventory?tab=pick-lists" className="inline-flex h-9 items-center rounded bg-brand-navy px-3 font-label text-mono-sm font-bold text-surface-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">Create Pick List</Link>
+        </div>
+      </div>
+      <div className="grid gap-3 xl:grid-cols-2 2xl:grid-cols-3">
+        {item.lots.map((lot) => (
+          <article key={lot.lotId} className="rounded-xl border border-outline-variant/30 bg-surface-white p-3.5 shadow-elevation-1">
+            <div className="flex items-start justify-between gap-2"><h3 className="truncate font-heading text-body-lg font-bold text-on-surface" title={lot.lotNumber}>{lot.lotNumber}</h3><span className="shrink-0 rounded-full bg-on-surface px-2 py-0.5 font-label text-mono-sm text-surface-white">{item.isPerishable ? "FEFO" : "FIFO"} #{lot.priority}</span></div>
+            <p className="mt-1 truncate font-body text-body-sm text-text-grey" title={lot.locationLabels.join(", ")}>{lot.locationLabels.length === 1 ? `Location ${lot.locationLabels[0]}` : `Locations ${lot.locationLabels.join(", ")}`}</p>
+            <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5">
+              <div><dt className="font-label text-mono-sm uppercase text-text-grey">Available</dt><dd className="mt-0.5 font-body text-body-md text-on-surface">{lot.availableQty.toLocaleString()} {item.uom}</dd></div>
+              <div><dt className="font-label text-mono-sm uppercase text-text-grey">Expiry</dt><dd className="mt-0.5 truncate font-body text-body-md text-on-surface">{lot.expiryDate ?? "Not dated"}</dd></div>
+              <div><dt className="font-label text-mono-sm uppercase text-text-grey">Received</dt><dd className="mt-0.5 font-body text-body-md text-on-surface">{new Date(lot.receivedAt).toLocaleDateString()}</dd></div>
+              <div><dt className="font-label text-mono-sm uppercase text-text-grey">Status</dt><dd className="mt-0.5 truncate font-body text-body-md lowercase text-on-surface">{lot.lotStatus}</dd></div>
+            </dl>
+            <LotQrViewer lotId={lot.lotId} lotNumber={lot.lotNumber} itemCode={item.itemCode} compact />
+          </article>
+        ))}
+      </div>
     </div>
   );
 }

@@ -1,6 +1,8 @@
 // Location create page — requires locations.manage (Administrator only).
 
 import { notFound } from "next/navigation";
+import { db } from "@/lib/db/client";
+import { listLocations } from "@/lib/db/queries/locations";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { LocationForm } from "../_components/location-form";
@@ -13,6 +15,14 @@ export default async function NewLocationPage() {
   if (perm.kind !== "authorized") {
     notFound();
   }
+
+  const { rows } = await listLocations(db, { limit: 5000, offset: 0 });
+  const suggestions = {
+    zones: [...new Set(rows.map((row) => row.zone))].sort(),
+    racks: [...new Set(rows.map((row) => row.rack))].sort(),
+    levels: [...new Set(rows.map((row) => row.level))].sort(),
+    positions: [...new Set(rows.map((row) => row.position))].sort(),
+  };
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -29,6 +39,7 @@ export default async function NewLocationPage() {
       <div className="rounded-xl bg-surface-white shadow-elevation-1 p-6">
         <LocationForm
           action={createLocationAction}
+          suggestions={suggestions}
           cancelHref="/enrollment?tab=locations"
         />
       </div>

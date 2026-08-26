@@ -7,10 +7,12 @@ export function LotQrViewer({
   lotId,
   lotNumber,
   itemCode,
+  compact = false,
 }: {
   lotId: string;
   lotNumber: string;
   itemCode: string;
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -19,7 +21,7 @@ export function LotQrViewer({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mt-4 inline-flex h-11 w-full items-center justify-center rounded border border-brand-navy/30 bg-surface-white px-3 font-label text-label font-bold text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy"
+        className={`${compact ? "mt-3 h-10" : "mt-4 h-11"} inline-flex w-full items-center justify-center rounded border border-brand-navy/30 bg-surface-white px-3 font-label text-label font-bold text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy`}
       >
         View QR
       </button>

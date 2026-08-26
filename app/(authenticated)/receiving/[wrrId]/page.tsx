@@ -22,7 +22,7 @@ import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { getWrrDocument } from "@/lib/db/queries/receiving";
-import { startReceiving, getCiplSignedUrl, cancelWrr } from "@/lib/actions/receiving";
+import { startReceiving, getCiplSignedUrl, cancelWrr, setWrrLineDisposition } from "@/lib/actions/receiving";
 import type { WrrItemRow } from "@/lib/db/queries/receiving";
 import { WRRUnitLabelGenerator } from "@/components/barcode/WRRUnitLabelGenerator";
 import { CiplDocumentLink, type SignedUrlResult } from "./_components/CiplDocumentLink";
@@ -108,6 +108,22 @@ export default async function WrrDetailPage({ params }: PageProps) {
     "use server";
     const actionResolver = await createPageResolver();
     await cancelWrr(actionResolver, wrrId);
+    redirect(`/receiving/${wrrId}`);
+  }
+
+  async function handleSetDisposition(formData: FormData): Promise<void> {
+    "use server";
+    const wrrItemId = String(formData.get("wrrItemId") ?? "");
+    const disposition = formData.get("disposition");
+    if (disposition !== "store" && disposition !== "inspect") {
+      redirect(`/receiving/${wrrId}`);
+    }
+    await setWrrLineDisposition(
+      await createPageResolver(),
+      wrrId,
+      wrrItemId,
+      disposition,
+    );
     redirect(`/receiving/${wrrId}`);
   }
 
@@ -279,6 +295,9 @@ export default async function WrrDetailPage({ params }: PageProps) {
                   <th className="px-4 py-3 text-center font-label text-label uppercase tracking-[0.05em] text-text-grey">
                     Labels
                   </th>
+                  <th className="px-4 py-3 text-center font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                    Inspection
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/30">
@@ -315,6 +334,29 @@ export default async function WrrDetailPage({ params }: PageProps) {
                         lotNumber={item.lotNumber}
                         expectedQty={item.expectedQty}
                       />
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {(wrr.status === "staged_pending_arrival" || wrr.status === "receiving_in_progress") &&
+                      item.scannedQty === 0 && item.committedAt === null ? (
+                        <form action={handleSetDisposition}>
+                          <input type="hidden" name="wrrItemId" value={item.id} />
+                          <input
+                            type="hidden"
+                            name="disposition"
+                            value={item.disposition === "inspect" ? "store" : "inspect"}
+                          />
+                          <button
+                            type="submit"
+                            className="inline-flex min-h-11 items-center justify-center rounded border border-status-pending px-3 font-label text-label text-on-surface hover:bg-status-pending/10 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                          >
+                            {item.disposition === "inspect" ? "Return to Store" : "Send to Inspection"}
+                          </button>
+                        </form>
+                      ) : item.disposition === "inspect" ? (
+                        <span className="font-body text-body-sm text-text-grey">Inspection selected</span>
+                      ) : (
+                        <span className="font-body text-body-sm text-text-grey">—</span>
+                      )}
                     </td>
                   </tr>
                 ))}

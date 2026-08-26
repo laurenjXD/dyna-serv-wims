@@ -63,6 +63,7 @@ const ROUTE_ICON_MAP: Record<string, LucideIcon> = {
   inspection: Shield,
   "inspection-detail": Shield,
   approvals: CheckSquare,
+  "notification-queue": Bell,
   documents: FileText,
   reports: BarChart2,
   "billing-pricing": Receipt,
@@ -88,6 +89,7 @@ const SHORT_LABEL_OVERRIDES: Record<string, string> = {
   enrollment: "Organization & Item Enrollment",
   portal: "Organization Portal",
   "billing-pricing": "Billing & Pricing",
+  "notification-queue": "Notification Queue",
 };
 
 function routeIcon(id: string): LucideIcon {
@@ -136,6 +138,7 @@ function NavLink({
   variant = "tab",
   onNavigate,
   compact = false,
+  pendingApprovalCount = 0,
 }: {
   entry: RouteRegistryEntry;
   isActive: boolean;
@@ -143,6 +146,7 @@ function NavLink({
   variant?: "tab" | "list";
   onNavigate?: () => void;
   compact?: boolean;
+  pendingApprovalCount?: number;
 }) {
   const Icon = routeIcon(entry.id);
   const label = toLabel(entry.id);
@@ -190,6 +194,11 @@ function NavLink({
         <Icon size={19} strokeWidth={2.1} aria-hidden="true" />
       </span>
       <span className={`min-w-0 flex-1 truncate ${floorText ? "text-mono-md" : "text-label"}`}>{label}</span>
+      {entry.id === "approvals" && pendingApprovalCount > 0 && (
+        <span data-testid="approval-count-badge" className="inline-flex min-w-6 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 font-mono text-mono-sm font-bold leading-none text-surface">
+          {pendingApprovalCount > 99 ? "99+" : pendingApprovalCount}
+        </span>
+      )}
       <ChevronRight size={16} aria-hidden="true" className={`shrink-0 motion-safe:transition-transform motion-safe:duration-150 ${isActive ? "translate-x-0 text-primary" : "-translate-x-1 text-text-secondary/40 opacity-0 group-hover:translate-x-0 group-hover:opacity-100"}`} />
     </Link>
   );
@@ -201,12 +210,14 @@ function GroupedSections({
   tier,
   onNavigate,
   compact = false,
+  pendingApprovalCount = 0,
 }: {
   sections: readonly NavSection[];
   activeId: string | null;
   tier: SessionPresentationTier;
   onNavigate?: () => void;
   compact?: boolean;
+  pendingApprovalCount?: number;
 }) {
   const floorText = tier === "floor";
   return (
@@ -231,6 +242,7 @@ function GroupedSections({
                 variant="list"
                 onNavigate={onNavigate}
                 compact={compact}
+                pendingApprovalCount={pendingApprovalCount}
               />
             ))}
           </div>
@@ -247,6 +259,7 @@ export function ShellNavigation({
   mobileNavOpen = false,
   onCloseMobileNav,
   desktopOpen = true,
+  pendingApprovalCount = 0,
 }: {
   tier: SessionPresentationTier;
   context: Pick<AuthorizationContext, "grants">;
@@ -258,6 +271,7 @@ export function ShellNavigation({
   // so every existing caller that doesn't pass this keeps today's
   // always-visible desktop sidebar behavior unchanged.
   desktopOpen?: boolean;
+  pendingApprovalCount?: number;
 }) {
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [activeRoleKeys, setActiveRoleKeys] = useState<readonly string[]>([]);
@@ -333,6 +347,7 @@ export function ShellNavigation({
             displayName={displayName}
             roleLabel={roleLabel}
             tier={tier}
+            pendingApprovalCount={pendingApprovalCount}
             onClose={() => setMoreOpen(false)}
           />
         )}
@@ -373,7 +388,7 @@ export function ShellNavigation({
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-3 py-1.5">
-          <GroupedSections sections={sections} activeId={activeId} tier={tier} compact />
+          <GroupedSections sections={sections} activeId={activeId} tier={tier} compact pendingApprovalCount={pendingApprovalCount} />
         </div>
 
         <div className="border-t border-border bg-background p-3">
@@ -398,6 +413,7 @@ export function ShellNavigation({
             displayName={displayName}
             roleLabel={roleLabel}
             tier={tier}
+            pendingApprovalCount={pendingApprovalCount}
             onClose={() => onCloseMobileNav?.()}
           />
         </div>
@@ -412,6 +428,7 @@ function MoreOverlay({
   displayName,
   roleLabel,
   tier,
+  pendingApprovalCount,
   onClose,
 }: {
   sections: readonly NavSection[];
@@ -419,6 +436,7 @@ function MoreOverlay({
   displayName: string | null;
   roleLabel: string;
   tier: SessionPresentationTier;
+  pendingApprovalCount: number;
   onClose: () => void;
 }) {
   const floorText = tier === "floor";
@@ -453,7 +471,7 @@ function MoreOverlay({
           </button>
         </div>
         <div className="flex-1 px-2 py-2">
-          <GroupedSections sections={sections} activeId={activeId} tier={tier} onNavigate={onClose} />
+          <GroupedSections sections={sections} activeId={activeId} tier={tier} onNavigate={onClose} pendingApprovalCount={pendingApprovalCount} />
         </div>
       </div>
     </div>

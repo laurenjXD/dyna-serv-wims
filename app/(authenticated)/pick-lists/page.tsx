@@ -10,6 +10,7 @@ import { createPageResolver } from "@/lib/auth/page-resolver";
 import { db } from "@/lib/db/client";
 import { listPickLists, type PickListRow } from "@/lib/db/queries/withdrawals";
 import { requirePermission } from "@/lib/rbac/guard";
+import { deletePickList } from "./_actions";
 
 const STATUS_CLASSES: Record<string, string> = {
   allocated: "bg-status-pending/15 text-status-pending",
@@ -27,7 +28,8 @@ function statusLabel(status: string) {
   return status.replace(/_/g, " ").toUpperCase();
 }
 
-function PickListAction({ row, canExecute }: { row: PickListRow; canExecute: boolean }) {
+function PickListAction({ row, canExecute, deleted }: { row: PickListRow; canExecute: boolean; deleted?: boolean }) {
+  if (deleted) return <span className="font-body text-body-sm text-text-grey">Deleted</span>;
   if (row.status === "picked" && canExecute) {
     return (
       <Link
@@ -40,16 +42,17 @@ function PickListAction({ row, canExecute }: { row: PickListRow; canExecute: boo
   }
 
   return (
-    <Link
-      href={`/pick-lists/${row.id}/print`}
+    <div className="flex flex-wrap justify-end gap-2">
+      <Link
+        href={`/pick-lists/${row.id}/print`}
         className="inline-flex min-h-14 shrink-0 items-center justify-center whitespace-nowrap rounded border border-outline-variant/30 px-4 font-label text-body-md font-semibold text-on-surface focus:outline-none focus-visible:ring-2 focus:ring-brand-navy focus:ring-offset-2 active:scale-[0.97] md:min-h-11 md:text-label"
-    >
-      View / PDF
-    </Link>
+      >View / PDF</Link>
+      {canExecute && <form action={deletePickList}><input type="hidden" name="pickListId" value={row.id} /><button type="submit" className="inline-flex min-h-11 items-center rounded border border-status-held/40 px-3 font-label text-label font-semibold text-status-held">Delete</button></form>}
+    </div>
   );
 }
 
-export default async function PickListsIndexPage() {
+export default async function PickListsIndexPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const resolver = await createPageResolver();
   const permission = await requirePermission(resolver, "pick_list.read");
 
@@ -59,7 +62,9 @@ export default async function PickListsIndexPage() {
 
   const canExecute =
     (await requirePermission(resolver, "pick_list.execute")).kind === "authorized";
-  const { rows, total } = await listPickLists(db, { limit: 50, offset: 0 });
+  const { tab } = await searchParams;
+  const isDeleted = tab === "deleted";
+  const { rows, total } = await listPickLists(db, { limit: 50, offset: 0, deleted: isDeleted });
 
   return (
     <div className="mx-auto max-w-container">
@@ -80,10 +85,15 @@ export default async function PickListsIndexPage() {
         </Link>
       </div>
 
+      <nav className="mt-6 flex gap-1 border-b border-outline-variant/30" aria-label="Pick list views">
+        <Link href="/pick-lists" className={`border-b-2 px-4 py-3 font-label text-label font-bold ${!isDeleted ? "border-brand-primary text-brand-primary" : "border-transparent text-text-grey"}`}>Active</Link>
+        <Link href="/pick-lists?tab=deleted" className={`border-b-2 px-4 py-3 font-label text-label font-bold ${isDeleted ? "border-brand-primary text-brand-primary" : "border-transparent text-text-grey"}`}>Deleted</Link>
+      </nav>
+
       <section className="mt-6 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
-            <p className="font-body text-body-md text-text-grey">No pick lists yet.</p>
+            <p className="font-body text-body-md text-text-grey">{isDeleted ? "No deleted pick lists." : "No pick lists yet."}</p>
             <p className="mt-2 font-body text-body-sm text-text-grey">
               Generate a pick list from Stock View after inventory has been allocated.
             </p>
@@ -116,7 +126,7 @@ export default async function PickListsIndexPage() {
                       <dd className="mt-1 text-on-surface">{row.createdAt.toLocaleDateString()}</dd>
                     </div>
                   </dl>
-                  <PickListAction row={row} canExecute={canExecute} />
+                  <PickListAction row={row} canExecute={canExecute} deleted={isDeleted} />
                 </article>
               ))}
             </div>
@@ -145,7 +155,7 @@ export default async function PickListsIndexPage() {
                       <td className="px-5 py-4 font-body text-body-md text-on-surface">{FLOW_LABELS[row.flowType] ?? row.flowType}</td>
                       <td className="px-5 py-4 font-mono text-mono-md text-on-surface">{row.customerPartyId}</td>
                       <td className="px-5 py-4 font-body text-body-md text-text-grey">{row.createdAt.toLocaleString()}</td>
-                      <td className="px-5 py-4 text-right"><PickListAction row={row} canExecute={canExecute} /></td>
+                      <td className="px-5 py-4 text-right"><PickListAction row={row} canExecute={canExecute} deleted={isDeleted} /></td>
                     </tr>
                   ))}
                 </tbody>

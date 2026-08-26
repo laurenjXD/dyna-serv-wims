@@ -14,6 +14,10 @@ export const pickLists = pgTable("pick_lists", {
   status: pickListStatusEnum("status").default("allocated").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  deliveryReceiptPath: text("delivery_receipt_path"),
+  deliveryReceiptStatus: text("delivery_receipt_status").default("missing").notNull(),
+  deliveryReceiptUploadedAt: timestamp("delivery_receipt_uploaded_at"),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export const pickListItems = pgTable("pick_list_items", {

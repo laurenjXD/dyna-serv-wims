@@ -32,6 +32,12 @@ interface LocationFormProps {
   action: LocationFormAction;
   location?: LocationDetail;
   cancelHref: string;
+  suggestions?: {
+    zones: string[];
+    racks: string[];
+    levels: string[];
+    positions: string[];
+  };
 }
 
 function previewLabel(rack: string, level: string, position: string): string {
@@ -43,6 +49,7 @@ export function LocationForm({
   action,
   location,
   cancelHref,
+  suggestions,
 }: LocationFormProps) {
   const [state, formAction, isPending] = useActionState(action, {});
   const isEdit = !!location;
@@ -117,9 +124,11 @@ export function LocationForm({
             maxLength={50}
             defaultValue={location?.zone ?? ""}
             placeholder="e.g. A"
+            list="location-zone-suggestions"
             className={inputClass("zone")}
             {...ariaProps("zone")}
           />
+          <datalist id="location-zone-suggestions">{suggestions?.zones.map((value) => <option key={value} value={value} />)}</datalist>
           {fieldError("zone")}
         </div>
 
@@ -165,10 +174,12 @@ export function LocationForm({
             value={rack}
             onChange={(e) => setRack(e.target.value)}
             placeholder="e.g. A"
+            list="location-rack-suggestions"
             className={inputClass("rack")}
             {...ariaProps("rack")}
           />
           {fieldError("rack")}
+          <datalist id="location-rack-suggestions">{suggestions?.racks.map((value) => <option key={value} value={value} />)}</datalist>
         </div>
 
         {/* Level */}
@@ -189,10 +200,12 @@ export function LocationForm({
             value={level}
             onChange={(e) => setLevel(e.target.value)}
             placeholder="e.g. 1"
+            list="location-level-suggestions"
             className={inputClass("level")}
             {...ariaProps("level")}
           />
           {fieldError("level")}
+          <datalist id="location-level-suggestions">{suggestions?.levels.map((value) => <option key={value} value={value} />)}</datalist>
         </div>
 
         {/* Position */}
@@ -213,10 +226,12 @@ export function LocationForm({
             value={position}
             onChange={(e) => setPosition(e.target.value)}
             placeholder="e.g. 01"
+            list="location-position-suggestions"
             className={inputClass("position")}
             {...ariaProps("position")}
           />
           {fieldError("position")}
+          <datalist id="location-position-suggestions">{suggestions?.positions.map((value) => <option key={value} value={value} />)}</datalist>
         </div>
 
         {/* Max CBM Capacity */}

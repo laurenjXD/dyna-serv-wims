@@ -46,6 +46,7 @@
 // committed boxes and never prompts for a barcode/QR scan.
 
 import Link from "next/link";
+import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import {
@@ -165,6 +166,7 @@ export default async function DispatchConfirmationPage({
     );
     if (dispatchResult.ok) {
       // Return to outgoing queue — dispatch is complete.
+      revalidatePath("/outgoing");
       redirect("/outgoing");
     }
     redirect(

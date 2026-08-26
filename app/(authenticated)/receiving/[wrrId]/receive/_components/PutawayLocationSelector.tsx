@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { LocationStoredItem, PutawayCandidate } from "@/lib/db/queries/locations";
+import { LocationCombobox } from "./LocationCombobox";
 
 interface PutawayLocationSelectorProps {
   candidates: PutawayCandidate[];
@@ -44,6 +45,10 @@ export function PutawayLocationSelector({
     buildInitialAssignment(candidates, quantity, unitCbm),
   );
   const [attested, setAttested] = useState(false);
+  const sortedCandidates = useMemo(
+    () => [...candidates].sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: "base" })),
+    [candidates],
+  );
 
   const allocations = useMemo(
     () =>
@@ -76,24 +81,15 @@ export function PutawayLocationSelector({
         <label htmlFor="all-boxes-location" className="font-label text-body-md text-on-surface">
           Put all {quantity} boxes in
         </label>
-        <select
-          id="all-boxes-location"
-          value={singleLocationId}
-          onChange={(event) => assignAll(event.target.value)}
-          className="mt-2 h-14 w-full rounded-lg border-2 border-outline-variant bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-4 focus:ring-brand-navy"
-        >
-          <option value="" disabled>
-            {selectedIds.length > 1 ? "Multiple locations selected" : "Choose a location"}
-          </option>
-          {candidates.map((candidate) => {
-            const canFitAll = maxBoxesFor(candidate, unitCbm, quantity) >= quantity;
-            return (
-              <option key={candidate.id} value={candidate.id} disabled={!canFitAll}>
-                {candidate.label} · {candidate.remainingCbm.toFixed(2)} CBM free
-              </option>
-            );
-          })}
-        </select>
+        <div className="mt-2">
+          <LocationCombobox
+            id="all-boxes-location"
+                options={sortedCandidates.map((candidate) => ({ id: candidate.id, label: candidate.label, disabled: maxBoxesFor(candidate, unitCbm, quantity) < quantity, capacity: { occupied: candidate.occupiedCbm, maximum: candidate.maxCbmCapacity } }))}
+            value={singleLocationId}
+            onChange={assignAll}
+            placeholder={selectedIds.length > 1 ? "Multiple locations selected" : "Search or choose a location"}
+          />
+        </div>
         <p className="mt-2 font-body text-body-md text-text-grey">
           Choose one location here. Use the split option below only when the pallet will occupy multiple locations.
         </p>
@@ -110,35 +106,28 @@ export function PutawayLocationSelector({
               className="grid grid-cols-[4.5rem_1fr] items-center gap-2 rounded-lg bg-surface-light-grey p-2"
             >
               <span className="font-label text-body-md text-on-surface">Box {index + 1}</span>
-              <select
+              <LocationCombobox
+                id={`box-location-${index + 1}`}
                 required
-                value={locationId}
-                onChange={(event) =>
-                  setLocationsBySlot((previous) =>
-                    previous.map((value, slot) =>
-                      slot === index ? event.target.value : value,
-                    ),
-                  )
-                }
-                className="h-12 min-w-0 rounded border border-outline-variant bg-surface-white px-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              >
-                <option value="">Choose location</option>
-                {candidates.map((candidate) => {
+                options={sortedCandidates.map((candidate) => {
                   const assignedElsewhere = locationsBySlot.filter(
                     (value, slot) => slot !== index && value === candidate.id,
                   ).length;
-                  const maxBoxes = maxBoxesFor(candidate, unitCbm, quantity);
-                  return (
-                    <option
-                      key={candidate.id}
-                      value={candidate.id}
-                      disabled={assignedElsewhere >= maxBoxes}
-                    >
-                      {candidate.label} · {candidate.remainingCbm.toFixed(2)} CBM free
-                    </option>
-                  );
+                  const assignedHere = locationsBySlot.filter((value) => value === candidate.id).length;
+                  return {
+                    id: candidate.id,
+                    label: candidate.label,
+                    disabled: assignedElsewhere >= maxBoxesFor(candidate, unitCbm, quantity),
+                    capacity: {
+                      occupied: candidate.occupiedCbm + assignedHere * unitCbm,
+                      maximum: candidate.maxCbmCapacity,
+                    },
+                  };
                 })}
-              </select>
+                value={locationId}
+                onChange={(nextValue) => setLocationsBySlot((previous) => previous.map((value, slot) => slot === index ? nextValue : value))}
+                placeholder="Search location"
+              />
             </label>
           ))}
         </div>
@@ -152,7 +141,6 @@ export function PutawayLocationSelector({
               (candidate) => candidate.id === allocation.locationId,
             );
             if (!location) return null;
-            const afterStorage = location.remainingCbm - allocation.qty * unitCbm;
             const storedItems = contents[location.id] ?? [];
 
             return (
@@ -160,7 +148,6 @@ export function PutawayLocationSelector({
                 <summary className="cursor-pointer font-body text-body-md text-on-surface">
                   <span className="font-label">{location.label}</span>
                   {" · "}{allocation.qty} box{allocation.qty === 1 ? "" : "es"}
-                  {" · "}{afterStorage.toFixed(2)} CBM free after
                 </summary>
                 <div className="mt-2 border-t border-outline-variant/30 pt-2">
                   <p className="font-body text-body-md text-text-grey">

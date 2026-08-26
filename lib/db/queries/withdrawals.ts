@@ -46,6 +46,10 @@ export type PickListRow = {
   customerPartyName?: string | null;
   flowType: string;
   createdAt: Date;
+  deliveryReceiptPath?: string | null;
+  deliveryReceiptStatus?: string;
+  deliveryReceiptUploadedAt?: Date | null;
+  deletedAt?: Date | null;
 };
 
 export type PickListItemRow = {
@@ -94,6 +98,10 @@ export type OutgoingLedgerRow = {
   pickListNumber: string | null;
   customerPartyName: string | null;
   performedByUserId: string;
+  pickListId: string | null;
+  deliveryReceiptPath?: string | null;
+  deliveryReceiptStatus?: string;
+  deliveryReceiptUploadedAt?: Date | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -108,7 +116,7 @@ export type OutgoingLedgerRow = {
 
 export async function listPickLists(
   db: DbLike,
-  opts: { limit: number; offset: number; status?: string },
+  opts: { limit: number; offset: number; status?: string; deleted?: boolean },
 ): Promise<{ rows: PickListRow[]; total: number }> {
   const dataBase = db
     .select({
@@ -119,6 +127,10 @@ export async function listPickLists(
       customerPartyName: parties.name,
       flowType: pickLists.flowType,
       createdAt: pickLists.createdAt,
+      deliveryReceiptPath: pickLists.deliveryReceiptPath,
+      deliveryReceiptStatus: pickLists.deliveryReceiptStatus,
+      deliveryReceiptUploadedAt: pickLists.deliveryReceiptUploadedAt,
+      deletedAt: pickLists.deletedAt,
     })
     .from(pickLists)
     .leftJoin(parties, eq(parties.id, pickLists.customerPartyId));
@@ -130,9 +142,15 @@ export async function listPickLists(
   let rows: PickListRow[];
   let countResult: Array<{ count: string }>;
 
-  if (opts.status) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const whereExpr = eq(pickLists.status, opts.status as any);
+  const statusFilter = opts.status
+    ? eq(pickLists.status, opts.status as "allocated" | "picked" | "dispatched")
+    : undefined;
+  const deletedFilter = opts.deleted
+    ? sql`${pickLists.deletedAt} IS NOT NULL`
+    : sql`${pickLists.deletedAt} IS NULL`;
+  const whereExpr = statusFilter ? and(statusFilter, deletedFilter) : deletedFilter;
+
+  {
     rows = (await dataBase
       .where(whereExpr)
       .orderBy(asc(pickLists.createdAt))
@@ -141,12 +159,6 @@ export async function listPickLists(
     countResult = (await countBase.where(whereExpr)) as Array<{
       count: string;
     }>;
-  } else {
-    rows = (await dataBase
-      .orderBy(asc(pickLists.createdAt))
-      .limit(opts.limit)
-      .offset(opts.offset)) as PickListRow[];
-    countResult = (await countBase) as Array<{ count: string }>;
   }
 
   return { rows, total: Number(countResult[0]?.count ?? 0) };
@@ -371,27 +383,30 @@ export async function getPickUnitCandidates(
 // ---------------------------------------------------------------------------
 
 export type LedgerDateRange = { startDate: Date; endDate: Date };
+export type DeliveryReceiptStatus = "missing" | "uploaded";
 
 // R9.3: "ledger SHALL support date... filters" — v1 shipped without it;
 // added 2026-08-19 (user request: date-range filter on read-only pages).
-function buildPickLedgerFilter(dateRange?: LedgerDateRange) {
+function buildPickLedgerFilter(dateRange?: LedgerDateRange, deliveryReceiptStatus?: DeliveryReceiptStatus) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pickFilter = eq(inventoryTransactions.movementType, "pick" as any);
-  if (!dateRange) return pickFilter;
-  return and(
+  const pickFilter = eq(inventoryTransactions.movementType, "pick");
+  let filter = dateRange ? and(
     pickFilter,
     gte(inventoryTransactions.createdAt, dateRange.startDate),
     lte(inventoryTransactions.createdAt, dateRange.endDate),
-  );
+  ) : pickFilter;
+  if (deliveryReceiptStatus === "uploaded") filter = and(filter, sql`${pickLists.deliveryReceiptPath} IS NOT NULL`);
+  if (deliveryReceiptStatus === "missing") filter = and(filter, sql`${pickLists.deliveryReceiptPath} IS NULL`);
+  return filter;
 }
 
 export async function listOutgoingLedger(
   db: DbLike,
-  opts: { limit: number; offset: number; dateRange?: LedgerDateRange },
+  opts: { limit: number; offset: number; dateRange?: LedgerDateRange; deliveryReceiptStatus?: DeliveryReceiptStatus },
 ): Promise<{ rows: OutgoingLedgerRow[]; total: number }> {
   // movement_type = 'pick' filter — required by R9.1 and verified by the
   // test suite (where() call is expected on the data chain).
-  const pickFilter = buildPickLedgerFilter(opts.dateRange);
+  const pickFilter = buildPickLedgerFilter(opts.dateRange, opts.deliveryReceiptStatus);
 
   const rows = (await db
     .select({
@@ -407,6 +422,9 @@ export async function listOutgoingLedger(
       customerPartyName: parties.name,
       performedByUserId: inventoryTransactions.performedByUserId,
       pickListId: inventoryTransactions.pickListId,
+      deliveryReceiptPath: pickLists.deliveryReceiptPath,
+      deliveryReceiptStatus: pickLists.deliveryReceiptStatus,
+      deliveryReceiptUploadedAt: pickLists.deliveryReceiptUploadedAt,
     })
     .from(inventoryTransactions)
     .innerJoin(items, eq(items.id, inventoryTransactions.itemId))
