@@ -27,6 +27,7 @@ import { db } from "@/lib/db/client";
 import { listOutgoingLedger } from "@/lib/actions/withdrawals";
 import { listPickLists, type OutgoingLedgerRow } from "@/lib/db/queries/withdrawals";
 import { PickQueueSection } from "./_components/PickQueueSection";
+import { uploadDeliveryReceipt } from "../pick-lists/_actions";
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -35,7 +36,7 @@ type TabKey = "dispatch" | "ledger";
 export default async function OutgoingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; receiptStatus?: string; receiptUpload?: string }>;
 }) {
   const resolver = await createPageResolver();
 
@@ -47,7 +48,7 @@ export default async function OutgoingPage({
 
   const canExecute =
     (await requirePermission(resolver, "pick_list.execute")).kind === "authorized";
-  const { tab } = await searchParams;
+  const { tab, receiptStatus, receiptUpload } = await searchParams;
   const activeTab: TabKey = tab === "ledger" ? "ledger" : "dispatch";
 
   return (
@@ -93,7 +94,7 @@ export default async function OutgoingPage({
       {activeTab === "dispatch" ? (
         <DispatchTab canExecute={canExecute} />
       ) : (
-        <OutgoingLedgerTab resolver={resolver} />
+        <OutgoingLedgerTab resolver={resolver} receiptStatus={receiptStatus} receiptUpload={receiptUpload} />
       )}
     </div>
   );
@@ -120,12 +121,17 @@ async function DispatchTab({ canExecute }: { canExecute: boolean }) {
 
 async function OutgoingLedgerTab({
   resolver,
+  receiptStatus,
+  receiptUpload,
 }: {
   resolver: Awaited<ReturnType<typeof createPageResolver>>;
+  receiptStatus?: string;
+  receiptUpload?: string;
 }) {
   const ledgerResult = await listOutgoingLedger(resolver, {
     limit: 100,
     offset: 0,
+    deliveryReceiptStatus: receiptStatus === "uploaded" || receiptStatus === "missing" ? receiptStatus : undefined,
   });
 
   // listOutgoingLedger returns { rows, total } on success or { ok: false } on error.
@@ -138,6 +144,13 @@ async function OutgoingLedgerTab({
         Read-only record of outgoing inventory transactions (picks). No edits
         or deletions — corrections use new approved transactions.
       </p>
+      <form method="GET" className="mt-4 flex flex-wrap items-end gap-3">
+        <input type="hidden" name="tab" value="ledger" />
+        <label className="font-label text-label text-on-surface">Delivery Receipt status<select name="receiptStatus" defaultValue={receiptStatus ?? ""} className="ml-2 h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md"><option value="">All</option><option value="missing">Missing</option><option value="uploaded">Uploaded</option></select></label>
+        <button type="submit" className="h-11 rounded bg-brand-navy px-4 font-label text-label font-bold text-surface-white">Filter</button>
+        {receiptStatus && <Link href="/outgoing?tab=ledger" className="inline-flex h-11 items-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface">Clear</Link>}
+      </form>
+      {receiptUpload && <p role="status" className="mt-3 rounded border border-status-available/30 bg-status-available/10 px-4 py-3 font-body text-body-sm text-on-surface">{receiptUpload === "success" ? "Delivery Receipt uploaded." : receiptUpload === "invalid" ? "Upload a PDF, PNG, or JPEG up to 10 MB." : receiptUpload === "forbidden" ? "You do not have permission to upload Delivery Receipts." : "Delivery Receipt upload failed. Please try again."}</p>}
 
       {/* Ledger table — Level 1 office elevation per design.md §6.
           design.md §9: item code is the prominent first field in office review.
@@ -187,6 +200,8 @@ async function OutgoingLedgerTab({
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                     Acknowledgement Receipt #
                   </th>
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Delivery Receipt</th>
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Upload Status</th>
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                     Performed By
                   </th>
@@ -228,6 +243,10 @@ async function OutgoingLedgerTab({
                     <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
                       —
                     </td>
+                    <td className="px-4 py-3">
+                      <form action={uploadDeliveryReceipt} encType="multipart/form-data" className="flex min-w-52 items-center gap-2"><input type="hidden" name="pickListId" value={row.pickListId ?? ""} /><input required type="file" name="deliveryReceipt" accept="application/pdf,image/png,image/jpeg" className="max-w-40 text-body-sm" /><button type="submit" disabled={!row.pickListId} className="inline-flex h-10 items-center rounded bg-primary px-3 font-label text-mono-sm font-bold text-surface-white disabled:opacity-50">Upload</button></form>
+                    </td>
+                    <td className="px-4 py-3"><span className={`inline-flex rounded-full px-2 py-1 font-label text-mono-sm font-bold ${row.deliveryReceiptStatus === "uploaded" ? "bg-status-available/15 text-status-available" : "bg-status-pending/15 text-status-pending"}`}>{row.deliveryReceiptStatus === "uploaded" ? "Uploaded" : "Missing"}</span></td>
                     <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
                       {row.performedByUserId}
                     </td>

@@ -84,9 +84,7 @@ export function PutawayLocationSelector({
         <div className="mt-2">
           <LocationCombobox
             id="all-boxes-location"
-            options={sortedCandidates
-              .filter((candidate) => maxBoxesFor(candidate, unitCbm, quantity) >= quantity)
-              .map((candidate) => ({ id: candidate.id, label: candidate.label, detail: `${candidate.remainingCbm.toFixed(2)} CBM free` }))}
+                options={sortedCandidates.map((candidate) => ({ id: candidate.id, label: candidate.label, disabled: maxBoxesFor(candidate, unitCbm, quantity) < quantity, capacity: { occupied: candidate.occupiedCbm, maximum: candidate.maxCbmCapacity } }))}
             value={singleLocationId}
             onChange={assignAll}
             placeholder={selectedIds.length > 1 ? "Multiple locations selected" : "Search or choose a location"}
@@ -115,9 +113,17 @@ export function PutawayLocationSelector({
                   const assignedElsewhere = locationsBySlot.filter(
                     (value, slot) => slot !== index && value === candidate.id,
                   ).length;
-                  const maxBoxes = maxBoxesFor(candidate, unitCbm, quantity);
-                  return { id: candidate.id, label: candidate.label, detail: `${candidate.remainingCbm.toFixed(2)} CBM free${assignedElsewhere >= maxBoxes ? " · full" : ""}` };
-                }).filter((option) => !option.detail.endsWith(" · full"))}
+                  const assignedHere = locationsBySlot.filter((value) => value === candidate.id).length;
+                  return {
+                    id: candidate.id,
+                    label: candidate.label,
+                    disabled: assignedElsewhere >= maxBoxesFor(candidate, unitCbm, quantity),
+                    capacity: {
+                      occupied: candidate.occupiedCbm + assignedHere * unitCbm,
+                      maximum: candidate.maxCbmCapacity,
+                    },
+                  };
+                })}
                 value={locationId}
                 onChange={(nextValue) => setLocationsBySlot((previous) => previous.map((value, slot) => slot === index ? nextValue : value))}
                 placeholder="Search location"
@@ -135,7 +141,6 @@ export function PutawayLocationSelector({
               (candidate) => candidate.id === allocation.locationId,
             );
             if (!location) return null;
-            const afterStorage = location.remainingCbm - allocation.qty * unitCbm;
             const storedItems = contents[location.id] ?? [];
 
             return (
@@ -143,7 +148,6 @@ export function PutawayLocationSelector({
                 <summary className="cursor-pointer font-body text-body-md text-on-surface">
                   <span className="font-label">{location.label}</span>
                   {" · "}{allocation.qty} box{allocation.qty === 1 ? "" : "es"}
-                  {" · "}{afterStorage.toFixed(2)} CBM free after
                 </summary>
                 <div className="mt-2 border-t border-outline-variant/30 pt-2">
                   <p className="font-body text-body-md text-text-grey">
