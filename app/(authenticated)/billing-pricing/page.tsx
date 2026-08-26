@@ -207,26 +207,6 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
           VMI Storage Ledger
         </Link>
         <Link
-          href="/billing-pricing/contracts"
-          role="tab"
-          aria-selected={false}
-          className="flex h-11 items-center px-4 font-label text-label text-brand-blue font-bold hover:text-brand-blue-dark transition-colors duration-150"
-        >
-          Commercial Contracts &amp; 14-Tab Detail &rarr;
-        </Link>
-        <Link
-          href="/billing-pricing?tab=vmi-contracts"
-          role="tab"
-          aria-selected={activeTab === "vmi-contracts"}
-          className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-brand-navy ${
-            activeTab === "vmi-contracts"
-              ? "border-b-2 border-on-surface text-on-surface font-bold"
-              : "text-text-grey hover:text-on-surface"
-          }`}
-        >
-          VMI Contract Terms
-        </Link>
-        <Link
           href="/billing-pricing?tab=trading"
           role="tab"
           aria-selected={activeTab === "trading"}
@@ -239,16 +219,12 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
           Trading Margin Ledger
         </Link>
         <Link
-          href="/billing-pricing?tab=policies"
+          href="/billing-pricing/contracts"
           role="tab"
-          aria-selected={activeTab === "policies"}
-          className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-brand-navy ${
-            activeTab === "policies"
-              ? "border-b-2 border-on-surface text-on-surface font-bold"
-              : "text-text-grey hover:text-on-surface"
-          }`}
+          aria-selected={false}
+          className="flex h-11 items-center px-4 font-label text-label text-brand-blue font-bold hover:text-brand-blue-dark transition-colors duration-150"
         >
-          Rate Cards (Trading)
+          Commercial Contracts (14-Tab Rate Cards) &rarr;
         </Link>
         <Link
           href="/billing-pricing/soa/sample"
@@ -256,9 +232,10 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
           aria-selected={false}
           className="flex h-11 items-center px-4 font-label text-label text-text-grey hover:text-on-surface transition-colors duration-150"
         >
-          SOA &amp; Supporting Document Packages
+          Statement of Account (SOA)
         </Link>
       </div>
+
 
       {/* Main Content Area */}
       <div className="mt-5 space-y-5">
