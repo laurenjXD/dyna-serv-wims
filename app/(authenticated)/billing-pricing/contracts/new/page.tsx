@@ -31,7 +31,7 @@ export default async function NewContractPage() {
     const pageResolver = await createPageResolver();
     const contractNumber = String(formData.get("contractNumber") ?? "");
     const partyId = String(formData.get("partyId") ?? "");
-    const contractType = String(formData.get("contractType") ?? "vmi_trading") as any;
+    const contractType = String(formData.get("contractType") ?? "vmi_trading") as "vmi" | "trading" | "vmi_trading";
     const effectiveDate = String(formData.get("effectiveDate") ?? new Date().toISOString().split("T")[0]);
     const expirationDate = String(formData.get("expirationDate") ?? "") || undefined;
     const currency = String(formData.get("currency") ?? "USD");

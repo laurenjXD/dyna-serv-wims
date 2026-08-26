@@ -6,7 +6,7 @@
 
 import { db } from "@/lib/db/client";
 import { billingEvents, billingLedger, creditDebitMemos } from "@/lib/db/schema/billing_ledger";
-import { eq, and, gte, lte } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 export interface RecordEventInput {
   sourceTransactionId: string;

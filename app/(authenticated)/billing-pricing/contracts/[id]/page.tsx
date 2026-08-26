@@ -6,7 +6,7 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CheckCircle, Clock, FileText, Layers, Shield, Tag } from "lucide-react";
+import { ArrowLeft, FileText } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { getContractDetail } from "@/lib/actions/contracts";
@@ -56,7 +56,7 @@ export default async function ContractDetailPage({ params, searchParams }: PageP
     notFound();
   }
 
-  const { contract, activeVersion, rules, vmiConfig, versions } = detail;
+  const { contract, activeVersion, rules, vmiConfig } = detail;
   const activeTab = tabParam || "general";
 
   return (
@@ -269,7 +269,7 @@ export default async function ContractDetailPage({ params, searchParams }: PageP
                   {rules.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="py-6 text-center text-text-grey">
-                        No pricing rules defined for this contract. Click "+ Add Pricing Rule" to add one.
+                        No pricing rules defined for this contract. Click &quot;+ Add Pricing Rule&quot; to add one.
                       </td>
                     </tr>
                   ) : (

@@ -3,12 +3,10 @@
 // Features: Search, Filter by Status, Filter by Customer, Filter by Contract Type, Sort by Effective Date
 
 import Link from "next/link";
-import { Plus, Search, Filter, FileText, ArrowLeft, ShieldCheck } from "lucide-react";
+import { Plus, Search, Filter, FileText, ArrowLeft } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { listContracts } from "@/lib/actions/contracts";
-import { listParties } from "@/lib/db/queries/parties";
-import { db } from "@/lib/db/client";
 
 export default async function ContractListPage() {
   const resolver = await createPageResolver();
@@ -26,8 +24,6 @@ export default async function ContractListPage() {
   }
 
   const contractsList = await listContracts(resolver);
-  const partiesResult = await listParties(db, { limit: 100 });
-  const partiesList = partiesResult.rows;
 
   return (
     <div className="mx-auto max-w-container space-y-6 px-4 py-6 sm:px-6 lg:px-8">
@@ -101,7 +97,7 @@ export default async function ContractListPage() {
               {contractsList.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-8 text-center text-text-grey">
-                    No commercial contracts configured yet. Click "New Contract" to define your first rate-card contract.
+                    No commercial contracts configured yet. Click &quot;New Contract&quot; to define your first rate-card contract.
                   </td>
                 </tr>
               ) : (

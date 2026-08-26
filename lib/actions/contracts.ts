@@ -9,10 +9,9 @@ import {
   contractVersions,
   pricingRules,
   vmiConfigurations,
-  tradingPrices,
 } from "@/lib/db/schema/contracts";
 import { parties } from "@/lib/db/schema/parties";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { requirePermission } from "@/lib/rbac/guard";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 

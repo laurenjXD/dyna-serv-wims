@@ -8,6 +8,7 @@ import { ArrowLeft, Save, Sparkles } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { getContractDetail, createPricingRule } from "@/lib/actions/contracts";
+import type { ChargeCategory, BillingBasis } from "@/lib/billing/pricing-engine";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -39,8 +40,8 @@ export default async function PricingRuleBuilderPage({ params }: PageProps) {
     const pageResolver = await createPageResolver();
     const chargeName = String(formData.get("chargeName") ?? "");
     const chargeCode = String(formData.get("chargeCode") ?? "");
-    const chargeCategory = String(formData.get("chargeCategory") ?? "delivery") as any;
-    const billingBasis = String(formData.get("billingBasis") ?? "flat") as any;
+    const chargeCategory = String(formData.get("chargeCategory") ?? "delivery") as ChargeCategory;
+    const billingBasis = String(formData.get("billingBasis") ?? "flat") as BillingBasis;
     const rate = Number(formData.get("rate") ?? "0");
     const currency = String(formData.get("currency") ?? "USD");
     const priority = Number(formData.get("priority") ?? "0");
