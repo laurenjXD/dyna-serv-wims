@@ -5,6 +5,7 @@ import { db } from "@/lib/db/client";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { getLocation } from "@/lib/db/queries/locations";
+import { listLocations } from "@/lib/db/queries/locations";
 import { LocationForm } from "../../_components/location-form";
 import { updateLocationAction } from "../../_actions";
 
@@ -21,8 +22,17 @@ export default async function EditLocationPage({ params }: PageProps) {
     notFound();
   }
 
-  const location = await getLocation(db, locationId);
+  const [location, locationList] = await Promise.all([
+    getLocation(db, locationId),
+    listLocations(db, { limit: 5000, offset: 0 }),
+  ]);
   if (!location) notFound();
+  const suggestions = {
+    zones: [...new Set(locationList.rows.map((row) => row.zone))].sort(),
+    racks: [...new Set(locationList.rows.map((row) => row.rack))].sort(),
+    levels: [...new Set(locationList.rows.map((row) => row.level))].sort(),
+    positions: [...new Set(locationList.rows.map((row) => row.position))].sort(),
+  };
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -43,6 +53,7 @@ export default async function EditLocationPage({ params }: PageProps) {
         <LocationForm
           action={updateLocationAction}
           location={location}
+          suggestions={suggestions}
           cancelHref={`/master-data/locations/${locationId}`}
         />
       </div>

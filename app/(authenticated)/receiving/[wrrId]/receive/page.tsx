@@ -36,6 +36,7 @@ import { recordScan, startReceiving, commitWrrLine, setWrrLineDisposition } from
 import type { WrrItemRow } from "@/lib/db/queries/receiving";
 import { CameraScanBridge } from "./_components/CameraScanBridge";
 import { PutawayLocationSelector } from "./_components/PutawayLocationSelector";
+import { LocationCombobox } from "./_components/LocationCombobox";
 
 // ─── Error reason → plain language ──────────────────────────────────────────
 
@@ -185,13 +186,13 @@ export default async function ReceiveFloorPage({
       primaryStoreContents = {};
     }
   } else if (primaryReadyLine?.disposition === "inspect") {
-    inspectionLocations = (await db
+    inspectionLocations = ((await db
       .select({ id: locations.id, label: locations.label })
       .from(locations)
       .where(and(eq(locations.locationType, "inspection"), eq(locations.isActive, true)))) as Array<{
       id: string;
       label: string;
-    }>;
+    }>) .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: "base" }));
   }
 
   // Inline server action — closes over wrrId from the page component.
@@ -637,23 +638,15 @@ export default async function ReceiveFloorPage({
                   Inspection location
                 </label>
                 {inspectionLocations.length > 0 ? (
-                  <select
+                  <LocationCombobox
                     id="location-primary"
                     name="locationId"
-                    defaultValue={
-                      inspectionLocations.length === 1 ? inspectionLocations[0].id : undefined
-                    }
-                    className="h-16 w-full rounded border-2 border-outline-variant bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-4 focus:ring-brand-navy"
-                  >
-                    {inspectionLocations.length > 1 && (
-                      <option value="">Select an inspection location…</option>
-                    )}
-                    {inspectionLocations.map((loc) => (
-                      <option key={loc.id} value={loc.id}>
-                        {loc.label}
-                      </option>
-                    ))}
-                  </select>
+                    required={inspectionLocations.length > 1}
+                    options={inspectionLocations}
+                    defaultValue={inspectionLocations.length === 1 ? inspectionLocations[0].id : ""}
+                    onChange={() => undefined}
+                    placeholder="Search or choose an inspection location"
+                  />
                 ) : (
                   <div role="alert" className="rounded border-l-4 border-status-held bg-white px-3 py-2">
                     <p className="flex items-center gap-2 font-body text-body-md text-on-surface">
