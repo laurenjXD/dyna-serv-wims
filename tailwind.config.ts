@@ -33,6 +33,8 @@ const config: Config = {
 
         // Legacy compatibility aliases mapped to unified design tokens
         "brand-navy": "#0F172A",
+        "brand-blue": "#2563EB",
+        "brand-blue-dark": "#1E3A8A",
         "brand-royal-blue": "#2563EB",
         "brand-red": "#EF4444",
         "accent-indigo-50": "#EEF3FF",

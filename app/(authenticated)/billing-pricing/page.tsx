@@ -175,18 +175,19 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
         <div className="flex flex-wrap items-center gap-3">
           <Link
             href="/billing-pricing/soa/sample"
-            className="inline-flex items-center justify-center rounded-btn border border-border-medium bg-surface-white px-4 py-2 font-body text-body-sm font-semibold text-text-dark hover:bg-surface-background shadow-card transition-colors"
+            className="inline-flex items-center justify-center rounded-lg border border-border bg-surface px-4 py-2.5 font-body text-body-sm font-bold text-text-primary hover:bg-background shadow-sm transition-colors"
           >
             Statement of Account (SOA)
           </Link>
           <Link
             href="/billing-pricing/contracts"
-            className="inline-flex items-center justify-center rounded-btn bg-brand-blue px-4 py-2 font-body text-body-sm font-semibold text-white shadow-card hover:bg-brand-blue-dark transition-colors"
+            className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2.5 font-body text-body-sm font-bold text-white shadow-md hover:bg-primary-hover transition-colors"
           >
             Commercial Contracts (14-Tab Rate Cards)
           </Link>
         </div>
       </div>
+
 
       {/* Primary Navigation Tabs */}
       <div

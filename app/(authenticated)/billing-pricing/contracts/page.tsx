@@ -48,11 +48,12 @@ export default async function ContractListPage() {
 
         <Link
           href="/billing-pricing/contracts/new"
-          className="inline-flex items-center justify-center rounded-btn bg-brand-blue px-4 py-2 font-body text-body-sm font-semibold text-white shadow-card hover:bg-brand-blue-dark transition-colors"
+          className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2.5 font-body text-body-sm font-bold text-white shadow-md hover:bg-primary-hover transition-colors"
         >
-          <Plus size={16} className="mr-2" /> New Contract
+          <Plus size={16} className="mr-2" /> + New Contract
         </Link>
       </div>
+
 
       {/* Contract List Table */}
       <div className="overflow-hidden rounded-card bg-surface-white border border-border-light shadow-card">
