@@ -28,6 +28,25 @@ export interface CreateContractInput {
   paymentTerms?: string;
   warehousesCovered?: string;
   notes?: string;
+
+  // Optional VMI Policy & Terms
+  vmiOwnership?: "supplier_owned" | "customer_owned" | "warehouse_owned";
+  vmiBillingTrigger?: "upon_receipt" | "upon_consumption" | "upon_dispatch" | "upon_customer_confirmation" | "monthly_settlement";
+  storageRatePerCbmDay?: number;
+  handlingInRatePerCbm?: number;
+  handlingOutRatePerCbm?: number;
+  loaPermitNumber?: string;
+  loaMonthlyRate?: number;
+  minStock?: number;
+  maxStock?: number;
+  reorderPoint?: number;
+
+  // Optional Trading Pricing Policies
+  supplierCost?: number;
+  sellingPrice?: number;
+  markupType?: "percentage" | "fixed_amount" | "fixed_selling_price";
+  markupValue?: number;
+  minOrderQuantity?: number;
 }
 
 export interface CreatePricingRuleInput {
@@ -47,7 +66,7 @@ export interface CreatePricingRuleInput {
 }
 
 /**
- * Creates a new Master Contract and initializes Version 1 in Draft status.
+ * Creates a new Master Contract and initializes Version 1 with VMI/Trading policies and default rules.
  */
 export async function createContract(
   resolver: PageResolver,
@@ -60,39 +79,135 @@ export async function createContract(
 
   const userId = perm.context.userId;
 
-  // Insert master contract header
-  const [contract] = await db
-    .insert(contracts)
-    .values({
-      contractNumber: input.contractNumber,
-      partyId: input.partyId,
-      contractType: input.contractType,
-      status: "draft",
-      effectiveDate: input.effectiveDate,
-      expirationDate: input.expirationDate,
-      currency: input.currency ?? "USD",
-      exchangeRatePolicy: input.exchangeRatePolicy ?? "monthly_rate",
-      paymentTerms: input.paymentTerms ?? "Net 30",
-      warehousesCovered: input.warehousesCovered ?? "Main Warehouse",
-      notes: input.notes,
-      createdByUserId: userId,
-    })
-    .returning();
+  try {
+    // Insert master contract header
+    const [contract] = await db
+      .insert(contracts)
+      .values({
+        contractNumber: input.contractNumber,
+        partyId: input.partyId,
+        contractType: input.contractType,
+        status: "draft",
+        effectiveDate: input.effectiveDate,
+        expirationDate: input.expirationDate,
+        currency: input.currency ?? "USD",
+        exchangeRatePolicy: input.exchangeRatePolicy ?? "monthly_rate",
+        paymentTerms: input.paymentTerms ?? "Net 30",
+        warehousesCovered: input.warehousesCovered ?? "Main Warehouse",
+        notes: input.notes,
+        createdByUserId: userId,
+      })
+      .returning();
 
-  // Initialize Version 1
-  const [version] = await db
-    .insert(contractVersions)
-    .values({
-      contractId: contract.id,
-      versionNumber: 1,
-      isActive: true,
-      changesSummary: "Initial contract creation",
-      createdByUserId: userId,
-    })
-    .returning();
+    // Initialize Version 1
+    const [version] = await db
+      .insert(contractVersions)
+      .values({
+        contractId: contract.id,
+        versionNumber: 1,
+        isActive: true,
+        changesSummary: "Initial contract creation with configured VMI / Trading terms",
+        createdByUserId: userId,
+      })
+      .returning();
 
-  return { ok: true, contract, version };
+    // If VMI terms configured, insert VMI Policy
+    if (input.contractType === "vmi" || input.contractType === "vmi_trading") {
+      await db.insert(vmiConfigurations).values({
+        contractVersionId: version.id,
+        partyId: input.partyId,
+        inventoryOwnership: input.vmiOwnership ?? "supplier_owned",
+        billingTrigger: input.vmiBillingTrigger ?? "upon_consumption",
+        minStock: input.minStock !== undefined ? String(input.minStock) : null,
+        maxStock: input.maxStock !== undefined ? String(input.maxStock) : null,
+        reorderPoint: input.reorderPoint !== undefined ? String(input.reorderPoint) : null,
+      });
+
+      // Default Storage Rate Rule
+      if (input.storageRatePerCbmDay && input.storageRatePerCbmDay > 0) {
+        await db.insert(pricingRules).values({
+          contractVersionId: version.id,
+          chargeName: "VMI Daily Storage Rate",
+          chargeCode: "WRH-STORAGE-CBM",
+          chargeCategory: "warehousing",
+          billingBasis: "cbm_day",
+          rate: String(input.storageRatePerCbmDay),
+          currency: input.currency ?? "USD",
+          priority: 10,
+          createdByUserId: userId,
+        });
+      }
+
+      // Handling IN Rule
+      if (input.handlingInRatePerCbm && input.handlingInRatePerCbm > 0) {
+        await db.insert(pricingRules).values({
+          contractVersionId: version.id,
+          chargeName: "Handling In Rate",
+          chargeCode: "HDL-IN-CBM",
+          chargeCategory: "handling_in",
+          billingBasis: "cbm_day",
+          rate: String(input.handlingInRatePerCbm),
+          currency: input.currency ?? "USD",
+          priority: 10,
+          createdByUserId: userId,
+        });
+      }
+
+      // Handling OUT Rule
+      if (input.handlingOutRatePerCbm && input.handlingOutRatePerCbm > 0) {
+        await db.insert(pricingRules).values({
+          contractVersionId: version.id,
+          chargeName: "Handling Out Rate",
+          chargeCode: "HDL-OUT-CBM",
+          chargeCategory: "handling_out",
+          billingBasis: "cbm_day",
+          rate: String(input.handlingOutRatePerCbm),
+          currency: input.currency ?? "USD",
+          priority: 10,
+          createdByUserId: userId,
+        });
+      }
+
+      // LOA Permit Fee Rule
+      if (input.loaMonthlyRate && input.loaMonthlyRate > 0) {
+        await db.insert(pricingRules).values({
+          contractVersionId: version.id,
+          chargeName: input.loaPermitNumber ? `LOA Permit (${input.loaPermitNumber})` : "LOA Permit Fee",
+          chargeCode: "LOA-PERMIT-FEE",
+          chargeCategory: "loa",
+          billingBasis: "flat",
+          rate: String(input.loaMonthlyRate),
+          currency: input.currency ?? "USD",
+          priority: 10,
+          createdByUserId: userId,
+        });
+      }
+    }
+
+    // If Trading terms configured, insert Trading Rule
+    if (input.contractType === "trading" || input.contractType === "vmi_trading") {
+      if (input.sellingPrice && input.sellingPrice > 0) {
+        await db.insert(pricingRules).values({
+          contractVersionId: version.id,
+          chargeName: "Trading Selling Price Policy",
+          chargeCode: "TRD-SELL-PRICE",
+          chargeCategory: "trading",
+          billingBasis: "unit",
+          rate: String(input.sellingPrice),
+          currency: input.currency ?? "USD",
+          priority: 10,
+          createdByUserId: userId,
+        });
+      }
+    }
+
+    return { ok: true, contract, version };
+  } catch (error) {
+    console.error("Error in createContract:", error);
+    return { ok: false, error: "Failed to create contract." };
+  }
 }
+
 
 /**
  * Adds a new Pricing Rule to an active contract version.

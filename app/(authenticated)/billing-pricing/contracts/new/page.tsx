@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { createContract } from "@/lib/actions/contracts";
 import { listParties } from "@/lib/db/queries/parties";
 import { db } from "@/lib/db/client";
+import { NewContractForm } from "./NewContractForm";
 
 export default async function NewContractPage() {
   const resolver = await createPageResolver();
@@ -40,6 +41,25 @@ export default async function NewContractPage() {
     const warehousesCovered = String(formData.get("warehousesCovered") ?? "Main Warehouse");
     const notes = String(formData.get("notes") ?? "");
 
+    // VMI Fields
+    const vmiOwnership = formData.get("vmiOwnership") ? String(formData.get("vmiOwnership")) as any : undefined;
+    const vmiBillingTrigger = formData.get("vmiBillingTrigger") ? String(formData.get("vmiBillingTrigger")) as any : undefined;
+    const storageRatePerCbmDay = formData.get("storageRatePerCbmDay") ? Number(formData.get("storageRatePerCbmDay")) : undefined;
+    const handlingInRatePerCbm = formData.get("handlingInRatePerCbm") ? Number(formData.get("handlingInRatePerCbm")) : undefined;
+    const handlingOutRatePerCbm = formData.get("handlingOutRatePerCbm") ? Number(formData.get("handlingOutRatePerCbm")) : undefined;
+    const loaPermitNumber = formData.get("loaPermitNumber") ? String(formData.get("loaPermitNumber")) : undefined;
+    const loaMonthlyRate = formData.get("loaMonthlyRate") ? Number(formData.get("loaMonthlyRate")) : undefined;
+    const minStock = formData.get("minStock") ? Number(formData.get("minStock")) : undefined;
+    const maxStock = formData.get("maxStock") ? Number(formData.get("maxStock")) : undefined;
+    const reorderPoint = formData.get("reorderPoint") ? Number(formData.get("reorderPoint")) : undefined;
+
+    // Trading Fields
+    const supplierCost = formData.get("supplierCost") ? Number(formData.get("supplierCost")) : undefined;
+    const sellingPrice = formData.get("sellingPrice") ? Number(formData.get("sellingPrice")) : undefined;
+    const markupType = formData.get("markupType") ? String(formData.get("markupType")) as any : undefined;
+    const markupValue = formData.get("markupValue") ? Number(formData.get("markupValue")) : undefined;
+    const minOrderQuantity = formData.get("minOrderQuantity") ? Number(formData.get("minOrderQuantity")) : undefined;
+
     const result = await createContract(pageResolver, {
       contractNumber,
       partyId,
@@ -51,6 +71,21 @@ export default async function NewContractPage() {
       paymentTerms,
       warehousesCovered,
       notes,
+      vmiOwnership,
+      vmiBillingTrigger,
+      storageRatePerCbmDay,
+      handlingInRatePerCbm,
+      handlingOutRatePerCbm,
+      loaPermitNumber,
+      loaMonthlyRate,
+      minStock,
+      maxStock,
+      reorderPoint,
+      supplierCost,
+      sellingPrice,
+      markupType,
+      markupValue,
+      minOrderQuantity,
     });
 
     if (result.ok && result.contract) {
@@ -59,7 +94,7 @@ export default async function NewContractPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 px-4 py-6 sm:px-6">
+    <div className="mx-auto max-w-3xl space-y-6 px-4 py-6 sm:px-6">
       <div>
         <Link
           href="/billing-pricing/contracts"
@@ -75,163 +110,11 @@ export default async function NewContractPage() {
         </p>
       </div>
 
-      <form action={handleCreateContract} className="space-y-6 rounded-card bg-surface-white border border-border-light p-6 shadow-card">
-        <div className="space-y-4">
-          <div>
-            <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
-              Organization (Customer / Principal)
-            </label>
-            <select
-              name="partyId"
-              required
-              className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm"
-            >
-              <option value="">Select an Organization...</option>
-              {partiesList.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({p.code})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
-                Contract Number
-              </label>
-              <input
-                type="text"
-                name="contractNumber"
-                required
-                placeholder="e.g. DSGC-VMI-2026-001"
-                className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm font-mono"
-              />
-            </div>
-
-            <div>
-              <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
-                Contract Type
-              </label>
-              <select
-                name="contractType"
-                className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm"
-              >
-                <option value="vmi_trading">VMI + Trading</option>
-                <option value="vmi">VMI Only</option>
-                <option value="trading">Trading Only</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
-                Effective Date
-              </label>
-              <input
-                type="date"
-                name="effectiveDate"
-                required
-                defaultValue={new Date().toISOString().split("T")[0]}
-                className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm font-mono"
-              />
-            </div>
-
-            <div>
-              <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
-                Expiration Date (Optional)
-              </label>
-              <input
-                type="date"
-                name="expirationDate"
-                className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm font-mono"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
-                Currency
-              </label>
-              <select
-                name="currency"
-                className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm font-mono"
-              >
-                <option value="USD">USD ($)</option>
-                <option value="PHP">PHP (₱)</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
-                Exchange Rate Policy
-              </label>
-              <select
-                name="exchangeRatePolicy"
-                className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm"
-              >
-                <option value="monthly_rate">Monthly Locked Rate</option>
-                <option value="fixed_contract_rate">Fixed Contract Rate</option>
-                <option value="daily_rate">Daily Forex Rate</option>
-                <option value="manual_approved_rate">Manual Approved Rate</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
-                Payment Terms
-              </label>
-              <input
-                type="text"
-                name="paymentTerms"
-                defaultValue="Net 30"
-                className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
-              Warehouses Covered
-            </label>
-            <input
-              type="text"
-              name="warehousesCovered"
-              defaultValue="Main Warehouse"
-              className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm"
-            />
-          </div>
-
-          <div>
-            <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
-              Notes / Commercial Terms
-            </label>
-            <textarea
-              name="notes"
-              rows={3}
-              placeholder="Additional commercial notes..."
-              className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm"
-            />
-          </div>
-        </div>
-
-        <div className="flex justify-end gap-3 pt-2">
-          <Link
-            href="/billing-pricing/contracts"
-            className="rounded-btn border border-border-medium px-4 py-2 font-body text-body-sm font-semibold text-text-grey hover:bg-surface-background"
-          >
-            Cancel
-          </Link>
-          <button
-            type="submit"
-            className="inline-flex items-center rounded-btn bg-brand-blue px-6 py-2 font-body text-body-sm font-semibold text-white shadow-card hover:bg-brand-blue-dark transition-colors"
-          >
-            <Save size={16} className="mr-2" /> Save & Configure Rates
-          </button>
-        </div>
-      </form>
+      <NewContractForm
+        partiesList={partiesList}
+        onSubmitAction={handleCreateContract}
+      />
     </div>
   );
 }
+
