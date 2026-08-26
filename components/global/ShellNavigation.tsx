@@ -63,6 +63,7 @@ const ROUTE_ICON_MAP: Record<string, LucideIcon> = {
   inspection: Shield,
   "inspection-detail": Shield,
   approvals: CheckSquare,
+  "notification-queue": Bell,
   documents: FileText,
   reports: BarChart2,
   "billing-pricing": Receipt,
@@ -88,6 +89,7 @@ const SHORT_LABEL_OVERRIDES: Record<string, string> = {
   enrollment: "Organization & Item Enrollment",
   portal: "Organization Portal",
   "billing-pricing": "Billing & Pricing",
+  "notification-queue": "Notification Queue",
 };
 
 function routeIcon(id: string): LucideIcon {

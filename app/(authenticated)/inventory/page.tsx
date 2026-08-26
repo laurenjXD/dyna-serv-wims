@@ -234,16 +234,16 @@ function InventoryItemDetails({ item }: { item: GroupedItem }) {
       </div>
       <div className="grid gap-3 xl:grid-cols-2 2xl:grid-cols-3">
         {item.lots.map((lot) => (
-          <article key={lot.lotId} className="rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
-            <div className="flex items-start justify-between gap-2"><h3 className="truncate font-heading text-title-md font-bold text-on-surface" title={lot.lotNumber}>{lot.lotNumber}</h3><span className="shrink-0 rounded-full bg-on-surface px-2.5 py-0.5 font-label text-mono-sm text-surface-white">{item.isPerishable ? "FEFO" : "FIFO"} #{lot.priority}</span></div>
+          <article key={lot.lotId} className="rounded-xl border border-outline-variant/30 bg-surface-white p-3.5 shadow-elevation-1">
+            <div className="flex items-start justify-between gap-2"><h3 className="truncate font-heading text-body-lg font-bold text-on-surface" title={lot.lotNumber}>{lot.lotNumber}</h3><span className="shrink-0 rounded-full bg-on-surface px-2 py-0.5 font-label text-mono-sm text-surface-white">{item.isPerishable ? "FEFO" : "FIFO"} #{lot.priority}</span></div>
             <p className="mt-1 truncate font-body text-body-sm text-text-grey" title={lot.locationLabels.join(", ")}>{lot.locationLabels.length === 1 ? `Location ${lot.locationLabels[0]}` : `Locations ${lot.locationLabels.join(", ")}`}</p>
-            <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">
+            <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5">
               <div><dt className="font-label text-mono-sm uppercase text-text-grey">Available</dt><dd className="mt-0.5 font-body text-body-md text-on-surface">{lot.availableQty.toLocaleString()} {item.uom}</dd></div>
               <div><dt className="font-label text-mono-sm uppercase text-text-grey">Expiry</dt><dd className="mt-0.5 truncate font-body text-body-md text-on-surface">{lot.expiryDate ?? "Not dated"}</dd></div>
               <div><dt className="font-label text-mono-sm uppercase text-text-grey">Received</dt><dd className="mt-0.5 font-body text-body-md text-on-surface">{new Date(lot.receivedAt).toLocaleDateString()}</dd></div>
               <div><dt className="font-label text-mono-sm uppercase text-text-grey">Status</dt><dd className="mt-0.5 truncate font-body text-body-md lowercase text-on-surface">{lot.lotStatus}</dd></div>
             </dl>
-            <LotQrViewer lotId={lot.lotId} lotNumber={lot.lotNumber} itemCode={item.itemCode} />
+            <LotQrViewer lotId={lot.lotId} lotNumber={lot.lotNumber} itemCode={item.itemCode} compact />
           </article>
         ))}
       </div>
