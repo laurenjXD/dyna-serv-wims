@@ -25,8 +25,6 @@ import { inventoryTransactions } from "@/lib/db/schema/transactions";
 import { items } from "@/lib/db/schema/items";
 import { lots } from "@/lib/db/schema/lots";
 import { locations } from "@/lib/db/schema/locations";
-import { lots } from "@/lib/db/schema/lots";
-import { locations } from "@/lib/db/schema/locations";
 import { parties } from "@/lib/db/schema/parties";
 import { inventoryUnits } from "@/lib/db/schema/inventory_units";
 
@@ -403,18 +401,16 @@ export async function listOutgoingLedger(
       itemCode: items.code,
       itemName: items.name,
       lotNumber: lots.lotNumber,
-      itemCode: items.code,
-      itemName: items.name,
-      lotNumber: lots.lotNumber,
       qty: inventoryTransactions.qty,
       fromLocationLabel: locations.label,
-      performedByUserId: inventoryTransactions.performedByUserId,
       pickListNumber: pickLists.pickListNumber,
       customerPartyName: parties.name,
+      performedByUserId: inventoryTransactions.performedByUserId,
+      pickListId: inventoryTransactions.pickListId,
     })
     .from(inventoryTransactions)
-    .leftJoin(items, eq(items.id, inventoryTransactions.itemId))
-    .leftJoin(lots, eq(lots.id, inventoryTransactions.lotId))
+    .innerJoin(items, eq(items.id, inventoryTransactions.itemId))
+    .innerJoin(lots, eq(lots.id, inventoryTransactions.lotId))
     .leftJoin(locations, eq(locations.id, inventoryTransactions.fromLocationId))
     .leftJoin(pickLists, eq(pickLists.id, inventoryTransactions.pickListId))
     .leftJoin(parties, eq(parties.id, pickLists.customerPartyId))
