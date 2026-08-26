@@ -86,69 +86,74 @@ export async function getVmiCbmLedgerSummary(
   year: number,
   database: DbLike = db,
 ): Promise<VmiCbmLedgerRow[]> {
-  const { start, end } = monthDateBounds(month, year);
+  try {
+    const { start, end } = monthDateBounds(month, year);
 
-  const rawRows: RawLedgerRow[] = await database
-    .select({
-      party_id: vmiDailyBalanceLedger.partyId,
-      party_name: parties.name,
-      billed_balance_cbm: vmiDailyBalanceLedger.billedBalanceCbm,
-      storage_amount_usd: vmiDailyBalanceLedger.storageAmountUsd,
-    })
-    .from(vmiDailyBalanceLedger)
-    .innerJoin(parties, eq(parties.id, vmiDailyBalanceLedger.partyId))
-    .where(
-      and(
-        gte(vmiDailyBalanceLedger.ledgerDate, start),
-        lt(vmiDailyBalanceLedger.ledgerDate, end),
-      ),
-    );
-
-  type Accum = { partyName: string; cbmSum: number; dayCount: number; subtotal: number };
-  const byParty = new Map<string, Accum>();
-  for (const raw of rawRows) {
-    const existing = byParty.get(raw.party_id) ?? {
-      partyName: raw.party_name,
-      cbmSum: 0,
-      dayCount: 0,
-      subtotal: 0,
-    };
-    existing.cbmSum += Number(raw.billed_balance_cbm);
-    existing.dayCount += 1;
-    existing.subtotal += Number(raw.storage_amount_usd);
-    byParty.set(raw.party_id, existing);
-  }
-
-  const rows: VmiCbmLedgerRow[] = [];
-  for (const [partyId, accum] of byParty) {
-    const [rateRow] = (await database
-      .select({ rate: vmiContractTerms.storageRatePerCbmDay })
-      .from(vmiContractTerms)
-      .where(and(eq(vmiContractTerms.partyId, partyId), isNull(vmiContractTerms.effectiveTo)))
-      .limit(1)) as { rate: string }[];
-
-    const [lotCountRow] = (await database
-      .select({ count: sql<string>`count(*)` })
-      .from(lots)
+    const rawRows: RawLedgerRow[] = await database
+      .select({
+        party_id: vmiDailyBalanceLedger.partyId,
+        party_name: parties.name,
+        billed_balance_cbm: vmiDailyBalanceLedger.billedBalanceCbm,
+        storage_amount_usd: vmiDailyBalanceLedger.storageAmountUsd,
+      })
+      .from(vmiDailyBalanceLedger)
+      .innerJoin(parties, eq(parties.id, vmiDailyBalanceLedger.partyId))
       .where(
         and(
-          eq(lots.ownerPartyId, partyId),
-          eq(lots.flowType, "vmi"),
-          eq(lots.status, "available"),
+          gte(vmiDailyBalanceLedger.ledgerDate, start),
+          lt(vmiDailyBalanceLedger.ledgerDate, end),
         ),
-      )) as { count: string }[];
+      );
 
-    rows.push({
-      id: partyId,
-      party: accum.partyName,
-      lotsInStorage: Number(lotCountRow?.count ?? 0),
-      avgDailyCbm: accum.dayCount > 0 ? accum.cbmSum / accum.dayCount : 0,
-      ratePerCbm: rateRow ? Number(rateRow.rate) : 0,
-      subtotal: accum.subtotal,
-    });
+    type Accum = { partyName: string; cbmSum: number; dayCount: number; subtotal: number };
+    const byParty = new Map<string, Accum>();
+    for (const raw of rawRows) {
+      const existing = byParty.get(raw.party_id) ?? {
+        partyName: raw.party_name,
+        cbmSum: 0,
+        dayCount: 0,
+        subtotal: 0,
+      };
+      existing.cbmSum += Number(raw.billed_balance_cbm);
+      existing.dayCount += 1;
+      existing.subtotal += Number(raw.storage_amount_usd);
+      byParty.set(raw.party_id, existing);
+    }
+
+    const rows: VmiCbmLedgerRow[] = [];
+    for (const [partyId, accum] of byParty) {
+      const [rateRow] = (await database
+        .select({ rate: vmiContractTerms.storageRatePerCbmDay })
+        .from(vmiContractTerms)
+        .where(and(eq(vmiContractTerms.partyId, partyId), isNull(vmiContractTerms.effectiveTo)))
+        .limit(1)) as { rate: string }[];
+
+      const [lotCountRow] = (await database
+        .select({ count: sql<string>`count(*)` })
+        .from(lots)
+        .where(
+          and(
+            eq(lots.ownerPartyId, partyId),
+            eq(lots.flowType, "vmi"),
+            eq(lots.status, "available"),
+          ),
+        )) as { count: string }[];
+
+      rows.push({
+        id: partyId,
+        party: accum.partyName,
+        lotsInStorage: Number(lotCountRow?.count ?? 0),
+        avgDailyCbm: accum.dayCount > 0 ? accum.cbmSum / accum.dayCount : 0,
+        ratePerCbm: rateRow ? Number(rateRow.rate) : 0,
+        subtotal: accum.subtotal,
+      });
+    }
+
+    return rows;
+  } catch (error) {
+    console.error("Error in getVmiCbmLedgerSummary:", error);
+    return [];
   }
-
-  return rows;
 }
 
 export type VmiDailyBalanceRow = {
@@ -171,43 +176,49 @@ export async function getVmiDailyBalanceRows(
   year: number,
   database: DbLike = db,
 ): Promise<VmiDailyBalanceRow[]> {
-  const { start, end } = monthDateBounds(month, year);
+  try {
+    const { start, end } = monthDateBounds(month, year);
 
-  const rawRows = (await database
-    .select({
-      id: vmiDailyBalanceLedger.id,
-      ledgerDate: vmiDailyBalanceLedger.ledgerDate,
-      beginningCbm: vmiDailyBalanceLedger.beginningCbm,
-      inFgCbm: vmiDailyBalanceLedger.inboundCbmFg,
-      inRawCbm: vmiDailyBalanceLedger.inboundCbmRawMaterial,
-      outFgCbm: vmiDailyBalanceLedger.outboundCbmFg,
-      outRawCbm: vmiDailyBalanceLedger.outboundCbmRawMaterial,
-      endingCbm: vmiDailyBalanceLedger.endingCbm,
-      billedBalanceCbm: vmiDailyBalanceLedger.billedBalanceCbm,
-      appliedStorageRateUsd: vmiDailyBalanceLedger.appliedStorageRateUsd,
-      storageAmountUsd: vmiDailyBalanceLedger.storageAmountUsd,
-    })
-    .from(vmiDailyBalanceLedger)
-    .where(
-      and(
-        eq(vmiDailyBalanceLedger.partyId, partyId),
-        gte(vmiDailyBalanceLedger.ledgerDate, start),
-        lt(vmiDailyBalanceLedger.ledgerDate, end),
-      ),
-    )) as Record<string, string>[];
+    const rawRows = (await database
+      .select({
+        id: vmiDailyBalanceLedger.id,
+        ledgerDate: vmiDailyBalanceLedger.ledgerDate,
+        beginningCbm: vmiDailyBalanceLedger.beginningCbm,
+        inFgCbm: vmiDailyBalanceLedger.inboundCbmFg,
+        inRawCbm: vmiDailyBalanceLedger.inboundCbmRawMaterial,
+        outFgCbm: vmiDailyBalanceLedger.outboundCbmFg,
+        outRawCbm: vmiDailyBalanceLedger.outboundCbmRawMaterial,
+        endingCbm: vmiDailyBalanceLedger.endingCbm,
+        billedBalanceCbm: vmiDailyBalanceLedger.billedBalanceCbm,
+        appliedStorageRateUsd: vmiDailyBalanceLedger.appliedStorageRateUsd,
+        storageAmountUsd: vmiDailyBalanceLedger.storageAmountUsd,
+      })
+      .from(vmiDailyBalanceLedger)
+      .where(
+        and(
+          eq(vmiDailyBalanceLedger.partyId, partyId),
+          gte(vmiDailyBalanceLedger.ledgerDate, start),
+          lt(vmiDailyBalanceLedger.ledgerDate, end),
+        ),
+      )) as Record<string, string>[];
 
-  return rawRows.map((r) => ({
-    id: r.id,
-    ledgerDate: r.ledgerDate,
-    beginningCbm: Number(r.beginningCbm),
-    inFgCbm: Number(r.inFgCbm),
-    inRawCbm: Number(r.inRawCbm),
-    outFgCbm: Number(r.outFgCbm),
-    outRawCbm: Number(r.outRawCbm),
-    endingCbm: Number(r.endingCbm),
-    billedBalanceCbm: Number(r.billedBalanceCbm),
-    appliedStorageRateUsd: Number(r.appliedStorageRateUsd),
-    storageAmountUsd: Number(r.storageAmountUsd),
-  }));
+    return rawRows.map((r) => ({
+      id: r.id,
+      ledgerDate: r.ledgerDate,
+      beginningCbm: Number(r.beginningCbm),
+      inFgCbm: Number(r.inFgCbm),
+      inRawCbm: Number(r.inRawCbm),
+      outFgCbm: Number(r.outFgCbm),
+      outRawCbm: Number(r.outRawCbm),
+      endingCbm: Number(r.endingCbm),
+      billedBalanceCbm: Number(r.billedBalanceCbm),
+      appliedStorageRateUsd: Number(r.appliedStorageRateUsd),
+      storageAmountUsd: Number(r.storageAmountUsd),
+    }));
+  } catch (error) {
+    console.error("Error in getVmiDailyBalanceRows:", error);
+    return [];
+  }
 }
+
 

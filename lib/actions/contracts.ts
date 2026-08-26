@@ -140,25 +140,30 @@ export async function listContracts(resolver: PageResolver) {
     return [];
   }
 
-  const result = await db
-    .select({
-      id: contracts.id,
-      contractNumber: contracts.contractNumber,
-      partyId: contracts.partyId,
-      partyName: parties.name,
-      contractType: contracts.contractType,
-      status: contracts.status,
-      effectiveDate: contracts.effectiveDate,
-      expirationDate: contracts.expirationDate,
-      currency: contracts.currency,
-      paymentTerms: contracts.paymentTerms,
-      createdAt: contracts.createdAt,
-    })
-    .from(contracts)
-    .innerJoin(parties, eq(contracts.partyId, parties.id))
-    .orderBy(desc(contracts.createdAt));
+  try {
+    const result = await db
+      .select({
+        id: contracts.id,
+        contractNumber: contracts.contractNumber,
+        partyId: contracts.partyId,
+        partyName: parties.name,
+        contractType: contracts.contractType,
+        status: contracts.status,
+        effectiveDate: contracts.effectiveDate,
+        expirationDate: contracts.expirationDate,
+        currency: contracts.currency,
+        paymentTerms: contracts.paymentTerms,
+        createdAt: contracts.createdAt,
+      })
+      .from(contracts)
+      .innerJoin(parties, eq(contracts.partyId, parties.id))
+      .orderBy(desc(contracts.createdAt));
 
-  return result;
+    return result;
+  } catch (error) {
+    console.error("Error in listContracts:", error);
+    return [];
+  }
 }
 
 /**
@@ -173,60 +178,66 @@ export async function getContractDetail(
     return null;
   }
 
-  const [contract] = await db
-    .select({
-      id: contracts.id,
-      contractNumber: contracts.contractNumber,
-      partyId: contracts.partyId,
-      partyName: parties.name,
-      contractType: contracts.contractType,
-      status: contracts.status,
-      effectiveDate: contracts.effectiveDate,
-      expirationDate: contracts.expirationDate,
-      currency: contracts.currency,
-      exchangeRatePolicy: contracts.exchangeRatePolicy,
-      paymentTerms: contracts.paymentTerms,
-      warehousesCovered: contracts.warehousesCovered,
-      notes: contracts.notes,
-      createdAt: contracts.createdAt,
-    })
-    .from(contracts)
-    .innerJoin(parties, eq(contracts.partyId, parties.id))
-    .where(eq(contracts.id, contractId));
+  try {
+    const [contract] = await db
+      .select({
+        id: contracts.id,
+        contractNumber: contracts.contractNumber,
+        partyId: contracts.partyId,
+        partyName: parties.name,
+        contractType: contracts.contractType,
+        status: contracts.status,
+        effectiveDate: contracts.effectiveDate,
+        expirationDate: contracts.expirationDate,
+        currency: contracts.currency,
+        exchangeRatePolicy: contracts.exchangeRatePolicy,
+        paymentTerms: contracts.paymentTerms,
+        warehousesCovered: contracts.warehousesCovered,
+        notes: contracts.notes,
+        createdAt: contracts.createdAt,
+      })
+      .from(contracts)
+      .innerJoin(parties, eq(contracts.partyId, parties.id))
+      .where(eq(contracts.id, contractId));
 
-  if (!contract) return null;
+    if (!contract) return null;
 
-  // Fetch active version
-  const versions = await db
-    .select()
-    .from(contractVersions)
-    .where(eq(contractVersions.contractId, contractId))
-    .orderBy(desc(contractVersions.versionNumber));
-
-  const activeVersion = versions.find((v) => v.isActive) ?? versions[0];
-
-  let rules: (typeof pricingRules.$inferSelect)[] = [];
-  let vmiConfig: (typeof vmiConfigurations.$inferSelect) | null = null;
-
-  if (activeVersion) {
-    rules = await db
+    // Fetch active version
+    const versions = await db
       .select()
-      .from(pricingRules)
-      .where(eq(pricingRules.contractVersionId, activeVersion.id))
-      .orderBy(desc(pricingRules.priority));
+      .from(contractVersions)
+      .where(eq(contractVersions.contractId, contractId))
+      .orderBy(desc(contractVersions.versionNumber));
 
-    const [vmi] = await db
-      .select()
-      .from(vmiConfigurations)
-      .where(eq(vmiConfigurations.contractVersionId, activeVersion.id));
-    vmiConfig = vmi ?? null;
+    const activeVersion = versions.find((v) => v.isActive) ?? versions[0];
+
+    let rules: (typeof pricingRules.$inferSelect)[] = [];
+    let vmiConfig: (typeof vmiConfigurations.$inferSelect) | null = null;
+
+    if (activeVersion) {
+      rules = await db
+        .select()
+        .from(pricingRules)
+        .where(eq(pricingRules.contractVersionId, activeVersion.id))
+        .orderBy(desc(pricingRules.priority));
+
+      const [vmi] = await db
+        .select()
+        .from(vmiConfigurations)
+        .where(eq(vmiConfigurations.contractVersionId, activeVersion.id));
+      vmiConfig = vmi ?? null;
+    }
+
+    return {
+      contract,
+      versions,
+      activeVersion,
+      rules,
+      vmiConfig,
+    };
+  } catch (error) {
+    console.error("Error in getContractDetail:", error);
+    return null;
   }
-
-  return {
-    contract,
-    versions,
-    activeVersion,
-    rules,
-    vmiConfig,
-  };
 }
+
