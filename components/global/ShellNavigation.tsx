@@ -193,7 +193,7 @@ function NavLink({
       </span>
       <span className={`min-w-0 flex-1 truncate ${floorText ? "text-mono-md" : "text-label"}`}>{label}</span>
       {entry.id === "approvals" && pendingApprovalCount > 0 && (
-        <span data-testid="approval-count-badge" className="inline-flex min-w-6 items-center justify-center rounded-full border-2 border-red-500 bg-primary px-1.5 py-0.5 font-mono text-mono-sm font-bold leading-none text-surface">
+        <span data-testid="approval-count-badge" className="inline-flex min-w-6 items-center justify-center rounded-full border-2 border-red-500 bg-red-500 px-1.5 py-0.5 font-mono text-mono-sm font-bold leading-none text-surface">
           {pendingApprovalCount > 99 ? "99+" : pendingApprovalCount}
         </span>
       )}
