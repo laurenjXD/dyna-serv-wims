@@ -63,7 +63,6 @@ const ROUTE_ICON_MAP: Record<string, LucideIcon> = {
   inspection: Shield,
   "inspection-detail": Shield,
   approvals: CheckSquare,
-  "notification-queue": Bell,
   documents: FileText,
   reports: BarChart2,
   "billing-pricing": Receipt,
@@ -89,7 +88,6 @@ const SHORT_LABEL_OVERRIDES: Record<string, string> = {
   enrollment: "Organization & Item Enrollment",
   portal: "Organization Portal",
   "billing-pricing": "Billing & Pricing",
-  "notification-queue": "Notification Queue",
 };
 
 function routeIcon(id: string): LucideIcon {
@@ -195,7 +193,7 @@ function NavLink({
       </span>
       <span className={`min-w-0 flex-1 truncate ${floorText ? "text-mono-md" : "text-label"}`}>{label}</span>
       {entry.id === "approvals" && pendingApprovalCount > 0 && (
-        <span data-testid="approval-count-badge" className="inline-flex min-w-6 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 font-mono text-mono-sm font-bold leading-none text-surface">
+        <span data-testid="approval-count-badge" className="inline-flex min-w-6 items-center justify-center rounded-full border-2 border-red-500 bg-primary px-1.5 py-0.5 font-mono text-mono-sm font-bold leading-none text-surface">
           {pendingApprovalCount > 99 ? "99+" : pendingApprovalCount}
         </span>
       )}

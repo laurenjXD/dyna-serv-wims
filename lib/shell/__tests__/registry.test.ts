@@ -104,7 +104,6 @@ const EXPECTED_ROUTES: Array<{
   { id: "inventory-pick-list-dispatch", path: "/pick-lists/[pickListId]/dispatch", surface: "floor", capability: "dispatch.execute", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
   { id: "documents", path: "/documents", surface: "office", capability: "documents.read", featureSpecs: ["10-pick-list-and-acknowledgement-receipt"], launchStatus: "planned" },
   { id: "approvals", path: "/approvals", surface: "office", capability: "fifo_override.approve", featureSpecs: ["09-approval-queue"], launchStatus: "launch" },
-  { id: "notification-queue", path: "/notifications", surface: "office", capability: "notifications.read", featureSpecs: ["14-notifications-and-alerts"], launchStatus: "launch" },
   // 2026-08-17: surface corrected floor -> shared. multi-agent-work-division.md's
   // confirmed sidebar target lists Sync under the office sidebar's SYSTEM
   // group — a status indicator page, not a floor-scan-loop action, so there
