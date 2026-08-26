@@ -42,8 +42,8 @@ export default async function NewContractPage() {
     const notes = String(formData.get("notes") ?? "");
 
     // VMI Fields
-    const vmiOwnership = formData.get("vmiOwnership") ? String(formData.get("vmiOwnership")) as any : undefined;
-    const vmiBillingTrigger = formData.get("vmiBillingTrigger") ? String(formData.get("vmiBillingTrigger")) as any : undefined;
+    const vmiOwnership = formData.get("vmiOwnership") ? String(formData.get("vmiOwnership")) as "supplier_owned" | "customer_owned" | "warehouse_owned" : undefined;
+    const vmiBillingTrigger = formData.get("vmiBillingTrigger") ? String(formData.get("vmiBillingTrigger")) as "upon_receipt" | "upon_consumption" | "upon_dispatch" | "upon_customer_confirmation" | "monthly_settlement" : undefined;
     const storageRatePerCbmDay = formData.get("storageRatePerCbmDay") ? Number(formData.get("storageRatePerCbmDay")) : undefined;
     const handlingInRatePerCbm = formData.get("handlingInRatePerCbm") ? Number(formData.get("handlingInRatePerCbm")) : undefined;
     const handlingOutRatePerCbm = formData.get("handlingOutRatePerCbm") ? Number(formData.get("handlingOutRatePerCbm")) : undefined;
@@ -56,9 +56,10 @@ export default async function NewContractPage() {
     // Trading Fields
     const supplierCost = formData.get("supplierCost") ? Number(formData.get("supplierCost")) : undefined;
     const sellingPrice = formData.get("sellingPrice") ? Number(formData.get("sellingPrice")) : undefined;
-    const markupType = formData.get("markupType") ? String(formData.get("markupType")) as any : undefined;
+    const markupType = formData.get("markupType") ? String(formData.get("markupType")) as "percentage" | "fixed_amount" | "fixed_selling_price" : undefined;
     const markupValue = formData.get("markupValue") ? Number(formData.get("markupValue")) : undefined;
     const minOrderQuantity = formData.get("minOrderQuantity") ? Number(formData.get("minOrderQuantity")) : undefined;
+
 
     const result = await createContract(pageResolver, {
       contractNumber,
