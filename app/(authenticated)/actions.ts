@@ -23,6 +23,9 @@
 // Fixed by delegating to that existing resolver instead of maintaining a
 // second, divergent implementation of the same query.
 import { createPageResolver } from "@/lib/auth/page-resolver";
+import { db } from "@/lib/db/client";
+import { requirePermission } from "@/lib/rbac/guard";
+import { listPendingApprovalRequests } from "@/lib/db/queries/approvals";
 import type { AuthorizationResolution } from "@/lib/rbac/session";
 import type { NotificationRow } from "@/lib/db/queries/notifications";
 import { redirect } from "next/navigation";
@@ -30,6 +33,13 @@ import { redirect } from "next/navigation";
 export async function resolveShellAuthorization(): Promise<AuthorizationResolution> {
   const resolver = await createPageResolver();
   return resolver.getContext();
+}
+
+export async function resolveShellPendingApprovalCount(): Promise<number> {
+  const resolver = await createPageResolver();
+  const permission = await requirePermission(resolver, "fifo_override.approve");
+  if (permission.kind !== "authorized") return 0;
+  return (await listPendingApprovalRequests(db, { limit: 1, offset: 0 })).total;
 }
 
 // Backs the sidebar/tab-bar identity card (real display name + role label

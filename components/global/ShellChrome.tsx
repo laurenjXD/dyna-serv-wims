@@ -15,6 +15,7 @@ import { useShellAuthorizationContext } from "./AuthenticatedShellBoundary";
 import { ShellNavigation } from "./ShellNavigation";
 import {
   resolveShellNotifications,
+  resolveShellPendingApprovalCount,
   resolveShellUserDisplay,
   signOutAction,
 } from "@/app/(authenticated)/actions";
@@ -51,6 +52,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
   const accountMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [pendingApprovalCount, setPendingApprovalCount] = useState(0);
   const [notifications, setNotifications] = useState<ShellNotification[]>([]);
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
   const notificationPanelRef = useRef<HTMLDivElement | null>(null);
@@ -101,6 +103,16 @@ export function ShellChrome({ children }: { children: ReactNode }) {
     return () => {
       active = false;
     };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    resolveShellPendingApprovalCount().then((count) => {
+      if (active) setPendingApprovalCount(count);
+    }).catch(() => {
+      if (active) setPendingApprovalCount(0);
+    });
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
@@ -432,6 +444,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
       <ShellNavigation
         tier={tier}
         context={{ grants: context?.grants ?? [] }}
+        pendingApprovalCount={pendingApprovalCount}
         currentPath={pathname}
         mobileNavOpen={isOpen}
         onCloseMobileNav={close}
