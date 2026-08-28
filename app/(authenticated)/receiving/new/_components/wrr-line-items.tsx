@@ -206,16 +206,29 @@ export function WrrLineItems({
 
             {/* Expected Qty — required */}
             <div className="order-2">
-              <label
-                htmlFor={`line-${index}-expectedQty`}
-                className="block font-label text-label text-text-grey"
-              >
-                Expected Qty{" "}
-                <span aria-hidden="true" className="text-brand-red">
-                  *
-                </span>
-                <span className="sr-only">(required)</span>
-              </label>
+              <div className="flex items-center justify-between">
+                <label
+                  htmlFor={`line-${index}-expectedQty`}
+                  className="block font-label text-label text-text-grey"
+                >
+                  Expected Qty (Total Units){" "}
+                  <span aria-hidden="true" className="text-brand-red">
+                    *
+                  </span>
+                  <span className="sr-only">(required)</span>
+                </label>
+                {(() => {
+                  const selItem = itemOptions.find((i) => i.id === line.itemId);
+                  if (!selItem) return null;
+                  const qtyNum = Number(line.expectedQty);
+                  const cartons = qtyNum > 0 && selItem.spq ? (qtyNum / selItem.spq).toFixed(1).replace(/\.0$/, "") : null;
+                  return (
+                    <span className="font-label text-label-xs text-brand-navy">
+                      SPQ: {selItem.spq} / carton {cartons ? `(${cartons} cartons)` : ""}
+                    </span>
+                  );
+                })()}
+              </div>
               <input
                 id={`line-${index}-expectedQty`}
                 name={`line_${index}_expectedQty`}
@@ -230,6 +243,9 @@ export function WrrLineItems({
                 placeholder="0"
                 className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
               />
+              <p className="mt-1 font-body text-body-xs text-text-grey">
+                Qty = SPQ (units per carton) &times; No. of packages (cartons)
+              </p>
             </div>
 
             {/* Unit CBM — required */}

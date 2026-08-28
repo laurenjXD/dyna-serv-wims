@@ -8,6 +8,8 @@ export interface ParsedCiplRow {
   mfgDate?: string;
   expiryDate?: string;
   expectedQty?: number;
+  packageCount?: number;
+  spq?: number;
   uom?: string;
   remarks?: string;
   disposition?: "store" | "inspect";
@@ -101,7 +103,7 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
       if (
         headerRowIndex === -1 &&
         (rowText.includes("item") || rowText.includes("sku") || rowText.includes("part") || rowText.includes("description")) &&
-        (rowText.includes("qty") || rowText.includes("quantity") || rowText.includes("count"))
+        (rowText.includes("qty") || rowText.includes("quantity") || rowText.includes("count") || rowText.includes("package") || rowText.includes("carton"))
       ) {
         headerRowIndex = rowNumber;
         values.forEach((cell, idx) => {
@@ -117,7 +119,11 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
             colMap["mfgDate"] = idx;
           } else if (val.includes("expiry") || val.includes("exp date")) {
             colMap["expiryDate"] = idx;
-          } else if (val.includes("qty") || val.includes("quantity") || val.includes("expected")) {
+          } else if (val.includes("pkg") || val.includes("package") || val.includes("carton") || val.includes("ctn") || val.includes("no. of") || val.includes("box count")) {
+            colMap["noOfPackages"] = idx;
+          } else if (val.includes("spq") || val.includes("pcs/ctn") || val.includes("units/ctn") || val.includes("pcs per")) {
+            colMap["spq"] = idx;
+          } else if (val.includes("total qty") || val.includes("expected") || val === "qty" || val === "quantity") {
             colMap["expectedQty"] = idx;
           } else if (val.includes("uom") || val.includes("unit")) {
             colMap["uom"] = idx;
@@ -145,11 +151,23 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
       const values = row.values as (string | number | undefined | null)[];
       const itemCodeRaw = colMap["itemCode"] ? values[colMap["itemCode"]] : undefined;
       const qtyRaw = colMap["expectedQty"] ? values[colMap["expectedQty"]] : undefined;
+      const packageCountRaw = colMap["noOfPackages"] ? values[colMap["noOfPackages"]] : undefined;
+      const spqRaw = colMap["spq"] ? values[colMap["spq"]] : undefined;
 
-      if (!itemCodeRaw && !qtyRaw) return;
+      if (!itemCodeRaw && !qtyRaw && !packageCountRaw) return;
 
       const itemCode = itemCodeRaw ? String(itemCodeRaw).trim() : "";
-      const expectedQty = qtyRaw ? Number(qtyRaw) : undefined;
+      let expectedQty = qtyRaw ? Number(qtyRaw) : undefined;
+      const packageCount = packageCountRaw ? Number(packageCountRaw) : undefined;
+      const spq = spqRaw ? Number(spqRaw) : undefined;
+
+      // Qty is equal to SPQ × No. of packages (cartons)
+      if ((!expectedQty || isNaN(expectedQty)) && packageCount && spq && !isNaN(packageCount) && !isNaN(spq)) {
+        expectedQty = packageCount * spq;
+      } else if ((!expectedQty || isNaN(expectedQty)) && packageCount && !isNaN(packageCount)) {
+        expectedQty = packageCount;
+      }
+
       const lotNumber = colMap["lotNumber"] && values[colMap["lotNumber"]] ? String(values[colMap["lotNumber"]]).trim() : undefined;
       const uom = colMap["uom"] && values[colMap["uom"]] ? String(values[colMap["uom"]]).trim() : "BOX";
       const remarks = colMap["remarks"] && values[colMap["remarks"]] ? String(values[colMap["remarks"]]).trim() : undefined;
@@ -190,6 +208,8 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
           mfgDate,
           expiryDate,
           expectedQty: expectedQty && !isNaN(expectedQty) ? expectedQty : undefined,
+          packageCount: packageCount && !isNaN(packageCount) ? packageCount : undefined,
+          spq: spq && !isNaN(spq) ? spq : undefined,
           uom,
           remarks,
           disposition,
@@ -220,7 +240,6 @@ async function parseCiplPdf(buffer: Buffer, fileName: string): Promise<CiplParse
   };
 
   try {
-    // Dynamic import for pdf-parse to avoid top-level require
     const pdfParseMod = await import("pdf-parse");
     const pdfParse = (pdfParseMod as unknown as { default?: (b: Buffer) => Promise<{ text: string }> }).default || (pdfParseMod as unknown as (b: Buffer) => Promise<{ text: string }>);
     const pdfData = await pdfParse(buffer);

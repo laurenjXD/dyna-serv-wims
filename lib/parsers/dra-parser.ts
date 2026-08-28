@@ -5,6 +5,8 @@ export interface ParsedDraRow {
   itemCode?: string;
   customerItemCode?: string;
   requestedQty?: number;
+  packageCount?: number;
+  spq?: number;
   uom?: string;
   remarks?: string;
 }
@@ -96,7 +98,7 @@ async function parseDraExcel(buffer: Buffer, fileName: string): Promise<DraParse
       if (
         headerRowIndex === -1 &&
         (rowText.includes("item") || rowText.includes("sku") || rowText.includes("part") || rowText.includes("description")) &&
-        (rowText.includes("qty") || rowText.includes("quantity") || rowText.includes("release") || rowText.includes("requested"))
+        (rowText.includes("qty") || rowText.includes("quantity") || rowText.includes("release") || rowText.includes("requested") || rowText.includes("package") || rowText.includes("carton"))
       ) {
         headerRowIndex = rowNumber;
         values.forEach((cell, idx) => {
@@ -106,6 +108,10 @@ async function parseDraExcel(buffer: Buffer, fileName: string): Promise<DraParse
             colMap["itemCode"] = idx;
           } else if (val.includes("customer item") || val.includes("cust item")) {
             colMap["customerItemCode"] = idx;
+          } else if (val.includes("pkg") || val.includes("package") || val.includes("carton") || val.includes("ctn") || val.includes("no. of") || val.includes("box count")) {
+            colMap["noOfPackages"] = idx;
+          } else if (val.includes("spq") || val.includes("pcs/ctn") || val.includes("units/ctn") || val.includes("pcs per")) {
+            colMap["spq"] = idx;
           } else if (val.includes("qty") || val.includes("quantity") || val.includes("release") || val.includes("requested")) {
             colMap["requestedQty"] = idx;
           } else if (val.includes("uom") || val.includes("unit")) {
@@ -131,17 +137,30 @@ async function parseDraExcel(buffer: Buffer, fileName: string): Promise<DraParse
       const values = row.values as (string | number | undefined | null)[];
       const itemCodeRaw = colMap["itemCode"] ? values[colMap["itemCode"]] : undefined;
       const qtyRaw = colMap["requestedQty"] ? values[colMap["requestedQty"]] : undefined;
+      const packageCountRaw = colMap["noOfPackages"] ? values[colMap["noOfPackages"]] : undefined;
+      const spqRaw = colMap["spq"] ? values[colMap["spq"]] : undefined;
 
-      if (!itemCodeRaw && !qtyRaw) return;
+      if (!itemCodeRaw && !qtyRaw && !packageCountRaw) return;
 
       const itemCode = itemCodeRaw ? String(itemCodeRaw).trim() : "";
-      const requestedQty = qtyRaw ? Number(qtyRaw) : undefined;
+      let requestedQty = qtyRaw ? Number(qtyRaw) : undefined;
+      const packageCount = packageCountRaw ? Number(packageCountRaw) : undefined;
+      const spq = spqRaw ? Number(spqRaw) : undefined;
+
+      // Qty is equal to SPQ × No. of packages (cartons)
+      if ((!requestedQty || isNaN(requestedQty)) && packageCount && spq && !isNaN(packageCount) && !isNaN(spq)) {
+        requestedQty = packageCount * spq;
+      } else if ((!requestedQty || isNaN(requestedQty)) && packageCount && !isNaN(packageCount)) {
+        requestedQty = packageCount;
+      }
 
       if (itemCode || (requestedQty && requestedQty > 0)) {
         result.rows.push({
           itemCode: itemCode || undefined,
           customerItemCode: colMap["customerItemCode"] && values[colMap["customerItemCode"]] ? String(values[colMap["customerItemCode"]]).trim() : undefined,
           requestedQty: requestedQty && !isNaN(requestedQty) ? requestedQty : undefined,
+          packageCount: packageCount && !isNaN(packageCount) ? packageCount : undefined,
+          spq: spq && !isNaN(spq) ? spq : undefined,
           uom: colMap["uom"] && values[colMap["uom"]] ? String(values[colMap["uom"]]).trim() : "BOX",
           remarks: colMap["remarks"] && values[colMap["remarks"]] ? String(values[colMap["remarks"]]).trim() : undefined,
         });
