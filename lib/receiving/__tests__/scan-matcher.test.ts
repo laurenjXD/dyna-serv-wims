@@ -170,11 +170,18 @@ describe("matchScan — legacy multi-pallet QR", () => {
       quantity,
     });
 
-  it("rejects a legacy multi-pallet QR so each pallet requires its own label", async () => {
+  it("accepts a group QR when its quantity exactly matches the WRR line remainder", async () => {
     const { matchScan } = await import("@/lib/receiving/scan-matcher");
     const result = matchScan(cartonQr(10), [makeLine({ expectedQty: 10, scannedQty: 0 })]);
 
-    expect(result).toEqual({ matched: false, reason: "unknown_item" });
+    expect(result).toMatchObject({ matched: true, scanQty: 10, remainingQty: 0 });
+  });
+
+  it("rejects a group QR after a partial individual scan", async () => {
+    const { matchScan } = await import("@/lib/receiving/scan-matcher");
+    const result = matchScan(cartonQr(10), [makeLine({ expectedQty: 10, scannedQty: 1 })]);
+
+    expect(result).toEqual({ matched: false, reason: "carton_group_quantity_mismatch" });
   });
 });
 

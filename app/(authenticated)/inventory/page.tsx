@@ -190,7 +190,7 @@ function InventoryRegister({ items }: { items: GroupedItem[] }) {
       <div className="hidden overflow-x-auto md:block">
         <div className="min-w-[1500px]">
           <div role="row" className="grid grid-cols-[1.15fr_1.8fr_1.5fr_1.35fr_1.55fr_1.55fr_0.8fr_0.9fr_0.95fr_1fr_1fr] gap-4 bg-[#EDF2FF] px-5 py-3 font-label text-label font-bold tracking-[0.04em] text-text-grey">
-            <span>Item Code</span><span>Description</span><span>Codes</span><span>Lot No.</span><span>Location</span><span>Customer</span><span>Total In</span><span>Total Out</span><span>PCS On Hand</span><span>Boxes On Hand</span><span>CBM Occupied</span>
+            <span>Item Code</span><span>Description</span><span>Codes</span><span>Lot No.</span><span>Location</span><span>Customer</span><span className="text-right">Total In</span><span className="text-right">Total Out</span><span className="text-right">PCS On Hand</span><span className="text-right">Boxes On Hand</span><span className="text-right">CBM Occupied</span>
           </div>
           {items.map((item) => (
             <details key={item.itemId} className="group border-t border-outline-variant/30">

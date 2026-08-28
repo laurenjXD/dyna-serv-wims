@@ -41,7 +41,8 @@ export type ScanMatchResult =
         | "fully_scanned"
         | "over_quantity"
         | "flow_type_mismatch"
-        | "duplicate_unit_scan";
+        | "duplicate_unit_scan"
+        | "carton_group_quantity_mismatch";
     };
 
 /**
@@ -80,6 +81,7 @@ export function matchScan(
   // Parse JSON wrr_item_unit payload if present (Spec 18 §2.2)
   let parsedWrrItemId: string | null = null;
   let parsedUnitId: string | null = null;
+  let parsedGroupQuantity: number | null = null;
   if (barcode.trim().startsWith("{")) {
     try {
       const parsed = JSON.parse(barcode.trim());
@@ -88,6 +90,13 @@ export function matchScan(
         if (typeof parsed?.unit_id === "string") {
           parsedUnitId = parsed.unit_id;
         }
+      } else if (
+        parsed?.type === "wrr_item_carton" &&
+        typeof parsed?.wrr_item_id === "string" &&
+        Number.isSafeInteger(parsed?.quantity)
+      ) {
+        parsedWrrItemId = parsed.wrr_item_id;
+        parsedGroupQuantity = parsed.quantity;
       }
     } catch {
       // Not valid JSON — fall through to standard string matching
@@ -146,8 +155,18 @@ export function matchScan(
       continue;
     }
 
-    // Each accepted label represents exactly one physical pallet or unit.
-    const scanQty = 1;
+    // A sealed pallet/group QR represents the complete remaining quantity for
+    // this WRR line. It is intentionally exact: accepting a partial group
+    // would make the individual carton IDs ambiguous and could over-receive.
+    if (parsedGroupQuantity !== null) {
+      const remainingBeforeScan = line.expectedQty - line.scannedQty;
+      if (parsedGroupQuantity !== remainingBeforeScan) {
+        return { matched: false, reason: "carton_group_quantity_mismatch" };
+      }
+    }
+
+    // Ordinary item/unit labels represent one physical carton.
+    const scanQty = parsedGroupQuantity ?? 1;
     const remainingQty = line.expectedQty - line.scannedQty - scanQty;
     return {
       matched: true,

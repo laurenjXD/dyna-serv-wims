@@ -9,6 +9,7 @@
 import { useMemo, useState } from "react";
 import QRCode from "react-qr-code";
 import { createWrrUnitPayload } from "@/lib/barcode/wrr-unit";
+import { cartonIdFromUnitId } from "@/lib/barcode/carton";
 
 export interface WRRUnitLabelGeneratorProps {
   wrrItemId: string;
@@ -27,7 +28,7 @@ interface UnitLabelData {
   // (reprinting must reproduce the same ids for the same boxes), not
   // something shown to a human as "Box N of M".
   unitId: string;
-  payload: string; // JSON: {"type": "wrr_item_unit", "wrr_item_id": "...", "unit_id": "...", "unit_index": ...}
+  payload: string; // JSON includes the unique carton_id and legacy unit_id matcher fields.
 }
 
 export function WRRUnitLabelGenerator({
@@ -121,6 +122,19 @@ export function WRRUnitLabelGenerator({
 
             {/* Printable Sheet Grid */}
             <div className="mt-4 flex-1 overflow-y-auto print:overflow-visible">
+              <div className="mb-4 flex break-inside-avoid items-center gap-4 rounded border-2 border-brand-navy bg-surface-white p-4 print:mb-3 print:p-3">
+                <QRCode
+                  value={JSON.stringify({ type: "wrr_item_carton", wrr_item_id: wrrItemId, quantity: expectedQty })}
+                  size={112}
+                  style={{ height: "112px", width: "112px" }}
+                  viewBox="0 0 256 256"
+                />
+                <div>
+                  <p className="font-heading text-body-md font-bold text-brand-navy">Pallet / Group QR</p>
+                  <p className="mt-1 font-body text-body-sm text-on-surface">Scan once to receive all {expectedQty} cartons on this WRR line.</p>
+                  <p className="mt-1 font-mono text-mono-sm text-text-grey">Group quantity: {expectedQty}</p>
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-4 print:grid-cols-2 print:gap-4 print:w-full">
                 {unitLabels.map((unit) => (
                   <div
@@ -153,7 +167,7 @@ export function WRRUnitLabelGenerator({
                         Lot: {lotNumber}
                       </p>
                       <p className="font-mono text-mono-xs text-status-neutral">
-                        Label ID: {unit.unitId.substring(0, 8)}
+                        Carton ID: {cartonIdFromUnitId(unit.unitId)}
                       </p>
                     </div>
                   </div>
