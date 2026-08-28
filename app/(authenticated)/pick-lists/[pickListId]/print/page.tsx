@@ -30,7 +30,7 @@ export default async function PickListPrintPage({
   const totalPieces = lines.reduce((total, line) => total + line.qty, 0);
 
   return (
-    <main className="mx-auto max-w-6xl bg-surface-white pb-10 print:max-w-none print:p-0">
+    <main className="mx-auto max-w-7xl bg-surface-white pb-10 print:max-w-none print:p-0">
       <style>{`@media print { aside, header, nav, .print-hide { display:none !important; } body { background:#fff; } }`}</style>
       <div className="print-hide mb-6 flex items-center justify-between gap-4">
         <Link href="/inventory?tab=pick-lists" className="inline-flex h-11 items-center gap-2 rounded border border-outline-variant bg-surface-white px-4 font-label text-label font-bold text-on-surface"><ChevronLeft size={18} aria-hidden="true" />Back to Pick Lists</Link>
@@ -47,9 +47,43 @@ export default async function PickListPrintPage({
         </header>
 
         <div className="mt-6 overflow-x-auto">
-          <table className="w-full border-collapse text-left"><thead><tr className="border-y border-on-surface bg-surface-light-grey"><th className="px-3 py-3 font-label text-label uppercase text-on-surface">Qty</th><th className="px-3 py-3 font-label text-label uppercase text-on-surface">SPQ</th><th className="px-3 py-3 font-label text-label uppercase text-on-surface">Boxes</th><th className="px-3 py-3 font-label text-label uppercase text-on-surface">Item Code</th><th className="px-3 py-3 font-label text-label uppercase text-on-surface">Customer Code</th><th className="px-3 py-3 font-label text-label uppercase text-on-surface">Item Description</th><th className="px-3 py-3 font-label text-label uppercase text-on-surface">Lot Number</th><th className="px-3 py-3 font-label text-label uppercase text-on-surface">Location</th></tr></thead><tbody>{lines.map((line) => <tr key={line.id} className="border-b border-outline-variant/50"><td className="px-3 py-3 font-mono text-mono-md text-on-surface">{line.qty}</td><td className="px-3 py-3 font-mono text-mono-md text-on-surface">{line.spq}</td><td className="px-3 py-3 font-mono text-mono-md text-on-surface">{line.numberOfBoxes}</td><td className="px-3 py-3 font-mono text-mono-md font-bold text-on-surface">{line.itemCode}</td><td className="px-3 py-3 font-mono text-mono-md text-on-surface">{line.customerItemCode ?? "—"}</td><td className="px-3 py-3 font-body text-body-sm text-on-surface">{line.itemDescription ?? "—"}</td><td className="px-3 py-3 font-mono text-mono-md text-on-surface">{line.lotNumber}</td><td className="px-3 py-3 font-mono text-mono-md text-on-surface">{line.locationLabel}</td></tr>)}</tbody></table>
+          <table className="w-full border-collapse text-left">
+            <thead>
+              <tr className="border-y border-on-surface bg-surface-light-grey text-xs">
+                <th className="px-3 py-3 font-label font-bold uppercase text-on-surface">Qty</th>
+                <th className="px-3 py-3 font-label font-bold uppercase text-on-surface">SPQ</th>
+                <th className="px-3 py-3 font-label font-bold uppercase text-on-surface">No. of Pckgs</th>
+                <th className="px-3 py-3 font-label font-bold uppercase text-on-surface">ITEM CODE</th>
+                <th className="px-3 py-3 font-label font-bold uppercase text-on-surface">CUST PN</th>
+                <th className="px-3 py-3 font-label font-bold uppercase text-on-surface">ITEM DESCRIPTION</th>
+                <th className="px-3 py-3 font-label font-bold uppercase text-on-surface">METERAGE</th>
+                <th className="px-3 py-3 font-label font-bold uppercase text-on-surface">LOT NUMBER</th>
+                <th className="px-3 py-3 font-label font-bold uppercase text-on-surface">MFG DATE</th>
+                <th className="px-3 py-3 font-label font-bold uppercase text-on-surface">LOCATION</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lines.map((line) => {
+                const totalMeterage = line.spqMeter ? (line.numberOfBoxes * Number(line.spqMeter)).toFixed(2) + " m" : "—";
+                return (
+                  <tr key={line.id} className="border-b border-outline-variant/50 text-sm">
+                    <td className="px-3 py-3 font-mono font-bold text-on-surface">{line.qty.toLocaleString()}</td>
+                    <td className="px-3 py-3 font-mono text-on-surface">{line.spq}</td>
+                    <td className="px-3 py-3 font-mono text-on-surface">{line.numberOfBoxes}</td>
+                    <td className="px-3 py-3 font-mono font-bold text-on-surface">{line.itemCode}</td>
+                    <td className="px-3 py-3 font-mono text-on-surface">{line.customerItemCode ?? "—"}</td>
+                    <td className="px-3 py-3 font-body text-on-surface">{line.itemDescription ?? "—"}</td>
+                    <td className="px-3 py-3 font-mono text-on-surface">{totalMeterage}</td>
+                    <td className="px-3 py-3 font-mono text-on-surface">{line.lotNumber}</td>
+                    <td className="px-3 py-3 font-mono text-on-surface">{line.manufactureDate ? new Date(line.manufactureDate).toLocaleDateString() : "—"}</td>
+                    <td className="px-3 py-3 font-mono text-on-surface">{line.locationLabel}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
-        <div className="mt-6 flex justify-end"><dl className="grid grid-cols-2 gap-x-8 gap-y-2 border-t border-on-surface pt-3 font-body text-body-md"><dt>Total quantity</dt><dd className="font-mono text-right font-bold">{totalPieces}</dd><dt>Total boxes</dt><dd className="font-mono text-right font-bold">{totalBoxes}</dd></dl></div>
+        <div className="mt-6 flex justify-end"><dl className="grid grid-cols-2 gap-x-8 gap-y-2 border-t border-on-surface pt-3 font-body text-body-md"><dt>Total quantity</dt><dd className="font-mono text-right font-bold">{totalPieces.toLocaleString()}</dd><dt>Total packages</dt><dd className="font-mono text-right font-bold">{totalBoxes.toLocaleString()}</dd></dl></div>
         <div className="mt-14 grid grid-cols-2 gap-12 border-t border-outline-variant/50 pt-5 font-body text-body-sm text-text-grey"><p>Prepared by: ______________________________<br />Date: ______________________________</p><p>Picking completed by: ______________________________<br />Date: ______________________________</p></div>
       </article>
     </main>

@@ -14,6 +14,8 @@ type StockSource = {
   flowType: "vmi" | "trading" | "supplies";
   uom: string;
   spq: number;
+  spqMeter?: string | number | null;
+  manufactureDate?: string | null;
   balanceId: string;
   lotId: string;
   lotNumber: string;
@@ -61,6 +63,7 @@ export function MultiItemPickListDraft({
       customerItemCode: sources[0].customerItemCode,
       uom: sources[0].uom,
       spq: sources[0].spq,
+      spqMeter: sources[0].spqMeter,
       sources: sources
         .sort((a, b) => a.priority - b.priority)
         .map((source, index) => ({ ...source, priority: index + 1 })),
@@ -141,12 +144,10 @@ export function MultiItemPickListDraft({
       return;
     }
 
-    // Determine target Organization & Flow Type if not selected yet
     let targetOrgId = organizationId;
     let targetFlow = flowType;
 
     if (!targetOrgId) {
-      // Attempt auto-match by finding the first item in stock
       for (const draRow of draRows) {
         if (!draRow.itemCode) continue;
         const matchedStock = stock.find(
@@ -172,7 +173,6 @@ export function MultiItemPickListDraft({
       return;
     }
 
-    // Filter available stock catalog for target org & flow
     const availableStock = stock.filter((s) => s.organizationId === targetOrgId && s.flowType === targetFlow);
 
     const newDraftLines: DraftLine[] = [];
@@ -184,7 +184,6 @@ export function MultiItemPickListDraft({
       if (!draRow.itemCode || !draRow.requestedQty) continue;
 
       const requestedItemCode = draRow.itemCode.toLowerCase();
-      // Find matching items
       const candidateSources = availableStock
         .filter(
           (s) =>
@@ -198,7 +197,6 @@ export function MultiItemPickListDraft({
         continue;
       }
 
-      // Distribute requested quantity across available stock sources following FEFO/FIFO priority
       let remainingQty = draRow.requestedQty;
       for (const source of candidateSources) {
         const availableInSource = Math.max(0, source.availableQty);
@@ -303,7 +301,7 @@ export function MultiItemPickListDraft({
         )}
       </section>
 
-      {/* Pick List Draft Builder Section (Supports both Auto-Mapped & Manual Pick Lists) */}
+      {/* Pick List Draft Builder Section */}
       <section className="rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1 md:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -343,33 +341,119 @@ export function MultiItemPickListDraft({
           </label>
         </div>
 
+        {/* 10-Column Pick List Table per User Specification */}
         <div className="mt-6 overflow-x-auto rounded-lg border border-outline-variant/30">
-          <div className="min-w-[1020px]">
-            <div className="grid grid-cols-[minmax(230px,1.4fr)_minmax(210px,1.1fr)_160px_120px_120px_48px] gap-3 bg-surface-light-grey px-4 py-3 font-label text-label font-bold uppercase tracking-[0.04em] text-text-grey">
-              <span>Item Code</span><span>Source Location</span><span>Lot Number</span><span className="text-right">Boxes</span><span>UOM / SPQ</span><span className="sr-only">Remove</span>
+          <div className="min-w-[1380px]">
+            <div className="grid grid-cols-[100px_80px_110px_minmax(160px,1fr)_140px_minmax(180px,1.2fr)_100px_140px_110px_minmax(180px,1.1fr)_48px] gap-3 bg-surface-light-grey px-4 py-3 font-label text-label-xs font-bold uppercase tracking-[0.04em] text-text-grey">
+              <span>Qty</span>
+              <span>SPQ</span>
+              <span>No. of Pckgs</span>
+              <span>ITEM CODE</span>
+              <span>CUST PN</span>
+              <span>ITEM DESCRIPTION</span>
+              <span>METERAGE</span>
+              <span>LOT NUMBER</span>
+              <span>MFG DATE</span>
+              <span>LOCATION</span>
+              <span className="sr-only">Remove</span>
             </div>
+
             {lines.length === 0 ? (
               <div className="px-4 py-8 text-center font-body text-body-md text-text-grey">
                 Import a DRA document above or click &ldquo;+ Add item line&rdquo; below to manually build this pick list.
               </div>
             ) : (
-              lineDetails.map(({ line, item, source }) => (
-                <div key={line.id} className="grid grid-cols-[minmax(230px,1.4fr)_minmax(210px,1.1fr)_160px_120px_120px_48px] items-center gap-3 border-t border-outline-variant/30 px-4 py-3">
-                  <select value={line.itemId} onChange={(event) => updateLine(line.id, { itemId: event.target.value, balanceId: "", qty: "" })} className="h-11 rounded border border-outline-variant bg-surface-white px-3 font-body text-body-md text-on-surface outline-none focus:ring-2 focus:ring-primary">
-                    <option value="">Select item code…</option>
-                    {catalog.map((candidate) => <option key={candidate.itemId} value={candidate.itemId}>{candidate.itemCode} — {candidate.itemName}</option>)}
-                  </select>
-                  <select value={line.balanceId} disabled={!item} onChange={(event) => updateLine(line.id, { balanceId: event.target.value, qty: "" })} className="h-11 rounded border border-outline-variant bg-surface-white px-3 font-body text-body-md text-on-surface outline-none focus:ring-2 focus:ring-primary disabled:bg-surface-light-grey">
-                    <option value="">Select location…</option>
-                    {item?.sources.map((candidate) => <option key={candidate.balanceId} value={candidate.balanceId}>{candidate.locationLabel} · {candidate.availableQty} boxes{candidate.priority === 1 ? " · FIFO/FEFO" : " · approval may be required"}</option>)}
-                  </select>
-                  <p className="font-mono text-mono-md text-on-surface">{source?.lotNumber ?? "—"}</p>
-                  <label className="flex h-11 items-center rounded border border-outline-variant bg-surface-white px-3 focus-within:ring-2 focus-within:ring-primary"><input value={line.qty} onChange={(event) => updateLine(line.id, { qty: event.target.value })} type="number" min="1" max={source?.availableQty} disabled={!source} className="min-w-0 flex-1 bg-transparent text-right font-mono text-mono-md text-on-surface outline-none disabled:text-text-grey" placeholder="0" /><span className="ml-1 font-body text-body-sm text-text-grey">box</span></label>
-                  <p className="font-body text-body-sm text-text-grey">{item ? `${item.uom} / ${item.spq}` : "—"}</p>
-                  <button type="button" onClick={() => removeLine(line.id)} className="flex h-11 w-11 items-center justify-center rounded text-status-held hover:bg-status-held/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" aria-label="Remove line"><Trash2 size={18} aria-hidden="true" /></button>
-                  {item && <p className="col-span-5 -mt-1 font-body text-body-sm text-text-grey">{item.customerItemCode ? `Customer item code: ${item.customerItemCode}` : "No customer item code"}{source?.priority && source.priority > 1 ? " · This source may need FIFO/FEFO override approval." : ""}</p>}
-                </div>
-              ))
+              lineDetails.map(({ line, item, source }) => {
+                const numBoxes = Number(line.qty) || 0;
+                const totalUnits = item && numBoxes > 0 ? (numBoxes * item.spq).toLocaleString() : "—";
+                const totalMeterage = item?.spqMeter && numBoxes > 0 ? (numBoxes * Number(item.spqMeter)).toFixed(2) : "—";
+
+                return (
+                  <div key={line.id} className="grid grid-cols-[100px_80px_110px_minmax(160px,1fr)_140px_minmax(180px,1.2fr)_100px_140px_110px_minmax(180px,1.1fr)_48px] items-center gap-3 border-t border-outline-variant/30 px-4 py-3">
+                    {/* Qty (Total Units = SPQ × No. of Pckgs) */}
+                    <p className="font-mono text-mono-md font-bold text-on-surface">{totalUnits}</p>
+
+                    {/* SPQ */}
+                    <p className="font-mono text-mono-md text-on-surface">{item ? item.spq : "—"}</p>
+
+                    {/* No. of Pckgs (Box / Package count input) */}
+                    <label className="flex h-11 items-center rounded border border-outline-variant bg-surface-white px-2 focus-within:ring-2 focus-within:ring-primary">
+                      <input
+                        value={line.qty}
+                        onChange={(event) => updateLine(line.id, { qty: event.target.value })}
+                        type="number"
+                        min="1"
+                        max={source?.availableQty}
+                        disabled={!source}
+                        className="min-w-0 flex-1 bg-transparent text-right font-mono text-mono-md text-on-surface outline-none disabled:text-text-grey"
+                        placeholder="0"
+                      />
+                    </label>
+
+                    {/* ITEM CODE */}
+                    <select
+                      value={line.itemId}
+                      onChange={(event) => updateLine(line.id, { itemId: event.target.value, balanceId: "", qty: "" })}
+                      className="h-11 rounded border border-outline-variant bg-surface-white px-2.5 font-body text-body-sm text-on-surface outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <option value="">Select item code…</option>
+                      {catalog.map((candidate) => (
+                        <option key={candidate.itemId} value={candidate.itemId}>
+                          {candidate.itemCode}
+                        </option>
+                      ))}
+                    </select>
+
+                    {/* CUST PN */}
+                    <p className="font-mono text-mono-sm text-on-surface truncate" title={item?.customerItemCode ?? undefined}>
+                      {item?.customerItemCode ?? "—"}
+                    </p>
+
+                    {/* ITEM DESCRIPTION */}
+                    <p className="font-body text-body-sm text-on-surface truncate" title={item?.itemName ?? undefined}>
+                      {item?.itemName ?? "—"}
+                    </p>
+
+                    {/* METERAGE */}
+                    <p className="font-mono text-mono-sm text-on-surface">{totalMeterage}</p>
+
+                    {/* LOT NUMBER */}
+                    <p className="font-mono text-mono-sm text-on-surface truncate" title={source?.lotNumber ?? undefined}>
+                      {source?.lotNumber ?? "—"}
+                    </p>
+
+                    {/* MFG DATE */}
+                    <p className="font-mono text-mono-sm text-on-surface">
+                      {source?.manufactureDate ? new Date(source.manufactureDate).toLocaleDateString() : "—"}
+                    </p>
+
+                    {/* LOCATION */}
+                    <select
+                      value={line.balanceId}
+                      disabled={!item}
+                      onChange={(event) => updateLine(line.id, { balanceId: event.target.value, qty: "" })}
+                      className="h-11 rounded border border-outline-variant bg-surface-white px-2.5 font-body text-body-sm text-on-surface outline-none focus:ring-2 focus:ring-primary disabled:bg-surface-light-grey"
+                    >
+                      <option value="">Select location…</option>
+                      {item?.sources.map((candidate) => (
+                        <option key={candidate.balanceId} value={candidate.balanceId}>
+                          {candidate.locationLabel} ({candidate.availableQty} pckgs{candidate.priority === 1 ? " · FIFO/FEFO" : " · override req"})
+                        </option>
+                      ))}
+                    </select>
+
+                    {/* Action */}
+                    <button
+                      type="button"
+                      onClick={() => removeLine(line.id)}
+                      className="flex h-11 w-11 items-center justify-center rounded text-status-held hover:bg-status-held/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      aria-label="Remove line"
+                    >
+                      <Trash2 size={18} aria-hidden="true" />
+                    </button>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
