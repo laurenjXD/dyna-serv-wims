@@ -19,6 +19,9 @@ export const CIPL_ALLOWED_MIME_TYPES = [
   "application/pdf",
   "image/png",
   "image/jpeg",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+  "text/csv",
 ] as const;
 
 export function sanitizeFilename(name: string): string {

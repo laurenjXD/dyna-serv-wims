@@ -46,6 +46,7 @@ The Outgoing page (`/outgoing`) features 2 primary sub-tabs:
 5. On a successful commitment, the system SHALL create the operational pick-list PDF from the committed snapshot and expose it for preview/download/print. A PDF failure must surface document attention without reversing the committed pick list.
 6. The command SHALL validate active item references, Organization/Inventory Model scope, UOM, and SPQ rules.
 7. The command SHALL refuse allocation if `item_code_is_provisional` is true for any requested line, displaying a 3-component error (**What happened**, **Why it failed**, **Next Action / Solution**).
+8. **DRA Document Parsing (Excel & PDF)**: The system SHALL offer an optional Delivery Release Advice (DRA) import in Excel (`.xlsx`, `.xls`, `.csv`) and PDF (`.pdf`) formats prior to pick list generation. The parsing engine SHALL extract requested item codes (`item_code` / `customer_item_code`) and requested box/unit quantities, match them against available inventory balances (`qty_remaining - qty_committed`), auto-suggest FIFO/FEFO lot/location allocations, and present a pre-commitment preview queue highlighting any stock shortages or provisional items for review.
 
 ### R2. FIFO/FEFO allocation & Stage 1 commitment
 

@@ -15,6 +15,18 @@
 import { useEffect, useState } from "react";
 import type { WrrItemOption } from "@/lib/db/queries/items";
 
+export interface ImportedWrrLine {
+  itemId: string;
+  customerItemCode: string;
+  lotNumber: string;
+  mfgDate: string;
+  expiryDate: string;
+  expectedQty: string;
+  uom: string;
+  remarks: string;
+  disposition: "store" | "inspect";
+}
+
 interface LineState {
   lotNumber: string;
   expectedQty: string;
@@ -26,6 +38,7 @@ interface LineState {
   manufactureDate: string;
   remarks: string;
   itemId: string;
+  disposition: "store" | "inspect";
 }
 
 const EMPTY_LINE: LineState = {
@@ -39,6 +52,7 @@ const EMPTY_LINE: LineState = {
   manufactureDate: "",
   remarks: "",
   itemId: "",
+  disposition: "store",
 };
 
 // Item Code label is conditional on the WRR's Inventory Model (2026-08-19
@@ -51,14 +65,52 @@ function itemCodeLabel(flowType: string): string {
   return flowType === "trading" ? "DSGC Item Number" : "Item Code (Supplier)";
 }
 
-export function WrrLineItems({ flowType, vendorPartyId, itemOptions }: { flowType: string; vendorPartyId: string; itemOptions: WrrItemOption[] }) {
+export function WrrLineItems({
+  flowType,
+  vendorPartyId,
+  itemOptions,
+  importedLines,
+}: {
+  flowType: string;
+  vendorPartyId: string;
+  itemOptions: WrrItemOption[];
+  importedLines?: ImportedWrrLine[];
+}) {
   const [lines, setLines] = useState<LineState[]>([{ ...EMPTY_LINE }]);
 
-  // Never retain a selection from a different organization. Besides being
-  // confusing in the form, retaining it would let a stale hidden itemId be
-  // submitted after the operator changes vendor.
+  // Handle imported document lines automatically
   useEffect(() => {
-    setLines((prev) => prev.map((line) => ({ ...line, itemId: "", itemCode: "", itemDescription: "", customerItemCode: "" })));
+    if (importedLines && importedLines.length > 0) {
+      const mapped: LineState[] = importedLines.map((imp) => {
+        const item = itemOptions.find((candidate) => candidate.id === imp.itemId);
+        return {
+          lotNumber: imp.lotNumber || "",
+          expectedQty: imp.expectedQty || "",
+          unitCbm: item ? item.volumeCbm : "0.001",
+          uom: imp.uom || (item ? item.uom : "BOX"),
+          itemCode: item
+            ? flowType === "trading"
+              ? (item.dsgcItemNumber ?? item.code)
+              : (item.supplierItemCode ?? item.code)
+            : "",
+          itemDescription: item ? item.name : "",
+          customerItemCode: imp.customerItemCode || (item ? (item.customerItemCode ?? "") : ""),
+          manufactureDate: imp.mfgDate || "",
+          remarks: imp.remarks || "",
+          itemId: imp.itemId || "",
+          disposition: imp.disposition || "store",
+        };
+      });
+      setLines(mapped);
+    }
+  }, [importedLines, itemOptions, flowType]);
+
+  // Never retain a selection from a different organization when vendor changes manually,
+  // unless imported lines were just applied.
+  useEffect(() => {
+    if (!importedLines || importedLines.length === 0) {
+      setLines((prev) => prev.map((line) => ({ ...line, itemId: "", itemCode: "", itemDescription: "", customerItemCode: "" })));
+    }
   }, [vendorPartyId]);
 
   const availableItems = vendorPartyId

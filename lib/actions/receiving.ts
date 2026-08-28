@@ -1061,3 +1061,54 @@ export async function commitWrrLine(
   }
   return rlsResult.value;
 }
+
+export async function uploadAndParseCiplDocument(
+  wrrId: string,
+  formData: FormData,
+) {
+  const file = formData.get("file");
+  if (!file || !(file instanceof File)) {
+    return { ok: false, error: "No file was uploaded." };
+  }
+
+  const validation = validateCiplFile({ type: file.type, size: file.size });
+  if (!validation.ok) {
+    return { ok: false, error: validation.error };
+  }
+
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // Dynamic import of cipl-parser
+    const { parseCiplDocument } = await import("@/lib/parsers/cipl-parser");
+    const parseResult = await parseCiplDocument(buffer, file.name);
+
+    let storagePath: string | null = null;
+    try {
+      const storageClient = await getStorageClient();
+      const objectPath = buildCiplObjectPath(wrrId, randomUUID(), file.name);
+      const { error } = await storageClient
+        .from("cipl-documents")
+        .upload(objectPath, buffer, { contentType: file.type, upsert: true });
+
+      if (!error) {
+        storagePath = objectPath;
+      }
+    } catch {
+      // Storage upload optional/graceful fallback if bucket not present in local dev
+    }
+
+    return {
+      ok: true,
+      path: storagePath,
+      parseResult,
+    };
+  } catch (err: any) {
+    return {
+      ok: false,
+      error: `Document processing error: ${err?.message || String(err)}`,
+    };
+  }
+}
+

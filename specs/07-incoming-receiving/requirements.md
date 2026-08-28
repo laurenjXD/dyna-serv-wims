@@ -44,6 +44,14 @@ The Receiving page (`/receiving`) features 4 primary sub-tabs:
 2. Each expected line SHALL specify the selected item (showing Dyna-Serv and supplier item codes), customer item code, WRR `lot_number` (the shipping lot), optional manufacture date, expected in-transit quantity/UOM, and optional remarks. Actual received quantity/UOM is derived from accepted scans/receipt confirmation and is never a free-form inventory adjustment.
 3. Staged WRRs SHALL NOT increment active inventory or available lots.
 
+### R1a. CIPL Document Parsing (Excel & PDF)
+
+1. The system SHALL provide an option to import Commercial Invoice and Packing List (CIPL) document files in Excel format (`.xlsx`, `.xls`, `.csv`) and PDF format (`.pdf`) during WRR pre-receiving staging.
+2. The document parsing engine SHALL extract header references (Invoice/CIPL Reference, Invoice Date, Organization Code, MAWB/MBL) and tabular expected line items (`item_code` / `customer_item_code`, `lot_number`, manufacture date, expiry date, expected quantity, UOM, remarks, and disposition `store` or `inspect`).
+3. Parsed lines SHALL be validated against active `items` master data. Unrecognized item codes SHALL be highlighted with recoverable recovery options (navigate to enrollment or manually select registered item code).
+4. The system SHALL render a pre-import verification table displaying extracted values, validation statuses, and error warnings before populating the staged WRR lines form.
+5. Populating expected lines from a parsed document SHALL pre-fill draft fields only and SHALL NOT skip back-office review or bypass receipt confirmation invariants.
+
 ### R2. Supplier advance-notice intake
 
 1. Consumes `wrr_advance_notices` submitted via the **Organization Portal**.

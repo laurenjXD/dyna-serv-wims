@@ -19,7 +19,9 @@ import { useState } from "react";
 import Link from "next/link";
 import type { SupplierPartyOption, WrrItemOption } from "@/lib/db/queries/items";
 import type { UploadCiplFileResult } from "@/lib/actions/receiving";
-import { WrrLineItems } from "./wrr-line-items";
+import { WrrLineItems, type ImportedWrrLine } from "./wrr-line-items";
+import { CiPlImportModal } from "../../_components/CiPlImportModal";
+import { FileSpreadsheet } from "lucide-react";
 
 const CIPL_ACCEPT = "application/pdf,image/png,image/jpeg";
 
@@ -45,6 +47,8 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
   const [ciplFileName, setCiplFileName] = useState<string | null>(null);
   const [ciplStatus, setCiplStatus] = useState<"idle" | "uploading" | "done" | "error">("idle");
   const [ciplError, setCiplError] = useState<string | null>(null);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importedLines, setImportedLines] = useState<ImportedWrrLine[]>([]);
 
   async function handleCiplFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -179,12 +183,23 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
             >
               CIPL / Packing List Document
             </label>
+            <div className="mt-1 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowImportModal(true)}
+                className="inline-flex h-11 items-center gap-2 rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+              >
+                <FileSpreadsheet className="h-4 w-4" />
+                Auto-Parse Excel / PDF CIPL
+              </button>
+              <span className="font-body text-body-xs text-text-grey">or upload manually:</span>
+            </div>
             <input
               id="ciplFile"
               type="file"
               accept={CIPL_ACCEPT}
               onChange={handleCiplFileChange}
-              className="mt-1 block w-full font-body text-body-sm text-on-surface file:mr-3 file:h-11 file:cursor-pointer file:rounded file:border-0 file:bg-brand-navy file:px-4 file:font-label file:text-label file:text-surface-white hover:file:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+              className="mt-2 block w-full font-body text-body-sm text-on-surface file:mr-3 file:h-11 file:cursor-pointer file:rounded file:border-0 file:bg-surface-variant file:px-4 file:font-label file:text-label file:text-on-surface hover:file:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
             />
             {/* The uploaded object's Storage path — this is what actually
                 gets submitted as ciplFileUrl, never the raw <input type="file">
@@ -207,8 +222,26 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
               </p>
             )}
             <p className="mt-1 font-body text-body-sm text-text-grey">
-              PDF, PNG, or JPEG — up to 10MB.
+              Excel (.xlsx, .csv), PDF, PNG, or JPEG — up to 10MB.
             </p>
+
+            {showImportModal && (
+              <CiPlImportModal
+                wrrId={wrrId}
+                itemOptions={itemOptions}
+                onClose={() => setShowImportModal(false)}
+                onApply={(header, lines) => {
+                  if (header.ciplReference) {
+                    const ciplInput = document.getElementById("commercialInvoiceNo") as HTMLInputElement | null;
+                    if (ciplInput) ciplInput.value = header.ciplReference;
+                  }
+                  // Automatically populate lines in WrrLineItems
+                  setImportedLines(lines);
+                  setCiplStatus("done");
+                  setCiplFileName("Parsed Document Lines Applied");
+                }}
+              />
+            )}
           </div>
 
           {/* IP Number — optional */}
@@ -259,7 +292,7 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
           scan/store time, not here.
         </p>
         <div className="mt-4">
-          <WrrLineItems flowType={flowType} vendorPartyId={vendorPartyId} itemOptions={itemOptions} />
+          <WrrLineItems flowType={flowType} vendorPartyId={vendorPartyId} itemOptions={itemOptions} importedLines={importedLines} />
         </div>
       </div>
 

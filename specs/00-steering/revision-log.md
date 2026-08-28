@@ -2,6 +2,12 @@
 
 Every merge conflict and major revision, dated, with the resolution. This is the audit trail for "why does the spec say X" when X isn't obvious from the doc alone.
 
+## Adoption of CIPL and DRA Document Parsing — Excel & PDF (2026-08-28)
+
+**What changed**: Updated `07-incoming-receiving` (R1a) and `08-outgoing-withdrawal-and-two-stage-commitment` (R1 item 8) requirements, design, and task specs to adopt structured document parsing for Commercial Invoice & Packing List (CIPL) in WRR staging and Delivery Release Advice (DRA) in Pick List creation.
+**Formats supported**: Excel spreadsheets (`.xlsx`, `.xls`, `.csv`) and PDF documents (`.pdf`).
+**Invariant & Safety**: Document parsing extracts header metadata and populates UI draft form lines only. Master data item validation, stock availability matching, and standard server action invariants remain strictly required prior to WRR creation or Stage 1 Pick List commitment.
+
 ## Fix-it-Felix branch merged into `v1` (2026-08-25)
 
 Merged `origin/fix-it-felix` changes including multi-item draft pick list builder, QR code viewer updates, WRR manufacture date/remarks, and location inventory views.

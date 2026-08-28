@@ -45,3 +45,29 @@ export async function generatePickList(
   revalidatePath("/outgoing");
   redirect("/outgoing");
 }
+
+export async function parseDraDocumentAction(formData: FormData) {
+  const file = formData.get("file");
+  if (!file || !(file instanceof File)) {
+    return { ok: false, error: "No file was uploaded." };
+  }
+
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    const { parseDraDocument } = await import("@/lib/parsers/dra-parser");
+    const parseResult = await parseDraDocument(buffer, file.name);
+
+    return {
+      ok: true,
+      parseResult,
+    };
+  } catch (err: any) {
+    return {
+      ok: false,
+      error: `DRA processing error: ${err?.message || String(err)}`,
+    };
+  }
+}
+
