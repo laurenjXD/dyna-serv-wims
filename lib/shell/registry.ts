@@ -123,15 +123,6 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     group: "Main",
   },
   {
-    id: "notification-queue",
-    path: "/notifications",
-    surface: "office",
-    capability: "notifications.read",
-    featureSpecs: ["14-notifications-and-alerts"],
-    launchStatus: "launch",
-    group: "Main",
-  },
-  {
     id: "sync",
     path: "/sync",
     surface: "shared",
