@@ -1,18 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Upload, FileSpreadsheet, AlertTriangle, CheckCircle2, X, Check } from "lucide-react";
+import { Upload, FileSpreadsheet, AlertTriangle, X, Check } from "lucide-react";
 import type { DraParseResult } from "@/lib/parsers/dra-parser";
 import { parseDraDocumentAction } from "../_actions";
-
-interface StockLine {
-  itemId: string;
-  lotId: string;
-  locationId: string;
-  qtyRemaining: number;
-  qtyCommitted: number;
-  flowType: "vmi" | "trading" | "supplies";
-}
 
 interface DraImportModalProps {
   itemCode: string;

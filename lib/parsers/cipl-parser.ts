@@ -1,7 +1,5 @@
 import ExcelJS from "exceljs";
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require("pdf-parse");
+import { PassThrough } from "node:stream";
 
 export interface ParsedCiplRow {
   itemCode?: string;
@@ -66,9 +64,7 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
     const isCsv = fileName.toLowerCase().endsWith(".csv");
 
     if (isCsv) {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const stream = require("stream");
-      const bufferStream = new stream.PassThrough();
+      const bufferStream = new PassThrough();
       bufferStream.end(buffer);
       await workbook.csv.read(bufferStream);
     } else {
@@ -83,9 +79,8 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
     }
 
     let headerRowIndex = -1;
-    let colMap: Record<string, number> = {};
+    const colMap: Record<string, number> = {};
 
-    // Scan top 25 rows to find header row and metadata
     worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
       if (rowNumber > 25) return;
       const values = row.values as (string | number | undefined | null)[];
@@ -137,7 +132,10 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
 
     if (headerRowIndex === -1) {
       headerRowIndex = 1;
-      colMap = { itemCode: 1, expectedQty: 2, uom: 3, lotNumber: 4 };
+      colMap["itemCode"] = 1;
+      colMap["expectedQty"] = 2;
+      colMap["uom"] = 3;
+      colMap["lotNumber"] = 4;
       result.warnings.push("Could not unambiguously identify table headers; using default column positions.");
     }
 
@@ -222,6 +220,9 @@ async function parseCiplPdf(buffer: Buffer, fileName: string): Promise<CiplParse
   };
 
   try {
+    // Dynamic import for pdf-parse to avoid top-level require
+    const pdfParseMod = await import("pdf-parse");
+    const pdfParse = (pdfParseMod as unknown as { default?: (b: Buffer) => Promise<{ text: string }> }).default || (pdfParseMod as unknown as (b: Buffer) => Promise<{ text: string }>);
     const pdfData = await pdfParse(buffer);
     const text: string = pdfData.text || "";
     const lines = text.split("\n").map((l: string) => l.trim()).filter(Boolean);

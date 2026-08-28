@@ -1,7 +1,5 @@
 import ExcelJS from "exceljs";
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require("pdf-parse");
+import { PassThrough } from "node:stream";
 
 export interface ParsedDraRow {
   itemCode?: string;
@@ -61,9 +59,7 @@ async function parseDraExcel(buffer: Buffer, fileName: string): Promise<DraParse
     const isCsv = fileName.toLowerCase().endsWith(".csv");
 
     if (isCsv) {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const stream = require("stream");
-      const bufferStream = new stream.PassThrough();
+      const bufferStream = new PassThrough();
       bufferStream.end(buffer);
       await workbook.csv.read(bufferStream);
     } else {
@@ -78,7 +74,7 @@ async function parseDraExcel(buffer: Buffer, fileName: string): Promise<DraParse
     }
 
     let headerRowIndex = -1;
-    let colMap: Record<string, number> = {};
+    const colMap: Record<string, number> = {};
 
     worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
       if (rowNumber > 25) return;
@@ -123,7 +119,9 @@ async function parseDraExcel(buffer: Buffer, fileName: string): Promise<DraParse
 
     if (headerRowIndex === -1) {
       headerRowIndex = 1;
-      colMap = { itemCode: 1, requestedQty: 2, uom: 3 };
+      colMap["itemCode"] = 1;
+      colMap["requestedQty"] = 2;
+      colMap["uom"] = 3;
       result.warnings.push("Could not unambiguously identify DRA table headers; using default column positions.");
     }
 
@@ -173,6 +171,8 @@ async function parseDraPdf(buffer: Buffer, fileName: string): Promise<DraParseRe
   };
 
   try {
+    const pdfParseMod = await import("pdf-parse");
+    const pdfParse = (pdfParseMod as unknown as { default?: (b: Buffer) => Promise<{ text: string }> }).default || (pdfParseMod as unknown as (b: Buffer) => Promise<{ text: string }>);
     const pdfData = await pdfParse(buffer);
     const text: string = pdfData.text || "";
     const lines = text.split("\n").map((l: string) => l.trim()).filter(Boolean);

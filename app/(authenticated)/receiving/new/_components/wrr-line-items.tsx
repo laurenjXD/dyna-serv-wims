@@ -111,7 +111,7 @@ export function WrrLineItems({
     if (!importedLines || importedLines.length === 0) {
       setLines((prev) => prev.map((line) => ({ ...line, itemId: "", itemCode: "", itemDescription: "", customerItemCode: "" })));
     }
-  }, [vendorPartyId]);
+  }, [vendorPartyId, importedLines]);
 
   const availableItems = vendorPartyId
     ? itemOptions.filter((item) => item.defaultSupplierPartyId === vendorPartyId)

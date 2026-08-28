@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Upload, FileSpreadsheet, FileText, CheckCircle2, AlertTriangle, X, Check } from "lucide-react";
+import { Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, X, Check } from "lucide-react";
 import type { WrrItemOption } from "@/lib/db/queries/items";
-import type { CiplParseResult, ParsedCiplRow } from "@/lib/parsers/cipl-parser";
+import type { CiplParseResult } from "@/lib/parsers/cipl-parser";
 import { uploadAndParseCiplDocument } from "@/lib/actions/receiving";
 
 interface CiPlImportModalProps {
