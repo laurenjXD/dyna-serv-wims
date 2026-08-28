@@ -57,6 +57,7 @@ import type {
 } from "@/lib/db/rls-transaction";
 import { rlsPool } from "@/lib/db/rls-pool";
 import { getAuthenticatedSession } from "@/lib/auth/get-authenticated-session";
+import { cartonIdFromUnitId } from "@/lib/barcode/carton";
 
 const defaultRlsDeps: RlsTransactionDeps = {
   getAuthenticatedSession,
@@ -719,10 +720,12 @@ export async function selectPickUnit(
         const wrrItemId = sourceRows[0]?.wrrItemId;
         if (!wrrItemId) return { ok: false as const, errors: ["box_unavailable"] };
         const nextUnitIndex = Math.max(0, ...sourceRows.map((row) => row.unitIndex ?? 0)) + 1;
+        const unitId = randomUUID();
         const reconstructed = (await db
           .insert(inventoryUnits)
           .values({
-            unitId: randomUUID(),
+            unitId,
+            cartonId: cartonIdFromUnitId(unitId),
             unitIndex: nextUnitIndex,
             wrrItemId,
             lotId: line.lotId,

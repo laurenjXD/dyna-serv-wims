@@ -40,6 +40,7 @@ import { locations } from "@/lib/db/schema/locations";
 import { inspectionCases } from "@/lib/db/schema/transfers";
 import { inventoryUnits } from "@/lib/db/schema/inventory_units";
 import { deriveWrrUnitId } from "@/lib/barcode/wrr-unit";
+import { cartonIdFromUnitId } from "@/lib/barcode/carton";
 import { withRlsTransaction } from "@/lib/db/rls-transaction";
 import type { RlsTransactionDeps } from "@/lib/db/rls-transaction";
 import { rlsPool } from "@/lib/db/rls-pool";
@@ -986,14 +987,18 @@ export async function commitWrrLine(
         })));
 
         await tx.insert(inventoryUnits).values(
-          committedUnitLocations.map((locationId, index) => ({
-            unitId: deriveWrrUnitId(line.id, index + 1),
-            unitIndex: index + 1,
-            wrrItemId: line.id,
-            lotId: lot.id,
-            locationId,
-            status: line.disposition === "store" ? "available" : "quarantined",
-          })),
+          committedUnitLocations.map((locationId, index) => {
+            const unitId = deriveWrrUnitId(line.id, index + 1);
+            return {
+              unitId,
+              cartonId: cartonIdFromUnitId(unitId),
+              unitIndex: index + 1,
+              wrrItemId: line.id,
+              lotId: lot.id,
+              locationId,
+              status: line.disposition === "store" ? "available" : "quarantined",
+            };
+          }),
         );
 
         await tx.insert(inventoryTransactions).values(committedAllocations.map((allocation) => ({

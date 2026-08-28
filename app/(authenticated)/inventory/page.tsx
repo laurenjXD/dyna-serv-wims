@@ -188,18 +188,24 @@ function InventoryRegister({ items }: { items: GroupedItem[] }) {
   return (
     <div className="overflow-hidden rounded-xl border border-outline-variant/50 bg-surface-white shadow-elevation-1">
       <div className="hidden overflow-x-auto md:block">
-        <div className="min-w-[980px]">
-          <div role="row" className="grid grid-cols-[1.15fr_1.8fr_1.8fr_1.35fr_1.2fr] gap-4 bg-[#EDF2FF] px-5 py-3 font-label text-label font-bold tracking-[0.04em] text-text-grey">
-            <span>Item Code</span><span>Description</span><span>Codes</span><span>Lot No.</span><span>Location</span>
+        <div className="min-w-[1500px]">
+          <div role="row" className="grid grid-cols-[1.15fr_1.8fr_1.5fr_1.35fr_1.55fr_1.55fr_0.8fr_0.9fr_0.95fr_1fr_1fr] gap-4 bg-[#EDF2FF] px-5 py-3 font-label text-label font-bold tracking-[0.04em] text-text-grey">
+            <span>Item Code</span><span>Description</span><span>Codes</span><span>Lot No.</span><span>Location</span><span>Customer</span><span>Total In</span><span>Total Out</span><span>PCS On Hand</span><span>Boxes On Hand</span><span>CBM Occupied</span>
           </div>
           {items.map((item) => (
             <details key={item.itemId} className="group border-t border-outline-variant/30">
-              <summary className="grid cursor-pointer list-none grid-cols-[1.15fr_1.8fr_1.8fr_1.35fr_1.2fr] gap-4 px-5 py-4 font-body text-body-md text-on-surface outline-none transition-colors hover:bg-[#F7F9FF] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy [&::-webkit-details-marker]:hidden">
+              <summary className="grid cursor-pointer list-none grid-cols-[1.15fr_1.8fr_1.5fr_1.35fr_1.55fr_1.55fr_0.8fr_0.9fr_0.95fr_1fr_1fr] gap-4 px-5 py-4 font-body text-body-md text-on-surface outline-none transition-colors hover:bg-[#F7F9FF] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy [&::-webkit-details-marker]:hidden">
                 <span className="flex min-w-0 items-center gap-3 font-heading font-bold"><ChevronRight size={21} aria-hidden="true" className="shrink-0 text-text-grey transition-transform group-open:rotate-90" /><span className="truncate">{item.itemCode}</span></span>
                 <span className="truncate">{item.itemName}<span className="ml-2 text-body-sm text-text-grey">{FLOW_LABELS[item.flowType]}</span></span>
                 <span className="truncate text-text-grey" title={item.codes || undefined}>{item.codes || "—"}</span>
                 <span className="truncate text-text-grey" title={item.lotNumbers}>{item.lotNumbers || "—"}</span>
                 <span className="truncate text-text-grey" title={item.locationLabels}>{item.locationLabels || "—"}</span>
+                <span className="truncate text-text-grey" title={item.customerName || undefined}>{item.customerName || "—"}</span>
+                <span className="text-right font-mono text-mono-md text-on-surface">{item.totalIn.toLocaleString()}</span>
+                <span className="text-right font-mono text-mono-md text-on-surface">{item.totalOut.toLocaleString()}</span>
+                <span className="text-right font-mono text-mono-md font-bold text-on-surface">{item.pcsOnHand.toLocaleString()}</span>
+                <span className="text-right font-mono text-mono-md text-on-surface">{item.boxesOnHand.toLocaleString()}</span>
+                <span className="text-right font-mono text-mono-md text-on-surface">{item.cbmOccupied.toLocaleString(undefined, { maximumFractionDigits: 3 })}</span>
               </summary>
               <InventoryItemDetails item={item} />
             </details>
@@ -212,7 +218,7 @@ function InventoryRegister({ items }: { items: GroupedItem[] }) {
           <details key={item.itemId} className="group">
             <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-4 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy [&::-webkit-details-marker]:hidden">
               <ChevronRight size={21} aria-hidden="true" className="shrink-0 text-text-grey transition-transform group-open:rotate-90" />
-              <span className="min-w-0"><span className="block truncate font-heading text-title-md font-bold text-on-surface">{item.itemCode}</span><span className="mt-1 block truncate font-body text-body-sm text-text-grey">{item.itemName} · {item.lots.length} lot{item.lots.length === 1 ? "" : "s"}</span></span>
+              <span className="min-w-0 flex-1"><span className="block truncate font-heading text-title-md font-bold text-on-surface">{item.itemCode}</span><span className="mt-1 block truncate font-body text-body-sm text-text-grey">{item.itemName} · {item.lots.length} lot{item.lots.length === 1 ? "" : "s"}</span><span className="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-mono text-mono-sm text-text-grey"><span>PCS {item.pcsOnHand.toLocaleString()}</span><span>Boxes {item.boxesOnHand.toLocaleString()}</span><span>CBM {item.cbmOccupied.toLocaleString(undefined, { maximumFractionDigits: 3 })}</span></span></span>
             </summary>
             <InventoryItemDetails item={item} />
           </details>

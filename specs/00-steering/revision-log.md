@@ -1,5 +1,15 @@
 # Revision Log — Hyperion 3PL / Dyna-Serv
 
+## Approved cross-track request: carton identity foundation (2026-08-28)
+
+The Product Owner approved the new `23-carton-level-traceability` scope derived
+from the Carton-Level QR/Barcode Identification, Receiving Validation &
+Discrepancy Management specification. The first implementation slice adds a
+stable Carton ID to existing `inventory_units`, immutable carton status history,
+and database-enforced uniqueness/backfill. It deliberately preserves existing
+lot balances, receiving counters, reservation records, and immutable inventory
+transactions as their current authorities. Planned migration: `0043`.
+
 Every merge conflict and major revision, dated, with the resolution. This is the audit trail for "why does the spec say X" when X isn't obvious from the doc alone.
 
 ## Fix-it-Felix branch merged into `v1` (2026-08-25)
