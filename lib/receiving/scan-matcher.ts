@@ -32,7 +32,7 @@ export type WrrLine = {
 };
 
 export type ScanMatchResult =
-  | { matched: true; line: WrrLine; remainingQty: number; scanQty: number; unitId?: string }
+  | { matched: true; line: WrrLine; remainingQty: number; scanQty: number; unitId?: string; unitIds?: string[] }
   | {
       matched: false;
       reason:
@@ -41,8 +41,7 @@ export type ScanMatchResult =
         | "fully_scanned"
         | "over_quantity"
         | "flow_type_mismatch"
-        | "duplicate_unit_scan"
-        | "carton_group_quantity_mismatch";
+        | "duplicate_unit_scan";
     };
 
 /**
@@ -81,7 +80,7 @@ export function matchScan(
   // Parse JSON wrr_item_unit payload if present (Spec 18 §2.2)
   let parsedWrrItemId: string | null = null;
   let parsedUnitId: string | null = null;
-  let parsedGroupQuantity: number | null = null;
+  let parsedCartonId: string | null = null;
   if (barcode.trim().startsWith("{")) {
     try {
       const parsed = JSON.parse(barcode.trim());
@@ -90,13 +89,9 @@ export function matchScan(
         if (typeof parsed?.unit_id === "string") {
           parsedUnitId = parsed.unit_id;
         }
-      } else if (
-        parsed?.type === "wrr_item_carton" &&
-        typeof parsed?.wrr_item_id === "string" &&
-        Number.isSafeInteger(parsed?.quantity)
-      ) {
-        parsedWrrItemId = parsed.wrr_item_id;
-        parsedGroupQuantity = parsed.quantity;
+        if (typeof parsed?.carton_id === "string") {
+          parsedCartonId = parsed.carton_id;
+        }
       }
     } catch {
       // Not valid JSON — fall through to standard string matching
@@ -155,18 +150,18 @@ export function matchScan(
       continue;
     }
 
-    // A sealed pallet/group QR represents the complete remaining quantity for
-    // this WRR line. It is intentionally exact: accepting a partial group
-    // would make the individual carton IDs ambiguous and could over-receive.
-    if (parsedGroupQuantity !== null) {
-      const remainingBeforeScan = line.expectedQty - line.scannedQty;
-      if (parsedGroupQuantity !== remainingBeforeScan) {
-        return { matched: false, reason: "carton_group_quantity_mismatch" };
-      }
-    }
-
-    // Ordinary item/unit labels represent one physical carton.
-    const scanQty = parsedGroupQuantity ?? 1;
+    // A valid unique carton QR acts as the physical shortcut for its WRR
+    // line: the WRR determines the related carton identities and one scan
+    // receives the entire declared group. The IDs are persisted together so
+    // a later scan of any related label is an exact duplicate.
+    const scanQty = parsedCartonId !== null ? line.expectedQty - line.scannedQty : 1;
+    const unitIds = parsedCartonId !== null && /^[0-9a-f-]{36}$/i.test(line.id)
+      ? Array.from({ length: line.expectedQty }, (_, index) => {
+          const source = line.id.replaceAll("-", "").toLowerCase();
+          const hex = `${source.slice(0, 24)}${(index + 1).toString(16).padStart(8, "0")}`;
+          return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+        })
+      : undefined;
     const remainingQty = line.expectedQty - line.scannedQty - scanQty;
     return {
       matched: true,
@@ -174,6 +169,7 @@ export function matchScan(
       remainingQty,
       scanQty,
       ...(parsedUnitId !== null ? { unitId: parsedUnitId } : {}),
+      ...(unitIds ? { unitIds } : {}),
     };
   }
 
