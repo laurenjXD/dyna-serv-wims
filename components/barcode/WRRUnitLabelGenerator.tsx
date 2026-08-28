@@ -69,7 +69,7 @@ export function WRRUnitLabelGenerator({
       <button
         type="button"
         onClick={() => setIsModalOpen(true)}
-        className="inline-flex h-10 items-center justify-center gap-2 rounded border border-outline-variant bg-surface-white px-3 font-heading font-semibold text-body-md text-brand-navy shadow-sm active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-brand-navy"
+        className="inline-flex h-10 w-max min-w-[172px] shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded border border-outline-variant bg-surface-white px-3 font-heading font-semibold text-body-md text-brand-navy shadow-sm active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-brand-navy"
       >
         <span aria-hidden="true">&#128424;</span>
         <span>Print Unit Labels ({expectedQty})</span>

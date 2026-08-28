@@ -4,7 +4,7 @@ import { cartonIdFromUnitId, isCartonId } from "../carton";
 describe("carton identity", () => {
   it("derives a stable human-readable Carton ID from a unit UUID", () => {
     expect(cartonIdFromUnitId("01234567-89ab-cdef-0123-456789abcdef")).toBe(
-      "DSGC-CTN-0123456789abcdef0123456789abcdef",
+      "DSGC-CTN-02fapl4n1azs5kkwzrxa98bn3",
     );
   });
 

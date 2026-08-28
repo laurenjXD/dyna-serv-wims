@@ -1,3 +1,5 @@
+import { cartonIdFromUnitId } from "./carton";
+
 export type WrrUnitPayload = {
   type: "wrr_item_unit";
   wrr_item_id: string;
@@ -33,7 +35,7 @@ export function createWrrUnitPayload(wrrItemId: string, unitIndex: number): WrrU
     unit_id: unitId,
     // The QR payload now carries the unique physical-carton identity. The
     // legacy unit_id remains for receiving matcher compatibility.
-    carton_id: `DSGC-CTN-${unitId.replaceAll("-", "").toLowerCase()}`,
+    carton_id: cartonIdFromUnitId(unitId),
     unit_index: unitIndex,
   };
 }
@@ -55,7 +57,7 @@ export function parseWrrUnitPayload(value: string): WrrUnitPayload | null {
     if (deriveWrrUnitId(parsed.wrr_item_id, parsed.unit_index!) !== parsed.unit_id.toLowerCase()) {
       return null;
     }
-    if (parsed.carton_id !== `DSGC-CTN-${parsed.unit_id.replaceAll("-", "").toLowerCase()}`) {
+    if (parsed.carton_id !== cartonIdFromUnitId(parsed.unit_id)) {
       return null;
     }
     return parsed as WrrUnitPayload;
