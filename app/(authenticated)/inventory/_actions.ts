@@ -63,10 +63,11 @@ export async function parseDraDocumentAction(formData: FormData) {
       ok: true,
       parseResult,
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
     return {
       ok: false,
-      error: `DRA processing error: ${err?.message || String(err)}`,
+      error: `DRA processing error: ${errorMsg}`,
     };
   }
 }

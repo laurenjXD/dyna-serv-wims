@@ -1104,10 +1104,11 @@ export async function uploadAndParseCiplDocument(
       path: storagePath,
       parseResult,
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
     return {
       ok: false,
-      error: `Document processing error: ${err?.message || String(err)}`,
+      error: `Document processing error: ${errorMsg}`,
     };
   }
 }
