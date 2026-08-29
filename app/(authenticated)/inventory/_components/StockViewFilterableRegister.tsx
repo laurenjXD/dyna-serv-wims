@@ -4,16 +4,12 @@ import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import {
   Search,
-  SlidersHorizontal,
   ChevronDown,
   ChevronRight,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
   X,
-  Package,
-  Layers,
-  Box,
 } from "lucide-react";
 import { LotQrViewer } from "./LotQrViewer";
 
@@ -199,7 +195,7 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
             <span className="font-label text-label-xs uppercase text-text-grey">Stock:</span>
             <select
               value={stockStatus}
-              onChange={(e) => setStockStatus(e.target.value as any)}
+              onChange={(e) => setStockStatus(e.target.value as "all" | "in_stock" | "zero_stock")}
               className="bg-transparent font-body text-body-sm font-semibold text-on-surface focus:outline-none cursor-pointer"
             >
               <option value="all">All Stock Levels</option>

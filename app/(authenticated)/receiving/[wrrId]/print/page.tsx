@@ -48,11 +48,6 @@ const FLOW_LABELS: Record<string, string> = {
   supplies: "Supplies",
 };
 
-const DISPOSITION_LABELS: Record<string, string> = {
-  store: "STORE",
-  inspect: "INSPECT",
-};
-
 interface PageProps {
   params: Promise<{ wrrId: string }>;
 }

@@ -6,7 +6,7 @@ import { Search, PlusCircle, Check, ChevronDown, ExternalLink, AlertCircle } fro
 import type { WrrItemOption } from "@/lib/db/queries/items";
 
 interface ItemSearchComboboxProps {
-  index: number;
+  index?: number;
   flowType: string;
   vendorPartyId: string;
   availableItems: WrrItemOption[];
@@ -18,7 +18,7 @@ interface ItemSearchComboboxProps {
 }
 
 export function ItemSearchCombobox({
-  index,
+  index: _index,
   flowType,
   vendorPartyId,
   availableItems,

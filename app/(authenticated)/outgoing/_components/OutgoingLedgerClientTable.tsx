@@ -1,19 +1,14 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import Link from "next/link";
 import {
-  ChevronRight,
   FileText,
-  Layers,
-  Package,
   X,
   Upload,
   Search,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  SlidersHorizontal,
 } from "lucide-react";
 import type { OutgoingLedgerRow } from "@/lib/db/queries/withdrawals";
 
@@ -154,7 +149,7 @@ export function OutgoingLedgerClientTable({
             <span className="font-label text-label-xs uppercase text-text-grey">DR Status:</span>
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
+              onChange={(e) => setStatusFilter(e.target.value as "all" | "uploaded" | "missing")}
               className="bg-transparent font-body text-body-sm font-semibold text-on-surface focus:outline-none cursor-pointer"
             >
               <option value="all">All DR Statuses</option>
@@ -193,9 +188,11 @@ export function OutgoingLedgerClientTable({
             <p className="mt-1 font-body text-body-sm text-text-grey">Try adjusting your search terms or DR status.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left">
-              <thead>
+          <div>
+            {/* Desktop Table View */}
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full border-collapse text-left">
+                <thead>
                 <tr className="border-b border-outline-variant/30 bg-surface-light-grey select-none">
                   <th className="px-4 py-3 font-label text-label uppercase tracking-[0.05em] text-text-grey">
                     <button
@@ -395,6 +392,84 @@ export function OutgoingLedgerClientTable({
                 })}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Card View (< 768px) */}
+            <div className="divide-y divide-outline-variant/30 md:hidden">
+              {filteredAndSortedRows.map((row) => {
+                const drKey = row.pickListNumber
+                  ? `DR-${row.pickListNumber.replace(/^PL-/, "")}`
+                  : `TX-${row.transactionNumber}`;
+                const groupCount = drGroups[drKey]?.length ?? 1;
+
+                return (
+                  <div key={row.transactionId} className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedDrNumber(drKey)}
+                            className="font-mono text-title-sm font-bold text-brand-navy hover:underline"
+                          >
+                            {drKey}
+                          </button>
+                          {groupCount > 1 && (
+                            <span className="rounded-full bg-brand-navy/10 px-2 py-0.5 font-label text-label-xs font-semibold text-brand-navy">
+                              {groupCount} items
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-0.5 font-body text-body-sm font-semibold text-on-surface">
+                          {row.customerPartyName ?? "Customer not recorded"}
+                        </p>
+                      </div>
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 font-label text-label-xs font-bold ${
+                          row.deliveryReceiptStatus === "uploaded"
+                            ? "bg-status-available/15 text-status-available"
+                            : "bg-status-pending/15 text-status-pending"
+                        }`}
+                      >
+                        {row.deliveryReceiptStatus === "uploaded" ? "DR Uploaded" : "DR Missing"}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 rounded-lg bg-surface-light-grey/60 p-2.5 font-mono text-body-xs">
+                      <div>
+                        <span className="text-text-grey block text-mono-xs uppercase">Item Code</span>
+                        <span className="font-bold text-on-surface">{row.itemCode}</span>
+                      </div>
+                      <div>
+                        <span className="text-text-grey block text-mono-xs uppercase">Dispatched Qty</span>
+                        <span className="font-bold text-brand-navy">{row.qty.toLocaleString()} PCS</span>
+                      </div>
+                      <div>
+                        <span className="text-text-grey block text-mono-xs uppercase">Lot Number</span>
+                        <span className="text-on-surface">{row.lotNumber}</span>
+                      </div>
+                      <div>
+                        <span className="text-text-grey block text-mono-xs uppercase">From Location</span>
+                        <span className="text-on-surface">{row.fromLocationLabel}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-1">
+                      <span className="text-body-xs text-text-grey">
+                        {row.createdAt.toLocaleDateString()}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDrNumber(drKey)}
+                        className="inline-flex h-9 items-center rounded-lg border border-outline-variant/60 bg-surface-white px-3 font-label text-label-xs font-bold text-brand-navy hover:bg-surface-light-grey"
+                      >
+                        View DR Details &rarr;
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

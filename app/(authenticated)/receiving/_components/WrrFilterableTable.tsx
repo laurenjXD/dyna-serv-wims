@@ -10,8 +10,6 @@ import {
   X,
   FileSpreadsheet,
   Plus,
-  Truck,
-  ExternalLink,
 } from "lucide-react";
 import type { WrrDocumentRow } from "@/lib/db/queries/receiving";
 
@@ -85,8 +83,8 @@ export function WrrFilterableTable({ rows, canCreate }: WrrFilterableTableProps)
           return sortDir === "asc" ? timeA - timeB : timeB - timeA;
         }
 
-        let valA = (a[sortField] || "").toLowerCase();
-        let valB = (b[sortField] || "").toLowerCase();
+        const valA = (a[sortField] || "").toLowerCase();
+        const valB = (b[sortField] || "").toLowerCase();
         return sortDir === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
       });
   }, [rows, searchQuery, selectedFlow, selectedStatus, sortField, sortDir]);
@@ -213,105 +211,158 @@ export function WrrFilterableTable({ rows, canCreate }: WrrFilterableTableProps)
             <p className="mt-1 font-body text-body-sm text-text-grey">Try adjusting your search terms or status filter.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left">
-              <thead>
-                <tr className="border-b border-outline-variant/30 bg-surface-light-grey select-none">
-                  <th className="px-4 py-3 font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("wrrNumber")}
-                      className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>WRR Number</span>
-                      {renderSortIcon("wrrNumber")}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("flowType")}
-                      className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>Flow Type</span>
-                      {renderSortIcon("flowType")}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("status")}
-                      className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>Status</span>
-                      {renderSortIcon("status")}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("vendorPartyName")}
-                      className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>Vendor / Organization</span>
-                      {renderSortIcon("vendorPartyName")}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("createdAt")}
-                      className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>Created At</span>
-                      {renderSortIcon("createdAt")}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 text-right font-label text-label uppercase text-text-grey">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/30">
-                {filteredAndSortedRows.map((row) => (
-                  <tr key={row.id} className="hover:bg-surface-light-grey/50">
-                    <td className="px-4 py-3 font-mono text-mono-md font-bold text-brand-navy">
-                      <Link href={`/receiving/${row.id}`} className="hover:underline">
-                        {row.wrrNumber}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                      <span className="rounded bg-brand-navy/10 px-2 py-0.5 font-label text-label-xs font-bold text-brand-navy">
-                        {FLOW_LABELS[row.flowType] ?? row.flowType}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-1 font-label text-mono-sm font-bold ${
-                          STATUS_CLASSES[row.status] ?? "bg-status-neutral/10 text-status-neutral"
-                        }`}
+          <div>
+            {/* Desktop Table View */}
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-outline-variant/30 bg-[#EDF2FF]">
+                    <th className="px-4 py-3 font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                      <button
+                        type="button"
+                        onClick={() => handleSort("wrrNumber")}
+                        className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
                       >
-                        {STATUS_LABELS[row.status] ?? row.status.toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                      {row.vendorPartyName ?? row.vendorPartyId}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 font-body text-body-md text-text-grey">
-                      {row.createdAt.toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3 text-right">
+                        <span>WRR Number</span>
+                        {renderSortIcon("wrrNumber")}
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                      <button
+                        type="button"
+                        onClick={() => handleSort("flowType")}
+                        className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
+                      >
+                        <span>Flow Type</span>
+                        {renderSortIcon("flowType")}
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                      <button
+                        type="button"
+                        onClick={() => handleSort("status")}
+                        className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
+                      >
+                        <span>Status</span>
+                        {renderSortIcon("status")}
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                      <button
+                        type="button"
+                        onClick={() => handleSort("vendorPartyName")}
+                        className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
+                      >
+                        <span>Vendor / Organization</span>
+                        {renderSortIcon("vendorPartyName")}
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                      <button
+                        type="button"
+                        onClick={() => handleSort("createdAt")}
+                        className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
+                      >
+                        <span>Created At</span>
+                        {renderSortIcon("createdAt")}
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 text-right font-label text-label uppercase text-text-grey">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-outline-variant/30">
+                  {filteredAndSortedRows.map((row) => (
+                    <tr key={row.id} className="hover:bg-surface-light-grey/50">
+                      <td className="px-4 py-3 font-mono text-mono-md font-bold text-brand-navy">
+                        <Link href={`/receiving/${row.id}`} className="hover:underline">
+                          {row.wrrNumber}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3 font-body text-body-md text-on-surface">
+                        <span className="rounded bg-brand-navy/10 px-2 py-0.5 font-label text-label-xs font-bold text-brand-navy">
+                          {FLOW_LABELS[row.flowType] ?? row.flowType}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2.5 py-1 font-label text-mono-sm font-bold ${
+                            STATUS_CLASSES[row.status] ?? "bg-status-neutral/10 text-status-neutral"
+                          }`}
+                        >
+                          {STATUS_LABELS[row.status] ?? row.status.toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 font-body text-body-md text-on-surface">
+                        {row.vendorPartyName ?? row.vendorPartyId}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 font-body text-body-md text-text-grey">
+                        {row.createdAt.toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Link
+                          href={`/receiving/${row.id}`}
+                          className="inline-flex h-9 items-center gap-1 rounded-lg border border-brand-navy/30 bg-surface-white px-3 font-label text-label-xs font-bold text-brand-navy hover:bg-brand-navy/5"
+                        >
+                          View WRR &rarr;
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card View (< 768px) */}
+            <div className="divide-y divide-outline-variant/30 md:hidden">
+              {filteredAndSortedRows.map((row) => (
+                <div key={row.id} className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
                       <Link
                         href={`/receiving/${row.id}`}
-                        className="inline-flex h-9 items-center gap-1 rounded-lg border border-brand-navy/30 bg-surface-white px-3 font-label text-label-xs font-bold text-brand-navy hover:bg-brand-navy/5"
+                        className="font-mono text-title-md font-bold text-brand-navy hover:underline"
                       >
-                        View WRR &rarr;
+                        {row.wrrNumber}
                       </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <p className="mt-0.5 font-body text-body-sm font-semibold text-on-surface">
+                        {row.vendorPartyName ?? "Vendor not specified"}
+                      </p>
+                    </div>
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-1 font-label text-label-xs font-bold ${
+                        STATUS_CLASSES[row.status] ?? "bg-status-neutral/10 text-status-neutral"
+                      }`}
+                    >
+                      {STATUS_LABELS[row.status] ?? row.status.toUpperCase()}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-body-xs text-text-grey">
+                    <span className="rounded bg-brand-navy/10 px-2 py-0.5 font-label font-bold text-brand-navy">
+                      {FLOW_LABELS[row.flowType] ?? row.flowType}
+                    </span>
+                    <span>Created: {row.createdAt.toLocaleDateString()}</span>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2 border-t border-outline-variant/20">
+                    <Link
+                      href={`/receiving/${row.id}`}
+                      className="flex-1 inline-flex h-10 items-center justify-center rounded-lg bg-brand-navy px-3 font-label text-label-xs font-bold text-surface-white hover:bg-brand-navy/90"
+                    >
+                      Open WRR
+                    </Link>
+                    <Link
+                      href={`/receiving/${row.id}/pre-alert`}
+                      className="inline-flex h-10 items-center justify-center rounded-lg border border-outline-variant/60 bg-surface-white px-3 font-label text-label-xs font-bold text-on-surface hover:bg-surface-light-grey"
+                    >
+                      Pre-Alert
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

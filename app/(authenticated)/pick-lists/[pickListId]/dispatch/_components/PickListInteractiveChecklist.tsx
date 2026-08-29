@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { CheckCircle2, CheckSquare, Square, Box, Check, ArrowRight } from "lucide-react";
+import { CheckCircle2, CheckSquare, Square } from "lucide-react";
 import type { PickListItemRow } from "@/lib/db/queries/withdrawals";
 
 interface PickListInteractiveChecklistProps {
@@ -81,23 +81,27 @@ export function PickListInteractiveChecklist({
                   : "border-outline-variant/30 bg-surface-white hover:bg-surface-light-grey/40"
               }`}
             >
-              {/* Interactive Checkbox for floor operators */}
+              {/* Interactive Checkbox for floor operators (48px minimum touch target for gloves) */}
               {!alreadyDispatched ? (
                 <button
                   type="button"
                   onClick={() => toggleCheck(item.id)}
-                  className="mt-0.5 shrink-0 rounded text-brand-navy focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
                   aria-label={`Mark ${item.itemCode} as picked`}
                 >
                   {isPhysicallyChecked ? (
-                    <CheckSquare size={26} className="text-status-available font-bold" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-status-available text-surface-white shadow-sm">
+                      <CheckSquare size={22} className="stroke-[2.5]" />
+                    </div>
                   ) : (
-                    <Square size={26} className="text-text-grey hover:text-on-surface" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg border-2 border-outline-variant/80 bg-surface-white hover:border-brand-navy/60">
+                      <Square size={20} className="text-text-grey/40" />
+                    </div>
                   )}
                 </button>
               ) : (
-                <div className="mt-0.5 shrink-0">
-                  <CheckCircle2 size={24} className="text-status-available" />
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center">
+                  <CheckCircle2 size={26} className="text-status-available" />
                 </div>
               )}
 
