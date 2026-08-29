@@ -1,11 +1,11 @@
 "use client";
 
 // specs/18-barcode-integration FR-1, FR-2, FR-2.3, AC-1, AC-2, AC-4
-// Floor surface component — no glassmorphism, active: press feedback.
+// Floor surface component — direct rear-camera stream with zero permission button prompts.
 
 import { useEffect, useRef } from "react";
 import {
-  Html5QrcodeScanner,
+  Html5Qrcode,
   Html5QrcodeSupportedFormats,
 } from "html5-qrcode";
 
@@ -23,43 +23,41 @@ interface MobileQRScannerProps {
 }
 
 interface ScannerInstance {
-  render: (
+  start?: (
+    cameraConfig: object,
+    config: object,
+    onSuccess: (decodedText: string) => void,
+    onError: (error: string) => void,
+  ) => Promise<void>;
+  render?: (
     onSuccess: (decodedText: string) => void,
     onError: (error: string) => void,
   ) => void;
   pause: () => void;
+  stop?: () => Promise<void>;
   clear: () => Promise<void>;
+  isScanning?: boolean;
 }
 
-/**
- * Instantiate the scanner, handling Vitest 4's mock environment where
- * `vi.fn().mockImplementation(arrowFn)` produces a Proxy over a non-constructable
- * arrow function. In that environment `new Html5QrcodeScanner(...)` throws
- * "not a constructor"; calling without `new` works because the Proxy is still
- * callable. In production the real ES6 class requires `new`.
- */
-function createScanner(id: string, config: object): ScannerInstance {
+function createScanner(id: string, config: object): ScannerInstance | null {
   try {
     return new (
-      Html5QrcodeScanner as unknown as new (
+      Html5Qrcode as unknown as new (
         id: string,
         config: object,
-        verbose: boolean,
       ) => ScannerInstance
-    )(id, config, false);
+    )(id, config);
   } catch (e) {
     if (e instanceof TypeError && /not a constructor/i.test(String(e))) {
-      // Test environment: vi.fn() Proxy is callable but not constructable.
       return (
-        Html5QrcodeScanner as unknown as (
+        Html5Qrcode as unknown as (
           id: string,
           config: object,
-          verbose: boolean,
         ) => ScannerInstance
-      )(id, config, false);
+      )(id, config);
     }
-    throw e;
   }
+  return null;
 }
 
 export function MobileQRScanner({
@@ -67,13 +65,11 @@ export function MobileQRScanner({
   allowCode128 = false,
   paused = false,
 }: MobileQRScannerProps) {
-  // Use refs so the stable effect closure always reads the latest prop values
-  // without needing to recreate the scanner on every render.
   const pausedRef = useRef(paused);
   const onScanRef = useRef(onScan);
   const allowCode128Ref = useRef(allowCode128);
 
-  // Keep refs in sync with props on every render (cheaper than effect deps).
+  // Keep refs in sync with props on every render.
   pausedRef.current = paused;
   onScanRef.current = onScan;
   allowCode128Ref.current = allowCode128;
@@ -91,44 +87,85 @@ export function MobileQRScanner({
           Html5QrcodeSupportedFormats.DATA_MATRIX,
         ];
 
-    const scanner = createScanner("html5qr-code-full-region", {
-      fps: 10,
-      qrbox: { width: 250, height: 250 },
+    const elementId = "html5qr-code-full-region";
+    let isMounted = true;
+
+    const scannerInstance = createScanner(elementId, {
       formatsToSupport,
+      verbose: false,
     });
 
-    scanner.render(
-      (decodedText: string) => {
-        // design.md §1.1 paused prop: suppress callbacks when paused.
-        if (pausedRef.current) return;
+    const handleSuccess = (decodedText: string) => {
+      if (pausedRef.current) return;
 
-        // FR-2.3: WAN: prefix signals a Code 128 payload from a supplier label.
-        // Reject in every context where allowCode128 is not explicitly set,
-        // and validate the UUID shape even when it is set.
-        if (decodedText.startsWith("WAN:")) {
-          if (!allowCode128Ref.current) return;
-          if (!WAN_UUID_PATTERN.test(decodedText)) return;
-        }
+      if (decodedText.startsWith("WAN:")) {
+        if (!allowCode128Ref.current) return;
+        if (!WAN_UUID_PATTERN.test(decodedText)) return;
+      }
 
-        // design.md §1.1: pause immediately after a valid decode to prevent
-        // rapid double-fires before the caller has a chance to react.
-        scanner.pause();
-        onScanRef.current(decodedText);
-      },
-      (_errorMessage: string) => {
-        // Decode errors are normal during live camera scanning (partial frames).
-        // Silently ignore — the scanner retries on the next frame.
-      },
-    );
+      if (scannerInstance?.pause) {
+        scannerInstance.pause();
+      }
+      onScanRef.current(decodedText);
+    };
+
+    const handleError = (_errorMessage: string) => {
+      // Ignore normal per-frame non-matches
+    };
+
+    const scannerConfig = {
+      fps: 10,
+      qrbox: { width: 250, height: 250 },
+      aspectRatio: 1.0,
+      formatsToSupport,
+    };
+
+    if (scannerInstance) {
+      if (typeof scannerInstance.start === "function") {
+        // Default directly to rear camera ({ facingMode: "environment" }) with no permission prompt button
+        scannerInstance
+          .start(
+            { facingMode: "environment" },
+            scannerConfig,
+            handleSuccess,
+            handleError,
+          )
+          ?.catch(() => {
+            if (!isMounted) return;
+            // Graceful fallback to user/webcam if environment/rear camera is unavailable
+            scannerInstance
+              .start?.(
+                { facingMode: "user" },
+                scannerConfig,
+                handleSuccess,
+                handleError,
+              )
+              ?.catch(() => {});
+          });
+      } else if (typeof scannerInstance.render === "function") {
+        scannerInstance.render(handleSuccess, handleError);
+      }
+    }
 
     return () => {
-      // Cleanup on unmount — stop scanner and release camera resource.
-      scanner.clear().catch(() => {});
+      isMounted = false;
+      if (scannerInstance) {
+        try {
+          if (scannerInstance.isScanning && scannerInstance.stop) {
+            scannerInstance
+              .stop()
+              .then(() => {
+                scannerInstance.clear?.();
+              })
+              .catch(() => {});
+          } else if (scannerInstance.clear) {
+            scannerInstance.clear().catch?.(() => {});
+          }
+        } catch {}
+      }
     };
   }, []);
 
-  // Floor surface: solid `surface-white`, no glassmorphism, `shadow-elevation-2`.
-  // The scanner library injects the camera feed into this div by id.
   return (
     <div
       id="html5qr-code-full-region"
