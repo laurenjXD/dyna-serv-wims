@@ -73,14 +73,20 @@ export function PutawayLocationSelector({
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
       <input type="hidden" name="allocations" value={JSON.stringify(allocations)} />
       <input type="hidden" name="unitLocationIds" value={JSON.stringify(locationsBySlot)} />
 
-      <section className="rounded-xl border border-outline-variant/40 bg-surface-white p-4">
-        <label htmlFor="all-boxes-location" className="font-label text-body-md text-on-surface">
-          Put all {quantity} boxes in
-        </label>
+      <section className="rounded-2xl border border-outline-variant/40 bg-surface-white p-4 shadow-elevation-1 sm:p-5">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="font-label text-label font-bold uppercase tracking-[0.1em] text-primary">Step 1 · Primary location</p>
+            <label htmlFor="all-boxes-location" className="mt-1 block font-heading text-title-md font-bold text-on-surface">
+              Put all {quantity} boxes in
+            </label>
+          </div>
+          <span className="rounded-full bg-[#EEF3FF] px-3 py-1 font-mono text-mono-sm font-bold text-brand-navy">{quantity} boxes</span>
+        </div>
         <div className="mt-2">
           <LocationCombobox
             id="all-boxes-location"
@@ -90,14 +96,14 @@ export function PutawayLocationSelector({
             placeholder={selectedIds.length > 1 ? "Multiple locations selected" : "Search or choose a location"}
           />
         </div>
-        <p className="mt-2 font-body text-body-md text-text-grey">
-          Choose one location here. Use the split option below only when the pallet will occupy multiple locations.
+        <p className="mt-3 font-body text-body-md text-text-grey">
+          Choose one location for the full pallet. Split only when it must occupy multiple locations.
         </p>
       </section>
 
-      <details className="rounded-xl border border-outline-variant/40 bg-surface-white p-4">
-        <summary className="cursor-pointer font-label text-body-md text-on-surface">
-          Split or adjust individual boxes
+      <details className="rounded-2xl border border-outline-variant/40 bg-surface-white p-4 shadow-elevation-1 sm:p-5">
+        <summary className="cursor-pointer list-none font-label text-body-md font-bold text-on-surface marker:hidden">
+          <span className="flex items-center justify-between gap-3"><span><span className="mr-2 text-primary">Step 2</span>Split or adjust individual boxes</span><span aria-hidden="true" className="text-title-md text-text-grey">⌄</span></span>
         </summary>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           {locationsBySlot.map((locationId, index) => (
@@ -133,8 +139,14 @@ export function PutawayLocationSelector({
         </div>
       </details>
 
-      <section className="rounded-xl border border-outline-variant/40 bg-surface-light-grey p-4" aria-live="polite">
-        <p className="font-label text-body-md text-on-surface">Placement summary</p>
+      <section className="rounded-2xl border border-primary/10 bg-[#EEF3FF] p-4 sm:p-5" aria-live="polite">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="font-label text-label font-bold uppercase tracking-[0.1em] text-primary">Step 3 · Review</p>
+            <p className="mt-1 font-heading text-title-md font-bold text-on-surface">Placement summary</p>
+          </div>
+          <span className="font-mono text-mono-sm font-bold text-text-grey">{allocations.reduce((total, allocation) => total + allocation.qty, 0)}/{quantity} assigned</span>
+        </div>
         <div className="mt-2 space-y-2">
           {allocations.map((allocation) => {
             const location = candidates.find(
@@ -144,7 +156,7 @@ export function PutawayLocationSelector({
             const storedItems = contents[location.id] ?? [];
 
             return (
-              <details key={location.id} className="rounded-lg bg-surface-white px-3 py-2">
+              <details key={location.id} className="rounded-xl border border-outline-variant/20 bg-surface-white px-4 py-3">
                 <summary className="cursor-pointer font-body text-body-md text-on-surface">
                   <span className="font-label">{location.label}</span>
                   {" · "}{allocation.qty} box{allocation.qty === 1 ? "" : "es"}
@@ -174,7 +186,7 @@ export function PutawayLocationSelector({
         </div>
       </section>
 
-      <label className="flex items-start gap-3 rounded-xl border-2 border-outline-variant bg-surface-white p-4 font-body text-body-md text-on-surface">
+      <label className="flex items-start gap-3 rounded-2xl border-2 border-status-available/30 bg-[#F0FDF8] p-4 font-body text-body-md text-on-surface">
         <input
           required
           type="checkbox"
@@ -184,7 +196,7 @@ export function PutawayLocationSelector({
           onChange={(event) => setAttested(event.target.checked)}
           className="mt-0.5 h-6 w-6 shrink-0"
         />
-        <span>All {quantity} boxes are physically present and assigned.</span>
+        <span><span className="block font-label text-label font-bold uppercase tracking-[0.1em] text-status-available">Step 4 · Confirm</span><span className="mt-1 block">All {quantity} boxes are physically present and assigned.</span></span>
       </label>
     </div>
   );

@@ -305,11 +305,12 @@ export default async function ReceiveFloorPage({
   const dispositionResult = dispositionParam;
   const errorReason = reasonParam ?? "";
   const feedbackLineId = lineParam ?? null;
+  const progressPercent = totalLines > 0 ? Math.round((fullyScannedLines / totalLines) * 100) : 0;
 
   // ─── Receipt complete: all lines committed, WRR already confirmed server-side ───
   if (isComplete) {
     return (
-      <div className="flex min-h-screen flex-col bg-surface-light-grey">
+    <div className="flex min-h-screen flex-col bg-[#F3F6FC]">
         <div className="flex flex-1 flex-col items-center justify-center px-4 py-4 text-center">
           <div className="w-full max-w-md rounded-xl bg-surface-white p-6 shadow-elevation-2">
             <span
@@ -341,10 +342,10 @@ export default async function ReceiveFloorPage({
     // Floor screen uses the active light surface by default. Dark mode is
     // controlled globally from the Profile preference, never hard-coded here.
     // brand-design-system.md §4: floor screens use 16px page padding.
-    <div className="flex min-h-screen flex-col bg-surface-light-grey">
+    <div className="flex min-h-screen flex-col bg-[#F3F6FC]">
       {/* Top bar — compact, floor-appropriate */}
-      <div className="border-b border-outline-variant/30 bg-surface-white px-4 py-3">
-        <div className="flex items-center justify-between">
+      <div className="border-b border-outline-variant/30 bg-surface-white px-4 py-3 shadow-sm">
+        <div className="mx-auto flex max-w-5xl items-center justify-between">
           {/* Back link — h-14 (56px) minimum floor touch target per §3 */}
           <Link
             href={`/receiving/${wrrId}`}
@@ -362,19 +363,26 @@ export default async function ReceiveFloorPage({
       </div>
 
       {/* Main floor content — flex-1, single-column, 16px padding */}
-      <div className="flex flex-1 flex-col px-4 py-4 pb-6">
+      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-5 pb-8">
         {/* Progress header — Fira Sans, large enough for floor visibility */}
-        <div className="rounded-xl bg-surface-white p-4 shadow-elevation-2">
-          <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
-            Scan Items
-          </h1>
+        <div className="rounded-2xl border border-outline-variant/40 bg-surface-white p-5 shadow-elevation-2 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="font-label text-label font-bold uppercase tracking-[0.12em] text-primary">Receiving workflow</p>
+              <h1 className="mt-1 font-heading font-extrabold text-headline-md text-on-surface">Scan items</h1>
+            </div>
+            <div className="rounded-xl bg-[#EEF3FF] px-4 py-3 text-right">
+              <p className="font-mono text-data-display font-bold text-brand-navy">{fullyScannedLines}/{totalLines}</p>
+              <p className="font-label text-label font-bold uppercase tracking-wide text-text-grey">Lines complete</p>
+            </div>
+          </div>
           {/* Progress — no text below 16px (body-md) on floor screens per §2 */}
-          <p className="mt-2 font-body text-body-md text-on-surface">
-            <span className="font-mono text-mono-lg">
-              {fullyScannedLines} / {totalLines}
-            </span>{" "}
-            lines fully scanned
-          </p>
+          <div className="mt-5">
+            <div className="mb-2 flex items-center justify-between font-label text-label font-bold uppercase tracking-wide text-text-grey"><span>Receipt progress</span><span>{progressPercent}%</span></div>
+            <div className="h-3 overflow-hidden rounded-full bg-[#E6ECF8]" role="progressbar" aria-valuenow={progressPercent} aria-valuemin={0} aria-valuemax={100} aria-label="Receipt progress">
+              <div className="h-full rounded-full bg-primary transition-[width] duration-300" style={{ width: `${progressPercent}%` }} />
+            </div>
+          </div>
           {!isReceivable && (
             <div
               role="alert"
@@ -398,7 +406,7 @@ export default async function ReceiveFloorPage({
             aria-live="assertive"
             // White background with status-available left border — AAA contrast
             // (near-black on white >15:1). Icon carries the semantic green signal.
-            className="mt-4 rounded-md bg-white border-l-4 border-status-available px-4 py-4 shadow-elevation-2"
+            className="mt-4 rounded-xl border border-status-available/30 border-l-4 bg-surface-white px-4 py-4 shadow-elevation-1"
           >
             <p className="font-heading font-semibold text-headline-md text-on-surface">
               &#10003; Scanned
@@ -430,7 +438,7 @@ export default async function ReceiveFloorPage({
         />
 
         {fullyScannedLines > 0 && fullyScannedLines < totalLines && (
-          <div className="mt-4 rounded-xl border border-status-pending/40 bg-status-pending/10 p-4 shadow-elevation-1">
+          <div className="mt-4 rounded-xl border border-status-pending/40 bg-[#FFF9EB] p-4 shadow-elevation-1">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="font-heading text-body-md font-bold text-on-surface">
@@ -456,7 +464,7 @@ export default async function ReceiveFloorPage({
           <div
             role="status"
             aria-live="assertive"
-            className="mt-4 rounded-md bg-white border-l-4 border-status-available px-4 py-4 shadow-elevation-2"
+            className="mt-4 rounded-xl border border-status-available/30 border-l-4 bg-surface-white px-4 py-4 shadow-elevation-1"
           >
             <p className="font-heading font-semibold text-headline-md text-on-surface">
               &#10003; Line committed
@@ -471,7 +479,7 @@ export default async function ReceiveFloorPage({
           <div
             role="alert"
             aria-live="assertive"
-            className="mt-4 rounded-md bg-white border-l-4 border-status-held px-4 py-4 shadow-elevation-2"
+            className="mt-4 rounded-xl border border-status-held/30 border-l-4 bg-surface-white px-4 py-4 shadow-elevation-1"
           >
             <p className="font-heading font-semibold text-headline-md text-on-surface">
               &#33; Could not complete line
@@ -504,7 +512,7 @@ export default async function ReceiveFloorPage({
               <div
                 key={item.id}
                 // Floor card: solid surface-white, Level 2 shadow, no glassmorphism
-                className="rounded-xl bg-surface-white p-4 shadow-elevation-2"
+                className={`rounded-2xl border bg-surface-white p-4 shadow-elevation-1 sm:p-5 ${isPrimaryReady ? "border-primary/50 ring-2 ring-primary/10" : "border-outline-variant/40"}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
@@ -607,19 +615,22 @@ export default async function ReceiveFloorPage({
           unscanned, the scan input is the primary action. 64px minimum
           height for floor primary actions throughout. */}
       {isReceivable && primaryReadyLine && (
-        <div className="sticky bottom-0 border-t border-outline-variant/30 bg-surface-white px-4 pb-6 pt-4 shadow-elevation-2">
+        <div className="sticky bottom-0 z-10 -mx-4 mt-2 border-t border-outline-variant/40 bg-surface-white px-4 pb-6 pt-4 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] sm:-mx-6 sm:rounded-t-2xl sm:border-x">
           <form action={handleCommitLine} className="flex flex-col gap-3">
             <input type="hidden" name="wrrItemId" value={primaryReadyLine.id} />
             <p className="font-mono text-mono-lg font-bold text-on-surface">
               {primaryReadyLine.lotNumber}
             </p>
-            <div className="rounded border-l-4 border-status-available bg-white px-3 py-3">
-              <p className="font-label text-body-md text-on-surface">
-                Pallet QR verified
+            <div className="flex items-start gap-3 rounded-xl border border-status-available/30 bg-[#F0FDF8] px-4 py-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-status-available font-heading font-bold text-surface-white" aria-hidden="true">&#10003;</span>
+              <div>
+              <p className="font-label text-body-md font-bold text-on-surface">
+                Pallet verified
               </p>
-              <p className="mt-1 font-body text-body-md text-on-surface">
-                One QR from this pallet matched the expected item. Now assign all {primaryReadyLine.expectedQty} declared boxes before storing.
+              <p className="mt-1 font-body text-body-md text-text-grey">
+                Assign all {primaryReadyLine.expectedQty} declared boxes before storing.
               </p>
+              </div>
             </div>
             {primaryReadyLine.disposition === "store" ? (
               <>
@@ -691,36 +702,6 @@ export default async function ReceiveFloorPage({
               </>
             )}
           </form>
-          <details className="mt-4 border-t border-outline-variant/30 pt-3">
-            <summary className="cursor-pointer font-body text-body-md text-on-surface">
-              Verify another carton individually
-            </summary>
-            <p className="mt-2 font-body text-body-md text-text-grey">
-              Enter the printed code or use the camera. This is optional for batch putaway.
-            </p>
-            <form action={handleScan} className="mt-3 flex gap-2">
-              <label htmlFor="individual-barcode-input" className="sr-only">
-                Enter carton code
-              </label>
-              <input
-                id="individual-barcode-input"
-                name="barcode"
-                type="text"
-                autoComplete="off"
-                placeholder="Enter carton code"
-                className="h-14 min-w-0 flex-1 rounded border-2 border-outline-variant bg-surface-white px-4 font-mono text-mono-lg text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-4 focus:ring-brand-navy"
-              />
-              <button
-                type="submit"
-                className="flex h-14 shrink-0 items-center justify-center rounded border-2 border-primary px-4 font-label text-body-md text-primary focus:outline-none focus:ring-4 focus:ring-brand-navy"
-              >
-                Verify
-              </button>
-            </form>
-            <div className="mt-3">
-              <CameraScanBridge action={handleScan} />
-            </div>
-          </details>
         </div>
       )}
 
