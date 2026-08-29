@@ -169,6 +169,37 @@ export function VmiDailyBalanceLedgerTable({
                 </tr>
               ))}
             </tbody>
+            <tfoot className="border-t-2 border-brand-navy bg-surface-light-grey/80 font-bold">
+              <tr>
+                <td className="px-4 py-3 font-label text-label uppercase text-on-surface">
+                  Period Totals:
+                </td>
+                <td className="px-4 py-3 text-right font-mono text-mono-md text-text-grey">
+                  {dailyRows[0]?.beginningCbm.toFixed(2) ?? "—"}
+                </td>
+                <td className="px-4 py-3 text-right font-mono text-mono-md text-status-available">
+                  +{dailyRows.reduce((sum, r) => sum + r.inFgCbm, 0).toFixed(2)}
+                </td>
+                <td className="px-4 py-3 text-right font-mono text-mono-md text-status-available">
+                  +{dailyRows.reduce((sum, r) => sum + r.inRawCbm, 0).toFixed(2)}
+                </td>
+                <td className="px-4 py-3 text-right font-mono text-mono-md text-status-held">
+                  -{dailyRows.reduce((sum, r) => sum + r.outFgCbm, 0).toFixed(2)}
+                </td>
+                <td className="px-4 py-3 text-right font-mono text-mono-md text-status-held">
+                  -{dailyRows.reduce((sum, r) => sum + r.outRawCbm, 0).toFixed(2)}
+                </td>
+                <td className="px-4 py-3 text-right font-mono text-mono-md font-bold text-on-surface">
+                  {dailyRows[dailyRows.length - 1]?.endingCbm.toFixed(2) ?? "—"}
+                </td>
+                <td className="px-4 py-3 text-right font-label text-label-xs uppercase text-text-grey">
+                  avg
+                </td>
+                <td className="px-4 py-3 text-right font-mono text-mono-md font-bold text-brand-navy">
+                  ${totalStorageAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       </div>

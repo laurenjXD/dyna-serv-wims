@@ -161,6 +161,35 @@ export function TradingMarginLedgerTable({ rows, hasMarginView }: Props) {
                 );
               })}
             </tbody>
+            <tfoot className="border-t-2 border-brand-navy bg-surface-light-grey/80 font-bold">
+              <tr>
+                <td colSpan={4} className="px-4 py-3 text-right font-label uppercase text-on-surface">
+                  Total Trading Sales:
+                </td>
+                <td className="px-4 py-3 text-right font-mono text-mono-md font-bold text-on-surface">
+                  {rows.reduce((sum, r) => sum + r.qty, 0).toLocaleString()}
+                </td>
+                <td className="px-4 py-3 text-right font-label text-label-xs uppercase text-text-grey">
+                  —
+                </td>
+                <td className="px-4 py-3 text-right font-mono text-mono-md font-bold text-brand-navy">
+                  ₱{totalSalesAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </td>
+                {hasMarginView && (
+                  <>
+                    <td className="px-4 py-3 text-right font-mono text-mono-md font-bold text-text-grey">
+                      ₱{totalCogsAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-mono-md font-bold text-status-available">
+                      ₱{totalMarginAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-mono-md font-bold text-status-available">
+                      {totalSalesAmount > 0 ? ((totalMarginAmount / totalSalesAmount) * 100).toFixed(1) : 0}%
+                    </td>
+                  </>
+                )}
+              </tr>
+            </tfoot>
           </table>
         </div>
       </div>

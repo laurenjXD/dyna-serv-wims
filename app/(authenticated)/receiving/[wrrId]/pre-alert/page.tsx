@@ -192,7 +192,36 @@ export default async function PreAlertExportPage({ params }: PageProps) {
                   </tr>
                 ))}
               </tbody>
+              <tfoot className="border-t-2 border-brand-navy bg-surface-light-grey/80 font-bold">
+                <tr>
+                  <td colSpan={6} className="px-3 py-3 text-right font-label uppercase text-on-surface">
+                    Total Expected Quantity:
+                  </td>
+                  <td className="px-3 py-3 text-right font-mono text-mono-md font-bold text-brand-navy">
+                    {totalExpectedUnits.toLocaleString()}
+                  </td>
+                  <td colSpan={2} className="px-3 py-3 font-label uppercase text-text-grey">
+                    PCS / UNITS
+                  </td>
+                </tr>
+              </tfoot>
             </table>
+          </div>
+
+          {/* Summary totals box */}
+          <div className="mt-4 flex justify-end">
+            <div className="w-full max-w-xs rounded-lg border border-outline-variant/40 bg-surface-light-grey/40 p-4 font-body text-body-md">
+              <dl className="space-y-1.5">
+                <div className="flex justify-between">
+                  <dt className="text-text-grey">Total Expected Lines:</dt>
+                  <dd className="font-mono font-bold text-on-surface">{wrr.items.length} lines</dd>
+                </div>
+                <div className="flex justify-between border-t border-outline-variant/30 pt-1.5">
+                  <dt className="font-bold text-on-surface">Grand Total Quantity:</dt>
+                  <dd className="font-mono font-bold text-brand-navy text-headline-sm">{totalExpectedUnits.toLocaleString()}</dd>
+                </div>
+              </dl>
+            </div>
           </div>
         </section>
 

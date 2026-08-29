@@ -193,6 +193,24 @@ export default async function PickListPrintPage({
                   );
                 })}
               </tbody>
+              <tfoot className="border-t-2 border-brand-navy bg-surface-light-grey/80 font-bold">
+                <tr>
+                  <td colSpan={8} className="px-3 py-3 text-right font-label uppercase text-on-surface">
+                    Total Pick Allocation:
+                  </td>
+                  <td className="px-3 py-3 text-right font-mono text-mono-md font-bold text-brand-navy">
+                    {totalBoxes.toLocaleString()}
+                  </td>
+                  <td className="px-3 py-3 text-right font-mono text-mono-md font-bold text-brand-navy">
+                    {totalPieces.toLocaleString()}
+                  </td>
+                  <td className="px-3 py-3 text-right font-mono text-text-grey">
+                    {lines.reduce((sum, line) => sum + (line.spqMeter ? line.numberOfBoxes * Number(line.spqMeter) : 0), 0) > 0
+                      ? `${lines.reduce((sum, line) => sum + (line.spqMeter ? line.numberOfBoxes * Number(line.spqMeter) : 0), 0).toFixed(2)} m`
+                      : "—"}
+                  </td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         </section>
