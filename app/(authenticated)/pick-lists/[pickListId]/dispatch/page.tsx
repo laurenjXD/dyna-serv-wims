@@ -161,7 +161,7 @@ export default async function DispatchConfirmationPage({
 
   async function handleReportShortage(formData: FormData): Promise<void> {
     "use server";
-    const pickListItemId = String(formData.get("pickListItemId") ?? "");
+    const pickListItemId = String(formData.get("shortageLineId") ?? "");
     const actualFoundQty = Number(formData.get("actualFoundQty") ?? 0);
     const actionResolver = await createPageResolver();
     await reportLocationShortage(actionResolver, {
@@ -464,7 +464,7 @@ export default async function DispatchConfirmationPage({
                       <details className="mt-2 text-body-xs text-text-grey">
                         <summary className="cursor-pointer text-status-held hover:underline">Report missing physical stock at location</summary>
                         <form action={handleReportShortage} className="mt-2 flex flex-wrap items-center gap-2">
-                          <input type="hidden" name="pickListItemId" value={item.id} />
+                          <input type="hidden" name="shortageLineId" value={item.id} />
                           <label className="text-body-xs font-semibold text-on-surface">Actual units found:</label>
                           <input
                             type="number"

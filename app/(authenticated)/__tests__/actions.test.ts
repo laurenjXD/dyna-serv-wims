@@ -116,7 +116,9 @@ function makeChain(getResult: () => unknown[]) {
   return chain;
 }
 
-const mockSelect = vi.fn();
+const { mockSelect } = vi.hoisted(() => ({
+  mockSelect: vi.fn(),
+}));
 vi.mock("@/lib/db/client", () => ({
   db: {
     select: mockSelect,

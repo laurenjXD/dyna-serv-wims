@@ -135,6 +135,7 @@ const EXPECTED_ROUTES: Array<{
   // 2026-08-17: launchStatus corrected planned -> launch — the page is
   // fully wired to real query modules, no TODO/mock markers. See revision-log.md.
   { id: "reports", path: "/reports", surface: "office", capability: "reporting.read", featureSpecs: ["16-reporting-and-analytics"], launchStatus: "launch" },
+  { id: "notifications", path: "/notifications", surface: "shared", capability: "notifications.read", featureSpecs: ["14-notifications-and-alerts"], launchStatus: "launch" },
   { id: "profile", path: "/profile", surface: "shared", capability: "none", featureSpecs: ["21-user-profile-and-settings"], launchStatus: "launch" },
   { id: "settings", path: "/settings", surface: "office", capability: "users.read", featureSpecs: ["21-user-profile-and-settings"], launchStatus: "launch" },
   { id: "portal", path: "/portal", surface: "party", capability: "none", featureSpecs: ["22-parties-portal"], launchStatus: "launch" },
