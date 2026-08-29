@@ -172,7 +172,6 @@ export default async function PreAlertExportPage({ params }: PageProps) {
                   <th className="px-3 py-2.5 font-label font-bold uppercase text-on-surface">Mfg Date</th>
                   <th className="px-3 py-2.5 text-right font-label font-bold uppercase text-on-surface">Expected Qty</th>
                   <th className="px-3 py-2.5 font-label font-bold uppercase text-on-surface">UOM</th>
-                  <th className="px-3 py-2.5 font-label font-bold uppercase text-on-surface">Disposition</th>
                   <th className="px-3 py-2.5 font-label font-bold uppercase text-on-surface">Remarks</th>
                 </tr>
               </thead>
@@ -189,7 +188,6 @@ export default async function PreAlertExportPage({ params }: PageProps) {
                       {item.expectedQty.toLocaleString()}
                     </td>
                     <td className="px-3 py-2.5 font-label uppercase text-text-grey">{item.uom}</td>
-                    <td className="px-3 py-2.5 font-label uppercase text-on-surface">{item.disposition}</td>
                     <td className="px-3 py-2.5 text-text-grey">{item.remarks ?? "—"}</td>
                   </tr>
                 ))}

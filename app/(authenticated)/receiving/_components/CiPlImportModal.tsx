@@ -207,7 +207,6 @@ export function CiPlImportModal({ wrrId, itemOptions, onClose, onApply }: CiPlIm
                         <th className="p-3">Shipping Lot</th>
                         <th className="p-3">Expected Qty</th>
                         <th className="p-3">UOM</th>
-                        <th className="p-3">Disposition</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-outline-variant/20">
@@ -264,16 +263,6 @@ export function CiPlImportModal({ wrrId, itemOptions, onClose, onApply }: CiPlIm
                                 onChange={(e) => handleRowChange(idx, "uom", e.target.value)}
                                 className="w-16 rounded border border-outline-variant/50 px-2 py-1 font-mono text-body-xs"
                               />
-                            </td>
-                            <td className="p-3">
-                              <select
-                                value={row.disposition}
-                                onChange={(e) => handleRowChange(idx, "disposition", e.target.value as "store" | "inspect")}
-                                className="rounded border border-outline-variant/50 bg-surface-white px-2 py-1 font-body text-body-xs"
-                              >
-                                <option value="store">Store</option>
-                                <option value="inspect">Inspect</option>
-                              </select>
                             </td>
                           </tr>
                         );

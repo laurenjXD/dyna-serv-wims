@@ -295,16 +295,10 @@ export default async function WrrDetailPage({ params }: PageProps) {
                     Scanned Qty
                   </th>
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Disposition
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                     Remarks
                   </th>
                   <th className="px-4 py-3 text-center font-label text-label uppercase tracking-[0.05em] text-text-grey">
                     Labels
-                  </th>
-                  <th className="px-4 py-3 text-center font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Inspection
                   </th>
                 </tr>
               </thead>
@@ -326,13 +320,6 @@ export default async function WrrDetailPage({ params }: PageProps) {
                     <td className="px-4 py-3 text-right font-mono text-mono-md text-on-surface">
                       {item.scannedQty}
                     </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase ${DISPOSITION_CLASSES[item.disposition] ?? "bg-status-neutral/10 text-status-neutral"}`}
-                      >
-                        {item.disposition === "store" ? "STORE" : "INSPECT"}
-                      </span>
-                    </td>
                     <td className="max-w-56 px-4 py-3 font-body text-body-md text-text-grey">{item.remarks ?? "—"}</td>
                     <td className="min-w-[188px] px-4 py-3 text-center align-middle">
                       <WRRUnitLabelGenerator
@@ -342,29 +329,6 @@ export default async function WrrDetailPage({ params }: PageProps) {
                         lotNumber={item.lotNumber}
                         expectedQty={item.expectedQty}
                       />
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {(wrr.status === "staged_pending_arrival" || wrr.status === "receiving_in_progress") &&
-                      item.scannedQty === 0 && item.committedAt === null ? (
-                        <form action={handleSetDisposition}>
-                          <input type="hidden" name="wrrItemId" value={item.id} />
-                          <input
-                            type="hidden"
-                            name="disposition"
-                            value={item.disposition === "inspect" ? "store" : "inspect"}
-                          />
-                          <button
-                            type="submit"
-                            className="inline-flex min-h-11 items-center justify-center rounded border border-status-pending px-3 font-label text-label text-on-surface hover:bg-status-pending/10 focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                          >
-                            {item.disposition === "inspect" ? "Return to Store" : "Send to Inspection"}
-                          </button>
-                        </form>
-                      ) : item.disposition === "inspect" ? (
-                        <span className="font-body text-body-sm text-text-grey">Inspection selected</span>
-                      ) : (
-                        <span className="font-body text-body-sm text-text-grey">—</span>
-                      )}
                     </td>
                   </tr>
                 ))}

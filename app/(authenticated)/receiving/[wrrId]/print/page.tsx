@@ -292,9 +292,6 @@ export default async function WrrPrintPage({ params }: PageProps) {
                       <th className="border border-outline-variant/30 px-3 py-2 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey client-export-hide-cbm">
                         Unit CBM
                       </th>
-                      <th className="border border-outline-variant/30 px-3 py-2 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                        Disposition
-                      </th>
                       <th className="border border-outline-variant/30 px-3 py-2 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
                         Actual Qty / UOM
                       </th>
@@ -323,10 +320,6 @@ export default async function WrrPrintPage({ params }: PageProps) {
                         </td>
                         <td className="border border-outline-variant/30 px-3 py-2 text-right font-mono text-mono-md text-on-surface client-export-hide-cbm">
                           {item.unitCbm.toFixed(4)}
-                        </td>
-                        <td className="border border-outline-variant/30 px-3 py-2 font-label text-label uppercase text-on-surface">
-                          {DISPOSITION_LABELS[item.disposition] ??
-                            item.disposition.toUpperCase()}
                         </td>
                         <td className="border border-outline-variant/30 px-3 py-2 text-right font-mono text-mono-md text-on-surface">
                           {item.scannedQty > 0 ? `${item.scannedQty} ${item.uom}` : "—"}
