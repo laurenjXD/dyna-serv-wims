@@ -140,11 +140,12 @@ export default async function ReceiveFloorPage({
   // safe to retry and not require a separate manual step on the floor.
   if (wrr.status === "staged_pending_arrival") {
     try {
-      await startReceiving(resolver, wrrId);
-      // Re-fetch to get the updated status after the transition.
-      const refreshed = await getWrrDocument(db, wrrId);
-      if (refreshed) {
-        wrr = refreshed;
+      const startResult = await startReceiving(resolver, wrrId);
+      if (startResult.ok) {
+        const refreshed = await getWrrDocument(db, wrrId);
+        if (refreshed) {
+          wrr = refreshed;
+        }
       }
     } catch {
       // Non-fatal: if auto-initiation fails, render page with current state
@@ -155,17 +156,17 @@ export default async function ReceiveFloorPage({
   const isReceivable = wrr.status === "receiving_in_progress";
   const isComplete = wrr.status === "confirmed";
 
-  // Compute progress counts from items.
-  const totalLines = wrr.items.length;
-  const fullyScannedLines = wrr.items.filter(
-    (item: WrrItemRow) => (item.scannedQty ?? 0) >= (item.expectedQty ?? 0)
+  // Compute progress counts from items safely.
+  const totalLines = Array.isArray(wrr.items) ? wrr.items.length : 0;
+  const fullyScannedLines = (wrr.items ?? []).filter(
+    (item: WrrItemRow) => (Number(item.scannedQty) || 0) >= (Number(item.expectedQty) || 0) && (Number(item.expectedQty) || 0) > 0
   ).length;
   const allLinesScanned = totalLines > 0 && fullyScannedLines === totalLines;
 
   // One accepted label may open batch placement for a whole declared line.
-  const readyLines = wrr.items.filter(
+  const readyLines = (wrr.items ?? []).filter(
     (item: WrrItemRow) =>
-      (item.scannedQty ?? 0) >= 1 && item.committedAt === null
+      (Number(item.scannedQty) || 0) >= 1 && item.committedAt === null
   );
   const primaryReadyLine: WrrItemRow | null = readyLines.length > 0 ? readyLines[0] : null;
 

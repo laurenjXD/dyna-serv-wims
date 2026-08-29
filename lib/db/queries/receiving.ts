@@ -263,6 +263,7 @@ export async function getWrrDocument(
       vendorPartyId: wrrDocuments.vendorPartyId,
       stagedByUserId: wrrDocuments.stagedByUserId,
       createdAt: wrrDocuments.createdAt,
+      confirmedAt: wrrDocuments.confirmedAt,
       // design.md §5.3 print-contract header fields.
       commercialInvoiceNo: wrrDocuments.commercialInvoiceNo,
       ciplFileUrl: wrrDocuments.ciplFileUrl,
@@ -310,10 +311,10 @@ export async function getWrrDocument(
     .map((row) => ({
       id: row.itemRowId!,
       wrrId: row.itemWrrId!,
-      lotNumber: row.itemLotNumber!,
-      expectedQty: row.itemExpectedQty!,
-      scannedQty: row.itemScannedQty!,
-      disposition: row.itemDisposition!,
+      lotNumber: row.itemLotNumber ?? "",
+      expectedQty: Number(row.itemExpectedQty ?? 0),
+      scannedQty: Number(row.itemScannedQty ?? 0),
+      disposition: row.itemDisposition ?? "store",
       itemId: row.itemItemId,
       itemCode: row.itemItemCode,
       itemName: row.itemItemName,
