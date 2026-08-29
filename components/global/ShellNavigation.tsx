@@ -75,6 +75,7 @@ const ROUTE_ICON_MAP: Record<string, LucideIcon> = {
   "portal-documents": FileText,
   "portal-notifications": Bell,
   "portal-labels": Tag,
+  notifications: Bell,
 };
 
 const SHORT_LABEL_OVERRIDES: Record<string, string> = {
@@ -88,6 +89,7 @@ const SHORT_LABEL_OVERRIDES: Record<string, string> = {
   enrollment: "Organization & Item Enrollment",
   portal: "Organization Portal",
   "billing-pricing": "Billing & Pricing",
+  notifications: "Notification Queue",
 };
 
 function routeIcon(id: string): LucideIcon {

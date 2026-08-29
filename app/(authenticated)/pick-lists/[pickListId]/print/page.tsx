@@ -40,7 +40,12 @@ export default async function PickListPrintPage({
       <article className="border border-outline-variant/50 p-8 print:border-0 print:p-0">
         <header className="border-b-2 border-on-surface pb-5">
           <div className="flex items-start justify-between gap-6">
-            <div><p className="font-label text-label font-bold uppercase tracking-[0.12em] text-text-grey">Dyna-Serv WIMS</p><h1 className="mt-1 font-heading text-headline-lg font-bold text-on-surface">Pick List</h1></div>
+            <div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.svg" alt="Dyna-Serv" className="mb-2 h-10 w-auto" />
+              <p className="font-label text-label font-bold uppercase tracking-[0.12em] text-text-grey">Dyna-Serv WIMS</p>
+              <h1 className="mt-1 font-heading text-headline-lg font-bold text-on-surface">Pick List</h1>
+            </div>
             <div className="text-right"><p className="font-label text-label uppercase text-text-grey">Pick List No.</p><p className="mt-1 font-mono text-mono-lg font-bold text-on-surface">{pickList.pickListNumber}</p><p className="mt-1 font-body text-body-sm text-text-grey">Generated {pickList.createdAt.toLocaleString()}</p></div>
           </div>
           <div className="mt-6 grid gap-4 border-t border-outline-variant/50 pt-4 sm:grid-cols-2"><div><p className="font-label text-label uppercase text-text-grey">Delivery to</p><p className="mt-1 font-body text-body-md font-bold text-on-surface">{party?.name ?? pickList.customerPartyId}</p><p className="font-body text-body-sm text-text-grey">{[party?.address1, party?.address2].filter(Boolean).join(", ") || "Address not recorded"}</p></div><div className="sm:text-right"><p className="font-label text-label uppercase text-text-grey">Inventory Model</p><p className="mt-1 font-body text-body-md font-bold uppercase text-on-surface">{pickList.flowType}</p></div></div>

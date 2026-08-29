@@ -149,6 +149,8 @@ export default async function WrrPrintPage({ params }: PageProps) {
           <div className="border-b border-outline-variant/30 pb-6">
             <div className="flex items-start justify-between gap-4">
               <div>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/logo.svg" alt="Dyna-Serv" className="mb-2 h-10 w-auto" />
                 <h1 className="font-heading font-extrabold text-headline-lg text-on-surface">
                   Dyna-Serv WIMS
                 </h1>

@@ -158,51 +158,61 @@ export function WrrLineItems({
       {/* Hidden lineCount — consumed by the server action to know how many lines to parse */}
       <input type="hidden" name="lineCount" value={lines.length} />
 
-      {lines.map((line, index) => (
-        <div
-          key={index}
-          className="rounded-xl border border-outline-variant/30 bg-surface-white p-4"
-        >
-          <div className="mb-3 flex items-center justify-between">
-            <span className="font-label text-label text-brand-navy">
-              Line {index + 1}
-            </span>
-            {lines.length > 1 && (
-              <button
-                type="button"
-                onClick={() => removeLine(index)}
-                className="inline-flex h-11 items-center rounded bg-status-held px-3 font-label text-label text-surface-white hover:opacity-90 active:opacity-70 motion-safe:transition-opacity motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              >
-                Remove
-              </button>
-            )}
-          </div>
-
-          <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <input type="hidden" name={`line_${index}_itemId`} value={line.itemId} />
-            {/* Lot Number — required */}
-            <div className="order-1">
-              <label
-                htmlFor={`line-${index}-lotNumber`}
-                className="block font-label text-label text-text-grey"
-              >
-                Lot Number{" "}
-                <span aria-hidden="true" className="text-brand-red">
-                  *
+      {lines.map((line, index) => {
+        const isImported = Boolean(importedLines && importedLines.length > 0 && line.lotNumber);
+        return (
+          <div
+            key={index}
+            className="rounded-xl border border-outline-variant/30 bg-surface-white p-4"
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="font-label text-label font-bold text-brand-navy">
+                  Line {index + 1}
                 </span>
-                <span className="sr-only">(required)</span>
-              </label>
-              <input
-                id={`line-${index}-lotNumber`}
-                name={`line_${index}_lotNumber`}
-                type="text"
-                required
-                value={line.lotNumber}
-                onChange={(e) => updateLine(index, "lotNumber", e.target.value)}
-                placeholder="e.g. LOT-2026-001"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              />
+                {isImported && (
+                  <span className="rounded-full bg-brand-navy/10 px-2.5 py-0.5 font-label text-label-xs font-semibold text-brand-navy">
+                    Auto-populated from CIPL (Locked)
+                  </span>
+                )}
+              </div>
+              {lines.length > 1 && !isImported && (
+                <button
+                  type="button"
+                  onClick={() => removeLine(index)}
+                  className="inline-flex h-11 items-center rounded bg-status-held px-3 font-label text-label text-surface-white hover:opacity-90 active:opacity-70 motion-safe:transition-opacity motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                >
+                  Remove
+                </button>
+              )}
             </div>
+
+            <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <input type="hidden" name={`line_${index}_itemId`} value={line.itemId} />
+              {/* Lot Number — required */}
+              <div className="order-1">
+                <label
+                  htmlFor={`line-${index}-lotNumber`}
+                  className="block font-label text-label text-text-grey"
+                >
+                  Lot Number{" "}
+                  <span aria-hidden="true" className="text-brand-red">
+                    *
+                  </span>
+                  <span className="sr-only">(required)</span>
+                </label>
+                <input
+                  id={`line-${index}-lotNumber`}
+                  name={`line_${index}_lotNumber`}
+                  type="text"
+                  required
+                  readOnly={isImported}
+                  value={line.lotNumber}
+                  onChange={(e) => updateLine(index, "lotNumber", e.target.value)}
+                  placeholder="e.g. LOT-2026-001"
+                  className={`mt-1 h-11 w-full rounded border border-outline-variant/30 px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy ${isImported ? "bg-surface-light-grey/70 cursor-not-allowed" : "bg-surface-white"}`}
+                />
+              </div>
 
             {/* Expected Qty — required */}
             <div className="order-2">
@@ -236,12 +246,13 @@ export function WrrLineItems({
                 required
                 min="1"
                 step="1"
+                readOnly={Boolean(importedLines && importedLines.length > 0 && line.lotNumber)}
                 value={line.expectedQty}
                 onChange={(e) =>
                   updateLine(index, "expectedQty", e.target.value)
                 }
                 placeholder="0"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className={`mt-1 h-11 w-full rounded border border-outline-variant/30 px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy ${Boolean(importedLines && importedLines.length > 0 && line.lotNumber) ? "bg-surface-light-grey/70 cursor-not-allowed" : "bg-surface-white"}`}
               />
               <p className="mt-1 font-body text-body-xs text-text-grey">
                 Qty = SPQ (units per carton) &times; No. of packages (cartons)
@@ -267,10 +278,11 @@ export function WrrLineItems({
                 required
                 min="0.0001"
                 step="0.0001"
+                readOnly={Boolean(importedLines && importedLines.length > 0 && line.lotNumber)}
                 value={line.unitCbm}
                 onChange={(e) => updateLine(index, "unitCbm", e.target.value)}
                 placeholder="0.0000"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className={`mt-1 h-11 w-full rounded border border-outline-variant/30 px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy ${Boolean(importedLines && importedLines.length > 0 && line.lotNumber) ? "bg-surface-light-grey/70 cursor-not-allowed" : "bg-surface-white"}`}
               />
             </div>
 
@@ -291,10 +303,11 @@ export function WrrLineItems({
                 name={`line_${index}_uom`}
                 type="text"
                 required
+                readOnly={Boolean(importedLines && importedLines.length > 0 && line.lotNumber)}
                 value={line.uom}
                 onChange={(e) => updateLine(index, "uom", e.target.value)}
                 placeholder="e.g. CTN, PCS, ROLL"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className={`mt-1 h-11 w-full rounded border border-outline-variant/30 px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy ${Boolean(importedLines && importedLines.length > 0 && line.lotNumber) ? "bg-surface-light-grey/70 cursor-not-allowed" : "bg-surface-white"}`}
               />
             </div>
 
@@ -362,7 +375,8 @@ export function WrrLineItems({
             </div>
           </div>
         </div>
-      ))}
+      );
+    })}
 
       {/* Add Line button — §9 secondary button style */}
       <button

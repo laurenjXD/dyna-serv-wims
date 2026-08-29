@@ -15,7 +15,16 @@ import { RefreshCw } from "lucide-react";
 import type { ItemFormState } from "../_actions";
 import type { ItemDetail, CategoryOption, SupplierPartyOption } from "@/lib/db/queries/items";
 
-const UOM_OPTIONS = ["piece", "roll", "meter"] as const;
+const STANDARD_UOM_OPTIONS = [
+  "piece",
+  "roll",
+  "meter",
+  "box",
+  "pack",
+  "set",
+  "kg",
+  "liter",
+] as const;
 const CURRENCY_OPTIONS = ["USD", "PHP"] as const;
 
 // per page specs.md §8: Inventory Model is the UI name for the existing
@@ -132,7 +141,12 @@ export function ItemForm({
     ? (childCategoriesByParent.get(parentCategoryId) ?? [])
     : [];
 
-  const [uom, setUom] = useState<string>(item?.uom ?? "piece");
+  const suggestedDsgcPartNumber = "DSGC-TRD-0001";
+  const initialUom = item?.uom ?? "piece";
+  const isCustomInitialUom = !STANDARD_UOM_OPTIONS.includes(initialUom as (typeof STANDARD_UOM_OPTIONS)[number]) && !!initialUom;
+  const [customUomMode, setCustomUomMode] = useState(isCustomInitialUom);
+  const [customUomText, setCustomUomText] = useState(isCustomInitialUom ? initialUom : "");
+  const [uom, setUom] = useState<string>(initialUom);
   const [lengthCm, setLengthCm] = useState(item?.lengthCm ?? "");
   const [widthCm, setWidthCm] = useState(item?.widthCm ?? "");
   const [heightCm, setHeightCm] = useState(item?.heightCm ?? "");
@@ -156,13 +170,13 @@ export function ItemForm({
 
   const isTradingModel = inventoryModel === "trading";
 
-  const [spqMeterInput, setSpqMeterInput] = useState(item?.spqMeter ? String(item.spqMeter) : "");
+  const [spqMeterInput, setSpqMeterInput] = useState(item?.spqMeter ? String(item.spqMeter) : (item ? "" : "750"));
 
   useEffect(() => {
-    if (inventoryModel === "trading") {
+    if (inventoryModel === "trading" && !spqMeterInput) {
       setSpqMeterInput("750");
     }
-  }, [inventoryModel]);
+  }, [inventoryModel, spqMeterInput]);
 
   const showSpqMeter = uom === "roll" || uom === "meter";
 
@@ -342,10 +356,22 @@ export function ItemForm({
             </div>
           ) : inventoryModel === "trading" ? (
             <div>
-              <label htmlFor="dsgcItemNumber" className="block font-label text-label text-on-surface">
-                DSGC Item Number{" "}
-                <span aria-hidden="true" className="text-brand-red">*</span>
-              </label>
+              <div className="flex items-center justify-between">
+                <label htmlFor="dsgcItemNumber" className="block font-label text-label text-on-surface">
+                  DSGC Item Number{" "}
+                  <span aria-hidden="true" className="text-brand-red">*</span>
+                </label>
+                {!dsgcItemNumberValue && (
+                  <button
+                    type="button"
+                    onClick={() => setDsgcItemNumberValue(suggestedDsgcPartNumber)}
+                    className="font-mono text-body-xs text-brand-navy hover:underline focus:outline-none"
+                    title="Click or press Tab in the input field to auto-fill"
+                  >
+                    Suggested: <span className="font-bold">{suggestedDsgcPartNumber}</span> (Tab to fill)
+                  </button>
+                )}
+              </div>
               <input
                 id="dsgcItemNumber"
                 name="dsgcItemNumber"
@@ -353,8 +379,13 @@ export function ItemForm({
                 required
                 maxLength={100}
                 value={dsgcItemNumberValue}
+                onKeyDown={(e) => {
+                  if (e.key === "Tab" && !dsgcItemNumberValue) {
+                    setDsgcItemNumberValue(suggestedDsgcPartNumber);
+                  }
+                }}
                 onChange={(e) => setDsgcItemNumberValue(e.target.value)}
-                placeholder="DSGC item number"
+                placeholder={suggestedDsgcPartNumber}
                 className={inputClass("code")}
                 {...ariaProps("code")}
               />
@@ -492,23 +523,64 @@ export function ItemForm({
         </h2>
         <div className="grid gap-4 md:grid-cols-3">
           <div>
-            <label htmlFor="uom" className="block font-label text-label text-on-surface">
-              Unit of Measure{" "}
-              <span aria-hidden="true" className="text-brand-red">*</span>
-            </label>
-            <select
-              id="uom"
-              name="uom"
-              value={uom}
-              onChange={(e) => setUom(e.target.value)}
-              className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            >
-              {UOM_OPTIONS.map((u) => (
-                <option key={u} value={u}>
-                  {u}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center justify-between">
+              <label htmlFor="uom" className="block font-label text-label text-on-surface">
+                Unit of Measure{" "}
+                <span aria-hidden="true" className="text-brand-red">*</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomUomMode(!customUomMode);
+                  if (!customUomMode) {
+                    setCustomUomText("");
+                  } else {
+                    setUom("piece");
+                  }
+                }}
+                className="text-body-xs font-semibold text-brand-navy hover:underline focus:outline-none"
+              >
+                {customUomMode ? "Select Standard UOM" : "+ Add Measurement"}
+              </button>
+            </div>
+            {customUomMode ? (
+              <input
+                id="uom"
+                name="uom"
+                type="text"
+                required
+                value={customUomText}
+                onChange={(e) => {
+                  setCustomUomText(e.target.value);
+                  setUom(e.target.value);
+                }}
+                placeholder="Enter custom UOM (e.g. bundle, drum, sheet)"
+                className={inputClass("uom")}
+                {...ariaProps("uom")}
+              />
+            ) : (
+              <select
+                id="uom"
+                name="uom"
+                value={uom}
+                onChange={(e) => {
+                  if (e.target.value === "__custom__") {
+                    setCustomUomMode(true);
+                    setCustomUomText("");
+                  } else {
+                    setUom(e.target.value);
+                  }
+                }}
+                className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              >
+                {STANDARD_UOM_OPTIONS.map((u) => (
+                  <option key={u} value={u}>
+                    {u}
+                  </option>
+                ))}
+                <option value="__custom__">+ Add Custom Measurement...</option>
+              </select>
+            )}
             {fieldError("uom")}
           </div>
 
@@ -538,46 +610,30 @@ export function ItemForm({
                 SPQ Meter (m/roll){" "}
                 {(uom === "roll" || isTradingModel) && <span aria-hidden="true" className="text-brand-red">*</span>}
               </label>
-              {isTradingModel ? (
-                <>
-                  <input
-                    id="spqMeter-display"
-                    type="number"
-                    value="750"
-                    readOnly
-                    className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-light-grey/70 px-3 py-2 font-body text-body-md text-on-surface cursor-not-allowed font-bold"
-                  />
-                  <input type="hidden" name="spqMeter" value="750" />
-                  <p className="mt-1 font-body text-body-sm text-brand-navy font-medium">
-                    Fixed at 750 m/roll for Trading items.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <input
-                    id="spqMeter"
-                    name="spqMeter"
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    value={spqMeterInput}
-                    onChange={(e) => {
-                      setSpqMeterInput(e.target.value);
-                      const f = parseFloat(e.target.value);
-                      if (!isNaN(f) && f > 0) {
-                        const r = parseFloat(calcRolls || "1");
-                        if (!isNaN(r)) setCalcMeters(String(Math.round(r * f * 100) / 100));
-                      }
-                    }}
-                    placeholder="e.g. 750"
-                    className={inputClass("spqMeter")}
-                    {...ariaProps("spqMeter")}
-                  />
-                  <p className="mt-1 font-body text-body-sm text-text-grey">
-                    Enter the custom SPQ Meter (m/roll) for VMI.
-                  </p>
-                </>
-              )}
+              <input
+                id="spqMeter"
+                name="spqMeter"
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={spqMeterInput}
+                onChange={(e) => {
+                  setSpqMeterInput(e.target.value);
+                  const f = parseFloat(e.target.value);
+                  if (!isNaN(f) && f > 0) {
+                    const r = parseFloat(calcRolls || "1");
+                    if (!isNaN(r)) setCalcMeters(String(Math.round(r * f * 100) / 100));
+                  }
+                }}
+                placeholder="e.g. 750"
+                className={inputClass("spqMeter")}
+                {...ariaProps("spqMeter")}
+              />
+              <p className="mt-1 font-body text-body-sm text-text-grey">
+                {isTradingModel
+                  ? "Suggested default: 750 m/roll for Trading (configurable)."
+                  : "Enter custom SPQ Meter (m/roll) for VMI."}
+              </p>
               {fieldError("spqMeter")}
             </div>
           )}

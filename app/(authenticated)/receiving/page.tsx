@@ -16,7 +16,7 @@
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ClipboardList, Plus, Truck, Warehouse } from "lucide-react";
+import { ClipboardList, FileSpreadsheet, Plus, Truck, Warehouse } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
@@ -447,12 +447,22 @@ async function WrrsTab({
         </div>
         {/* New WRR button — receiving.confirm gated, h-11 (44px) office target */}
         {canCreate && (
-          <Link
-            href="/receiving/new"
-                className="inline-flex h-14 items-center justify-center rounded bg-primary px-4 font-label text-body-md text-surface-white active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy md:h-11 md:text-label md:hover:bg-primary-hover"
-          >
-            New WRR
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/receiving/new?import=excel"
+              className="inline-flex h-14 items-center justify-center gap-2 rounded border border-outline-variant/40 bg-surface-white px-4 font-label text-body-md font-semibold text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy md:h-11 md:text-label"
+            >
+              <FileSpreadsheet size={18} aria-hidden="true" className="text-brand-navy" />
+              Import CIPL / Excel
+            </Link>
+            <Link
+              href="/receiving/new"
+              className="inline-flex h-14 items-center justify-center gap-2 rounded bg-primary px-4 font-label text-body-md font-bold text-surface-white active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy md:h-11 md:text-label md:hover:bg-primary-hover"
+            >
+              <Plus size={18} aria-hidden="true" />
+              New WRR
+            </Link>
+          </div>
         )}
       </div>
 
