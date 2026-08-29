@@ -135,7 +135,6 @@ const EXPECTED_ROUTES: Array<{
   // 2026-08-17: launchStatus corrected planned -> launch — the page is
   // fully wired to real query modules, no TODO/mock markers. See revision-log.md.
   { id: "reports", path: "/reports", surface: "office", capability: "reporting.read", featureSpecs: ["16-reporting-and-analytics"], launchStatus: "launch" },
-  { id: "notifications", path: "/notifications", surface: "shared", capability: "notifications.read", featureSpecs: ["14-notifications-and-alerts"], launchStatus: "launch" },
   { id: "profile", path: "/profile", surface: "shared", capability: "none", featureSpecs: ["21-user-profile-and-settings"], launchStatus: "launch" },
   { id: "settings", path: "/settings", surface: "office", capability: "users.read", featureSpecs: ["21-user-profile-and-settings"], launchStatus: "launch" },
   { id: "portal", path: "/portal", surface: "party", capability: "none", featureSpecs: ["22-parties-portal"], launchStatus: "launch" },
@@ -147,7 +146,7 @@ const EXPECTED_ROUTES: Array<{
 ];
 
 describe("lib/shell/registry — route catalog matches design.md §3.2 exactly (R3.1, R3.2)", () => {
-  it("exports ROUTE_REGISTRY with exactly the current 21 rows (no stale /dashboard, no extra/missing rows; 2026-08-11 consolidates Master Data nav down to the single /enrollment entry; 2026-08-17 retires 'transfers'/'inspection'/'inspection-detail' to redirect-only pages)", async () => {
+  it("exports ROUTE_REGISTRY with exactly the current rows (no stale /dashboard, no extra/missing rows; 2026-08-11 consolidates Master Data nav down to the single /enrollment entry; 2026-08-17 retires 'transfers'/'inspection'/'inspection-detail' to redirect-only pages)", async () => {
     const { ROUTE_REGISTRY } = await import("../registry");
     expect(Array.isArray(ROUTE_REGISTRY)).toBe(true);
     expect(ROUTE_REGISTRY).toHaveLength(EXPECTED_ROUTES.length);

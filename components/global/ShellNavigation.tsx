@@ -89,7 +89,6 @@ const SHORT_LABEL_OVERRIDES: Record<string, string> = {
   enrollment: "Enrollment",
   portal: "Organization Portal",
   "billing-pricing": "Billing & Pricing",
-  notifications: "Notification Queue",
 };
 
 function routeIcon(id: string): LucideIcon {
