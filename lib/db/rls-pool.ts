@@ -39,11 +39,13 @@ const sql: Sql = postgres(connectionString, { prepare: false });
 
 function buildConnection(): RlsConnection {
   let resolveBegun: (tx: unknown) => void;
+  let rejectBegun: ((err: unknown) => void) | undefined;
   let settleOuter: (() => void) | undefined;
   let outcome: "commit" | "rollback" | undefined;
 
-  const begunPromise = new Promise<unknown>((resolve) => {
+  const begunPromise = new Promise<unknown>((resolve, reject) => {
     resolveBegun = resolve;
+    rejectBegun = reject;
   });
 
   const txFinished = new Promise<void>((resolve) => {
@@ -122,6 +124,7 @@ function buildConnection(): RlsConnection {
       return undefined;
     })
     .catch((err: unknown) => {
+      rejectBegun?.(err);
       if (
         err instanceof Error &&
         err.message === "__rls_pool_forced_rollback__"
