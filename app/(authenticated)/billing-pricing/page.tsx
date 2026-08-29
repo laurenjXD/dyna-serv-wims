@@ -199,7 +199,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
           href="/billing-pricing?tab=vmi"
           role="tab"
           aria-selected={activeTab === "vmi"}
-          className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-brand-navy ${
+          className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
             activeTab === "vmi"
               ? "border-b-2 border-on-surface text-on-surface font-bold"
               : "text-text-grey hover:text-on-surface"
@@ -211,7 +211,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
           href="/billing-pricing?tab=trading"
           role="tab"
           aria-selected={activeTab === "trading"}
-          className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-brand-navy ${
+          className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
             activeTab === "trading"
               ? "border-b-2 border-on-surface text-on-surface font-bold"
               : "text-text-grey hover:text-on-surface"

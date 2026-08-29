@@ -138,7 +138,7 @@ export default async function SyncPage({ searchParams }: PageProps) {
           href="/sync?tab=failed"
           role="tab"
           aria-selected={activeTab === "failed"}
-          className={`flex h-11 items-center gap-2 px-4 font-label text-label motion-safe:transition-colors motion-safe:duration-150 focus:outline-none focus:ring-2 focus:ring-brand-navy ${
+          className={`flex h-11 items-center gap-2 px-4 font-label text-label motion-safe:transition-colors motion-safe:duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
             activeTab === "failed"
               ? "border-b-2 border-on-surface text-on-surface"
               : "text-text-grey hover:text-on-surface"
@@ -157,7 +157,7 @@ export default async function SyncPage({ searchParams }: PageProps) {
           href="/sync?tab=syncing"
           role="tab"
           aria-selected={activeTab === "syncing"}
-          className={`flex h-11 items-center gap-2 px-4 font-label text-label motion-safe:transition-colors motion-safe:duration-150 focus:outline-none focus:ring-2 focus:ring-brand-navy ${
+          className={`flex h-11 items-center gap-2 px-4 font-label text-label motion-safe:transition-colors motion-safe:duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
             activeTab === "syncing"
               ? "border-b-2 border-on-surface text-on-surface"
               : "text-text-grey hover:text-on-surface"
@@ -170,7 +170,7 @@ export default async function SyncPage({ searchParams }: PageProps) {
           href="/sync?tab=completed"
           role="tab"
           aria-selected={activeTab === "completed"}
-          className={`flex h-11 items-center gap-2 px-4 font-label text-label motion-safe:transition-colors motion-safe:duration-150 focus:outline-none focus:ring-2 focus:ring-brand-navy ${
+          className={`flex h-11 items-center gap-2 px-4 font-label text-label motion-safe:transition-colors motion-safe:duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
             activeTab === "completed"
               ? "border-b-2 border-on-surface text-on-surface"
               : "text-text-grey hover:text-on-surface"

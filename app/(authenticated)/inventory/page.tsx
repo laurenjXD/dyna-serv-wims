@@ -90,7 +90,7 @@ export default async function InventoryPage({ searchParams }: PageProps) {
               href={href}
               role="tab"
               aria-selected={isActive}
-              className={`flex h-12 shrink-0 items-center border-b-2 px-1 font-label text-label font-semibold tracking-[0.03em] focus:outline-none focus:ring-2 focus:ring-brand-navy ${
+              className={`flex h-12 shrink-0 items-center border-b-2 px-1 font-label text-label font-semibold tracking-[0.03em] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
                 isActive
                   ? "border-on-surface text-on-surface"
                   : "border-transparent text-text-grey hover:text-on-surface"

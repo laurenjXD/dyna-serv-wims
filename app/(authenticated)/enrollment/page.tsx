@@ -110,7 +110,7 @@ export default async function EnrollmentPage({ searchParams }: PageProps) {
               href={href}
               role="tab"
               aria-selected={isActive}
-              className={`flex h-11 items-center border-b-2 px-4 font-label text-label uppercase tracking-[0.05em] focus:outline-none focus:ring-2 focus:ring-brand-navy ${
+              className={`flex h-11 items-center border-b-2 px-4 font-label text-label uppercase tracking-[0.05em] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
                 isActive
                   ? "border-on-surface text-on-surface"
                   : "border-transparent text-text-grey hover:text-on-surface"

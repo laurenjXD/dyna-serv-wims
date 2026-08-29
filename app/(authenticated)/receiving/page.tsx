@@ -216,7 +216,7 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
               href={href}
               role="tab"
               aria-selected={isActive}
-              className={`flex h-11 shrink-0 items-center border-b-2 px-1 font-label text-label font-semibold focus:outline-none focus:ring-2 focus:ring-brand-navy ${
+              className={`flex h-11 shrink-0 items-center border-b-2 px-1 font-label text-label font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
                 isActive
                   ? "border-on-surface text-on-surface"
                   : "border-transparent text-text-grey hover:text-on-surface"
