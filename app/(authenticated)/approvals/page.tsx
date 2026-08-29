@@ -119,11 +119,11 @@ interface PageProps {
   searchParams: Promise<{ status?: string; type?: string; sort?: string; page?: string }>;
 }
 
+import { ApprovalsFilterableTable } from "./_components/ApprovalsFilterableTable";
+
 export default async function ApprovalQueuePage({ searchParams }: PageProps) {
   const {
-    status: statusFilter,
     type: typeFilter,
-    sort: sortParam,
     page: pageParam,
   } = await searchParams;
 
@@ -154,24 +154,13 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
   const approvalType =
     typeFilter && typeFilter !== "all" ? typeFilter : undefined;
 
-  // Sort param: "oldest" (default) or "newest"
-  const sortOrder = sortParam === "newest" ? "newest" : "oldest";
-
   const { rows, total } = await listPendingApprovalRequests(db, {
     limit: PAGE_SIZE,
     offset,
     approvalType,
   });
 
-  // Client-side sort by age when "newest" is selected (query defaults oldest-first).
-  const sortedRows =
-    sortOrder === "newest" ? [...rows].reverse() : rows;
-
   const totalPages = Math.ceil(total / PAGE_SIZE);
-  const hasActiveFilter = approvalType !== undefined;
-
-  // Snapshot current time once for consistent relative-time rendering.
-  const now = new Date();
 
   return (
     <div className="mx-auto max-w-container">
@@ -190,225 +179,8 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
         <div><p className="font-label text-label font-bold text-status-held">COMPLIANCE ENFORCEMENT ACTIVE</p><p className="mt-1 font-body text-body-sm text-text-grey">Self-approval of override requests is blocked. Exceptions require the appropriate approval authority.</p></div>
       </div>
 
-      {/* Filter bar */}
       <div className="mt-6">
-        <form method="GET" className="flex flex-wrap items-end gap-3">
-          {/* Type filter — v1: only fifo_override registered per requirements.md §3 */}
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="type-filter"
-              className="font-label text-label text-text-grey"
-            >
-              Type
-            </label>
-            <select
-              id="type-filter"
-              name="type"
-              defaultValue={typeFilter ?? "all"}
-              className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            >
-              <option value="all">All types</option>
-              <option value="fifo_override">FIFO Override</option>
-            </select>
-          </div>
-
-          {/* Status filter */}
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="status-filter"
-              className="font-label text-label text-text-grey"
-            >
-              Status
-            </label>
-            <select
-              id="status-filter"
-              name="status"
-              defaultValue={statusFilter ?? "pending"}
-              className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            >
-              <option value="pending">Pending</option>
-              <option value="all">All statuses</option>
-            </select>
-          </div>
-
-          {/* Age sort */}
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="sort-filter"
-              className="font-label text-label text-text-grey"
-            >
-              Age Sort
-            </label>
-            <select
-              id="sort-filter"
-              name="sort"
-              defaultValue={sortParam ?? "oldest"}
-              className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            >
-              <option value="oldest">Oldest first</option>
-              <option value="newest">Newest first</option>
-            </select>
-          </div>
-
-          <button
-            type="submit"
-            className="flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:transition-opacity motion-safe:duration-150"
-          >
-            Apply
-          </button>
-
-          {hasActiveFilter && (
-            <Link
-              href="/approvals"
-              className="flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            >
-              Clear
-            </Link>
-          )}
-        </form>
-      </div>
-
-      {/* Queue table — Level 1 office elevation per brand-design-system.md §6:
-          bg-surface-white (glassmorphism, office-only) */}
-      <div className="mt-4 overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
-        {sortedRows.length === 0 ? (
-          /* Empty state — CheckCircle2 icon + copy */
-          <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
-            <CheckCircle2
-              size={40}
-              className="text-status-available"
-              aria-hidden="true"
-            />
-            <p className="font-body text-body-md text-text-grey">
-              {hasActiveFilter
-                ? "No approval requests match the current filters."
-                : "No pending approvals."}
-            </p>
-            {!hasActiveFilter && (
-              <p className="font-body text-body-sm text-text-grey">
-                New requests appear here when warehousemen submit FIFO override
-                requests during picking.
-              </p>
-            )}
-            {hasActiveFilter && (
-              <p className="font-body text-body-sm text-text-grey">
-                Try clearing the filters or check back later.
-              </p>
-            )}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                  {/* Epilogue SemiBold uppercase headers per brand-design-system.md §9 */}
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Type
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Requested By
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Item / Lot
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Reason
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Age
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Expiry
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Status
-                  </th>
-                  <th className="sr-only px-4 py-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/30">
-                {sortedRows.map((req) => {
-                  const status = req.status as ApprovalStatus;
-                  const approvalTypeCast = req.approvalType as ApprovalType;
-                  const itemLotRef = getSnapshotItemLotRef(req.targetSnapshot);
-                  const reasonLabel = getReasonCategoryLabel(req.reason);
-                  const age = relativeTime(req.createdAt, now);
-                  const expiry = expiryCountdown(req.expiryAt, now);
-                  const isExpired = req.expiryAt.getTime() <= now.getTime();
-
-                  return (
-                    <tr
-                      key={req.id}
-                      className="hover:bg-surface-light-grey/50"
-                    >
-                      {/* Type — body text */}
-                      <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                        {TYPE_LABELS[approvalTypeCast] ?? req.approvalType}
-                      </td>
-
-                      {/* Requested By — Roboto Mono for user IDs per §9 */}
-                      <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                        {req.requesterUserId}
-                      </td>
-
-                      {/* Item / Lot reference — Roboto Mono for codes */}
-                      <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                        {itemLotRef}
-                      </td>
-
-                      {/* Reason category chip */}
-                      <td className="px-4 py-3">
-                        <span className="inline-flex items-center rounded-full bg-status-neutral/10 px-2 py-0.5 font-label text-label text-status-neutral uppercase tracking-[0.05em]">
-                          {reasonLabel}
-                        </span>
-                      </td>
-
-                      {/* Age — relative time with Clock icon */}
-                      <td className="px-4 py-3">
-                        <span className="inline-flex items-center gap-1 font-body text-body-md text-text-grey">
-                          <Clock size={16} className="shrink-0" aria-hidden="true" />
-                          {age}
-                        </span>
-                      </td>
-
-                      {/* Expiry countdown — amber when soon, held-red when expired */}
-                      <td className="px-4 py-3 font-body text-body-md">
-                        <span
-                          className={
-                            isExpired
-                              ? "text-status-held"
-                              : "text-text-grey"
-                          }
-                        >
-                          {expiry}
-                        </span>
-                      </td>
-
-                      {/* Status badge — radius-full, §1.3 semantic colors */}
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase tracking-[0.05em] ${STATUS_CLASSES[status] ?? ""}`}
-                        >
-                          {STATUS_LABELS[status] ?? req.status.toUpperCase()}
-                        </span>
-                      </td>
-
-                      {/* Review action — h-11 (44px) office touch target */}
-                      <td className="px-4 py-3 text-right">
-                        <Link
-                          href={`/approvals/${req.id}`}
-                          className="inline-flex h-11 items-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:transition-opacity motion-safe:duration-150"
-                        >
-                          Review
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <ApprovalsFilterableTable rows={rows} />
       </div>
 
       {/* Pagination controls */}
@@ -422,7 +194,6 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
               <Link
                 href={`/approvals?${new URLSearchParams({
                   ...(typeFilter ? { type: typeFilter } : {}),
-                  ...(sortParam ? { sort: sortParam } : {}),
                   page: String(currentPage - 1),
                 })}`}
                 className="inline-flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
@@ -434,7 +205,6 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
               <Link
                 href={`/approvals?${new URLSearchParams({
                   ...(typeFilter ? { type: typeFilter } : {}),
-                  ...(sortParam ? { sort: sortParam } : {}),
                   page: String(currentPage + 1),
                 })}`}
                 className="inline-flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
