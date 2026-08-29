@@ -86,7 +86,7 @@ const SHORT_LABEL_OVERRIDES: Record<string, string> = {
   // Inventory (/inventory — Stock View, Pick Lists, Inspection tabs...)").
   // See specs/00-steering/revision-log.md's matching entry.
   inventory: "Master Inventory",
-  enrollment: "Organization & Item Enrollment",
+  enrollment: "Enrollment",
   portal: "Organization Portal",
   "billing-pricing": "Billing & Pricing",
   notifications: "Notification Queue",
