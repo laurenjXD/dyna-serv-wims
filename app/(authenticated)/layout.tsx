@@ -15,6 +15,8 @@ import { UserPreferencesProvider } from "@/lib/user-settings/preferences";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { redirect } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 export default async function AuthenticatedLayout({
   children,
 }: {

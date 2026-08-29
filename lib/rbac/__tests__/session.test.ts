@@ -290,6 +290,22 @@ describe("lib/rbac/session — malformed/corrupt session and record data are han
     await expect(resolver.getContext()).resolves.toEqual({ kind: "unauthenticated" });
   });
 
+  it("re-throws Next.js DynamicServerError to allow dynamic route bail-out during static pre-rendering", async () => {
+    const { createRequestAuthorizationResolver } = await import("../session");
+    const dynamicErr = new Error("Dynamic server usage: Route /test couldn't be rendered statically because it used cookies.");
+    (dynamicErr as unknown as { digest: string }).digest = "DYNAMIC_SERVER_USAGE";
+
+    const deps: SessionResolverDeps = {
+      getAuthenticatedSession: vi.fn(async () => {
+        throw dynamicErr;
+      }),
+      loadAuthorizationRecord: vi.fn(),
+    };
+
+    const resolver = createRequestAuthorizationResolver(deps);
+    await expect(resolver.getContext()).rejects.toThrow("Dynamic server usage");
+  });
+
   it("treats a session missing a usable userId as unauthenticated rather than crashing", async () => {
     const { createRequestAuthorizationResolver } = await import("../session");
     const deps: SessionResolverDeps = {
