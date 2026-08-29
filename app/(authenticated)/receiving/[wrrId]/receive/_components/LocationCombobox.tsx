@@ -25,7 +25,7 @@ export function LocationCombobox({
   options: LocationOption[];
   value?: string;
   defaultValue?: string;
-  onChange: (value: string) => void;
+  onChange?: (value: string) => void;
   placeholder?: string;
   required?: boolean;
 }) {
@@ -43,7 +43,7 @@ export function LocationCombobox({
 
   function choose(option: LocationOption) {
     if (value === undefined) setInternalValue(option.id);
-    onChange(option.id);
+    onChange?.(option.id);
     setQuery(option.label);
     setOpen(false);
   }
@@ -63,7 +63,7 @@ export function LocationCombobox({
           setQuery(event.target.value);
           if (selectedValue) {
             if (value === undefined) setInternalValue("");
-            onChange("");
+            onChange?.("");
           }
           setOpen(true);
         }}

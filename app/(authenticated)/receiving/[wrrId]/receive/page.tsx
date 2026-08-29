@@ -688,7 +688,6 @@ export default async function ReceiveFloorPage({
                     required={inspectionLocations.length > 1}
                     options={inspectionLocations}
                     defaultValue={inspectionLocations.length === 1 ? inspectionLocations[0].id : ""}
-                    onChange={() => undefined}
                     placeholder="Search or choose an inspection location"
                   />
                 ) : (
