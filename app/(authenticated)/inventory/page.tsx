@@ -371,6 +371,7 @@ async function PickListsTab({ createdPickListId, pickedPickListId, view }: { cre
                     <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Flow Type</th>
                     <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Customer Organization</th>
                     <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Deleted</th>
+                    <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/30">
@@ -380,6 +381,14 @@ async function PickListsTab({ createdPickListId, pickedPickListId, view }: { cre
                       <td className="px-4 py-3 font-body text-body-md text-on-surface">{FLOW_LABELS[row.flowType] ?? row.flowType}</td>
                       <td className="px-4 py-3 font-mono text-mono-md text-on-surface">{row.customerPartyId}</td>
                       <td className="px-4 py-3 font-body text-body-md text-text-grey">{row.deletedAt?.toLocaleString() ?? "—"}</td>
+                      <td className="px-4 py-3 text-right">
+                        <Link
+                          href={`/pick-lists/${row.id}/print`}
+                          className="inline-flex h-11 items-center justify-center rounded border border-outline-variant bg-surface-white px-4 font-label text-label font-bold text-on-surface hover:bg-surface-light-grey focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+                        >
+                          View
+                        </Link>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
