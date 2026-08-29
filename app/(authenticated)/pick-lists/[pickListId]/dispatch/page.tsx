@@ -67,6 +67,7 @@ import { dispatchPickList, selectPickUnit, reportLocationShortage } from "@/lib/
 import { approvePickList, deletePickList } from "../../_actions";
 import { CameraScanBridge } from "@/components/floor/CameraScanBridge";
 import { DispatchDiscrepancyClient } from "./_components/DispatchDiscrepancyClient";
+import { PickListInteractiveChecklist } from "./_components/PickListInteractiveChecklist";
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -419,75 +420,37 @@ export default async function DispatchConfirmationPage({
 
           {/* Items list — one per card, scan status indicator per item.
               brand-design-system.md §9: floor tables are a fail case — card list. */}
-          <div className="mt-4 space-y-2">
-            {items.length === 0 && (
-              <p className="font-body text-body-md text-text-grey">
-                No committed lines were found for this pick list.
-              </p>
-            )}
-            {items.map((item) => {
-              const scannedCount = selectionCountByLine.get(item.id) ?? 0;
-              const complete = scannedCount === item.numberOfBoxes;
-              return (
-                <div
-                  key={item.id}
-                  className="flex items-start gap-3 rounded-xl border border-outline-variant/30 bg-surface-light-grey px-3 py-3"
-                >
-                  {/* Status icon — color + icon per §1.3 floor color-blind rule */}
-                  <div className="mt-0.5 shrink-0" aria-hidden="true">
-                    <CheckCircle2
-                      size={24}
-                      strokeWidth={2}
-                      className={complete ? "text-status-available" : "text-status-neutral"}
-                    />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    {/* Item code — Roboto Mono */}
-                    <p className="font-mono text-mono-lg font-bold text-on-surface">
-                      {item.itemCode}
-                    </p>
-                    {/* Item description */}
-                    <p className="mt-0.5 font-body text-body-md text-on-surface">
-                      {item.itemDescription ?? item.itemCode}
-                    </p>
-                    {/* Lot + qty */}
-                    <p className="mt-1 font-mono text-mono-lg text-text-grey">
-                      {item.lotNumber} — Qty: {item.qty}
-                    </p>
-                    {/* Location */}
-                    <p className="mt-0.5 font-body text-body-md text-text-grey">
-                      {item.locationLabel}
-                    </p>
-                    <p className="mt-1 font-body text-body-md text-text-grey">{scannedCount} / {item.numberOfBoxes} boxes scanned</p>
-
-                    {!alreadyDispatched && !complete && (
-                      <details className="mt-2 text-body-xs text-text-grey">
-                        <summary className="cursor-pointer text-status-held hover:underline">Report missing physical stock at location</summary>
-                        <form action={handleReportShortage} className="mt-2 flex flex-wrap items-center gap-2">
-                          <input type="hidden" name="shortageLineId" value={item.id} />
-                          <label className="text-body-xs font-semibold text-on-surface">Actual units found:</label>
-                          <input
-                            type="number"
-                            name="actualFoundQty"
-                            defaultValue={scannedCount * (item.spq ?? 1)}
-                            min={0}
-                            max={item.qty}
-                            className="h-9 w-24 rounded border border-outline-variant/60 bg-surface-white px-2 font-mono text-body-sm text-on-surface"
-                          />
-                          <button
-                            type="submit"
-                            className="h-9 rounded-lg bg-status-held px-3 font-label text-body-xs font-bold text-surface-white hover:bg-status-held/90"
-                          >
-                            Update Pick Qty
-                          </button>
-                        </form>
-                      </details>
-                    )}
-                  </div>
-                  <span className="sr-only">{complete ? "Dispatch scan complete" : "Dispatch scan pending"}</span>
-                </div>
-              );
-            })}
+          <div className="mt-4">
+            <PickListInteractiveChecklist
+              items={items}
+              selectionCountByLine={Object.fromEntries(selectionCountByLine.entries())}
+              alreadyDispatched={alreadyDispatched}
+              reportShortageForm={(item, scannedCount) =>
+                !alreadyDispatched && scannedCount < item.numberOfBoxes ? (
+                  <details className="mt-2 text-body-xs text-text-grey">
+                    <summary className="cursor-pointer text-status-held hover:underline">Report missing physical stock at location</summary>
+                    <form action={handleReportShortage} className="mt-2 flex flex-wrap items-center gap-2">
+                      <input type="hidden" name="shortageLineId" value={item.id} />
+                      <label className="text-body-xs font-semibold text-on-surface">Actual units found:</label>
+                      <input
+                        type="number"
+                        name="actualFoundQty"
+                        defaultValue={scannedCount * (item.spq ?? 1)}
+                        min={0}
+                        max={item.qty}
+                        className="h-9 w-24 rounded border border-outline-variant/60 bg-surface-white px-2 font-mono text-body-sm text-on-surface"
+                      />
+                      <button
+                        type="submit"
+                        className="h-9 rounded-lg bg-status-held px-3 font-label text-body-xs font-bold text-surface-white hover:bg-status-held/90"
+                      >
+                        Update Pick Qty
+                      </button>
+                    </form>
+                  </details>
+                ) : null
+              }
+            />
           </div>
         </div>
 
