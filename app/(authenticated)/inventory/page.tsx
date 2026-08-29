@@ -511,35 +511,12 @@ async function PickListsTab({ createdPickListId, pickedPickListId }: { createdPi
                     {row.createdAt.toLocaleString()}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <div className="flex flex-wrap justify-end gap-2">
-                      <Link
-                        href={`/pick-lists/${row.id}/edit`}
-                        className="inline-flex h-11 items-center justify-center rounded border border-brand-navy/30 bg-surface-white px-3 font-label text-label font-bold text-brand-navy hover:bg-brand-navy/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
-                      >
-                        Edit
-                      </Link>
-                      <Link
-                        href={`/pick-lists/${row.id}/print`}
-                        className="inline-flex h-11 shrink-0 items-center gap-1 whitespace-nowrap rounded border border-outline-variant bg-surface-white px-3 font-label text-label font-bold text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                      >
-                        View / PDF
-                      </Link>
-                      <form action={markPickListReadyForDispatch}>
-                        <input type="hidden" name="pickListId" value={row.id} />
-                        <button type="submit" className="inline-flex h-11 items-center gap-1 rounded bg-primary px-3 font-label text-label font-bold text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy">
-                          Mark as Picked
-                        </button>
-                      </form>
-                      <form action={deletePickList}>
-                        <input type="hidden" name="pickListId" value={row.id} />
-                        <button
-                          type="submit"
-                          className="inline-flex h-11 items-center rounded border border-status-held/40 px-3 font-label text-label font-semibold text-status-held hover:bg-status-held/10"
-                        >
-                          Delete
-                        </button>
-                      </form>
-                    </div>
+                    <Link
+                      href={`/pick-lists/${row.id}/dispatch`}
+                      className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg border border-outline-variant/50 bg-surface-white px-4 font-label text-body-sm font-semibold text-on-surface shadow-sm hover:bg-surface-light-grey hover:border-brand-navy focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+                    >
+                      Actions &rarr;
+                    </Link>
                   </td>
                 </tr>
               ))}
