@@ -35,6 +35,7 @@ import { resolveInventoryTab, type TabKey } from "./_lib/resolveInventoryTab";
 import { InspectionTab } from "./_components/InspectionTab";
 import { MultiItemPickListDraft } from "./_components/MultiItemPickListDraft";
 import { LotQrViewer } from "./_components/LotQrViewer";
+import { StockViewFilterableRegister } from "./_components/StockViewFilterableRegister";
 import { createApprovedPickList, createPickList, markPickListReadyForDispatch, requestPickListOverride } from "./actions";
 import { deletePickList } from "../pick-lists/_actions";
 
@@ -182,94 +183,9 @@ async function StockViewTab({ query, requesterUserId }: { query?: string; reques
           </p>
         </div>
       ) : (
-        <InventoryRegister items={items} />
+        <StockViewFilterableRegister items={items} />
       )}
     </div>
-    </div>
-  );
-}
-
-function InventoryRegister({ items }: { items: GroupedItem[] }) {
-  return (
-    <div className="overflow-hidden rounded-xl border border-outline-variant/50 bg-surface-white shadow-elevation-1">
-      <div className="hidden overflow-x-auto md:block">
-        <div className="min-w-[1500px]">
-          <div role="row" className="grid grid-cols-[1.15fr_1.8fr_1.5fr_1.35fr_1.55fr_1.55fr_0.8fr_0.9fr_0.95fr_1fr_1fr] gap-4 bg-[#EDF2FF] px-5 py-3 font-label text-label font-bold tracking-[0.04em] text-text-grey">
-            <span>Item Code</span><span>Description</span><span>Codes</span><span>Lot No.</span><span>Location</span><span>Customer</span><span className="text-right">Total In</span><span className="text-right">Total Out</span><span className="text-right">SPQ</span><span className="text-right">Boxes On Hand</span><span className="text-right">CBM Occupied</span>
-          </div>
-          {items.map((item) => (
-            <details key={item.itemId} className="group border-t border-outline-variant/30">
-              <summary className="grid cursor-pointer list-none grid-cols-[1.15fr_1.8fr_1.5fr_1.35fr_1.55fr_1.55fr_0.8fr_0.9fr_0.95fr_1fr_1fr] gap-4 px-5 py-4 font-body text-body-md text-on-surface outline-none transition-colors hover:bg-[#F7F9FF] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy [&::-webkit-details-marker]:hidden">
-                <span className="flex min-w-0 items-center gap-3 font-heading font-bold"><ChevronRight size={21} aria-hidden="true" className="shrink-0 text-text-grey transition-transform group-open:rotate-90" /><span className="truncate">{item.itemCode}</span></span>
-                <span className="truncate">{item.itemName}<span className="ml-2 text-body-sm text-text-grey">{FLOW_LABELS[item.flowType]}</span></span>
-                <span className="truncate text-text-grey" title={item.codes || undefined}>{item.codes || "—"}</span>
-                <span className="truncate text-text-grey" title={item.lotNumbers}>{item.lotNumbers || "—"}</span>
-                <span className="truncate text-text-grey" title={item.locationLabels}>{item.locationLabels || "—"}</span>
-                <span className="truncate text-text-grey" title={item.customerName || undefined}>{item.customerName || "—"}</span>
-                <span className="text-right font-mono text-mono-md text-on-surface">{item.totalIn.toLocaleString()}</span>
-                <span className="text-right font-mono text-mono-md text-on-surface">{item.totalOut.toLocaleString()}</span>
-                <span className="text-right font-mono text-mono-md font-bold text-on-surface">{item.pcsOnHand.toLocaleString()}</span>
-                <span className="text-right font-mono text-mono-md text-on-surface">{item.boxesOnHand.toLocaleString()}</span>
-                <span className="text-right font-mono text-mono-md text-on-surface">{item.cbmOccupied.toLocaleString(undefined, { maximumFractionDigits: 3 })}</span>
-              </summary>
-              <InventoryItemDetails item={item} />
-            </details>
-          ))}
-        </div>
-      </div>
-
-      <div className="divide-y divide-outline-variant/30 md:hidden">
-        {items.map((item) => (
-          <details key={item.itemId} className="group">
-            <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-4 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy [&::-webkit-details-marker]:hidden">
-              <ChevronRight size={21} aria-hidden="true" className="shrink-0 text-text-grey transition-transform group-open:rotate-90" />
-              <span className="min-w-0 flex-1"><span className="block truncate font-heading text-title-md font-bold text-on-surface">{item.itemCode}</span><span className="mt-1 block truncate font-body text-body-sm text-text-grey">{item.itemName} · {item.lots.length} lot{item.lots.length === 1 ? "" : "s"}</span><span className="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-mono text-mono-sm text-text-grey"><span>PCS {item.pcsOnHand.toLocaleString()}</span><span>Boxes {item.boxesOnHand.toLocaleString()}</span><span>CBM {item.cbmOccupied.toLocaleString(undefined, { maximumFractionDigits: 3 })}</span></span></span>
-            </summary>
-            <InventoryItemDetails item={item} />
-          </details>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function InventoryItemDetails({ item }: { item: GroupedItem }) {
-  return (
-    <div className="border-t border-outline-variant/20 bg-[#F8FAFF] px-4 py-4 sm:px-6">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <p className="font-body text-body-sm text-text-grey">Lots are shown in {item.isPerishable ? "FEFO" : "FIFO"} order.</p>
-        <div className="flex items-center gap-3">
-          <span className="font-label text-mono-sm text-text-grey">{item.pcsOnHand.toLocaleString()} {item.uom} available</span>
-          <Link href="/inventory?tab=pick-lists" className="inline-flex h-9 items-center rounded bg-brand-navy px-3 font-label text-mono-sm font-bold text-surface-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">Create Pick List</Link>
-        </div>
-      </div>
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-        {item.lots.map((lot) => (
-          <details key={lot.lotId} className="group rounded-lg border border-outline-variant/30 bg-surface-white shadow-elevation-1">
-            <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 outline-none transition-colors hover:bg-surface-light-grey/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy [&::-webkit-details-marker]:hidden">
-              <span className="flex min-w-0 items-center gap-2.5">
-                <ChevronDown size={17} aria-hidden="true" className="shrink-0 text-text-grey transition-transform group-open:rotate-180" />
-                <span className="truncate font-mono text-mono-md font-bold text-on-surface" title={lot.lotNumber}>{lot.lotNumber}</span>
-              </span>
-              <span className="font-label text-label font-bold text-primary group-open:hidden">View</span>
-            </summary>
-            <div className="border-t border-outline-variant/20 px-3 py-3">
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <p className="font-label text-label font-bold text-text-grey">Lot details</p>
-                <span className="rounded-full bg-on-surface px-2 py-1 font-label text-mono-sm text-surface-white">{item.isPerishable ? "FEFO" : "FIFO"} #{lot.priority}</span>
-              </div>
-              <p className="truncate font-body text-body-sm text-text-grey" title={lot.locationLabels.join(", ")}>{lot.locationLabels.length === 1 ? `Location ${lot.locationLabels[0]}` : `Locations ${lot.locationLabels.join(", ")}`}</p>
-              <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2">
-                <div><dt className="font-label text-mono-sm uppercase text-text-grey">Available</dt><dd className="mt-0.5 font-body text-body-md text-on-surface">{lot.availableQty.toLocaleString()} {item.uom}</dd></div>
-                <div><dt className="font-label text-mono-sm uppercase text-text-grey">Expiry</dt><dd className="mt-0.5 truncate font-body text-body-md text-on-surface">{lot.expiryDate ?? "Not dated"}</dd></div>
-                <div><dt className="font-label text-mono-sm uppercase text-text-grey">Received</dt><dd className="mt-0.5 font-body text-body-md text-on-surface">{new Date(lot.receivedAt).toLocaleDateString()}</dd></div>
-                <div><dt className="font-label text-mono-sm uppercase text-text-grey">Status</dt><dd className="mt-0.5 truncate font-body text-body-md lowercase text-on-surface">{lot.lotStatus}</dd></div>
-              </dl>
-              <LotQrViewer lotId={lot.lotId} lotNumber={lot.lotNumber} itemCode={item.itemCode} compact />
-            </div>
-          </details>
-        ))}
-      </div>
     </div>
   );
 }
