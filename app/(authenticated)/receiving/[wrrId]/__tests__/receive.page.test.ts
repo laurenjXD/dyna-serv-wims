@@ -289,7 +289,8 @@ describe(
       () => {
         const source = pageSource();
         expect(source).toContain("Scan one pallet QR to verify the boxes");
-        expect(source).toContain("Pallet QR verified");
+        expect(source).toContain("Pallet verified");
+        expect(source).not.toContain("Verify another carton individually");
         expect(source).toContain("item.scannedQty >= 1 && !isCommitted");
       },
     );
