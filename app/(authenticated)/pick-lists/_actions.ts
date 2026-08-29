@@ -7,7 +7,7 @@ import { eq } from "drizzle-orm";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
-import { pickLists } from "@/lib/db/schema/pick_lists";
+import { pickLists, pickListItems } from "@/lib/db/schema/pick_lists";
 import { getStorageClient } from "@/lib/supabase/storage";
 
 function validReceipt(file: File) {
@@ -50,6 +50,50 @@ export async function approvePickList(formData: FormData) {
   revalidatePath("/outgoing");
   revalidatePath(`/pick-lists/${pickListId}/dispatch`);
   redirect(`/pick-lists/${pickListId}/dispatch?result=approved`);
+}
+
+export async function updateQueuedPickListLineItems(formData: FormData) {
+  const resolver = await createPageResolver();
+  const permission = await requirePermission(resolver, "pick_list.execute");
+  const pickListId = String(formData.get("pickListId") ?? "");
+  if (permission.kind !== "authorized") redirect(`/inventory?tab=pick-lists&error=forbidden`);
+  
+  const payload = String(formData.get("lineItemsPayload") ?? "");
+  if (!pickListId || !payload) {
+    redirect(`/pick-lists/${pickListId}/edit?error=invalid_payload`);
+  }
+
+  try {
+    const parsed = JSON.parse(payload) as Array<{
+      lineId: string;
+      qty: number;
+      spq: number;
+      numberOfBoxes: number;
+    }>;
+
+    for (const line of parsed) {
+      if (line.lineId && Number(line.qty) >= 0) {
+        await db
+          .update(pickListItems)
+          .set({
+            qty: line.qty,
+            spq: line.spq,
+            numberOfBoxes: line.numberOfBoxes,
+          })
+          .where(eq(pickListItems.id, line.lineId));
+      }
+    }
+
+    await db.update(pickLists).set({ updatedAt: new Date() }).where(eq(pickLists.id, pickListId));
+  } catch {
+    redirect(`/pick-lists/${pickListId}/edit?error=save_failed`);
+  }
+
+  revalidatePath("/inventory");
+  revalidatePath("/pick-lists");
+  revalidatePath(`/pick-lists/${pickListId}/dispatch`);
+  revalidatePath(`/pick-lists/${pickListId}/print`);
+  redirect(`/pick-lists/${pickListId}/dispatch?result=updated`);
 }
 
 export async function deletePickList(formData: FormData) {

@@ -230,6 +230,23 @@ export default async function DispatchConfirmationPage({
       {/* ── Main content (scrollable) ─────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto px-4 py-2">
 
+        {/* Updated Banner */}
+        {result === "updated" && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="mb-3 flex items-center gap-3 rounded-xl bg-status-available/15 border border-status-available/40 px-4 py-3"
+          >
+            <CheckCircle2 size={22} className="shrink-0 text-status-available" aria-hidden="true" />
+            <div>
+              <p className="font-heading text-body-md font-bold text-on-surface">Pick List Updated</p>
+              <p className="mt-0.5 font-body text-body-sm text-text-grey">
+                Line item quantities, SPQ, and package counts have been successfully updated.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Approval Success Banner */}
         {result === "approved" && (
           <div
@@ -289,6 +306,12 @@ export default async function DispatchConfirmationPage({
                   Approve Pick List for Dispatch
                 </button>
               </form>
+              <Link
+                href={`/pick-lists/${pickListId}/edit`}
+                className="inline-flex h-12 items-center justify-center rounded-xl border border-outline-variant/40 bg-surface-white px-4 font-label text-body-md font-semibold text-on-surface hover:bg-surface-light-grey focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+              >
+                Edit Line Items (Qty / SPQ / Boxes)
+              </Link>
               <Link
                 href={`/pick-lists/${pickListId}/print`}
                 target="_blank"

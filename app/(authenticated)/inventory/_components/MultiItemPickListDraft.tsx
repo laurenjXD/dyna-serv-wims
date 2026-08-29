@@ -25,7 +25,14 @@ type StockSource = {
   priority: number;
 };
 
-type DraftLine = { id: string; itemId: string; balanceId: string; qty: string };
+type DraftLine = {
+  id: string;
+  itemId: string;
+  balanceId: string;
+  qty: string;
+  customSpq?: string;
+  totalUnits?: string;
+};
 
 export function MultiItemPickListDraft({
   stock,
@@ -73,8 +80,38 @@ export function MultiItemPickListDraft({
   const lineDetails = lines.map((line) => {
     const item = catalog.find((candidate) => candidate.itemId === line.itemId);
     const source = item?.sources.find((candidate) => candidate.balanceId === line.balanceId);
-    return { line, item, source };
+    const effectiveSpq = Number(line.customSpq) > 0 ? Number(line.customSpq) : (item?.spq ?? 1);
+    const numBoxes = Number(line.qty) || 0;
+    const computedTotalUnits = line.totalUnits !== undefined && line.totalUnits !== ""
+      ? line.totalUnits
+      : (numBoxes > 0 ? String(numBoxes * effectiveSpq) : "");
+    return { line, item, source, effectiveSpq, numBoxes, computedTotalUnits };
   });
+
+  const handlePackagesChange = (lineId: string, val: string, effectiveSpq: number) => {
+    const boxes = Number(val) || 0;
+    updateLine(lineId, {
+      qty: val,
+      totalUnits: val === "" ? "" : String(boxes * effectiveSpq),
+    });
+  };
+
+  const handleTotalUnitsChange = (lineId: string, val: string, effectiveSpq: number) => {
+    const units = Number(val) || 0;
+    const boxes = val === "" ? "" : String(Math.max(1, Math.ceil(units / (effectiveSpq || 1))));
+    updateLine(lineId, {
+      totalUnits: val,
+      qty: boxes,
+    });
+  };
+
+  const handleSpqChange = (lineId: string, val: string, currentBoxes: number) => {
+    const spqVal = Number(val) || 1;
+    updateLine(lineId, {
+      customSpq: val,
+      totalUnits: currentBoxes > 0 ? String(currentBoxes * spqVal) : "",
+    });
+  };
 
   const request = useMemo(() => {
     if (!organizationId || !flowType || lineDetails.length === 0) return "";
@@ -344,7 +381,7 @@ export function MultiItemPickListDraft({
         {/* 10-Column Pick List Table per User Specification */}
         <div className="mt-6 overflow-x-auto rounded-lg border border-outline-variant/30">
           <div className="min-w-[1380px]">
-            <div className="grid grid-cols-[100px_80px_110px_minmax(160px,1fr)_140px_minmax(180px,1.2fr)_100px_140px_110px_minmax(180px,1.1fr)_48px] gap-3 bg-surface-light-grey px-4 py-3 font-label text-label-xs font-bold uppercase tracking-[0.04em] text-text-grey">
+            <div className="grid grid-cols-[110px_90px_110px_minmax(160px,1fr)_140px_minmax(180px,1.2fr)_100px_140px_110px_minmax(180px,1.1fr)_48px] gap-3 bg-surface-light-grey px-4 py-3 font-label text-label-xs font-bold uppercase tracking-[0.04em] text-text-grey">
               <span>Qty</span>
               <span>SPQ</span>
               <span>No. of Pckgs</span>
@@ -363,30 +400,51 @@ export function MultiItemPickListDraft({
                 Import a DRA document above or click &ldquo;+ Add item line&rdquo; below to manually build this pick list.
               </div>
             ) : (
-              lineDetails.map(({ line, item, source }) => {
-                const numBoxes = Number(line.qty) || 0;
-                const totalUnits = item && numBoxes > 0 ? (numBoxes * item.spq).toLocaleString() : "—";
+              lineDetails.map(({ line, item, source, effectiveSpq, numBoxes, computedTotalUnits }) => {
                 const totalMeterage = item?.spqMeter && numBoxes > 0 ? (numBoxes * Number(item.spqMeter)).toFixed(2) : "—";
 
                 return (
-                  <div key={line.id} className="grid grid-cols-[100px_80px_110px_minmax(160px,1fr)_140px_minmax(180px,1.2fr)_100px_140px_110px_minmax(180px,1.1fr)_48px] items-center gap-3 border-t border-outline-variant/30 px-4 py-3">
-                    {/* Qty (Total Units = SPQ × No. of Pckgs) */}
-                    <p className="font-mono text-mono-md font-bold text-on-surface">{totalUnits}</p>
+                  <div key={line.id} className="grid grid-cols-[110px_90px_110px_minmax(160px,1fr)_140px_minmax(180px,1.2fr)_100px_140px_110px_minmax(180px,1.1fr)_48px] items-center gap-3 border-t border-outline-variant/30 px-4 py-3">
+                    {/* Qty (Total Units input) */}
+                    <label className="flex h-11 items-center rounded border border-outline-variant bg-surface-white px-2 focus-within:ring-2 focus-within:ring-primary">
+                      <input
+                        value={computedTotalUnits}
+                        onChange={(event) => handleTotalUnitsChange(line.id, event.target.value, effectiveSpq)}
+                        type="number"
+                        min="1"
+                        disabled={!source}
+                        className="min-w-0 flex-1 bg-transparent text-right font-mono text-mono-md text-on-surface outline-none disabled:text-text-grey"
+                        placeholder="0"
+                        title="Total Units (Pieces)"
+                      />
+                    </label>
 
-                    {/* SPQ */}
-                    <p className="font-mono text-mono-md text-on-surface">{item ? item.spq : "—"}</p>
+                    {/* SPQ (Standard Packaging Quantity input) */}
+                    <label className="flex h-11 items-center rounded border border-outline-variant bg-surface-white px-2 focus-within:ring-2 focus-within:ring-primary">
+                      <input
+                        value={line.customSpq ?? (item ? String(item.spq) : "")}
+                        onChange={(event) => handleSpqChange(line.id, event.target.value, numBoxes)}
+                        type="number"
+                        min="1"
+                        disabled={!item}
+                        className="min-w-0 flex-1 bg-transparent text-right font-mono text-mono-md text-on-surface outline-none disabled:text-text-grey"
+                        placeholder="1"
+                        title="Standard Packaging Quantity (SPQ)"
+                      />
+                    </label>
 
                     {/* No. of Pckgs (Box / Package count input) */}
                     <label className="flex h-11 items-center rounded border border-outline-variant bg-surface-white px-2 focus-within:ring-2 focus-within:ring-primary">
                       <input
                         value={line.qty}
-                        onChange={(event) => updateLine(line.id, { qty: event.target.value })}
+                        onChange={(event) => handlePackagesChange(line.id, event.target.value, effectiveSpq)}
                         type="number"
                         min="1"
                         max={source?.availableQty}
                         disabled={!source}
                         className="min-w-0 flex-1 bg-transparent text-right font-mono text-mono-md text-on-surface outline-none disabled:text-text-grey"
                         placeholder="0"
+                        title="Number of Packages (Boxes)"
                       />
                     </label>
 

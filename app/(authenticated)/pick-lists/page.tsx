@@ -30,24 +30,42 @@ function statusLabel(status: string) {
 
 function PickListAction({ row, canExecute, deleted }: { row: PickListRow; canExecute: boolean; deleted?: boolean }) {
   if (deleted) return <span className="font-body text-body-sm text-text-grey">Deleted</span>;
-  if (row.status === "picked" && canExecute) {
-    return (
-      <Link
-        href={`/pick-lists/${row.id}/dispatch`}
-        className="inline-flex min-h-14 items-center justify-center rounded bg-primary px-4 font-label text-body-md font-semibold uppercase tracking-wide text-surface-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2 active:scale-[0.97] md:min-h-11 md:text-label"
-      >
-        Dispatch
-      </Link>
-    );
-  }
 
   return (
     <div className="flex flex-wrap justify-end gap-2">
+      {row.status === "picked" && canExecute && (
+        <Link
+          href={`/pick-lists/${row.id}/dispatch`}
+          className="inline-flex min-h-11 items-center justify-center rounded bg-primary px-3 font-label text-label font-bold text-surface-white hover:bg-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+        >
+          Dispatch
+        </Link>
+      )}
+      {row.status !== "dispatched" && canExecute && (
+        <Link
+          href={`/pick-lists/${row.id}/edit`}
+          className="inline-flex min-h-11 items-center justify-center rounded border border-brand-navy/30 bg-surface-white px-3 font-label text-label font-bold text-brand-navy hover:bg-brand-navy/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+        >
+          Edit
+        </Link>
+      )}
       <Link
         href={`/pick-lists/${row.id}/print`}
-        className="inline-flex min-h-14 shrink-0 items-center justify-center whitespace-nowrap rounded border border-outline-variant/30 px-4 font-label text-body-md font-semibold text-on-surface focus:outline-none focus-visible:ring-2 focus:ring-brand-navy focus:ring-offset-2 active:scale-[0.97] md:min-h-11 md:text-label"
-      >View / PDF</Link>
-      {canExecute && <form action={deletePickList}><input type="hidden" name="pickListId" value={row.id} /><button type="submit" className="inline-flex min-h-11 items-center rounded border border-status-held/40 px-3 font-label text-label font-semibold text-status-held">Delete</button></form>}
+        className="inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded border border-outline-variant/30 px-3 font-label text-label font-semibold text-on-surface hover:bg-surface-light-grey focus:outline-none focus-visible:ring-2 focus:ring-brand-navy"
+      >
+        View / PDF
+      </Link>
+      {canExecute && row.status !== "dispatched" && (
+        <form action={deletePickList}>
+          <input type="hidden" name="pickListId" value={row.id} />
+          <button
+            type="submit"
+            className="inline-flex min-h-11 items-center rounded border border-status-held/40 px-3 font-label text-label font-semibold text-status-held hover:bg-status-held/10"
+          >
+            Delete
+          </button>
+        </form>
+      )}
     </div>
   );
 }
