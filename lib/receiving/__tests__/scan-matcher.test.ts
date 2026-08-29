@@ -170,11 +170,26 @@ describe("matchScan — legacy multi-pallet QR", () => {
       quantity,
     });
 
-  it("rejects a legacy multi-pallet QR so each pallet requires its own label", async () => {
+  it("rejects the retired shared group QR format", async () => {
     const { matchScan } = await import("@/lib/receiving/scan-matcher");
     const result = matchScan(cartonQr(10), [makeLine({ expectedQty: 10, scannedQty: 0 })]);
 
     expect(result).toEqual({ matched: false, reason: "unknown_item" });
+  });
+
+  it("uses one unique carton QR to resolve and receive all related WRR cartons", async () => {
+    const { matchScan } = await import("@/lib/receiving/scan-matcher");
+    const lineId = "12345678-1234-4abc-8def-1234567890ab";
+    const result = matchScan(JSON.stringify({
+      type: "wrr_item_unit",
+      wrr_item_id: lineId,
+      unit_id: "12345678-1234-4abc-8def-123456780001",
+      carton_id: "DSGC-CTN-1234567812344abc8def123456780001",
+      unit_index: 1,
+    }), [makeLine({ id: lineId, expectedQty: 10, scannedQty: 0 })]);
+
+    expect(result).toMatchObject({ matched: true, scanQty: 10, remainingQty: 0 });
+    if (result.matched) expect(result.unitIds).toHaveLength(10);
   });
 });
 

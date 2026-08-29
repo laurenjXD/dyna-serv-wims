@@ -326,7 +326,7 @@ export default async function WrrDetailPage({ params }: PageProps) {
                       </span>
                     </td>
                     <td className="max-w-56 px-4 py-3 font-body text-body-md text-text-grey">{item.remarks ?? "—"}</td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="min-w-[188px] px-4 py-3 text-center align-middle">
                       <WRRUnitLabelGenerator
                         wrrItemId={item.id}
                         wrrNumber={wrr.wrrNumber}

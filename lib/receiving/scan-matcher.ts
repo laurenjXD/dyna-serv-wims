@@ -32,7 +32,7 @@ export type WrrLine = {
 };
 
 export type ScanMatchResult =
-  | { matched: true; line: WrrLine; remainingQty: number; scanQty: number; unitId?: string }
+  | { matched: true; line: WrrLine; remainingQty: number; scanQty: number; unitId?: string; unitIds?: string[] }
   | {
       matched: false;
       reason:
@@ -80,6 +80,7 @@ export function matchScan(
   // Parse JSON wrr_item_unit payload if present (Spec 18 §2.2)
   let parsedWrrItemId: string | null = null;
   let parsedUnitId: string | null = null;
+  let parsedCartonId: string | null = null;
   if (barcode.trim().startsWith("{")) {
     try {
       const parsed = JSON.parse(barcode.trim());
@@ -87,6 +88,9 @@ export function matchScan(
         parsedWrrItemId = parsed.wrr_item_id;
         if (typeof parsed?.unit_id === "string") {
           parsedUnitId = parsed.unit_id;
+        }
+        if (typeof parsed?.carton_id === "string") {
+          parsedCartonId = parsed.carton_id;
         }
       }
     } catch {
@@ -146,8 +150,18 @@ export function matchScan(
       continue;
     }
 
-    // Each accepted label represents exactly one physical pallet or unit.
-    const scanQty = 1;
+    // A valid unique carton QR acts as the physical shortcut for its WRR
+    // line: the WRR determines the related carton identities and one scan
+    // receives the entire declared group. The IDs are persisted together so
+    // a later scan of any related label is an exact duplicate.
+    const scanQty = parsedCartonId !== null ? line.expectedQty - line.scannedQty : 1;
+    const unitIds = parsedCartonId !== null && /^[0-9a-f-]{36}$/i.test(line.id)
+      ? Array.from({ length: line.expectedQty }, (_, index) => {
+          const source = line.id.replaceAll("-", "").toLowerCase();
+          const hex = `${source.slice(0, 24)}${(index + 1).toString(16).padStart(8, "0")}`;
+          return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+        })
+      : undefined;
     const remainingQty = line.expectedQty - line.scannedQty - scanQty;
     return {
       matched: true,
@@ -155,6 +169,7 @@ export function matchScan(
       remainingQty,
       scanQty,
       ...(parsedUnitId !== null ? { unitId: parsedUnitId } : {}),
+      ...(unitIds ? { unitIds } : {}),
     };
   }
 

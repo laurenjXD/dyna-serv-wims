@@ -1,7 +1,10 @@
+import { cartonIdFromUnitId } from "./carton";
+
 export type WrrUnitPayload = {
   type: "wrr_item_unit";
   wrr_item_id: string;
   unit_id: string;
+  carton_id: string;
   unit_index: number;
 };
 
@@ -25,10 +28,14 @@ export function deriveWrrUnitId(wrrItemId: string, unitIndex: number): string {
 }
 
 export function createWrrUnitPayload(wrrItemId: string, unitIndex: number): WrrUnitPayload {
+  const unitId = deriveWrrUnitId(wrrItemId, unitIndex);
   return {
     type: "wrr_item_unit",
     wrr_item_id: wrrItemId,
-    unit_id: deriveWrrUnitId(wrrItemId, unitIndex),
+    unit_id: unitId,
+    // The QR payload now carries the unique physical-carton identity. The
+    // legacy unit_id remains for receiving matcher compatibility.
+    carton_id: cartonIdFromUnitId(unitId),
     unit_index: unitIndex,
   };
 }
@@ -41,12 +48,16 @@ export function parseWrrUnitPayload(value: string): WrrUnitPayload | null {
       parsed.type !== "wrr_item_unit" ||
       typeof parsed.wrr_item_id !== "string" ||
       typeof parsed.unit_id !== "string" ||
+      typeof parsed.carton_id !== "string" ||
       !Number.isSafeInteger(parsed.unit_index) ||
       (parsed.unit_index ?? 0) < 1
     ) {
       return null;
     }
     if (deriveWrrUnitId(parsed.wrr_item_id, parsed.unit_index!) !== parsed.unit_id.toLowerCase()) {
+      return null;
+    }
+    if (parsed.carton_id !== cartonIdFromUnitId(parsed.unit_id)) {
       return null;
     }
     return parsed as WrrUnitPayload;

@@ -27,7 +27,8 @@ interface UnitLabelData {
   // (reprinting must reproduce the same ids for the same boxes), not
   // something shown to a human as "Box N of M".
   unitId: string;
-  payload: string; // JSON: {"type": "wrr_item_unit", "wrr_item_id": "...", "unit_id": "...", "unit_index": ...}
+  cartonId: string;
+  payload: string; // JSON includes the unique carton_id and legacy unit_id matcher fields.
 }
 
 export function WRRUnitLabelGenerator({
@@ -51,6 +52,7 @@ export function WRRUnitLabelGenerator({
 
       labels.push({
         unitId,
+        cartonId: unitPayload.carton_id,
         payload,
       });
     }
@@ -67,7 +69,7 @@ export function WRRUnitLabelGenerator({
       <button
         type="button"
         onClick={() => setIsModalOpen(true)}
-        className="inline-flex h-10 items-center justify-center gap-2 rounded border border-outline-variant bg-surface-white px-3 font-heading font-semibold text-body-md text-brand-navy shadow-sm active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-brand-navy"
+        className="inline-flex h-10 w-max min-w-[172px] shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded border border-outline-variant bg-surface-white px-3 font-heading font-semibold text-body-md text-brand-navy shadow-sm active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-brand-navy"
       >
         <span aria-hidden="true">&#128424;</span>
         <span>Print Unit Labels ({expectedQty})</span>
@@ -96,7 +98,7 @@ export function WRRUnitLabelGenerator({
                   <span className="font-mono text-mono-md font-bold">{lotNumber}</span>
                 </p>
                 <p className="mt-1 font-body text-body-sm text-text-grey">
-                  Each pallet has its own QR label. If no camera is available, type the item code or lot number shown on the label once per pallet.
+                  Each carton has its own unique QR label. Scan any one label to resolve the related cartons on this WRR line.
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -153,7 +155,7 @@ export function WRRUnitLabelGenerator({
                         Lot: {lotNumber}
                       </p>
                       <p className="font-mono text-mono-xs text-status-neutral">
-                        Label ID: {unit.unitId.substring(0, 8)}
+                        Carton ID: {unit.cartonId}
                       </p>
                     </div>
                   </div>
