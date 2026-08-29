@@ -14,6 +14,7 @@
 
 import { useEffect, useState } from "react";
 import type { WrrItemOption } from "@/lib/db/queries/items";
+import { ItemSearchCombobox } from "./ItemSearchCombobox";
 
 export interface ImportedWrrLine {
   itemId: string;
@@ -317,15 +318,21 @@ export function WrrLineItems({
             {/* Item code selection drives the read-only item description and defaults. */}
             <div className="order-3">
               <label
-                htmlFor={`line-${index}-itemCode`}
                 className="block font-label text-label text-text-grey"
               >
                 {itemCodeLabel(flowType)}
               </label>
-              <select id={`line-${index}-itemCode`} aria-label={`Registered ${itemCodeLabel(flowType)} options`} value={line.itemId} disabled={!vendorPartyId} onChange={(e) => chooseItem(index, e.target.value)} className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface disabled:cursor-not-allowed disabled:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy">
-                <option value="">{vendorPartyId ? "Select item code…" : "Select organization first"}</option>
-                {availableItems.map((item) => <option key={item.id} value={item.id}>{codeFor(item)} — {item.name}</option>)}
-              </select>
+              <ItemSearchCombobox
+                index={index}
+                flowType={flowType}
+                vendorPartyId={vendorPartyId}
+                availableItems={availableItems}
+                selectedItemId={line.itemId}
+                selectedItemCode={line.itemCode}
+                selectedItemDescription={line.itemDescription}
+                onSelectItem={(item) => chooseItem(index, item.id)}
+                disabled={isImported}
+              />
               <input type="hidden" name={`line_${index}_itemCode`} value={line.itemCode} />
             </div>
 
