@@ -53,11 +53,11 @@ const TABS: Array<{ key: TabKey; label: string }> = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 interface PageProps {
-  searchParams: Promise<{ tab?: string; q?: string; pickListError?: string; overrideRequested?: string; pickListCreated?: string; pickListPicked?: string }>;
+  searchParams: Promise<{ tab?: string; q?: string; pickListView?: string; pickListError?: string; overrideRequested?: string; pickListCreated?: string; pickListPicked?: string }>;
 }
 
 export default async function InventoryPage({ searchParams }: PageProps) {
-  const { tab: tabParam, q, pickListError, overrideRequested, pickListCreated, pickListPicked } = await searchParams;
+  const { tab: tabParam, q, pickListView, pickListError, overrideRequested, pickListCreated, pickListPicked } = await searchParams;
 
   const activeTab: TabKey = resolveInventoryTab(tabParam);
 
@@ -132,7 +132,11 @@ export default async function InventoryPage({ searchParams }: PageProps) {
       {activeTab === "stock-view" ? (
         <StockViewTab query={q} requesterUserId={permResult.context.userId} />
       ) : activeTab === "pick-lists" ? (
-        <PickListsTab createdPickListId={pickListCreated} pickedPickListId={pickListPicked} />
+        <PickListsTab
+          createdPickListId={pickListCreated}
+          pickedPickListId={pickListPicked}
+          view={pickListView === "deleted" ? "deleted" : "open"}
+        />
       ) : (
         <InspectionTabSection />
       )}
@@ -406,16 +410,69 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
 
 // ─── Pick Lists tab ───────────────────────────────────────────────────────────
 
-async function PickListsTab({ createdPickListId, pickedPickListId }: { createdPickListId?: string; pickedPickListId?: string }) {
+async function PickListsTab({ createdPickListId, pickedPickListId, view }: { createdPickListId?: string; pickedPickListId?: string; view: "open" | "deleted" }) {
+  const isDeleted = view === "deleted";
   // Only allocated lists belong in this To Pick view. Picked lists move to the
   // Dispatch queue and dispatched records remain in the Outgoing Ledger.
   const [{ rows }, stockRows] = await Promise.all([
-    listPickLists(db, { limit: 50, offset: 0, status: "allocated" }),
+    listPickLists(db, { limit: 50, offset: 0, ...(isDeleted ? { deleted: true } : { status: "allocated" }) }),
     listStockView(db),
   ]);
 
   return (
     <div className="mt-6 space-y-6">
+      <nav className="flex gap-1 border-b border-outline-variant/30" aria-label="Pick list views">
+        <Link
+          href="/inventory?tab=pick-lists"
+          className={`border-b-2 px-4 py-3 font-label text-label font-bold ${!isDeleted ? "border-brand-primary text-brand-primary" : "border-transparent text-text-grey"}`}
+        >
+          Open
+        </Link>
+        <Link
+          href="/inventory?tab=pick-lists&pickListView=deleted"
+          className={`border-b-2 px-4 py-3 font-label text-label font-bold ${isDeleted ? "border-brand-primary text-brand-primary" : "border-transparent text-text-grey"}`}
+        >
+          Deleted
+        </Link>
+      </nav>
+
+      {isDeleted ? (
+        <section aria-labelledby="deleted-pick-lists-heading" className="overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+          <div className="border-b border-outline-variant/30 px-4 py-4 md:px-5">
+            <h2 id="deleted-pick-lists-heading" className="font-heading text-title-lg font-bold text-on-surface">Deleted Pick Lists</h2>
+            <p className="mt-1 font-body text-body-sm text-text-grey">Soft-deleted pick lists remain available for audit and are read-only.</p>
+          </div>
+          {rows.length === 0 ? (
+            <div className="px-6 py-12 text-center">
+              <p className="font-body text-body-md text-text-grey">No deleted pick lists.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
+                    <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Pick List #</th>
+                    <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Flow Type</th>
+                    <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Customer Organization</th>
+                    <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Deleted</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-outline-variant/30">
+                  {rows.map((row: PickListRow) => (
+                    <tr key={row.id}>
+                      <td className="px-4 py-3 font-mono text-mono-md font-bold text-on-surface">{row.pickListNumber}</td>
+                      <td className="px-4 py-3 font-body text-body-md text-on-surface">{FLOW_LABELS[row.flowType] ?? row.flowType}</td>
+                      <td className="px-4 py-3 font-mono text-mono-md text-on-surface">{row.customerPartyId}</td>
+                      <td className="px-4 py-3 font-body text-body-md text-text-grey">{row.deletedAt?.toLocaleString() ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      ) : (
+      <>
       {createdPickListId && <section role="status" className="rounded-lg border border-status-available/30 bg-status-available/10 p-4"><p className="font-heading text-body-md font-bold text-on-surface">Pick list generated</p><p className="mt-1 font-body text-body-sm text-text-grey">The list is now in To Pick. Review or print its PDF, physically pick the boxes, then mark it as picked to enable Dispatch.</p><div className="mt-3 flex flex-wrap gap-3"><Link href={`/pick-lists/${createdPickListId}/print`} className="inline-flex h-11 items-center rounded border border-outline-variant bg-surface-white px-4 font-label text-label font-bold text-on-surface">View / PDF</Link><form action={markPickListReadyForDispatch}><input type="hidden" name="pickListId" value={createdPickListId} /><button type="submit" className="inline-flex h-11 items-center rounded bg-primary px-4 font-label text-label font-bold text-surface-white">Mark as Picked</button></form></div></section>}
       {pickedPickListId && <section role="status" className="rounded-lg border border-status-available/30 bg-status-available/10 p-4"><p className="font-heading text-body-md font-bold text-on-surface">Pick list is ready for Dispatch</p><p className="mt-1 font-body text-body-sm text-text-grey">Physical picking is recorded. Continue in the Dispatch queue to scan the committed boxes.</p><Link href="/outgoing" className="mt-3 inline-flex h-11 items-center rounded bg-primary px-4 font-label text-label font-bold text-surface-white">Open Dispatch queue</Link></section>}
       <MultiItemPickListDraft
@@ -533,6 +590,8 @@ async function PickListsTab({ createdPickListId, pickedPickListId }: { createdPi
         </>
       )}
     </section>
+      </>
+      )}
     </div>
   );
 }

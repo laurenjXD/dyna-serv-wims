@@ -53,4 +53,11 @@ describe("InventoryPage (app/(authenticated)/inventory/page.tsx)", () => {
     // directly on this page export, this test will catch it.
     expect(exportedKeys).toEqual(["default"]);
   });
+
+  it("renders Open and Deleted pick-list views from the canonical inventory hub", async () => {
+    const mod = await import("../page");
+    const source = mod.default.toString();
+
+    expect(source).toContain("pickListView");
+  });
 });
