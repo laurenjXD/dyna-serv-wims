@@ -918,7 +918,7 @@ export async function commitWrrLine(
         .where(or(...targetLocationIds.map((id) => eq(locations.id, id))));
       const normalizedLocationRows = locationRows as Array<{ id: string; isActive: boolean; locationType: string }>;
       const locationsById = new Map(normalizedLocationRows.map((row) => [row.id, row]));
-      const validationLine = isBatch ? { ...line, scannedQty: line.expectedQty } : line;
+      const validationLine = { ...line, scannedQty: line.expectedQty };
       for (const targetLocationId of targetLocationIds) {
         const row = locationsById.get(targetLocationId);
         const location: CommitLocation | null = row
@@ -940,8 +940,8 @@ export async function commitWrrLine(
         .update(wrrItems)
         .set({
           committedAt: new Date(),
+          scannedQty: line.expectedQty,
           ...(line.disposition === "store" && !isBatch ? { putawayLocationId: targetLocationIds[0] } : {}),
-          ...(isBatch ? { scannedQty: line.expectedQty } : {}),
         })
         .where(and(eq(wrrItems.id, wrrItemId), isNull(wrrItems.committedAt)))
         .returning({ id: wrrItems.id });
@@ -965,7 +965,7 @@ export async function commitWrrLine(
 
         const committedAllocations = isBatch
           ? batchAllocations
-          : [{ locationId: targetLocationIds[0], qty: line.scannedQty }];
+          : [{ locationId: targetLocationIds[0], qty: line.expectedQty }];
         const committedUnitLocations = requestedUnitLocations
           ?? (isBatch
             ? committedAllocations.flatMap((allocation) =>
