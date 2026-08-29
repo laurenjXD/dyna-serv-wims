@@ -104,19 +104,63 @@ async function parseDraExcel(buffer: Buffer, fileName: string): Promise<DraParse
         values.forEach((cell, idx) => {
           if (!cell) return;
           const val = String(cell).trim().toLowerCase();
-          if (val.includes("item code") || val.includes("sku") || val === "item" || val.includes("part no")) {
+          if (
+            val.includes("item code") ||
+            val.includes("sku") ||
+            val === "item" ||
+            val.includes("part no") ||
+            val.includes("part number") ||
+            val.includes("product code") ||
+            val.includes("dsgc item") ||
+            val.includes("supplier item") ||
+            val.includes("material")
+          ) {
             colMap["itemCode"] = idx;
-          } else if (val.includes("customer item") || val.includes("cust item")) {
+          } else if (
+            val.includes("customer item") ||
+            val.includes("cust item") ||
+            val.includes("cust pn") ||
+            val.includes("customer pn") ||
+            val.includes("client item") ||
+            val.includes("customer part") ||
+            val.includes("buyer item")
+          ) {
             colMap["customerItemCode"] = idx;
-          } else if (val.includes("pkg") || val.includes("package") || val.includes("carton") || val.includes("ctn") || val.includes("no. of") || val.includes("box count")) {
+          } else if (
+            val.includes("pkg") ||
+            val.includes("package") ||
+            val.includes("carton") ||
+            val.includes("ctn") ||
+            val.includes("no. of") ||
+            val.includes("box count") ||
+            val.includes("total packages") ||
+            val.includes("boxes")
+          ) {
             colMap["noOfPackages"] = idx;
-          } else if (val.includes("spq") || val.includes("pcs/ctn") || val.includes("units/ctn") || val.includes("pcs per")) {
+          } else if (
+            val.includes("spq") ||
+            val.includes("pcs/ctn") ||
+            val.includes("units/ctn") ||
+            val.includes("pcs per box") ||
+            val.includes("pcs per carton") ||
+            val.includes("standard pkg qty") ||
+            val.includes("standard package")
+          ) {
             colMap["spq"] = idx;
-          } else if (val.includes("qty") || val.includes("quantity") || val.includes("release") || val.includes("requested")) {
+          } else if (
+            val.includes("requested qty") ||
+            val.includes("to pick") ||
+            val.includes("pick qty") ||
+            val.includes("release qty") ||
+            val.includes("total qty") ||
+            val === "qty" ||
+            val === "quantity" ||
+            val.includes("pcs")
+          ) {
             colMap["requestedQty"] = idx;
-          } else if (val.includes("uom") || val.includes("unit")) {
+          } else if (val.includes("uom") || val.includes("unit of measure") || val === "unit" || val.includes("measurement")) {
             colMap["uom"] = idx;
-          } else if (val.includes("remark") || val.includes("note")) {
+          } else if (val.includes("remark") || val.includes("note") || val.includes("comment")) {
             colMap["remarks"] = idx;
           }
         });

@@ -130,6 +130,7 @@ vi.mock("@/app/(authenticated)/actions", () => ({
     unreadCount: 0,
     notifications: [],
   }),
+  resolveShellPendingApprovalCount: vi.fn().mockResolvedValue(0),
 }));
 
 // Mock lib/actions/notifications -- markNotificationReadAction is the

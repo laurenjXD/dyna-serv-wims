@@ -55,6 +55,7 @@ import {
   Truck,
   CheckCircle2,
   ScanLine,
+  ShieldCheck,
 } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
@@ -62,6 +63,7 @@ import { db } from "@/lib/db/client";
 import { parties } from "@/lib/db/schema/parties";
 import { getPickList, getPickListItems, getPickUnitSelections } from "@/lib/db/queries/withdrawals";
 import { dispatchPickList, selectPickUnit } from "@/lib/actions/withdrawals";
+import { approvePickList } from "../../_actions";
 import { CameraScanBridge } from "@/components/floor/CameraScanBridge";
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -228,6 +230,23 @@ export default async function DispatchConfirmationPage({
       {/* ── Main content (scrollable) ─────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto px-4 py-2">
 
+        {/* Approval Success Banner */}
+        {result === "approved" && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="mb-3 flex items-center gap-3 rounded-xl bg-status-available/15 border border-status-available/40 px-4 py-3"
+          >
+            <CheckCircle2 size={22} className="shrink-0 text-status-available" aria-hidden="true" />
+            <div>
+              <p className="font-heading text-body-md font-bold text-on-surface">Pick List Approved</p>
+              <p className="mt-0.5 font-body text-body-sm text-text-grey">
+                Approved by Supervisor. You may now proceed with physical barcode scanning and final dispatch.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Already dispatched state */}
         {alreadyDispatched && (
           <div
@@ -245,14 +264,39 @@ export default async function DispatchConfirmationPage({
         )}
 
         {awaitingPickCompletion && (
-          <div className="mb-3 rounded-xl border border-status-pending/40 bg-status-pending/10 px-4 py-4">
-            <p className="font-heading text-headline-md font-bold text-on-surface">Waiting to be picked</p>
-            <p className="mt-1 font-body text-body-md text-text-grey">
-              Review the Pick List PDF and mark this list as picked before starting Dispatch.
-            </p>
-            <Link href="/inventory?tab=pick-lists" className="mt-3 inline-flex h-11 items-center rounded bg-brand-navy px-4 font-label text-label font-bold text-surface-white">
-              Back to To Pick
-            </Link>
+          <div className="mb-3 rounded-xl border border-status-pending/40 bg-status-pending/10 p-5 shadow-elevation-1">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-6 w-6 text-brand-navy" />
+                  <p className="font-heading text-headline-md font-bold text-on-surface">
+                    Pick List Approval Gate
+                  </p>
+                </div>
+                <p className="mt-2 font-body text-body-md text-text-grey">
+                  This pick list is currently allocated. Per warehouse protocol, a Supervisor or Administrator must review and approve this list before Dispatch scanning can begin.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <form action={approvePickList}>
+                <input type="hidden" name="pickListId" value={pickListId} />
+                <button
+                  type="submit"
+                  className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-5 font-label text-body-md font-bold text-surface-white hover:bg-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy active:scale-[0.98]"
+                >
+                  <ShieldCheck className="h-5 w-5" />
+                  Approve Pick List for Dispatch
+                </button>
+              </form>
+              <Link
+                href={`/pick-lists/${pickListId}/print`}
+                target="_blank"
+                className="inline-flex h-12 items-center justify-center rounded-xl border border-outline-variant/40 bg-surface-white px-4 font-label text-body-md font-semibold text-on-surface hover:bg-surface-light-grey focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+              >
+                Review Pick List PDF &rarr;
+              </Link>
+            </div>
           </div>
         )}
 

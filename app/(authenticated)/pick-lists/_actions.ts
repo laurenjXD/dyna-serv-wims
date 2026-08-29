@@ -35,6 +35,23 @@ export async function uploadDeliveryReceipt(formData: FormData) {
   redirect("/outgoing?tab=ledger&receiptUpload=success");
 }
 
+export async function approvePickList(formData: FormData) {
+  const resolver = await createPageResolver();
+  const permission = await requirePermission(resolver, "pick_list.execute");
+  if (permission.kind !== "authorized") redirect("/inventory?tab=pick-lists&error=forbidden");
+  const pickListId = String(formData.get("pickListId") ?? "");
+  if (pickListId) {
+    await db
+      .update(pickLists)
+      .set({ status: "picked", updatedAt: new Date() })
+      .where(eq(pickLists.id, pickListId));
+  }
+  revalidatePath("/inventory");
+  revalidatePath("/outgoing");
+  revalidatePath(`/pick-lists/${pickListId}/dispatch`);
+  redirect(`/pick-lists/${pickListId}/dispatch?result=approved`);
+}
+
 export async function deletePickList(formData: FormData) {
   const resolver = await createPageResolver();
   const permission = await requirePermission(resolver, "pick_list.execute");
