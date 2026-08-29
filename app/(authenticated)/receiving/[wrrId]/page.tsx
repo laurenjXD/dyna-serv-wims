@@ -258,6 +258,30 @@ export default async function WrrDetailPage({ params }: PageProps) {
         </div>
       </div>
 
+      {/* OS&D Discrepancy Notice */}
+      {wrr.status === "confirmed" && wrr.items.some((i) => i.scannedQty < i.expectedQty) && (
+        <div className="mt-6 rounded-xl border border-status-held/40 bg-status-held/10 p-5 shadow-elevation-1">
+          <div className="flex items-start gap-3">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-status-held text-surface-white font-bold text-body-sm">
+              !
+            </span>
+            <div>
+              <h3 className="font-heading text-title-md font-bold text-on-surface">
+                OS&D Discrepancy Summary — Delivery Shortage
+              </h3>
+              <p className="mt-1 font-body text-body-md text-text-grey">
+                This shipment was finalized with fewer units than declared on the Pre-Alert / CIPL.
+                Total expected: <strong className="font-mono text-on-surface">{wrr.items.reduce((s, i) => s + i.expectedQty, 0)} PCS</strong> |
+                Total received & posted: <strong className="font-mono text-on-surface">{wrr.items.reduce((s, i) => s + i.scannedQty, 0)} PCS</strong> (
+                <span className="font-mono font-bold text-status-held">
+                  {wrr.items.reduce((s, i) => s + i.scannedQty - i.expectedQty, 0)} PCS
+                </span>).
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Items table — Level 1 office elevation */}
       <div className="mt-6 overflow-hidden rounded-xl bg-surface-white shadow-elevation-1">
         <div className="px-6 py-4">

@@ -63,9 +63,10 @@ import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { parties } from "@/lib/db/schema/parties";
 import { getPickList, getPickListItems, getPickUnitSelections } from "@/lib/db/queries/withdrawals";
-import { dispatchPickList, selectPickUnit } from "@/lib/actions/withdrawals";
+import { dispatchPickList, selectPickUnit, reportLocationShortage } from "@/lib/actions/withdrawals";
 import { approvePickList, deletePickList } from "../../_actions";
 import { CameraScanBridge } from "@/components/floor/CameraScanBridge";
+import { DispatchDiscrepancyClient } from "./_components/DispatchDiscrepancyClient";
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -74,6 +75,8 @@ interface PageProps {
   searchParams: Promise<{
     result?: string;
     reason?: string;
+    barcode?: string;
+    shortageReported?: string;
   }>;
 }
 
@@ -82,7 +85,7 @@ export default async function DispatchConfirmationPage({
   searchParams,
 }: PageProps) {
   const { pickListId } = await params;
-  const { result, reason: reasonParam } = await searchParams;
+  const { result, reason: reasonParam, barcode: barcodeParam } = await searchParams;
 
   const resolver = await createPageResolver();
 
@@ -143,14 +146,31 @@ export default async function DispatchConfirmationPage({
 
   async function handleBoxScan(formData: FormData): Promise<void> {
     "use server";
+    const barcode = String(formData.get("barcode") ?? "").trim();
     const actionResolver = await createPageResolver();
     const scanResult = await selectPickUnit(
       actionResolver,
       pickListId,
-      String(formData.get("barcode") ?? ""),
+      barcode,
     );
-    if (!scanResult.ok) redirect(`/pick-lists/${pickListId}/dispatch?result=error&reason=${encodeURIComponent(scanResult.errors[0] ?? "unable_to_select_box")}`);
+    if (!scanResult.ok) {
+      redirect(`/pick-lists/${pickListId}/dispatch?result=error&reason=${encodeURIComponent(scanResult.errors[0] ?? "unable_to_select_box")}&barcode=${encodeURIComponent(barcode)}`);
+    }
     redirect(`/pick-lists/${pickListId}/dispatch?result=scanned`);
+  }
+
+  async function handleReportShortage(formData: FormData): Promise<void> {
+    "use server";
+    const pickListItemId = String(formData.get("pickListItemId") ?? "");
+    const actualFoundQty = Number(formData.get("actualFoundQty") ?? 0);
+    const actionResolver = await createPageResolver();
+    await reportLocationShortage(actionResolver, {
+      pickListId,
+      pickListItemId,
+      actualFoundQty,
+    });
+    revalidatePath(`/pick-lists/${pickListId}/dispatch`);
+    redirect(`/pick-lists/${pickListId}/dispatch?shortageReported=true`);
   }
 
   // Inline server action — executes Stage 2 dispatch.
@@ -439,6 +459,30 @@ export default async function DispatchConfirmationPage({
                       {item.locationLabel}
                     </p>
                     <p className="mt-1 font-body text-body-md text-text-grey">{scannedCount} / {item.numberOfBoxes} boxes scanned</p>
+
+                    {!alreadyDispatched && !complete && (
+                      <details className="mt-2 text-body-xs text-text-grey">
+                        <summary className="cursor-pointer text-status-held hover:underline">Report missing physical stock at location</summary>
+                        <form action={handleReportShortage} className="mt-2 flex flex-wrap items-center gap-2">
+                          <input type="hidden" name="pickListItemId" value={item.id} />
+                          <label className="text-body-xs font-semibold text-on-surface">Actual units found:</label>
+                          <input
+                            type="number"
+                            name="actualFoundQty"
+                            defaultValue={scannedCount * (item.spq ?? 1)}
+                            min={0}
+                            max={item.qty}
+                            className="h-9 w-24 rounded border border-outline-variant/60 bg-surface-white px-2 font-mono text-body-sm text-on-surface"
+                          />
+                          <button
+                            type="submit"
+                            className="h-9 rounded-lg bg-status-held px-3 font-label text-body-xs font-bold text-surface-white hover:bg-status-held/90"
+                          >
+                            Update Pick Qty
+                          </button>
+                        </form>
+                      </details>
+                    )}
                   </div>
                   <span className="sr-only">{complete ? "Dispatch scan complete" : "Dispatch scan pending"}</span>
                 </div>
@@ -446,6 +490,14 @@ export default async function DispatchConfirmationPage({
             })}
           </div>
         </div>
+
+        <DispatchDiscrepancyClient
+          pickListId={pickListId}
+          pickListNumber={pickList.pickListNumber}
+          isError={dispatchError}
+          reason={errorReason}
+          scannedBarcode={barcodeParam}
+        />
 
         {!alreadyDispatched && !awaitingPickCompletion && activeItem && (
           <section className="mb-3 rounded-2xl border border-brand-blue/30 bg-brand-blue/5 p-4">

@@ -32,11 +32,12 @@ import { locations } from "@/lib/db/schema/locations";
 import { getWrrDocument } from "@/lib/db/queries/receiving";
 import { getPutawayLocationContents, suggestPutawayLocations } from "@/lib/db/queries/locations";
 import type { PutawayCandidate } from "@/lib/db/queries/locations";
-import { recordScan, startReceiving, commitWrrLine, setWrrLineDisposition } from "@/lib/actions/receiving";
+import { recordScan, startReceiving, commitWrrLine, setWrrLineDisposition, closeWrrWithShortage } from "@/lib/actions/receiving";
 import type { WrrItemRow } from "@/lib/db/queries/receiving";
 import { CameraScanBridge } from "./_components/CameraScanBridge";
 import { PutawayLocationSelector } from "./_components/PutawayLocationSelector";
 import { LocationCombobox } from "./_components/LocationCombobox";
+import { ReceiveDiscrepancyClient } from "./_components/ReceiveDiscrepancyClient";
 
 // ─── Error reason → plain language ──────────────────────────────────────────
 
@@ -102,6 +103,7 @@ interface PageProps {
     disposition?: string;
     reason?: string;
     line?: string;
+    barcode?: string;
   }>;
 }
 
@@ -116,6 +118,7 @@ export default async function ReceiveFloorPage({
     disposition: dispositionParam,
     reason: reasonParam,
     line: lineParam,
+    barcode: barcodeParam,
   } = await searchParams;
 
   const resolver = await createPageResolver();
@@ -214,9 +217,16 @@ export default async function ReceiveFloorPage({
       );
     } else {
       redirect(
-        `/receiving/${wrrId}/receive?result=error&reason=${encodeURIComponent(scanResult.reason)}`
+        `/receiving/${wrrId}/receive?result=error&reason=${encodeURIComponent(scanResult.reason)}&barcode=${encodeURIComponent(barcode)}`
       );
     }
+  }
+
+  async function handleCloseShortage(): Promise<void> {
+    "use server";
+    const actionResolver = await createPageResolver();
+    await closeWrrWithShortage(actionResolver, wrrId);
+    redirect(`/receiving/${wrrId}`);
   }
 
   // Inline server action — per-line commit ("Store" or "Hold"). Closes over
@@ -411,20 +421,34 @@ export default async function ReceiveFloorPage({
           </div>
         )}
 
-        {scanError && (
-          <div
-            role="alert"
-            aria-live="assertive"
-            // White background with status-held left border — AAA contrast
-            // (near-black on white >15:1). Icon carries the semantic red signal.
-            className="mt-4 rounded-md bg-white border-l-4 border-status-held px-4 py-4 shadow-elevation-2"
-          >
-            <p className="font-heading font-semibold text-headline-md text-on-surface">
-              &#33; Scan Rejected
-            </p>
-            <p className="mt-1 font-body text-body-md text-on-surface">
-              {getScanErrorMessage(errorReason)}
-            </p>
+        <ReceiveDiscrepancyClient
+          wrrId={wrrId}
+          wrrNumber={wrr.wrrNumber}
+          isError={scanError}
+          reason={errorReason}
+          scannedBarcode={barcodeParam}
+        />
+
+        {fullyScannedLines > 0 && fullyScannedLines < totalLines && (
+          <div className="mt-4 rounded-xl border border-status-pending/40 bg-status-pending/10 p-4 shadow-elevation-1">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="font-heading text-body-md font-bold text-on-surface">
+                  Partial Receipt / Delivery Shortage
+                </p>
+                <p className="mt-1 font-body text-body-sm text-text-grey">
+                  {fullyScannedLines} of {totalLines} lines are ready. If the remaining items are not physically arriving on this truck, you can finalize this WRR with shortage.
+                </p>
+              </div>
+              <form action={handleCloseShortage}>
+                <button
+                  type="submit"
+                  className="inline-flex h-11 items-center justify-center rounded-lg border border-status-held/40 bg-surface-white px-4 font-label text-label font-bold text-status-held hover:bg-status-held/10 focus:outline-none focus:ring-2 focus:ring-brand-navy whitespace-nowrap"
+                >
+                  Finalize with Shortage (OS&D)
+                </button>
+              </form>
+            </div>
           </div>
         )}
 

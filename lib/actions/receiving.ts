@@ -1124,3 +1124,55 @@ export async function uploadAndParseCiplDocument(
   }
 }
 
+export async function closeWrrWithShortage(
+  resolver: RequestAuthorizationResolver,
+  wrrId: string,
+  shortageReason?: string,
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+): Promise<{ ok: boolean; error?: string }> {
+  const permResult = await requirePermission(resolver, "receiving.confirm");
+  if (permResult.kind !== "authorized") {
+    return { ok: false, error: "forbidden" };
+  }
+
+  const userId = permResult.context.userId;
+
+  try {
+    const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+      const db = tx.db as DbLike;
+      const existing = await db
+        .select({ id: wrrDocuments.id, status: wrrDocuments.status })
+        .from(wrrDocuments)
+        .where(eq(wrrDocuments.id, wrrId))
+        .limit(1);
+
+      if (existing.length === 0) {
+        return { ok: false, error: "not_found" };
+      }
+
+      if (existing[0].status === "confirmed") {
+        return { ok: true };
+      }
+
+      await db
+        .update(wrrDocuments)
+        .set({
+          status: "confirmed",
+          updatedAt: new Date(),
+        })
+        .where(eq(wrrDocuments.id, wrrId));
+
+      return { ok: true };
+    });
+
+    if (rlsResult.kind === "unauthenticated") {
+      return { ok: false, error: "forbidden" };
+    }
+    return rlsResult.value;
+  } catch (err) {
+    console.error("Failed to close WRR with shortage:", err);
+    return { ok: false, error: "Failed to close WRR with shortage" };
+  }
+}
+
+

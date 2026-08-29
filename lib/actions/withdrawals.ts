@@ -1290,3 +1290,53 @@ export async function listOutgoingLedger(
   }
   return rlsResult.value;
 }
+
+export async function reportLocationShortage(
+  resolver: RequestAuthorizationResolver,
+  opts: {
+    pickListId: string;
+    pickListItemId: string;
+    actualFoundQty: number;
+    notes?: string;
+  },
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+): Promise<{ ok: boolean; error?: string }> {
+  const perm = await requirePermission(resolver, "pick_list.execute");
+  if (perm.kind !== "authorized") {
+    return { ok: false, error: "forbidden" };
+  }
+
+  try {
+    const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+      const db = tx.db as DbLike;
+      const [item] = await db
+        .select()
+        .from(pickListItems)
+        .where(eq(pickListItems.id, opts.pickListItemId))
+        .limit(1);
+
+      if (!item) {
+        return { ok: false, error: "not_found" };
+      }
+
+      await db
+        .update(pickListItems)
+        .set({
+          qty: opts.actualFoundQty,
+          numberOfBoxes: Math.ceil(opts.actualFoundQty / Math.max(item.spq ?? 1, 1)),
+        })
+        .where(eq(pickListItems.id, opts.pickListItemId));
+
+      return { ok: true };
+    });
+
+    if (rlsResult.kind === "unauthenticated") {
+      return { ok: false, error: "forbidden" };
+    }
+    return rlsResult.value;
+  } catch (err) {
+    console.error("Failed to report location shortage:", err);
+    return { ok: false, error: "Failed to report location shortage" };
+  }
+}
+
