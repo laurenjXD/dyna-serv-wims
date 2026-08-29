@@ -425,31 +425,8 @@ export default async function DispatchConfirmationPage({
               items={items}
               selectionCountByLine={Object.fromEntries(selectionCountByLine.entries())}
               alreadyDispatched={alreadyDispatched}
-              reportShortageForm={(item, scannedCount) =>
-                !alreadyDispatched && scannedCount < item.numberOfBoxes ? (
-                  <details className="mt-2 text-body-xs text-text-grey">
-                    <summary className="cursor-pointer text-status-held hover:underline">Report missing physical stock at location</summary>
-                    <form action={handleReportShortage} className="mt-2 flex flex-wrap items-center gap-2">
-                      <input type="hidden" name="shortageLineId" value={item.id} />
-                      <label className="text-body-xs font-semibold text-on-surface">Actual units found:</label>
-                      <input
-                        type="number"
-                        name="actualFoundQty"
-                        defaultValue={scannedCount * (item.spq ?? 1)}
-                        min={0}
-                        max={item.qty}
-                        className="h-9 w-24 rounded border border-outline-variant/60 bg-surface-white px-2 font-mono text-body-sm text-on-surface"
-                      />
-                      <button
-                        type="submit"
-                        className="h-9 rounded-lg bg-status-held px-3 font-label text-body-xs font-bold text-surface-white hover:bg-status-held/90"
-                      >
-                        Update Pick Qty
-                      </button>
-                    </form>
-                  </details>
-                ) : null
-              }
+              pickListId={pickListId}
+              reportShortageAction={handleReportShortage}
             />
           </div>
         </div>
