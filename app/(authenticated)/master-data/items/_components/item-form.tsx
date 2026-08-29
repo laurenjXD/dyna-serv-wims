@@ -408,6 +408,7 @@ export function ItemForm({
               required
               maxLength={255}
               defaultValue={item?.name ?? ""}
+              placeholder="e.g. Hex Bolt M8x25"
               className={inputClass("name")}
               {...ariaProps("name")}
             />
@@ -426,6 +427,7 @@ export function ItemForm({
                 maxLength={100}
                 value={supplierItemCodeValue}
                 onChange={(e) => setSupplierItemCodeValue(e.target.value)}
+                placeholder="e.g. SUP-PART-001"
                 className={inputClass("supplierItemCode")}
               />
             </div>
@@ -441,6 +443,7 @@ export function ItemForm({
               type="text"
               maxLength={100}
               defaultValue={item?.customerItemCode ?? ""}
+              placeholder="e.g. CUST-PART-001"
               className={inputClass("customerItemCode")}
             />
           </div>
@@ -457,6 +460,7 @@ export function ItemForm({
                 maxLength={100}
                 value={dsgcItemNumberValue}
                 onChange={(e) => setDsgcItemNumberValue(e.target.value)}
+                placeholder="e.g. DSGC-TRD-00001"
                 className={inputClass("dsgcItemNumber")}
               />
             </div>
@@ -469,8 +473,9 @@ export function ItemForm({
             <textarea
               id="description"
               name="description"
-              rows={3}
+              rows={2}
               defaultValue={item?.description ?? ""}
+              placeholder="Brief description or item specifications..."
               className={inputClass("description")}
             />
           </div>
@@ -520,6 +525,7 @@ export function ItemForm({
               step="1"
               required
               defaultValue={item?.spq ?? 1}
+              placeholder="e.g. 100"
               className={inputClass("spq")}
               {...ariaProps("spq")}
             />
@@ -649,6 +655,7 @@ export function ItemForm({
               min="1"
               step="1"
               defaultValue={item?.boxesPerPallet ?? ""}
+              placeholder="e.g. 24"
               className={inputClass("boxesPerPallet")}
               {...ariaProps("boxesPerPallet")}
             />
@@ -666,6 +673,7 @@ export function ItemForm({
               min="0"
               step="0.001"
               defaultValue={item?.weightKg ?? ""}
+              placeholder="e.g. 12.5"
               className={inputClass("weightKg")}
             />
           </div>
@@ -698,6 +706,7 @@ export function ItemForm({
               step="0.01"
               value={lengthCm}
               onChange={(e) => setLengthCm(e.target.value)}
+              placeholder="e.g. 30"
               className={inputClass("lengthCm")}
               {...ariaProps("lengthCm")}
             />
@@ -716,6 +725,7 @@ export function ItemForm({
               step="0.01"
               value={widthCm}
               onChange={(e) => setWidthCm(e.target.value)}
+              placeholder="e.g. 20"
               className={inputClass("widthCm")}
               {...ariaProps("widthCm")}
             />
@@ -734,6 +744,7 @@ export function ItemForm({
               step="0.01"
               value={heightCm}
               onChange={(e) => setHeightCm(e.target.value)}
+              placeholder="e.g. 15"
               className={inputClass("heightCm")}
               {...ariaProps("heightCm")}
             />

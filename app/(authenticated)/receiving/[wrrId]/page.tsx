@@ -172,7 +172,7 @@ export default async function WrrDetailPage({ params }: PageProps) {
             </dd>
           </div>
           <div>
-            <dt className="font-label text-label text-text-grey">Staged By</dt>
+            <dt className="font-label text-label text-text-grey">Person in Charge</dt>
             <dd className="mt-1 font-body text-body-md text-on-surface">
               {wrr.stagedByDisplayName ?? (
                 <span className="font-mono text-mono-md">{wrr.stagedByUserId}</span>
@@ -254,7 +254,7 @@ export default async function WrrDetailPage({ params }: PageProps) {
       <div className="mt-6 overflow-hidden rounded-xl bg-surface-white shadow-elevation-1">
         <div className="px-6 py-4">
           <h2 className="font-heading font-semibold text-data-display text-on-surface">
-            Expected Lines ({wrr.items.length})
+            Incoming Shipment Details ({wrr.items.length})
           </h2>
         </div>
         {wrr.items.length === 0 ? (

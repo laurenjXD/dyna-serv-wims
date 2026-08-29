@@ -280,10 +280,10 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
         </div>
       </div>
 
-      {/* Expected lines section */}
-      <div className="rounded-xl bg-surface-white shadow-elevation-1 p-6">
+      {/* Incoming Shipment Details section */}
+      <div className="border-t border-outline-variant/30 pt-6">
         <h2 className="font-heading font-semibold text-data-display text-on-surface">
-          Expected Lines
+          Incoming Shipment Details
         </h2>
         <p className="mt-1 font-body text-body-sm text-text-grey">
           At least one line is required. Each line requires a lot number,

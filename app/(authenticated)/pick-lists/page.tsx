@@ -86,14 +86,14 @@ export default async function PickListsIndexPage({ searchParams }: { searchParam
       </div>
 
       <nav className="mt-6 flex gap-1 border-b border-outline-variant/30" aria-label="Pick list views">
-        <Link href="/pick-lists" className={`border-b-2 px-4 py-3 font-label text-label font-bold ${!isDeleted ? "border-brand-primary text-brand-primary" : "border-transparent text-text-grey"}`}>Active</Link>
+        <Link href="/pick-lists" className={`border-b-2 px-4 py-3 font-label text-label font-bold ${!isDeleted ? "border-brand-primary text-brand-primary" : "border-transparent text-text-grey"}`}>Open</Link>
         <Link href="/pick-lists?tab=deleted" className={`border-b-2 px-4 py-3 font-label text-label font-bold ${isDeleted ? "border-brand-primary text-brand-primary" : "border-transparent text-text-grey"}`}>Deleted</Link>
       </nav>
 
       <section className="mt-6 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
-            <p className="font-body text-body-md text-text-grey">{isDeleted ? "No deleted pick lists." : "No pick lists yet."}</p>
+            <p className="font-body text-body-md text-text-grey">{isDeleted ? "No deleted pick lists." : "No open pick lists."}</p>
             <p className="mt-2 font-body text-body-sm text-text-grey">
               Generate a pick list from Stock View after inventory has been allocated.
             </p>

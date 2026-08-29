@@ -168,14 +168,21 @@ async function OutgoingLedgerTab({
             <table className="w-full border-collapse">
               <thead>
                 <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                  {/* design.md §9 column list — Epilogue SemiBold uppercase headers per §9 */}
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                     Date/Time
                   </th>
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                    Delivery Receipt #
+                  </th>
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                    DR Status
+                  </th>
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                    DR / POD Upload
+                  </th>
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                     Transaction #
                   </th>
-                  {/* Item code — prominent first data column per design.md §9 */}
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                     Item Code
                   </th>
@@ -198,11 +205,6 @@ async function OutgoingLedgerTab({
                     Customer Organization
                   </th>
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Acknowledgement Receipt #
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Delivery Receipt</th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Upload Status</th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                     Performed By
                   </th>
                 </tr>
@@ -213,11 +215,26 @@ async function OutgoingLedgerTab({
                     <td className="px-4 py-3 font-body text-body-md text-text-grey">
                       {row.createdAt.toLocaleString()}
                     </td>
-                    {/* Roboto Mono for reference/code numbers per §9 */}
+                    <td className="px-4 py-3 font-mono text-mono-md font-bold text-on-surface">
+                      {row.pickListNumber ? `DR-${row.pickListNumber.replace(/^PL-/, '')}` : "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex rounded-full px-2 py-1 font-label text-mono-sm font-bold ${row.deliveryReceiptStatus === "uploaded" ? "bg-status-available/15 text-status-available" : "bg-status-pending/15 text-status-pending"}`}>
+                        {row.deliveryReceiptStatus === "uploaded" ? "Uploaded" : "Missing"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <form action={uploadDeliveryReceipt} encType="multipart/form-data" className="flex min-w-52 items-center gap-2">
+                        <input type="hidden" name="pickListId" value={row.pickListId ?? ""} />
+                        <input required type="file" name="deliveryReceipt" accept="application/pdf,image/png,image/jpeg" className="max-w-40 text-body-sm" />
+                        <button type="submit" disabled={!row.pickListId} className="inline-flex h-10 items-center rounded bg-primary px-3 font-label text-mono-sm font-bold text-surface-white disabled:opacity-50">
+                          Upload
+                        </button>
+                      </form>
+                    </td>
                     <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
                       {row.transactionNumber}
                     </td>
-                    {/* Item code — prominent first per design.md §9 */}
                     <td className="px-4 py-3 font-mono text-mono-md font-bold text-on-surface">
                       {row.itemCode}
                     </td>
@@ -239,14 +256,6 @@ async function OutgoingLedgerTab({
                     <td className="px-4 py-3 font-body text-body-md text-on-surface">
                       {row.customerPartyName ?? "—"}
                     </td>
-                    {/* Acknowledgement receipt — v1 not yet joined; placeholder */}
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      —
-                    </td>
-                    <td className="px-4 py-3">
-                      <form action={uploadDeliveryReceipt} encType="multipart/form-data" className="flex min-w-52 items-center gap-2"><input type="hidden" name="pickListId" value={row.pickListId ?? ""} /><input required type="file" name="deliveryReceipt" accept="application/pdf,image/png,image/jpeg" className="max-w-40 text-body-sm" /><button type="submit" disabled={!row.pickListId} className="inline-flex h-10 items-center rounded bg-primary px-3 font-label text-mono-sm font-bold text-surface-white disabled:opacity-50">Upload</button></form>
-                    </td>
-                    <td className="px-4 py-3"><span className={`inline-flex rounded-full px-2 py-1 font-label text-mono-sm font-bold ${row.deliveryReceiptStatus === "uploaded" ? "bg-status-available/15 text-status-available" : "bg-status-pending/15 text-status-pending"}`}>{row.deliveryReceiptStatus === "uploaded" ? "Uploaded" : "Missing"}</span></td>
                     <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
                       {row.performedByUserId}
                     </td>
