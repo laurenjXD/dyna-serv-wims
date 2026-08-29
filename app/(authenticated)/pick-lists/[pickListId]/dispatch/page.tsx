@@ -56,6 +56,7 @@ import {
   CheckCircle2,
   ScanLine,
   ShieldCheck,
+  Trash2,
 } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
@@ -63,7 +64,7 @@ import { db } from "@/lib/db/client";
 import { parties } from "@/lib/db/schema/parties";
 import { getPickList, getPickListItems, getPickUnitSelections } from "@/lib/db/queries/withdrawals";
 import { dispatchPickList, selectPickUnit } from "@/lib/actions/withdrawals";
-import { approvePickList } from "../../_actions";
+import { approvePickList, deletePickList } from "../../_actions";
 import { CameraScanBridge } from "@/components/floor/CameraScanBridge";
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -319,6 +320,16 @@ export default async function DispatchConfirmationPage({
               >
                 Review Pick List PDF &rarr;
               </Link>
+              <form action={deletePickList}>
+                <input type="hidden" name="pickListId" value={pickListId} />
+                <button
+                  type="submit"
+                  className="inline-flex h-12 items-center justify-center gap-1.5 rounded-xl border border-status-held/40 bg-surface-white px-4 font-label text-body-md font-semibold text-status-held hover:bg-status-held/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete Pick List
+                </button>
+              </form>
             </div>
           </div>
         )}

@@ -36,6 +36,7 @@ import { InspectionTab } from "./_components/InspectionTab";
 import { MultiItemPickListDraft } from "./_components/MultiItemPickListDraft";
 import { LotQrViewer } from "./_components/LotQrViewer";
 import { createApprovedPickList, createPickList, markPickListReadyForDispatch, requestPickListOverride } from "./actions";
+import { deletePickList } from "../pick-lists/_actions";
 
 const FLOW_LABELS: Record<string, string> = {
   vmi: "VMI",
@@ -545,35 +546,34 @@ async function PickListsTab({ createdPickListId, pickedPickListId, view }: { cre
             <tbody className="divide-y divide-outline-variant/30">
               {rows.map((row: PickListRow) => (
                 <tr key={row.id} className="hover:bg-surface-light-grey/50">
-                  {/* Pick list number — Roboto Mono for reference numbers per §9 */}
+                  {/* Pick list number — clickable link */}
                   <td className="px-4 py-3 font-mono text-mono-md font-bold text-on-surface">
-                    {row.pickListNumber}
+                    <Link
+                      href={`/pick-lists/${row.id}/dispatch`}
+                      className="text-brand-royal-blue hover:underline"
+                    >
+                      {row.pickListNumber}
+                    </Link>
                   </td>
                   <td className="px-4 py-3 font-body text-body-md text-on-surface">
                     {FLOW_LABELS[row.flowType] ?? row.flowType}
                   </td>
-                  {/* Customer party ID — mono for identifier; resolved name not yet joined */}
-                  <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                    {row.customerPartyId}
+                  {/* Customer Organization — resolved party name */}
+                  <td className="px-4 py-3 font-body text-body-md font-semibold text-on-surface">
+                    {row.customerPartyName || (
+                      <span className="font-mono text-mono-sm text-text-grey">{row.customerPartyId}</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 font-body text-body-md text-text-grey">
                     {row.createdAt.toLocaleString()}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <div className="flex justify-end gap-2">
-                      <Link
-                        href={`/pick-lists/${row.id}/print`}
-                        className="inline-flex h-11 shrink-0 items-center gap-1 whitespace-nowrap rounded border border-outline-variant bg-surface-white px-3 font-label text-label font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                      >
-                        View / PDF
-                      </Link>
-                      <form action={markPickListReadyForDispatch}>
-                        <input type="hidden" name="pickListId" value={row.id} />
-                        <button type="submit" className="inline-flex h-11 items-center gap-1 rounded bg-primary px-3 font-label text-label font-bold text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy">
-                          Mark as Picked
-                        </button>
-                      </form>
-                    </div>
+                    <Link
+                      href={`/pick-lists/${row.id}/dispatch`}
+                      className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg border border-outline-variant/50 bg-surface-white px-4 font-label text-body-sm font-semibold text-on-surface shadow-sm hover:bg-surface-light-grey hover:border-brand-navy focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+                    >
+                      Actions &rarr;
+                    </Link>
                   </td>
                 </tr>
               ))}
