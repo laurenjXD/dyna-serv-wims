@@ -9,6 +9,7 @@ import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { pickLists, pickListItems } from "@/lib/db/schema/pick_lists";
 import { getStorageClient } from "@/lib/supabase/storage";
+import { reportLocationShortage } from "@/lib/actions/withdrawals";
 
 function validReceipt(file: File) {
   return file.size > 0 && file.size <= 10 * 1024 * 1024 && ["application/pdf", "image/png", "image/jpeg"].includes(file.type);
@@ -96,6 +97,30 @@ export async function updateQueuedPickListLineItems(formData: FormData) {
   redirect(`/pick-lists/${pickListId}/dispatch?result=updated`);
 }
 
+export async function reportPickListShortage(formData: FormData) {
+  const resolver = await createPageResolver();
+  const pickListId = String(formData.get("pickListId") ?? "");
+  const pickListItemId = String(formData.get("shortageLineId") ?? "");
+  const actualFoundQty = Number(formData.get("actualFoundQty") ?? 0);
+
+  const res = await reportLocationShortage(resolver, {
+    pickListId,
+    pickListItemId,
+    actualFoundQty,
+  });
+
+  if (!res.ok) {
+    redirect(
+      `/pick-lists/${pickListId}/dispatch?result=error&reason=${encodeURIComponent(
+        res.error ?? "shortage_failed",
+      )}`,
+    );
+  }
+
+  revalidatePath(`/pick-lists/${pickListId}/dispatch`);
+  redirect(`/pick-lists/${pickListId}/dispatch?shortageReported=true`);
+}
+
 export async function deletePickList(formData: FormData) {
   const resolver = await createPageResolver();
   const permission = await requirePermission(resolver, "pick_list.execute");
@@ -108,3 +133,4 @@ export async function deletePickList(formData: FormData) {
   revalidatePath("/inventory");
   redirect("/pick-lists?deleted=success");
 }
+
