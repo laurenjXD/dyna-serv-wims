@@ -239,6 +239,14 @@ export default async function WrrDetailPage({ params }: PageProps) {
             </Link>
           )}
 
+          <Link
+            href={`/receiving/${wrrId}/pre-alert`}
+            target="_blank"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded border border-brand-navy/40 bg-surface-white px-4 font-label text-label font-bold text-brand-navy hover:bg-brand-navy/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+          >
+            Export Pre-Alert (PDF)
+          </Link>
+
           {wrr.ciplFileUrl && (
             <CiplDocumentLink onGetSignedUrl={handleGetCiplSignedUrl} />
           )}

@@ -95,6 +95,9 @@ export default async function WrrPrintPage({ params }: PageProps) {
                 padding: 0 !important;
                 margin: 0 !important;
               }
+              .client-export-hide-cbm {
+                display: none !important;
+              }
             }
           `,
         }}
@@ -286,7 +289,7 @@ export default async function WrrPrintPage({ params }: PageProps) {
                       <th className="border border-outline-variant/30 px-3 py-2 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
                         Expected Qty / UOM
                       </th>
-                      <th className="border border-outline-variant/30 px-3 py-2 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                      <th className="border border-outline-variant/30 px-3 py-2 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey client-export-hide-cbm">
                         Unit CBM
                       </th>
                       <th className="border border-outline-variant/30 px-3 py-2 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
@@ -318,7 +321,7 @@ export default async function WrrPrintPage({ params }: PageProps) {
                         <td className="border border-outline-variant/30 px-3 py-2 text-right font-mono text-mono-md text-on-surface">
                           {item.expectedQty} {item.uom}
                         </td>
-                        <td className="border border-outline-variant/30 px-3 py-2 text-right font-mono text-mono-md text-on-surface">
+                        <td className="border border-outline-variant/30 px-3 py-2 text-right font-mono text-mono-md text-on-surface client-export-hide-cbm">
                           {item.unitCbm.toFixed(4)}
                         </td>
                         <td className="border border-outline-variant/30 px-3 py-2 font-label text-label uppercase text-on-surface">
