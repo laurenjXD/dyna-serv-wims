@@ -6,13 +6,14 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, ChevronDown, PanelLeftClose, PanelLeftOpen, Search, Settings, Wifi, WifiOff } from "lucide-react";
+import { Bell, ChevronDown, PanelLeftClose, PanelLeftOpen, Settings, Wifi, WifiOff } from "lucide-react";
 import { resolveSessionPresentationTier } from "@/lib/shell/surface";
 import { isScanLoopRoute } from "@/lib/shell/scan-loop";
 import { useShellSidebar, useDesktopSidebar } from "@/lib/shell/state";
 import { useConnectivityStatus } from "@/lib/shell/use-connectivity";
 import { useShellAuthorizationContext } from "./AuthenticatedShellBoundary";
 import { ShellNavigation } from "./ShellNavigation";
+import { GlobalSearch } from "./GlobalSearch";
 import {
   resolveShellNotifications,
   resolveShellPendingApprovalCount,
@@ -190,9 +191,17 @@ export function ShellChrome({ children }: { children: ReactNode }) {
 
   return (
     <>
+      {/* Opaque desktop top buffer for the floating header's 12px viewport
+          offset. This keeps scrolled page content from showing through the
+          exposed strip without changing the header component itself. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-x-0 top-0 z-20 hidden h-5 bg-background lg:block"
+      />
+
       <header
         className={`fixed inset-x-0 top-0 z-30 isolate flex h-14 items-center gap-3 overflow-hidden bg-surface px-4 transition-[left] duration-150 motion-reduce:transition-none lg:inset-x-auto lg:top-3 lg:right-3 lg:min-h-[76px] lg:rounded-2xl lg:border-2 lg:border-brand-royal-blue/45 lg:px-7 lg:py-3 lg:shadow-[0_10px_24px_rgba(37,99,235,0.12)] before:pointer-events-none before:absolute before:left-0 before:top-0 before:z-0 before:h-1.5 before:w-28 before:rounded-br-full before:bg-brand-royal-blue/65 before:shadow-[0_4px_12px_rgba(37,99,235,0.4)] after:pointer-events-none after:absolute after:bottom-0 after:right-0 after:z-0 after:h-2 after:w-32 after:rounded-tl-full after:bg-brand-royal-blue/55 after:shadow-[0_-4px_14px_rgba(37,99,235,0.35)] ${
-          isDesktopOpen ? "lg:left-[312px]" : "lg:left-0"
+          isDesktopOpen ? "lg:left-[289px]" : "lg:left-0"
         }`}
       >
         {tier !== "floor" && (
@@ -274,18 +283,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
               {pageTitle}
             </p>
           </div>
-          <label className="mx-auto flex h-10 w-full max-w-[570px] shrink flex-1 items-center gap-2.5 rounded-full border border-brand-royal-blue/10 bg-background/70 px-3.5 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] focus-within:border-brand-royal-blue/40 focus-within:ring-2 focus-within:ring-brand-royal-blue/20">
-            <Search size={18} aria-hidden="true" className="shrink-0 text-text-secondary" />
-            <input
-              type="search"
-              aria-label="Search"
-              placeholder="Search inventory, organizations, documents…"
-              className="min-w-0 flex-1 border-0 bg-transparent p-0 font-body text-body-sm text-text-primary outline-none placeholder:text-text-secondary"
-            />
-            <kbd className="hidden items-center gap-1 rounded-md border border-border bg-surface px-1.5 py-0.5 font-mono text-mono-xs font-semibold text-text-secondary shadow-sm xl:inline-flex">
-              <span aria-hidden="true">⌘</span>K
-            </kbd>
-          </label>
+          <GlobalSearch />
           <div className="ml-auto flex min-w-0 items-center gap-3.5">
             <span
               data-testid="connectivity-indicator"

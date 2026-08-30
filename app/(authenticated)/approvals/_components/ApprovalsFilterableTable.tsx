@@ -89,10 +89,11 @@ interface ApprovalsFilterableTableProps {
   rows: ApprovalRequestRow[];
   showDeleted?: boolean;
   archiveAction?: (formData: FormData) => void | Promise<void>;
+  initialSearch?: string;
 }
 
-export function ApprovalsFilterableTable({ rows, showDeleted = false, archiveAction }: ApprovalsFilterableTableProps) {
-  const [searchQuery, setSearchQuery] = useState("");
+export function ApprovalsFilterableTable({ rows, showDeleted = false, archiveAction, initialSearch = "" }: ApprovalsFilterableTableProps) {
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [selectedReason, setSelectedReason] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("createdAt");
@@ -364,7 +365,7 @@ export function ApprovalsFilterableTable({ rows, showDeleted = false, archiveAct
                             <form action={archiveAction}>
                               <input type="hidden" name="requestId" value={req.id} />
                               <button type="submit" className="inline-flex h-11 items-center rounded border border-status-held/40 px-4 font-label text-label font-bold text-status-held hover:bg-status-held/10">
-                                Delete
+                                Archive
                               </button>
                             </form>
                           )}

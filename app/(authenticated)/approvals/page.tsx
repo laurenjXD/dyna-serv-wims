@@ -25,7 +25,7 @@ const PAGE_SIZE = 20;
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 interface PageProps {
-  searchParams: Promise<{ status?: string; type?: string; sort?: string; page?: string; tab?: string; error?: string }>;
+  searchParams: Promise<{ status?: string; type?: string; page?: string; tab?: string; error?: string; q?: string }>;
 }
 
 import { ApprovalsFilterableTable } from "./_components/ApprovalsFilterableTable";
@@ -36,6 +36,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
     page: pageParam,
     tab: tabParam,
     error: actionError,
+    q: searchQuery,
   } = await searchParams;
 
   const resolver = await createPageResolver();
@@ -77,9 +78,9 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
     }));
   } catch {
     // Keep the Open queue available while a deployment is waiting for the
-    // soft-archive migration. Deleted remains intentionally unavailable until
+    // soft-archive migration. Archived remains intentionally unavailable until
     // its durable columns exist rather than pretending the archive is empty.
-    if (showDeleted) throw new Error("Deleted approvals are not available until the database migration is applied.");
+    if (showDeleted) throw new Error("Archived approvals are not available until the database migration is applied.");
     ({ rows, total } = await listPendingApprovalRequests(db, {
       limit: PAGE_SIZE,
       offset,
@@ -94,7 +95,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
     try {
       result = await archiveExpiredApprovalRequest(await createPageResolver(), requestId);
     } catch {
-      redirect("/approvals?error=Delete%20could%20not%20be%20completed.%20Please%20try%20again.");
+      redirect("/approvals?error=Archive%20could%20not%20be%20completed.%20Please%20try%20again.");
     }
     if (result.ok) {
       redirect("/approvals?tab=deleted");
@@ -109,7 +110,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
       {/* Page header — text-headline-xl Fira Sans Bold per brand-design-system.md §2 */}
       <div>
         <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
-          {showDeleted ? "Deleted Approvals" : "Approval Queue"}
+          {showDeleted ? "Archived Approvals" : "Approval Queue"}
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">
           {showDeleted ? "Expired requests retained for audit monitoring." : "Review FIFO override requests and clear expired work safely."}
@@ -118,12 +119,12 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
 
       <nav aria-label="Approval views" className="mt-6 flex gap-1 border-b border-outline-variant/30">
         <Link href={`/approvals${typeFilter ? `?type=${typeFilter}` : ""}`} className={`inline-flex h-11 items-center border-b-2 px-4 font-label text-label font-bold ${!showDeleted ? "border-brand-navy text-brand-navy" : "border-transparent text-text-grey hover:text-on-surface"}`}>Open</Link>
-        <Link href={`/approvals?tab=deleted${typeFilter ? `&type=${typeFilter}` : ""}`} className={`inline-flex h-11 items-center border-b-2 px-4 font-label text-label font-bold ${showDeleted ? "border-brand-navy text-brand-navy" : "border-transparent text-text-grey hover:text-on-surface"}`}>Deleted</Link>
+        <Link href={`/approvals?tab=deleted${typeFilter ? `&type=${typeFilter}` : ""}`} className={`inline-flex h-11 items-center border-b-2 px-4 font-label text-label font-bold ${showDeleted ? "border-brand-navy text-brand-navy" : "border-transparent text-text-grey hover:text-on-surface"}`}>Archived</Link>
       </nav>
 
       {actionError && (
         <div role="alert" className="mt-4 rounded-xl border border-status-held/30 bg-status-held/10 px-4 py-3 font-body text-body-sm text-text-grey">
-          <span className="font-label text-label font-bold text-status-held">Delete could not be completed. </span>
+          <span className="font-label text-label font-bold text-status-held">Archive could not be completed. </span>
           {actionError}
         </div>
       )}
@@ -134,7 +135,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
       </div>
 
       <div className="mt-6">
-        <ApprovalsFilterableTable rows={rows} showDeleted={showDeleted} archiveAction={handleArchive} />
+      <ApprovalsFilterableTable rows={rows} showDeleted={showDeleted} archiveAction={handleArchive} initialSearch={searchQuery} />
       </div>
 
       {/* Pagination controls */}

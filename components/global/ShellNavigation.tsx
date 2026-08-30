@@ -33,7 +33,6 @@ import {
   Menu,
   X,
   ChevronRight,
-  Warehouse,
 } from "lucide-react";
 import type { AuthorizationContext } from "@/lib/rbac/session";
 import type { SessionPresentationTier } from "@/lib/shell/surface";
@@ -381,7 +380,6 @@ export function ShellNavigation({
             </span>
             <div className="min-w-0">
               <p className="truncate font-heading text-title-lg font-bold tracking-tight text-text-primary">Dyna-Serv WIMS</p>
-              <p className="mt-0.5 flex items-center gap-1.5 font-label text-mono-sm font-bold uppercase tracking-[0.12em] text-text-secondary"><Warehouse size={13} aria-hidden="true" />Warehouse operations</p>
             </div>
           </div>
         </div>
