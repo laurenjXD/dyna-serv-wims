@@ -6,7 +6,7 @@
 //   specs/09-approval-queue/design.md §3 (Persistence model), §5 (State machine)
 //   specs/09-approval-queue/tasks.md Testing Matrix §Unit tests
 
-import { eq, and, asc, desc, sql } from "drizzle-orm";
+import { eq, and, asc, desc, sql, isNull, isNotNull } from "drizzle-orm";
 import { approvalRequests, approvalDecisions } from "@/lib/db/schema/approvals";
 
 // Minimal structural type that both the real Drizzle db instance and test
@@ -28,6 +28,8 @@ export type ApprovalRequestRow = {
   createdAt: Date;
   requesterUserId: string;
   targetSnapshot: unknown;
+  deletedAt?: Date | null;
+  deletedByUserId?: string | null;
 };
 
 export type RequesterFifoOverrideRow = {
@@ -101,6 +103,8 @@ type RawJoinRow = {
   createdAt: Date;
   requesterUserId: string;
   targetSnapshot: unknown;
+  deletedAt: Date | null;
+  deletedByUserId: string | null;
   decisionId: string | null;
   reviewerUserId: string | null;
   outcome: string | null;
@@ -160,6 +164,43 @@ export async function listPendingApprovalRequests(
   return { rows, total: Number(countRow.count) };
 }
 
+/** Open or soft-archived approval queue rows for the reviewer UI. */
+export async function listApprovalQueueRequests(
+  db: DbLike,
+  opts: { limit: number; offset: number; approvalType?: string; deleted?: boolean },
+): Promise<{ rows: ApprovalRequestRow[]; total: number }> {
+  const deletedClause = opts.deleted
+    ? isNotNull(approvalRequests.deletedAt)
+    : isNull(approvalRequests.deletedAt);
+  const statusClause = opts.deleted
+    ? isNotNull(approvalRequests.deletedAt)
+    : eq(approvalRequests.status, "pending");
+  const whereClause = opts.approvalType
+    ? and(deletedClause, statusClause, eq(approvalRequests.approvalType, opts.approvalType))
+    : and(deletedClause, statusClause);
+  const rows = (await db
+    .select({
+      id: approvalRequests.id,
+      requestNumber: approvalRequests.requestNumber,
+      approvalType: approvalRequests.approvalType,
+      reason: approvalRequests.reason,
+      status: approvalRequests.status,
+      expiryAt: approvalRequests.expiryAt,
+      createdAt: approvalRequests.createdAt,
+      requesterUserId: approvalRequests.requesterUserId,
+      targetSnapshot: approvalRequests.targetSnapshot,
+      deletedAt: approvalRequests.deletedAt,
+      deletedByUserId: approvalRequests.deletedByUserId,
+    })
+    .from(approvalRequests)
+    .where(whereClause)
+    .orderBy(asc(approvalRequests.createdAt))
+    .limit(opts.limit)
+    .offset(opts.offset)) as ApprovalRequestRow[];
+  const [countRow] = await db.select({ count: sql<string>`count(*)` }).from(approvalRequests).where(whereClause);
+  return { rows, total: Number(countRow.count) };
+}
+
 // ---------------------------------------------------------------------------
 // getApprovalRequest
 // ---------------------------------------------------------------------------
@@ -186,6 +227,8 @@ export async function getApprovalRequest(
       createdAt: approvalRequests.createdAt,
       requesterUserId: approvalRequests.requesterUserId,
       targetSnapshot: approvalRequests.targetSnapshot,
+      deletedAt: approvalRequests.deletedAt,
+      deletedByUserId: approvalRequests.deletedByUserId,
       // Decision fields — aliased to avoid collision with request fields
       decisionId: approvalDecisions.id,
       reviewerUserId: approvalDecisions.reviewerUserId,
@@ -228,6 +271,8 @@ export async function getApprovalRequest(
     createdAt: first.createdAt,
     requesterUserId: first.requesterUserId,
     targetSnapshot: first.targetSnapshot,
+    deletedAt: first.deletedAt,
+    deletedByUserId: first.deletedByUserId,
     decisions,
   };
 }

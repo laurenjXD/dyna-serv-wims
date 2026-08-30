@@ -12,6 +12,14 @@ transactions as their current authorities. Planned migration: `0043`.
 
 Every merge conflict and major revision, dated, with the resolution. This is the audit trail for "why does the spec say X" when X isn't obvious from the doc alone.
 
+## Approved cross-track request: expired approval soft archive (2026-08-30)
+
+The Product Owner approved an approval-queue amendment: an authorized reviewer
+may move only expired approval requests into a read-only Deleted tab for
+monitoring. The operation is a soft archive that preserves the request,
+decision history, and actor attribution; active, approved, rejected, consumed,
+and already archived requests remain non-deletable. Planned migration: `0044`.
+
 ## Adoption of CIPL and DRA Document Parsing — Excel & PDF (2026-08-28)
 
 **What changed**: Updated `07-incoming-receiving` (R1a) and `08-outgoing-withdrawal-and-two-stage-commitment` (R1 item 8) requirements, design, and task specs to adopt structured document parsing for Commercial Invoice & Packing List (CIPL) in WRR staging and Delivery Release Advice (DRA) in Pick List creation.

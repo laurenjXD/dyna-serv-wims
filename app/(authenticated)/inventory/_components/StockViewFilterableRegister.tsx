@@ -432,9 +432,9 @@ function InventoryItemDetails({ item }: { item: GroupedItem }) {
         {item.lots.map((lot) => (
           <details
             key={lot.lotId}
-            className="group rounded-lg border border-outline-variant/30 bg-surface-white shadow-elevation-1"
+            className="group w-full max-w-md rounded-lg border border-outline-variant/30 bg-surface-white shadow-elevation-1"
           >
-            <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 outline-none transition-colors hover:bg-surface-light-grey/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy [&::-webkit-details-marker]:hidden">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 outline-none transition-colors hover:bg-surface-light-grey/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy [&::-webkit-details-marker]:hidden">
               <span className="flex min-w-0 items-center gap-2.5">
                 <ChevronDown
                   size={17}

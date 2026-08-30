@@ -23,7 +23,7 @@ import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { getApprovalRequest } from "@/lib/db/queries/approvals";
-import { approveRequest, rejectRequest } from "@/lib/actions/approvals";
+import { approveRequest, rejectRequest, archiveExpiredApprovalRequest } from "@/lib/actions/approvals";
 import { listStockView, buildStockAllocationPreview } from "@/lib/db/queries/inventory";
 import { lotLocationBalances } from "@/lib/db/schema/lot_location_balances";
 
@@ -172,6 +172,8 @@ export default async function ApprovalDetailPage({ params, searchParams }: PageP
 
   const now = new Date();
   const isExpired = request.expiryAt.getTime() <= now.getTime();
+  const isDeleted = Boolean(request.deletedAt);
+  const canArchive = !isDeleted && (request.status === "expired" || (request.status === "pending" && isExpired));
 
   // Self-approval and expiry guards are UX only. Server actions re-check both
   // conditions authoritatively before recording a decision.
@@ -267,6 +269,13 @@ export default async function ApprovalDetailPage({ params, searchParams }: PageP
     }
   }
 
+  async function handleArchive() {
+    "use server";
+    const result = await archiveExpiredApprovalRequest(await createPageResolver(), approvalId);
+    if (result.ok) redirect("/approvals?tab=deleted");
+    redirect(`/approvals/${approvalId}?error=${encodeURIComponent(result.error)}`);
+  }
+
   return (
     <div className="mx-auto max-w-container">
       {/* Back link — ChevronLeft + touch target h-11 (44px) */}
@@ -276,7 +285,7 @@ export default async function ApprovalDetailPage({ params, searchParams }: PageP
           className="inline-flex h-11 items-center gap-1 rounded font-label text-label text-brand-navy hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
         >
           <ChevronLeft size={16} aria-hidden="true" />
-          Approval Queue
+          {isDeleted ? "Deleted Approvals" : "Approval Queue"}
         </Link>
       </nav>
 
@@ -734,13 +743,28 @@ export default async function ApprovalDetailPage({ params, searchParams }: PageP
 
       {/* Expiry/terminal notice — expired requests are read-only and cannot be
           approved or rejected. */}
-      {(isExpired || request.status !== "pending") && (
+      {(isExpired || request.status !== "pending" || isDeleted) && (
         <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-surface-light-grey p-6">
-          {isExpired && request.status === "pending" ? (
+          {isDeleted ? (
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <p className="font-body text-body-md text-text-grey">This request is in the <span className="font-label text-label uppercase text-status-held">DELETED</span> archive for monitoring. Its history remains read-only.</p>
+              <Link href="/approvals?tab=deleted" className="inline-flex h-11 items-center rounded-xl border border-outline-variant/30 px-4 font-label text-label font-bold text-on-surface hover:bg-surface-white">Back to Deleted</Link>
+            </div>
+          ) : isExpired && request.status === "pending" ? (
             <p className="font-body text-body-md text-text-grey">This request is <span className="font-label text-label uppercase text-status-held">EXPIRED</span> and can no longer be approved or rejected.</p>
           ) : (
             <p className="font-body text-body-md text-text-grey">This request is <span className="font-label text-label uppercase">{STATUS_LABELS[status] ?? status.toUpperCase()}</span> and no further action is available.</p>
           )}
+        </div>
+      )}
+
+      {canArchive && (
+        <div className="mt-6 rounded-2xl border border-status-held/25 bg-status-held/5 p-6">
+          <h2 className="font-heading font-semibold text-data-display text-on-surface">Move to Deleted</h2>
+          <p className="mt-1 font-body text-body-sm text-text-grey">This expired request can be removed from Open while preserving its audit history.</p>
+          <form action={handleArchive} className="mt-4">
+            <button type="submit" className="inline-flex h-11 items-center rounded-xl bg-status-held px-5 font-label text-label font-bold text-surface-white hover:opacity-90">Delete expired request</button>
+          </form>
         </div>
       )}
 

@@ -1,7 +1,7 @@
 # Approval Queue — Design
 
 Status: Approved
-Updated: 2026-08-05
+Updated: 2026-08-30 (Approved soft-delete monitoring amendment)
 
 ## 1. Design intent
 
@@ -38,6 +38,7 @@ Stores one durable request:
 | scope | Party/flow scope reference evaluated by RBAC/RLS |
 | requester | Auth user ID, created timestamp, reason |
 | lifecycle | Pending/approved/rejected/cancelled/expired/superseded, expiry, consumed state |
+| monitoring | Nullable soft-archive timestamp and archiving reviewer; never a physical delete |
 | tracing | Correlation ID, source command/reference |
 
 The target snapshot must be bounded and redacted. It is review evidence, not a duplicate authoritative target record.
@@ -81,6 +82,8 @@ Stores append-only decisions:
 | tracing | Correlation ID and source request |
 
 No update/delete path is available to ordinary users or administrators for historical decisions. If a correction is required, a new compensating/audit event is recorded.
+
+Expired approval requests may be soft-archived by an authorized reviewer. The archive records `deleted_at` and `deleted_by_user_id` on `approval_requests`; it does not remove the request, its decisions, or its audit history. Archived requests are excluded from the Open queue and appear in a read-only Deleted tab. The archive command atomically requires an expired `pending`/`expired` request and a null `deleted_at`; active and other terminal requests cannot be archived.
 
 `consumed_at` belongs on the `approval_decisions` row. The pick-list generation command sets it atomically in the same transaction that begins the Stage 1 commitment — a second generation attempt against the same decision row checks `consumed_at IS NOT NULL` before proceeding and fails with a consumption-conflict error without touching the decision record. The invariant that a decision cannot be consumed twice is enforced at the database level, not only by application logic.
 
@@ -186,6 +189,8 @@ The queue is an office surface under `05`:
 - decision forms require accessible reason/comment fields when policy requires them.
 
 The UI may optimistically refresh presentation after a decision, but the server response is authoritative. A stale request shows that it must be refreshed; it does not present an approval button that can succeed against an old target.
+
+The queue has Open and Deleted tabs. Open shows non-archived requests, including expired requests awaiting cleanup. An expired row exposes a Delete action; the action moves it to Deleted and redirects to that tab. Deleted shows the same durable request and history through a View action only.
 
 ## 8. Realtime, notifications, and fallback
 

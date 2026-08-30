@@ -1,7 +1,7 @@
 # Approval Queue — Requirements
 
 Status: Approved
-Updated: 2026-08-14 (Aligned with Unified UI/UX & Visual Design System)
+Updated: 2026-08-30 (Approved soft-delete monitoring amendment)
 
 ## 1. Purpose and scope
 
@@ -52,6 +52,13 @@ Across all user-facing approval screens, tables, headers, and UI feedback:
 3. All error states, rejection prompts, and failure boundaries display 3-component error feedback (**What happened**, **Why it failed**, **Next Action / Solution**).
 4. Visual design uses Level 0 Cream White (`#FFF7ED`) background, Level 1 Solid White (`#FFFFFF`) cards with `#2563EB` Vibrant Blue accents, and Etna Sans Serif + Glacial Indifference typography.
 
+### R3. Expired request monitoring
+
+1. An authorized reviewer may move a request to the Deleted tab only after its expiry time has passed (or after the request has already entered the `expired` state).
+2. Moving a request to Deleted is a soft archive: the approval request, decisions, audit history, and original requester/reviewer attribution remain durable and monitorable.
+3. Deleted requests are read-only and are excluded from the Open queue. They remain available through the Deleted tab and detail view for audit monitoring.
+4. The server revalidates capability, expiry, current state, and non-deleted status atomically; clients cannot archive active, approved, rejected, consumed, or already archived requests by changing URL or form values.
+
 ## 6. Acceptance criteria
 
 - [ ] Requesters can submit FIFO override requests; reviewers can approve or reject.
@@ -59,3 +66,4 @@ Across all user-facing approval screens, tables, headers, and UI feedback:
 - [ ] User-facing labels use Organization, Inventory Model, and Organization Portal exclusively.
 - [ ] 3-component error feedback is present on all error/rejection prompts.
 - [ ] Visual design system rules (#2563EB, #0F172A, #64748B, #FFF7ED, #FFFFFF) are fully applied.
+- [ ] Expired requests can be soft-archived into a read-only Deleted tab without deleting approval history.
