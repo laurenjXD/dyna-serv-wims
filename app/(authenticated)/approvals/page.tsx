@@ -25,7 +25,7 @@ const PAGE_SIZE = 20;
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 interface PageProps {
-  searchParams: Promise<{ status?: string; type?: string; sort?: string; page?: string; tab?: string }>;
+  searchParams: Promise<{ status?: string; type?: string; sort?: string; page?: string; tab?: string; error?: string }>;
 }
 
 import { ApprovalsFilterableTable } from "./_components/ApprovalsFilterableTable";
@@ -35,6 +35,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
     type: typeFilter,
     page: pageParam,
     tab: tabParam,
+    error: actionError,
   } = await searchParams;
 
   const resolver = await createPageResolver();
@@ -89,7 +90,12 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
   async function handleArchive(formData: FormData) {
     "use server";
     const requestId = String(formData.get("requestId") ?? "");
-    const result = await archiveExpiredApprovalRequest(await createPageResolver(), requestId);
+    let result;
+    try {
+      result = await archiveExpiredApprovalRequest(await createPageResolver(), requestId);
+    } catch {
+      redirect("/approvals?error=Delete%20could%20not%20be%20completed.%20Please%20try%20again.");
+    }
     if (result.ok) {
       redirect("/approvals?tab=deleted");
     }
@@ -114,6 +120,13 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
         <Link href={`/approvals${typeFilter ? `?type=${typeFilter}` : ""}`} className={`inline-flex h-11 items-center border-b-2 px-4 font-label text-label font-bold ${!showDeleted ? "border-brand-navy text-brand-navy" : "border-transparent text-text-grey hover:text-on-surface"}`}>Open</Link>
         <Link href={`/approvals?tab=deleted${typeFilter ? `&type=${typeFilter}` : ""}`} className={`inline-flex h-11 items-center border-b-2 px-4 font-label text-label font-bold ${showDeleted ? "border-brand-navy text-brand-navy" : "border-transparent text-text-grey hover:text-on-surface"}`}>Deleted</Link>
       </nav>
+
+      {actionError && (
+        <div role="alert" className="mt-4 rounded-xl border border-status-held/30 bg-status-held/10 px-4 py-3 font-body text-body-sm text-text-grey">
+          <span className="font-label text-label font-bold text-status-held">Delete could not be completed. </span>
+          {actionError}
+        </div>
+      )}
 
       <div role="status" className="mt-6 flex items-start gap-3 rounded border border-status-held/30 bg-status-held/10 px-4 py-4">
         <span className="font-heading text-body-lg text-status-held" aria-hidden="true">⚖</span>

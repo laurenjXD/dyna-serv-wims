@@ -230,25 +230,34 @@ export async function archiveExpiredApprovalRequest(
   requestId: string,
   rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<ApprovalActionResult> {
-  const authResult = await checkApproveCapability(resolver);
-  if (!authResult.ok) return authResult;
-  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
-    const db = tx.db as DbLike;
-    const [archived] = await db
-      .update(approvalRequests)
-      .set({ status: "expired", deletedAt: new Date(), deletedByUserId: authResult.userId })
-      .where(and(
-        eq(approvalRequests.id, requestId),
-        isNull(approvalRequests.deletedAt),
-        or(
-          eq(approvalRequests.status, "expired"),
-          and(eq(approvalRequests.status, "pending"), lte(approvalRequests.expiryAt, new Date())),
-        ),
-      ))
-      .returning({ id: approvalRequests.id });
-    if (archived) return { ok: true } as const;
-    return { ok: false, error: "Only expired pending requests can be deleted" } as const;
-  });
-  if (rlsResult.kind === "unauthenticated") return { ok: false, error: "Forbidden" };
-  return rlsResult.value;
+  try {
+    const authResult = await checkApproveCapability(resolver);
+    if (!authResult.ok) return authResult;
+    const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+      const db = tx.db as DbLike;
+      const [archived] = await db
+        .update(approvalRequests)
+        .set({ status: "expired", deletedAt: new Date(), deletedByUserId: authResult.userId })
+        .where(and(
+          eq(approvalRequests.id, requestId),
+          isNull(approvalRequests.deletedAt),
+          or(
+            eq(approvalRequests.status, "expired"),
+            and(eq(approvalRequests.status, "pending"), lte(approvalRequests.expiryAt, new Date())),
+          ),
+        ))
+        .returning({ id: approvalRequests.id });
+      if (archived) return { ok: true } as const;
+      return { ok: false, error: "Only expired pending requests can be deleted" } as const;
+    });
+    if (rlsResult.kind === "unauthenticated") return { ok: false, error: "Forbidden" };
+    return rlsResult.value;
+  } catch {
+    // A missing migration, RLS denial, or database failure must not turn a
+    // reviewer action into a Next.js error page.
+    return {
+      ok: false,
+      error: "Delete is temporarily unavailable. Please verify the approval archive database migration, then try again.",
+    };
+  }
 }

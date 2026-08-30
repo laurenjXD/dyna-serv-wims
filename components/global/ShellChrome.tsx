@@ -191,7 +191,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
   return (
     <>
       <header
-        className={`fixed inset-x-0 top-0 z-30 isolate flex h-14 items-center gap-3 overflow-hidden bg-surface px-4 transition-[left] duration-150 motion-reduce:transition-none lg:inset-x-auto lg:right-0 lg:min-h-[68px] lg:rounded-b-2xl lg:border-2 lg:border-t-0 lg:border-brand-royal-blue/45 lg:px-7 lg:py-2.5 lg:shadow-[0_3px_12px_rgba(37,99,235,0.08)] before:pointer-events-none before:absolute before:left-0 before:top-0 before:z-0 before:h-8 before:w-36 before:rounded-br-[28px] before:bg-brand-royal-blue/10 after:pointer-events-none after:absolute after:bottom-0 after:right-0 after:z-0 after:h-8 after:w-36 after:rounded-tl-[28px] after:bg-brand-royal-blue/12 ${
+        className={`fixed inset-x-0 top-0 z-30 isolate flex h-14 items-center gap-3 overflow-hidden bg-surface px-4 transition-[left] duration-150 motion-reduce:transition-none lg:inset-x-auto lg:top-3 lg:right-3 lg:min-h-[76px] lg:rounded-2xl lg:border-2 lg:border-brand-royal-blue/45 lg:px-7 lg:py-3 lg:shadow-[0_10px_24px_rgba(37,99,235,0.12)] before:pointer-events-none before:absolute before:left-0 before:top-0 before:z-0 before:h-1.5 before:w-28 before:rounded-br-full before:bg-brand-royal-blue/65 before:shadow-[0_4px_12px_rgba(37,99,235,0.4)] after:pointer-events-none after:absolute after:bottom-0 after:right-0 after:z-0 after:h-2 after:w-32 after:rounded-tl-full after:bg-brand-royal-blue/55 after:shadow-[0_-4px_14px_rgba(37,99,235,0.35)] ${
           isDesktopOpen ? "lg:left-[312px]" : "lg:left-0"
         }`}
       >
@@ -459,7 +459,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
       <main
         id="main-content"
         data-surface={tier}
-        className={`min-h-screen pt-14 transition-[padding-left] duration-150 motion-reduce:transition-none lg:pr-6 lg:pt-[84px] ${
+        className={`min-h-screen pt-14 transition-[padding-left] duration-150 motion-reduce:transition-none lg:pr-6 lg:pt-[106px] ${
           isDesktopOpen ? "lg:pl-[312px]" : "lg:pl-6"
         } ${showFloorTabBar ? "pb-20" : "lg:pb-6"} ${
           tier === "floor" ? "bg-surface" : "bg-background"
