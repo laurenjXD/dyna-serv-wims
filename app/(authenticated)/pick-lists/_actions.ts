@@ -36,6 +36,33 @@ export async function uploadDeliveryReceipt(formData: FormData) {
   redirect("/outgoing?tab=ledger&receiptUpload=success");
 }
 
+export async function removeDeliveryReceipt(formData: FormData) {
+  const resolver = await createPageResolver();
+  const permission = await requirePermission(resolver, "pick_list.execute");
+  if (permission.kind !== "authorized") redirect("/outgoing?tab=ledger&receiptUpload=forbidden");
+
+  const pickListId = String(formData.get("pickListId") ?? "");
+  if (!pickListId) redirect("/outgoing?tab=ledger&receiptUpload=failed");
+
+  const [pickList] = await db
+    .select({ deliveryReceiptPath: pickLists.deliveryReceiptPath })
+    .from(pickLists)
+    .where(eq(pickLists.id, pickListId));
+  if (!pickList?.deliveryReceiptPath) redirect("/outgoing?tab=ledger&receiptUpload=failed");
+
+  const storage = await getStorageClient();
+  const removal = await storage.from("delivery-receipts").remove([pickList.deliveryReceiptPath]);
+  if (removal.error) redirect("/outgoing?tab=ledger&receiptUpload=failed");
+
+  await db
+    .update(pickLists)
+    .set({ deliveryReceiptPath: null, deliveryReceiptStatus: "missing", deliveryReceiptUploadedAt: null, updatedAt: new Date() })
+    .where(eq(pickLists.id, pickListId));
+  revalidatePath("/outgoing");
+  revalidatePath("/pick-lists");
+  redirect("/outgoing?tab=ledger&receiptUpload=removed");
+}
+
 export async function approvePickList(formData: FormData) {
   const resolver = await createPageResolver();
   const permission = await requirePermission(resolver, "pick_list.execute");
@@ -133,4 +160,3 @@ export async function deletePickList(formData: FormData) {
   revalidatePath("/inventory");
   redirect("/pick-lists?deleted=success");
 }
-

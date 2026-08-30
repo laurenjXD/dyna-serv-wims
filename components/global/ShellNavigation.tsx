@@ -119,6 +119,12 @@ function isNavigableEntry(entry: RouteRegistryEntry): boolean {
   return !entry.path.includes("[");
 }
 
+function shortcutLabel(index: number): string {
+  if (index < 9) return `Ctrl+${index + 1}`;
+  if (index === 9) return "Ctrl+0";
+  return `Ctrl+Shift+${index - 9}`;
+}
+
 /**
  * Detail and creation routes intentionally do not appear as separate sidebar
  * destinations. Keep their owning work area highlighted instead of leaving
@@ -202,7 +208,7 @@ function NavLink({
       )}
       {shortcutNumber && (
         <kbd className="pointer-events-none absolute right-8 top-1/2 hidden -translate-y-1/2 rounded border border-border bg-surface px-1.5 py-1 font-mono text-[11px] font-semibold leading-none text-text-secondary opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 xl:inline-flex">
-          Alt+{shortcutNumber}
+          {shortcutLabel(shortcutNumber - 1)}
         </kbd>
       )}
       <ChevronRight size={16} aria-hidden="true" className={`shrink-0 motion-safe:transition-transform motion-safe:duration-150 ${isActive ? "translate-x-0 text-primary" : "-translate-x-1 text-text-secondary/40 opacity-0 group-hover:translate-x-0 group-hover:opacity-100"}`} />
@@ -320,7 +326,7 @@ export function ShellNavigation({
   const activeId = resolveNavigationActiveId(currentPath, resolveActiveRouteId(currentPath));
   const sections = groupRoutesForSidebar(presented);
   const roleLabel = roleDisplayLabel(activeRoleKeys);
-  const shortcutEntries = presented.slice(0, 9);
+  const shortcutEntries = presented;
   const shortcutNumberById = new Map(
     shortcutEntries.map((entry, index) => [entry.id, index + 1] as const),
   );
@@ -337,10 +343,11 @@ export function ShellNavigation({
       ) {
         return;
       }
-      if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      if (!event.ctrlKey || event.metaKey) return;
       const number = Number(event.key);
-      if (!Number.isInteger(number) || number < 1 || number > shortcutEntries.length) return;
-      const entry = shortcutEntries[number - 1];
+      if (!Number.isInteger(number) || number < 0 || number > 9) return;
+      const index = event.shiftKey ? number + 9 : number === 0 ? 9 : number - 1;
+      const entry = shortcutEntries[index];
       if (!entry) return;
       event.preventDefault();
       router.push(entry.path);

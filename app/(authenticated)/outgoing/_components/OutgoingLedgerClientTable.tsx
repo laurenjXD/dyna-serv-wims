@@ -15,6 +15,7 @@ import type { OutgoingLedgerRow } from "@/lib/db/queries/withdrawals";
 interface OutgoingLedgerClientTableProps {
   rows: OutgoingLedgerRow[];
   uploadDeliveryReceiptAction: (formData: FormData) => void;
+  removeDeliveryReceiptAction: (formData: FormData) => void;
 }
 
 type SortField =
@@ -32,8 +33,10 @@ type SortDirection = "asc" | "desc";
 export function OutgoingLedgerClientTable({
   rows,
   uploadDeliveryReceiptAction,
+  removeDeliveryReceiptAction,
 }: OutgoingLedgerClientTableProps) {
   const [selectedDrNumber, setSelectedDrNumber] = useState<string | null>(null);
+  const [selectedReceipt, setSelectedReceipt] = useState<OutgoingLedgerRow | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "uploaded" | "missing">("all");
   const [sortField, setSortField] = useState<SortField>("createdAt");
@@ -303,12 +306,12 @@ export function OutgoingLedgerClientTable({
                       <td className="whitespace-nowrap px-4 py-3 font-body text-body-md text-text-grey">
                         {row.createdAt.toLocaleString()}
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
+                      <td className="px-4 py-3 align-top">
+                        <div className="flex min-w-0 items-center gap-2">
                           <button
                             type="button"
                             onClick={() => setSelectedDrNumber(drKey)}
-                            className="group flex items-center gap-1.5 font-mono text-mono-md font-bold text-brand-navy hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy rounded"
+                            className="group flex items-center gap-1.5 whitespace-nowrap rounded font-mono text-mono-md font-bold text-brand-navy hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
                             title="Click to view all items associated with this Delivery Receipt"
                           >
                             <FileText className="h-4 w-4 text-brand-navy/70 group-hover:text-brand-navy" />
@@ -318,7 +321,7 @@ export function OutgoingLedgerClientTable({
                             <button
                               type="button"
                               onClick={() => setSelectedDrNumber(drKey)}
-                              className="inline-flex items-center rounded-full bg-brand-navy/10 px-2 py-0.5 font-label text-label-xs font-semibold text-brand-navy hover:bg-brand-navy/20"
+                              className="inline-flex items-center whitespace-nowrap rounded-full bg-brand-navy/10 px-2 py-0.5 font-label text-label-xs font-semibold text-brand-navy hover:bg-brand-navy/20"
                               title={`${groupCount} items dispatched under this DR`}
                             >
                               {groupCount} items
@@ -338,27 +341,52 @@ export function OutgoingLedgerClientTable({
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <form
-                          action={uploadDeliveryReceiptAction}
-                          encType="multipart/form-data"
-                          className="flex min-w-52 items-center gap-2"
-                        >
-                          <input type="hidden" name="pickListId" value={row.pickListId ?? ""} />
-                          <input
-                            required
-                            type="file"
-                            name="deliveryReceipt"
-                            accept="application/pdf,image/png,image/jpeg"
-                            className="max-w-40 text-body-sm"
-                          />
-                          <button
-                            type="submit"
-                            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-brand-navy/30 bg-surface-white px-3 font-label text-body-xs font-bold text-brand-navy hover:bg-brand-navy/5"
+                        {row.deliveryReceiptPath ? (
+                          <div className="flex flex-wrap items-center gap-2">
+                            {row.deliveryReceiptUrl ? (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedReceipt(row)}
+                                className="inline-flex h-9 items-center whitespace-nowrap rounded-lg border border-brand-navy/30 bg-surface-white px-3 font-label text-body-xs font-bold text-brand-navy hover:bg-brand-navy/5"
+                              >
+                                View
+                              </button>
+                            ) : (
+                              <span className="font-body text-body-xs text-text-grey">View unavailable</span>
+                            )}
+                            <form action={removeDeliveryReceiptAction}>
+                              <input type="hidden" name="pickListId" value={row.pickListId ?? ""} />
+                              <button
+                                type="submit"
+                                className="inline-flex h-9 items-center whitespace-nowrap rounded-lg border border-status-held/40 bg-surface-white px-3 font-label text-body-xs font-bold text-status-held hover:bg-status-held/5"
+                              >
+                                Remove
+                              </button>
+                            </form>
+                          </div>
+                        ) : (
+                          <form
+                            action={uploadDeliveryReceiptAction}
+                            encType="multipart/form-data"
+                            className="flex min-w-0 max-w-[360px] flex-wrap items-center gap-2"
                           >
-                            <Upload className="h-3.5 w-3.5" />
-                            Upload
-                          </button>
-                        </form>
+                            <input type="hidden" name="pickListId" value={row.pickListId ?? ""} />
+                            <input
+                              required
+                              type="file"
+                              name="deliveryReceipt"
+                              accept="application/pdf,image/png,image/jpeg"
+                              className="h-9 min-w-0 max-w-[190px] flex-1 overflow-hidden rounded-lg border border-outline-variant/40 bg-surface-white px-1 text-xs text-text-grey file:mr-1.5 file:h-8 file:rounded-md file:border-0 file:bg-surface-light-grey file:px-2 file:font-label file:text-xs file:font-semibold file:text-on-surface"
+                            />
+                            <button
+                              type="submit"
+                              className="inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-brand-navy/30 bg-surface-white px-3 font-label text-body-xs font-bold text-brand-navy hover:bg-brand-navy/5"
+                            >
+                              <Upload className="h-3.5 w-3.5" />
+                              Upload
+                            </button>
+                          </form>
+                        )}
                       </td>
                       <td className="px-4 py-3 font-mono text-mono-md text-text-grey">
                         {row.transactionNumber}
@@ -385,7 +413,7 @@ export function OutgoingLedgerClientTable({
                         {row.customerPartyName ?? "—"}
                       </td>
                       <td className="px-4 py-3 font-body text-body-md text-text-grey">
-                        {row.performedByUserId}
+                        <span title={row.performedByUserId}>{row.performedByDisplayName ?? row.performedByUserId}</span>
                       </td>
                     </tr>
                   );
@@ -458,13 +486,37 @@ export function OutgoingLedgerClientTable({
                       <span className="text-body-xs text-text-grey">
                         {row.createdAt.toLocaleDateString()}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedDrNumber(drKey)}
-                        className="inline-flex h-9 items-center rounded-lg border border-outline-variant/60 bg-surface-white px-3 font-label text-label-xs font-bold text-brand-navy hover:bg-surface-light-grey"
-                      >
-                        View DR Details &rarr;
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {row.deliveryReceiptPath ? (
+                          <>
+                            {row.deliveryReceiptUrl ? (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedReceipt(row)}
+                                className="inline-flex h-9 items-center rounded-lg border border-brand-navy/30 bg-surface-white px-3 font-label text-label-xs font-bold text-brand-navy hover:bg-brand-navy/5"
+                              >
+                                View
+                              </button>
+                            ) : null}
+                            <form action={removeDeliveryReceiptAction}>
+                              <input type="hidden" name="pickListId" value={row.pickListId ?? ""} />
+                              <button
+                                type="submit"
+                                className="inline-flex h-9 items-center rounded-lg border border-status-held/40 bg-surface-white px-3 font-label text-label-xs font-bold text-status-held hover:bg-status-held/5"
+                              >
+                                Remove
+                              </button>
+                            </form>
+                          </>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedDrNumber(drKey)}
+                          className="inline-flex h-9 items-center rounded-lg border border-outline-variant/60 bg-surface-white px-3 font-label text-label-xs font-bold text-brand-navy hover:bg-surface-light-grey"
+                        >
+                          View DR Details &rarr;
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -473,6 +525,39 @@ export function OutgoingLedgerClientTable({
           </div>
         )}
       </div>
+
+      {selectedReceipt?.deliveryReceiptUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-surface-white shadow-elevation-5">
+            <div className="flex items-start justify-between gap-4 border-b border-outline-variant/30 bg-surface-light-grey px-5 py-4">
+              <div>
+                <span className="font-label text-label-xs font-bold uppercase tracking-wider text-text-grey">
+                  Delivery Receipt
+                </span>
+                <h2 className="font-mono text-headline-sm font-bold text-brand-navy">
+                  {selectedReceipt.pickListNumber ? `DR-${selectedReceipt.pickListNumber.replace(/^PL-/, "")}` : `TX-${selectedReceipt.transactionNumber}`}
+                </h2>
+                <p className="mt-1 font-body text-body-sm text-text-grey">
+                  Uploaded: {selectedReceipt.deliveryReceiptUploadedAt?.toLocaleString() ?? "Date unavailable"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedReceipt(null)}
+                className="rounded-lg p-2 text-text-grey hover:bg-outline-variant/20 hover:text-on-surface focus:outline-none"
+                aria-label="Close receipt viewer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <iframe
+              title="Uploaded delivery receipt"
+              src={selectedReceipt.deliveryReceiptUrl}
+              className="min-h-[65vh] w-full border-0"
+            />
+          </div>
+        </div>
+      )}
 
       {/* ── DR Group Items Modal ───────────────────────────────────────── */}
       {selectedDrNumber && activeDrMeta && (

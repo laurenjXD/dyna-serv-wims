@@ -28,7 +28,8 @@ import { listOutgoingLedger } from "@/lib/actions/withdrawals";
 import { listPickLists, type OutgoingLedgerRow } from "@/lib/db/queries/withdrawals";
 import { PickQueueSection } from "./_components/PickQueueSection";
 import { OutgoingLedgerClientTable } from "./_components/OutgoingLedgerClientTable";
-import { uploadDeliveryReceipt } from "../pick-lists/_actions";
+import { removeDeliveryReceipt, uploadDeliveryReceipt } from "../pick-lists/_actions";
+import { getStorageClient } from "@/lib/supabase/storage";
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -70,9 +71,9 @@ export default async function OutgoingPage({
           href="/outgoing"
           role="tab"
           aria-selected={activeTab === "dispatch"}
-          className={`border-b-2 px-4 py-3 font-label text-label font-bold transition-colors ${
+            className={`border-b-2 px-4 py-3 font-label text-label font-bold transition-colors ${
             activeTab === "dispatch"
-              ? "border-brand-primary text-brand-primary"
+              ? "border-brand-navy text-brand-navy"
               : "border-transparent text-text-grey hover:text-on-surface"
           }`}
         >
@@ -82,9 +83,9 @@ export default async function OutgoingPage({
           href="/outgoing?tab=ledger"
           role="tab"
           aria-selected={activeTab === "ledger"}
-          className={`border-b-2 px-4 py-3 font-label text-label font-bold transition-colors ${
+            className={`border-b-2 px-4 py-3 font-label text-label font-bold transition-colors ${
             activeTab === "ledger"
-              ? "border-brand-primary text-brand-primary"
+              ? "border-brand-navy text-brand-navy"
               : "border-transparent text-text-grey hover:text-on-surface"
           }`}
         >
@@ -135,6 +136,18 @@ async function OutgoingLedgerTab({
     deliveryReceiptStatus: receiptStatus === "uploaded" || receiptStatus === "missing" ? receiptStatus : undefined,
   });
   const rows: OutgoingLedgerRow[] = "rows" in ledgerResult ? ledgerResult.rows : [];
+  const storage = await getStorageClient();
+  const signedUrls = new Map<string, string>();
+  for (const row of rows) {
+    if (row.deliveryReceiptPath && !signedUrls.has(row.deliveryReceiptPath)) {
+      const result = await storage.from("delivery-receipts").createSignedUrl(row.deliveryReceiptPath, 60 * 60);
+      if (result.data?.signedUrl) signedUrls.set(row.deliveryReceiptPath, result.data.signedUrl);
+    }
+  }
+  const rowsWithReceiptUrls = rows.map((row) => ({
+    ...row,
+    deliveryReceiptUrl: row.deliveryReceiptPath ? signedUrls.get(row.deliveryReceiptPath) ?? null : null,
+  }));
 
   return (
     <div className="mt-6">
@@ -148,11 +161,12 @@ async function OutgoingLedgerTab({
         <button type="submit" className="h-11 rounded bg-brand-navy px-4 font-label text-label font-bold text-surface-white">Filter</button>
         {receiptStatus && <Link href="/outgoing?tab=ledger" className="inline-flex h-11 items-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface">Clear</Link>}
       </form>
-      {receiptUpload && <p role="status" className="mt-3 rounded border border-status-available/30 bg-status-available/10 px-4 py-3 font-body text-body-sm text-on-surface">{receiptUpload === "success" ? "Delivery Receipt uploaded." : receiptUpload === "invalid" ? "Upload a PDF, PNG, or JPEG up to 10 MB." : receiptUpload === "forbidden" ? "You do not have permission to upload Delivery Receipts." : "Delivery Receipt upload failed. Please try again."}</p>}
+      {receiptUpload && <p role="status" className="mt-3 rounded border border-status-available/30 bg-status-available/10 px-4 py-3 font-body text-body-sm text-on-surface">{receiptUpload === "success" ? "Delivery Receipt uploaded." : receiptUpload === "removed" ? "Delivery Receipt removed." : receiptUpload === "invalid" ? "Upload a PDF, PNG, or JPEG up to 10 MB." : receiptUpload === "forbidden" ? "You do not have permission to manage Delivery Receipts." : "Delivery Receipt action failed. Please try again."}</p>}
 
       <OutgoingLedgerClientTable
-        rows={rows}
+        rows={rowsWithReceiptUrls}
         uploadDeliveryReceiptAction={uploadDeliveryReceipt}
+        removeDeliveryReceiptAction={removeDeliveryReceipt}
       />
     </div>
   );

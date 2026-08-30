@@ -179,7 +179,7 @@ export function WrrLedgerFilterableTable({ rows }: WrrLedgerFilterableTableProps
                     </span>
                     <Link
                       href={`/receiving/${row.id}`}
-                      className="inline-flex h-9 items-center font-label text-label font-bold text-brand-navy underline"
+                      className="inline-flex h-9 items-center whitespace-nowrap font-label text-label font-bold text-brand-navy underline"
                     >
                       View WRR &rarr;
                     </Link>

@@ -303,7 +303,7 @@ export function WrrFilterableTable({ rows, canCreate }: WrrFilterableTableProps)
                       <td className="px-4 py-3 text-right">
                         <Link
                           href={`/receiving/${row.id}`}
-                          className="inline-flex h-9 items-center gap-1 rounded-lg border border-brand-navy/30 bg-surface-white px-3 font-label text-label-xs font-bold text-brand-navy hover:bg-brand-navy/5"
+                          className="inline-flex h-9 items-center gap-1 whitespace-nowrap rounded-lg border border-brand-navy/30 bg-surface-white px-3 font-label text-label-xs font-bold text-brand-navy hover:bg-brand-navy/5"
                         >
                           View WRR &rarr;
                         </Link>
