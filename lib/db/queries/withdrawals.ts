@@ -102,6 +102,7 @@ export type OutgoingLedgerRow = {
   performedByDisplayName?: string | null;
   pickListId: string | null;
   deliveryReceiptPath?: string | null;
+  deliveryReceiptUrl?: string | null;
   deliveryReceiptStatus?: string;
   deliveryReceiptUploadedAt?: Date | null;
 };

@@ -257,7 +257,7 @@ export async function archiveExpiredApprovalRequest(
     // reviewer action into a Next.js error page.
     return {
       ok: false,
-      error: "Delete is temporarily unavailable. Please verify the approval archive database migration, then try again.",
+      error: "Archive is temporarily unavailable. Please verify the approval archive database migration, then try again.",
     };
   }
 }
