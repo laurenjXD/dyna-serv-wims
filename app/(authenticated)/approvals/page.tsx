@@ -15,7 +15,7 @@ import { redirect } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
-import { listApprovalQueueRequests } from "@/lib/db/queries/approvals";
+import { listApprovalQueueRequests, listPendingApprovalRequests } from "@/lib/db/queries/approvals";
 import { archiveExpiredApprovalRequest } from "@/lib/actions/approvals";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -65,12 +65,26 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
   const approvalType =
     typeFilter && typeFilter !== "all" ? typeFilter : undefined;
 
-  const { rows, total } = await listApprovalQueueRequests(db, {
-    limit: PAGE_SIZE,
-    offset,
-    approvalType,
-    deleted: showDeleted,
-  });
+  let rows;
+  let total;
+  try {
+    ({ rows, total } = await listApprovalQueueRequests(db, {
+      limit: PAGE_SIZE,
+      offset,
+      approvalType,
+      deleted: showDeleted,
+    }));
+  } catch {
+    // Keep the Open queue available while a deployment is waiting for the
+    // soft-archive migration. Deleted remains intentionally unavailable until
+    // its durable columns exist rather than pretending the archive is empty.
+    if (showDeleted) throw new Error("Deleted approvals are not available until the database migration is applied.");
+    ({ rows, total } = await listPendingApprovalRequests(db, {
+      limit: PAGE_SIZE,
+      offset,
+      approvalType,
+    }));
+  }
 
   async function handleArchive(formData: FormData) {
     "use server";

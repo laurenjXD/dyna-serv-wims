@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, ChevronDown, Menu, Search, Settings, Wifi, WifiOff } from "lucide-react";
+import { Bell, ChevronDown, PanelLeftClose, PanelLeftOpen, Search, Settings, Wifi, WifiOff } from "lucide-react";
 import { resolveSessionPresentationTier } from "@/lib/shell/surface";
 import { isScanLoopRoute } from "@/lib/shell/scan-loop";
 import { useShellSidebar, useDesktopSidebar } from "@/lib/shell/state";
@@ -191,7 +191,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
   return (
     <>
       <header
-        className={`fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 bg-surface px-4 transition-[left] duration-150 motion-reduce:transition-none lg:inset-x-auto lg:top-4 lg:right-4 lg:min-h-[68px] lg:rounded-2xl lg:border-2 lg:border-brand-royal-blue/45 lg:px-7 lg:py-2.5 lg:shadow-[0_8px_26px_rgba(37,99,235,0.14)] ${
+        className={`fixed inset-x-0 top-0 z-30 isolate flex h-14 items-center gap-3 overflow-hidden bg-surface px-4 transition-[left] duration-150 motion-reduce:transition-none lg:inset-x-auto lg:right-0 lg:min-h-[68px] lg:rounded-b-2xl lg:border-2 lg:border-t-0 lg:border-brand-royal-blue/45 lg:px-7 lg:py-2.5 lg:shadow-[0_3px_12px_rgba(37,99,235,0.08)] before:pointer-events-none before:absolute before:left-0 before:top-0 before:z-0 before:h-8 before:w-36 before:rounded-br-[28px] before:bg-brand-royal-blue/10 after:pointer-events-none after:absolute after:bottom-0 after:right-0 after:z-0 after:h-8 after:w-36 after:rounded-tl-[28px] after:bg-brand-royal-blue/12 ${
           isDesktopOpen ? "lg:left-[312px]" : "lg:left-0"
         }`}
       >
@@ -203,7 +203,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
             onClick={toggle}
             className="flex h-16 w-16 items-center justify-center text-text-primary active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:hidden"
           >
-            <Menu size={25} strokeWidth={2.5} aria-hidden="true" />
+            <PanelLeftOpen size={25} strokeWidth={2} aria-hidden="true" />
           </button>
         )}
 
@@ -215,7 +215,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
             onClick={toggleDesktop}
             className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-full text-text-secondary hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:flex"
           >
-            <Menu size={25} strokeWidth={2.5} aria-hidden="true" />
+            {isDesktopOpen ? <PanelLeftClose size={25} strokeWidth={2} aria-hidden="true" /> : <PanelLeftOpen size={25} strokeWidth={2} aria-hidden="true" />}
           </button>
         )}
 
@@ -265,28 +265,28 @@ export function ShellChrome({ children }: { children: ReactNode }) {
           </button>
         </div>
 
-        <div className="hidden min-w-0 flex-1 items-center gap-6 lg:flex">
+        <div className="hidden min-w-0 flex-1 items-center gap-5 lg:flex">
           <div className="min-w-0 shrink-0 max-w-[300px]">
             <p
-              className="truncate font-heading text-[25px] font-bold leading-tight tracking-[-0.02em] text-text-primary"
+              className="truncate font-heading text-[23px] font-bold leading-tight tracking-[-0.02em] text-text-primary"
               title={pageTitle}
             >
               {pageTitle}
             </p>
           </div>
-          <label className="mx-auto flex h-12 w-full max-w-[760px] shrink flex-1 items-center gap-3 rounded-full border border-brand-royal-blue/10 bg-background/70 px-4 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] focus-within:border-brand-royal-blue/40 focus-within:ring-2 focus-within:ring-brand-royal-blue/20">
-            <Search size={21} aria-hidden="true" className="shrink-0 text-text-secondary" />
+          <label className="mx-auto flex h-10 w-full max-w-[570px] shrink flex-1 items-center gap-2.5 rounded-full border border-brand-royal-blue/10 bg-background/70 px-3.5 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] focus-within:border-brand-royal-blue/40 focus-within:ring-2 focus-within:ring-brand-royal-blue/20">
+            <Search size={18} aria-hidden="true" className="shrink-0 text-text-secondary" />
             <input
               type="search"
               aria-label="Search"
               placeholder="Search inventory, organizations, documents…"
-              className="min-w-0 flex-1 border-0 bg-transparent p-0 font-body text-body-md text-text-primary outline-none placeholder:text-text-secondary"
+              className="min-w-0 flex-1 border-0 bg-transparent p-0 font-body text-body-sm text-text-primary outline-none placeholder:text-text-secondary"
             />
-            <kbd className="hidden items-center gap-1 rounded-md border border-border bg-surface px-2 py-1 font-mono text-mono-sm font-semibold text-text-secondary shadow-sm xl:inline-flex">
+            <kbd className="hidden items-center gap-1 rounded-md border border-border bg-surface px-1.5 py-0.5 font-mono text-mono-xs font-semibold text-text-secondary shadow-sm xl:inline-flex">
               <span aria-hidden="true">⌘</span>K
             </kbd>
           </label>
-          <div className="ml-auto flex min-w-0 items-center gap-4">
+          <div className="ml-auto flex min-w-0 items-center gap-3.5">
             <span
               data-testid="connectivity-indicator"
               className="flex shrink-0 items-center gap-1.5 text-body-md font-bold text-text-primary"
@@ -332,7 +332,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
                 aria-label="Settings"
                 className="flex h-11 w-11 shrink-0 items-center justify-center text-text-secondary hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
-                <Settings size={23} aria-hidden="true" />
+                <Settings size={21} aria-hidden="true" />
               </Link>
             )}
             <div ref={accountMenuRef} className="relative shrink-0">
@@ -459,7 +459,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
       <main
         id="main-content"
         data-surface={tier}
-        className={`min-h-screen pt-14 transition-[padding-left] duration-150 motion-reduce:transition-none lg:pr-6 lg:pt-[96px] ${
+        className={`min-h-screen pt-14 transition-[padding-left] duration-150 motion-reduce:transition-none lg:pr-6 lg:pt-[84px] ${
           isDesktopOpen ? "lg:pl-[312px]" : "lg:pl-6"
         } ${showFloorTabBar ? "pb-20" : "lg:pb-6"} ${
           tier === "floor" ? "bg-surface" : "bg-background"

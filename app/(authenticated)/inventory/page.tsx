@@ -157,14 +157,14 @@ async function StockViewTab({ query, requesterUserId }: { query?: string; reques
     <div className="mt-5 space-y-5">
       {overrides.length > 0 && <section className="rounded-xl border border-outline-variant bg-surface-white p-4 shadow-elevation-1">
         <div><h2 className="font-heading text-title-md font-bold text-on-surface">Pallet override requests</h2><p className="mt-1 font-body text-body-sm text-text-grey">A different supervisor reviews these in Approvals. Approved requests can be used once and expire if inventory changes.</p></div>
-        <div className="mt-3 grid gap-2.5 lg:grid-cols-2">
+        <div className="mt-3 grid gap-2 lg:grid-cols-2 xl:grid-cols-3">
           {overrides.map((request) => {
             const parsed = FifoOverrideSnapshotSchema.safeParse(request.targetSnapshot);
             if (!parsed.success) return null;
             const snapshot = parsed.data;
             const isApproved = request.status === "approved" && !request.consumedAt && request.expiryAt > new Date() && Boolean(request.partyId);
             const payload = JSON.stringify({ partyId: request.partyId, flowType: snapshot.flow_type, approvalRequestId: request.id, lines: [{ itemId: snapshot.item_id, lotId: snapshot.lot_id, locationId: snapshot.location_id, qty: Number(snapshot.requested_qty) }] });
-            return <article key={request.id} className="grid gap-3 rounded border border-outline-variant bg-background p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+            return <article key={request.id} className="grid gap-2 rounded-lg border border-outline-variant bg-background p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
               <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="font-mono text-mono-sm font-bold text-on-surface">{request.requestNumber}</span><span className={`rounded-full px-2 py-0.5 font-label text-label-xs font-bold uppercase ${isApproved ? "bg-status-available/15 text-status-available" : request.status === "pending" ? "bg-status-pending/15 text-status-pending" : "bg-status-neutral/15 text-status-neutral"}`}>{request.consumedAt ? "used" : request.status}</span></div><p className="mt-1.5 font-body text-body-sm text-on-surface">{snapshot.item_code} · {snapshot.lot_number} · {snapshot.location_code}</p><p className="mt-0.5 font-body text-body-xs text-text-grey">Quantity {snapshot.requested_qty} · {request.reason}</p></div>
               {isApproved ? <form action={createApprovedPickList}><input type="hidden" name="request" value={payload} /><button type="submit" className="inline-flex h-11 items-center gap-2 rounded bg-primary px-4 font-label text-label font-bold text-surface-white"><ShieldCheck size={17} aria-hidden="true" />Generate approved pick list</button></form> : <span className="inline-flex items-center gap-2 font-label text-label font-bold text-text-grey"><Clock3 size={17} aria-hidden="true" />{request.status === "pending" ? "Waiting for review" : "No action available"}</span>}
             </article>;
