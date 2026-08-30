@@ -409,10 +409,9 @@ export default async function ApprovalDetailPage({ params, searchParams }: PageP
         </h2>
         <dl className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
-            <dt className="font-label text-label text-text-grey">User ID</dt>
-            {/* Roboto Mono for user IDs per §9 */}
-            <dd className="mt-1 font-mono text-mono-md text-on-surface">
-              {request.requesterUserId}
+            <dt className="font-label text-label text-text-grey">Requester</dt>
+            <dd className="mt-1 font-body text-body-md text-on-surface" title={request.requesterUserId}>
+              {request.requesterDisplayName ?? request.requesterUserId}
             </dd>
           </div>
           <div>
@@ -794,9 +793,8 @@ export default async function ApprovalDetailPage({ params, searchParams }: PageP
                   >
                     {dec.outcome === "approved" ? "APPROVED" : "REJECTED"}
                   </span>
-                  {/* Reviewer user ID — Roboto Mono per §9 */}
-                  <span className="font-mono text-mono-md text-on-surface">
-                    {dec.reviewerUserId}
+                  <span className="font-body text-body-md text-on-surface" title={dec.reviewerUserId}>
+                    {dec.reviewerDisplayName ?? dec.reviewerUserId}
                   </span>
                   <span className="inline-flex items-center gap-1 font-body text-body-sm text-text-grey">
                     <Clock size={16} aria-hidden="true" />

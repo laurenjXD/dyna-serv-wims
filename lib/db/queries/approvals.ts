@@ -7,7 +7,12 @@
 //   specs/09-approval-queue/tasks.md Testing Matrix §Unit tests
 
 import { eq, and, asc, desc, sql, isNull, isNotNull } from "drizzle-orm";
+import { aliasedTable } from "drizzle-orm/alias";
 import { approvalRequests, approvalDecisions } from "@/lib/db/schema/approvals";
+import { userProfiles } from "@/lib/db/schema/rbac";
+
+const requesterProfiles = aliasedTable(userProfiles, "approval_requester_profiles");
+const reviewerProfiles = aliasedTable(userProfiles, "approval_reviewer_profiles");
 
 // Minimal structural type that both the real Drizzle db instance and test
 // stubs satisfy.
@@ -27,6 +32,7 @@ export type ApprovalRequestRow = {
   expiryAt: Date;
   createdAt: Date;
   requesterUserId: string;
+  requesterDisplayName?: string | null;
   targetSnapshot: unknown;
   deletedAt?: Date | null;
   deletedByUserId?: string | null;
@@ -79,6 +85,7 @@ export async function listRequesterFifoOverrides(
 export type ApprovalDecisionRow = {
   id: string;
   reviewerUserId: string;
+  reviewerDisplayName?: string | null;
   outcome: string;
   reason: string | null;
   decidedAt: Date;
@@ -102,11 +109,13 @@ type RawJoinRow = {
   expiryAt: Date;
   createdAt: Date;
   requesterUserId: string;
+  requesterDisplayName: string | null;
   targetSnapshot: unknown;
   deletedAt: Date | null;
   deletedByUserId: string | null;
   decisionId: string | null;
   reviewerUserId: string | null;
+  reviewerDisplayName: string | null;
   outcome: string | null;
   decisionReason: string | null;
   decidedAt: Date | null;
@@ -147,9 +156,11 @@ export async function listPendingApprovalRequests(
       expiryAt: approvalRequests.expiryAt,
       createdAt: approvalRequests.createdAt,
       requesterUserId: approvalRequests.requesterUserId,
+      requesterDisplayName: requesterProfiles.displayName,
       targetSnapshot: approvalRequests.targetSnapshot,
     })
     .from(approvalRequests)
+    .leftJoin(requesterProfiles, eq(requesterProfiles.id, approvalRequests.requesterUserId))
     .where(whereClause)
     .orderBy(asc(approvalRequests.createdAt))
     .limit(opts.limit)
@@ -188,11 +199,13 @@ export async function listApprovalQueueRequests(
       expiryAt: approvalRequests.expiryAt,
       createdAt: approvalRequests.createdAt,
       requesterUserId: approvalRequests.requesterUserId,
+      requesterDisplayName: requesterProfiles.displayName,
       targetSnapshot: approvalRequests.targetSnapshot,
       deletedAt: approvalRequests.deletedAt,
       deletedByUserId: approvalRequests.deletedByUserId,
     })
     .from(approvalRequests)
+    .leftJoin(requesterProfiles, eq(requesterProfiles.id, approvalRequests.requesterUserId))
     .where(whereClause)
     .orderBy(asc(approvalRequests.createdAt))
     .limit(opts.limit)
@@ -226,23 +239,27 @@ export async function getApprovalRequest(
       expiryAt: approvalRequests.expiryAt,
       createdAt: approvalRequests.createdAt,
       requesterUserId: approvalRequests.requesterUserId,
+      requesterDisplayName: requesterProfiles.displayName,
       targetSnapshot: approvalRequests.targetSnapshot,
       deletedAt: approvalRequests.deletedAt,
       deletedByUserId: approvalRequests.deletedByUserId,
       // Decision fields — aliased to avoid collision with request fields
       decisionId: approvalDecisions.id,
       reviewerUserId: approvalDecisions.reviewerUserId,
+      reviewerDisplayName: reviewerProfiles.displayName,
       outcome: approvalDecisions.outcome,
       decisionReason: approvalDecisions.reason,
       decidedAt: approvalDecisions.decidedAt,
       consumedAt: approvalDecisions.consumedAt,
     })
     .from(approvalRequests)
+    .leftJoin(requesterProfiles, eq(requesterProfiles.id, approvalRequests.requesterUserId))
     .where(eq(approvalRequests.id, requestId))
     .leftJoin(
       approvalDecisions,
       eq(approvalDecisions.requestId, approvalRequests.id),
-    );
+    )
+    .leftJoin(reviewerProfiles, eq(reviewerProfiles.id, approvalDecisions.reviewerUserId));
 
   if (joinedRows.length === 0) return null;
 
@@ -255,6 +272,7 @@ export async function getApprovalRequest(
     .map((row) => ({
       id: row.decisionId!,
       reviewerUserId: row.reviewerUserId!,
+      reviewerDisplayName: row.reviewerDisplayName,
       outcome: row.outcome!,
       reason: row.decisionReason,
       decidedAt: row.decidedAt!,
@@ -270,6 +288,7 @@ export async function getApprovalRequest(
     expiryAt: first.expiryAt,
     createdAt: first.createdAt,
     requesterUserId: first.requesterUserId,
+    requesterDisplayName: first.requesterDisplayName,
     targetSnapshot: first.targetSnapshot,
     deletedAt: first.deletedAt,
     deletedByUserId: first.deletedByUserId,

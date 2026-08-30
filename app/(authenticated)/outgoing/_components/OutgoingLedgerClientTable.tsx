@@ -385,7 +385,7 @@ export function OutgoingLedgerClientTable({
                         {row.customerPartyName ?? "—"}
                       </td>
                       <td className="px-4 py-3 font-body text-body-md text-text-grey">
-                        {row.performedByUserId}
+                        <span title={row.performedByUserId}>{row.performedByDisplayName ?? row.performedByUserId}</span>
                       </td>
                     </tr>
                   );

@@ -6,13 +6,14 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, ChevronDown, PanelLeftClose, PanelLeftOpen, Settings, Wifi, WifiOff } from "lucide-react";
+import { Bell, ChevronDown, Keyboard, PanelLeftClose, PanelLeftOpen, Settings, Wifi, WifiOff } from "lucide-react";
 import { resolveSessionPresentationTier } from "@/lib/shell/surface";
 import { isScanLoopRoute } from "@/lib/shell/scan-loop";
 import { useShellSidebar, useDesktopSidebar } from "@/lib/shell/state";
 import { useConnectivityStatus } from "@/lib/shell/use-connectivity";
 import { useShellAuthorizationContext } from "./AuthenticatedShellBoundary";
 import { ShellNavigation } from "./ShellNavigation";
+import { filterVisibleRoutes, selectRoutesForPresentation } from "@/lib/shell/navigation";
 import {
   resolveShellNotifications,
   resolveShellPendingApprovalCount,
@@ -55,6 +56,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
   const [pendingApprovalCount, setPendingApprovalCount] = useState(0);
   const [notifications, setNotifications] = useState<ShellNotification[]>([]);
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
+  const [isShortcutPanelOpen, setIsShortcutPanelOpen] = useState(false);
   const notificationPanelRef = useRef<HTMLDivElement | null>(null);
   const desktopBellRef = useRef<HTMLButtonElement | null>(null);
   const mobileBellRef = useRef<HTMLButtonElement | null>(null);
@@ -187,6 +189,30 @@ export function ShellChrome({ children }: { children: ReactNode }) {
   const canManageAccess = context?.grants.some(
     (grant) => grant.resource === "users" && grant.action === "read",
   );
+  const shortcutEntries = context
+    ? selectRoutesForPresentation(
+        filterVisibleRoutes(context).filter(
+          (entry) => entry.launchStatus !== "planned" && !entry.path.includes("["),
+        ),
+        tier,
+      )
+    : [];
+
+  function shortcutLabel(index: number): string {
+    if (index < 9) return `Ctrl+${index + 1}`;
+    if (index === 9) return "Ctrl+0";
+    return `Ctrl+Shift+${index - 9}`;
+  }
+
+  function navigationLabel(id: string): string {
+    const labels: Record<string, string> = {
+      root: "Dashboard",
+      inventory: "Master Inventory",
+      portal: "Organization Portal",
+      "billing-pricing": "Billing & Pricing",
+    };
+    return labels[id] ?? id.split("-").map((part) => part[0].toUpperCase() + part.slice(1)).join(" ");
+  }
 
   return (
     <>
@@ -199,7 +225,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
       />
 
       <header
-        className={`fixed inset-x-0 top-0 z-30 isolate flex h-14 items-center gap-3 overflow-hidden bg-surface px-4 transition-[left] duration-150 motion-reduce:transition-none lg:inset-x-auto lg:top-3 lg:right-3 lg:min-h-[76px] lg:rounded-2xl lg:border-2 lg:border-brand-royal-blue/45 lg:px-7 lg:py-3 lg:shadow-[0_10px_24px_rgba(37,99,235,0.12)] before:pointer-events-none before:absolute before:left-0 before:top-0 before:z-0 before:h-1.5 before:w-28 before:rounded-br-full before:bg-brand-royal-blue/65 before:shadow-[0_4px_12px_rgba(37,99,235,0.4)] after:pointer-events-none after:absolute after:bottom-0 after:right-0 after:z-0 after:h-2 after:w-32 after:rounded-tl-full after:bg-brand-royal-blue/55 after:shadow-[0_-4px_14px_rgba(37,99,235,0.35)] ${
+        className={`fixed inset-x-0 top-0 z-30 isolate flex h-14 items-center gap-3 overflow-visible bg-surface px-4 transition-[left] duration-150 motion-reduce:transition-none lg:inset-x-auto lg:top-3 lg:right-3 lg:min-h-[76px] lg:rounded-2xl lg:border-2 lg:border-brand-royal-blue/45 lg:px-7 lg:py-3 lg:shadow-[0_10px_24px_rgba(37,99,235,0.12)] before:pointer-events-none before:absolute before:left-0 before:top-0 before:z-0 before:h-1.5 before:w-28 before:rounded-br-full before:bg-brand-royal-blue/65 before:shadow-[0_4px_12px_rgba(37,99,235,0.4)] after:pointer-events-none after:absolute after:bottom-0 after:right-0 after:z-0 after:h-2 after:w-32 after:rounded-tl-full after:bg-brand-royal-blue/55 after:shadow-[0_-4px_14px_rgba(37,99,235,0.35)] ${
           isDesktopOpen ? "lg:left-[312px]" : "lg:left-0"
         }`}
       >
@@ -332,6 +358,37 @@ export function ShellChrome({ children }: { children: ReactNode }) {
                 <Settings size={21} aria-hidden="true" />
               </Link>
             )}
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                aria-label="Keyboard shortcuts"
+                aria-expanded={isShortcutPanelOpen}
+                onClick={() => setIsShortcutPanelOpen((open) => !open)}
+                className="flex h-11 w-11 items-center justify-center text-text-secondary hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <Keyboard size={21} aria-hidden="true" />
+              </button>
+              {isShortcutPanelOpen && (
+                <div className="absolute right-0 top-[calc(100%+8px)] z-40 w-[280px] rounded-xl border border-border bg-surface p-2 shadow-elevation-2">
+                  <p className="px-3 py-2 font-heading text-body-md font-bold text-text-primary">Keyboard shortcuts</p>
+                  <div className="max-h-[60vh] overflow-y-auto">
+                    {shortcutEntries.map((entry, index) => (
+                      <Link
+                        key={entry.id}
+                        href={entry.path}
+                        onClick={() => setIsShortcutPanelOpen(false)}
+                        className="flex items-center justify-between gap-3 rounded-lg px-3 py-2 font-body text-body-sm text-text-primary hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      >
+                        <span className="truncate">{navigationLabel(entry.id)}</span>
+                        <kbd className="shrink-0 rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[11px] font-semibold text-text-secondary">
+                          {shortcutLabel(index)}
+                        </kbd>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
             <div ref={accountMenuRef} className="relative shrink-0">
               <button
                 ref={accountMenuTriggerRef}

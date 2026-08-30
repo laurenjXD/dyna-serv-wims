@@ -326,7 +326,7 @@ export function ApprovalsFilterableTable({ rows, showDeleted = false, archiveAct
                         {req.approvalType.replace(/_/g, " ")}
                       </td>
                       <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                        {req.requesterUserId}
+                        <span title={req.requesterUserId}>{req.requesterDisplayName ?? req.requesterUserId}</span>
                       </td>
                       <td className="px-4 py-3 font-mono text-mono-md text-on-surface font-bold">
                         {itemLotRef}

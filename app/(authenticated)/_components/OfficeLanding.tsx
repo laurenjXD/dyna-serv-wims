@@ -51,7 +51,6 @@ import {
   TrendingDown,
   ShieldAlert,
   Barcode,
-  Keyboard,
 } from "lucide-react";
 import { QuickJumpScanner } from "@/app/(authenticated)/receiving/_components/QuickJumpScanner";
 import { KpiTile } from "@/components/analytics/KpiTile";
@@ -159,28 +158,6 @@ export function OfficeLanding({
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">{dateString}</p>
       </header>
-
-      <section
-        aria-label="Keyboard shortcuts"
-        className="mb-4 rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1 sm:mb-6"
-      >
-        <div className="flex items-center gap-2">
-          <Keyboard size={18} aria-hidden="true" className="text-brand-navy" />
-          <h2 className="font-heading text-headline-md font-semibold text-on-surface">
-            Keyboard shortcuts
-          </h2>
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {["Dashboard", "Receiving", "Master Inventory", "Picking & Dispatch", "Transfers"].map((label, index) => (
-            <div key={label} className="flex items-center gap-2 rounded-lg bg-background px-3 py-2">
-              <kbd className="rounded border border-border bg-surface px-1.5 py-0.5 font-mono text-[11px] font-semibold text-text-secondary">
-                Alt+{index + 1}
-              </kbd>
-              <span className="font-body text-body-sm text-text-primary">{label}</span>
-            </div>
-          ))}
-        </div>
-      </section>
 
       {hasReceivingAccess && quickJumpAction && <section className="mb-4 rounded-xl border border-[#B9CAEF] bg-[#DCE8FF] p-5 shadow-elevation-1 sm:mb-6"><div className="flex items-center gap-2"><Barcode size={24} className="text-brand-navy" aria-hidden="true" /><h2 className="font-heading text-headline-md font-bold text-on-surface">Quick Jump</h2></div><p className="mt-2 font-body text-body-md text-on-surface">Scan or enter an exact WRR number to open Receiving directly.</p><QuickJumpScanner action={quickJumpAction} /></section>}
 
