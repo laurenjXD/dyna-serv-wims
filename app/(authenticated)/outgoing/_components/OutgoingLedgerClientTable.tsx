@@ -342,7 +342,7 @@ export function OutgoingLedgerClientTable({
                       </td>
                       <td className="px-4 py-3">
                         {row.deliveryReceiptPath ? (
-                          <div className="flex flex-wrap items-center gap-2">
+                          <div className="flex items-center gap-2 whitespace-nowrap">
                             {row.deliveryReceiptUrl ? (
                               <button
                                 type="button"
