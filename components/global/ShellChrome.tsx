@@ -13,7 +13,6 @@ import { useShellSidebar, useDesktopSidebar } from "@/lib/shell/state";
 import { useConnectivityStatus } from "@/lib/shell/use-connectivity";
 import { useShellAuthorizationContext } from "./AuthenticatedShellBoundary";
 import { ShellNavigation } from "./ShellNavigation";
-import { GlobalSearch } from "./GlobalSearch";
 import {
   resolveShellNotifications,
   resolveShellPendingApprovalCount,
@@ -201,7 +200,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
 
       <header
         className={`fixed inset-x-0 top-0 z-30 isolate flex h-14 items-center gap-3 overflow-hidden bg-surface px-4 transition-[left] duration-150 motion-reduce:transition-none lg:inset-x-auto lg:top-3 lg:right-3 lg:min-h-[76px] lg:rounded-2xl lg:border-2 lg:border-brand-royal-blue/45 lg:px-7 lg:py-3 lg:shadow-[0_10px_24px_rgba(37,99,235,0.12)] before:pointer-events-none before:absolute before:left-0 before:top-0 before:z-0 before:h-1.5 before:w-28 before:rounded-br-full before:bg-brand-royal-blue/65 before:shadow-[0_4px_12px_rgba(37,99,235,0.4)] after:pointer-events-none after:absolute after:bottom-0 after:right-0 after:z-0 after:h-2 after:w-32 after:rounded-tl-full after:bg-brand-royal-blue/55 after:shadow-[0_-4px_14px_rgba(37,99,235,0.35)] ${
-          isDesktopOpen ? "lg:left-[289px]" : "lg:left-0"
+          isDesktopOpen ? "lg:left-[312px]" : "lg:left-0"
         }`}
       >
         {tier !== "floor" && (
@@ -283,7 +282,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
               {pageTitle}
             </p>
           </div>
-          <GlobalSearch />
+          <div className="mx-auto min-w-0 flex-1" aria-hidden="true" />
           <div className="ml-auto flex min-w-0 items-center gap-3.5">
             <span
               data-testid="connectivity-indicator"

@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -137,6 +138,7 @@ function NavLink({
   onNavigate,
   compact = false,
   pendingApprovalCount = 0,
+  shortcutNumber,
 }: {
   entry: RouteRegistryEntry;
   isActive: boolean;
@@ -145,6 +147,7 @@ function NavLink({
   onNavigate?: () => void;
   compact?: boolean;
   pendingApprovalCount?: number;
+  shortcutNumber?: number;
 }) {
   const Icon = routeIcon(entry.id);
   const label = toLabel(entry.id);
@@ -197,6 +200,11 @@ function NavLink({
           {pendingApprovalCount > 99 ? "99+" : pendingApprovalCount}
         </span>
       )}
+      {shortcutNumber && (
+        <kbd className="pointer-events-none absolute right-8 top-1/2 hidden -translate-y-1/2 rounded border border-border bg-surface px-1.5 py-1 font-mono text-[11px] font-semibold leading-none text-text-secondary opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 xl:inline-flex">
+          Alt+{shortcutNumber}
+        </kbd>
+      )}
       <ChevronRight size={16} aria-hidden="true" className={`shrink-0 motion-safe:transition-transform motion-safe:duration-150 ${isActive ? "translate-x-0 text-primary" : "-translate-x-1 text-text-secondary/40 opacity-0 group-hover:translate-x-0 group-hover:opacity-100"}`} />
     </Link>
   );
@@ -209,6 +217,7 @@ function GroupedSections({
   onNavigate,
   compact = false,
   pendingApprovalCount = 0,
+  shortcutNumberById,
 }: {
   sections: readonly NavSection[];
   activeId: string | null;
@@ -216,6 +225,7 @@ function GroupedSections({
   onNavigate?: () => void;
   compact?: boolean;
   pendingApprovalCount?: number;
+  shortcutNumberById?: ReadonlyMap<string, number>;
 }) {
   const floorText = tier === "floor";
   return (
@@ -241,6 +251,7 @@ function GroupedSections({
                 onNavigate={onNavigate}
                 compact={compact}
                 pendingApprovalCount={pendingApprovalCount}
+                shortcutNumber={shortcutNumberById?.get(entry.id)}
               />
             ))}
           </div>
@@ -271,6 +282,7 @@ export function ShellNavigation({
   desktopOpen?: boolean;
   pendingApprovalCount?: number;
 }) {
+  const router = useRouter();
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [activeRoleKeys, setActiveRoleKeys] = useState<readonly string[]>([]);
   const [isMoreOpen, setMoreOpen] = useState(false);
@@ -308,6 +320,36 @@ export function ShellNavigation({
   const activeId = resolveNavigationActiveId(currentPath, resolveActiveRouteId(currentPath));
   const sections = groupRoutesForSidebar(presented);
   const roleLabel = roleDisplayLabel(activeRoleKeys);
+  const shortcutEntries = presented.slice(0, 9);
+  const shortcutNumberById = new Map(
+    shortcutEntries.map((entry, index) => [entry.id, index + 1] as const),
+  );
+
+  useEffect(() => {
+    function handleShortcut(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      const tagName = target?.tagName.toLowerCase();
+      if (
+        target?.isContentEditable ||
+        tagName === "input" ||
+        tagName === "textarea" ||
+        tagName === "select"
+      ) {
+        return;
+      }
+      if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      const number = Number(event.key);
+      if (!Number.isInteger(number) || number < 1 || number > shortcutEntries.length) return;
+      const entry = shortcutEntries[number - 1];
+      if (!entry) return;
+      event.preventDefault();
+      router.push(entry.path);
+      onCloseMobileNav?.();
+    }
+
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, [onCloseMobileNav, router, shortcutEntries]);
 
   const primaryFloorEntries = presented.slice(0, 4);
 
@@ -385,7 +427,7 @@ export function ShellNavigation({
         </div>
 
         <div className="min-h-0 flex-1 overflow-hidden px-3 py-0.5">
-          <GroupedSections sections={sections} activeId={activeId} tier={tier} compact pendingApprovalCount={pendingApprovalCount} />
+          <GroupedSections sections={sections} activeId={activeId} tier={tier} compact pendingApprovalCount={pendingApprovalCount} shortcutNumberById={shortcutNumberById} />
         </div>
 
         <div className="border-t border-border bg-background p-2">
