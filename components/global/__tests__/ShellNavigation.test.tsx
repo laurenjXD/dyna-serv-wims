@@ -37,13 +37,16 @@
 //   - `featureStatus: "planned"` entries (registry.ts) never render a
 //     live link (design.md §5's registry rule), and entries whose
 //     capability the context does not grant are omitted entirely (never
-//     disabled-and-visible), per lib/shell/navigation.ts#filterVisibleRoutes.
-
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { AuthorizationContext } from "@/lib/rbac/session";
 import { ShellNavigation } from "@/components/global/ShellNavigation";
+
+const push = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push }),
+}));
 
 const receivingOnlyContext: Pick<AuthorizationContext, "grants"> = {
   grants: [{ resource: "receiving", action: "view", scopeKind: "global" }],
