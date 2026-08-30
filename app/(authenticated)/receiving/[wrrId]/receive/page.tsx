@@ -139,11 +139,16 @@ export default async function ReceiveFloorPage({
   // action returns invalid_status which we ignore). R2.4 requires this to be
   // safe to retry and not require a separate manual step on the floor.
   if (wrr.status === "staged_pending_arrival") {
-    await startReceiving(resolver, wrrId);
-    // Re-fetch to get the updated status after the transition.
-    const refreshed = await getWrrDocument(db, wrrId);
-    if (refreshed) {
-      wrr = refreshed;
+    try {
+      const startResult = await startReceiving(resolver, wrrId);
+      if (startResult.ok) {
+        const refreshed = await getWrrDocument(db, wrrId);
+        if (refreshed) {
+          wrr = refreshed;
+        }
+      }
+    } catch {
+      // Non-fatal: if auto-initiation fails, render page with current state
     }
   }
 
@@ -151,17 +156,17 @@ export default async function ReceiveFloorPage({
   const isReceivable = wrr.status === "receiving_in_progress";
   const isComplete = wrr.status === "confirmed";
 
-  // Compute progress counts from items.
-  const totalLines = wrr.items.length;
-  const fullyScannedLines = wrr.items.filter(
-    (item: WrrItemRow) => item.scannedQty >= item.expectedQty
+  // Compute progress counts from items safely.
+  const totalLines = Array.isArray(wrr.items) ? wrr.items.length : 0;
+  const fullyScannedLines = (wrr.items ?? []).filter(
+    (item: WrrItemRow) => (Number(item.scannedQty) || 0) >= (Number(item.expectedQty) || 0) && (Number(item.expectedQty) || 0) > 0
   ).length;
   const allLinesScanned = totalLines > 0 && fullyScannedLines === totalLines;
 
   // One accepted label may open batch placement for a whole declared line.
-  const readyLines = wrr.items.filter(
+  const readyLines = (wrr.items ?? []).filter(
     (item: WrrItemRow) =>
-      item.scannedQty >= 1 && item.committedAt === null
+      (Number(item.scannedQty) || 0) >= 1 && item.committedAt === null
   );
   const primaryReadyLine: WrrItemRow | null = readyLines.length > 0 ? readyLines[0] : null;
 
@@ -176,7 +181,7 @@ export default async function ReceiveFloorPage({
     // recoverable placement error, not a reason to fail the entire WRR route.
     try {
       primaryStoreCandidates = await suggestPutawayLocations(db, {
-        itemUnitCbm: primaryReadyLine.unitCbm,
+        itemUnitCbm: Number(primaryReadyLine.unitCbm ?? 0),
         requestedQty: 1,
         limit: 50,
       });
@@ -189,13 +194,17 @@ export default async function ReceiveFloorPage({
       primaryStoreContents = {};
     }
   } else if (primaryReadyLine?.disposition === "inspect") {
-    inspectionLocations = ((await db
-      .select({ id: locations.id, label: locations.label })
-      .from(locations)
-      .where(and(eq(locations.locationType, "inspection"), eq(locations.isActive, true)))) as Array<{
-      id: string;
-      label: string;
-    }>) .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: "base" }));
+    try {
+      inspectionLocations = ((await db
+        .select({ id: locations.id, label: locations.label })
+        .from(locations)
+        .where(and(eq(locations.locationType, "inspection"), eq(locations.isActive, true)))) as Array<{
+        id: string;
+        label: string;
+      }>) .sort((a, b) => (a.label ?? "").localeCompare(b.label ?? "", undefined, { numeric: true, sensitivity: "base" }));
+    } catch {
+      inspectionLocations = [];
+    }
   }
 
   // Inline server action — closes over wrrId from the page component.
@@ -637,13 +646,13 @@ export default async function ReceiveFloorPage({
                 {primaryStoreCandidates.length > 0 ? (
                   <>
                   <p className="rounded border border-outline-variant/30 bg-surface-light-grey px-3 py-2 font-body text-body-md text-on-surface">
-                    This receipt needs {(primaryReadyLine.unitCbm * primaryReadyLine.expectedQty).toFixed(2)} CBM. Choose a location, review its capacity and current contents, then store.
+                    This receipt needs {((Number(primaryReadyLine.unitCbm) || 0) * (Number(primaryReadyLine.expectedQty) || 0)).toFixed(2)} CBM. Choose a location, review its capacity and current contents, then store.
                   </p>
                   <PutawayLocationSelector
                     candidates={primaryStoreCandidates}
                     contents={primaryStoreContents}
                     quantity={primaryReadyLine.expectedQty}
-                    unitCbm={primaryReadyLine.unitCbm}
+                    unitCbm={Number(primaryReadyLine.unitCbm) || 0}
                   />
                   </>
                 ) : (
@@ -679,7 +688,6 @@ export default async function ReceiveFloorPage({
                     required={inspectionLocations.length > 1}
                     options={inspectionLocations}
                     defaultValue={inspectionLocations.length === 1 ? inspectionLocations[0].id : ""}
-                    onChange={() => undefined}
                     placeholder="Search or choose an inspection location"
                   />
                 ) : (

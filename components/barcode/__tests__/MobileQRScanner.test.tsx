@@ -49,10 +49,21 @@ let mockPauseFn: ReturnType<typeof vi.fn>;
 
 vi.mock("html5-qrcode", () => {
   // Reset per-instance state on each construction so tests are independent.
-  const Html5QrcodeScanner = vi.fn().mockImplementation(
-    (_elementId: string, config: { formatsToSupport?: number[] }) => {
+  const Html5Qrcode = vi.fn().mockImplementation(
+    function (_elementId: string, config: { formatsToSupport?: number[] }) {
       mockPauseFn = vi.fn();
       return {
+        start: vi.fn(
+          (
+            _cameraConfig: unknown,
+            _config: unknown,
+            onSuccess: (decodedText: string) => void,
+            _onError: (error: string) => void,
+          ) => {
+            capturedScanSuccessCallback = onSuccess;
+            return Promise.resolve();
+          },
+        ),
         render: vi.fn(
           (
             onSuccess: (decodedText: string) => void,
@@ -62,11 +73,15 @@ vi.mock("html5-qrcode", () => {
           },
         ),
         pause: mockPauseFn,
+        stop: vi.fn().mockResolvedValue(undefined),
         clear: vi.fn().mockResolvedValue(undefined),
+        isScanning: true,
         _config: config,
       };
     },
   );
+
+  const Html5QrcodeScanner = Html5Qrcode;
 
   const Html5QrcodeSupportedFormats = {
     QR_CODE: 0,
@@ -74,7 +89,7 @@ vi.mock("html5-qrcode", () => {
     CODE_128: 2,
   };
 
-  return { Html5QrcodeScanner, Html5QrcodeSupportedFormats };
+  return { Html5Qrcode, Html5QrcodeScanner, Html5QrcodeSupportedFormats };
 });
 
 // ---------------------------------------------------------------------------

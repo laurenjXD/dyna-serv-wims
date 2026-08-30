@@ -24,6 +24,7 @@ import { listWrrDocuments } from "@/lib/db/queries/receiving";
 import type { WrrDocumentRow } from "@/lib/db/queries/receiving";
 import { AutoSubmitSelect } from "./_components/AutoSubmitSelect";
 import { WrrFilterableTable } from "./_components/WrrFilterableTable";
+import { WrrLedgerFilterableTable } from "./_components/WrrLedgerFilterableTable";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -437,90 +438,13 @@ async function LedgerTab({ pageParam }: { pageParam?: string }) {
   const totalPages = Math.ceil(total / LEDGER_PAGE_SIZE);
 
   return (
-    <div>
+    <div className="space-y-4">
       <p className="mt-6 font-body text-body-md text-text-grey">
         Read-only view of confirmed warehouse receipts. Corrections create new
         transactions; history is immutable per design.md §10.
       </p>
 
-      {/* Ledger table — Level 1 office elevation per brand-design-system.md §6 */}
-      <div className="mt-4 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-2">
-        {rows.length === 0 ? (
-          <div className="px-6 py-12 text-center">
-            <p className="font-body text-body-md text-text-grey">
-              No confirmed receipts in the ledger yet.
-            </p>
-            <p className="mt-2 font-body text-body-sm text-text-grey">
-              Confirmed WRRs appear here after the receipt commit succeeds.
-            </p>
-          </div>
-        ) : (
-          <>
-          <WrrMobileCards
-            rows={rows}
-            secondaryLabel={() => "Vendor"}
-            secondaryValue={(row) => row.vendorPartyName ?? row.vendorPartyId}
-            actionForRow={(row) => ({ href: `/receiving/${row.id}`, label: "View WRR" })}
-          />
-          <div className="hidden overflow-x-auto md:block">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                  {/* Epilogue SemiBold uppercase headers per §9 */}
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    WRR Number
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Flow Type
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Vendor
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Confirmed At
-                  </th>
-                  <th className="sr-only px-4 py-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/30">
-                {rows.map((row: WrrDocumentRow) => (
-                  <tr key={row.id} className="hover:bg-surface-light-grey/50">
-                    {/* WRR number — Roboto Mono per §9 */}
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {row.wrrNumber}
-                    </td>
-                    <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                      {FLOW_LABELS[row.flowType] ?? row.flowType}
-                    </td>
-                    {/* Vendor party name — resolved via join; fallback to ID if not found */}
-                    <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                      {row.vendorPartyName ?? row.vendorPartyId}
-                    </td>
-                    {/*
-                     * Note: confirmedAt is on wrr_documents but not in the
-                     * current WrrDocumentRow query result. Showing createdAt
-                     * as a proxy; extend getWrrDocument/listWrrDocuments to
-                     * include confirmedAt when the query is updated.
-                     */}
-                    <td className="px-4 py-3 font-body text-body-md text-text-grey">
-                      {row.createdAt.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Link
-                        href={`/receiving/${row.id}`}
-                        className="inline-flex h-11 items-center font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                      >
-                        View
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          </>
-        )}
-      </div>
+      <WrrLedgerFilterableTable rows={rows} />
 
       {/* Pagination controls */}
       {totalPages > 1 && (

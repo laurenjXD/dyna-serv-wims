@@ -12,7 +12,7 @@ export async function getPickListVolumeTrend(range: DateRange, flow: AnalyticsFl
     FROM pick_lists
     WHERE created_at >= ${startDate} AND created_at <= ${endDate}
       AND ${flowPredicate(sql`flow_type`, flow)}
-    GROUP BY period ORDER BY period ASC
+    GROUP BY 1 ORDER BY 1 ASC
   `);
 }
 
@@ -35,7 +35,7 @@ export async function getPickListQtyAndCbmTrend(range: DateRange, flow: Analytic
     JOIN items i ON i.id = pli.item_id
     WHERE pl.created_at >= ${startDate} AND pl.created_at <= ${endDate}
       AND ${flowPredicate(sql`pl.flow_type`, flow)}
-    GROUP BY period ORDER BY period ASC
+    GROUP BY 1 ORDER BY 1 ASC
   `);
 }
 

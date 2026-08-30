@@ -11,7 +11,7 @@ export async function getWrrVolumeTrend(range: DateRange, flow: AnalyticsFlow, p
     FROM wrr_documents wd
     WHERE wd.created_at >= ${startDate} AND wd.created_at <= ${endDate}
       AND ${flowPredicate(sql`wd.flow_type`, flow)}
-    GROUP BY period ORDER BY period ASC
+    GROUP BY 1 ORDER BY 1 ASC
   `);
 }
 

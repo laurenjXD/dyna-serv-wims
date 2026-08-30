@@ -133,6 +133,13 @@ interface PageProps {
   }>;
 }
 
+import {
+  FilterablePickListsTable,
+  FilterableARTable,
+  type MockPickListDoc,
+  type MockARDoc,
+} from "./_components/DocumentsFilterableTable";
+
 export default async function DocumentsPage({ searchParams }: PageProps) {
   const { tab: tabParam } = await searchParams;
 
@@ -173,107 +180,6 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
         </p>
       </div>
 
-      {/* Filter bar */}
-      <div className="mt-6">
-        <form method="GET" className="flex flex-wrap items-end gap-3">
-          {/* Type filter */}
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="type-filter"
-              className="font-label text-label text-text-grey"
-            >
-              Flow type
-            </label>
-            <select
-              id="type-filter"
-              name="type"
-              className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            >
-              <option value="all">All types</option>
-              <option value="VMI">VMI</option>
-              <option value="Trading">Trading</option>
-              <option value="Supplies">Supplies</option>
-            </select>
-          </div>
-
-          {/* Status filter */}
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="status-filter"
-              className="font-label text-label text-text-grey"
-            >
-              Status
-            </label>
-            <select
-              id="status-filter"
-              name="status"
-              className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            >
-              <option value="all">All statuses</option>
-              <option value="committed">Committed</option>
-              <option value="dispatched">Dispatched</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-          </div>
-
-          {/* Date range — from */}
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="from-date"
-              className="font-label text-label text-text-grey"
-            >
-              From
-            </label>
-            <input
-              type="date"
-              id="from-date"
-              name="from"
-              className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            />
-          </div>
-
-          {/* Date range — to */}
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="to-date"
-              className="font-label text-label text-text-grey"
-            >
-              To
-            </label>
-            <input
-              type="date"
-              id="to-date"
-              name="to"
-              className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            />
-          </div>
-
-          {/* Party filter */}
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="party-filter"
-              className="font-label text-label text-text-grey"
-            >
-              Organization
-            </label>
-            <input
-              type="text"
-              id="party-filter"
-              name="party"
-              placeholder="Search party…"
-              className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-text-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white motion-safe:transition-opacity motion-safe:duration-150 hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
-          >
-            Apply
-          </button>
-        </form>
-      </div>
-
       {/* Tabs */}
       <div role="tablist" aria-label="Documents sections" className="mt-6 flex gap-1 border-b border-outline-variant/30">
         <Link
@@ -282,7 +188,7 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
           aria-selected={activeTab === "pick-lists"}
           className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
             activeTab === "pick-lists"
-              ? "border-b-2 border-on-surface text-on-surface"
+              ? "border-b-2 border-on-surface text-on-surface font-bold"
               : "text-text-grey hover:text-on-surface"
           }`}
         >
@@ -294,7 +200,7 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
           aria-selected={activeTab === "ar"}
           className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
             activeTab === "ar"
-              ? "border-b-2 border-on-surface text-on-surface"
+              ? "border-b-2 border-on-surface text-on-surface font-bold"
               : "text-text-grey hover:text-on-surface"
           }`}
         >
@@ -303,224 +209,12 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
       </div>
 
       {/* Tab content */}
-      <div className="mt-4">
+      <div className="mt-5">
         {activeTab === "pick-lists" ? (
-          <PickListsTab />
+          <FilterablePickListsTable rows={MOCK_PICK_LISTS as MockPickListDoc[]} />
         ) : (
-          <AcknowledgementReceiptsTab />
+          <FilterableARTable rows={MOCK_ACKNOWLEDGEMENT_RECEIPTS as MockARDoc[]} />
         )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Pick Lists tab ───────────────────────────────────────────────────────────
-
-function PickListsTab() {
-  if (MOCK_PICK_LISTS.length === 0) {
-    return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center">
-        <Package size={40} className="text-text-grey" aria-hidden="true" />
-        <p className="font-body text-body-md text-text-grey">No pick lists yet.</p>
-        <p className="font-body text-body-sm text-text-grey">
-          Pick lists appear here once outgoing withdrawals are committed.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-              {/* Epilogue SemiBold uppercase headers per brand-design-system.md §9 */}
-              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                Pick List #
-              </th>
-              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                Organization
-              </th>
-              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                Items
-              </th>
-              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                Flow
-              </th>
-              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                Status
-              </th>
-              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                Created
-              </th>
-              <th className="sr-only px-4 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-outline-variant/30">
-            {MOCK_PICK_LISTS.map((pl) => (
-              <tr key={pl.id} className="hover:bg-surface-light-grey/50">
-                {/* Pick list number — Roboto Mono for codes */}
-                <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                  {pl.number}
-                </td>
-
-                {/* Party name — body text */}
-                <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                  {pl.party}
-                </td>
-
-                {/* Items count — Roboto Mono for numeric columns */}
-                <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                  {pl.itemsCount}
-                </td>
-
-                {/* Flow badge — brand tokens, never raw hex */}
-                <td className="px-4 py-3">
-                  <span
-                    className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase tracking-[0.05em] ${FLOW_CLASSES[pl.flow]}`}
-                  >
-                    {pl.flow}
-                  </span>
-                </td>
-
-                {/* Status badge — §1.3 semantic colors */}
-                <td className="px-4 py-3">
-                  <span
-                    className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase tracking-[0.05em] ${PICK_STATUS_CLASSES[pl.status]}`}
-                  >
-                    {PICK_STATUS_LABELS[pl.status]}
-                  </span>
-                </td>
-
-                {/* Date */}
-                <td className="px-4 py-3 font-body text-body-md text-text-grey">
-                  {pl.createdAt}
-                </td>
-
-                {/* Actions — h-11 (44px) office touch targets */}
-                <td className="px-4 py-3">
-                  <div className="flex items-center justify-end gap-2">
-                    {/* Print icon button — h-9 w-9 per spec */}
-                    <button
-                      type="button"
-                      aria-label={`Print pick list ${pl.number}`}
-                      className="flex h-11 w-11 items-center justify-center rounded border border-outline-variant/30 text-text-grey motion-safe:transition-colors motion-safe:duration-150 hover:border-brand-navy hover:text-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                    >
-                      <Printer size={16} aria-hidden="true" />
-                    </button>
-
-                    <Link
-                      href={`/documents/pick-lists/${pl.id}`}
-                      className="inline-flex h-11 items-center rounded bg-brand-navy px-4 font-label text-label text-surface-white motion-safe:transition-opacity motion-safe:duration-150 hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                    >
-                      View
-                    </Link>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-// ─── Acknowledgement Receipts tab ─────────────────────────────────────────────
-
-function AcknowledgementReceiptsTab() {
-  if (MOCK_ACKNOWLEDGEMENT_RECEIPTS.length === 0) {
-    return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center">
-        <CheckCircle2 size={40} className="text-text-grey" aria-hidden="true" />
-        <p className="font-body text-body-md text-text-grey">
-          No acknowledgement receipts yet.
-        </p>
-        <p className="font-body text-body-sm text-text-grey">
-          Receipts appear here once pick lists are dispatched and signed by the party.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                AR #
-              </th>
-              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                Organization
-              </th>
-              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                Pick List #
-              </th>
-              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                Items
-              </th>
-              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                Status
-              </th>
-              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                Date
-              </th>
-              <th className="sr-only px-4 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-outline-variant/30">
-            {MOCK_ACKNOWLEDGEMENT_RECEIPTS.map((ar) => (
-              <tr key={ar.id} className="hover:bg-surface-light-grey/50">
-                {/* AR number — Roboto Mono for codes */}
-                <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                  {ar.number}
-                </td>
-
-                {/* Party name */}
-                <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                  {ar.party}
-                </td>
-
-                {/* Pick list reference — Roboto Mono */}
-                <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                  {ar.pickListNumber}
-                </td>
-
-                {/* Items count */}
-                <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                  {ar.itemsCount}
-                </td>
-
-                {/* Status badge */}
-                <td className="px-4 py-3">
-                  <span
-                    className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase tracking-[0.05em] ${AR_STATUS_CLASSES[ar.status]}`}
-                  >
-                    {AR_STATUS_LABELS[ar.status]}
-                  </span>
-                </td>
-
-                {/* Date */}
-                <td className="px-4 py-3 font-body text-body-md text-text-grey">
-                  {ar.date}
-                </td>
-
-                {/* View action */}
-                <td className="px-4 py-3 text-right">
-                  <Link
-                    href={`/documents/acknowledgement-receipts/${ar.id}`}
-                    className="inline-flex h-11 items-center rounded bg-brand-navy px-4 font-label text-label text-surface-white motion-safe:transition-opacity motion-safe:duration-150 hover:opacity-90 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                  >
-                    View
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
       </div>
     </div>
   );

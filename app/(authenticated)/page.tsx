@@ -318,12 +318,26 @@ export default async function Home() {
   // Build top-5 inventory preview from stock rows.
   const inventoryPreview = buildInventoryPreview(stockRows, 5);
 
+  function safeDateLabel(val: string | Date | null | undefined, options?: Intl.DateTimeFormatOptions): string {
+    if (!val) return "";
+    const d = val instanceof Date ? val : new Date(val);
+    if (Number.isNaN(d.valueOf())) return String(val);
+    return d.toLocaleDateString("en-US", options);
+  }
+
+  function safeIsoString(val: Date | string | null | undefined): string {
+    if (!val) return new Date().toISOString();
+    if (val instanceof Date) return Number.isNaN(val.valueOf()) ? new Date().toISOString() : val.toISOString();
+    const d = new Date(val);
+    return Number.isNaN(d.valueOf()) ? new Date().toISOString() : d.toISOString();
+  }
+
   // Weekly trend: one point per day, quantity + CBM. No $/sales series
   // (R11.5 — no pricing/billing backend exists yet).
   const weeklyTrend: WeeklyTrendDatum[] = (
     weeklyTrendRows as Array<{ period: string | Date; total_qty: string; total_cbm: string }>
   ).map((row) => ({
-    period: new Date(row.period).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+    period: safeDateLabel(row.period, { month: "short", day: "numeric" }),
     qty: toNumber(row.total_qty),
     cbm: toNumber(row.total_cbm),
   }));
@@ -331,10 +345,10 @@ export default async function Home() {
   // Monthly outgoing: daily-granularity rows for the bar graph, plus the
   // month-to-date sum for the headline number (2026-08-19 — was a single
   // stat block, now a graph per user request).
-  const monthlyTrendTyped = monthlyTrendRows as Array<{ period: string | Date; total_qty: string }>;
+  const monthlyTrendTyped = (monthlyTrendRows ?? []) as Array<{ period: string | Date; total_qty: string }>;
   const monthlyOutgoingQty = monthlyTrendTyped.reduce((sum, row) => sum + toNumber(row.total_qty), 0);
   const monthlyTrend: WeeklyTrendDatum[] = monthlyTrendTyped.map((row) => ({
-    period: new Date(row.period).toLocaleDateString("en-US", { day: "numeric" }),
+    period: safeDateLabel(row.period, { day: "numeric" }),
     qty: toNumber(row.total_qty),
     cbm: 0,
   }));
@@ -374,12 +388,12 @@ export default async function Home() {
     ...recentWrrRows.map((wrr) => ({
       id: `wrr-${wrr.id}`,
       description: `Receiving in progress: ${wrr.wrrNumber}${wrr.vendorPartyName ? ` from ${wrr.vendorPartyName}` : ""}`,
-      timestamp: wrr.createdAt.toISOString(),
+      timestamp: safeIsoString(wrr.createdAt),
     })),
     ...recentPickListRows.map((pl) => ({
       id: `pl-${pl.id}`,
       description: `Pick List allocated: ${pl.pickListNumber}`,
-      timestamp: pl.createdAt.toISOString(),
+      timestamp: safeIsoString(pl.createdAt),
     })),
   ]
     .filter((entry) => !openQueueIds.has(entry.id))

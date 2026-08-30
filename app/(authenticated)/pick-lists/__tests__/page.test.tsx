@@ -13,11 +13,13 @@ describe("PickListsIndexPage (app/(authenticated)/pick-lists/page.tsx)", () => {
 
   it("keeps pick-list access capability-gated and provides responsive queue layouts", async () => {
     const page = await import("../page");
-    const source = page.default.toString();
+    const table = await import("../_components/PickListsFilterableTable");
+    const pageSource = page.default.toString();
+    const tableSource = table.PickListsFilterableTable.toString();
 
-    expect(source).toContain("pick_list.read");
-    expect(source).toContain("listPickLists");
-    expect(source).toContain("md:hidden");
-    expect(source).toContain("hidden overflow-x-auto md:block");
+    expect(pageSource).toContain("pick_list.read");
+    expect(pageSource).toContain("listPickLists");
+    expect(tableSource).toContain("md:hidden");
+    expect(tableSource).toContain("hidden overflow-x-auto md:block");
   });
 });
