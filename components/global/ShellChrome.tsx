@@ -225,7 +225,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
       />
 
       <header
-        className={`fixed inset-x-0 top-0 z-30 isolate flex h-14 items-center gap-3 overflow-visible bg-surface px-4 transition-[left] duration-150 motion-reduce:transition-none lg:inset-x-auto lg:top-3 lg:right-3 lg:min-h-[76px] lg:rounded-2xl lg:border-2 lg:border-brand-royal-blue/45 lg:px-7 lg:py-3 lg:shadow-[0_10px_24px_rgba(37,99,235,0.12)] before:pointer-events-none before:absolute before:left-0 before:top-0 before:z-0 before:h-1.5 before:w-28 before:rounded-br-full before:rounded-tl-2xl before:bg-brand-royal-blue/55 after:pointer-events-none after:absolute after:bottom-0 after:right-0 after:z-0 after:h-2 after:w-32 after:rounded-tl-full after:rounded-br-2xl after:bg-brand-royal-blue/45 ${
+        className={`fixed inset-x-0 top-0 z-30 isolate flex h-14 items-center gap-3 overflow-visible bg-surface px-4 transition-[left] duration-150 motion-reduce:transition-none lg:inset-x-auto lg:top-3 lg:right-3 lg:min-h-[76px] lg:rounded-2xl lg:border-2 lg:border-brand-royal-blue/45 lg:px-7 lg:py-3 lg:shadow-[0_10px_24px_rgba(37,99,235,0.12)] ${
           isDesktopOpen ? "lg:left-[312px]" : "lg:left-0"
         }`}
       >

@@ -371,20 +371,22 @@ export function OutgoingLedgerClientTable({
                             className="flex min-w-0 max-w-[360px] flex-wrap items-center gap-2"
                           >
                             <input type="hidden" name="pickListId" value={row.pickListId ?? ""} />
-                            <input
-                              required
-                              type="file"
-                              name="deliveryReceipt"
-                              accept="application/pdf,image/png,image/jpeg"
-                              className="h-9 min-w-0 max-w-[190px] flex-1 overflow-hidden rounded-lg border border-outline-variant/40 bg-surface-white px-1 text-xs text-text-grey file:mr-1.5 file:h-8 file:rounded-md file:border-0 file:bg-surface-light-grey file:px-2 file:font-label file:text-xs file:font-semibold file:text-on-surface"
-                            />
-                            <button
-                              type="submit"
-                              className="inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-brand-navy/30 bg-surface-white px-3 font-label text-body-xs font-bold text-brand-navy hover:bg-brand-navy/5"
-                            >
+                            <label className="inline-flex h-9 cursor-pointer shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-brand-navy/30 bg-surface-white px-3 font-label text-body-xs font-bold text-brand-navy hover:bg-brand-navy/5">
                               <Upload className="h-3.5 w-3.5" />
                               Upload
-                            </button>
+                              <input
+                                required
+                                type="file"
+                                name="deliveryReceipt"
+                                accept="application/pdf,image/png,image/jpeg"
+                                className="sr-only"
+                                onChange={(event) => {
+                                  if (event.currentTarget.files?.length) {
+                                    event.currentTarget.form?.requestSubmit();
+                                  }
+                                }}
+                              />
+                            </label>
                           </form>
                         )}
                       </td>
