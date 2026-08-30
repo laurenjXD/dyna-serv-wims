@@ -71,9 +71,9 @@ export default async function OutgoingPage({
           href="/outgoing"
           role="tab"
           aria-selected={activeTab === "dispatch"}
-          className={`border-b-2 px-4 py-3 font-label text-label font-bold transition-colors ${
+            className={`border-b-2 px-4 py-3 font-label text-label font-bold transition-colors ${
             activeTab === "dispatch"
-              ? "border-primary text-primary"
+              ? "border-brand-navy text-brand-navy"
               : "border-transparent text-text-grey hover:text-on-surface"
           }`}
         >
@@ -83,9 +83,9 @@ export default async function OutgoingPage({
           href="/outgoing?tab=ledger"
           role="tab"
           aria-selected={activeTab === "ledger"}
-          className={`border-b-2 px-4 py-3 font-label text-label font-bold transition-colors ${
+            className={`border-b-2 px-4 py-3 font-label text-label font-bold transition-colors ${
             activeTab === "ledger"
-              ? "border-primary text-primary"
+              ? "border-brand-navy text-brand-navy"
               : "border-transparent text-text-grey hover:text-on-surface"
           }`}
         >
