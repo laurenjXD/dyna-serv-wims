@@ -170,11 +170,16 @@ export default async function ApprovalDetailPage({ params, searchParams }: PageP
   const snapshot = request.targetSnapshot as FifoOverrideSnapshot | null;
   const status = request.status as ApprovalStatus;
 
-  // Self-approval UI guard — client-side UX only. Server action re-checks.
+  const now = new Date();
+  const isExpired = request.expiryAt.getTime() <= now.getTime();
+
+  // Self-approval and expiry guards are UX only. Server actions re-check both
+  // conditions authoritatively before recording a decision.
   const isSelfApproval = reviewerUserId === request.requesterUserId;
 
-  // Show decision controls only for pending requests where viewer is not requester.
-  const showDecisionControls = request.status === "pending" && !isSelfApproval;
+  // Show decision controls only for pending, non-expired requests where viewer
+  // is not the requester.
+  const showDecisionControls = request.status === "pending" && !isSelfApproval && !isExpired;
 
   // Stale indicator — shown when the target's current lot_location_balances
   // version has moved on from the version captured in the snapshot at
@@ -232,8 +237,6 @@ export default async function ApprovalDetailPage({ params, searchParams }: PageP
       systemRecommendationUnavailable = true;
     }
   }
-
-  const now = new Date();
 
   // ─── Server Actions (inline, closed over approvalId) ──────────────────────
 
@@ -729,16 +732,15 @@ export default async function ApprovalDetailPage({ params, searchParams }: PageP
         </div>
       )}
 
-      {/* Non-pending notice — terminal/decided states */}
-      {request.status !== "pending" && (
+      {/* Expiry/terminal notice — expired requests are read-only and cannot be
+          approved or rejected. */}
+      {(isExpired || request.status !== "pending") && (
         <div className="mt-6 rounded-2xl border border-outline-variant/30 bg-surface-light-grey p-6">
-          <p className="font-body text-body-md text-text-grey">
-            This request is{" "}
-            <span className="font-label text-label uppercase">
-              {STATUS_LABELS[status] ?? status.toUpperCase()}
-            </span>{" "}
-            and no further action is available.
-          </p>
+          {isExpired && request.status === "pending" ? (
+            <p className="font-body text-body-md text-text-grey">This request is <span className="font-label text-label uppercase text-status-held">EXPIRED</span> and can no longer be approved or rejected.</p>
+          ) : (
+            <p className="font-body text-body-md text-text-grey">This request is <span className="font-label text-label uppercase">{STATUS_LABELS[status] ?? status.toUpperCase()}</span> and no further action is available.</p>
+          )}
         </div>
       )}
 

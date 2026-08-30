@@ -360,7 +360,7 @@ export function ShellNavigation({
         data-testid="desktop-sidebar"
         aria-label="Primary navigation"
         aria-hidden={!desktopOpen}
-        className={`hidden flex-col overflow-hidden bg-surface lg:fixed lg:bottom-3 lg:left-3 lg:top-3 lg:z-40 lg:w-[286px] lg:rounded-lg lg:border lg:border-border lg:shadow-elevation-2 ${
+        className={`hidden h-[calc(100vh-1.5rem)] flex-col overflow-hidden bg-surface lg:fixed lg:bottom-3 lg:left-3 lg:top-3 lg:z-40 lg:w-[286px] lg:rounded-2xl lg:border lg:border-border lg:shadow-elevation-2 ${
           desktopOpen ? "lg:flex" : "lg:hidden"
         }`}
       >
@@ -386,7 +386,7 @@ export function ShellNavigation({
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-3 py-1.5">
+        <div className="min-h-0 flex-1 overflow-hidden px-3 py-2">
           <GroupedSections sections={sections} activeId={activeId} tier={tier} compact pendingApprovalCount={pendingApprovalCount} />
         </div>
 
