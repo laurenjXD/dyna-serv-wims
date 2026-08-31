@@ -37,6 +37,7 @@ export function LogisticsLedgerClientTable() {
   const [rows, setRows] = useState<LogisticsDrRow[]>(INITIAL_DR_ROWS);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<LogisticsDrRow>>({});
+  const [fxRate, setFxRate] = useState<number>(61.71); // Daily Forex Rate (USD -> PHP)
 
   const startEdit = (row: LogisticsDrRow) => {
     setEditingId(row.id);
@@ -69,9 +70,37 @@ export function LogisticsLedgerClientTable() {
 
   const totalDeliveryPhp = rows.reduce((sum, r) => sum + r.deliveryChargePhp, 0);
   const totalDocUsd = rows.reduce((sum, r) => sum + r.documentationChargeUsd, 0);
+  const deliveryUsd = fxRate > 0 ? totalDeliveryPhp / fxRate : 0;
 
   return (
     <div className="space-y-6">
+      {/* Daily Forex Rate Banner */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl border border-brand-navy/30 bg-[#F0F4FF] p-4 shadow-sm">
+        <div>
+          <h4 className="font-heading text-body-md font-bold text-brand-navy">
+            Daily Forex Exchange Rate (USD / PHP)
+          </h4>
+          <p className="font-body text-body-xs text-text-grey">
+            Calculates daily peso-to-dollar conversions for logistics delivery charges on Statement of Account (SOA).
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="font-label text-label-xs font-bold text-brand-navy">
+            Daily FX Rate (1 USD =):
+          </label>
+          <div className="relative">
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 font-mono text-mono-sm text-text-grey">₱</span>
+            <input
+              type="number"
+              step="0.0001"
+              value={fxRate}
+              onChange={(e) => setFxRate(parseFloat(e.target.value) || 0)}
+              className="w-32 rounded border border-brand-navy bg-surface-white pl-6 pr-2 py-1 font-mono text-mono-sm font-bold text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy/30"
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Summary Widget */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">
@@ -83,7 +112,7 @@ export function LogisticsLedgerClientTable() {
             ₱{totalDeliveryPhp.toLocaleString("en-US", { minimumFractionDigits: 2 })}
           </p>
           <p className="mt-1 font-body text-body-xs text-text-grey">
-            ~ ${(totalDeliveryPhp / 61.71).toFixed(2)} USD (FX 61.71)
+            ~ ${deliveryUsd.toFixed(2)} USD (Daily FX: ₱{fxRate.toFixed(2)})
           </p>
         </div>
 
@@ -106,7 +135,7 @@ export function LogisticsLedgerClientTable() {
             <span className="font-label text-label uppercase tracking-wider text-text-grey">Combined Logistics Fees</span>
           </div>
           <p className="mt-2 font-heading font-extrabold text-headline-md text-on-surface">
-            ${((totalDeliveryPhp / 61.71) + totalDocUsd).toFixed(2)} USD
+            ${(deliveryUsd + totalDocUsd).toFixed(2)} USD
           </p>
           <p className="mt-1 font-body text-body-xs text-text-grey">
             Basis for Monthly Statement of Account (SOA)

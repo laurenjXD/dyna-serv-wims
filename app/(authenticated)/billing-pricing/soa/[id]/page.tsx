@@ -15,6 +15,7 @@ import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { getPartyWithRoles } from "@/lib/db/queries/parties";
 import { getVmiDailyBalanceRows } from "@/lib/billing/queries/vmi-ledger";
+import { getDailyForexRate } from "@/lib/billing/forex-service";
 import { SoaDetailClient, type SoaData } from "./SoaDetailClient";
 
 interface PageProps {
@@ -65,7 +66,12 @@ export default async function SoaDetailPage({ params, searchParams }: PageProps)
   const customerName = party ? party.name : "United Philippine Industrial";
   const customerCode = party ? party.code : "UPI";
   const soaNumber = `SOA-${year}-${String(monthIdx + 1).padStart(2, "0")}-${customerCode}`;
-  const totalAmount = storageAmount + 662.71 + 420.0 + 220.05 + 368.14 + 36.0 + 200.0;
+  const targetDate = `${year}-${String(monthIdx + 1).padStart(2, "0")}-01`;
+  const exchangeRate = await getDailyForexRate(targetDate);
+  const deliveryPhp = 40896.0;
+  const deliveryUsd = Number((deliveryPhp / exchangeRate).toFixed(2));
+
+  const totalAmount = storageAmount + deliveryUsd + 420.0 + 220.05 + 368.14 + 36.0 + 200.0;
 
   const soaData: SoaData = {
     soaNumber,
@@ -76,7 +82,7 @@ export default async function SoaDetailPage({ params, searchParams }: PageProps)
     issueDate: `${year}-${String(monthIdx + 1).padStart(2, "0")}-01`,
     dueDate: `${year}-${String(monthIdx + 1).padStart(2, "0")}-${daysInMonth}`,
     currency: "USD",
-    exchangeRate: 61.71,
+    exchangeRate,
     openingBalanceUsd: 0.0,
     currentChargesUsd: Number(totalAmount.toFixed(2)),
     debitAdjustmentsUsd: 0.0,
@@ -85,7 +91,7 @@ export default async function SoaDetailPage({ params, searchParams }: PageProps)
     outstandingBalanceUsd: Number(totalAmount.toFixed(2)),
     categories: [
       { name: "Warehousing (Daily CBM Storage)", code: "WH-STORAGE", amount: Number(storageAmount.toFixed(2)), sectionId: "section-7" },
-      { name: "Delivery & Distribution Charges", code: "DELIVERY", amount: 662.71, sectionId: "section-2" },
+      { name: "Delivery & Distribution Charges", code: "DELIVERY", amount: deliveryUsd, sectionId: "section-2" },
       { name: "Documentation Charges (DR / POD)", code: "DOCUMENTATION", amount: 420.0, sectionId: "section-2" },
       { name: "Handling IN (Receiving & Stripping)", code: "HANDLING-IN", amount: 220.05, sectionId: "section-5" },
       { name: "Handling OUT (Picking & Loading)", code: "HANDLING-OUT", amount: 368.14, sectionId: "section-5" },
