@@ -77,7 +77,7 @@ export default async function SoaDetailPage({ params, searchParams }: PageProps)
   let loaFeeUsd = 36.0;
   let truckingAdminUsd = 200.0;
   let suretyBondUsd = 0.0;
-  let ctfUsd = 0.0;
+  const ctfUsd = 0.0;
   let customCbmRows: DailyStorageRow[] | undefined = undefined;
 
   if (party) {

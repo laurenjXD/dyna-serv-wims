@@ -34,7 +34,7 @@ export default async function NewContractPage() {
     const partyId = String(formData.get("partyId") ?? "").trim();
     const contractType = String(formData.get("contractType") ?? "vmi_trading") as "vmi" | "trading" | "vmi_trading";
     let effectiveDate = String(formData.get("effectiveDate") ?? "").trim();
-    let expirationDate = String(formData.get("expirationDate") ?? "").trim() || undefined;
+    const expirationDate = String(formData.get("expirationDate") ?? "").trim() || undefined;
     const currency = String(formData.get("currency") ?? "USD");
     const exchangeRatePolicy = String(formData.get("exchangeRatePolicy") ?? "monthly_rate");
     const paymentTerms = String(formData.get("paymentTerms") ?? "Net 30");
