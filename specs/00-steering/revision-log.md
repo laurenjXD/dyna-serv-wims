@@ -1,24 +1,20 @@
 # Revision Log — Hyperion 3PL / Dyna-Serv
 
+## IDE workspace configuration: CSS & Tailwind directive linter rules (2026-08-31)
+
+**What changed**: Added `.vscode/settings.json` configuring `"css.lint.unknownAtRules": "ignore"`.
+**Rationale**: VS Code's default CSS language validator flagged valid Tailwind CSS directives (`@tailwind base`, `@tailwind components`, `@tailwind utilities`, and `@apply ...`) in `app/globals.css` as unknown directives. Setting `"css.lint.unknownAtRules": "ignore"` silences false-positive editor warnings while keeping PostCSS / Tailwind CSS compilation intact.
+
+## `milestone-2-polish` branch merged into `v1`: UI shell keyboard shortcuts, DR attachment lifecycle, expired approval soft-archive, and scanner default flow (2026-08-30)
+
+**What shipped**:
+1. **Expired Approval Request Soft-Archive (`09-approval-queue`)**: Implemented migration `0044_expired_approval_soft_archive.sql` (`deletedAt`, `deletedByUserId` columns on `approval_requests`), backend action `archiveExpiredApprovalRequest` in `lib/actions/approvals.ts`, and tabbed UI in `app/(authenticated)/approvals/page.tsx` (Open vs Deleted tabs). Strictly restricts soft-archiving to expired requests (`expires_at < NOW()`); active, approved, rejected, and consumed requests remain non-deletable. Preserves decision history and reviewer attribution.
+2. **Delivery Receipt (DR) Attachment & Removal Lifecycle (`08-outgoing-withdrawal-and-two-stage-commitment`)**: Implemented migration `0045_delivery_receipts_delete_policy.sql`, backend action `removeDeliveryReceiptUrl` in `lib/actions/withdrawals.ts` and `app/(authenticated)/pick-lists/_actions.ts`, and enhanced `OutgoingLedgerClientTable.tsx` / `app/(authenticated)/outgoing/page.tsx` to support uploading, previewing, and detaching Delivery Receipt document URLs.
+3. **Keyboard Shortcuts System & Navigation Enhancements (`05-ui-shell-and-navigation`)**: Added global modal shortcuts drawer triggered by `?` in `components/global/ShellChrome.tsx`, quick keyboard shortcut navigation in `ShellNavigation.tsx`, and an operational keyboard shortcut guide section on `OfficeLanding` (`/`).
+4. **Camera Scanner Floor Optimization (`07-incoming-receiving`)**: Updated `ReceivingCameraScanner.tsx` to directly initialize the rear camera video stream (`facingMode: { exact: "environment" }` with fallback), bypassing the manual button prompt for seamless floor operator barcode scanning.
+5. **Route Registry Cleanup & E2E Testing**: Removed retired `/notifications` entry from `ShellNavigation` registry and deleted `app/(authenticated)/notifications/page.tsx`; added `next/navigation` router mocks to `ShellNavigation.test.tsx`; added Playwright E2E suites (`e2e/auth.spec.ts`, `e2e/floor-responsive.spec.ts`) validating auth redirects and touch-target minimums (64px CTA / 56px default) across mobile/desktop viewports.
+
 ## Approved cross-track request: carton identity foundation (2026-08-28)
-
-The Product Owner approved the new `23-carton-level-traceability` scope derived
-from the Carton-Level QR/Barcode Identification, Receiving Validation &
-Discrepancy Management specification. The first implementation slice adds a
-stable Carton ID to existing `inventory_units`, immutable carton status history,
-and database-enforced uniqueness/backfill. It deliberately preserves existing
-lot balances, receiving counters, reservation records, and immutable inventory
-transactions as their current authorities. Planned migration: `0043`.
-
-Every merge conflict and major revision, dated, with the resolution. This is the audit trail for "why does the spec say X" when X isn't obvious from the doc alone.
-
-## Approved cross-track request: expired approval soft archive (2026-08-30)
-
-The Product Owner approved an approval-queue amendment: an authorized reviewer
-may move only expired approval requests into a read-only Deleted tab for
-monitoring. The operation is a soft archive that preserves the request,
-decision history, and actor attribution; active, approved, rejected, consumed,
-and already archived requests remain non-deletable. Planned migration: `0044`.
 
 ## Adoption of CIPL and DRA Document Parsing — Excel & PDF (2026-08-28)
 
