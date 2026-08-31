@@ -20,18 +20,30 @@ const INITIAL_DR_ROWS: LogisticsDrRow[] = [
   { id: "dr-1", date: "2026-06-02", drReference: "WR-UPI-260546", consignee: "AMERTRON", deliveryChargePhp: 0.0, documentationChargeUsd: 10.0, remarks: "", status: "recorded" },
   { id: "dr-2", date: "2026-06-02", drReference: "WR-UBOT-260549", consignee: "ADGT", deliveryChargePhp: 0.0, documentationChargeUsd: 0.0, remarks: "Plastic Reel", status: "recorded" },
   { id: "dr-3", date: "2026-06-02", drReference: "WR-UPI-260551", consignee: "AMPLEON", deliveryChargePhp: 0.0, documentationChargeUsd: 10.0, remarks: "co-load", status: "recorded" },
-  { id: "dr-4", date: "2026-06-02", drReference: "UPI00233 & 00234", consignee: "UPI", deliveryChargePhp: 600.0, documentationChargeUsd: 0.0, remarks: "co-load (pick up: UPI)", status: "recorded" },
+  { id: "dr-4", date: "2026-06-02", drReference: "UPI00233 & 00234", consignee: "UPI — Cavite Assembly Plant A", deliveryChargePhp: 600.0, documentationChargeUsd: 0.0, remarks: "co-load (pick up: UPI)", status: "recorded" },
   { id: "dr-5", date: "2026-06-02", drReference: "UPI00230 - 232", consignee: "DSGC", deliveryChargePhp: 2000.0, documentationChargeUsd: 10.0, remarks: "FG", status: "recorded" },
   { id: "dr-6", date: "2026-06-02", drReference: "UPI00229", consignee: "DSGC", deliveryChargePhp: 0.0, documentationChargeUsd: 10.0, remarks: "FG Reels", status: "recorded" },
   { id: "dr-7", date: "2026-06-03", drReference: "UPI00235", consignee: "DSGC", deliveryChargePhp: 0.0, documentationChargeUsd: 10.0, remarks: "FG Reels", status: "recorded" },
   { id: "dr-8", date: "2026-06-04", drReference: "WR-UBOT-260557", consignee: "ST", deliveryChargePhp: 0.0, documentationChargeUsd: 0.0, remarks: "Plastic Reel", status: "recorded" },
   { id: "dr-9", date: "2026-06-04", drReference: "WR-UBOT-260562", consignee: "ATP", deliveryChargePhp: 0.0, documentationChargeUsd: 10.0, remarks: "co-load trays", status: "recorded" },
   { id: "dr-10", date: "2026-06-05", drReference: "WR-UPI-260569", consignee: "AMPLEON", deliveryChargePhp: 1500.0, documentationChargeUsd: 10.0, remarks: "", status: "recorded" },
-  { id: "dr-11", date: "2026-06-05", drReference: "UPI00244", consignee: "UPI", deliveryChargePhp: 600.0, documentationChargeUsd: 0.0, remarks: "co-load (pick up: UPI)", status: "recorded" },
+  { id: "dr-11", date: "2026-06-05", drReference: "UPI00244", consignee: "UPI — Calamba Storage Hub", deliveryChargePhp: 600.0, documentationChargeUsd: 0.0, remarks: "co-load (pick up: UPI)", status: "recorded" },
   { id: "dr-12", date: "2026-06-05", drReference: "UPI00239 - 00243", consignee: "DSGC", deliveryChargePhp: 1000.0, documentationChargeUsd: 10.0, remarks: "FG", status: "recorded" },
-  { id: "dr-13", date: "2026-06-09", drReference: "WR-UBOT-260581", consignee: "UPI", deliveryChargePhp: 3000.0, documentationChargeUsd: 10.0, remarks: "Scrap (Reject)", status: "recorded" },
-  { id: "dr-14", date: "2026-06-15", drReference: "WR-UBOT-260598", consignee: "UPI", deliveryChargePhp: 7230.0, documentationChargeUsd: 10.0, remarks: "Scrap (Reject)", status: "recorded" },
+  { id: "dr-13", date: "2026-06-09", drReference: "WR-UBOT-260581", consignee: "UPI — Cavite Assembly Plant A", deliveryChargePhp: 3000.0, documentationChargeUsd: 10.0, remarks: "Scrap (Reject)", status: "recorded" },
+  { id: "dr-14", date: "2026-06-15", drReference: "WR-UBOT-260598", consignee: "UPI — Clark Facility", deliveryChargePhp: 7230.0, documentationChargeUsd: 10.0, remarks: "Scrap (Reject)", status: "recorded" },
   { id: "dr-15", date: "2026-06-16", drReference: "WR-UPI260600", consignee: "AMPLEON", deliveryChargePhp: 3470.0, documentationChargeUsd: 10.0, remarks: "", status: "recorded" },
+];
+
+export const STANDARD_CONSIGNEES = [
+  "UPI — Cavite Assembly Plant A",
+  "UPI — Calamba Storage Hub",
+  "UPI — Clark Facility",
+  "AMERTRON (Cavite)",
+  "AMPLEON (Laguna)",
+  "ADGT (Gateway Business Park)",
+  "ATP (LISP II)",
+  "ST (Calamba)",
+  "DSGC (Main Warehouse)",
 ];
 
 export function LogisticsLedgerClientTable() {
@@ -213,11 +225,18 @@ export function LogisticsLedgerClientTable() {
                     <>
                       <td className="px-4 py-2">
                         <input
+                          list="consignee-options"
                           type="text"
                           value={editForm.consignee ?? ""}
                           onChange={(e) => setEditForm({ ...editForm, consignee: e.target.value })}
-                          className="w-full rounded border border-brand-navy px-2 py-1 font-body text-body-sm"
+                          placeholder="Select or enter plant/customer..."
+                          className="w-full rounded border border-brand-navy px-2 py-1 font-body text-body-sm bg-surface-white"
                         />
+                        <datalist id="consignee-options">
+                          {STANDARD_CONSIGNEES.map((c) => (
+                            <option key={c} value={c} />
+                          ))}
+                        </datalist>
                       </td>
                       <td className="px-4 py-2 text-right">
                         <input
