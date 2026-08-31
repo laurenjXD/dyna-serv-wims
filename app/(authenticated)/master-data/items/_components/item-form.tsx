@@ -284,6 +284,28 @@ export function ItemForm({
           </div>
 
           <div>
+            <label htmlFor="defaultSupplierPartyId" className="block font-label text-label text-on-surface">
+              Owner / Default Supplier Organization{" "}
+              <span aria-hidden="true" className="text-brand-red">*</span>
+            </label>
+            <select
+              id="defaultSupplierPartyId"
+              name="defaultSupplierPartyId"
+              defaultValue={item?.defaultSupplierPartyId ?? ""}
+              required
+              className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            >
+              <option value="">Select organization…</option>
+              {supplierParties.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.code} — {p.name}
+                </option>
+              ))}
+            </select>
+            {fieldError("defaultSupplierPartyId")}
+          </div>
+
+          <div>
             <label htmlFor="parentCategoryId" className="block font-label text-label text-on-surface">
               Category
             </label>
@@ -351,22 +373,10 @@ export function ItemForm({
             </div>
           ) : inventoryModel === "trading" ? (
             <div>
-              <div className="flex items-center justify-between">
-                <label htmlFor="dsgcItemNumber" className="block font-label text-label text-on-surface">
-                  DSGC Item Number{" "}
-                  <span aria-hidden="true" className="text-brand-red">*</span>
-                </label>
-                {!dsgcItemNumberValue && (
-                  <button
-                    type="button"
-                    onClick={() => setDsgcItemNumberValue(suggestedDsgcPartNumber)}
-                    className="font-mono text-body-xs text-brand-navy hover:underline focus:outline-none"
-                    title="Click or press Tab in the input field to auto-fill"
-                  >
-                    Suggested: <span className="font-bold">{suggestedDsgcPartNumber}</span> (Tab to fill)
-                  </button>
-                )}
-              </div>
+              <label htmlFor="dsgcItemNumber" className="block font-label text-label text-on-surface">
+                DSGC Item Number{" "}
+                <span aria-hidden="true" className="text-brand-red">*</span>
+              </label>
               <input
                 id="dsgcItemNumber"
                 name="dsgcItemNumber"
@@ -375,7 +385,7 @@ export function ItemForm({
                 maxLength={100}
                 value={dsgcItemNumberValue}
                 onKeyDown={(e) => {
-                  if (e.key === "Tab" && !dsgcItemNumberValue) {
+                  if (e.key === "Tab" && !e.shiftKey && !dsgcItemNumberValue) {
                     setDsgcItemNumberValue(suggestedDsgcPartNumber);
                   }
                 }}
@@ -523,20 +533,18 @@ export function ItemForm({
                 Unit of Measure{" "}
                 <span aria-hidden="true" className="text-brand-red">*</span>
               </label>
-              <button
-                type="button"
-                onClick={() => {
-                  setCustomUomMode(!customUomMode);
-                  if (!customUomMode) {
-                    setCustomUomText("");
-                  } else {
+              {customUomMode && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomUomMode(false);
                     setUom("piece");
-                  }
-                }}
-                className="text-body-xs font-semibold text-brand-navy hover:underline focus:outline-none"
-              >
-                {customUomMode ? "Select Standard UOM" : "+ Add Measurement"}
-              </button>
+                  }}
+                  className="text-body-xs font-semibold text-brand-navy hover:underline focus:outline-none"
+                >
+                  Back to dropdown
+                </button>
+              )}
             </div>
             {customUomMode ? (
               <input
@@ -854,21 +862,14 @@ export function ItemForm({
           invariant, so an edit never submits a different value here. */}
       <input type="hidden" name="barcode" value={item?.barcode ?? primaryCodeValue} />
 
-      {/* Section: Pricing (reference values) */}
+      {/* Section: Pricing */}
       <section aria-labelledby="section-pricing" className="mt-8">
         <h2
           id="section-pricing"
           className="mb-4 font-heading font-semibold text-data-display text-on-surface"
         >
-          Reference Prices
+          Pricing
         </h2>
-        <div className="mb-4 rounded border border-status-pending/30 bg-status-pending/5 px-4 py-3">
-          <p className="font-body text-body-md text-on-surface">
-            <strong>Reference values only.</strong> These prices do not directly
-            determine any Trading document price or VMI billing amount. Final
-            pricing is resolved by the respective workflow (spec 12/13).
-          </p>
-        </div>
         <div className="grid gap-4 md:grid-cols-3">
           <div>
             <label htmlFor="currency" className="block font-label text-label text-on-surface">
@@ -890,7 +891,7 @@ export function ItemForm({
 
           <div>
             <label htmlFor="buyingPrice" className="block font-label text-label text-on-surface">
-              Buying Price (reference)
+              Buying Price
             </label>
             <input
               id="buyingPrice"
@@ -905,7 +906,7 @@ export function ItemForm({
 
           <div>
             <label htmlFor="sellingPrice" className="block font-label text-label text-on-surface">
-              Selling Price (reference)
+              Selling Price
             </label>
             <input
               id="sellingPrice"
@@ -929,29 +930,6 @@ export function ItemForm({
           Inventory Settings
         </h2>
         <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label htmlFor="defaultSupplierPartyId" className="block font-label text-label text-on-surface">
-              Default Supplier Organization
-            </label>
-            <select
-              id="defaultSupplierPartyId"
-              name="defaultSupplierPartyId"
-              defaultValue={item?.defaultSupplierPartyId ?? ""}
-              required
-              className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            >
-              <option value="">Select organization…</option>
-              {supplierParties.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.code} — {p.name}
-                </option>
-              ))}
-            </select>
-            <p className="mt-1 font-body text-body-sm text-text-grey">
-              The default organization this item belongs to. It is used when preparing receiving and pick-list workflows.
-            </p>
-          </div>
-
           <div>
             <label htmlFor="minReorderLevel" className="block font-label text-label text-on-surface">
               Min Reorder Level
