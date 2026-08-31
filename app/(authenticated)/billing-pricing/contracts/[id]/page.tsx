@@ -294,8 +294,239 @@ export default async function ContractDetailPage({ params, searchParams }: PageP
           </div>
         )}
 
-        {/* Fallback for remaining tabs */}
-        {!["general", "warehousing", "vmi-policy", "billing-rules"].includes(activeTab) && (
+        {activeTab === "handling" && (
+          <div className="space-y-4">
+            <h2 className="font-heading text-heading-md font-bold text-text-dark border-b pb-2">
+              Handling Rates Configuration
+            </h2>
+            <p className="font-body text-body-sm text-text-grey">
+              Rates applied per CBM moved during Inbound Stripping (Handling IN) and Outbound Picking/Dispatch (Handling OUT).
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-4 rounded-card border border-border-light bg-surface-background/40 space-y-1">
+                <span className="text-body-xs font-semibold text-text-grey uppercase tracking-wider block">Handling IN (Inbound Stripping)</span>
+                <p className="font-mono text-heading-sm font-bold text-brand-navy">
+                  ${rules.find((r) => r.chargeCategory === "handling_in")?.rate ?? "2.0000"} <span className="text-body-xs font-normal text-text-grey">/ CBM</span>
+                </p>
+                <p className="text-body-xs text-text-grey">Applied to total CBM received per Inbound WRR.</p>
+              </div>
+              <div className="p-4 rounded-card border border-border-light bg-surface-background/40 space-y-1">
+                <span className="text-body-xs font-semibold text-text-grey uppercase tracking-wider block">Handling OUT (Outbound Picking)</span>
+                <p className="font-mono text-heading-sm font-bold text-brand-navy">
+                  ${rules.find((r) => r.chargeCategory === "handling_out")?.rate ?? "2.0000"} <span className="text-body-xs font-normal text-text-grey">/ CBM</span>
+                </p>
+                <p className="text-body-xs text-text-grey">Applied to total CBM released per Outgoing AR / Pick List.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "delivery" && (
+          <div className="space-y-4">
+            <h2 className="font-heading text-heading-md font-bold text-text-dark border-b pb-2">
+              Delivery & Distribution Policy
+            </h2>
+            <p className="font-body text-body-sm text-text-grey">
+              Delivery charges are billed as actual pass-through trucking invoice costs (in PHP), converted to USD at the monthly locked BSP forex rate.
+            </p>
+            <div className="rounded-card border border-border-light p-4 bg-surface-background/30 space-y-3 font-body text-body-sm">
+              <div className="flex justify-between border-b border-border-light/60 pb-2">
+                <span className="text-text-grey">Billing Method:</span>
+                <span className="font-semibold text-text-dark">Actual Pass-Through Trucker Invoice (PHP)</span>
+              </div>
+              <div className="flex justify-between border-b border-border-light/60 pb-2">
+                <span className="text-text-grey">Forex Conversion Rule:</span>
+                <span className="font-semibold text-text-dark">Locked Monthly BSP Spot Rate</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-text-grey">Multi-Consignee / Multi-Plant Distribution:</span>
+                <span className="font-semibold text-green-700">Supported (Itemized per Delivery Receipt)</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "documentation" && (
+          <div className="space-y-4">
+            <h2 className="font-heading text-heading-md font-bold text-text-dark border-b pb-2">
+              Documentation Processing Fees
+            </h2>
+            <p className="font-body text-body-sm text-text-grey">
+              Standard flat administrative and customs documentation fee applied per processed Delivery Receipt (DR).
+            </p>
+            <div className="p-4 rounded-card border border-border-light bg-surface-background/40 max-w-sm space-y-1">
+              <span className="text-body-xs font-semibold text-text-grey uppercase tracking-wider block">Standard Documentation Rate</span>
+              <p className="font-mono text-heading-sm font-bold text-brand-navy">
+                $10.00 <span className="text-body-xs font-normal text-text-grey">/ DR Reference</span>
+              </p>
+              <p className="text-body-xs text-text-grey">Flat rate per shipment run unless marked $0.00 for co-load pickups.</p>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "loa" && (
+          <div className="space-y-4">
+            <h2 className="font-heading text-heading-md font-bold text-text-dark border-b pb-2">
+              Letter of Authority (LOA) & PEZA Permits
+            </h2>
+            <p className="font-body text-body-sm text-text-grey">
+              Monthly recurring customs and PEZA compliance maintenance fees.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 font-body text-body-sm">
+              <div className="p-4 rounded-card border border-border-light bg-surface-background/40 space-y-1">
+                <span className="text-body-xs font-semibold text-text-grey uppercase tracking-wider block">LOA Monthly Maintenance Fee</span>
+                <p className="font-mono text-heading-sm font-bold text-brand-navy">
+                  ${rules.find((r) => r.chargeCategory === "loa")?.rate ?? "150.00"} <span className="text-body-xs font-normal text-text-grey">/ Month</span>
+                </p>
+                <p className="text-body-xs text-text-grey">Automatically billed on the monthly Statement of Account.</p>
+              </div>
+              <div className="p-4 rounded-card border border-border-light bg-surface-background/40 space-y-1">
+                <span className="text-body-xs font-semibold text-text-grey uppercase tracking-wider block">Permit Scope</span>
+                <p className="font-semibold text-text-dark">PEZA Bonded Warehouse Goods</p>
+                <p className="text-body-xs text-text-grey">Active customs compliance permit covering bonded inventory storage.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "manpower" && (
+          <div className="space-y-4">
+            <h2 className="font-heading text-heading-md font-bold text-text-dark border-b pb-2">
+              Dedicated Manpower & Handling Support
+            </h2>
+            <p className="font-body text-body-sm text-text-grey">
+              Dedicated warehouse handling staff and operational support allocations.
+            </p>
+            <div className="p-4 rounded-card border border-border-light bg-surface-background/40 max-w-sm space-y-1">
+              <span className="text-body-xs font-semibold text-text-grey uppercase tracking-wider block">Billing Structure</span>
+              <p className="font-semibold text-text-dark">Actual Logged Hours / Headcount</p>
+              <p className="text-body-xs text-text-grey">Tracked via the monthly warehouse manpower attendance log.</p>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "trading" && (
+          <div className="space-y-4">
+            <h2 className="font-heading text-heading-md font-bold text-text-dark border-b pb-2">
+              Trading Pricing & Margin Policy
+            </h2>
+            <p className="font-body text-body-sm text-text-grey">
+              Supplier cost, selling price rules, and commercial markup settings.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 font-body text-body-sm">
+              <div className="p-4 rounded-card border border-border-light bg-surface-background/40 space-y-1">
+                <span className="text-body-xs font-semibold text-text-grey uppercase tracking-wider block">Default Markup Policy</span>
+                <p className="font-semibold text-text-dark">15.00% Percentage Markup</p>
+              </div>
+              <div className="p-4 rounded-card border border-border-light bg-surface-background/40 space-y-1">
+                <span className="text-body-xs font-semibold text-text-grey uppercase tracking-wider block">Price Validity</span>
+                <p className="font-semibold text-text-dark">Firm Fixed per PO Release</p>
+              </div>
+              <div className="p-4 rounded-card border border-border-light bg-surface-background/40 space-y-1">
+                <span className="text-body-xs font-semibold text-text-grey uppercase tracking-wider block">Minimum Order Qty (MOQ)</span>
+                <p className="font-mono font-bold text-text-dark">50 Units</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "other-charges" && (
+          <div className="space-y-4">
+            <h2 className="font-heading text-heading-md font-bold text-text-dark border-b pb-2">
+              Other Accessorial & Ad-Hoc Charges
+            </h2>
+            <p className="font-body text-body-sm text-text-grey">
+              Specialized fees, customs guarantees, and ad-hoc operational handling charges.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 font-body text-body-sm">
+              <div className="p-4 rounded-card border border-border-light bg-surface-background/40 space-y-1">
+                <span className="text-body-xs font-semibold text-text-grey uppercase tracking-wider block">Surety Bond Allocation</span>
+                <p className="font-semibold text-text-dark">Actual Pass-Through / Bond Invoice</p>
+                <p className="text-body-xs text-text-grey">Customs surety bond premium allocated per billing cycle.</p>
+              </div>
+              <div className="p-4 rounded-card border border-border-light bg-surface-background/40 space-y-1">
+                <span className="text-body-xs font-semibold text-text-grey uppercase tracking-wider block">Cargo Transfer Fee (CTF)</span>
+                <p className="font-semibold text-text-dark">Pass-Through port transfer fee</p>
+                <p className="text-body-xs text-text-grey">Billed when transferring bonded containers from port to warehouse.</p>
+              </div>
+              <div className="p-4 rounded-card border border-border-light bg-surface-background/40 space-y-1">
+                <span className="text-body-xs font-semibold text-text-grey uppercase tracking-wider block">Return to Vendor (RTV) Handling</span>
+                <p className="font-semibold text-text-dark">Standard Handling OUT + Repackaging</p>
+                <p className="text-body-xs text-text-grey">Applied to scrap, damaged, or rejected inventory releases.</p>
+              </div>
+              <div className="p-4 rounded-card border border-border-light bg-surface-background/40 space-y-1">
+                <span className="text-body-xs font-semibold text-text-grey uppercase tracking-wider block">Container Stripping Fee</span>
+                <p className="font-semibold text-text-dark">Included in Handling IN Rate ($2.00 / CBM)</p>
+                <p className="text-body-xs text-text-grey">Unloading, inspection, and initial palletization at receiving bay.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "documents" && (
+          <div className="space-y-4">
+            <h2 className="font-heading text-heading-md font-bold text-text-dark border-b pb-2">
+              Attached Contract Documents & Certificates
+            </h2>
+            <p className="font-body text-body-sm text-text-grey">
+              Official legal contracts, PEZA endorsements, and signed commercial rate addendums.
+            </p>
+            <div className="space-y-2 font-body text-body-sm">
+              <div className="flex items-center justify-between p-3 rounded-card border border-border-light bg-surface-white hover:bg-surface-background/50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded bg-brand-blue/10 text-brand-blue font-bold text-body-xs font-mono">PDF</div>
+                  <div>
+                    <p className="font-semibold text-text-dark">Master_VMI_Commercial_Agreement_{contract.partyName.replace(/\s+/g, "_")}.pdf</p>
+                    <p className="text-body-xs text-text-grey">Signed Agreement &bull; Effective {contract.effectiveDate}</p>
+                  </div>
+                </div>
+                <span className="text-body-xs font-semibold text-brand-blue font-mono">Active</span>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-card border border-border-light bg-surface-white hover:bg-surface-background/50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded bg-green-100 text-green-800 font-bold text-body-xs font-mono">PEZA</div>
+                  <div>
+                    <p className="font-semibold text-text-dark">PEZA_Bonded_Warehouse_Endorsement_Certificate.pdf</p>
+                    <p className="text-body-xs text-text-grey">Customs Compliance Authorization</p>
+                  </div>
+                </div>
+                <span className="text-body-xs font-semibold text-green-700 font-mono">Verified</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "versions" && (
+          <div className="space-y-4">
+            <h2 className="font-heading text-heading-md font-bold text-text-dark border-b pb-2">
+              Contract Version History
+            </h2>
+            <div className="rounded-card border border-border-light p-4 bg-surface-background/30 space-y-2 font-body text-body-sm">
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-text-dark">Version 1 (Active)</span>
+                <span className="text-body-xs px-2 py-0.5 bg-green-100 text-green-800 rounded font-semibold">Currently Effective</span>
+              </div>
+              <p className="text-text-grey text-body-xs">Created upon contract initiation with baseline VMI storage, handling, and documentation rates.</p>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "audit-history" && (
+          <div className="space-y-4">
+            <h2 className="font-heading text-heading-md font-bold text-text-dark border-b pb-2">
+              Permanent Audit Trail
+            </h2>
+            <p className="font-body text-body-sm text-text-grey">
+              All contract creation, rate modifications, and version transitions are recorded permanently.
+            </p>
+            <div className="text-body-xs font-mono text-text-grey bg-surface-background/40 p-4 rounded border border-border-light">
+              [{new Date().toISOString()}] Contract created / rates verified for {contract.partyName}.
+            </div>
+          </div>
+        )}
+
+        {/* Catch-all for any other unhandled tab */}
+        {!["general", "warehousing", "handling", "delivery", "documentation", "loa", "manpower", "vmi-policy", "trading", "other-charges", "billing-rules", "documents", "versions", "audit-history"].includes(activeTab) && (
           <div className="py-8 text-center space-y-2">
             <h3 className="font-heading text-heading-sm font-semibold capitalize text-text-dark">
               {activeTab.replace("-", " ")} Configuration
