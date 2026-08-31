@@ -204,7 +204,14 @@ export async function createContract(
     return { ok: true, contract, version };
   } catch (error) {
     console.error("Error in createContract:", error);
-    return { ok: false, error: "Failed to create contract." };
+    const msg = error instanceof Error ? error.message : "Failed to create contract.";
+    let userMsg = msg;
+    if (msg.includes("contracts_contract_number_unique") || msg.includes("duplicate key")) {
+      userMsg = `Contract number "${input.contractNumber}" already exists. Please use a unique contract number.`;
+    } else if (msg.includes("invalid input syntax for type date")) {
+      userMsg = "Invalid date format. Please check the Effective and Expiration dates.";
+    }
+    return { ok: false, error: userMsg };
   }
 }
 
