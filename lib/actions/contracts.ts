@@ -11,9 +11,12 @@ import {
   vmiConfigurations,
 } from "@/lib/db/schema/contracts";
 import { parties } from "@/lib/db/schema/parties";
+import { vmiContractTerms } from "@/lib/db/schema/vmi_billing";
 import { eq, desc } from "drizzle-orm";
 import { requirePermission } from "@/lib/rbac/guard";
 import { createPageResolver } from "@/lib/auth/page-resolver";
+import { createVmiContractTerms, updateVmiContractTerms } from "./vmi-contract-terms";
+import { createVmiPermit } from "./vmi-permits";
 
 type PageResolver = Awaited<ReturnType<typeof createPageResolver>>;
 
@@ -167,51 +170,77 @@ export async function createContract(
           createdByUserId: userId,
         });
       }
-
-      // LOA Permit Fee Rule
-      if (input.loaMonthlyRate && input.loaMonthlyRate > 0) {
-        await db.insert(pricingRules).values({
-          contractVersionId: version.id,
-          chargeName: input.loaPermitNumber ? `LOA Permit (${input.loaPermitNumber})` : "LOA Permit Fee",
-          chargeCode: "LOA-PERMIT-FEE",
-          chargeCategory: "loa",
-          billingBasis: "flat",
-          rate: String(input.loaMonthlyRate),
-          currency: input.currency ?? "USD",
-          priority: 10,
-          createdByUserId: userId,
-        });
-      }
     }
 
-    // If Trading terms configured, insert Trading Rule
-    if (input.contractType === "trading" || input.contractType === "vmi_trading") {
-      if (input.sellingPrice && input.sellingPrice > 0) {
-        await db.insert(pricingRules).values({
-          contractVersionId: version.id,
-          chargeName: "Trading Selling Price Policy",
-          chargeCode: "TRD-SELL-PRICE",
-          chargeCategory: "trading",
-          billingBasis: "unit",
-          rate: String(input.sellingPrice),
-          currency: input.currency ?? "USD",
-          priority: 10,
-          createdByUserId: userId,
+    // Also sync to active vmi_contract_terms table to power the billing engine
+    if (input.contractType === "vmi" || input.contractType === "vmi_trading") {
+      try {
+        const termsResult = await createVmiContractTerms(resolver, {
+          partyId: input.partyId,
+          storageRatePerCbmDay: String(input.storageRatePerCbmDay ?? 0.05),
+          billingTiming: "beginning_of_day",
+          cbmThresholdType: "none",
+          handlingInRatePerCbm: String(input.handlingInRatePerCbm ?? 1.40),
+          handlingOutRatePerCbm: String(input.handlingOutRatePerCbm ?? 1.40),
+          documentationDefaultRateUsd: "15.00",
+          billingCurrency: input.currency ?? "USD",
         });
+
+        if (!termsResult.ok && termsResult.errors?.includes("contract_terms_already_exist")) {
+          // If contract terms already exist for this party, update to new version
+          await updateVmiContractTerms(resolver, input.partyId, {
+            storageRatePerCbmDay: String(input.storageRatePerCbmDay ?? 0.05),
+            billingTiming: "beginning_of_day",
+            cbmThresholdType: "none",
+            handlingInRatePerCbm: String(input.handlingInRatePerCbm ?? 1.40),
+            handlingOutRatePerCbm: String(input.handlingOutRatePerCbm ?? 1.40),
+            documentationDefaultRateUsd: "15.00",
+            billingCurrency: input.currency ?? "USD",
+          });
+        }
+
+        // If LOA permit details were provided, register in vmi_permits
+        if (input.loaPermitNumber && input.loaMonthlyRate) {
+          await createVmiPermit(resolver, {
+            partyId: input.partyId,
+            permitNumber: input.loaPermitNumber,
+            itemScope: "PEZA Bonded Warehouse Goods",
+            validFrom: input.effectiveDate,
+            validTo: input.expirationDate ?? "2030-12-31",
+            monthlyFeeUsd: String(input.loaMonthlyRate),
+          });
+        }
+      } catch (syncErr) {
+        console.warn("VMI terms synchronization note:", syncErr);
       }
     }
 
     return { ok: true, contract, version };
   } catch (error) {
     console.error("Error in createContract:", error);
-    const msg = error instanceof Error ? error.message : "Failed to create contract.";
-    let userMsg = msg;
-    if (msg.includes("contracts_contract_number_unique") || msg.includes("duplicate key")) {
-      userMsg = `Contract number "${input.contractNumber}" already exists. Please use a unique contract number.`;
-    } else if (msg.includes("invalid input syntax for type date")) {
-      userMsg = "Invalid date format. Please check the Effective and Expiration dates.";
+    const rawMsg = error instanceof Error ? error.message : String(error);
+
+    let reason = "The contract could not be saved to the database.";
+    let suggestion = "Please verify your input values and try again.";
+
+    if (rawMsg.includes("contracts_contract_number_unique") || rawMsg.includes("duplicate key")) {
+      reason = `The contract number "${input.contractNumber}" is already in use by another agreement.`;
+      suggestion = "Please enter a unique contract number (for example: DSGC-VMI-2026-002).";
+    } else if (rawMsg.includes("invalid input syntax for type date")) {
+      reason = "One of the dates provided (Effective Date or Expiration Date) is in an invalid format.";
+      suggestion = "Please select the date using the date picker or enter it in YYYY-MM-DD format.";
+    } else if (rawMsg.includes("violates foreign key constraint") || rawMsg.includes("party_id")) {
+      reason = "The selected Organization could not be verified in the database.";
+      suggestion = "Please select a valid customer organization from the dropdown list.";
+    } else if (rawMsg.includes("Unauthorized") || rawMsg.includes("permission")) {
+      reason = "You do not have administrative permission to create commercial contracts.";
+      suggestion = "Please contact your system administrator to request financial management permissions.";
     }
-    return { ok: false, error: userMsg };
+
+    return {
+      ok: false,
+      error: `${reason} ${suggestion}`,
+    };
   }
 }
 
@@ -322,7 +351,103 @@ export async function getContractDetail(
       .innerJoin(parties, eq(contracts.partyId, parties.id))
       .where(eq(contracts.id, contractId));
 
-    if (!contract) return null;
+    if (!contract) {
+      // Check if looking up by partyId in vmiContractTerms
+      const [terms] = await db
+        .select({
+          id: vmiContractTerms.id,
+          partyId: vmiContractTerms.partyId,
+          partyName: parties.name,
+          storageRatePerCbmDay: vmiContractTerms.storageRatePerCbmDay,
+          handlingInRatePerCbm: vmiContractTerms.handlingInRatePerCbm,
+          handlingOutRatePerCbm: vmiContractTerms.handlingOutRatePerCbm,
+          currency: vmiContractTerms.billingCurrency,
+          createdAt: vmiContractTerms.createdAt,
+        })
+        .from(vmiContractTerms)
+        .innerJoin(parties, eq(vmiContractTerms.partyId, parties.id))
+        .where(eq(vmiContractTerms.partyId, contractId))
+        .limit(1);
+
+      if (terms) {
+        return {
+          contract: {
+            id: terms.partyId,
+            contractNumber: `VMI-${terms.partyName.replace(/\s+/g, "").toUpperCase()}-001`,
+            partyId: terms.partyId,
+            partyName: terms.partyName,
+            contractType: "vmi" as const,
+            status: "active" as const,
+            effectiveDate: new Date().toISOString().split("T")[0],
+            expirationDate: null,
+            currency: terms.currency,
+            exchangeRatePolicy: "monthly_rate",
+            paymentTerms: "Net 30",
+            warehousesCovered: "Main Warehouse",
+            notes: "Configured via VMI Contract Terms",
+            createdAt: terms.createdAt,
+          },
+          versions: [],
+          activeVersion: { id: terms.id, versionNumber: 1, isActive: true },
+          rules: [
+            {
+              id: "r1",
+              contractVersionId: terms.id,
+              chargeName: "Daily Storage Rate",
+              chargeCode: "WRH-STORAGE-CBM",
+              chargeCategory: "warehousing" as const,
+              billingBasis: "cbm_day" as const,
+              rate: String(terms.storageRatePerCbmDay),
+              currency: terms.currency,
+              minCharge: null,
+              maxCharge: null,
+              priority: 10,
+              isTaxable: true,
+              conditionsJson: null,
+              calculationFormula: null,
+              createdAt: new Date(),
+            },
+            {
+              id: "r2",
+              contractVersionId: terms.id,
+              chargeName: "Handling In (Stripping)",
+              chargeCode: "HDL-IN-CBM",
+              chargeCategory: "handling_in" as const,
+              billingBasis: "cbm_day" as const,
+              rate: String(terms.handlingInRatePerCbm),
+              currency: terms.currency,
+              minCharge: null,
+              maxCharge: null,
+              priority: 10,
+              isTaxable: true,
+              conditionsJson: null,
+              calculationFormula: null,
+              createdAt: new Date(),
+            },
+            {
+              id: "r3",
+              contractVersionId: terms.id,
+              chargeName: "Handling Out (Picking)",
+              chargeCode: "HDL-OUT-CBM",
+              chargeCategory: "handling_out" as const,
+              billingBasis: "cbm_day" as const,
+              rate: String(terms.handlingOutRatePerCbm),
+              currency: terms.currency,
+              minCharge: null,
+              maxCharge: null,
+              priority: 10,
+              isTaxable: true,
+              conditionsJson: null,
+              calculationFormula: null,
+              createdAt: new Date(),
+            },
+          ],
+          vmiConfig: null,
+        };
+      }
+
+      return null;
+    }
 
     // Fetch active version
     const versions = await db

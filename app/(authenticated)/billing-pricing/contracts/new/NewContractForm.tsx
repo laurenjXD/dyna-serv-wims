@@ -47,11 +47,13 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
   return (
     <form onSubmit={handleSubmit} className="space-y-6 rounded-card bg-surface-white border border-border-light p-6 shadow-card">
       {errorMessage && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-body-sm text-red-800 flex items-start gap-2.5">
-          <AlertCircle className="shrink-0 mt-0.5 text-red-600" size={18} />
-          <div>
-            <p className="font-bold text-red-900">Unable to save contract</p>
-            <p className="mt-0.5 text-red-700">{errorMessage}</p>
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-body-sm text-red-900 shadow-sm">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="shrink-0 mt-0.5 text-red-600" size={18} />
+            <div className="space-y-1">
+              <p className="font-bold text-red-950">Contract could not be created</p>
+              <p className="text-red-800 leading-relaxed">{errorMessage}</p>
+            </div>
           </div>
         </div>
       )}
