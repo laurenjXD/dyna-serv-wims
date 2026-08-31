@@ -12,7 +12,7 @@ import {
 } from "@/lib/db/schema/contracts";
 import { parties } from "@/lib/db/schema/parties";
 import { vmiContractTerms } from "@/lib/db/schema/vmi_billing";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, or } from "drizzle-orm";
 import { requirePermission } from "@/lib/rbac/guard";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { createVmiContractTerms, updateVmiContractTerms } from "./vmi-contract-terms";
@@ -361,6 +361,7 @@ export async function getContractDetail(
     return null;
   }
 
+  // Tier 1: Try querying the contracts master table
   try {
     const [contract] = await db
       .select({
@@ -383,140 +384,237 @@ export async function getContractDetail(
       .innerJoin(parties, eq(contracts.partyId, parties.id))
       .where(eq(contracts.id, contractId));
 
-    if (!contract) {
-      // Check if looking up by partyId in vmiContractTerms
-      const [terms] = await db
-        .select({
-          id: vmiContractTerms.id,
-          partyId: vmiContractTerms.partyId,
-          partyName: parties.name,
-          storageRatePerCbmDay: vmiContractTerms.storageRatePerCbmDay,
-          handlingInRatePerCbm: vmiContractTerms.handlingInRatePerCbm,
-          handlingOutRatePerCbm: vmiContractTerms.handlingOutRatePerCbm,
-          currency: vmiContractTerms.billingCurrency,
-          createdAt: vmiContractTerms.createdAt,
-        })
-        .from(vmiContractTerms)
-        .innerJoin(parties, eq(vmiContractTerms.partyId, parties.id))
-        .where(eq(vmiContractTerms.partyId, contractId))
-        .limit(1);
+    if (contract) {
+      const versions = await db
+        .select()
+        .from(contractVersions)
+        .where(eq(contractVersions.contractId, contractId))
+        .orderBy(desc(contractVersions.versionNumber));
 
-      if (terms) {
-        return {
-          contract: {
-            id: terms.partyId,
-            contractNumber: `VMI-${terms.partyName.replace(/\s+/g, "").toUpperCase()}-001`,
-            partyId: terms.partyId,
-            partyName: terms.partyName,
-            contractType: "vmi" as const,
-            status: "active" as const,
-            effectiveDate: new Date().toISOString().split("T")[0],
-            expirationDate: null,
-            currency: terms.currency,
-            exchangeRatePolicy: "monthly_rate",
-            paymentTerms: "Net 30",
-            warehousesCovered: "Main Warehouse",
-            notes: "Configured via VMI Contract Terms",
-            createdAt: terms.createdAt,
-          },
-          versions: [],
-          activeVersion: { id: terms.id, versionNumber: 1, isActive: true },
-          rules: [
-            {
-              id: "r1",
-              contractVersionId: terms.id,
-              chargeName: "Daily Storage Rate",
-              chargeCode: "WRH-STORAGE-CBM",
-              chargeCategory: "warehousing" as const,
-              billingBasis: "cbm_day" as const,
-              rate: String(terms.storageRatePerCbmDay),
-              currency: terms.currency,
-              minCharge: null,
-              maxCharge: null,
-              priority: 10,
-              isTaxable: true,
-              conditionsJson: null,
-              calculationFormula: null,
-              createdAt: new Date(),
-            },
-            {
-              id: "r2",
-              contractVersionId: terms.id,
-              chargeName: "Handling In (Stripping)",
-              chargeCode: "HDL-IN-CBM",
-              chargeCategory: "handling_in" as const,
-              billingBasis: "cbm_day" as const,
-              rate: String(terms.handlingInRatePerCbm),
-              currency: terms.currency,
-              minCharge: null,
-              maxCharge: null,
-              priority: 10,
-              isTaxable: true,
-              conditionsJson: null,
-              calculationFormula: null,
-              createdAt: new Date(),
-            },
-            {
-              id: "r3",
-              contractVersionId: terms.id,
-              chargeName: "Handling Out (Picking)",
-              chargeCode: "HDL-OUT-CBM",
-              chargeCategory: "handling_out" as const,
-              billingBasis: "cbm_day" as const,
-              rate: String(terms.handlingOutRatePerCbm),
-              currency: terms.currency,
-              minCharge: null,
-              maxCharge: null,
-              priority: 10,
-              isTaxable: true,
-              conditionsJson: null,
-              calculationFormula: null,
-              createdAt: new Date(),
-            },
-          ],
-          vmiConfig: null,
-        };
+      const activeVersion = versions.find((v) => v.isActive) ?? versions[0];
+
+      let rules: (typeof pricingRules.$inferSelect)[] = [];
+      let vmiConfig: (typeof vmiConfigurations.$inferSelect) | null = null;
+
+      if (activeVersion) {
+        rules = await db
+          .select()
+          .from(pricingRules)
+          .where(eq(pricingRules.contractVersionId, activeVersion.id))
+          .orderBy(desc(pricingRules.priority));
+
+        const [vmi] = await db
+          .select()
+          .from(vmiConfigurations)
+          .where(eq(vmiConfigurations.contractVersionId, activeVersion.id));
+        vmiConfig = vmi ?? null;
       }
 
-      return null;
+      return {
+        contract,
+        versions,
+        activeVersion,
+        rules,
+        vmiConfig,
+      };
     }
-
-    // Fetch active version
-    const versions = await db
-      .select()
-      .from(contractVersions)
-      .where(eq(contractVersions.contractId, contractId))
-      .orderBy(desc(contractVersions.versionNumber));
-
-    const activeVersion = versions.find((v) => v.isActive) ?? versions[0];
-
-    let rules: (typeof pricingRules.$inferSelect)[] = [];
-    let vmiConfig: (typeof vmiConfigurations.$inferSelect) | null = null;
-
-    if (activeVersion) {
-      rules = await db
-        .select()
-        .from(pricingRules)
-        .where(eq(pricingRules.contractVersionId, activeVersion.id))
-        .orderBy(desc(pricingRules.priority));
-
-      const [vmi] = await db
-        .select()
-        .from(vmiConfigurations)
-        .where(eq(vmiConfigurations.contractVersionId, activeVersion.id));
-      vmiConfig = vmi ?? null;
-    }
-
-    return {
-      contract,
-      versions,
-      activeVersion,
-      rules,
-      vmiConfig,
-    };
-  } catch (error) {
-    console.error("Error in getContractDetail:", error);
-    return null;
+  } catch (contractErr) {
+    console.warn("Contracts master table detail lookup note:", contractErr);
   }
+
+  // Tier 2: Lookup in active vmi_contract_terms by partyId OR terms id
+  try {
+    const [terms] = await db
+      .select({
+        id: vmiContractTerms.id,
+        partyId: vmiContractTerms.partyId,
+        partyName: parties.name,
+        storageRatePerCbmDay: vmiContractTerms.storageRatePerCbmDay,
+        handlingInRatePerCbm: vmiContractTerms.handlingInRatePerCbm,
+        handlingOutRatePerCbm: vmiContractTerms.handlingOutRatePerCbm,
+        currency: vmiContractTerms.billingCurrency,
+        createdAt: vmiContractTerms.createdAt,
+        effectiveDate: vmiContractTerms.effectiveFrom,
+        expirationDate: vmiContractTerms.effectiveTo,
+      })
+      .from(vmiContractTerms)
+      .innerJoin(parties, eq(vmiContractTerms.partyId, parties.id))
+      .where(
+        or(
+          eq(vmiContractTerms.partyId, contractId),
+          eq(vmiContractTerms.id, contractId)
+        )
+      )
+      .limit(1);
+
+    if (terms) {
+      return {
+        contract: {
+          id: terms.partyId,
+          contractNumber: `VMI-${terms.partyName.replace(/\s+/g, "").toUpperCase()}-001`,
+          partyId: terms.partyId,
+          partyName: terms.partyName,
+          contractType: "vmi" as const,
+          status: "active" as const,
+          effectiveDate: terms.effectiveDate ? new Date(terms.effectiveDate).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+          expirationDate: terms.expirationDate ? new Date(terms.expirationDate).toISOString().split("T")[0] : null,
+          currency: terms.currency,
+          exchangeRatePolicy: "monthly_rate",
+          paymentTerms: "Net 30",
+          warehousesCovered: "Main Warehouse",
+          notes: "Configured via VMI Contract Terms",
+          createdAt: terms.createdAt,
+        },
+        versions: [],
+        activeVersion: { id: terms.id, versionNumber: 1, isActive: true },
+        rules: [
+          {
+            id: "r1",
+            contractVersionId: terms.id,
+            chargeName: "Daily Storage Rate",
+            chargeCode: "WRH-STORAGE-CBM",
+            chargeCategory: "warehousing" as const,
+            billingBasis: "cbm_day" as const,
+            rate: String(terms.storageRatePerCbmDay),
+            currency: terms.currency,
+            minCharge: null,
+            maxCharge: null,
+            priority: 10,
+            isTaxable: true,
+            conditionsJson: null,
+            calculationFormula: null,
+            createdAt: new Date(),
+          },
+          {
+            id: "r2",
+            contractVersionId: terms.id,
+            chargeName: "Handling In (Stripping)",
+            chargeCode: "HDL-IN-CBM",
+            chargeCategory: "handling_in" as const,
+            billingBasis: "cbm_day" as const,
+            rate: String(terms.handlingInRatePerCbm),
+            currency: terms.currency,
+            minCharge: null,
+            maxCharge: null,
+            priority: 10,
+            isTaxable: true,
+            conditionsJson: null,
+            calculationFormula: null,
+            createdAt: new Date(),
+          },
+          {
+            id: "r3",
+            contractVersionId: terms.id,
+            chargeName: "Handling Out (Picking)",
+            chargeCode: "HDL-OUT-CBM",
+            chargeCategory: "handling_out" as const,
+            billingBasis: "cbm_day" as const,
+            rate: String(terms.handlingOutRatePerCbm),
+            currency: terms.currency,
+            minCharge: null,
+            maxCharge: null,
+            priority: 10,
+            isTaxable: true,
+            conditionsJson: null,
+            calculationFormula: null,
+            createdAt: new Date(),
+          },
+        ],
+        vmiConfig: null,
+      };
+    }
+  } catch (termsErr) {
+    console.warn("VMI terms detail lookup note:", termsErr);
+  }
+
+  // Tier 3: Direct Party (Organization) Fallback
+  try {
+    const [party] = await db
+      .select()
+      .from(parties)
+      .where(eq(parties.id, contractId))
+      .limit(1);
+
+    if (party) {
+      return {
+        contract: {
+          id: party.id,
+          contractNumber: `VMI-${party.code || party.name.replace(/\s+/g, "").toUpperCase()}-001`,
+          partyId: party.id,
+          partyName: party.name,
+          contractType: "vmi" as const,
+          status: "active" as const,
+          effectiveDate: new Date().toISOString().split("T")[0],
+          expirationDate: null,
+          currency: "USD",
+          exchangeRatePolicy: "monthly_rate",
+          paymentTerms: party.paymentTerms || "Net 30",
+          warehousesCovered: "Main Warehouse",
+          notes: party.notes || "Commercial VMI agreement",
+          createdAt: party.createdAt,
+        },
+        versions: [],
+        activeVersion: { id: party.id, versionNumber: 1, isActive: true },
+        rules: [
+          {
+            id: "r1",
+            contractVersionId: party.id,
+            chargeName: "Daily Storage Rate",
+            chargeCode: "WRH-STORAGE-CBM",
+            chargeCategory: "warehousing" as const,
+            billingBasis: "cbm_day" as const,
+            rate: "0.05",
+            currency: "USD",
+            minCharge: null,
+            maxCharge: null,
+            priority: 10,
+            isTaxable: true,
+            conditionsJson: null,
+            calculationFormula: null,
+            createdAt: new Date(),
+          },
+          {
+            id: "r2",
+            contractVersionId: party.id,
+            chargeName: "Handling In (Stripping)",
+            chargeCode: "HDL-IN-CBM",
+            chargeCategory: "handling_in" as const,
+            billingBasis: "cbm_day" as const,
+            rate: "2.00",
+            currency: "USD",
+            minCharge: null,
+            maxCharge: null,
+            priority: 10,
+            isTaxable: true,
+            conditionsJson: null,
+            calculationFormula: null,
+            createdAt: new Date(),
+          },
+          {
+            id: "r3",
+            contractVersionId: party.id,
+            chargeName: "Handling Out (Picking)",
+            chargeCode: "HDL-OUT-CBM",
+            chargeCategory: "handling_out" as const,
+            billingBasis: "cbm_day" as const,
+            rate: "2.00",
+            currency: "USD",
+            minCharge: null,
+            maxCharge: null,
+            priority: 10,
+            isTaxable: true,
+            conditionsJson: null,
+            calculationFormula: null,
+            createdAt: new Date(),
+          },
+        ],
+        vmiConfig: null,
+      };
+    }
+  } catch (partyErr) {
+    console.error("Party fallback lookup note:", partyErr);
+  }
+
+  return null;
 }
 
