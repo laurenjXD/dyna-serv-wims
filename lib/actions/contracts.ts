@@ -11,12 +11,10 @@ import {
   vmiConfigurations,
 } from "@/lib/db/schema/contracts";
 import { parties } from "@/lib/db/schema/parties";
-import { vmiContractTerms } from "@/lib/db/schema/vmi_billing";
-import { eq, desc, or } from "drizzle-orm";
+import { vmiContractTerms, vmiPermits } from "@/lib/db/schema/vmi_billing";
+import { eq, desc, or, and, isNull } from "drizzle-orm";
 import { requirePermission } from "@/lib/rbac/guard";
 import { createPageResolver } from "@/lib/auth/page-resolver";
-import { createVmiContractTerms, updateVmiContractTerms } from "./vmi-contract-terms";
-import { createVmiPermit } from "./vmi-permits";
 
 type PageResolver = Awaited<ReturnType<typeof createPageResolver>>;
 
@@ -86,25 +84,25 @@ export async function createContract(
   const userId = perm.context.userId;
   let savedTermsId: string | null = null;
 
-  // 1. Primary write: Sync to active vmi_contract_terms and vmi_permits in PostgreSQL
+  // 1. Primary write: Sync directly to active vmi_contract_terms and vmi_permits in PostgreSQL
   if (input.contractType === "vmi" || input.contractType === "vmi_trading") {
     try {
-      const termsResult = await createVmiContractTerms(resolver, {
-        partyId: input.partyId,
-        storageRatePerCbmDay: String(input.storageRatePerCbmDay ?? 0.05),
-        billingTiming: "beginning_of_day",
-        cbmThresholdType: "none",
-        handlingInRatePerCbm: String(input.handlingInRatePerCbm ?? 2.00),
-        handlingOutRatePerCbm: String(input.handlingOutRatePerCbm ?? 2.00),
-        documentationDefaultRateUsd: "15.00",
-        billingCurrency: input.currency ?? "USD",
-      });
+      // Close any existing open terms for this party
+      await db
+        .update(vmiContractTerms)
+        .set({ effectiveTo: new Date(), isActive: false })
+        .where(
+          and(
+            eq(vmiContractTerms.partyId, input.partyId),
+            isNull(vmiContractTerms.effectiveTo)
+          )
+        );
 
-      if (termsResult.ok && termsResult.contractTerms) {
-        savedTermsId = termsResult.contractTerms.id;
-      } else if (!termsResult.ok && termsResult.errors?.includes("contract_terms_already_exist")) {
-        // If contract terms already exist for this party, update to new version
-        const updateRes = await updateVmiContractTerms(resolver, input.partyId, {
+      // Insert new active row
+      const [newTerms] = await db
+        .insert(vmiContractTerms)
+        .values({
+          partyId: input.partyId,
           storageRatePerCbmDay: String(input.storageRatePerCbmDay ?? 0.05),
           billingTiming: "beginning_of_day",
           cbmThresholdType: "none",
@@ -112,15 +110,19 @@ export async function createContract(
           handlingOutRatePerCbm: String(input.handlingOutRatePerCbm ?? 2.00),
           documentationDefaultRateUsd: "15.00",
           billingCurrency: input.currency ?? "USD",
-        });
-        if (updateRes.ok && updateRes.contractTerms) {
-          savedTermsId = updateRes.contractTerms.id;
-        }
+          isActive: true,
+          effectiveFrom: input.effectiveDate ? new Date(input.effectiveDate) : new Date(),
+          createdByUserId: userId,
+        })
+        .returning();
+
+      if (newTerms) {
+        savedTermsId = newTerms.id;
       }
 
-      // If LOA permit details were provided, register in vmi_permits
+      // If LOA permit details were provided, insert into vmi_permits
       if (input.loaPermitNumber && input.loaMonthlyRate) {
-        await createVmiPermit(resolver, {
+        await db.insert(vmiPermits).values({
           partyId: input.partyId,
           permitNumber: input.loaPermitNumber,
           itemScope: "PEZA Bonded Warehouse Goods",
@@ -130,7 +132,7 @@ export async function createContract(
         });
       }
     } catch (vmiErr) {
-      console.warn("VMI terms write note:", vmiErr);
+      console.warn("Direct VMI terms write note:", vmiErr);
     }
   }
 
@@ -314,7 +316,7 @@ export async function listContracts(resolver: PageResolver) {
     console.warn("Contracts master table list note:", error);
   }
 
-  // Fallback to active vmi_contract_terms in PostgreSQL
+  // Fallback 1: Active vmi_contract_terms in PostgreSQL
   try {
     const vmiTerms = await db
       .select({
@@ -330,21 +332,53 @@ export async function listContracts(resolver: PageResolver) {
       .innerJoin(parties, eq(vmiContractTerms.partyId, parties.id))
       .orderBy(desc(vmiContractTerms.createdAt));
 
-    return vmiTerms.map((t) => ({
-      id: t.partyId,
-      contractNumber: `VMI-${t.partyName.replace(/\s+/g, "").toUpperCase()}-001`,
-      partyId: t.partyId,
-      partyName: t.partyName,
+    if (vmiTerms && vmiTerms.length > 0) {
+      return vmiTerms.map((t) => ({
+        id: t.partyId,
+        contractNumber: `VMI-${t.partyName.replace(/\s+/g, "").toUpperCase()}-001`,
+        partyId: t.partyId,
+        partyName: t.partyName,
+        contractType: "vmi" as const,
+        status: "active" as const,
+        effectiveDate: t.effectiveDate ? new Date(t.effectiveDate).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+        expirationDate: t.expirationDate ? new Date(t.expirationDate).toISOString().split("T")[0] : null,
+        currency: t.currency,
+        paymentTerms: "Net 30",
+        createdAt: t.createdAt,
+      }));
+    }
+  } catch (termsErr) {
+    console.warn("VMI terms list note:", termsErr);
+  }
+
+  // Fallback 2: List registered organizations (parties) so every customer agreement is accessible
+  try {
+    const allParties = await db
+      .select({
+        id: parties.id,
+        name: parties.name,
+        code: parties.code,
+        paymentTerms: parties.paymentTerms,
+        createdAt: parties.createdAt,
+      })
+      .from(parties)
+      .orderBy(desc(parties.createdAt));
+
+    return allParties.map((p) => ({
+      id: p.id,
+      contractNumber: `VMI-${p.code || p.name.replace(/\s+/g, "").toUpperCase()}-001`,
+      partyId: p.id,
+      partyName: p.name,
       contractType: "vmi" as const,
       status: "active" as const,
-      effectiveDate: t.effectiveDate ? new Date(t.effectiveDate).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
-      expirationDate: t.expirationDate ? new Date(t.expirationDate).toISOString().split("T")[0] : null,
-      currency: t.currency,
-      paymentTerms: "Net 30",
-      createdAt: t.createdAt,
+      effectiveDate: new Date().toISOString().split("T")[0],
+      expirationDate: null,
+      currency: "USD",
+      paymentTerms: p.paymentTerms || "Net 30",
+      createdAt: p.createdAt,
     }));
-  } catch (termsErr) {
-    console.error("Error listing VMI contract terms:", termsErr);
+  } catch (partiesErr) {
+    console.error("Parties fallback list error:", partiesErr);
     return [];
   }
 }

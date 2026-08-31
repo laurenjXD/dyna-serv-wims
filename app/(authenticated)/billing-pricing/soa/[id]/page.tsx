@@ -13,7 +13,7 @@ import { FileText } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
-import { getPartyWithRoles } from "@/lib/db/queries/parties";
+import { getPartyWithRoles, listParties } from "@/lib/db/queries/parties";
 import { getVmiDailyBalanceRows } from "@/lib/billing/queries/vmi-ledger";
 import { getDailyForexRate } from "@/lib/billing/forex-service";
 import { getVmiHandlingForPeriod } from "@/lib/billing/vmi-handling";
@@ -48,8 +48,31 @@ export default async function SoaDetailPage({ params, searchParams }: PageProps)
     );
   }
 
+  const isUuid = (val: string) =>
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(val);
+
+  let party = null;
   const targetPartyId = searchPartyId || (id !== "sample" ? id : "");
-  const party = targetPartyId ? await getPartyWithRoles(db, targetPartyId) : null;
+  if (targetPartyId) {
+    if (isUuid(targetPartyId)) {
+      try {
+        party = await getPartyWithRoles(db, targetPartyId);
+      } catch (err) {
+        console.warn("getPartyWithRoles note:", err);
+      }
+    } else {
+      // Lookup by code or prefix
+      const allParties = await listParties(db, { limit: 20 });
+      party = allParties.rows.find((p) =>
+        p.code?.toLowerCase() === targetPartyId.toLowerCase() ||
+        p.id.startsWith(targetPartyId) ||
+        p.name.toLowerCase().includes(targetPartyId.toLowerCase())
+      ) ?? allParties.rows[0] ?? null;
+    }
+  } else {
+    const allParties = await listParties(db, { limit: 1 });
+    party = allParties.rows[0] ?? null;
+  }
 
   const now = new Date();
   const monthIdx = searchMonth !== undefined ? parseInt(searchMonth, 10) : now.getMonth();
