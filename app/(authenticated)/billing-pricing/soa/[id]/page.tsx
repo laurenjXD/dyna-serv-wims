@@ -73,14 +73,19 @@ export default async function SoaDetailPage({ params, searchParams }: PageProps)
 
   const totalAmount = storageAmount + deliveryUsd + 420.0 + 220.05 + 368.14 + 36.0 + 200.0;
 
+  const monthPadded = String(monthIdx + 1).padStart(2, "0");
+
   const soaData: SoaData = {
     soaNumber,
     customerName,
     customerCode,
+    customerAddress: party ? "" : "Unit 8, 35/F Cable TV Tower\n9 Hoi Shing Road, Tsuen Wan NT, HK",
     contractNumber: `DSGC-VMI-${year}-001`,
-    billingPeriod: `${monthName} 1 – ${monthName} ${daysInMonth}, ${year}`,
-    issueDate: `${year}-${String(monthIdx + 1).padStart(2, "0")}-01`,
-    dueDate: `${year}-${String(monthIdx + 1).padStart(2, "0")}-${daysInMonth}`,
+    billingPeriod: `${monthName} 1 \u2013 ${monthName} ${daysInMonth}, ${year}`,
+    billingPeriodStart: `${monthName} 1, ${year}`,
+    billingPeriodEnd: `${monthName} ${daysInMonth}, ${year}`,
+    issueDate: `${year}-${monthPadded}-01`,
+    dueDate: `${year}-${monthPadded}-${daysInMonth}`,
     currency: "USD",
     exchangeRate,
     openingBalanceUsd: 0.0,
