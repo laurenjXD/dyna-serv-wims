@@ -25,7 +25,7 @@
 // Postgres connection (this codebase's established convention — see
 // lib/db/queries/ledgers.ts, lib/billing/vmi-movement-query.ts).
 
-import { and, eq, gte, isNull, lt, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { vmiContractTerms, vmiDailyBalanceLedger } from "@/lib/db/schema/vmi_billing";
 import { parties } from "@/lib/db/schema/parties";
@@ -134,7 +134,7 @@ export async function getVmiCbmLedgerSummary(
         .where(
           and(
             eq(lots.ownerPartyId, partyId),
-            eq(lots.flowType, "vmi"),
+            inArray(lots.flowType, ["vmi", "trading"]),
             eq(lots.status, "available"),
           ),
         )) as { count: string }[];
