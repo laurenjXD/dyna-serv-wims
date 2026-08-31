@@ -143,13 +143,23 @@ function usd(n: number) {
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
-function AppendixSection({ title, children, id }: { title: string; children: React.ReactNode; id: string }) {
+function AppendixSection({
+  title,
+  children,
+  id,
+  pageBreakBefore,
+}: {
+  title: string;
+  children: React.ReactNode;
+  id: string;
+  pageBreakBefore?: boolean;
+}) {
   return (
-    <div id={id} className="mt-6">
-      <h3 className="font-mono text-xs font-bold text-slate-600 uppercase tracking-widest mb-2">
+    <div id={id} className={`mt-6 ${pageBreakBefore ? "print-page-break" : "print-avoid-break"}`}>
+      <h3 className="font-mono text-xs font-bold text-slate-600 uppercase tracking-widest mb-2 print:text-black print:mb-1">
         {title}
       </h3>
-      <div className="border border-slate-300 overflow-x-auto">
+      <div className="border border-slate-300 overflow-x-auto print:overflow-visible print:border-slate-400">
         {children}
       </div>
     </div>
@@ -158,11 +168,11 @@ function AppendixSection({ title, children, id }: { title: string; children: Rea
 
 function AppendixTable({ headers, children }: { headers: string[]; children: React.ReactNode }) {
   return (
-    <table className="w-full text-left border-collapse font-mono text-xs">
+    <table className="w-full text-left border-collapse font-mono text-xs print:text-[8pt]">
       <thead>
-        <tr className="bg-slate-100 border-b border-slate-300">
+        <tr className="bg-slate-100 border-b border-slate-300 print:bg-slate-100">
           {headers.map((h) => (
-            <th key={h} className="py-1.5 px-3 uppercase tracking-wider text-slate-700 font-bold whitespace-nowrap text-xs">
+            <th key={h} className="py-1.5 px-3 uppercase tracking-wider text-slate-700 font-bold whitespace-nowrap text-xs print:text-[7.5pt] print:py-1 print:px-1.5">
               {h}
             </th>
           ))}
@@ -211,29 +221,68 @@ export function SoaDetailClient({
       {/* ── Print stylesheet ─────────────────────────────────────────────── */}
       <style>{`
         @media print {
-          @page { size: A4 portrait; margin: 12mm 14mm 14mm 14mm; }
+          @page { size: A4 portrait; margin: 10mm 12mm 12mm 12mm; }
+          *, *:before, *:after {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
           html, body {
             background: #fff !important;
             color: #000 !important;
             font-family: system-ui, -apple-system, sans-serif !important;
-            font-size: 9.5pt !important;
-            line-height: 1.35 !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
+            font-size: 9pt !important;
+            line-height: 1.3 !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
           }
           .no-print { display: none !important; }
-          .print-page-break { break-before: page !important; page-break-before: always !important; }
-          .print-avoid-break { break-inside: avoid !important; page-break-inside: avoid !important; }
-          table { border-collapse: collapse !important; width: 100% !important; }
-          thead { display: table-header-group !important; }
-          tr { page-break-inside: avoid !important; }
-          th { background: #f1f5f9 !important; color: #000 !important; border: 1px solid #475569 !important; padding: 3px 5px !important; font-weight: 700 !important; font-size: 8pt !important; }
-          td { border: 1px solid #cbd5e1 !important; padding: 3px 5px !important; color: #000 !important; font-size: 8.5pt !important; }
-          th[style], td[style] { border: 1px solid #475569 !important; }
+          .print-page-break {
+            break-before: page !important;
+            page-break-before: always !important;
+          }
+          .print-avoid-break {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+          }
+          div { overflow: visible !important; }
+          table {
+            border-collapse: collapse !important;
+            width: 100% !important;
+            page-break-inside: auto !important;
+          }
+          thead {
+            display: table-header-group !important;
+          }
+          tbody {
+            display: table-row-group !important;
+          }
+          tr {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+          th {
+            background: #f1f5f9 !important;
+            color: #000 !important;
+            border: 1px solid #475569 !important;
+            padding: 2.5px 4px !important;
+            font-weight: 700 !important;
+            font-size: 7.5pt !important;
+          }
+          td {
+            border: 1px solid #cbd5e1 !important;
+            padding: 2px 4px !important;
+            color: #000 !important;
+            font-size: 7.5pt !important;
+          }
+          th[style], td[style] {
+            border: 1px solid #475569 !important;
+          }
           .soa-main-header { background: #1e293b !important; }
-          .soa-main-header th { background: #1e293b !important; color: #ffffff !important; }
-          .soa-grand-total td { background: #e2e8f0 !important; font-weight: 800 !important; }
-          .soa-total-row td { background: #f1f5f9 !important; font-weight: 700 !important; }
+          .soa-main-header th { background: #1e293b !important; color: #ffffff !important; font-size: 8pt !important; padding: 4px 6px !important; }
+          .soa-grand-total td { background: #e2e8f0 !important; font-weight: 800 !important; font-size: 8.5pt !important; }
+          .soa-total-row td { background: #f1f5f9 !important; font-weight: 700 !important; font-size: 8pt !important; }
         }
       `}</style>
 
@@ -269,7 +318,7 @@ export function SoaDetailClient({
       {/* ════════════════════════════════════════════════════════════════════
           PRINTABLE DOCUMENT
       ═══════════════════════════════════════════════════════════════════ */}
-      <div className="bg-white border border-slate-300 p-10 print:p-0 print:border-none shadow-sm">
+      <div className="bg-white border border-slate-300 p-10 print:p-0 print:border-none shadow-sm print-avoid-break">
 
         {/* Letterhead */}
         <div className="flex items-start justify-between gap-4 pb-5 border-b-2 border-slate-800 print-avoid-break">
@@ -503,7 +552,7 @@ export function SoaDetailClient({
           </AppendixTable>
         </AppendixSection>
 
-        <AppendixSection id="section-7" title="Appendix E — Daily Warehousing CBM Storage Calculation (30-Day Replay)">
+        <AppendixSection id="section-7" title="Appendix E — Daily Warehousing CBM Storage Calculation (30-Day Replay)" pageBreakBefore={true}>
           <AppendixTable headers={["Date", "Beg CBM", "+ In FG", "+ In Raw", "Out FG", "Out Raw", "End CBM", "Rate ($/CBM/day)", "Charge ($)"]}>
             <tbody>
               {effectiveCbmRows.map((r, i) => (
