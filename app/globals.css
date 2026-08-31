@@ -143,3 +143,38 @@ html:not([data-theme="dark"]) .inspection-page [class~="bg-white/15"] {
   scrollbar-width: none !important;
 }
 
+/*
+ * Global Print Styles
+ * Ensures application shell chrome (header, sidebar, floating bars, tabs)
+ * are completely omitted from browser printouts and generated PDFs.
+ */
+@media print {
+  header,
+  nav,
+  aside,
+  [role="navigation"],
+  [role="status"],
+  .no-print,
+  .print-hidden,
+  .print\\:hidden {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  main,
+  #main-content,
+  main > div {
+    padding: 0 !important;
+    margin: 0 !important;
+    min-height: 0 !important;
+    background: transparent !important;
+  }
+}
+

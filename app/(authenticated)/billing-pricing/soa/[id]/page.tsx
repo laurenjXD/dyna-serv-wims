@@ -16,7 +16,14 @@ import { db } from "@/lib/db/client";
 import { getPartyWithRoles } from "@/lib/db/queries/parties";
 import { getVmiDailyBalanceRows } from "@/lib/billing/queries/vmi-ledger";
 import { getDailyForexRate } from "@/lib/billing/forex-service";
-import { SoaDetailClient, type SoaData } from "./SoaDetailClient";
+import { getVmiHandlingForPeriod } from "@/lib/billing/vmi-handling";
+import { getVmiChargeAggregationForPeriod } from "@/lib/billing/vmi-charge-aggregation";
+import { getVmiRecurringFeeAggregationForPeriod } from "@/lib/billing/vmi-recurring-fee-aggregation";
+import {
+  SoaDetailClient,
+  type SoaData,
+  type DailyStorageRow,
+} from "./SoaDetailClient";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -54,26 +61,105 @@ export default async function SoaDetailPage({ params, searchParams }: PageProps)
   ];
   const monthName = monthNames[monthIdx] ?? "June";
   const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
+  const monthPadded = String(monthIdx + 1).padStart(2, "0");
+  const periodStartDate = `${year}-${monthPadded}-01`;
+  const periodEndDate = `${year}-${monthPadded}-${String(daysInMonth).padStart(2, "0")}`;
 
+  const targetDate = `${year}-${monthPadded}-01`;
+  const exchangeRate = await getDailyForexRate(targetDate);
+
+  // Defaults (sample preview fallback values)
   let storageAmount = 1116.9;
+  let handlingInUsd = 220.05;
+  let handlingOutUsd = 368.14;
+  let deliveryUsd = Number((40896.0 / exchangeRate).toFixed(2));
+  let documentationUsd = 420.0;
+  let loaFeeUsd = 36.0;
+  let truckingAdminUsd = 200.0;
+  let suretyBondUsd = 0.0;
+  let ctfUsd = 0.0;
+  let customCbmRows: DailyStorageRow[] | undefined = undefined;
+
   if (party) {
-    const dailyRows = await getVmiDailyBalanceRows(party.id, monthIdx, year);
-    if (dailyRows.length > 0) {
-      storageAmount = dailyRows.reduce((sum, r) => sum + r.storageAmountUsd, 0);
+    try {
+      // 1. Warehousing CBM Daily Ledger Rows & Storage Sum
+      const dailyRows = await getVmiDailyBalanceRows(party.id, monthIdx, year);
+      if (dailyRows.length > 0) {
+        storageAmount = Number(
+          dailyRows.reduce((sum, r) => sum + r.storageAmountUsd, 0).toFixed(2)
+        );
+        customCbmRows = dailyRows.map((r) => ({
+          date: r.ledgerDate,
+          beg: r.beginningCbm,
+          inFg: r.inFgCbm,
+          inRaw: r.inRawCbm,
+          outFg: r.outFgCbm,
+          outRaw: r.outRawCbm,
+          end: r.endingCbm,
+          rate: r.appliedStorageRateUsd,
+          amount: r.storageAmountUsd,
+        }));
+      }
+
+      // 2. Handling In / Out Movement Aggregation
+      const handling = await getVmiHandlingForPeriod(
+        db,
+        party.id,
+        periodStartDate,
+        periodEndDate
+      );
+      handlingInUsd = Number(handling.handlingInUsd.toFixed(2));
+      handlingOutUsd = Number(handling.handlingOutUsd.toFixed(2));
+
+      // 3. Documentation, Delivery & Ad-hoc Charges
+      const charges = await getVmiChargeAggregationForPeriod(db, {
+        partyId: party.id,
+        periodStartDate,
+        periodEndDate,
+        lockedExchangeRatePhp: exchangeRate,
+      });
+      if (charges.documentationUsd > 0 || charges.deliveryUsd > 0) {
+        documentationUsd = Number(charges.documentationUsd.toFixed(2));
+        deliveryUsd = Number(charges.deliveryUsd.toFixed(2));
+      }
+
+      // 4. Recurring Fees (LOA, Trucking Admin, Surety Bond, Manpower)
+      const recurring = await getVmiRecurringFeeAggregationForPeriod(db, {
+        partyId: party.id,
+        periodStartDate,
+        periodEndDate,
+        lockedExchangeRatePhp: exchangeRate,
+      });
+      if (recurring.lines.length > 0) {
+        const loaLine = recurring.lines.find((l) => l.feeType === "loa");
+        const truckLine = recurring.lines.find((l) => l.feeType === "trucking_admin_fee");
+        const suretyLine = recurring.lines.find((l) => l.feeType === "surety_bond");
+        if (loaLine) loaFeeUsd = Number(loaLine.amountUsd.toFixed(2));
+        if (truckLine) truckingAdminUsd = Number(truckLine.amountUsd.toFixed(2));
+        if (suretyLine) suretyBondUsd = Number(suretyLine.amountUsd.toFixed(2));
+      }
+    } catch (err) {
+      console.warn("Using sample calculation fallbacks for SOA preview:", err);
     }
   }
 
   const customerName = party ? party.name : "United Philippine Industrial";
   const customerCode = party ? party.code : "UPI";
-  const soaNumber = `SOA-${year}-${String(monthIdx + 1).padStart(2, "0")}-${customerCode}`;
-  const targetDate = `${year}-${String(monthIdx + 1).padStart(2, "0")}-01`;
-  const exchangeRate = await getDailyForexRate(targetDate);
-  const deliveryPhp = 40896.0;
-  const deliveryUsd = Number((deliveryPhp / exchangeRate).toFixed(2));
+  const soaNumber = `SOA-${year}-${monthPadded}-${customerCode}`;
 
-  const totalAmount = storageAmount + deliveryUsd + 420.0 + 220.05 + 368.14 + 36.0 + 200.0;
-
-  const monthPadded = String(monthIdx + 1).padStart(2, "0");
+  const totalAmount = Number(
+    (
+      storageAmount +
+      deliveryUsd +
+      documentationUsd +
+      handlingInUsd +
+      handlingOutUsd +
+      loaFeeUsd +
+      truckingAdminUsd +
+      suretyBondUsd +
+      ctfUsd
+    ).toFixed(2)
+  );
 
   const soaData: SoaData = {
     soaNumber,
@@ -89,24 +175,24 @@ export default async function SoaDetailPage({ params, searchParams }: PageProps)
     currency: "USD",
     exchangeRate,
     openingBalanceUsd: 0.0,
-    currentChargesUsd: Number(totalAmount.toFixed(2)),
+    currentChargesUsd: totalAmount,
     debitAdjustmentsUsd: 0.0,
     creditsUsd: 0.0,
     paymentsAppliedUsd: 0.0,
-    outstandingBalanceUsd: Number(totalAmount.toFixed(2)),
+    outstandingBalanceUsd: totalAmount,
     categories: [
-      { name: "Warehousing (Daily CBM Storage)", code: "WH-STORAGE", amount: Number(storageAmount.toFixed(2)), sectionId: "section-7" },
+      { name: "Warehousing (Daily CBM Storage)", code: "WH-STORAGE", amount: storageAmount, sectionId: "section-7" },
       { name: "Delivery & Distribution Charges", code: "DELIVERY", amount: deliveryUsd, sectionId: "section-2" },
-      { name: "Documentation Charges (DR / POD)", code: "DOCUMENTATION", amount: 420.0, sectionId: "section-2" },
-      { name: "Handling IN (Receiving & Stripping)", code: "HANDLING-IN", amount: 220.05, sectionId: "section-5" },
-      { name: "Handling OUT (Picking & Loading)", code: "HANDLING-OUT", amount: 368.14, sectionId: "section-5" },
-      { name: "Letter of Authority (LOA) Monthly Fee", code: "LOA-FEE", amount: 36.0, sectionId: "section-3" },
-      { name: "Trucking Administrative Fee", code: "TRUCK-ADMIN", amount: 200.0, sectionId: "section-4" },
-      { name: "Surety Bond Fee", code: "SURETY-BOND", amount: 0.0, sectionId: "section-4" },
-      { name: "Container Transfer Fee (CTF)", code: "CTF-FEE", amount: 0.0, sectionId: "section-4" },
+      { name: "Documentation Charges (DR / POD)", code: "DOCUMENTATION", amount: documentationUsd, sectionId: "section-2" },
+      { name: "Handling IN (Receiving & Stripping)", code: "HANDLING-IN", amount: handlingInUsd, sectionId: "section-5" },
+      { name: "Handling OUT (Picking & Loading)", code: "HANDLING-OUT", amount: handlingOutUsd, sectionId: "section-5" },
+      { name: "Letter of Authority (LOA) Monthly Fee", code: "LOA-FEE", amount: loaFeeUsd, sectionId: "section-3" },
+      { name: "Trucking Administrative Fee", code: "TRUCK-ADMIN", amount: truckingAdminUsd, sectionId: "section-4" },
+      { name: "Surety Bond Fee", code: "SURETY-BOND", amount: suretyBondUsd, sectionId: "section-4" },
+      { name: "Container Transfer Fee (CTF)", code: "CTF-FEE", amount: ctfUsd, sectionId: "section-4" },
     ],
   };
 
-  return <SoaDetailClient soaData={soaData} />;
+  return <SoaDetailClient soaData={soaData} cbmRows={customCbmRows} />;
 }
 

@@ -33,13 +33,7 @@ export interface SoaData {
   categories: SoaCategory[];
 }
 
-interface SoaDetailClientProps {
-  soaData: SoaData;
-}
-
-// ── Appendix row types ─────────────────────────────────────────────────────────
-
-interface DailyStorageRow {
+export interface DailyStorageRow {
   date: string;
   beg: number;
   inFg: number;
@@ -51,7 +45,7 @@ interface DailyStorageRow {
   amount: number;
 }
 
-interface DeliveryRow {
+export interface DeliveryRow {
   date: string;
   dr: string;
   consignee: string;
@@ -60,7 +54,7 @@ interface DeliveryRow {
   remarks: string;
 }
 
-interface LoaRow {
+export interface LoaRow {
   permit: string;
   scope: string;
   validFrom: string;
@@ -68,19 +62,28 @@ interface LoaRow {
   rate: number;
 }
 
-interface OtherChargeRow {
+export interface OtherChargeRow {
   name: string;
   code: string;
   amount: number;
   notes: string;
 }
 
-interface ManpowerRow {
+export interface ManpowerRow {
   role: string;
   hours: number;
   rate: number;
   amount: number;
   notes: string;
+}
+
+interface SoaDetailClientProps {
+  soaData: SoaData;
+  cbmRows?: DailyStorageRow[];
+  deliveryRows?: DeliveryRow[];
+  loaRows?: LoaRow[];
+  manpowerRows?: ManpowerRow[];
+  otherChargeRows?: OtherChargeRow[];
 }
 
 // ── Demo stubs (replace with real DB queries later) ────────────────────────────
@@ -172,8 +175,21 @@ function AppendixTable({ headers, children }: { headers: string[]; children: Rea
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 
-export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
+export function SoaDetailClient({
+  soaData,
+  cbmRows,
+  deliveryRows,
+  loaRows,
+  manpowerRows,
+  otherChargeRows,
+}: SoaDetailClientProps) {
   const [showAppendix, setShowAppendix] = useState(false);
+
+  const effectiveCbmRows = cbmRows && cbmRows.length > 0 ? cbmRows : DEMO_CBM_ROWS;
+  const effectiveDeliveryRows = deliveryRows && deliveryRows.length > 0 ? deliveryRows : DEMO_DELIVERY_ROWS;
+  const effectiveLoaRows = loaRows && loaRows.length > 0 ? loaRows : DEMO_LOA_ROWS;
+  const effectiveManpowerRows = manpowerRows && manpowerRows.length > 0 ? manpowerRows : DEMO_MANPOWER_ROWS;
+  const effectiveOtherChargeRows = otherChargeRows && otherChargeRows.length > 0 ? otherChargeRows : DEMO_OTHER_CHARGES;
 
   const chargeLines = [
     { label: "Warehousing Charge", amount: soaData.categories.find((c) => c.sectionId === "section-7")?.amount ?? 0 },
@@ -411,7 +427,7 @@ export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
         <AppendixSection id="section-2" title="Appendix A — Delivery and Distribution Detail Schedule">
           <AppendixTable headers={["Date", "DR Number", "Consignee / Destination", "Delivery ($)", "Doc Fee ($)", "Remarks"]}>
             <tbody>
-              {DEMO_DELIVERY_ROWS.map((d, i) => (
+              {effectiveDeliveryRows.map((d, i) => (
                 <tr key={i} className={i % 2 === 1 ? "bg-slate-50" : ""}>
                   <td className="py-1.5 px-3 whitespace-nowrap">{d.date}</td>
                   <td className="py-1.5 px-3 font-bold whitespace-nowrap">{d.dr}</td>
@@ -423,8 +439,8 @@ export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
               ))}
               <tr className="soa-total-row bg-slate-100 border-t-2 border-slate-700">
                 <td colSpan={3} className="py-2 px-3 text-right font-bold uppercase tracking-wide text-xs">Total Delivery and Documentation</td>
-                <td className="py-2 px-3 text-right font-bold">{usd(DEMO_DELIVERY_ROWS.reduce((s, r) => s + r.delCharge, 0))}</td>
-                <td className="py-2 px-3 text-right font-bold">{usd(DEMO_DELIVERY_ROWS.reduce((s, r) => s + r.docCharge, 0))}</td>
+                <td className="py-2 px-3 text-right font-bold">{usd(effectiveDeliveryRows.reduce((s, r) => s + r.delCharge, 0))}</td>
+                <td className="py-2 px-3 text-right font-bold">{usd(effectiveDeliveryRows.reduce((s, r) => s + r.docCharge, 0))}</td>
                 <td className="py-2 px-3" />
               </tr>
             </tbody>
@@ -434,7 +450,7 @@ export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
         <AppendixSection id="section-3" title="Appendix B — LOA Permit Detail Schedule">
           <AppendixTable headers={["Permit No.", "Scope", "Valid From", "Valid To", "Monthly Rate ($)"]}>
             <tbody>
-              {DEMO_LOA_ROWS.map((l, i) => (
+              {effectiveLoaRows.map((l, i) => (
                 <tr key={i} className={i % 2 === 1 ? "bg-slate-50" : ""}>
                   <td className="py-1.5 px-3 font-bold">{l.permit}</td>
                   <td className="py-1.5 px-3">{l.scope}</td>
@@ -445,7 +461,7 @@ export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
               ))}
               <tr className="soa-total-row bg-slate-100 border-t-2 border-slate-700">
                 <td colSpan={4} className="py-2 px-3 text-right font-bold uppercase tracking-wide text-xs">Total LOA Permits</td>
-                <td className="py-2 px-3 text-right font-bold">{usd(DEMO_LOA_ROWS.reduce((s, r) => s + r.rate, 0))}</td>
+                <td className="py-2 px-3 text-right font-bold">{usd(effectiveLoaRows.reduce((s, r) => s + r.rate, 0))}</td>
               </tr>
             </tbody>
           </AppendixTable>
@@ -454,7 +470,7 @@ export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
         <AppendixSection id="section-4" title="Appendix C — Surety Bond and Other Contractual Fees">
           <AppendixTable headers={["Charge Description", "Code", "Amount ($)", "Notes"]}>
             <tbody>
-              {DEMO_OTHER_CHARGES.map((o, i) => (
+              {effectiveOtherChargeRows.map((o, i) => (
                 <tr key={i} className={i % 2 === 1 ? "bg-slate-50" : ""}>
                   <td className="py-1.5 px-3 font-semibold">{o.name}</td>
                   <td className="py-1.5 px-3">{o.code}</td>
@@ -469,7 +485,7 @@ export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
         <AppendixSection id="section-5" title="Appendix D — Manpower Activity Schedule">
           <AppendixTable headers={["Role / Activity", "Hours", "Rate ($/hr)", "Amount ($)", "Task Log"]}>
             <tbody>
-              {DEMO_MANPOWER_ROWS.map((m, i) => (
+              {effectiveManpowerRows.map((m, i) => (
                 <tr key={i} className={i % 2 === 1 ? "bg-slate-50" : ""}>
                   <td className="py-1.5 px-3 font-semibold">{m.role}</td>
                   <td className="py-1.5 px-3 text-right">{m.hours.toFixed(2)}</td>
@@ -480,7 +496,7 @@ export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
               ))}
               <tr className="soa-total-row bg-slate-100 border-t-2 border-slate-700">
                 <td colSpan={3} className="py-2 px-3 text-right font-bold uppercase tracking-wide text-xs">Total Manpower</td>
-                <td className="py-2 px-3 text-right font-bold">{usd(DEMO_MANPOWER_ROWS.reduce((s, r) => s + r.amount, 0))}</td>
+                <td className="py-2 px-3 text-right font-bold">{usd(effectiveManpowerRows.reduce((s, r) => s + r.amount, 0))}</td>
                 <td className="py-2 px-3" />
               </tr>
             </tbody>
@@ -490,7 +506,7 @@ export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
         <AppendixSection id="section-7" title="Appendix E — Daily Warehousing CBM Storage Calculation (30-Day Replay)">
           <AppendixTable headers={["Date", "Beg CBM", "+ In FG", "+ In Raw", "Out FG", "Out Raw", "End CBM", "Rate ($/CBM/day)", "Charge ($)"]}>
             <tbody>
-              {DEMO_CBM_ROWS.map((r, i) => (
+              {effectiveCbmRows.map((r, i) => (
                 <tr key={i} className={i % 2 === 1 ? "bg-slate-50" : ""}>
                   <td className="py-1 px-2 font-semibold whitespace-nowrap">{r.date}</td>
                   <td className="py-1 px-2 text-right">{usd(r.beg)}</td>
@@ -505,7 +521,7 @@ export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
               ))}
               <tr className="soa-total-row bg-slate-100 border-t-2 border-slate-700">
                 <td colSpan={8} className="py-2 px-2 text-right font-bold uppercase tracking-wide text-xs">Total Warehousing Storage (30 Days)</td>
-                <td className="py-2 px-2 text-right font-bold">{usd(DEMO_CBM_ROWS.reduce((s, r) => s + r.amount, 0))}</td>
+                <td className="py-2 px-2 text-right font-bold">{usd(effectiveCbmRows.reduce((s, r) => s + r.amount, 0))}</td>
               </tr>
             </tbody>
           </AppendixTable>
