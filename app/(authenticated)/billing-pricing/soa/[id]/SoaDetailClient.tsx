@@ -113,20 +113,23 @@ export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
   ];
 
   return (
-    <div className="mx-auto max-w-container space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-container space-y-6 px-4 py-6 sm:px-6 lg:px-8 print:p-0 print:m-0 print:max-w-none print:space-y-0">
       {/* Global Print Styles for Executive Corporate Document PDF */}
       <style>{`
         @media print {
           @page {
             size: A4 portrait;
-            margin: 8mm 10mm 10mm 10mm;
+            margin: 10mm 12mm 12mm 12mm;
           }
-          body {
-            background: white !important;
-            color: #0f172a !important;
-            font-family: system-ui, -apple-system, sans-serif !important;
-            font-size: 10px !important;
-            line-height: 1.3 !important;
+          html, body {
+            background: #ffffff !important;
+            color: #000000 !important;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+            font-size: 9.5pt !important;
+            line-height: 1.35 !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
@@ -141,41 +144,47 @@ export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
             break-inside: avoid !important;
             page-break-inside: avoid !important;
           }
-          .print-card {
-            border: 1px solid #64748b !important;
-            box-shadow: none !important;
+          /* Strip all web shadows, web rounded corners, and colored card backgrounds */
+          .print-card, .rounded-card, .shadow-card, .rounded, .rounded-btn, .rounded-full {
             border-radius: 0px !important;
-            margin-bottom: 10px !important;
-            background: white !important;
+            box-shadow: none !important;
+            text-shadow: none !important;
           }
-          .print-header-bg {
+          .print-border {
+            border: 1px solid #1e293b !important;
+          }
+          .print-header-row {
             background-color: #f1f5f9 !important;
-            color: #0f172a !important;
-            border-bottom: 1px solid #64748b !important;
+            color: #000000 !important;
+            border-bottom: 1px solid #1e293b !important;
           }
           table {
             width: 100% !important;
             border-collapse: collapse !important;
-            font-size: 9.5px !important;
+            font-size: 9pt !important;
+            margin-bottom: 8px !important;
+            page-break-inside: auto !important;
+          }
+          tr {
+            page-break-inside: avoid !important;
+            page-break-after: auto !important;
+          }
+          thead {
+            display: table-header-group !important;
           }
           th {
             background-color: #f1f5f9 !important;
-            color: #0f172a !important;
-            font-weight: bold !important;
+            color: #000000 !important;
+            font-weight: 700 !important;
             text-transform: uppercase !important;
-            border: 1px solid #94a3b8 !important;
-            padding: 4px 6px !important;
+            border: 1px solid #334155 !important;
+            padding: 4.5px 6px !important;
+            font-size: 8.5pt !important;
           }
           td {
-            padding: 3.5px 6px !important;
+            padding: 4px 6px !important;
             border: 1px solid #cbd5e1 !important;
-          }
-          .print-badge {
-            background: none !important;
-            border: 1px solid #64748b !important;
-            color: #0f172a !important;
-            padding: 1px 4px !important;
-            font-weight: bold !important;
+            color: #000000 !important;
           }
         }
       `}</style>
@@ -269,192 +278,216 @@ export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
       </div>
 
       {/* ════════════════════ PAGE 1: COVER STATEMENT & SUMMARY OF CHARGES ════════════════════ */}
-      <div className="print-avoid-break space-y-4 bg-surface-white p-4 print:p-0 rounded-card border border-border-light print:border-none shadow-card print:shadow-none">
+      <div className="print-avoid-break space-y-4 bg-surface-white p-6 print:p-0 rounded-card border border-border-light print:border-none shadow-card print:shadow-none">
         
-        {/* Official Corporate Document Header / Letterhead */}
-        <div className="border-b-2 border-brand-navy pb-3">
+        {/* Exact Corporate Header / Letterhead matching Real-World Template */}
+        <div className="pb-2">
           <div className="flex justify-between items-start">
-            <div>
-              <h1 className="font-heading text-headline-sm font-extrabold tracking-tight text-brand-navy print:text-black">
-                DYNA-SERV GLOBAL CORP.
-              </h1>
-              <p className="font-body text-body-xs text-text-grey print:text-slate-700">
-                Warehouse Logistics Management &amp; VMI Distribution Facility
-              </p>
-              <p className="font-body text-body-xs text-text-grey print:text-slate-700">
-                PEZA Special Economic Zone, Gateway Business Park, Cavite / Laguna, Philippines
-              </p>
-              <p className="font-body text-body-xs text-text-grey print:text-slate-700 font-mono">
-                PEZA Reg No: 02-VMI-2024 &bull; Tax Identification No: 004-982-110-000
-              </p>
-            </div>
-            <div className="text-right">
-              <h2 className="font-heading text-title-md font-extrabold text-brand-navy print:text-black uppercase tracking-wide">
-                STATEMENT OF ACCOUNT
-              </h2>
-              <p className="font-mono text-mono-md font-bold text-brand-navy print:text-black mt-1">
-                Ref No: {soaData.soaNumber}
-              </p>
-              <p className="font-mono text-mono-xs text-text-grey print:text-slate-700">Billing Date: <strong>{soaData.issueDate}</strong></p>
-              <p className="font-mono text-mono-xs text-text-grey print:text-slate-700">Payment Due: <strong>{soaData.dueDate}</strong></p>
+            <div className="flex items-start gap-3">
+              {/* Dyna-Serv Globe Icon / Brand Logo */}
+              <div className="no-print w-12 h-12 rounded-full border-2 border-brand-blue flex items-center justify-center text-brand-blue font-bold text-lg shrink-0">
+                DS
+              </div>
+              <div>
+                <h1 className="font-heading text-title-md font-extrabold tracking-tight text-brand-navy print:text-black">
+                  DYNA-SERV GLOBAL CORPORATION
+                </h1>
+                <p className="font-body text-body-xs text-text-grey print:text-black">
+                  Unit 7, Orient Goldcrest Building 6A,
+                </p>
+                <p className="font-body text-body-xs text-text-grey print:text-black">
+                  149 East Main Avenue Loop, Phase 6C,
+                </p>
+                <p className="font-body text-body-xs text-text-grey print:text-black">
+                  Laguna Technopark SEZ, Biñan City, Laguna, Philippines 4024
+                </p>
+                <p className="font-body text-body-xs text-brand-blue print:text-black font-semibold">
+                  www.dyna-serv.com.ph
+                </p>
+              </div>
             </div>
           </div>
 
-          {/* Customer Bill-To & Document Context Grid */}
-          <div className="grid grid-cols-2 gap-4 mt-4 pt-3 border-t border-border-light print:border-slate-400 font-body text-body-xs">
-            <div className="border border-border-light print:border-slate-400 p-3 bg-surface-background/40 print:bg-white rounded">
-              <span className="font-bold uppercase tracking-wider text-text-grey print:text-slate-800 text-body-xs block mb-1">
-                Bill To / Customer Information:
-              </span>
-              <p className="font-bold text-text-dark print:text-black text-body-sm">{soaData.customerName}</p>
-              <p className="text-text-grey print:text-slate-700 font-mono">Account Code: {soaData.customerCode}</p>
-              <p className="text-text-grey print:text-slate-700">Gateway Business Park, General Trias, Cavite</p>
-              <p className="text-text-grey print:text-slate-700">Attn: Accounts Payable / Supply Chain Dept.</p>
+          {/* Centered Document Title */}
+          <div className="text-center my-4">
+            <h2 className="font-heading text-headline-xs font-extrabold text-brand-navy print:text-black uppercase tracking-wider border-b-2 border-brand-navy print:border-black inline-block pb-0.5 px-6">
+              STATEMENT OF ACCOUNT
+            </h2>
+          </div>
+
+          {/* Exact Real-World Metadata Grid (Left & Right Form Fields) */}
+          <div className="grid grid-cols-2 gap-8 my-4 font-body text-body-xs">
+            {/* Left Column: Dates & Bill To */}
+            <div className="space-y-2">
+              <div className="flex items-center">
+                <span className="w-24 font-bold text-text-dark print:text-black">From Date</span>
+                <div className="flex-1 border-b border-text-dark print:border-black px-2 py-0.5 font-mono bg-surface-background/30 print:bg-slate-100 font-medium">
+                  01-May-26
+                </div>
+              </div>
+              <div className="flex items-center">
+                <span className="w-24 font-bold text-text-dark print:text-black">To Date</span>
+                <div className="flex-1 border-b border-text-dark print:border-black px-2 py-0.5 font-mono bg-surface-background/30 print:bg-slate-100 font-medium">
+                  26-May-26
+                </div>
+              </div>
+              <div className="flex items-start pt-2">
+                <span className="w-24 font-bold text-text-dark print:text-black pt-0.5">Bill To</span>
+                <div className="flex-1 border-b border-text-dark print:border-black px-2 py-1 font-body bg-surface-background/30 print:bg-slate-100 text-text-dark print:text-black leading-snug">
+                  <p className="font-bold">{soaData.customerName}</p>
+                  <p>Unit 8, 35/F Cable TV Tower</p>
+                  <p>9 Hoi Shing Road, Tsuen Wan NT, HK</p>
+                </div>
+              </div>
             </div>
 
-            <div className="border border-border-light print:border-slate-400 p-3 bg-surface-background/40 print:bg-white rounded font-mono">
-              <div className="flex justify-between py-0.5">
-                <span className="text-text-grey print:text-slate-700 font-sans">Billing Period:</span>
-                <span className="font-bold text-text-dark print:text-black">{soaData.billingPeriod}</span>
+            {/* Right Column: Customer, SOA No, Invoice Details */}
+            <div className="space-y-2">
+              <div className="flex items-center">
+                <span className="w-28 font-bold text-text-dark print:text-black">Customer</span>
+                <div className="flex-1 border-b border-text-dark print:border-black px-2 py-0.5 font-body font-bold text-text-dark print:text-black bg-surface-background/30 print:bg-slate-100 truncate">
+                  {soaData.customerName}
+                </div>
               </div>
-              <div className="flex justify-between py-0.5">
-                <span className="text-text-grey print:text-slate-700 font-sans">Contract Reference:</span>
-                <span className="font-bold text-text-dark print:text-black">{soaData.contractNumber}</span>
+              <div className="flex items-center">
+                <span className="w-28 font-bold text-text-dark print:text-black">SOA No.</span>
+                <div className="flex-1 border-b border-text-dark print:border-black px-2 py-0.5 font-mono text-text-dark print:text-black font-semibold">
+                  {soaData.soaNumber}
+                </div>
               </div>
-              <div className="flex justify-between py-0.5">
-                <span className="text-text-grey print:text-slate-700 font-sans">Daily Forex Exchange Rate:</span>
-                <span className="font-bold text-text-dark print:text-black">1 USD = ₱{soaData.exchangeRate} PHP</span>
+              <div className="flex items-center">
+                <span className="w-28 font-bold text-text-dark print:text-black">Invoice No.</span>
+                <div className="flex-1 border-b border-text-dark print:border-black px-2 py-0.5 font-mono text-text-dark print:text-black text-right font-medium">
+                  45
+                </div>
               </div>
-              <div className="flex justify-between py-0.5">
-                <span className="text-text-grey print:text-slate-700 font-sans">Billing Currency:</span>
-                <span className="font-bold text-text-dark print:text-black">US Dollar ($ USD)</span>
+              <div className="flex items-center">
+                <span className="w-28 font-bold text-text-dark print:text-black">Invoice Date</span>
+                <div className="flex-1 border-b border-text-dark print:border-black px-2 py-0.5 font-mono text-text-dark print:text-black text-right font-medium">
+                  26-May-26
+                </div>
+              </div>
+              <div className="flex items-center">
+                <span className="w-28 font-bold text-text-dark print:text-black">Terms</span>
+                <div className="flex-1 border-b border-text-dark print:border-black px-2 py-0.5 font-body text-text-dark print:text-black font-medium">
+                  Net 30 Days
+                </div>
+              </div>
+              <div className="flex items-center">
+                <span className="w-28 font-bold text-text-dark print:text-black">Currency</span>
+                <div className="flex-1 border-b border-text-dark print:border-black px-2 py-0.5 font-mono font-bold text-text-dark print:text-black">
+                  USD
+                </div>
+              </div>
+              <div className="flex items-center">
+                <span className="w-28 font-bold text-text-dark print:text-black">Reference</span>
+                <div className="flex-1 border-b border-text-dark print:border-black px-2 py-0.5 font-mono text-text-dark print:text-black">
+                  DSGC-VMI-2026-001
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Account Running Balance Card Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 print:gap-2">
-          <div className="rounded border border-border-light print:border-slate-400 bg-surface-white p-3 print:p-2 text-center">
-            <span className="font-body text-body-xs text-text-grey print:text-slate-700 uppercase font-semibold block">Opening Balance</span>
-            <p className="font-mono text-mono-lg font-bold text-text-dark print:text-black mt-0.5">
-              ${soaData.openingBalanceUsd.toFixed(2)}
-            </p>
-          </div>
-          <div className="rounded border border-border-light print:border-slate-400 bg-surface-white p-3 print:p-2 text-center">
-            <span className="font-body text-body-xs text-text-grey print:text-slate-700 uppercase font-semibold block">Current Period Charges</span>
-            <p className="font-mono text-mono-lg font-bold text-brand-blue print:text-black mt-0.5">
-              ${soaData.currentChargesUsd.toFixed(2)}
-            </p>
-          </div>
-          <div className="rounded border border-border-light print:border-slate-400 bg-surface-white p-3 print:p-2 text-center">
-            <span className="font-body text-body-xs text-text-grey print:text-slate-700 uppercase font-semibold block">Payments / Credits</span>
-            <p className="font-mono text-mono-lg font-bold text-green-700 print:text-black mt-0.5">
-              ${soaData.paymentsAppliedUsd.toFixed(2)}
-            </p>
-          </div>
-          <div className="rounded border-2 border-brand-blue/40 print:border-slate-800 bg-brand-blue/5 print:bg-slate-100 p-3 print:p-2 text-center">
-            <span className="font-body text-body-xs text-brand-blue print:text-black font-bold uppercase block">Total Amount Due</span>
-            <p className="font-mono text-mono-xl font-extrabold text-brand-blue print:text-black mt-0.5">
-              ${soaData.outstandingBalanceUsd.toFixed(2)}
-            </p>
-          </div>
-        </div>
-
-        {/* Section 6: Formal Summary of Charges Table */}
+        {/* Section 6: Exact Real-World Summary Table (NO, CHARGE TYPE, AMOUNT) */}
         <div
           id="section-6"
-          className={`print-card rounded border border-border-light print:border-slate-500 overflow-hidden ${
+          className={`print-card rounded border border-border-light print:border-slate-800 overflow-hidden ${
             highlightedSection === "section-6" ? "border-2 border-brand-blue ring-4 ring-brand-blue/20" : ""
           }`}
         >
-          <div className="border-b border-border-light print-header-bg p-3 flex justify-between items-center">
-            <h2 className="font-heading text-body-md font-bold text-text-dark print:text-black uppercase tracking-wide">
-              SUMMARY OF BILLING CHARGES
-            </h2>
-            <span className="font-mono text-mono-xs bg-surface-white print-badge border border-border-medium px-2 py-0.5 rounded text-text-dark font-semibold">
-              Monthly Period: {soaData.billingPeriod}
-            </span>
-          </div>
-
           <table className="w-full text-left border-collapse font-body text-body-sm">
             <thead>
-              <tr className="border-b border-border-light print-header-bg text-text-grey text-body-xs uppercase font-bold">
-                <th className="py-2 px-3">Itemized Charge Description</th>
-                <th className="py-2 px-3">Charge Code</th>
-                <th className="py-2 px-3 text-right">Amount (USD)</th>
-                <th className="py-2 px-3 text-right">Amount (PHP Equivalent)</th>
-                <th className="py-2 px-3 text-right no-print">Traceability</th>
+              <tr className="border-t-2 border-b-2 border-brand-navy print:border-black bg-surface-background print-header-row text-brand-navy print:text-black text-body-xs uppercase font-extrabold">
+                <th className="py-2 px-3 w-16 text-center">NO.</th>
+                <th className="py-2 px-3">CHARGE TYPE</th>
+                <th className="py-2 px-3 text-right w-48">AMOUNT</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border-light print:divide-slate-300 text-text-dark">
-              {soaData.categories.map((cat, idx) => (
-                <tr key={idx} className="hover:bg-surface-background/50 transition-colors">
-                  <td className="py-2.5 px-3 font-semibold">{cat.name}</td>
-                  <td className="py-2.5 px-3 font-mono text-body-xs text-text-grey print:text-slate-700">{cat.code}</td>
-                  <td className="py-2.5 px-3 text-right font-mono font-bold">
-                    ${cat.amount.toFixed(2)}
-                  </td>
-                  <td className="py-2.5 px-3 text-right font-mono text-text-grey print:text-slate-700">
-                    ₱{(cat.amount * soaData.exchangeRate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </td>
-                  <td className="py-2.5 px-3 text-right no-print">
-                    <button
-                      onClick={() => handleTraceClick(cat.sectionId)}
-                      className="inline-flex items-center text-body-xs font-bold text-brand-blue hover:text-brand-blue-dark hover:underline"
-                    >
-                      View Schedule <ChevronRight size={14} className="ml-1" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              <tr className="bg-surface-background print-header-bg font-bold text-body-md border-t-2 border-border-medium print:border-slate-800">
-                <td colSpan={2} className="py-3 px-3 font-heading text-text-dark print:text-black">
-                  TOTAL AMOUNT PAYABLE ({soaData.billingPeriod.toUpperCase()})
+            <tbody className="divide-y divide-border-light print:divide-slate-300 text-text-dark font-body text-body-sm">
+              <tr className="hover:bg-surface-background/50 transition-colors">
+                <td className="py-2 px-3 text-center font-mono font-semibold">1</td>
+                <td className="py-2 px-3 font-semibold">Warehousing Charge</td>
+                <td className="py-2 px-3 text-right font-mono font-bold">${(1116.90).toFixed(2)}</td>
+              </tr>
+              <tr className="hover:bg-surface-background/50 transition-colors">
+                <td className="py-2 px-3 text-center font-mono font-semibold">2</td>
+                <td className="py-2 px-3 font-semibold">Documentation</td>
+                <td className="py-2 px-3 text-right font-mono font-bold">${(420.00).toFixed(2)}</td>
+              </tr>
+              <tr className="hover:bg-surface-background/50 transition-colors">
+                <td className="py-2 px-3 text-center font-mono font-semibold">3</td>
+                <td className="py-2 px-3 font-semibold">Delivery Charge</td>
+                <td className="py-2 px-3 text-right font-mono font-bold">${(662.71).toFixed(2)}</td>
+              </tr>
+              <tr className="hover:bg-surface-background/50 transition-colors">
+                <td className="py-2 px-3 text-center font-mono font-semibold">4</td>
+                <td className="py-2 px-3 font-semibold">Handling and Stripping</td>
+                <td className="py-2 px-3 text-right font-mono font-bold">${(588.19).toFixed(2)}</td>
+              </tr>
+              <tr className="hover:bg-surface-background/50 transition-colors">
+                <td className="py-2 px-3 text-center font-mono font-semibold">5</td>
+                <td className="py-2 px-3 font-semibold">Cargo Transfer Fee</td>
+                <td className="py-2 px-3 text-right font-mono text-text-grey print:text-black">0.00</td>
+              </tr>
+              <tr className="hover:bg-surface-background/50 transition-colors">
+                <td className="py-2 px-3 text-center font-mono font-semibold">6</td>
+                <td className="py-2 px-3 font-semibold">RTV</td>
+                <td className="py-2 px-3 text-right font-mono text-text-grey print:text-black">0.00</td>
+              </tr>
+              <tr className="hover:bg-surface-background/50 transition-colors">
+                <td className="py-2 px-3 text-center font-mono font-semibold">7</td>
+                <td className="py-2 px-3 font-semibold">Admin Fee</td>
+                <td className="py-2 px-3 text-right font-mono font-bold">${(200.00).toFixed(2)}</td>
+              </tr>
+              <tr className="hover:bg-surface-background/50 transition-colors">
+                <td className="py-2 px-3 text-center font-mono font-semibold">8</td>
+                <td className="py-2 px-3 font-semibold">Insurance</td>
+                <td className="py-2 px-3 text-right font-mono text-text-grey print:text-black">0.00</td>
+              </tr>
+              <tr className="hover:bg-surface-background/50 transition-colors">
+                <td className="py-2 px-3 text-center font-mono font-semibold">9</td>
+                <td className="py-2 px-3 font-semibold">Man Power (Permits &amp; Special Handling)</td>
+                <td className="py-2 px-3 text-right font-mono font-bold">${(36.00).toFixed(2)}</td>
+              </tr>
+              {/* Grand Total Bar matching gray shading in real-world document */}
+              <tr className="border-t-2 border-b-2 border-brand-navy print:border-black bg-surface-background print-header-row font-bold text-body-md">
+                <td colSpan={2} className="py-3 px-4 text-right font-heading font-extrabold text-brand-navy print:text-black uppercase tracking-wider">
+                  GRAND TOTAL
                 </td>
-                <td className="py-3 px-3 text-right font-mono text-brand-blue print:text-black font-extrabold text-body-md">
+                <td className="py-3 px-3 text-right font-mono text-brand-blue print:text-black font-extrabold text-body-md bg-surface-background/80 print:bg-slate-200">
                   ${soaData.currentChargesUsd.toFixed(2)}
                 </td>
-                <td className="py-3 px-3 text-right font-mono text-brand-blue print:text-black font-extrabold text-body-md">
-                  ₱{(soaData.currentChargesUsd * soaData.exchangeRate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </td>
-                <td className="py-3 px-3 no-print"></td>
               </tr>
             </tbody>
           </table>
-
-          <div className="border-t border-border-light print:border-slate-400 bg-surface-background/60 print:bg-slate-50 p-2.5 text-center">
-            <p className="font-mono text-mono-sm font-bold text-brand-navy print:text-black">
-              *** THREE THOUSAND TWENTY THREE DOLLARS &amp; 80/100 ONLY ($3,023.80) ***
-            </p>
-          </div>
         </div>
 
         {/* Remittance & Formal Approval Signatures Block */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 font-body text-body-xs">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 font-body text-body-xs print-avoid-break">
           {/* Payment Remittance Instructions */}
-          <div className="border border-border-light print:border-slate-400 p-3 bg-surface-white rounded">
+          <div className="border border-border-light print:border-slate-800 p-3 bg-surface-white print:bg-white rounded">
             <span className="font-bold uppercase tracking-wider text-text-dark print:text-black block mb-1">
               Payment Remittance Instructions:
             </span>
-            <p className="text-text-grey print:text-slate-800">Please make check/wire transfers payable to:</p>
+            <p className="text-text-grey print:text-black">Please make check/wire transfers payable to:</p>
             <p className="font-bold text-text-dark print:text-black">DYNA-SERV GLOBAL CORPORATION</p>
-            <p className="text-text-grey print:text-slate-800">Bank: <strong>Bank of the Philippine Islands (BPI)</strong></p>
-            <p className="text-text-grey print:text-slate-800 font-mono">Account No (USD): <strong>9812-4091-22</strong> &bull; SWIFT: <strong>BOPIPHMM</strong></p>
+            <p className="text-text-grey print:text-black">Bank: <strong>Bank of the Philippine Islands (BPI)</strong></p>
+            <p className="text-text-grey print:text-black font-mono">Account No (USD): <strong>9812-4091-22</strong> &bull; SWIFT: <strong>BOPIPHMM</strong></p>
           </div>
 
           {/* Page 1 Signatures */}
-          <div className="border border-border-light print:border-slate-400 p-3 bg-surface-white rounded flex flex-col justify-between">
+          <div className="border border-border-light print:border-slate-800 p-3 bg-surface-white print:bg-white rounded flex flex-col justify-between">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <span className="text-text-grey print:text-slate-700 block mb-4">Prepared By:</span>
+                <span className="text-text-grey print:text-black block mb-4">Prepared By:</span>
                 <div className="border-b border-text-dark print:border-black font-bold pb-0.5">MARIA LOURDES REYES</div>
-                <span className="text-text-grey print:text-slate-700 text-[9px] block">Billing &amp; Finance Specialist</span>
+                <span className="text-text-grey print:text-black text-[9px] block">Billing &amp; Finance Specialist</span>
               </div>
               <div>
-                <span className="text-text-grey print:text-slate-700 block mb-4">Approved By:</span>
+                <span className="text-text-grey print:text-black block mb-4">Approved By:</span>
                 <div className="border-b border-text-dark print:border-black font-bold pb-0.5">JOSEPHINE TAN</div>
-                <span className="text-text-grey print:text-slate-700 text-[9px] block">Warehouse Operations Manager</span>
+                <span className="text-text-grey print:text-black text-[9px] block">Warehouse Operations Manager</span>
               </div>
             </div>
           </div>
@@ -466,20 +499,20 @@ export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
       <div className="print-page-break print-avoid-break space-y-6">
         <div
           id="section-2"
-          className={`print-card rounded border border-border-light print:border-slate-500 overflow-hidden ${
+          className={`print-card rounded border border-border-light print:border-slate-800 overflow-hidden ${
             highlightedSection === "section-2" ? "border-2 border-brand-blue ring-4 ring-brand-blue/20" : ""
           }`}
         >
-          <div className="border-b border-border-light print-header-bg p-3 flex justify-between items-center">
+          <div className="border-b border-border-light print-header-row p-3 flex justify-between items-center">
             <div>
               <h2 className="font-heading text-body-md font-bold text-text-dark print:text-black uppercase">
                 Section 2: Delivery &amp; Distribution Detail Schedule
               </h2>
-              <p className="font-body text-body-xs text-text-grey print:text-slate-700">
+              <p className="font-body text-body-xs text-text-grey print:text-black">
                 Consignee delivery runs, DR references, delivery charges, documentation fees, and co-load notes.
               </p>
             </div>
-            <span className="font-mono text-mono-xs bg-surface-white print-badge border border-border-medium px-2 py-0.5 rounded text-text-dark font-bold">
+            <span className="font-mono text-mono-xs bg-surface-white border border-border-medium print:border-black px-2 py-0.5 rounded text-text-dark print:text-black font-bold">
               Subtotal: $1,082.71
             </span>
           </div>
@@ -487,7 +520,7 @@ export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse font-body text-body-sm">
               <thead>
-                <tr className="border-b border-border-light print-header-bg text-text-grey text-body-xs uppercase font-bold">
+                <tr className="border-b border-border-light print-header-row text-text-grey print:text-black text-body-xs uppercase font-bold">
                   <th className="py-2 px-3">Date</th>
                   <th className="py-2 px-3">DR Number</th>
                   <th className="py-2 px-3">Consignee Facility / Destination</th>
@@ -496,7 +529,7 @@ export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
                   <th className="py-2 px-3">Route / Remarks</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border-light print:divide-slate-300 text-text-dark font-mono text-body-xs">
+              <tbody className="divide-y divide-border-light print:divide-slate-400 text-text-dark font-mono text-body-xs">
                 {deliveryRows.map((d, idx) => (
                   <tr key={idx} className="hover:bg-surface-background/50 transition-colors">
                     <td className="py-2 px-3 font-semibold">{d.date}</td>
@@ -504,10 +537,10 @@ export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
                     <td className="py-2 px-3 font-sans font-medium">{d.consignee}</td>
                     <td className="py-2 px-3 text-right font-bold">${d.delCharge.toFixed(2)}</td>
                     <td className="py-2 px-3 text-right">${d.docCharge.toFixed(2)}</td>
-                    <td className="py-2 px-3 font-sans text-text-grey print:text-slate-700">{d.remarks}</td>
+                    <td className="py-2 px-3 font-sans text-text-grey print:text-black">{d.remarks}</td>
                   </tr>
                 ))}
-                <tr className="bg-surface-background print-header-bg font-bold border-t-2 border-border-medium print:border-slate-800 text-body-sm">
+                <tr className="bg-surface-background print-header-row font-bold border-t-2 border-border-medium print:border-black text-body-sm">
                   <td colSpan={3} className="py-2.5 px-3 font-heading text-text-dark print:text-black">
                     TOTAL DELIVERY &amp; DOCUMENTATION CHARGES
                   </td>
@@ -524,25 +557,25 @@ export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print-avoid-break">
           <div
             id="section-3"
-            className={`print-card rounded border border-border-light print:border-slate-500 overflow-hidden ${
+            className={`print-card rounded border border-border-light print:border-slate-800 overflow-hidden ${
               highlightedSection === "section-3" ? "border-2 border-brand-blue ring-4 ring-brand-blue/20" : ""
             }`}
           >
-            <div className="border-b border-border-light print-header-bg p-3 flex justify-between items-center">
+            <div className="border-b border-border-light print-header-row p-3 flex justify-between items-center">
               <h2 className="font-heading text-body-md font-bold text-text-dark print:text-black uppercase">
                 Section 3: LOA Detail Schedule
               </h2>
-              <span className="font-mono text-mono-xs bg-surface-white print-badge border border-border-medium px-2 py-0.5 rounded font-bold">
+              <span className="font-mono text-mono-xs bg-surface-white border border-border-medium print:border-black px-2 py-0.5 rounded font-bold">
                 Subtotal: $36.00
               </span>
             </div>
             <div className="p-3 space-y-2">
               {loaRows.map((l, idx) => (
-                <div key={idx} className="border border-border-light print:border-slate-300 p-2.5 bg-surface-background/40 print:bg-white flex justify-between items-center rounded">
+                <div key={idx} className="border border-border-light print:border-slate-400 p-2.5 bg-surface-background/40 print:bg-white flex justify-between items-center rounded">
                   <div>
                     <span className="font-mono text-mono-sm font-bold text-brand-blue print:text-black">{l.permit}</span>
-                    <p className="font-body text-body-xs text-text-grey print:text-slate-700 mt-0.5">{l.scope}</p>
-                    <p className="font-mono text-mono-xs text-text-grey print:text-slate-700 mt-0.5">Validity: {l.validFrom} to {l.validTo}</p>
+                    <p className="font-body text-body-xs text-text-grey print:text-black mt-0.5">{l.scope}</p>
+                    <p className="font-mono text-mono-xs text-text-grey print:text-black mt-0.5">Validity: {l.validFrom} to {l.validTo}</p>
                   </div>
                   <span className="font-mono text-mono-md font-bold text-text-dark print:text-black">${l.rate.toFixed(2)}/mo</span>
                 </div>
@@ -552,24 +585,24 @@ export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
 
           <div
             id="section-4"
-            className={`print-card rounded border border-border-light print:border-slate-500 overflow-hidden ${
+            className={`print-card rounded border border-border-light print:border-slate-800 overflow-hidden ${
               highlightedSection === "section-4" ? "border-2 border-brand-blue ring-4 ring-brand-blue/20" : ""
             }`}
           >
-            <div className="border-b border-border-light print-header-bg p-3 flex justify-between items-center">
+            <div className="border-b border-border-light print-header-row p-3 flex justify-between items-center">
               <h2 className="font-heading text-body-md font-bold text-text-dark print:text-black uppercase">
                 Section 4: Surety Bond &amp; Other Fees
               </h2>
-              <span className="font-mono text-mono-xs bg-surface-white print-badge border border-border-medium px-2 py-0.5 rounded font-bold">
+              <span className="font-mono text-mono-xs bg-surface-white border border-border-medium print:border-black px-2 py-0.5 rounded font-bold">
                 Subtotal: $200.00
               </span>
             </div>
             <div className="p-3 space-y-2">
               {otherChargesRows.map((o, idx) => (
-                <div key={idx} className="border border-border-light print:border-slate-300 p-2.5 bg-surface-background/40 print:bg-white flex justify-between items-center rounded">
+                <div key={idx} className="border border-border-light print:border-slate-400 p-2.5 bg-surface-background/40 print:bg-white flex justify-between items-center rounded">
                   <div>
                     <span className="font-body text-body-xs font-bold text-text-dark print:text-black">{o.name}</span>
-                    <p className="font-mono text-mono-xs text-text-grey print:text-slate-700 mt-0.5">{o.notes}</p>
+                    <p className="font-mono text-mono-xs text-text-grey print:text-black mt-0.5">{o.notes}</p>
                   </div>
                   <span className="font-mono text-mono-md font-bold text-text-dark print:text-black">${o.amount.toFixed(2)}</span>
                 </div>
@@ -583,20 +616,20 @@ export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
       <div className="print-page-break print-avoid-break space-y-6">
         <div
           id="section-5"
-          className={`print-card rounded border border-border-light print:border-slate-500 overflow-hidden ${
+          className={`print-card rounded border border-border-light print:border-slate-800 overflow-hidden ${
             highlightedSection === "section-5" ? "border-2 border-brand-blue ring-4 ring-brand-blue/20" : ""
           }`}
         >
-          <div className="border-b border-border-light print-header-bg p-3 flex justify-between items-center">
+          <div className="border-b border-border-light print-header-row p-3 flex justify-between items-center">
             <div>
               <h2 className="font-heading text-body-md font-bold text-text-dark print:text-black uppercase">
                 Section 5: Manpower Activity Schedule
               </h2>
-              <p className="font-body text-body-xs text-text-grey print:text-slate-700">
+              <p className="font-body text-body-xs text-text-grey print:text-black">
                 Handling IN &amp; Handling OUT labor hours, hourly billing rates, and operations task logs.
               </p>
             </div>
-            <span className="font-mono text-mono-xs bg-surface-white print-badge border border-border-medium px-2 py-0.5 rounded font-bold">
+            <span className="font-mono text-mono-xs bg-surface-white border border-border-medium print:border-black px-2 py-0.5 rounded font-bold">
               Subtotal: $588.19
             </span>
           </div>
@@ -604,7 +637,7 @@ export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse font-body text-body-sm">
               <thead>
-                <tr className="border-b border-border-light print-header-bg text-text-grey text-body-xs uppercase font-bold">
+                <tr className="border-b border-border-light print-header-row text-text-grey print:text-black text-body-xs uppercase font-bold">
                   <th className="py-2 px-3">Role / Operational Activity</th>
                   <th className="py-2 px-3 text-right">Hours Logged</th>
                   <th className="py-2 px-3 text-right">Rate ($/hr)</th>
@@ -612,17 +645,17 @@ export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
                   <th className="py-2 px-3">Task Log Details</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border-light print:divide-slate-300 text-text-dark font-mono text-body-xs">
+              <tbody className="divide-y divide-border-light print:divide-slate-400 text-text-dark font-mono text-body-xs">
                 {manpowerRows.map((m, idx) => (
                   <tr key={idx} className="hover:bg-surface-background/50 transition-colors">
                     <td className="py-2 px-3 font-sans font-bold">{m.role}</td>
                     <td className="py-2 px-3 text-right font-bold">{m.hours.toFixed(2)} hrs</td>
                     <td className="py-2 px-3 text-right">${m.rate.toFixed(2)}</td>
                     <td className="py-2 px-3 text-right font-bold text-brand-blue print:text-black">${m.amount.toFixed(2)}</td>
-                    <td className="py-2 px-3 font-sans text-text-grey print:text-slate-700">{m.notes}</td>
+                    <td className="py-2 px-3 font-sans text-text-grey print:text-black">{m.notes}</td>
                   </tr>
                 ))}
-                <tr className="bg-surface-background print-header-bg font-bold border-t-2 border-border-medium print:border-slate-800 text-body-sm">
+                <tr className="bg-surface-background print-header-row font-bold border-t-2 border-border-medium print:border-black text-body-sm">
                   <td colSpan={3} className="py-2.5 px-3 font-heading text-text-dark print:text-black">
                     TOTAL MANPOWER HANDLING CHARGES
                   </td>
@@ -639,21 +672,21 @@ export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
       <div className="print-page-break print-avoid-break space-y-4">
         <div
           id="section-7"
-          className={`print-card rounded border border-border-light print:border-slate-500 overflow-hidden ${
+          className={`print-card rounded border border-border-light print:border-slate-800 overflow-hidden ${
             highlightedSection === "section-7" ? "border-2 border-brand-blue ring-4 ring-brand-blue/20" : ""
           }`}
         >
-          <div className="border-b border-border-light print-header-bg p-3 flex justify-between items-center">
+          <div className="border-b border-border-light print-header-row p-3 flex justify-between items-center">
             <div>
               <h2 className="font-heading text-body-md font-bold text-text-dark print:text-black flex items-center uppercase">
                 <FileSpreadsheet size={18} className="mr-2 text-brand-blue print:text-black no-print" />
                 Section 7: Detailed Warehousing Daily CBM Calculation Schedule
               </h2>
-              <p className="font-body text-body-xs text-text-grey print:text-slate-700">
+              <p className="font-body text-body-xs text-text-grey print:text-black">
                 30-Day Unrolled Inventory Replay (Beg CBM, Inbound FG/Raw, Outbound FG/Raw, Ending CBM, Storage Rate).
               </p>
             </div>
-            <span className="font-mono text-mono-xs bg-surface-white print-badge border border-border-medium px-2 py-0.5 rounded font-bold">
+            <span className="font-mono text-mono-xs bg-surface-white border border-border-medium print:border-black px-2 py-0.5 rounded font-bold">
               Subtotal: $1,116.90
             </span>
           </div>
@@ -661,7 +694,7 @@ export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse font-body text-body-xs">
               <thead>
-                <tr className="border-b border-border-light print-header-bg text-text-grey uppercase font-bold">
+                <tr className="border-b border-border-light print-header-row text-text-grey print:text-black uppercase font-bold">
                   <th className="py-1.5 px-2">Date</th>
                   <th className="py-1.5 px-2 text-right">Beg CBM</th>
                   <th className="py-1.5 px-2 text-right text-green-700 print:text-black">IN FG</th>
@@ -673,7 +706,7 @@ export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
                   <th className="py-1.5 px-2 text-right font-bold text-brand-blue print:text-black">Amount ($)</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border-light print:divide-slate-300 font-mono text-text-dark">
+              <tbody className="divide-y divide-border-light print:divide-slate-400 font-mono text-text-dark">
                 {juneDailyCbmRows.map((r, idx) => (
                   <tr key={idx} className="hover:bg-surface-background/50 transition-colors">
                     <td className="py-1 px-2 font-semibold">{r.date}</td>
@@ -687,7 +720,7 @@ export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
                     <td className="py-1 px-2 text-right font-bold text-brand-blue print:text-black">${r.amount.toFixed(2)}</td>
                   </tr>
                 ))}
-                <tr className="bg-surface-background print-header-bg font-bold border-t-2 border-border-medium print:border-slate-800 text-body-sm">
+                <tr className="bg-surface-background print-header-row font-bold border-t-2 border-border-medium print:border-black text-body-sm">
                   <td colSpan={8} className="py-2 px-2 font-heading text-text-dark print:text-black">
                     TOTAL WAREHOUSING STORAGE CHARGE (30 DAYS)
                   </td>
@@ -701,25 +734,25 @@ export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
         </div>
 
         {/* Final Document Formal Signatures & Conforme Block */}
-        <div className="border border-border-light print:border-slate-500 p-4 bg-surface-white font-body text-body-xs print-avoid-break">
+        <div className="border border-border-light print:border-slate-800 p-4 bg-surface-white print:bg-white font-body text-body-xs print-avoid-break">
           <span className="font-bold uppercase tracking-wider text-text-dark print:text-black block mb-4">
             FINAL DOCUMENT APPROVAL &amp; CUSTOMER CONFORME:
           </span>
           <div className="grid grid-cols-3 gap-6 text-center">
             <div>
-              <span className="text-text-grey print:text-slate-700 block mb-6">Certified Correct By:</span>
+              <span className="text-text-grey print:text-black block mb-6">Certified Correct By:</span>
               <div className="border-b border-text-dark print:border-black font-bold pb-1">MARIA LOURDES REYES</div>
-              <span className="text-text-grey print:text-slate-700 text-[9px] block mt-1">Billing &amp; Finance Specialist</span>
+              <span className="text-text-grey print:text-black text-[9px] block mt-1">Billing &amp; Finance Specialist</span>
             </div>
             <div>
-              <span className="text-text-grey print:text-slate-700 block mb-6">Approved By:</span>
+              <span className="text-text-grey print:text-black block mb-6">Approved By:</span>
               <div className="border-b border-text-dark print:border-black font-bold pb-1">JOSEPHINE TAN</div>
-              <span className="text-text-grey print:text-slate-700 text-[9px] block mt-1">Warehouse Operations Manager</span>
+              <span className="text-text-grey print:text-black text-[9px] block mt-1">Warehouse Operations Manager</span>
             </div>
             <div>
-              <span className="text-text-grey print:text-slate-700 block mb-6">Received &amp; Accepted By (Conforme):</span>
+              <span className="text-text-grey print:text-black block mb-6">Received &amp; Accepted By (Conforme):</span>
               <div className="border-b border-text-dark print:border-black font-bold pb-1">___________________________</div>
-              <span className="text-text-grey print:text-slate-700 text-[9px] block mt-1">Authorized Customer Signature &amp; Date</span>
+              <span className="text-text-grey print:text-black text-[9px] block mt-1">Authorized Customer Signature &amp; Date</span>
             </div>
           </div>
         </div>
