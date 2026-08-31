@@ -8,13 +8,19 @@ import { getActiveSupplierParties, getItemCategories } from "@/lib/db/queries/it
 import { ItemForm } from "../_components/item-form";
 import { createItemAction } from "../_actions";
 
-export default async function NewItemPage() {
+interface PageProps {
+  searchParams: Promise<{ code?: string }>;
+}
+
+export default async function NewItemPage({ searchParams }: PageProps) {
   const resolver = await createPageResolver();
   const perm = await requirePermission(resolver, "items.manage");
 
   if (perm.kind !== "authorized") {
     notFound();
   }
+
+  const { code } = await searchParams;
 
   const [categories, supplierParties] = await Promise.all([
     getItemCategories(db),
@@ -25,7 +31,7 @@ export default async function NewItemPage() {
     <div className="mx-auto max-w-3xl">
       <div className="mb-6">
         <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
-          New Item
+          New Item Enrollment
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">
           Enroll a new item in the shared master catalog.
@@ -38,6 +44,7 @@ export default async function NewItemPage() {
           categories={categories}
           supplierParties={supplierParties}
           cancelHref="/enrollment?tab=items"
+          initialCode={code}
         />
       </div>
     </div>

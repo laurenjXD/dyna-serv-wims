@@ -24,13 +24,18 @@ export function ItemSearchCombobox({
   availableItems,
   selectedItemId,
   selectedItemCode,
-  selectedItemDescription,
+  selectedItemDescription: _selectedItemDescription,
   onSelectItem,
   disabled = false,
 }: ItemSearchComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [inputValue, setInputValue] = useState(selectedItemCode || "");
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Sync external selection to local input value
+  useEffect(() => {
+    setInputValue(selectedItemCode || "");
+  }, [selectedItemCode]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -49,10 +54,10 @@ export function ItemSearchCombobox({
       : (item.supplierItemCode ?? item.code);
   }
 
-  // Filter available items by search query across code, name, customerItemCode, supplierItemCode
+  // Filter available items conditionally by organization, flowType, and input value
   const filteredItems = availableItems.filter((item) => {
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase().trim();
+    if (!inputValue.trim()) return true;
+    const q = inputValue.toLowerCase().trim();
     const itemCode = codeFor(item).toLowerCase();
     const name = item.name.toLowerCase();
     const custCode = (item.customerItemCode ?? "").toLowerCase();
@@ -60,65 +65,58 @@ export function ItemSearchCombobox({
     return itemCode.includes(q) || name.includes(q) || custCode.includes(q) || supCode.includes(q);
   });
 
-  const selectedItem = availableItems.find((item) => item.id === selectedItemId);
-  const displayLabel = selectedItem
-    ? `${codeFor(selectedItem)} — ${selectedItem.name}`
-    : selectedItemCode
-    ? `${selectedItemCode} ${selectedItemDescription ? `— ${selectedItemDescription}` : ""}`
-    : "";
-
   return (
     <div className="relative" ref={dropdownRef}>
-      {/* Trigger / Search Input */}
+      {/* Searchable Direct Input Field */}
       <div className="relative mt-1">
-        <div
-          onClick={() => {
-            if (!disabled && vendorPartyId) {
-              setIsOpen(true);
-            }
-          }}
-          className={`flex h-11 w-full cursor-pointer items-center justify-between rounded border px-3 font-body text-body-md transition-colors ${
-            disabled || !vendorPartyId
-              ? "cursor-not-allowed border-outline-variant/30 bg-surface-light-grey text-text-grey"
-              : isOpen
-              ? "border-brand-navy ring-2 ring-brand-navy/20 bg-surface-white"
-              : selectedItemId
-              ? "border-brand-navy/40 bg-surface-white text-on-surface font-medium"
-              : "border-outline-variant/30 bg-surface-white text-text-grey hover:border-outline-variant/60"
-          }`}
-        >
-          <div className="flex items-center gap-2 truncate">
-            <Search className="h-4 w-4 shrink-0 text-text-grey" />
-            <span className="truncate">
-              {!vendorPartyId
+        <div className="relative flex items-center">
+          <Search className="absolute left-3 h-4 w-4 shrink-0 text-text-grey" />
+          <input
+            type="text"
+            disabled={disabled || !vendorPartyId}
+            value={inputValue}
+            onFocus={() => {
+              if (!disabled && vendorPartyId) setIsOpen(true);
+            }}
+            onChange={(e) => {
+              setInputValue(e.target.value);
+              if (!isOpen && vendorPartyId) setIsOpen(true);
+            }}
+            placeholder={
+              !vendorPartyId
                 ? "Select organization first"
-                : displayLabel || "Search or select item code…"}
-            </span>
-          </div>
-          <ChevronDown className={`h-4 w-4 shrink-0 text-text-grey transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                : "Type item code (e.g. DSGC, ITM, 000)..."
+            }
+            className={`h-11 w-full rounded border pl-9 pr-8 font-body text-body-md transition-colors ${
+              disabled || !vendorPartyId
+                ? "cursor-not-allowed border-outline-variant/30 bg-surface-light-grey text-text-grey"
+                : isOpen
+                ? "border-brand-navy ring-2 ring-brand-navy/20 bg-surface-white text-on-surface"
+                : selectedItemId
+                ? "border-brand-navy/40 bg-surface-white text-on-surface font-medium"
+                : "border-outline-variant/30 bg-surface-white text-text-grey hover:border-outline-variant/60"
+            }`}
+          />
+          <ChevronDown
+            onClick={() => {
+              if (!disabled && vendorPartyId) setIsOpen(!isOpen);
+            }}
+            className={`absolute right-3 h-4 w-4 cursor-pointer text-text-grey transition-transform ${isOpen ? "rotate-180" : ""}`}
+          />
         </div>
       </div>
 
-      {/* Dropdown Menu */}
+      {/* Real-time Recommendations Dropdown */}
       {isOpen && vendorPartyId && (
-        <div className="absolute z-50 mt-1 max-h-80 w-full min-w-[320px] sm:min-w-[420px] overflow-hidden rounded-xl border border-outline-variant/40 bg-surface-white shadow-elevation-4">
-          {/* Quick Search Input */}
-          <div className="border-b border-outline-variant/20 bg-surface-light-grey/60 p-2.5">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-grey" />
-              <input
-                type="text"
-                autoFocus
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Type item code, supplier part #, or name…"
-                className="h-9 w-full rounded-lg border border-outline-variant/40 bg-surface-white pl-9 pr-3 font-body text-body-sm text-on-surface placeholder:text-status-neutral focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
-              />
-            </div>
+        <div className="absolute z-50 mt-1 max-h-80 w-full min-w-[320px] sm:min-w-[440px] overflow-hidden rounded-xl border border-outline-variant/40 bg-surface-white shadow-elevation-4">
+          <div className="border-b border-outline-variant/20 bg-surface-light-grey/60 px-3 py-2">
+            <p className="font-label text-label-xs uppercase tracking-wider text-text-grey">
+              Enrolled Item Recommendations ({filteredItems.length})
+            </p>
           </div>
 
           {/* Recommendations List */}
-          <div className="max-h-52 overflow-y-auto divide-y divide-outline-variant/20 p-1">
+          <div className="max-h-56 overflow-y-auto divide-y divide-outline-variant/20 p-1">
             {filteredItems.length > 0 ? (
               filteredItems.map((item) => {
                 const isSelected = item.id === selectedItemId;
@@ -129,8 +127,8 @@ export function ItemSearchCombobox({
                     type="button"
                     onClick={() => {
                       onSelectItem(item);
+                      setInputValue(formattedCode);
                       setIsOpen(false);
-                      setSearchQuery("");
                     }}
                     className={`flex w-full items-start justify-between gap-3 rounded-lg p-2.5 text-left transition-colors ${
                       isSelected
@@ -170,21 +168,19 @@ export function ItemSearchCombobox({
               <div className="p-4 text-center">
                 <AlertCircle className="mx-auto h-8 w-8 text-status-held/70" />
                 <p className="mt-2 font-body text-body-sm font-semibold text-on-surface">
-                  No enrolled item found
+                  Item Not Found
                 </p>
                 <p className="mt-0.5 font-body text-body-xs text-text-grey">
-                  {searchQuery.trim()
-                    ? `No item matched "${searchQuery}" for this organization.`
-                    : "No items enrolled for this vendor organization."}
+                  No enrolled item matches &quot;{inputValue}&quot; for this organization.
                 </p>
               </div>
             )}
           </div>
 
-          {/* Enroll New Item Redirect Bar */}
+          {/* Enroll New Item Redirect Link */}
           <div className="border-t border-outline-variant/30 bg-[#F0F4FF] p-2.5">
             <Link
-              href={`/master-data/items/new${searchQuery.trim() ? `?code=${encodeURIComponent(searchQuery.trim())}` : ""}`}
+              href={`/master-data/items/new${inputValue.trim() ? `?code=${encodeURIComponent(inputValue.trim())}` : ""}`}
               target="_blank"
               rel="noopener noreferrer"
               className="group flex items-center justify-between gap-2 rounded-lg bg-surface-white border border-brand-navy/30 px-3 py-2 font-label text-label-xs font-bold text-brand-navy shadow-sm hover:bg-brand-navy hover:text-surface-white transition-colors"
@@ -192,7 +188,7 @@ export function ItemSearchCombobox({
               <div className="flex items-center gap-1.5">
                 <PlusCircle className="h-4 w-4 text-brand-royal-blue group-hover:text-surface-white" />
                 <span>
-                  {searchQuery.trim() ? `Enroll "${searchQuery.trim()}" in Master Data` : "Enroll New Item in Master Data"}
+                  {inputValue.trim() ? `+ Enroll "${inputValue.trim()}" in Master Data` : "+ Enroll New Item in Master Data"}
                 </span>
               </div>
               <ExternalLink className="h-3.5 w-3.5 text-text-grey group-hover:text-surface-white" />

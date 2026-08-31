@@ -44,6 +44,7 @@ interface ItemFormProps {
   categories: CategoryOption[];
   supplierParties: SupplierPartyOption[];
   cancelHref: string;
+  initialCode?: string;
 }
 
 function computeVolumeCbm(
@@ -69,6 +70,7 @@ export function ItemForm({
   categories,
   supplierParties,
   cancelHref,
+  initialCode = "",
 }: ItemFormProps) {
   const [state, formAction, isPending] = useActionState(action, {});
   const isEdit = !!item;
@@ -111,12 +113,12 @@ export function ItemForm({
   // internal Dyna-Serv identifier) via a hidden input below — the user
   // confirmed the conditional field itself should double as `code` rather
   // than requiring a redundant third value.
-  const [codeValue, setCodeValue] = useState(item?.code ?? "");
+  const [codeValue, setCodeValue] = useState(item?.code ?? initialCode);
   const [supplierItemCodeValue, setSupplierItemCodeValue] = useState(
-    item?.supplierItemCode ?? "",
+    item?.supplierItemCode ?? initialCode,
   );
   const [dsgcItemNumberValue, setDsgcItemNumberValue] = useState(
-    item?.dsgcItemNumber ?? "",
+    item?.dsgcItemNumber ?? initialCode,
   );
   const primaryCodeValue =
     inventoryModel === "vmi"
