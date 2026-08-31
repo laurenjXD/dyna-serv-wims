@@ -404,7 +404,7 @@ export function parseItemInput(input: unknown): ParseResult<ItemInput> {
         : null,
     vmiMovementCategory:
       raw["vmiMovementCategory"] !== undefined
-        ? (raw["vmiMovementCategory"] as any)
+        ? (raw["vmiMovementCategory"] as ItemInput["vmiMovementCategory"])
         : "fg",
   };
 
