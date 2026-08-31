@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Edit3, Check, DollarSign, Truck, FileText } from "lucide-react";
+import { Edit3, Check, DollarSign, Truck, FileText, RefreshCw } from "lucide-react";
+import { syncLiveBspRateAction } from "@/lib/actions/forex";
 
 export type LogisticsDrRow = {
   id: string;
@@ -38,6 +39,25 @@ export function LogisticsLedgerClientTable() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<LogisticsDrRow>>({});
   const [fxRate, setFxRate] = useState<number>(61.71); // Daily Forex Rate (USD -> PHP)
+  const [isSyncingFx, setIsSyncingFx] = useState<boolean>(false);
+  const [fxSourceLabel, setFxSourceLabel] = useState<string>("June Baseline Contract Rate");
+
+  const handleSyncLiveBspRate = async () => {
+    setIsSyncingFx(true);
+    try {
+      const res = await syncLiveBspRateAction();
+      if (res.ok && res.rate) {
+        setFxRate(res.rate);
+        setFxSourceLabel(`BSP Live Market API (${res.date})`);
+      } else {
+        alert(`Failed to fetch live BSP rate: ${res.error}`);
+      }
+    } catch (e) {
+      alert("Error contacting live BSP Forex server.");
+    } finally {
+      setIsSyncingFx(false);
+    }
+  };
 
   const startEdit = (row: LogisticsDrRow) => {
     setEditingId(row.id);
@@ -77,27 +97,38 @@ export function LogisticsLedgerClientTable() {
       {/* Daily Forex Rate Banner */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl border border-brand-navy/30 bg-[#F0F4FF] p-4 shadow-sm">
         <div>
-          <h4 className="font-heading text-body-md font-bold text-brand-navy">
-            Daily Forex Exchange Rate (USD / PHP)
+          <h4 className="font-heading text-body-md font-bold text-brand-navy flex items-center gap-2">
+            Bangko Sentral ng Pilipinas (BSP) Live Forex Integration
           </h4>
           <p className="font-body text-body-xs text-text-grey">
-            Calculates daily peso-to-dollar conversions for logistics delivery charges on Statement of Account (SOA).
+            Source: <strong className="text-brand-navy">{fxSourceLabel}</strong> &bull; Converts daily peso delivery charges into USD for SOA invoicing.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <label className="font-label text-label-xs font-bold text-brand-navy">
-            Daily FX Rate (1 USD =):
-          </label>
-          <div className="relative">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 font-mono text-mono-sm text-text-grey">₱</span>
-            <input
-              type="number"
-              step="0.0001"
-              value={fxRate}
-              onChange={(e) => setFxRate(parseFloat(e.target.value) || 0)}
-              className="w-32 rounded border border-brand-navy bg-surface-white pl-6 pr-2 py-1 font-mono text-mono-sm font-bold text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy/30"
-            />
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <label className="font-label text-label-xs font-bold text-brand-navy">
+              1 USD =
+            </label>
+            <div className="relative">
+              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 font-mono text-mono-sm text-text-grey">₱</span>
+              <input
+                type="number"
+                step="0.0001"
+                value={fxRate}
+                onChange={(e) => setFxRate(parseFloat(e.target.value) || 0)}
+                className="w-28 rounded border border-brand-navy bg-surface-white pl-6 pr-2 py-1 font-mono text-mono-sm font-bold text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy/30"
+              />
+            </div>
           </div>
+          <button
+            type="button"
+            disabled={isSyncingFx}
+            onClick={handleSyncLiveBspRate}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-navy px-3 py-1.5 font-label text-label-xs font-bold text-white shadow-sm hover:bg-brand-navy/90 disabled:opacity-50 transition-colors"
+          >
+            <RefreshCw size={14} className={isSyncingFx ? "animate-spin" : ""} />
+            {isSyncingFx ? "Syncing..." : "Sync Live BSP Rate"}
+          </button>
         </div>
       </div>
 

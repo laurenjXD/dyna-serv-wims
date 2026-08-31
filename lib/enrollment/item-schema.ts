@@ -41,6 +41,8 @@ export type ItemInput = {
   // Reference prices (nullable; never used to finalize Trading prices or VMI billing)
   buyingPrice?: string | null;
   sellingPrice?: string | null;
+  // VMI Warehousing CBM Storage Classification
+  vmiMovementCategory?: "fg" | "raw_material" | "for_process" | "reject" | "re_inspect" | null;
 };
 
 export type FieldError = { field: string; message: string };
@@ -400,6 +402,10 @@ export function parseItemInput(input: unknown): ParseResult<ItemInput> {
       raw["defaultSupplierPartyId"] !== undefined
         ? (raw["defaultSupplierPartyId"] as string | null)
         : null,
+    vmiMovementCategory:
+      raw["vmiMovementCategory"] !== undefined
+        ? (raw["vmiMovementCategory"] as any)
+        : "fg",
   };
 
   return { success: true, data };

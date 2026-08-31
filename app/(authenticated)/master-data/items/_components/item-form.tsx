@@ -504,6 +504,27 @@ export function ItemForm({
             </div>
           )}
 
+          <div>
+            <label htmlFor="vmiMovementCategory" className="block font-label text-label text-on-surface">
+              Warehousing CBM Storage Classification
+            </label>
+            <select
+              id="vmiMovementCategory"
+              name="vmiMovementCategory"
+              defaultValue={item?.vmiMovementCategory ?? "fg"}
+              className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            >
+              <option value="fg">Finished Goods (FG) — Outbound Shipments / Assemblies</option>
+              <option value="raw_material">Raw Materials (RAW) — Inbound Components / Tapes / Reels</option>
+              <option value="for_process">Work in Process (WIP)</option>
+              <option value="reject">Rejects &amp; Scrap</option>
+              <option value="re_inspect">Quality Hold / Re-Inspection</option>
+            </select>
+            <p className="mt-1 font-body text-body-xs text-text-grey">
+              Determines whether item storage CBM reports under IN/OUT FG or IN/OUT RAW on SOA Page 4.
+            </p>
+          </div>
+
           <div className="md:col-span-2">
             <label htmlFor="description" className="block font-label text-label text-on-surface">
               Description

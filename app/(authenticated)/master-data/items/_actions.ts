@@ -74,6 +74,7 @@ function parseItemFormData(formData: FormData) {
     isActive: formData.get("isActive") !== "false",
     buyingPrice: nullableString(formData.get("buyingPrice")),
     sellingPrice: nullableString(formData.get("sellingPrice")),
+    vmiMovementCategory: nullableString(formData.get("vmiMovementCategory")) as "fg" | "raw_material" | "for_process" | "reject" | "re_inspect" | null,
   };
 }
 
