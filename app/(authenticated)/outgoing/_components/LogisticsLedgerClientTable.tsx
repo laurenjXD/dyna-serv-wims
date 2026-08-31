@@ -145,15 +145,18 @@ export function LogisticsLedgerClientTable() {
 
       {/* Logistics DR Table */}
       <div className="overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
-        <div className="border-b border-outline-variant/30 bg-surface-light-grey p-4 flex justify-between items-center">
+        <div className="border-b border-outline-variant/30 bg-surface-light-grey p-4 flex flex-col sm:flex-row justify-between sm:items-center gap-2">
           <div>
             <h3 className="font-heading font-bold text-headline-sm text-on-surface">
-              Delivery Receipt (DR) Logistics &amp; Fee Ledger
+              Delivery Receipt (DR) Logistics &amp; Freight Ledger
             </h3>
             <p className="font-body text-body-sm text-text-grey">
-              Input per-DR freight delivery charges and documentation fees. Saved values automatically feed into Statement of Account (SOA) generation.
+              Input per-DR freight delivery charges and documentation fees. Multiple DR references (e.g., <code className="font-mono text-mono-xs font-bold text-brand-navy">UPI00230 - 232</code>) sharing one trip can share a single batched delivery charge (PHP), while documentation fees apply per individual DR reference.
             </p>
           </div>
+          <span className="inline-flex items-center shrink-0 rounded-full bg-brand-navy/10 px-3 py-1 font-mono text-mono-xs font-bold text-brand-navy">
+            Batched Multi-DR Logistics Active
+          </span>
         </div>
 
         <div className="overflow-x-auto">

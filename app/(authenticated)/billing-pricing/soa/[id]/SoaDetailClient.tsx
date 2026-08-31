@@ -114,8 +114,50 @@ export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
 
   return (
     <div className="mx-auto max-w-container space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-      {/* Action Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border-light pb-4">
+      {/* Global Print Styles (Enforces 4 Pages Max) */}
+      <style>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 10mm 12mm 12mm 12mm;
+          }
+          body {
+            background: white !important;
+            color: #000 !important;
+            font-size: 10.5px !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .no-print {
+            display: none !important;
+          }
+          .print-page-break {
+            break-before: page !important;
+            page-break-before: always !important;
+          }
+          .print-avoid-break {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+          }
+          .print-card {
+            border: 1px solid #cbd5e1 !important;
+            box-shadow: none !important;
+            border-radius: 6px !important;
+            margin-bottom: 12px !important;
+          }
+          table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+          }
+          th, td {
+            padding: 3.5px 6px !important;
+            border-color: #e2e8f0 !important;
+          }
+        }
+      `}</style>
+
+      {/* Action Header (Hidden on Print) */}
+      <div className="no-print flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border-light pb-4">
         <div>
           <Link
             href="/billing-pricing"
@@ -142,10 +184,10 @@ export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
             onClick={() => window.print()}
             className="inline-flex items-center rounded-btn bg-surface-white border border-border-medium px-4 py-2 font-body text-body-sm font-semibold text-text-dark hover:bg-surface-background shadow-card transition-colors"
           >
-            <Printer size={16} className="mr-2" /> Print Package
+            <Printer size={16} className="mr-2" /> Print Package (4 Pages)
           </button>
           <button
-            onClick={() => alert("Downloading 7-Document Supporting Billing Package (PDF)...")}
+            onClick={() => window.print()}
             className="inline-flex items-center rounded-btn bg-brand-blue px-4 py-2 font-body text-body-sm font-semibold text-white shadow-card hover:bg-brand-blue-dark transition-colors"
           >
             <Download size={16} className="mr-2" /> Download PDF Package
@@ -153,8 +195,8 @@ export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
         </div>
       </div>
 
-      {/* Quick Jump Section Pills */}
-      <div className="flex flex-wrap items-center gap-2 bg-surface-background p-2 rounded-btn border border-border-light">
+      {/* Quick Jump Section Pills (Hidden on Print) */}
+      <div className="no-print flex flex-wrap items-center gap-2 bg-surface-background p-2 rounded-btn border border-border-light">
         <span className="font-body text-body-xs font-bold text-text-grey px-2">Jump to Schedule:</span>
         <button
           onClick={() => setActiveSection("all")}
@@ -202,334 +244,375 @@ export function SoaDetailClient({ soaData }: SoaDetailClientProps) {
         </button>
       </div>
 
-      {/* Running AR Balance Card */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="rounded-card bg-surface-white border border-border-light p-4 shadow-card">
-          <span className="font-body text-body-xs text-text-grey uppercase font-semibold">Opening Balance</span>
-          <p className="font-mono text-mono-xl font-bold text-text-dark mt-1">
-            ${soaData.openingBalanceUsd.toFixed(2)}
-          </p>
-        </div>
-        <div className="rounded-card bg-surface-white border border-border-light p-4 shadow-card">
-          <span className="font-body text-body-xs text-text-grey uppercase font-semibold">Current Period Charges</span>
-          <p className="font-mono text-mono-xl font-bold text-brand-blue mt-1">
-            ${soaData.currentChargesUsd.toFixed(2)}
-          </p>
-        </div>
-        <div className="rounded-card bg-surface-white border border-border-light p-4 shadow-card">
-          <span className="font-body text-body-xs text-text-grey uppercase font-semibold">Payments / Credits</span>
-          <p className="font-mono text-mono-xl font-bold text-green-700 mt-1">
-            ${soaData.paymentsAppliedUsd.toFixed(2)}
-          </p>
-        </div>
-        <div className="rounded-card bg-surface-white border-2 border-brand-blue/30 p-4 shadow-card bg-brand-blue/5">
-          <span className="font-body text-body-xs text-brand-blue font-bold uppercase">Total Outstanding Balance</span>
-          <p className="font-mono text-mono-xl font-bold text-brand-blue mt-1">
-            ${soaData.outstandingBalanceUsd.toFixed(2)}
-          </p>
-        </div>
-      </div>
-
-      {/* Section 6: Summary of Charges & Drill-Down Traceability */}
-      <div
-        id="section-6"
-        className={`rounded-card bg-surface-white border transition-all duration-500 shadow-card overflow-hidden ${
-          highlightedSection === "section-6" ? "border-2 border-brand-blue ring-4 ring-brand-blue/20" : "border-border-light"
-        }`}
-      >
-        <div className="border-b border-border-light bg-surface-background p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+      {/* Official Print Header / Letterhead (Visible on Print & Page 1) */}
+      <div className="hidden print:block border-b-2 border-brand-navy pb-3 mb-4">
+        <div className="flex justify-between items-start">
           <div>
-            <h2 className="font-heading text-heading-md font-bold text-text-dark flex items-center">
-              Section 6: Summary of Charges &amp; Drill-Down Traceability
-            </h2>
-            <p className="font-body text-body-xs text-text-grey mt-0.5">
-              Click &quot;View Calculation Details →&quot; on any line item to jump directly to its underlying calculation schedule below.
+            <h1 className="font-heading text-headline-sm font-extrabold tracking-tight text-brand-navy">
+              DYNA-SERV GLOBAL CORP.
+            </h1>
+            <p className="font-body text-body-xs text-text-grey">
+              Warehouse Logistics Management &amp; VMI Distribution Facility
+            </p>
+            <p className="font-body text-body-xs text-text-grey">
+              Special Economic Zone, Cavite / Laguna, Philippines
             </p>
           </div>
-          <span className="font-mono text-mono-xs bg-surface-white border border-border-medium px-3 py-1 rounded text-text-dark font-semibold">
-            Locked FX Rate: 1 USD = ₱{soaData.exchangeRate}
-          </span>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse font-body text-body-sm">
-            <thead>
-              <tr className="border-b border-border-light bg-surface-background text-text-grey text-body-xs uppercase">
-                <th className="py-3 px-4">Charge Category</th>
-                <th className="py-3 px-4">Charge Code</th>
-                <th className="py-3 px-4 text-right">Amount (USD)</th>
-                <th className="py-3 px-4 text-right">Amount (PHP)</th>
-                <th className="py-3 px-4 text-right">Traceability</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-light text-text-dark">
-              {soaData.categories.map((cat, idx) => (
-                <tr key={idx} className="hover:bg-surface-background/50 transition-colors">
-                  <td className="py-3.5 px-4 font-semibold">{cat.name}</td>
-                  <td className="py-3.5 px-4 font-mono text-body-xs text-text-grey">{cat.code}</td>
-                  <td className="py-3.5 px-4 text-right font-mono font-bold">
-                    ${cat.amount.toFixed(2)}
-                  </td>
-                  <td className="py-3.5 px-4 text-right font-mono text-text-grey">
-                    ₱{(cat.amount * soaData.exchangeRate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </td>
-                  <td className="py-3.5 px-4 text-right">
-                    <button
-                      onClick={() => handleTraceClick(cat.sectionId)}
-                      className="inline-flex items-center text-body-xs font-bold text-brand-blue hover:text-brand-blue-dark hover:underline"
-                    >
-                      View Calculation Details <ChevronRight size={14} className="ml-1" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              <tr className="bg-surface-background font-bold text-heading-sm border-t-2 border-border-medium">
-                <td colSpan={2} className="py-4 px-4 font-heading text-text-dark">
-                  TOTAL CURRENT PERIOD CHARGES
-                </td>
-                <td className="py-4 px-4 text-right font-mono text-brand-blue">
-                  ${soaData.currentChargesUsd.toFixed(2)}
-                </td>
-                <td className="py-4 px-4 text-right font-mono text-brand-blue">
-                  ₱{(soaData.currentChargesUsd * soaData.exchangeRate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </td>
-                <td className="py-4 px-4"></td>
-              </tr>
-            </tbody>
-          </table>
+          <div className="text-right">
+            <h2 className="font-heading text-title-md font-bold text-on-surface uppercase">
+              STATEMENT OF ACCOUNT
+            </h2>
+            <p className="font-mono text-mono-md font-bold text-brand-navy">{soaData.soaNumber}</p>
+            <p className="font-mono text-mono-xs text-text-grey">Billing Date: {soaData.issueDate}</p>
+            <p className="font-mono text-mono-xs text-text-grey">Due Date: {soaData.dueDate}</p>
+          </div>
         </div>
       </div>
 
-      {/* Section 7: Detailed Warehousing Daily CBM Calculation Schedule */}
-      <div
-        id="section-7"
-        className={`rounded-card bg-surface-white border transition-all duration-500 shadow-card overflow-hidden ${
-          highlightedSection === "section-7" ? "border-2 border-brand-blue ring-4 ring-brand-blue/20" : "border-border-light"
-        }`}
-      >
-        <div className="border-b border-border-light bg-surface-background p-4 flex justify-between items-center">
-          <div>
-            <h2 className="font-heading text-heading-md font-bold text-text-dark flex items-center">
-              <FileSpreadsheet size={20} className="mr-2 text-brand-blue" />
-              Section 7: Detailed Warehousing Daily CBM Calculation Schedule
-            </h2>
-            <p className="font-body text-body-xs text-text-grey mt-0.5">
-              30-Day Unrolled Inventory Replay (Beginning CBM, Inbound FG/Raw, Outbound FG/Raw, Ending CBM, Daily Storage Fee).
+      {/* ════════════════════ PAGE 1: COVER & SUMMARY OF CHARGES ════════════════════ */}
+      <div className="print-avoid-break space-y-6">
+        {/* Running AR Balance Card */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 print-card">
+          <div className="rounded-card bg-surface-white border border-border-light p-4 shadow-card">
+            <span className="font-body text-body-xs text-text-grey uppercase font-semibold">Opening Balance</span>
+            <p className="font-mono text-mono-xl font-bold text-text-dark mt-1">
+              ${soaData.openingBalanceUsd.toFixed(2)}
             </p>
           </div>
-          <span className="font-mono text-mono-xs bg-brand-blue/10 text-brand-blue px-3 py-1 rounded font-bold">
-            Subtotal: $1,116.90
-          </span>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse font-body text-body-xs">
-            <thead>
-              <tr className="border-b border-border-light bg-surface-background text-text-grey uppercase font-semibold">
-                <th className="py-2.5 px-3">Date</th>
-                <th className="py-2.5 px-3 text-right">Beg. CBM</th>
-                <th className="py-2.5 px-3 text-right text-green-700">IN FG CBM</th>
-                <th className="py-2.5 px-3 text-right text-green-700">IN Raw CBM</th>
-                <th className="py-2.5 px-3 text-right text-red-700">OUT FG CBM</th>
-                <th className="py-2.5 px-3 text-right text-red-700">OUT Raw CBM</th>
-                <th className="py-2.5 px-3 text-right font-bold">Ending CBM</th>
-                <th className="py-2.5 px-3 text-right">Rate ($/CBM/day)</th>
-                <th className="py-2.5 px-3 text-right font-bold text-brand-blue">Daily Amount ($)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-light font-mono text-text-dark">
-              {juneDailyCbmRows.map((r, idx) => (
-                <tr key={idx} className="hover:bg-surface-background/50 transition-colors">
-                  <td className="py-2 px-3 font-semibold">{r.date}</td>
-                  <td className="py-2 px-3 text-right">{r.beg.toFixed(2)}</td>
-                  <td className="py-2 px-3 text-right text-green-700">{r.inFg > 0 ? `+${r.inFg.toFixed(2)}` : "-"}</td>
-                  <td className="py-2 px-3 text-right text-green-700">{r.inRaw > 0 ? `+${r.inRaw.toFixed(2)}` : "-"}</td>
-                  <td className="py-2 px-3 text-right text-red-700">{r.outFg > 0 ? `-${r.outFg.toFixed(2)}` : "-"}</td>
-                  <td className="py-2 px-3 text-right text-red-700">{r.outRaw > 0 ? `-${r.outRaw.toFixed(2)}` : "-"}</td>
-                  <td className="py-2 px-3 text-right font-bold">{r.end.toFixed(2)}</td>
-                  <td className="py-2 px-3 text-right">${r.rate.toFixed(4)}</td>
-                  <td className="py-2 px-3 text-right font-bold text-brand-blue">${r.amount.toFixed(2)}</td>
-                </tr>
-              ))}
-              <tr className="bg-surface-background font-bold border-t-2 border-border-medium text-body-sm">
-                <td colSpan={8} className="py-3 px-3 font-heading text-text-dark">
-                  JUNE TOTAL STORAGE CHARGE (30 DAYS)
-                </td>
-                <td className="py-3 px-3 text-right font-mono text-brand-blue text-heading-xs">
-                  $1,116.90
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Section 2: Delivery & Distribution Detail */}
-      <div
-        id="section-2"
-        className={`rounded-card bg-surface-white border transition-all duration-500 shadow-card overflow-hidden ${
-          highlightedSection === "section-2" ? "border-2 border-brand-blue ring-4 ring-brand-blue/20" : "border-border-light"
-        }`}
-      >
-        <div className="border-b border-border-light bg-surface-background p-4 flex justify-between items-center">
-          <div>
-            <h2 className="font-heading text-heading-md font-bold text-text-dark">
-              Section 2: Delivery &amp; Distribution Detail Schedule
-            </h2>
-            <p className="font-body text-body-xs text-text-grey mt-0.5">
-              Consignee delivery runs, DR references, delivery charges, doc fees, and co-load remarks.
+          <div className="rounded-card bg-surface-white border border-border-light p-4 shadow-card">
+            <span className="font-body text-body-xs text-text-grey uppercase font-semibold">Current Period Charges</span>
+            <p className="font-mono text-mono-xl font-bold text-brand-blue mt-1">
+              ${soaData.currentChargesUsd.toFixed(2)}
             </p>
           </div>
-          <span className="font-mono text-mono-xs bg-brand-blue/10 text-brand-blue px-3 py-1 rounded font-bold">
-            Subtotal: $1,082.71 (Delivery $662.71 + Doc $420.00)
-          </span>
+          <div className="rounded-card bg-surface-white border border-border-light p-4 shadow-card">
+            <span className="font-body text-body-xs text-text-grey uppercase font-semibold">Payments / Credits</span>
+            <p className="font-mono text-mono-xl font-bold text-green-700 mt-1">
+              ${soaData.paymentsAppliedUsd.toFixed(2)}
+            </p>
+          </div>
+          <div className="rounded-card bg-surface-white border-2 border-brand-blue/30 p-4 shadow-card bg-brand-blue/5">
+            <span className="font-body text-body-xs text-brand-blue font-bold uppercase">Total Outstanding Balance</span>
+            <p className="font-mono text-mono-xl font-bold text-brand-blue mt-1">
+              ${soaData.outstandingBalanceUsd.toFixed(2)}
+            </p>
+          </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse font-body text-body-sm">
-            <thead>
-              <tr className="border-b border-border-light bg-surface-background text-text-grey text-body-xs uppercase font-semibold">
-                <th className="py-2.5 px-3">Date</th>
-                <th className="py-2.5 px-3">DR Number</th>
-                <th className="py-2.5 px-3">Consignee Plant / Facility</th>
-                <th className="py-2.5 px-3 text-right">Delivery Charge ($)</th>
-                <th className="py-2.5 px-3 text-right">Doc Fee ($)</th>
-                <th className="py-2.5 px-3">Remarks / Route</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-light text-text-dark font-mono text-body-xs">
-              {deliveryRows.map((d, idx) => (
-                <tr key={idx} className="hover:bg-surface-background/50 transition-colors">
-                  <td className="py-2.5 px-3 font-semibold">{d.date}</td>
-                  <td className="py-2.5 px-3 font-bold text-brand-blue">{d.dr}</td>
-                  <td className="py-2.5 px-3 font-sans font-medium">{d.consignee}</td>
-                  <td className="py-2.5 px-3 text-right font-bold">${d.delCharge.toFixed(2)}</td>
-                  <td className="py-2.5 px-3 text-right">${d.docCharge.toFixed(2)}</td>
-                  <td className="py-2.5 px-3 font-sans text-text-grey">{d.remarks}</td>
-                </tr>
-              ))}
-              <tr className="bg-surface-background font-bold border-t-2 border-border-medium text-body-sm">
-                <td colSpan={3} className="py-3 px-3 font-heading text-text-dark">
-                  TOTAL DELIVERY &amp; DOCUMENTATION CHARGES
-                </td>
-                <td className="py-3 px-3 text-right font-mono text-brand-blue">$662.71</td>
-                <td className="py-3 px-3 text-right font-mono text-brand-blue">$420.00</td>
-                <td className="py-3 px-3 font-mono text-brand-blue font-bold">$1,082.71 Total</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Section 3 & Section 4: LOA Permits & Other Contractual Fees */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Section 6: Summary of Charges */}
         <div
-          id="section-3"
-          className={`rounded-card bg-surface-white border transition-all duration-500 shadow-card overflow-hidden ${
-            highlightedSection === "section-3" ? "border-2 border-brand-blue ring-4 ring-brand-blue/20" : "border-border-light"
+          id="section-6"
+          className={`print-card rounded-card bg-surface-white border transition-all duration-500 shadow-card overflow-hidden ${
+            highlightedSection === "section-6" ? "border-2 border-brand-blue ring-4 ring-brand-blue/20" : "border-border-light"
+          }`}
+        >
+          <div className="border-b border-border-light bg-surface-background p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <div>
+              <h2 className="font-heading text-heading-md font-bold text-text-dark flex items-center">
+                SUMMARY OF CHARGES
+              </h2>
+              <p className="font-body text-body-xs text-text-grey mt-0.5 no-print">
+                Click &quot;View Calculation Details →&quot; on any line item to jump directly to its underlying calculation schedule below.
+              </p>
+            </div>
+            <span className="font-mono text-mono-xs bg-surface-white border border-border-medium px-3 py-1 rounded text-text-dark font-semibold">
+              Daily Forex Rate: 1 USD = ₱{soaData.exchangeRate}
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse font-body text-body-sm">
+              <thead>
+                <tr className="border-b border-border-light bg-surface-background text-text-grey text-body-xs uppercase">
+                  <th className="py-3 px-4">Charge Category</th>
+                  <th className="py-3 px-4">Charge Code</th>
+                  <th className="py-3 px-4 text-right">Amount (USD)</th>
+                  <th className="py-3 px-4 text-right">Amount (PHP)</th>
+                  <th className="py-3 px-4 text-right no-print">Traceability</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-light text-text-dark">
+                {soaData.categories.map((cat, idx) => (
+                  <tr key={idx} className="hover:bg-surface-background/50 transition-colors">
+                    <td className="py-3 px-4 font-semibold">{cat.name}</td>
+                    <td className="py-3 px-4 font-mono text-body-xs text-text-grey">{cat.code}</td>
+                    <td className="py-3 px-4 text-right font-mono font-bold">
+                      ${cat.amount.toFixed(2)}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono text-text-grey">
+                      ₱{(cat.amount * soaData.exchangeRate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td className="py-3 px-4 text-right no-print">
+                      <button
+                        onClick={() => handleTraceClick(cat.sectionId)}
+                        className="inline-flex items-center text-body-xs font-bold text-brand-blue hover:text-brand-blue-dark hover:underline"
+                      >
+                        View Calculation Details <ChevronRight size={14} className="ml-1" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                <tr className="bg-surface-background font-bold text-heading-sm border-t-2 border-border-medium">
+                  <td colSpan={2} className="py-4 px-4 font-heading text-text-dark">
+                    TOTAL AMOUNT FOR {soaData.billingPeriod.toUpperCase()}
+                  </td>
+                  <td className="py-4 px-4 text-right font-mono text-brand-blue">
+                    ${soaData.currentChargesUsd.toFixed(2)}
+                  </td>
+                  <td className="py-4 px-4 text-right font-mono text-brand-blue">
+                    ₱{(soaData.currentChargesUsd * soaData.exchangeRate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+                  <td className="py-4 px-4 no-print"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div className="border-t border-border-light bg-surface-background p-4 text-center">
+            <p className="font-mono text-mono-md font-bold text-brand-navy">
+              *** THREE THOUSAND TWENTY THREE DOLLARS &amp; 80/100 ONLY ***
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ════════════════════ PAGE 2: DELIVERY & OTHER CHARGES ════════════════════ */}
+      <div className="print-page-break print-avoid-break space-y-6">
+        {/* Section 2: Delivery & Distribution Detail */}
+        <div
+          id="section-2"
+          className={`print-card rounded-card bg-surface-white border transition-all duration-500 shadow-card overflow-hidden ${
+            highlightedSection === "section-2" ? "border-2 border-brand-blue ring-4 ring-brand-blue/20" : "border-border-light"
           }`}
         >
           <div className="border-b border-border-light bg-surface-background p-4 flex justify-between items-center">
-            <h2 className="font-heading text-heading-md font-bold text-text-dark">
-              Section 3: LOA Detail Schedule
-            </h2>
-            <span className="font-mono text-mono-xs bg-brand-blue/10 text-brand-blue px-2 py-0.5 rounded font-bold">
-              Subtotal: $36.00
+            <div>
+              <h2 className="font-heading text-heading-md font-bold text-text-dark">
+                Section 2: Delivery &amp; Distribution Detail Schedule
+              </h2>
+              <p className="font-body text-body-xs text-text-grey mt-0.5">
+                Consignee delivery runs, DR references, delivery charges, doc fees, and co-load remarks.
+              </p>
+            </div>
+            <span className="font-mono text-mono-xs bg-brand-blue/10 text-brand-blue px-3 py-1 rounded font-bold">
+              Subtotal: $1,082.71 (Delivery $662.71 + Doc $420.00)
             </span>
           </div>
-          <div className="p-4 space-y-3">
-            {loaRows.map((l, idx) => (
-              <div key={idx} className="rounded-btn border border-border-light p-3 bg-surface-background/40 flex justify-between items-center">
-                <div>
-                  <span className="font-mono text-mono-sm font-bold text-brand-blue">{l.permit}</span>
-                  <p className="font-body text-body-xs text-text-grey mt-0.5">{l.scope}</p>
-                  <p className="font-mono text-mono-xs text-text-grey mt-0.5">Validity: {l.validFrom} to {l.validTo}</p>
-                </div>
-                <span className="font-mono text-mono-md font-bold text-text-dark">${l.rate.toFixed(2)}/mo</span>
-              </div>
-            ))}
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse font-body text-body-sm">
+              <thead>
+                <tr className="border-b border-border-light bg-surface-background text-text-grey text-body-xs uppercase font-semibold">
+                  <th className="py-2.5 px-3">Date</th>
+                  <th className="py-2.5 px-3">DR Number</th>
+                  <th className="py-2.5 px-3">Consignee Plant / Facility</th>
+                  <th className="py-2.5 px-3 text-right">Delivery Charge ($)</th>
+                  <th className="py-2.5 px-3 text-right">Doc Fee ($)</th>
+                  <th className="py-2.5 px-3">Remarks / Route</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-light text-text-dark font-mono text-body-xs">
+                {deliveryRows.map((d, idx) => (
+                  <tr key={idx} className="hover:bg-surface-background/50 transition-colors">
+                    <td className="py-2.5 px-3 font-semibold">{d.date}</td>
+                    <td className="py-2.5 px-3 font-bold text-brand-blue">{d.dr}</td>
+                    <td className="py-2.5 px-3 font-sans font-medium">{d.consignee}</td>
+                    <td className="py-2.5 px-3 text-right font-bold">${d.delCharge.toFixed(2)}</td>
+                    <td className="py-2.5 px-3 text-right">${d.docCharge.toFixed(2)}</td>
+                    <td className="py-2.5 px-3 font-sans text-text-grey">{d.remarks}</td>
+                  </tr>
+                ))}
+                <tr className="bg-surface-background font-bold border-t-2 border-border-medium text-body-sm">
+                  <td colSpan={3} className="py-3 px-3 font-heading text-text-dark">
+                    TOTAL DELIVERY &amp; DOCUMENTATION CHARGES
+                  </td>
+                  <td className="py-3 px-3 text-right font-mono text-brand-blue">$662.71</td>
+                  <td className="py-3 px-3 text-right font-mono text-brand-blue">$420.00</td>
+                  <td className="py-3 px-3 font-mono text-brand-blue font-bold">$1,082.71 Total</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
-        <div
-          id="section-4"
-          className={`rounded-card bg-surface-white border transition-all duration-500 shadow-card overflow-hidden ${
-            highlightedSection === "section-4" ? "border-2 border-brand-blue ring-4 ring-brand-blue/20" : "border-border-light"
-          }`}
-        >
-          <div className="border-b border-border-light bg-surface-background p-4 flex justify-between items-center">
-            <h2 className="font-heading text-heading-md font-bold text-text-dark">
-              Section 4: Surety Bond &amp; Other Fees
-            </h2>
-            <span className="font-mono text-mono-xs bg-brand-blue/10 text-brand-blue px-2 py-0.5 rounded font-bold">
-              Subtotal: $200.00
-            </span>
-          </div>
-          <div className="p-4 space-y-3">
-            {otherChargesRows.map((o, idx) => (
-              <div key={idx} className="rounded-btn border border-border-light p-3 bg-surface-background/40 flex justify-between items-center">
-                <div>
-                  <span className="font-body text-body-xs font-bold text-text-dark">{o.name}</span>
-                  <p className="font-mono text-mono-xs text-text-grey mt-0.5">{o.notes}</p>
+        {/* Section 3 & Section 4: LOA Permits & Other Contractual Fees */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print-avoid-break">
+          <div
+            id="section-3"
+            className={`print-card rounded-card bg-surface-white border transition-all duration-500 shadow-card overflow-hidden ${
+              highlightedSection === "section-3" ? "border-2 border-brand-blue ring-4 ring-brand-blue/20" : "border-border-light"
+            }`}
+          >
+            <div className="border-b border-border-light bg-surface-background p-4 flex justify-between items-center">
+              <h2 className="font-heading text-heading-md font-bold text-text-dark">
+                Section 3: LOA Detail Schedule
+              </h2>
+              <span className="font-mono text-mono-xs bg-brand-blue/10 text-brand-blue px-2 py-0.5 rounded font-bold">
+                Subtotal: $36.00
+              </span>
+            </div>
+            <div className="p-4 space-y-3">
+              {loaRows.map((l, idx) => (
+                <div key={idx} className="rounded-btn border border-border-light p-3 bg-surface-background/40 flex justify-between items-center">
+                  <div>
+                    <span className="font-mono text-mono-sm font-bold text-brand-blue">{l.permit}</span>
+                    <p className="font-body text-body-xs text-text-grey mt-0.5">{l.scope}</p>
+                    <p className="font-mono text-mono-xs text-text-grey mt-0.5">Validity: {l.validFrom} to {l.validTo}</p>
+                  </div>
+                  <span className="font-mono text-mono-md font-bold text-text-dark">${l.rate.toFixed(2)}/mo</span>
                 </div>
-                <span className="font-mono text-mono-md font-bold text-text-dark">${o.amount.toFixed(2)}</span>
-              </div>
-            ))}
+              ))}
+            </div>
+          </div>
+
+          <div
+            id="section-4"
+            className={`print-card rounded-card bg-surface-white border transition-all duration-500 shadow-card overflow-hidden ${
+              highlightedSection === "section-4" ? "border-2 border-brand-blue ring-4 ring-brand-blue/20" : "border-border-light"
+            }`}
+          >
+            <div className="border-b border-border-light bg-surface-background p-4 flex justify-between items-center">
+              <h2 className="font-heading text-heading-md font-bold text-text-dark">
+                Section 4: Surety Bond &amp; Other Fees
+              </h2>
+              <span className="font-mono text-mono-xs bg-brand-blue/10 text-brand-blue px-2 py-0.5 rounded font-bold">
+                Subtotal: $200.00
+              </span>
+            </div>
+            <div className="p-4 space-y-3">
+              {otherChargesRows.map((o, idx) => (
+                <div key={idx} className="rounded-btn border border-border-light p-3 bg-surface-background/40 flex justify-between items-center">
+                  <div>
+                    <span className="font-body text-body-xs font-bold text-text-dark">{o.name}</span>
+                    <p className="font-mono text-mono-xs text-text-grey mt-0.5">{o.notes}</p>
+                  </div>
+                  <span className="font-mono text-mono-md font-bold text-text-dark">${o.amount.toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Section 5: Manpower Activity Schedule */}
-      <div
-        id="section-5"
-        className={`rounded-card bg-surface-white border transition-all duration-500 shadow-card overflow-hidden ${
-          highlightedSection === "section-5" ? "border-2 border-brand-blue ring-4 ring-brand-blue/20" : "border-border-light"
-        }`}
-      >
-        <div className="border-b border-border-light bg-surface-background p-4 flex justify-between items-center">
-          <div>
-            <h2 className="font-heading text-heading-md font-bold text-text-dark">
-              Section 5: Manpower Activity Schedule
-            </h2>
-            <p className="font-body text-body-xs text-text-grey mt-0.5">
-              Handling IN &amp; Handling OUT manpower hours, hourly rates, and task logs.
-            </p>
+      {/* ════════════════════ PAGE 3: MANPOWER ACTIVITY SCHEDULE ════════════════════ */}
+      <div className="print-page-break print-avoid-break space-y-6">
+        <div
+          id="section-5"
+          className={`print-card rounded-card bg-surface-white border transition-all duration-500 shadow-card overflow-hidden ${
+            highlightedSection === "section-5" ? "border-2 border-brand-blue ring-4 ring-brand-blue/20" : "border-border-light"
+          }`}
+        >
+          <div className="border-b border-border-light bg-surface-background p-4 flex justify-between items-center">
+            <div>
+              <h2 className="font-heading text-heading-md font-bold text-text-dark">
+                Section 5: Manpower Activity Schedule
+              </h2>
+              <p className="font-body text-body-xs text-text-grey mt-0.5">
+                Handling IN &amp; Handling OUT manpower hours, hourly rates, and task logs.
+              </p>
+            </div>
+            <span className="font-mono text-mono-xs bg-brand-blue/10 text-brand-blue px-3 py-1 rounded font-bold">
+              Subtotal: $588.19 (Handling IN $220.05 + Handling OUT $368.14)
+            </span>
           </div>
-          <span className="font-mono text-mono-xs bg-brand-blue/10 text-brand-blue px-3 py-1 rounded font-bold">
-            Subtotal: $588.19 (Handling IN $220.05 + Handling OUT $368.14)
-          </span>
-        </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse font-body text-body-sm">
-            <thead>
-              <tr className="border-b border-border-light bg-surface-background text-text-grey text-body-xs uppercase font-semibold">
-                <th className="py-2.5 px-3">Role / Activity</th>
-                <th className="py-2.5 px-3 text-right">Hours Logged</th>
-                <th className="py-2.5 px-3 text-right">Rate ($/hr)</th>
-                <th className="py-2.5 px-3 text-right">Amount ($)</th>
-                <th className="py-2.5 px-3">Operational Task Notes</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-light text-text-dark font-mono text-body-xs">
-              {manpowerRows.map((m, idx) => (
-                <tr key={idx} className="hover:bg-surface-background/50 transition-colors">
-                  <td className="py-2.5 px-3 font-sans font-bold">{m.role}</td>
-                  <td className="py-2.5 px-3 text-right font-bold">{m.hours.toFixed(2)} hrs</td>
-                  <td className="py-2.5 px-3 text-right">${m.rate.toFixed(2)}</td>
-                  <td className="py-2.5 px-3 text-right font-bold text-brand-blue">${m.amount.toFixed(2)}</td>
-                  <td className="py-2.5 px-3 font-sans text-text-grey">{m.notes}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse font-body text-body-sm">
+              <thead>
+                <tr className="border-b border-border-light bg-surface-background text-text-grey text-body-xs uppercase font-semibold">
+                  <th className="py-2.5 px-3">Role / Activity</th>
+                  <th className="py-2.5 px-3 text-right">Hours Logged</th>
+                  <th className="py-2.5 px-3 text-right">Rate ($/hr)</th>
+                  <th className="py-2.5 px-3 text-right">Amount ($)</th>
+                  <th className="py-2.5 px-3">Operational Task Notes</th>
                 </tr>
-              ))}
-              <tr className="bg-surface-background font-bold border-t-2 border-border-medium text-body-sm">
-                <td colSpan={3} className="py-3 px-3 font-heading text-text-dark">
-                  TOTAL MANPOWER HANDLING CHARGES
-                </td>
-                <td className="py-3 px-3 text-right font-mono text-brand-blue">$588.19</td>
-                <td className="py-3 px-3"></td>
-              </tr>
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-border-light text-text-dark font-mono text-body-xs">
+                {manpowerRows.map((m, idx) => (
+                  <tr key={idx} className="hover:bg-surface-background/50 transition-colors">
+                    <td className="py-2.5 px-3 font-sans font-bold">{m.role}</td>
+                    <td className="py-2.5 px-3 text-right font-bold">{m.hours.toFixed(2)} hrs</td>
+                    <td className="py-2.5 px-3 text-right">${m.rate.toFixed(2)}</td>
+                    <td className="py-2.5 px-3 text-right font-bold text-brand-blue">${m.amount.toFixed(2)}</td>
+                    <td className="py-2.5 px-3 font-sans text-text-grey">{m.notes}</td>
+                  </tr>
+                ))}
+                <tr className="bg-surface-background font-bold border-t-2 border-border-medium text-body-sm">
+                  <td colSpan={3} className="py-3 px-3 font-heading text-text-dark">
+                    TOTAL MANPOWER HANDLING CHARGES
+                  </td>
+                  <td className="py-3 px-3 text-right font-mono text-brand-blue">$588.19</td>
+                  <td className="py-3 px-3"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* ════════════════════ PAGE 4: WAREHOUSING DAILY CBM REPLAY SCHEDULE ════════════════════ */}
+      <div className="print-page-break print-avoid-break space-y-6">
+        <div
+          id="section-7"
+          className={`print-card rounded-card bg-surface-white border transition-all duration-500 shadow-card overflow-hidden ${
+            highlightedSection === "section-7" ? "border-2 border-brand-blue ring-4 ring-brand-blue/20" : "border-border-light"
+          }`}
+        >
+          <div className="border-b border-border-light bg-surface-background p-4 flex justify-between items-center">
+            <div>
+              <h2 className="font-heading text-heading-md font-bold text-text-dark flex items-center">
+                <FileSpreadsheet size={20} className="mr-2 text-brand-blue" />
+                Section 7: Detailed Warehousing Daily CBM Calculation Schedule
+              </h2>
+              <p className="font-body text-body-xs text-text-grey mt-0.5">
+                30-Day Unrolled Inventory Replay (Beginning CBM, Inbound FG/Raw, Outbound FG/Raw, Ending CBM, Daily Storage Fee).
+              </p>
+            </div>
+            <span className="font-mono text-mono-xs bg-brand-blue/10 text-brand-blue px-3 py-1 rounded font-bold">
+              Subtotal: $1,116.90
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse font-body text-body-xs">
+              <thead>
+                <tr className="border-b border-border-light bg-surface-background text-text-grey uppercase font-semibold">
+                  <th className="py-2 px-2.5">Date</th>
+                  <th className="py-2 px-2.5 text-right">Beg. CBM</th>
+                  <th className="py-2 px-2.5 text-right text-green-700">IN FG</th>
+                  <th className="py-2 px-2.5 text-right text-green-700">IN Raw</th>
+                  <th className="py-2 px-2.5 text-right text-red-700">OUT FG</th>
+                  <th className="py-2 px-2.5 text-right text-red-700">OUT Raw</th>
+                  <th className="py-2 px-2.5 text-right font-bold">Ending CBM</th>
+                  <th className="py-2 px-2.5 text-right">Rate ($/CBM/day)</th>
+                  <th className="py-2 px-2.5 text-right font-bold text-brand-blue">Daily Amount ($)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-light font-mono text-text-dark">
+                {juneDailyCbmRows.map((r, idx) => (
+                  <tr key={idx} className="hover:bg-surface-background/50 transition-colors">
+                    <td className="py-1.5 px-2.5 font-semibold">{r.date}</td>
+                    <td className="py-1.5 px-2.5 text-right">{r.beg.toFixed(2)}</td>
+                    <td className="py-1.5 px-2.5 text-right text-green-700">{r.inFg > 0 ? `+${r.inFg.toFixed(2)}` : "-"}</td>
+                    <td className="py-1.5 px-2.5 text-right text-green-700">{r.inRaw > 0 ? `+${r.inRaw.toFixed(2)}` : "-"}</td>
+                    <td className="py-1.5 px-2.5 text-right text-red-700">{r.outFg > 0 ? `-${r.outFg.toFixed(2)}` : "-"}</td>
+                    <td className="py-1.5 px-2.5 text-right text-red-700">{r.outRaw > 0 ? `-${r.outRaw.toFixed(2)}` : "-"}</td>
+                    <td className="py-1.5 px-2.5 text-right font-bold">{r.end.toFixed(2)}</td>
+                    <td className="py-1.5 px-2.5 text-right">${r.rate.toFixed(4)}</td>
+                    <td className="py-1.5 px-2.5 text-right font-bold text-brand-blue">${r.amount.toFixed(2)}</td>
+                  </tr>
+                ))}
+                <tr className="bg-surface-background font-bold border-t-2 border-border-medium text-body-sm">
+                  <td colSpan={8} className="py-2.5 px-2.5 font-heading text-text-dark">
+                    TOTAL STORAGE CHARGE (30 DAYS)
+                  </td>
+                  <td className="py-2.5 px-2.5 text-right font-mono text-brand-blue text-heading-xs">
+                    $1,116.90
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
