@@ -276,7 +276,7 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
         context={officeContext}
         currentPath="/inventory"
         mobileNavOpen
-        onCloseMobileNav={() => {}}
+        onCloseMobileNav={() => { }}
       />,
     );
     const dialog = screen.getByRole("dialog", { name: /navigation menu/i });
@@ -295,7 +295,7 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
         context={{ grants: [{ resource: "documents", action: "read", scopeKind: "global" }] }}
         currentPath="/portal/documents"
         mobileNavOpen
-        onCloseMobileNav={() => {}}
+        onCloseMobileNav={() => { }}
       />,
     );
     expect(screen.getByRole("dialog", { name: /navigation menu/i })).toBeInTheDocument();
@@ -341,7 +341,7 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
         context={officeContext}
         currentPath="/inventory"
         mobileNavOpen
-        onCloseMobileNav={() => {}}
+        onCloseMobileNav={() => { }}
       />,
     );
     expect(screen.queryByTestId("floor-tab-bar")).not.toBeInTheDocument();
@@ -519,12 +519,12 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
 // only a text brand label "Dyna-Serv WIMS" is rendered in the sidebar
 // today -- no image/logo mark at all, confirmed via read of
 // ShellNavigation.tsx lines 317-319). This RED test targets the desktop
-// sidebar (`data-testid="desktop-sidebar"`) rendering a real <img> element
+// sidebar (`data-testid="desktop-sidebar"`) rendering a real image element
 // referencing the real asset, alongside (not instead of) the existing
 // "Dyna-Serv WIMS" text label -- additive, not a replacement.
 // -----------------------------------------------------------------------
 describe("ShellNavigation desktop sidebar logo (requirements.md R4.1, tasks.md ยง4 real letter-mark logo asset)", () => {
-  it("renders a real <img> logo asset referencing /logo.svg inside the desktop sidebar, alongside the 'Dyna-Serv WIMS' brand text (R4.1)", () => {
+  it("renders a real logo asset referencing /logo.svg inside the desktop sidebar, alongside the 'Dyna-Serv WIMS' brand text (R4.1)", () => {
     render(
       <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" />,
     );
@@ -532,7 +532,7 @@ describe("ShellNavigation desktop sidebar logo (requirements.md R4.1, tasks.md ย
     const sidebar = screen.getByTestId("desktop-sidebar");
 
     // EXPECTED FAILURE (RED): ShellNavigation.tsx currently renders only a
-    // <p> text brand label in the sidebar header block -- no <img>/logo
+    // <p> text brand label in the sidebar header block -- no image/logo
     // element exists at all today, so this query finds nothing.
     const logo = within(sidebar).getByRole("img", { name: /dyna-serv wims/i });
     expect(logo).toBeInTheDocument();

@@ -86,6 +86,37 @@ export function PartyForm({ action, party, cancelHref }: PartyFormProps) {
       )}
 
       <div className="grid gap-6 md:grid-cols-2">
+        {/* Business roles (create only — edit manages roles on detail page) */}
+        {!isEdit && (
+          <div className="md:col-span-2">
+            <fieldset>
+              <legend className="font-label text-label text-on-surface">
+                Business Roles
+                <span className="ml-2 font-body text-body-sm text-text-grey">
+                  (Business classifications only — not application access)
+                </span>
+              </legend>
+              <div className="mt-2 flex flex-wrap gap-4">
+                {PARTY_ROLES.map(({ value, label }) => (
+                  <label
+                    key={value}
+                    className="flex cursor-pointer items-center gap-2 font-label text-label text-on-surface"
+                  >
+                    <input
+                      type="checkbox"
+                      name="roles"
+                      value={value}
+                      defaultChecked={assignedRoleValues.has(value)}
+                      className="h-5 w-5 rounded border-outline-variant/30 text-brand-navy focus:ring-2 focus:ring-brand-navy"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          </div>
+        )}
+
         {/* Code */}
         <div>
           <label
@@ -320,37 +351,6 @@ export function PartyForm({ action, party, cancelHref }: PartyFormProps) {
             value={party?.isActive ?? true ? "true" : "false"}
           />
         </div>
-
-        {/* Business roles (create only — edit manages roles on detail page) */}
-        {!isEdit && (
-          <div className="md:col-span-2">
-            <fieldset>
-              <legend className="font-label text-label text-on-surface">
-                Business Roles
-                <span className="ml-2 font-body text-body-sm text-text-grey">
-                  (Business classifications only — not application access)
-                </span>
-              </legend>
-              <div className="mt-2 flex flex-wrap gap-4">
-                {PARTY_ROLES.map(({ value, label }) => (
-                  <label
-                    key={value}
-                    className="flex cursor-pointer items-center gap-2 font-label text-label text-on-surface"
-                  >
-                    <input
-                      type="checkbox"
-                      name="roles"
-                      value={value}
-                      defaultChecked={assignedRoleValues.has(value)}
-                      className="h-5 w-5 rounded border-outline-variant/30 text-brand-navy focus:ring-2 focus:ring-brand-navy"
-                    />
-                    {label}
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-          </div>
-        )}
       </div>
 
       {/* Form actions */}

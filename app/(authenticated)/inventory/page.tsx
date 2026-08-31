@@ -78,30 +78,29 @@ export default async function InventoryPage({ searchParams }: PageProps) {
         className="flex flex-wrap items-center justify-between gap-3 border-b border-outline-variant/30"
       >
         <div className="flex gap-6 overflow-x-auto">
-        {TABS.map((tab) => {
-          const isActive = tab.key === activeTab;
-          const href =
-            tab.key === "stock-view"
-              ? "/inventory"
-              : tab.key === "pick-lists"
-              ? "/inventory?tab=pick-lists"
-              : "/inventory?tab=inspection";
-          return (
-            <Link
-              key={tab.key}
-              href={href}
-              role="tab"
-              aria-selected={isActive}
-              className={`flex h-12 shrink-0 items-center border-b-2 px-1 font-label text-label font-semibold tracking-[0.03em] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
-                isActive
-                  ? "border-on-surface text-on-surface"
-                  : "border-transparent text-text-grey hover:text-on-surface"
-              }`}
-            >
-              {tab.label}
-            </Link>
-          );
-        })}
+          {TABS.map((tab) => {
+            const isActive = tab.key === activeTab;
+            const href =
+              tab.key === "stock-view"
+                ? "/inventory"
+                : tab.key === "pick-lists"
+                  ? "/inventory?tab=pick-lists"
+                  : "/inventory?tab=inspection";
+            return (
+              <Link
+                key={tab.key}
+                href={href}
+                role="tab"
+                aria-selected={isActive}
+                className={`flex h-12 shrink-0 items-center border-b-2 px-1 font-label text-label font-semibold tracking-[0.03em] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${isActive
+                    ? "border-on-surface text-on-surface"
+                    : "border-transparent text-text-grey hover:text-on-surface"
+                  }`}
+              >
+                {tab.label}
+              </Link>
+            );
+          })}
         </div>
         <form method="GET" className="flex items-center gap-2 pb-2">
           <input type="hidden" name="tab" value={activeTab} />
@@ -116,7 +115,7 @@ export default async function InventoryPage({ searchParams }: PageProps) {
       </div>
 
       {pickListError && (
-        <div role="alert" className="mt-4 rounded-lg border-l-4 border-status-held bg-surface-white p-4 shadow-elevation-1">
+        <div role="alert" className="mt-4 rounded-lg border border-status-held/40 bg-status-held/5 p-4 shadow-sm">
           <p className="font-heading text-body-md font-semibold text-on-surface">Pick list was not created</p>
           <p className="mt-1 font-body text-body-md text-on-surface">{pickListError === "forbidden" ? "Your account does not have permission to generate pick lists." : pickListError === "fifo_override_required" ? "The selected location is not the current FIFO/FEFO source." : `Reason: ${pickListError.replaceAll(",", ", ")}`}</p>
           <p className="mt-1 font-body text-body-md text-text-grey">{pickListError === "fifo_override_required" ? "Choose the recommended source location or submit the required FIFO/FEFO override request before generating the pick list." : "Check the destination organization and available quantity, then try again."}</p>
@@ -172,20 +171,20 @@ async function StockViewTab({ query, requesterUserId }: { query?: string; reques
         </div>
       </section>}
 
-    <div>
-      {items.length === 0 ? (
-        <div className="rounded-xl border border-outline-variant bg-surface-white px-6 py-12 text-center shadow-elevation-1">
-          <p className="font-body text-body-md text-text-grey">
-            No available stock is ready for allocation.
-          </p>
-          <p className="mt-2 font-body text-body-sm text-text-grey">
-            Confirmed receipts appear here when their lots are available for picking.
-          </p>
-        </div>
-      ) : (
-        <StockViewFilterableRegister items={items} />
-      )}
-    </div>
+      <div>
+        {items.length === 0 ? (
+          <div className="rounded-xl border border-outline-variant bg-surface-white px-6 py-12 text-center shadow-elevation-1">
+            <p className="font-body text-body-md text-text-grey">
+              No available stock is ready for allocation.
+            </p>
+            <p className="mt-2 font-body text-body-sm text-text-grey">
+              Confirmed receipts appear here when their lots are available for picking.
+            </p>
+          </div>
+        ) : (
+          <StockViewFilterableRegister items={items} />
+        )}
+      </div>
     </div>
   );
 }
@@ -397,125 +396,125 @@ async function PickListsTab({ createdPickListId, pickedPickListId, view }: { cre
           )}
         </section>
       ) : (
-      <>
-      {createdPickListId && <section role="status" className="rounded-lg border border-status-available/30 bg-status-available/10 p-4"><p className="font-heading text-body-md font-bold text-on-surface">Pick list generated</p><p className="mt-1 font-body text-body-sm text-text-grey">The list is now in To Pick. Review or print its PDF, physically pick the boxes, then mark it as picked to enable Dispatch.</p><div className="mt-3 flex flex-wrap gap-3"><Link href={`/pick-lists/${createdPickListId}/print`} className="inline-flex h-11 items-center rounded border border-outline-variant bg-surface-white px-4 font-label text-label font-bold text-on-surface">View / PDF</Link><form action={markPickListReadyForDispatch}><input type="hidden" name="pickListId" value={createdPickListId} /><button type="submit" className="inline-flex h-11 items-center rounded bg-primary px-4 font-label text-label font-bold text-surface-white">Mark as Picked</button></form></div></section>}
-      {pickedPickListId && <section role="status" className="rounded-lg border border-status-available/30 bg-status-available/10 p-4"><p className="font-heading text-body-md font-bold text-on-surface">Pick list is ready for Dispatch</p><p className="mt-1 font-body text-body-sm text-text-grey">Physical picking is recorded. Continue in the Dispatch queue to scan the committed boxes.</p><Link href="/outgoing" className="mt-3 inline-flex h-11 items-center rounded bg-primary px-4 font-label text-label font-bold text-surface-white">Open Dispatch queue</Link></section>}
-      <MultiItemPickListDraft
-        stock={stockRows.map((row, index) => ({
-          itemId: row.itemId,
-          itemCode: row.itemCode,
-          itemName: row.itemName,
-          customerItemCode: row.customerItemCode ?? null,
-          organizationId: row.organizationId ?? null,
-          organizationName: row.organizationName ?? null,
-          flowType: row.flowType,
-          uom: row.uom,
-          spq: row.spq ?? 1,
-          balanceId: row.balanceId ?? `${row.lotId}:${row.locationId}`,
-          lotId: row.lotId,
-          lotNumber: row.lotNumber,
-          locationId: row.locationId,
-          locationLabel: row.locationLabel,
-          availableQty: row.qtyRemaining - row.qtyCommitted,
-          priority: index + 1,
-        }))}
-        createAction={createPickList}
-        overrideAction={requestPickListOverride}
-      />
-    <section aria-labelledby="to-pick-heading" className="overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-outline-variant/30 px-4 py-4 md:px-5">
-        <div>
-          <h2 id="to-pick-heading" className="font-heading text-title-lg font-bold text-on-surface">To Pick</h2>
-          <p className="mt-1 font-body text-body-sm text-text-grey">Review the PDF, physically pick the boxes, then mark the list as picked.</p>
-        </div>
-        <span className="rounded-full bg-status-pending/15 px-3 py-1 font-label text-label font-bold text-status-pending">{rows.length} waiting</span>
-      </div>
-      {rows.length === 0 ? (
-        <div className="px-6 py-12 text-center">
-          <p className="font-body text-body-md text-text-grey">
-            No active pick lists.
-          </p>
-          <p className="mt-2 font-body text-body-sm text-text-grey">
-            Pick lists are generated when stock is committed for outgoing withdrawal.
-            Use &ldquo;Generate Pick List&rdquo; below to create one from current stock.
-          </p>
-          <Link
-            href="/outgoing"
-            className="mt-4 inline-flex h-11 items-center justify-center rounded bg-primary px-5 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
-          >
-            Go to Outgoing
-          </Link>
-        </div>
-      ) : (
         <>
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                {/* Inter SemiBold uppercase headers per §9 tables */}
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                  Pick List #
-                </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                  Flow Type
-                </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                  Customer Organization
-                </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                  Created
-                </th>
-                <th className="sr-only px-4 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline-variant/30">
-              {rows.map((row: PickListRow) => (
-                <tr key={row.id} className="hover:bg-surface-light-grey/50">
-                  {/* Pick list number — clickable link */}
-                  <td className="px-4 py-3 font-mono text-mono-md font-bold text-on-surface">
-                    <Link
-                      href={`/pick-lists/${row.id}/dispatch`}
-                      className="text-brand-royal-blue hover:underline"
-                    >
-                      {row.pickListNumber}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                    {FLOW_LABELS[row.flowType] ?? row.flowType}
-                  </td>
-                  {/* Customer Organization — resolved party name */}
-                  <td className="px-4 py-3 font-body text-body-md font-semibold text-on-surface">
-                    {row.customerPartyName || (
-                      <span className="font-mono text-mono-sm text-text-grey">{row.customerPartyId}</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 font-body text-body-md text-text-grey">
-                    {row.createdAt.toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Link
-                      href={`/pick-lists/${row.id}/dispatch`}
-                      className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg border border-outline-variant/50 bg-surface-white px-4 font-label text-body-sm font-semibold text-on-surface shadow-sm hover:bg-surface-light-grey hover:border-brand-navy focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
-                    >
-                      Actions &rarr;
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="border-t border-outline-variant/30 px-4 py-3 md:px-5">
-          <p className="font-body text-body-sm text-text-grey">
-            These allocated lists are waiting to be picked. After marking a list as picked, it appears in the{" "}
-            <Link href="/outgoing" className="font-label text-label font-semibold text-on-surface underline">Dispatch queue</Link>; dispatched stock movements are in the{" "}
-            <Link href="/outgoing?tab=ledger" className="font-label text-label font-semibold text-on-surface underline">Outgoing Ledger</Link>.
-          </p>
-        </div>
+          {createdPickListId && <section role="status" className="rounded-lg border border-status-available/30 bg-status-available/10 p-4"><p className="font-heading text-body-md font-bold text-on-surface">Pick list generated</p><p className="mt-1 font-body text-body-sm text-text-grey">The list is now in To Pick. Review or print its PDF, physically pick the boxes, then mark it as picked to enable Dispatch.</p><div className="mt-3 flex flex-wrap gap-3"><Link href={`/pick-lists/${createdPickListId}/print`} className="inline-flex h-11 items-center rounded border border-outline-variant bg-surface-white px-4 font-label text-label font-bold text-on-surface">View / PDF</Link><form action={markPickListReadyForDispatch}><input type="hidden" name="pickListId" value={createdPickListId} /><button type="submit" className="inline-flex h-11 items-center rounded bg-primary px-4 font-label text-label font-bold text-surface-white">Mark as Picked</button></form></div></section>}
+          {pickedPickListId && <section role="status" className="rounded-lg border border-status-available/30 bg-status-available/10 p-4"><p className="font-heading text-body-md font-bold text-on-surface">Pick list is ready for Dispatch</p><p className="mt-1 font-body text-body-sm text-text-grey">Physical picking is recorded. Continue in the Dispatch queue to scan the committed boxes.</p><Link href="/outgoing" className="mt-3 inline-flex h-11 items-center rounded bg-primary px-4 font-label text-label font-bold text-surface-white">Open Dispatch queue</Link></section>}
+          <MultiItemPickListDraft
+            stock={stockRows.map((row, index) => ({
+              itemId: row.itemId,
+              itemCode: row.itemCode,
+              itemName: row.itemName,
+              customerItemCode: row.customerItemCode ?? null,
+              organizationId: row.organizationId ?? null,
+              organizationName: row.organizationName ?? null,
+              flowType: row.flowType,
+              uom: row.uom,
+              spq: row.spq ?? 1,
+              balanceId: row.balanceId ?? `${row.lotId}:${row.locationId}`,
+              lotId: row.lotId,
+              lotNumber: row.lotNumber,
+              locationId: row.locationId,
+              locationLabel: row.locationLabel,
+              availableQty: row.qtyRemaining - row.qtyCommitted,
+              priority: index + 1,
+            }))}
+            createAction={createPickList}
+            overrideAction={requestPickListOverride}
+          />
+          <section aria-labelledby="to-pick-heading" className="overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-outline-variant/30 px-4 py-4 md:px-5">
+              <div>
+                <h2 id="to-pick-heading" className="font-heading text-title-lg font-bold text-on-surface">To Pick</h2>
+                <p className="mt-1 font-body text-body-sm text-text-grey">Review the PDF, physically pick the boxes, then mark the list as picked.</p>
+              </div>
+              <span className="rounded-full bg-status-pending/15 px-3 py-1 font-label text-label font-bold text-status-pending">{rows.length} waiting</span>
+            </div>
+            {rows.length === 0 ? (
+              <div className="px-6 py-12 text-center">
+                <p className="font-body text-body-md text-text-grey">
+                  No active pick lists.
+                </p>
+                <p className="mt-2 font-body text-body-sm text-text-grey">
+                  Pick lists are generated when stock is committed for outgoing withdrawal.
+                  Use &ldquo;Generate Pick List&rdquo; below to create one from current stock.
+                </p>
+                <Link
+                  href="/outgoing"
+                  className="mt-4 inline-flex h-11 items-center justify-center rounded bg-primary px-5 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+                >
+                  Go to Outgoing
+                </Link>
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
+                        {/* Inter SemiBold uppercase headers per §9 tables */}
+                        <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                          Pick List #
+                        </th>
+                        <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                          Flow Type
+                        </th>
+                        <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                          Customer Organization
+                        </th>
+                        <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                          Created
+                        </th>
+                        <th className="sr-only px-4 py-3">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-outline-variant/30">
+                      {rows.map((row: PickListRow) => (
+                        <tr key={row.id} className="hover:bg-surface-light-grey/50">
+                          {/* Pick list number — clickable link */}
+                          <td className="px-4 py-3 font-mono text-mono-md font-bold text-on-surface">
+                            <Link
+                              href={`/pick-lists/${row.id}/dispatch`}
+                              className="text-brand-royal-blue hover:underline"
+                            >
+                              {row.pickListNumber}
+                            </Link>
+                          </td>
+                          <td className="px-4 py-3 font-body text-body-md text-on-surface">
+                            {FLOW_LABELS[row.flowType] ?? row.flowType}
+                          </td>
+                          {/* Customer Organization — resolved party name */}
+                          <td className="px-4 py-3 font-body text-body-md font-semibold text-on-surface">
+                            {row.customerPartyName || (
+                              <span className="font-mono text-mono-sm text-text-grey">{row.customerPartyId}</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 font-body text-body-md text-text-grey">
+                            {row.createdAt.toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <Link
+                              href={`/pick-lists/${row.id}/dispatch`}
+                              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg border border-outline-variant/50 bg-surface-white px-4 font-label text-body-sm font-semibold text-on-surface shadow-sm hover:bg-surface-light-grey hover:border-brand-navy focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+                            >
+                              Actions &rarr;
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="border-t border-outline-variant/30 px-4 py-3 md:px-5">
+                  <p className="font-body text-body-sm text-text-grey">
+                    These allocated lists are waiting to be picked. After marking a list as picked, it appears in the{" "}
+                    <Link href="/outgoing" className="font-label text-label font-semibold text-on-surface underline">Dispatch queue</Link>; dispatched stock movements are in the{" "}
+                    <Link href="/outgoing?tab=ledger" className="font-label text-label font-semibold text-on-surface underline">Outgoing Ledger</Link>.
+                  </p>
+                </div>
+              </>
+            )}
+          </section>
         </>
-      )}
-    </section>
-      </>
       )}
     </div>
   );

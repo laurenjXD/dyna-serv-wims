@@ -131,7 +131,7 @@ export function ScanDiscrepancyModal({
             <p className="font-body text-body-md text-on-surface">
               {details.description}
             </p>
-            <div className="rounded-lg border-l-4 border-status-pending bg-status-pending/10 p-3">
+            <div className="rounded-lg border border-status-pending/40 bg-status-pending/5 p-3 shadow-sm">
               <p className="font-body text-body-sm font-semibold text-on-surface">
                 Recommended Action:
               </p>

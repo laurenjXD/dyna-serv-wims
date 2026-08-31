@@ -199,9 +199,9 @@ export default async function ReceiveFloorPage({
         .select({ id: locations.id, label: locations.label })
         .from(locations)
         .where(and(eq(locations.locationType, "inspection"), eq(locations.isActive, true)))) as Array<{
-        id: string;
-        label: string;
-      }>) .sort((a, b) => (a.label ?? "").localeCompare(b.label ?? "", undefined, { numeric: true, sensitivity: "base" }));
+          id: string;
+          label: string;
+        }>).sort((a, b) => (a.label ?? "").localeCompare(b.label ?? "", undefined, { numeric: true, sensitivity: "base" }));
     } catch {
       inspectionLocations = [];
     }
@@ -319,7 +319,7 @@ export default async function ReceiveFloorPage({
   // ─── Receipt complete: all lines committed, WRR already confirmed server-side ───
   if (isComplete) {
     return (
-    <div className="flex min-h-screen flex-col bg-[#F3F6FC]">
+      <div className="flex min-h-screen flex-col bg-[#F3F6FC]">
         <div className="flex flex-1 flex-col items-center justify-center px-4 py-4 text-center">
           <div className="w-full max-w-md rounded-xl bg-surface-white p-6 shadow-elevation-2">
             <span
@@ -415,7 +415,7 @@ export default async function ReceiveFloorPage({
             aria-live="assertive"
             // White background with status-available left border — AAA contrast
             // (near-black on white >15:1). Icon carries the semantic green signal.
-            className="mt-4 rounded-xl border border-status-available/30 border-l-4 bg-surface-white px-4 py-4 shadow-elevation-1"
+            className="mt-4 rounded-xl border border-status-available/40 bg-status-available/5 px-4 py-4 shadow-sm"
           >
             <p className="font-heading font-semibold text-headline-md text-on-surface">
               &#10003; Scanned
@@ -473,7 +473,7 @@ export default async function ReceiveFloorPage({
           <div
             role="status"
             aria-live="assertive"
-            className="mt-4 rounded-xl border border-status-available/30 border-l-4 bg-surface-white px-4 py-4 shadow-elevation-1"
+            className="mt-4 rounded-xl border border-status-available/40 bg-status-available/5 px-4 py-4 shadow-sm"
           >
             <p className="font-heading font-semibold text-headline-md text-on-surface">
               &#10003; Line committed
@@ -488,7 +488,7 @@ export default async function ReceiveFloorPage({
           <div
             role="alert"
             aria-live="assertive"
-            className="mt-4 rounded-xl border border-status-held/30 border-l-4 bg-surface-white px-4 py-4 shadow-elevation-1"
+            className="mt-4 rounded-xl border border-status-held/40 bg-status-held/5 px-4 py-4 shadow-sm"
           >
             <p className="font-heading font-semibold text-headline-md text-on-surface">
               &#33; Could not complete line
@@ -539,11 +539,10 @@ export default async function ReceiveFloorPage({
                         Disposition:
                       </span>
                       <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-body-md font-label uppercase ${
-                          item.disposition === "store"
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-body-md font-label uppercase ${item.disposition === "store"
                             ? "bg-status-available/10 text-on-surface"
                             : "bg-status-pending/10 text-on-surface"
-                        }`}
+                          }`}
                       >
                         {/* Icon paired with color to satisfy §1.3 floor color-blind rule */}
                         <span aria-hidden="true">
@@ -633,30 +632,30 @@ export default async function ReceiveFloorPage({
             <div className="flex items-start gap-3 rounded-xl border border-status-available/30 bg-[#F0FDF8] px-4 py-3">
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-status-available font-heading font-bold text-surface-white" aria-hidden="true">&#10003;</span>
               <div>
-              <p className="font-label text-body-md font-bold text-on-surface">
-                Pallet verified
-              </p>
-              <p className="mt-1 font-body text-body-md text-text-grey">
-                Assign all {primaryReadyLine.expectedQty} declared boxes before storing.
-              </p>
+                <p className="font-label text-body-md font-bold text-on-surface">
+                  Pallet verified
+                </p>
+                <p className="mt-1 font-body text-body-md text-text-grey">
+                  Assign all {primaryReadyLine.expectedQty} declared boxes before storing.
+                </p>
               </div>
             </div>
             {primaryReadyLine.disposition === "store" ? (
               <>
                 {primaryStoreCandidates.length > 0 ? (
                   <>
-                  <p className="rounded border border-outline-variant/30 bg-surface-light-grey px-3 py-2 font-body text-body-md text-on-surface">
-                    This receipt needs {((Number(primaryReadyLine.unitCbm) || 0) * (Number(primaryReadyLine.expectedQty) || 0)).toFixed(2)} CBM. Choose a location, review its capacity and current contents, then store.
-                  </p>
-                  <PutawayLocationSelector
-                    candidates={primaryStoreCandidates}
-                    contents={primaryStoreContents}
-                    quantity={primaryReadyLine.expectedQty}
-                    unitCbm={Number(primaryReadyLine.unitCbm) || 0}
-                  />
+                    <p className="rounded border border-outline-variant/30 bg-surface-light-grey px-3 py-2 font-body text-body-md text-on-surface">
+                      This receipt needs {((Number(primaryReadyLine.unitCbm) || 0) * (Number(primaryReadyLine.expectedQty) || 0)).toFixed(2)} CBM. Choose a location, review its capacity and current contents, then store.
+                    </p>
+                    <PutawayLocationSelector
+                      candidates={primaryStoreCandidates}
+                      contents={primaryStoreContents}
+                      quantity={primaryReadyLine.expectedQty}
+                      unitCbm={Number(primaryReadyLine.unitCbm) || 0}
+                    />
                   </>
                 ) : (
-                  <div role="alert" className="rounded border-l-4 border-status-held bg-white px-3 py-2">
+                  <div role="alert" className="rounded-lg border border-status-held/40 bg-status-held/5 px-3 py-2 shadow-sm">
                     <p className="flex items-center gap-2 font-body text-body-md text-on-surface">
                       <span aria-hidden="true" className="text-status-held">
                         &#33;
@@ -691,7 +690,7 @@ export default async function ReceiveFloorPage({
                     placeholder="Search or choose an inspection location"
                   />
                 ) : (
-                  <div role="alert" className="rounded border-l-4 border-status-held bg-white px-3 py-2">
+                  <div role="alert" className="rounded-lg border border-status-held/40 bg-status-held/5 px-3 py-2 shadow-sm">
                     <p className="flex items-center gap-2 font-body text-body-md text-on-surface">
                       <span aria-hidden="true" className="text-status-held">
                         &#33;

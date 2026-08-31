@@ -19,11 +19,6 @@ const STANDARD_UOM_OPTIONS = [
   "piece",
   "roll",
   "meter",
-  "box",
-  "pack",
-  "set",
-  "kg",
-  "liter",
 ] as const;
 const CURRENCY_OPTIONS = ["USD", "PHP"] as const;
 
