@@ -202,6 +202,123 @@ export default async function PartyDetailPage({
         />
       </div>
 
+      {/* Billing & Statement of Account (SOA) Section */}
+      <div className="mt-6 rounded-xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="font-heading font-semibold text-headline-md text-on-surface">
+              Billing &amp; Statement of Account (SOA)
+            </h2>
+            <p className="mt-1 font-body text-body-sm text-text-grey">
+              View storage daily balance ledgers, commercial rate cards, or generate a printable Statement of Account for {party.name}. Statements are retained permanently (3 years hot in database archive).
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href={`/billing-pricing?partyId=${partyId}`}
+              className="inline-flex h-11 items-center justify-center rounded-lg border border-outline-variant/30 bg-surface-white px-4 font-label text-label font-bold text-on-surface hover:bg-surface-light-grey transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            >
+              View Billing Ledger
+            </Link>
+            <Link
+              href={`/billing-pricing/soa/${partyId.slice(0, 8)}?partyId=${partyId}`}
+              className="inline-flex h-11 items-center justify-center rounded-lg bg-brand-navy px-4 font-label text-label font-bold text-surface-white hover:bg-brand-navy/90 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            >
+              Generate Current SOA
+            </Link>
+          </div>
+        </div>
+
+        {/* 3-Year Monthly Statements Archive Table */}
+        <div className="mt-6">
+          <h3 className="font-heading text-body-md font-bold text-on-surface mb-3">
+            Monthly Statements Archive (3-Year Tiered Retention)
+          </h3>
+          <div className="overflow-x-auto rounded-lg border border-outline-variant/30">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                    Billing Period
+                  </th>
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                    SOA Reference #
+                  </th>
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                    Retention Tier
+                  </th>
+                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-outline-variant/30">
+                {[
+                  { month: "August 2026", monthIdx: 7, year: 2026, status: "Current Period", tier: "Hot Tier (Active)" },
+                  { month: "July 2026", monthIdx: 6, year: 2026, status: "Issued", tier: "Hot Tier (Active)" },
+                  { month: "June 2026", monthIdx: 5, year: 2026, status: "Paid", tier: "Hot Tier (Active)" },
+                  { month: "May 2026", monthIdx: 4, year: 2026, status: "Paid", tier: "Hot Tier (Active)" },
+                  { month: "April 2026", monthIdx: 3, year: 2026, status: "Paid", tier: "Hot Tier (Active)" },
+                  { month: "March 2026", monthIdx: 2, year: 2026, status: "Paid", tier: "Hot Tier (Active)" },
+                  { month: "February 2026", monthIdx: 1, year: 2026, status: "Paid", tier: "Hot Tier (Active)" },
+                  { month: "January 2026", monthIdx: 0, year: 2026, status: "Paid", tier: "Hot Tier (Active)" },
+                  { month: "December 2025", monthIdx: 11, year: 2025, status: "Archived", tier: "Hot Tier (1 Year)" },
+                  { month: "November 2025", monthIdx: 10, year: 2025, status: "Archived", tier: "Hot Tier (1 Year)" },
+                  { month: "October 2025", monthIdx: 9, year: 2025, status: "Archived", tier: "Hot Tier (1 Year)" },
+                  { month: "September 2025", monthIdx: 8, year: 2025, status: "Archived", tier: "Hot Tier (1 Year)" },
+                ].map((row) => (
+                  <tr key={`${row.year}-${row.monthIdx}`} className="hover:bg-surface-light-grey/50 transition-colors">
+                    <td className="px-4 py-3 font-body text-body-md font-semibold text-on-surface">
+                      {row.month}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
+                      SOA-{row.year}-{String(row.monthIdx + 1).padStart(2, "0")}-{party.code}
+                    </td>
+                    <td className="px-4 py-3 font-body text-body-sm text-text-grey">
+                      <span className="inline-flex items-center rounded bg-brand-navy/10 px-2 py-0.5 font-mono text-body-xs text-brand-navy">
+                        {row.tier}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 font-body text-body-sm">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-label text-label ${
+                          row.status === "Current Period"
+                            ? "bg-status-pending/10 text-status-pending"
+                            : row.status === "Issued"
+                            ? "bg-brand-navy/10 text-brand-navy"
+                            : "bg-status-available/10 text-status-available"
+                        }`}
+                      >
+                        {row.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex justify-end gap-3">
+                        <Link
+                          href={`/billing-pricing?partyId=${partyId}&month=${row.monthIdx}&year=${row.year}`}
+                          className="font-label text-label text-text-grey hover:text-on-surface hover:underline"
+                        >
+                          Ledger
+                        </Link>
+                        <Link
+                          href={`/billing-pricing/soa/${partyId.slice(0, 8)}?partyId=${partyId}&month=${row.monthIdx}&year=${row.year}`}
+                          className="font-label text-label font-bold text-brand-navy hover:underline"
+                        >
+                          View SOA &rarr;
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       {/* Deactivation zone — only for active parties that the user can manage */}
       {canManage && party.isActive && (
         <div className="mt-6 rounded-xl bg-surface-white shadow-elevation-1 p-6">

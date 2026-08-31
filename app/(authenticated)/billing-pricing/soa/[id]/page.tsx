@@ -12,14 +12,19 @@
 import { FileText } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
+import { db } from "@/lib/db/client";
+import { getPartyWithRoles } from "@/lib/db/queries/parties";
+import { getVmiDailyBalanceRows } from "@/lib/billing/queries/vmi-ledger";
 import { SoaDetailClient, type SoaData } from "./SoaDetailClient";
 
 interface PageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ partyId?: string; month?: string; year?: string }>;
 }
 
-export default async function SoaDetailPage({ params }: PageProps) {
+export default async function SoaDetailPage({ params, searchParams }: PageProps) {
   const { id } = await params;
+  const { partyId: searchPartyId, month: searchMonth, year: searchYear } = await searchParams;
 
   const resolver = await createPageResolver();
   const permResult = await requirePermission(resolver, "reporting.financial_read");
@@ -35,25 +40,51 @@ export default async function SoaDetailPage({ params }: PageProps) {
     );
   }
 
-  // June 2026 Canonical Billing Fixture Data matching June Statement ($3,023.80 Total)
+  const targetPartyId = searchPartyId || (id !== "sample" ? id : "");
+  const party = targetPartyId ? await getPartyWithRoles(db, targetPartyId) : null;
+
+  const now = new Date();
+  const monthIdx = searchMonth !== undefined ? parseInt(searchMonth, 10) : now.getMonth();
+  const year = searchYear !== undefined ? parseInt(searchYear, 10) : now.getFullYear();
+
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+  const monthName = monthNames[monthIdx] ?? "June";
+  const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
+
+  let storageAmount = 1116.9;
+  if (party) {
+    const dailyRows = await getVmiDailyBalanceRows(party.id, monthIdx, year);
+    if (dailyRows.length > 0) {
+      storageAmount = dailyRows.reduce((sum, r) => sum + r.storageAmountUsd, 0);
+    }
+  }
+
+  const customerName = party ? party.name : "United Philippine Industrial";
+  const customerCode = party ? party.code : "UPI";
+  const soaNumber = `SOA-${year}-${String(monthIdx + 1).padStart(2, "0")}-${customerCode}`;
+  const totalAmount = storageAmount + 662.71 + 420.0 + 220.05 + 368.14 + 36.0 + 200.0;
+
   const soaData: SoaData = {
-    soaNumber: `SOA-2026-06-${id.slice(0, 4).toUpperCase()}`,
-    customerName: "United Philippine Industrial",
-    customerCode: "UPI",
-    contractNumber: "DSGC-VMI-2026-001",
-    billingPeriod: "June 1 – June 30, 2026",
-    issueDate: "2026-07-01",
-    dueDate: "2026-07-31",
+    soaNumber,
+    customerName,
+    customerCode,
+    contractNumber: `DSGC-VMI-${year}-001`,
+    billingPeriod: `${monthName} 1 – ${monthName} ${daysInMonth}, ${year}`,
+    issueDate: `${year}-${String(monthIdx + 1).padStart(2, "0")}-01`,
+    dueDate: `${year}-${String(monthIdx + 1).padStart(2, "0")}-${daysInMonth}`,
     currency: "USD",
     exchangeRate: 61.71,
     openingBalanceUsd: 0.0,
-    currentChargesUsd: 3023.8,
+    currentChargesUsd: Number(totalAmount.toFixed(2)),
     debitAdjustmentsUsd: 0.0,
     creditsUsd: 0.0,
     paymentsAppliedUsd: 0.0,
-    outstandingBalanceUsd: 3023.8,
+    outstandingBalanceUsd: Number(totalAmount.toFixed(2)),
     categories: [
-      { name: "Warehousing (Daily CBM Storage)", code: "WH-STORAGE", amount: 1116.9, sectionId: "section-7" },
+      { name: "Warehousing (Daily CBM Storage)", code: "WH-STORAGE", amount: Number(storageAmount.toFixed(2)), sectionId: "section-7" },
       { name: "Delivery & Distribution Charges", code: "DELIVERY", amount: 662.71, sectionId: "section-2" },
       { name: "Documentation Charges (DR / POD)", code: "DOCUMENTATION", amount: 420.0, sectionId: "section-2" },
       { name: "Handling IN (Receiving & Stripping)", code: "HANDLING-IN", amount: 220.05, sectionId: "section-5" },

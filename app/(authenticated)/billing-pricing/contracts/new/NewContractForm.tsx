@@ -36,6 +36,19 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
           <select
             name="partyId"
             required
+            onChange={(e) => {
+              const selectedId = e.target.value;
+              if (selectedId) {
+                const party = partiesList.find((p) => p.id === selectedId);
+                if (party?.code.includes("UPI") || party?.name.toLowerCase().includes("vmi")) {
+                  setContractType("vmi");
+                } else if (party?.name.toLowerCase().includes("trading")) {
+                  setContractType("trading");
+                } else {
+                  setContractType("vmi_trading");
+                }
+              }
+            }}
             className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm"
           >
             <option value="">Select an Organization...</option>
@@ -45,6 +58,9 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
               </option>
             ))}
           </select>
+          <p className="mt-1 font-body text-body-xs text-brand-navy">
+            Selecting an organization inherits their business roles and default inventory model (VMI / Trading / Supplies).
+          </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

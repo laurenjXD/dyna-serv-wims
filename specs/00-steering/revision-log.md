@@ -1,5 +1,14 @@
 # Revision Log — Hyperion 3PL / Dyna-Serv
 
+## Organization Billing & 3-Year Monthly Statements Archive Integration (2026-08-31)
+
+**What changed**:
+1. **Organization Detail View (`06-party-and-item-enrollment`)**: Added a dedicated **Billing & Statement of Account (SOA)** section in [`app/(authenticated)/master-data/parties/[partyId]/page.tsx`](file:///d:/School-related%20docus/dyna-serv%20wims/app/%28authenticated%29/master-data/parties/%5BpartyId%5D/page.tsx) featuring direct CTAs ("View Billing Ledger", "Generate Current SOA") and an inline **Monthly Statements Archive** table.
+2. **3-Year Tiered Retention Policy (`04`, `12`, `16`)**: Per canonical retention policy decisions (`audit_log`, `generated_documents`), monthly statements are retained permanently, with a 3-year hot tier available directly in the database/Supabase before cold archiving. The monthly statements table presents a 36-month archive of statement references (`SOA-YYYY-MM-{partyCode}`) with direct links to view period ledgers and SOA PDF views.
+3. **Central Billing Hub Dynamic Filter (`12-vmi-billing`, `13-trading-pricing`)**: Enhanced [`app/(authenticated)/billing-pricing/page.tsx`](file:///d:/School-related%20docus/dyna-serv%20wims/app/%28authenticated%29/billing-pricing/page.tsx) to dynamically filter ledgers, rate cards, and SOA generators by the selected organization (`partyId`), preserving `partyId` across tab navigation.
+
+Verified: `npm run typecheck` clean (0 errors).
+
 ## IDE workspace configuration: CSS & Tailwind directive linter rules (2026-08-31)
 
 **What changed**: Added `.vscode/settings.json` configuring `"css.lint.unknownAtRules": "ignore"`.

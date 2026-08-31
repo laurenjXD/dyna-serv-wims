@@ -174,7 +174,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
 
         <div className="flex flex-wrap items-center gap-3">
           <Link
-            href="/billing-pricing/soa/sample"
+            href={selectedPartyId ? `/billing-pricing/soa/${selectedPartyId.slice(0, 8)}?partyId=${selectedPartyId}` : "/billing-pricing/soa/sample"}
             className="inline-flex items-center justify-center rounded-lg border border-border bg-surface px-4 py-2.5 font-body text-body-sm font-bold text-text-primary hover:bg-background shadow-sm transition-colors"
           >
             Statement of Account (SOA)
@@ -188,7 +188,6 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
         </div>
       </div>
 
-
       {/* Primary Navigation Tabs */}
       <div
         role="tablist"
@@ -196,7 +195,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
         className="mt-6 flex flex-wrap gap-1 border-b border-outline-variant/30"
       >
         <Link
-          href="/billing-pricing?tab=vmi"
+          href={`/billing-pricing?tab=vmi${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`}
           role="tab"
           aria-selected={activeTab === "vmi"}
           className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
@@ -208,7 +207,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
           VMI Storage Ledger
         </Link>
         <Link
-          href="/billing-pricing?tab=trading"
+          href={`/billing-pricing?tab=trading${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`}
           role="tab"
           aria-selected={activeTab === "trading"}
           className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
@@ -228,7 +227,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
           Commercial Contracts (14-Tab Rate Cards) &rarr;
         </Link>
         <Link
-          href="/billing-pricing/soa/sample"
+          href={selectedPartyId ? `/billing-pricing/soa/${selectedPartyId.slice(0, 8)}?partyId=${selectedPartyId}` : "/billing-pricing/soa/sample"}
           role="tab"
           aria-selected={false}
           className="flex h-11 items-center px-4 font-label text-label text-text-grey hover:text-on-surface transition-colors duration-150"

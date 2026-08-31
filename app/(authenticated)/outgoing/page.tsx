@@ -28,12 +28,13 @@ import { listOutgoingLedger } from "@/lib/actions/withdrawals";
 import { listPickLists, type OutgoingLedgerRow } from "@/lib/db/queries/withdrawals";
 import { PickQueueSection } from "./_components/PickQueueSection";
 import { OutgoingLedgerClientTable } from "./_components/OutgoingLedgerClientTable";
+import { LogisticsLedgerClientTable } from "./_components/LogisticsLedgerClientTable";
 import { removeDeliveryReceipt, uploadDeliveryReceipt } from "../pick-lists/_actions";
 import { getStorageClient } from "@/lib/supabase/storage";
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-type TabKey = "dispatch" | "ledger";
+type TabKey = "dispatch" | "ledger" | "logistics";
 
 export default async function OutgoingPage({
   searchParams,
@@ -51,17 +52,17 @@ export default async function OutgoingPage({
   const canExecute =
     (await requirePermission(resolver, "pick_list.execute")).kind === "authorized";
   const { tab, receiptStatus, receiptUpload } = await searchParams;
-  const activeTab: TabKey = tab === "ledger" ? "ledger" : "dispatch";
+  const activeTab: TabKey = tab === "ledger" ? "ledger" : tab === "logistics" ? "logistics" : "dispatch";
 
   return (
     <div className="mx-auto max-w-container pb-10">
       <div>
         <div>
           <h1 className="font-heading text-headline-lg font-bold tracking-tight text-on-surface">
-            Outgoing
+            Outgoing &amp; Logistics
           </h1>
           <p className="mt-1 font-body text-body-md text-text-grey">
-            Release completed picks for dispatch and review outbound inventory.
+            Release completed picks for dispatch, manage Delivery Receipt (DR) logistics fees, and review outbound inventory.
           </p>
         </div>
       </div>
@@ -91,10 +92,26 @@ export default async function OutgoingPage({
         >
           Outgoing Ledger
         </Link>
+        <Link
+          href="/outgoing?tab=logistics"
+          role="tab"
+          aria-selected={activeTab === "logistics"}
+            className={`border-b-2 px-4 py-3 font-label text-label font-bold transition-colors ${
+            activeTab === "logistics"
+              ? "border-brand-navy text-brand-navy"
+              : "border-transparent text-text-grey hover:text-on-surface"
+          }`}
+        >
+          Logistics &amp; DR Fees
+        </Link>
       </div>
 
       {activeTab === "dispatch" ? (
         <DispatchTab canExecute={canExecute} />
+      ) : activeTab === "logistics" ? (
+        <div className="mt-6">
+          <LogisticsLedgerClientTable />
+        </div>
       ) : (
         <OutgoingLedgerTab resolver={resolver} receiptStatus={receiptStatus} receiptUpload={receiptUpload} />
       )}
