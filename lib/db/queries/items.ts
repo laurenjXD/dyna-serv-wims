@@ -51,6 +51,7 @@ export type ItemDetail = {
   minReorderLevel: number;
   isPerishable: boolean;
   isActive: boolean;
+  vmiMovementCategory: string | null;
   createdAt: Date;
   updatedAt: Date;
 };

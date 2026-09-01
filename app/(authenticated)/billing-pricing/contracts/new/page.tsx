@@ -27,39 +27,56 @@ export default async function NewContractPage() {
   const partiesResult = await listParties(db, { limit: 100 });
   const partiesList = partiesResult.rows;
 
-  async function handleCreateContract(formData: FormData) {
+  async function handleCreateContract(formData: FormData): Promise<{ ok: boolean; error?: string }> {
     "use server";
     const pageResolver = await createPageResolver();
-    const contractNumber = String(formData.get("contractNumber") ?? "");
-    const partyId = String(formData.get("partyId") ?? "");
+    const contractNumber = String(formData.get("contractNumber") ?? "").trim();
+    const partyId = String(formData.get("partyId") ?? "").trim();
     const contractType = String(formData.get("contractType") ?? "vmi_trading") as "vmi" | "trading" | "vmi_trading";
-    const effectiveDate = String(formData.get("effectiveDate") ?? new Date().toISOString().split("T")[0]);
-    const expirationDate = String(formData.get("expirationDate") ?? "") || undefined;
+    let effectiveDate = String(formData.get("effectiveDate") ?? "").trim();
+    const expirationDate = String(formData.get("expirationDate") ?? "").trim() || undefined;
     const currency = String(formData.get("currency") ?? "USD");
     const exchangeRatePolicy = String(formData.get("exchangeRatePolicy") ?? "monthly_rate");
     const paymentTerms = String(formData.get("paymentTerms") ?? "Net 30");
     const warehousesCovered = String(formData.get("warehousesCovered") ?? "Main Warehouse");
     const notes = String(formData.get("notes") ?? "");
 
+    if (!partyId) {
+      return { ok: false, error: "Please select an Organization." };
+    }
+    if (!contractNumber) {
+      return { ok: false, error: "Contract Number is required." };
+    }
+    if (!effectiveDate) {
+      effectiveDate = new Date().toISOString().split("T")[0];
+    }
+
+    // Helper to parse non-empty numbers
+    const numOrUndef = (key: string) => {
+      const val = formData.get(key);
+      if (val === null || val === undefined || String(val).trim() === "") return undefined;
+      const num = Number(val);
+      return isNaN(num) ? undefined : num;
+    };
+
     // VMI Fields
     const vmiOwnership = formData.get("vmiOwnership") ? String(formData.get("vmiOwnership")) as "supplier_owned" | "customer_owned" | "warehouse_owned" : undefined;
     const vmiBillingTrigger = formData.get("vmiBillingTrigger") ? String(formData.get("vmiBillingTrigger")) as "upon_receipt" | "upon_consumption" | "upon_dispatch" | "upon_customer_confirmation" | "monthly_settlement" : undefined;
-    const storageRatePerCbmDay = formData.get("storageRatePerCbmDay") ? Number(formData.get("storageRatePerCbmDay")) : undefined;
-    const handlingInRatePerCbm = formData.get("handlingInRatePerCbm") ? Number(formData.get("handlingInRatePerCbm")) : undefined;
-    const handlingOutRatePerCbm = formData.get("handlingOutRatePerCbm") ? Number(formData.get("handlingOutRatePerCbm")) : undefined;
-    const loaPermitNumber = formData.get("loaPermitNumber") ? String(formData.get("loaPermitNumber")) : undefined;
-    const loaMonthlyRate = formData.get("loaMonthlyRate") ? Number(formData.get("loaMonthlyRate")) : undefined;
-    const minStock = formData.get("minStock") ? Number(formData.get("minStock")) : undefined;
-    const maxStock = formData.get("maxStock") ? Number(formData.get("maxStock")) : undefined;
-    const reorderPoint = formData.get("reorderPoint") ? Number(formData.get("reorderPoint")) : undefined;
+    const storageRatePerCbmDay = numOrUndef("storageRatePerCbmDay");
+    const handlingInRatePerCbm = numOrUndef("handlingInRatePerCbm");
+    const handlingOutRatePerCbm = numOrUndef("handlingOutRatePerCbm");
+    const loaPermitNumber = formData.get("loaPermitNumber") ? String(formData.get("loaPermitNumber")).trim() : undefined;
+    const loaMonthlyRate = numOrUndef("loaMonthlyRate");
+    const minStock = numOrUndef("minStock");
+    const maxStock = numOrUndef("maxStock");
+    const reorderPoint = numOrUndef("reorderPoint");
 
     // Trading Fields
-    const supplierCost = formData.get("supplierCost") ? Number(formData.get("supplierCost")) : undefined;
-    const sellingPrice = formData.get("sellingPrice") ? Number(formData.get("sellingPrice")) : undefined;
+    const supplierCost = numOrUndef("supplierCost");
+    const sellingPrice = numOrUndef("sellingPrice");
     const markupType = formData.get("markupType") ? String(formData.get("markupType")) as "percentage" | "fixed_amount" | "fixed_selling_price" : undefined;
-    const markupValue = formData.get("markupValue") ? Number(formData.get("markupValue")) : undefined;
-    const minOrderQuantity = formData.get("minOrderQuantity") ? Number(formData.get("minOrderQuantity")) : undefined;
-
+    const markupValue = numOrUndef("markupValue");
+    const minOrderQuantity = numOrUndef("minOrderQuantity");
 
     const result = await createContract(pageResolver, {
       contractNumber,
@@ -92,6 +109,8 @@ export default async function NewContractPage() {
     if (result.ok && result.contract) {
       redirect(`/billing-pricing/contracts/${result.contract.id}`);
     }
+
+    return { ok: false, error: result.error || "Failed to create contract." };
   }
 
   return (

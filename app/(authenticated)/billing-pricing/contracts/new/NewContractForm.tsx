@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Save } from "lucide-react";
+import { Save, AlertCircle, Loader2 } from "lucide-react";
 
 interface Organization {
   id: string;
@@ -12,17 +12,52 @@ interface Organization {
 
 interface NewContractFormProps {
   partiesList: Organization[];
-  onSubmitAction: (formData: FormData) => Promise<void>;
+  onSubmitAction: (formData: FormData) => Promise<{ ok: boolean; error?: string } | void>;
 }
 
 export function NewContractForm({ partiesList, onSubmitAction }: NewContractFormProps) {
   const [contractType, setContractType] = useState<"vmi_trading" | "vmi" | "trading">("vmi_trading");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const showVmi = contractType === "vmi" || contractType === "vmi_trading";
   const showTrading = contractType === "trading" || contractType === "vmi_trading";
 
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    try {
+      const formData = new FormData(e.currentTarget);
+      const res = await onSubmitAction(formData);
+      if (res && !res.ok) {
+        setErrorMessage(res.error || "Failed to create contract. Please check all fields.");
+      }
+    } catch (err: unknown) {
+      const errorObj = err as { digest?: string; message?: string };
+      if (errorObj?.digest?.startsWith("NEXT_REDIRECT") || errorObj?.message === "NEXT_REDIRECT") {
+        throw err;
+      }
+      setErrorMessage(errorObj?.message || "An unexpected error occurred while saving the contract.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
-    <form action={onSubmitAction} className="space-y-6 rounded-card bg-surface-white border border-border-light p-6 shadow-card">
+    <form onSubmit={handleSubmit} className="space-y-6 rounded-card bg-surface-white border border-border-light p-6 shadow-card">
+      {errorMessage && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-body-sm text-red-900 shadow-sm">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="shrink-0 mt-0.5 text-red-600" size={18} />
+            <div className="space-y-1">
+              <p className="font-bold text-red-950">Contract could not be created</p>
+              <p className="text-red-800 leading-relaxed">{errorMessage}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Basic Contract Header */}
       <div className="space-y-4">
         <h2 className="font-heading text-heading-sm font-bold text-text-dark border-b border-border-light pb-2">
@@ -31,11 +66,24 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
 
         <div>
           <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
-            Organization (Customer / Principal)
+            Organization (Customer / Principal) <span className="text-red-500">*</span>
           </label>
           <select
             name="partyId"
             required
+            onChange={(e) => {
+              const selectedId = e.target.value;
+              if (selectedId) {
+                const party = partiesList.find((p) => p.id === selectedId);
+                if (party?.code.includes("UPI") || party?.name.toLowerCase().includes("vmi")) {
+                  setContractType("vmi");
+                } else if (party?.name.toLowerCase().includes("trading")) {
+                  setContractType("trading");
+                } else {
+                  setContractType("vmi_trading");
+                }
+              }
+            }}
             className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm"
           >
             <option value="">Select an Organization...</option>
@@ -45,12 +93,15 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
               </option>
             ))}
           </select>
+          <p className="mt-1 font-body text-body-xs text-brand-navy">
+            Selecting an organization inherits their business roles and default inventory model (VMI / Trading / Supplies).
+          </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
-              Contract Number
+              Contract Number <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -81,7 +132,7 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
-              Effective Date
+              Effective Date <span className="text-red-500">*</span>
             </label>
             <input
               type="date"
@@ -127,9 +178,8 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
               className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm"
             >
               <option value="monthly_rate">Monthly Locked Rate</option>
-              <option value="fixed_contract_rate">Fixed Contract Rate</option>
-              <option value="daily_rate">Daily Forex Rate</option>
-              <option value="manual_approved_rate">Manual Approved Rate</option>
+              <option value="daily_bsp">Daily BSP Spot Rate</option>
+              <option value="fixed_agreement">Fixed Agreement Rate</option>
             </select>
           </div>
 
@@ -271,6 +321,7 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
                 step="0.01"
                 name="loaMonthlyRate"
                 defaultValue="150.00"
+                placeholder="150.00"
                 className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm font-mono"
               />
             </div>
@@ -283,8 +334,8 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
               </label>
               <input
                 type="number"
-                step="1"
                 name="minStock"
+                defaultValue="100"
                 placeholder="100"
                 className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm font-mono"
               />
@@ -296,8 +347,8 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
               </label>
               <input
                 type="number"
-                step="1"
                 name="maxStock"
+                defaultValue="1000"
                 placeholder="1000"
                 className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm font-mono"
               />
@@ -309,8 +360,8 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
               </label>
               <input
                 type="number"
-                step="1"
                 name="reorderPoint"
+                defaultValue="250"
                 placeholder="250"
                 className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm font-mono"
               />
@@ -319,14 +370,14 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
         </div>
       )}
 
-      {/* Conditional Section B: Trading Pricing & Policy Configuration */}
+      {/* Conditional Section B: Trading Pricing Policies */}
       {showTrading && (
         <div className="space-y-4 pt-4 border-t border-border-light bg-surface-background/30 p-4 rounded-card">
           <div className="flex items-center justify-between border-b border-border-light pb-2">
             <h2 className="font-heading text-heading-sm font-bold text-brand-blue flex items-center">
               3. Trading Pricing &amp; Margin Policy Configuration
             </h2>
-            <span className="text-body-xs font-mono font-semibold px-2 py-0.5 bg-brand-blue/10 text-brand-blue rounded">
+            <span className="text-body-xs font-mono font-semibold px-2 py-0.5 bg-green-100 text-green-800 rounded">
               Trading Policy Active
             </span>
           </div>
@@ -340,6 +391,7 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
                 type="number"
                 step="0.01"
                 name="supplierCost"
+                defaultValue="10.00"
                 placeholder="10.00"
                 className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm font-mono"
               />
@@ -353,6 +405,7 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
                 type="number"
                 step="0.01"
                 name="sellingPrice"
+                defaultValue="14.00"
                 placeholder="14.00"
                 className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm font-mono"
               />
@@ -383,6 +436,7 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
                 type="number"
                 step="0.01"
                 name="markupValue"
+                defaultValue="15.00"
                 placeholder="15.00"
                 className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm font-mono"
               />
@@ -396,6 +450,7 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
                 type="number"
                 step="1"
                 name="minOrderQuantity"
+                defaultValue="50"
                 placeholder="50"
                 className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm font-mono"
               />
@@ -426,9 +481,18 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
         </Link>
         <button
           type="submit"
-          className="inline-flex items-center rounded-btn bg-brand-blue px-6 py-2 font-body text-body-sm font-semibold text-white shadow-card hover:bg-brand-blue-dark transition-colors"
+          disabled={isSubmitting}
+          className="inline-flex items-center rounded-btn bg-brand-blue px-6 py-2 font-body text-body-sm font-semibold text-white shadow-card hover:bg-brand-blue-dark transition-colors disabled:opacity-60"
         >
-          <Save size={16} className="mr-2" /> Save &amp; Configure Rate Cards
+          {isSubmitting ? (
+            <>
+              <Loader2 size={16} className="mr-2 animate-spin" /> Saving Contract...
+            </>
+          ) : (
+            <>
+              <Save size={16} className="mr-2" /> Save &amp; Configure Rate Cards
+            </>
+          )}
         </button>
       </div>
     </form>

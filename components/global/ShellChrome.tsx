@@ -6,13 +6,14 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, PanelLeftClose, PanelLeftOpen, Search, Settings, Wifi, WifiOff } from "lucide-react";
+import { Bell, ChevronDown, Keyboard, PanelLeftClose, PanelLeftOpen, Settings, Wifi, WifiOff } from "lucide-react";
 import { resolveSessionPresentationTier } from "@/lib/shell/surface";
 import { isScanLoopRoute } from "@/lib/shell/scan-loop";
 import { useShellSidebar, useDesktopSidebar } from "@/lib/shell/state";
 import { useConnectivityStatus } from "@/lib/shell/use-connectivity";
 import { useShellAuthorizationContext } from "./AuthenticatedShellBoundary";
 import { ShellNavigation } from "./ShellNavigation";
+import { filterVisibleRoutes, selectRoutesForPresentation } from "@/lib/shell/navigation";
 import {
   resolveShellNotifications,
   resolveShellPendingApprovalCount,
@@ -55,6 +56,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
   const [pendingApprovalCount, setPendingApprovalCount] = useState(0);
   const [notifications, setNotifications] = useState<ShellNotification[]>([]);
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
+  const [isShortcutPanelOpen, setIsShortcutPanelOpen] = useState(false);
   const notificationPanelRef = useRef<HTMLDivElement | null>(null);
   const desktopBellRef = useRef<HTMLButtonElement | null>(null);
   const mobileBellRef = useRef<HTMLButtonElement | null>(null);
@@ -187,11 +189,43 @@ export function ShellChrome({ children }: { children: ReactNode }) {
   const canManageAccess = context?.grants.some(
     (grant) => grant.resource === "users" && grant.action === "read",
   );
+  const shortcutEntries = context
+    ? selectRoutesForPresentation(
+        filterVisibleRoutes(context).filter(
+          (entry) => entry.launchStatus !== "planned" && !entry.path.includes("["),
+        ),
+        tier,
+      )
+    : [];
+
+  function shortcutLabel(index: number): string {
+    if (index < 9) return `Ctrl+${index + 1}`;
+    if (index === 9) return "Ctrl+0";
+    return `Ctrl+Shift+${index - 9}`;
+  }
+
+  function navigationLabel(id: string): string {
+    const labels: Record<string, string> = {
+      root: "Dashboard",
+      inventory: "Master Inventory",
+      portal: "Organization Portal",
+      "billing-pricing": "Billing & Pricing",
+    };
+    return labels[id] ?? id.split("-").map((part) => part[0].toUpperCase() + part.slice(1)).join(" ");
+  }
 
   return (
     <>
+      {/* Opaque desktop top buffer for the floating header's 12px viewport
+          offset. This keeps scrolled page content from showing through the
+          exposed strip without changing the header component itself. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-x-0 top-0 z-20 hidden h-5 bg-background lg:block print:hidden"
+      />
+
       <header
-        className={`fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 bg-surface px-4 transition-[left] duration-150 motion-reduce:transition-none lg:inset-x-auto lg:top-0 lg:right-0 lg:min-h-[76px] lg:px-8 lg:py-3 ${
+        className={`print:hidden fixed inset-x-0 top-0 z-30 isolate flex h-14 items-center gap-3 overflow-visible bg-surface px-4 transition-[left] duration-150 motion-reduce:transition-none lg:inset-x-auto lg:top-3 lg:right-3 lg:min-h-[76px] lg:rounded-2xl lg:border-2 lg:border-brand-royal-blue/45 lg:px-7 lg:py-3 lg:shadow-[0_10px_24px_rgba(37,99,235,0.12)] before:pointer-events-none before:absolute before:left-0 before:top-0 before:z-0 before:h-1.5 before:w-28 before:rounded-br-full before:rounded-tl-2xl before:bg-brand-royal-blue/55 after:pointer-events-none after:absolute after:bottom-0 after:right-0 after:z-0 after:h-2 after:w-32 after:rounded-tl-full after:rounded-br-2xl after:bg-brand-royal-blue/45 ${
           isDesktopOpen ? "lg:left-[312px]" : "lg:left-0"
         }`}
       >
@@ -203,9 +237,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
             onClick={toggle}
             className="flex h-16 w-16 items-center justify-center text-text-primary active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:hidden"
           >
-            <span aria-hidden="true" className="text-body-lg">
-              ☰
-            </span>
+            <PanelLeftOpen size={25} strokeWidth={2} aria-hidden="true" />
           </button>
         )}
 
@@ -217,11 +249,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
             onClick={toggleDesktop}
             className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-full text-text-secondary hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:flex"
           >
-            {isDesktopOpen ? (
-              <PanelLeftClose size={22} aria-hidden="true" />
-            ) : (
-              <PanelLeftOpen size={22} aria-hidden="true" />
-            )}
+            {isDesktopOpen ? <PanelLeftClose size={25} strokeWidth={2} aria-hidden="true" /> : <PanelLeftOpen size={25} strokeWidth={2} aria-hidden="true" />}
           </button>
         )}
 
@@ -271,28 +299,20 @@ export function ShellChrome({ children }: { children: ReactNode }) {
           </button>
         </div>
 
-        <div className="hidden min-w-0 flex-1 items-center gap-8 lg:flex">
-          <div className="min-w-0 shrink-0 max-w-[280px]">
+        <div className="hidden min-w-0 flex-1 items-center gap-5 lg:flex">
+          <div className="min-w-0 shrink-0 max-w-[300px]">
             <p
-              className="truncate font-heading text-headline-md font-bold leading-tight text-text-primary"
+              className="truncate font-heading text-[23px] font-bold leading-tight tracking-[-0.02em] text-text-primary"
               title={pageTitle}
             >
               {pageTitle}
             </p>
           </div>
-          <label className="flex h-10 w-full max-w-[320px] shrink flex-1 items-center gap-2.5 rounded-full border border-border bg-surface px-3.5 shadow-elevation-1 focus-within:ring-2 focus-within:ring-primary">
-            <Search size={18} aria-hidden="true" className="shrink-0 text-text-secondary" />
-            <input
-              type="search"
-              aria-label="Search"
-              placeholder="Search inventory, organizations, documents…"
-              className="min-w-0 flex-1 border-0 bg-transparent p-0 font-body text-body-sm text-text-primary outline-none placeholder:text-text-secondary"
-            />
-          </label>
-          <div className="ml-auto flex min-w-0 items-center gap-5">
+          <div className="mx-auto min-w-0 flex-1" aria-hidden="true" />
+          <div className="ml-auto flex min-w-0 items-center gap-3.5">
             <span
               data-testid="connectivity-indicator"
-              className="flex shrink-0 items-center gap-1.5 text-body-sm font-semibold text-text-secondary"
+              className="flex shrink-0 items-center gap-1.5 text-body-md font-bold text-text-primary"
             >
               {connectivityStatus === "offline" ? (
                 <WifiOff size={18} aria-hidden="true" className="text-warning" />
@@ -323,7 +343,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
               {unreadCount > 0 && (
                 <span
                   data-testid="notification-badge"
-                  className="absolute right-0.5 top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 font-label text-mono-md font-semibold leading-none text-surface"
+                  className="absolute -right-0.5 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-status-held px-1.5 font-label text-mono-md font-bold leading-none text-surface shadow-sm"
                 >
                   {unreadCount}
                 </span>
@@ -335,9 +355,40 @@ export function ShellChrome({ children }: { children: ReactNode }) {
                 aria-label="Settings"
                 className="flex h-11 w-11 shrink-0 items-center justify-center text-text-secondary hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
-                <Settings size={22} aria-hidden="true" />
+                <Settings size={21} aria-hidden="true" />
               </Link>
             )}
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                aria-label="Keyboard shortcuts"
+                aria-expanded={isShortcutPanelOpen}
+                onClick={() => setIsShortcutPanelOpen((open) => !open)}
+                className="flex h-11 w-11 items-center justify-center text-text-secondary hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <Keyboard size={21} aria-hidden="true" />
+              </button>
+              {isShortcutPanelOpen && (
+                <div className="absolute right-0 top-[calc(100%+8px)] z-40 w-[280px] rounded-xl border border-border bg-surface p-2 shadow-elevation-2">
+                  <p className="px-3 py-2 font-heading text-body-md font-bold text-text-primary">Keyboard shortcuts</p>
+                  <div className="max-h-[60vh] overflow-y-auto">
+                    {shortcutEntries.map((entry, index) => (
+                      <Link
+                        key={entry.id}
+                        href={entry.path}
+                        onClick={() => setIsShortcutPanelOpen(false)}
+                        className="flex items-center justify-between gap-3 rounded-lg px-3 py-2 font-body text-body-sm text-text-primary hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      >
+                        <span className="truncate">{navigationLabel(entry.id)}</span>
+                        <kbd className="shrink-0 rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[11px] font-semibold text-text-secondary">
+                          {shortcutLabel(index)}
+                        </kbd>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
             <div ref={accountMenuRef} className="relative shrink-0">
               <button
                 ref={accountMenuTriggerRef}
@@ -353,7 +404,8 @@ export function ShellChrome({ children }: { children: ReactNode }) {
                 <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-surface">
                   {initials(displayName)}
                 </span>
-                <span className="max-w-[120px] truncate text-left text-body-sm font-semibold">{displayName ?? "Profile"}</span>
+                <span className="max-w-[120px] truncate text-left text-body-md font-bold">{displayName ?? "admin"}</span>
+                <ChevronDown size={18} strokeWidth={2.5} aria-hidden="true" />
               </button>
               {isAccountMenuOpen && (
                 <div
@@ -461,7 +513,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
       <main
         id="main-content"
         data-surface={tier}
-        className={`min-h-screen pt-14 transition-[padding-left] duration-150 motion-reduce:transition-none lg:pr-6 lg:pt-[96px] ${
+        className={`min-h-screen pt-14 transition-[padding-left] duration-150 motion-reduce:transition-none lg:pr-6 lg:pt-[106px] print:!min-h-0 print:!p-0 print:!m-0 ${
           isDesktopOpen ? "lg:pl-[312px]" : "lg:pl-6"
         } ${showFloorTabBar ? "pb-20" : "lg:pb-6"} ${
           tier === "floor" ? "bg-surface" : "bg-background"
@@ -470,8 +522,8 @@ export function ShellChrome({ children }: { children: ReactNode }) {
         <div
           className={
             tier === "floor"
-              ? "px-floor-padding py-5 lg:px-office-margin lg:py-6"
-              : "px-4 py-5 md:px-6 lg:px-office-margin lg:py-6"
+              ? "px-floor-padding py-5 lg:px-office-margin lg:py-6 print:!p-0 print:!m-0"
+              : "px-4 py-5 md:px-6 lg:px-office-margin lg:py-6 print:!p-0 print:!m-0"
           }
         >
           {children}

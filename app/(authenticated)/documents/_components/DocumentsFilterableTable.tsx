@@ -71,8 +71,8 @@ type SortDirection = "asc" | "desc";
 
 // ─── Filterable Pick Lists Table ──────────────────────────────────────────────
 
-export function FilterablePickListsTable({ rows }: { rows: MockPickListDoc[] }) {
-  const [searchQuery, setSearchQuery] = useState("");
+export function FilterablePickListsTable({ rows, initialSearch = "" }: { rows: MockPickListDoc[]; initialSearch?: string }) {
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [selectedFlow, setSelectedFlow] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [sortField, setSortField] = useState<keyof MockPickListDoc>("createdAt");
@@ -323,8 +323,8 @@ export function FilterablePickListsTable({ rows }: { rows: MockPickListDoc[] }) 
 
 // ─── Filterable Acknowledgement Receipts Table ────────────────────────────────
 
-export function FilterableARTable({ rows }: { rows: MockARDoc[] }) {
-  const [searchQuery, setSearchQuery] = useState("");
+export function FilterableARTable({ rows, initialSearch = "" }: { rows: MockARDoc[]; initialSearch?: string }) {
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [sortField, setSortField] = useState<keyof MockARDoc>("date");
   const [sortDir, setSortDir] = useState<SortDirection>("desc");

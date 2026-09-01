@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -33,7 +34,6 @@ import {
   Menu,
   X,
   ChevronRight,
-  Warehouse,
 } from "lucide-react";
 import type { AuthorizationContext } from "@/lib/rbac/session";
 import type { SessionPresentationTier } from "@/lib/shell/surface";
@@ -89,7 +89,6 @@ const SHORT_LABEL_OVERRIDES: Record<string, string> = {
   enrollment: "Enrollment",
   portal: "Organization Portal",
   "billing-pricing": "Billing & Pricing",
-  notifications: "Notification Queue",
 };
 
 function routeIcon(id: string): LucideIcon {
@@ -120,6 +119,12 @@ function isNavigableEntry(entry: RouteRegistryEntry): boolean {
   return !entry.path.includes("[");
 }
 
+function shortcutLabel(index: number): string {
+  if (index < 9) return `Ctrl+${index + 1}`;
+  if (index === 9) return "Ctrl+0";
+  return `Ctrl+Shift+${index - 9}`;
+}
+
 /**
  * Detail and creation routes intentionally do not appear as separate sidebar
  * destinations. Keep their owning work area highlighted instead of leaving
@@ -139,6 +144,7 @@ function NavLink({
   onNavigate,
   compact = false,
   pendingApprovalCount = 0,
+  shortcutNumber,
 }: {
   entry: RouteRegistryEntry;
   isActive: boolean;
@@ -147,6 +153,7 @@ function NavLink({
   onNavigate?: () => void;
   compact?: boolean;
   pendingApprovalCount?: number;
+  shortcutNumber?: number;
 }) {
   const Icon = routeIcon(entry.id);
   const label = toLabel(entry.id);
@@ -182,7 +189,7 @@ function NavLink({
       aria-current={isActive ? "page" : undefined}
       onClick={onNavigate}
       data-active={isActive ? "true" : "false"}
-      className={`group relative flex ${compact ? "h-11 gap-3 rounded-md px-2.5" : "h-12 gap-3 rounded-md px-3"} items-center overflow-hidden font-label font-semibold
+    className={`group relative flex ${compact ? "h-11 gap-3 rounded-md px-2.5" : "h-12 gap-3 rounded-md px-3"} items-center overflow-hidden font-label font-semibold
         ${floorText ? "text-mono-md" : "text-label"}
         motion-safe:transition-[background-color,color,box-shadow,transform] motion-safe:duration-150
         focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1
@@ -199,6 +206,11 @@ function NavLink({
           {pendingApprovalCount > 99 ? "99+" : pendingApprovalCount}
         </span>
       )}
+      {shortcutNumber && (
+        <kbd className="pointer-events-none absolute right-8 top-1/2 hidden -translate-y-1/2 rounded border border-border bg-surface px-1.5 py-1 font-mono text-[11px] font-semibold leading-none text-text-secondary opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 xl:inline-flex">
+          {shortcutLabel(shortcutNumber - 1)}
+        </kbd>
+      )}
       <ChevronRight size={16} aria-hidden="true" className={`shrink-0 motion-safe:transition-transform motion-safe:duration-150 ${isActive ? "translate-x-0 text-primary" : "-translate-x-1 text-text-secondary/40 opacity-0 group-hover:translate-x-0 group-hover:opacity-100"}`} />
     </Link>
   );
@@ -211,6 +223,7 @@ function GroupedSections({
   onNavigate,
   compact = false,
   pendingApprovalCount = 0,
+  shortcutNumberById,
 }: {
   sections: readonly NavSection[];
   activeId: string | null;
@@ -218,21 +231,22 @@ function GroupedSections({
   onNavigate?: () => void;
   compact?: boolean;
   pendingApprovalCount?: number;
+  shortcutNumberById?: ReadonlyMap<string, number>;
 }) {
   const floorText = tier === "floor";
   return (
     <>
       {sections.map((section) => (
-        <div key={section.group} className={compact ? "mb-1" : "mb-4"}>
+        <div key={section.group} className={compact ? "mb-0" : "mb-4"}>
           <div
             data-testid={`nav-group-${groupTestId(section.group)}`}
-            className={`${compact ? "px-2.5 pb-0.5 pt-1.5" : "px-3 pb-2 pt-3"} flex items-center gap-3 font-label font-bold uppercase tracking-[0.14em] text-text-secondary/70
+            className={`${compact ? "px-2.5 pb-0.5 pt-0.5" : "px-3 pb-2 pt-3"} flex items-center gap-3 font-label font-bold uppercase tracking-[0.14em] text-text-secondary/70
               ${floorText ? "text-mono-md" : "text-mono-sm"}`}
           >
             <span>{section.group}</span>
             <span aria-hidden="true" className="h-px flex-1 bg-border" />
           </div>
-          <div className={`flex flex-col ${compact ? "gap-0.5" : "gap-1"}`}>
+          <div className={`flex flex-col ${compact ? "gap-0" : "gap-1"}`}>
             {section.entries.map((entry) => (
               <NavLink
                 key={entry.id}
@@ -243,6 +257,7 @@ function GroupedSections({
                 onNavigate={onNavigate}
                 compact={compact}
                 pendingApprovalCount={pendingApprovalCount}
+                shortcutNumber={shortcutNumberById?.get(entry.id)}
               />
             ))}
           </div>
@@ -273,6 +288,7 @@ export function ShellNavigation({
   desktopOpen?: boolean;
   pendingApprovalCount?: number;
 }) {
+  const router = useRouter();
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [activeRoleKeys, setActiveRoleKeys] = useState<readonly string[]>([]);
   const [isMoreOpen, setMoreOpen] = useState(false);
@@ -310,6 +326,37 @@ export function ShellNavigation({
   const activeId = resolveNavigationActiveId(currentPath, resolveActiveRouteId(currentPath));
   const sections = groupRoutesForSidebar(presented);
   const roleLabel = roleDisplayLabel(activeRoleKeys);
+  const shortcutEntries = presented;
+  const shortcutNumberById = new Map(
+    shortcutEntries.map((entry, index) => [entry.id, index + 1] as const),
+  );
+
+  useEffect(() => {
+    function handleShortcut(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      const tagName = target?.tagName.toLowerCase();
+      if (
+        target?.isContentEditable ||
+        tagName === "input" ||
+        tagName === "textarea" ||
+        tagName === "select"
+      ) {
+        return;
+      }
+      if (!event.ctrlKey || event.metaKey) return;
+      const number = Number(event.key);
+      if (!Number.isInteger(number) || number < 0 || number > 9) return;
+      const index = event.shiftKey ? number + 9 : number === 0 ? 9 : number - 1;
+      const entry = shortcutEntries[index];
+      if (!entry) return;
+      event.preventDefault();
+      router.push(entry.path);
+      onCloseMobileNav?.();
+    }
+
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, [onCloseMobileNav, router, shortcutEntries]);
 
   const primaryFloorEntries = presented.slice(0, 4);
 
@@ -361,7 +408,7 @@ export function ShellNavigation({
         data-testid="desktop-sidebar"
         aria-label="Primary navigation"
         aria-hidden={!desktopOpen}
-        className={`hidden flex-col overflow-hidden bg-surface lg:fixed lg:bottom-3 lg:left-3 lg:top-3 lg:z-40 lg:w-[286px] lg:rounded-lg lg:border lg:border-border lg:shadow-elevation-2 ${
+        className={`hidden h-[calc(100vh-1.5rem)] flex-col overflow-hidden bg-surface lg:fixed lg:bottom-3 lg:left-3 lg:top-3 lg:z-40 lg:w-[286px] lg:rounded-2xl lg:border lg:border-border lg:shadow-elevation-2 ${
           desktopOpen ? "lg:flex" : "lg:hidden"
         }`}
       >
@@ -374,7 +421,7 @@ export function ShellNavigation({
           Skip to content
         </a>
 
-        <div className="relative border-b border-border bg-background px-4 py-4">
+        <div className="relative border-b border-border bg-background px-4 py-2.5">
           <div aria-hidden="true" className="absolute inset-y-0 left-0 w-1 bg-primary" />
           <div className="flex items-center gap-3">
             <span className="flex h-11 w-11 items-center justify-center rounded-md border border-border bg-surface shadow-elevation-1">
@@ -382,16 +429,15 @@ export function ShellNavigation({
             </span>
             <div className="min-w-0">
               <p className="truncate font-heading text-title-lg font-bold tracking-tight text-text-primary">Dyna-Serv WIMS</p>
-              <p className="mt-0.5 flex items-center gap-1.5 font-label text-mono-sm font-bold uppercase tracking-[0.12em] text-text-secondary"><Warehouse size={13} aria-hidden="true" />Warehouse operations</p>
             </div>
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-3 py-1.5">
-          <GroupedSections sections={sections} activeId={activeId} tier={tier} compact pendingApprovalCount={pendingApprovalCount} />
+        <div className="min-h-0 flex-1 overflow-hidden px-3 py-0.5">
+          <GroupedSections sections={sections} activeId={activeId} tier={tier} compact pendingApprovalCount={pendingApprovalCount} shortcutNumberById={shortcutNumberById} />
         </div>
 
-        <div className="border-t border-border bg-background p-3">
+        <div className="border-t border-border bg-background p-2">
           <div className="flex items-center gap-3 rounded-md border border-border bg-surface p-2.5 shadow-elevation-1">
             <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-navy font-heading text-label font-bold text-surface">
               {initials(displayName)}

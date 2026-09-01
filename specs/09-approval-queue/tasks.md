@@ -1,7 +1,7 @@
 # Approval Queue — Implementation Plan
 
 Status: Approved
-Updated: 2026-08-05
+Updated: 2026-08-30 (Approved soft-delete monitoring amendment)
 
 ## Implementation gate
 
@@ -97,6 +97,7 @@ Testing: Unit filtering/presentation tests; Playwright list/detail/decision/acce
 - [ ] Show stale/expired/revoked/consumed states and prevent invalid decision attempts.
 - [ ] Provide safe loading, empty, forbidden, not-found, error, and retry states.
 - [ ] Verify mobile/narrow-screen usability, keyboard focus, accessible status semantics, and no color-only meaning.
+- [x] Add the approved expired-request soft archive flow: Open/Deleted tabs, expired-only Delete action, read-only Deleted detail, and View action. *(Approved 2026-08-30; archive preserves request/decision history.)*
 
 ### 7. Integrate FIFO override and future workflows
 

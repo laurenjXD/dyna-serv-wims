@@ -69,6 +69,9 @@ export const approvalRequests = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
+    // Soft archive only; request and decision history remain durable.
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    deletedByUserId: uuid("deleted_by_user_id"),
   },
   (table) => ({
     reasonMinLength: check(

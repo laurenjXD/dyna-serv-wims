@@ -509,7 +509,7 @@ describe("ShellChrome (design.md §4, requirements.md R5.1/R5.5)", () => {
 describe("ShellChrome account controls (design.md §4 AccountControl, requirements.md R5.1)", () => {
   it(
     "does not render email, Organization scope, or Sign Out in the persistent header row by default " +
-      "(header-decrowding: these now live inside the account dropdown, closed by default)",
+    "(header-decrowding: these now live inside the account dropdown, closed by default)",
     async () => {
       vi.mocked(resolveShellUserDisplay).mockResolvedValueOnce({
         displayName: "Jane Doe",
@@ -677,7 +677,7 @@ describe("ShellChrome account controls — Organization scope (design.md §4 Acc
 
   it(
     "renders no organization-scope text inside the opened account dropdown when the resolved session has no " +
-      "Organization scope (global-scoped internal staff — regression guard, R2.1 task-owner design decision)",
+    "Organization scope (global-scoped internal staff — regression guard, R2.1 task-owner design decision)",
     async () => {
       vi.mocked(resolveShellUserDisplay).mockResolvedValueOnce({
         displayName: "Jane Doe",
@@ -961,12 +961,12 @@ describe("ShellChrome notification bell (specs/14-notifications-and-alerts R3.1,
 // present, an actual SVG). Today ShellChrome.tsx's `lg:hidden` mobile
 // header block (lines 196-201) renders a text `<span aria-hidden="true">
 // DS</span>` initials badge as a placeholder, not a real asset. This RED
-// test targets that block: it must render a real <img> element referencing
+// test targets that block: it must render a real image element referencing
 // the real asset, AND the literal placeholder text "DS" must no longer be
 // present anywhere in the rendered header.
 // -----------------------------------------------------------------------
 describe("ShellChrome mobile header logo (requirements.md R4.1, tasks.md §4 real letter-mark logo asset)", () => {
-  it("renders a real <img> logo asset referencing /logo.svg in the mobile header, not the placeholder 'DS' text badge (R4.1)", () => {
+  it("renders a real logo asset referencing /logo.svg in the mobile header, not the placeholder 'DS' text badge (R4.1)", () => {
     render(
       <ShellChrome>
         <div>page</div>
@@ -974,7 +974,7 @@ describe("ShellChrome mobile header logo (requirements.md R4.1, tasks.md §4 rea
     );
 
     // EXPECTED FAILURE (RED): ShellChrome currently renders only a text
-    // <span aria-hidden="true">DS</span> placeholder badge here -- no <img>
+    // <span aria-hidden="true">DS</span> placeholder badge here -- no image
     // element exists at all today, so this query finds nothing.
     const logo = screen.getByRole("img", { name: /dyna-serv wims/i });
     expect(logo).toBeInTheDocument();

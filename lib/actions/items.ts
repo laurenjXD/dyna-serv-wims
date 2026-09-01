@@ -169,6 +169,7 @@ export async function createItem(
         isActive: data.isActive ?? true,
         buyingPrice: data.buyingPrice ?? undefined,
         sellingPrice: data.sellingPrice ?? undefined,
+        vmiMovementCategory: data.vmiMovementCategory ?? undefined,
       })
       .returning({ id: items.id });
 
@@ -334,6 +335,7 @@ export async function updateItem(
         isActive: data.isActive ?? true,
         buyingPrice: data.buyingPrice ?? undefined,
         sellingPrice: data.sellingPrice ?? undefined,
+        vmiMovementCategory: data.vmiMovementCategory ?? undefined,
       })
       .where(eq(items.id, id))
       .returning({ id: items.id });

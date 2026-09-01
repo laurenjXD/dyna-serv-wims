@@ -11,112 +11,21 @@
 // Offline: approval queue operations are Tier 2 — online only, never cached.
 
 import Link from "next/link";
-import { CheckCircle2, Clock } from "lucide-react";
+import { redirect } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
-import { listPendingApprovalRequests } from "@/lib/db/queries/approvals";
+import { listApprovalQueueRequests, listPendingApprovalRequests } from "@/lib/db/queries/approvals";
+import { archiveExpiredApprovalRequest } from "@/lib/actions/approvals";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 20;
 
-// ─── Status badge helpers ─────────────────────────────────────────────────────
-// Tokens sourced from tailwind.config.ts — no raw hex values.
-// brand-design-system.md §1.3:
-//   pending  → status-pending (amber)
-//   approved → status-available (green)
-//   rejected/expired/cancelled → status-held (red)
-//   consumed → status-neutral
-
-type ApprovalStatus =
-  | "pending"
-  | "approved"
-  | "rejected"
-  | "expired"
-  | "cancelled"
-  | "consumed";
-
-const STATUS_LABELS: Record<ApprovalStatus, string> = {
-  pending: "PENDING",
-  approved: "APPROVED",
-  rejected: "REJECTED",
-  expired: "EXPIRED",
-  cancelled: "CANCELLED",
-  consumed: "CONSUMED",
-};
-
-const STATUS_CLASSES: Record<ApprovalStatus, string> = {
-  pending: "bg-status-pending/10 text-status-pending",
-  approved: "bg-status-available/10 text-status-available",
-  rejected: "bg-status-held/10 text-status-held",
-  expired: "bg-status-held/10 text-status-held",
-  cancelled: "bg-status-held/10 text-status-held",
-  consumed: "bg-status-neutral/10 text-status-neutral",
-};
-
-type ApprovalType = "fifo_override";
-
-const TYPE_LABELS: Record<ApprovalType, string> = {
-  fifo_override: "FIFO Override",
-};
-
-// Reason category labels — tasks.md §1 resolved categories.
-const REASON_CATEGORY_LABELS: Record<string, string> = {
-  customer_preference: "Customer Preference",
-  lot_condition: "Lot Condition",
-  partial_lot: "Partial Lot",
-  other: "Other",
-};
-
-// ─── Time helpers (server-side, computed at render time) ──────────────────────
-
-/** Returns a human-readable relative age: "just now", "5m ago", "2h ago", "3d ago". */
-function relativeTime(date: Date, now: Date = new Date()): string {
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60_000);
-  if (diffMins < 1) return "just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays}d ago`;
-}
-
-/** Returns expiry countdown: "expired", "expires in 5m", "expires in 18h". */
-function expiryCountdown(expiryAt: Date, now: Date = new Date()): string {
-  const diffMs = expiryAt.getTime() - now.getTime();
-  if (diffMs <= 0) return "expired";
-  const diffMins = Math.floor(diffMs / 60_000);
-  if (diffMins < 60) return `expires in ${diffMins}m`;
-  const diffHours = Math.floor(diffMins / 60);
-  return `expires in ${diffHours}h`;
-}
-
-// ─── Snapshot helpers ─────────────────────────────────────────────────────────
-// FifoOverrideSnapshot shape per design.md §3 — JSONB so we guard narrowly.
-
-function getSnapshotItemLotRef(snapshot: unknown): string {
-  if (!snapshot || typeof snapshot !== "object") return "—";
-  const s = snapshot as Record<string, unknown>;
-  const itemCode = typeof s.item_code === "string" ? s.item_code : null;
-  const lotNumber = typeof s.lot_number === "string" ? s.lot_number : null;
-  if (itemCode && lotNumber) return `${itemCode} / ${lotNumber}`;
-  if (itemCode) return itemCode;
-  if (lotNumber) return lotNumber;
-  return "—";
-}
-
-/** Returns the reason category chip label from snapshot.reason or request.reason. */
-function getReasonCategoryLabel(reason: string | undefined | null): string {
-  if (!reason) return "—";
-  return REASON_CATEGORY_LABELS[reason] ?? reason;
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 interface PageProps {
-  searchParams: Promise<{ status?: string; type?: string; sort?: string; page?: string }>;
+  searchParams: Promise<{ status?: string; type?: string; page?: string; tab?: string; error?: string; q?: string }>;
 }
 
 import { ApprovalsFilterableTable } from "./_components/ApprovalsFilterableTable";
@@ -125,6 +34,9 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
   const {
     type: typeFilter,
     page: pageParam,
+    tab: tabParam,
+    error: actionError,
+    q: searchQuery,
   } = await searchParams;
 
   const resolver = await createPageResolver();
@@ -147,6 +59,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
     );
   }
 
+  const showDeleted = tabParam === "deleted";
   const currentPage = Math.max(1, Number(pageParam ?? "1") || 1);
   const offset = (currentPage - 1) * PAGE_SIZE;
 
@@ -154,11 +67,41 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
   const approvalType =
     typeFilter && typeFilter !== "all" ? typeFilter : undefined;
 
-  const { rows, total } = await listPendingApprovalRequests(db, {
-    limit: PAGE_SIZE,
-    offset,
-    approvalType,
-  });
+  let rows;
+  let total;
+  try {
+    ({ rows, total } = await listApprovalQueueRequests(db, {
+      limit: PAGE_SIZE,
+      offset,
+      approvalType,
+      deleted: showDeleted,
+    }));
+  } catch {
+    // Keep the Open queue available while a deployment is waiting for the
+    // soft-archive migration. Archived remains intentionally unavailable until
+    // its durable columns exist rather than pretending the archive is empty.
+    if (showDeleted) throw new Error("Archived approvals are not available until the database migration is applied.");
+    ({ rows, total } = await listPendingApprovalRequests(db, {
+      limit: PAGE_SIZE,
+      offset,
+      approvalType,
+    }));
+  }
+
+  async function handleArchive(formData: FormData) {
+    "use server";
+    const requestId = String(formData.get("requestId") ?? "");
+    let result;
+    try {
+      result = await archiveExpiredApprovalRequest(await createPageResolver(), requestId);
+    } catch {
+      redirect("/approvals?error=Archive%20could%20not%20be%20completed.%20Please%20try%20again.");
+    }
+    if (result.ok) {
+      redirect("/approvals?tab=deleted");
+    }
+    redirect(`/approvals?error=${encodeURIComponent(result.error)}`);
+  }
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
@@ -167,12 +110,24 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
       {/* Page header — text-headline-xl Fira Sans Bold per brand-design-system.md §2 */}
       <div>
         <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
-          Approval Queue
+          {showDeleted ? "Archived Approvals" : "Approval Queue"}
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">
-          Pending FIFO override requests awaiting supervisor review.
+          {showDeleted ? "Expired requests retained for audit monitoring." : "Review FIFO override requests and clear expired work safely."}
         </p>
       </div>
+
+      <nav aria-label="Approval views" className="mt-6 flex gap-1 border-b border-outline-variant/30">
+        <Link href={`/approvals${typeFilter ? `?type=${typeFilter}` : ""}`} className={`inline-flex h-11 items-center border-b-2 px-4 font-label text-label font-bold ${!showDeleted ? "border-brand-navy text-brand-navy" : "border-transparent text-text-grey hover:text-on-surface"}`}>Open</Link>
+        <Link href={`/approvals?tab=deleted${typeFilter ? `&type=${typeFilter}` : ""}`} className={`inline-flex h-11 items-center border-b-2 px-4 font-label text-label font-bold ${showDeleted ? "border-brand-navy text-brand-navy" : "border-transparent text-text-grey hover:text-on-surface"}`}>Archived</Link>
+      </nav>
+
+      {actionError && (
+        <div role="alert" className="mt-4 rounded-xl border border-status-held/30 bg-status-held/10 px-4 py-3 font-body text-body-sm text-text-grey">
+          <span className="font-label text-label font-bold text-status-held">Archive could not be completed. </span>
+          {actionError}
+        </div>
+      )}
 
       <div role="status" className="mt-6 flex items-start gap-3 rounded border border-status-held/30 bg-status-held/10 px-4 py-4">
         <span className="font-heading text-body-lg text-status-held" aria-hidden="true">⚖</span>
@@ -180,7 +135,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
       </div>
 
       <div className="mt-6">
-        <ApprovalsFilterableTable rows={rows} />
+      <ApprovalsFilterableTable rows={rows} showDeleted={showDeleted} archiveAction={handleArchive} initialSearch={searchQuery} />
       </div>
 
       {/* Pagination controls */}
@@ -194,6 +149,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
               <Link
                 href={`/approvals?${new URLSearchParams({
                   ...(typeFilter ? { type: typeFilter } : {}),
+                  ...(showDeleted ? { tab: "deleted" } : {}),
                   page: String(currentPage - 1),
                 })}`}
                 className="inline-flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"

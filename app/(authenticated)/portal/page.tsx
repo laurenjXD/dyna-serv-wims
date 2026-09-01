@@ -25,7 +25,7 @@
 // scope resolution and fails safe (renders nothing) when no scope exists.
 
 import Link from "next/link";
-import { Package, ListChecks, FileText } from "lucide-react";
+import { Package, ListChecks, FileText, Receipt } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { partyScopeMatchesFlow } from "@/lib/rbac/session";
 import { resolveActivePartyScope } from "@/lib/portal/resolve-party-scope";
@@ -156,12 +156,9 @@ export default async function PortalPage() {
         </div>
       </div>
 
-      {/* ── Navigation cards — 2×2 grid ───────────────────────────────────────
-          requirements.md R1: party user can only see surfaces for their
-          assigned capabilities. Locked cards shown for missing capabilities.
-          brand-design-system.md §9: office cards, Level 1 elevation. */}
+      {/* ── Navigation cards ──────────────────────────────────────────────── */}
       <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_260px]">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <NavCard
           href="/portal/inventory"
           icon={<Package size={28} aria-hidden="true" />}
@@ -182,6 +179,13 @@ export default async function PortalPage() {
           label="Portal Documents"
           description="Pick lists and acknowledgement receipts"
           locked={!hasDocumentsRead}
+        />
+        <NavCard
+          href={`/billing-pricing/soa/${partyScope.partyId.slice(0, 8)}?partyId=${partyScope.partyId}`}
+          icon={<Receipt size={28} aria-hidden="true" />}
+          label="Billing & Statements"
+          description="Monthly statement of account"
+          locked={false}
         />
       </div>
       <aside className="rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">

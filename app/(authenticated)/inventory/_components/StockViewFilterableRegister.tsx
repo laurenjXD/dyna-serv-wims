@@ -326,10 +326,10 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
               {/* Rows */}
               {filteredAndSortedItems.map((item) => (
                 <details key={item.itemId} className="group border-t border-outline-variant/30">
-                  <summary className="grid cursor-pointer list-none grid-cols-[1.15fr_1.8fr_1.5fr_1.35fr_1.55fr_1.55fr_0.8fr_0.9fr_0.95fr_1fr_1fr] gap-4 px-5 py-4 font-body text-body-md text-on-surface outline-none transition-colors hover:bg-[#F7F9FF] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy [&::-webkit-details-marker]:hidden">
-                    <span className="flex min-w-0 items-center gap-3 font-heading font-bold">
+                  <summary className="grid cursor-pointer list-none grid-cols-[1.15fr_1.8fr_1.5fr_1.35fr_1.55fr_1.55fr_0.8fr_0.9fr_0.95fr_1fr_1fr] gap-3 px-4 py-3 font-body text-body-sm text-on-surface outline-none transition-colors hover:bg-[#F7F9FF] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy [&::-webkit-details-marker]:hidden">
+                    <span className="flex min-w-0 items-center gap-2 font-heading font-bold">
                       <ChevronRight
-                        size={21}
+                        size={18}
                         aria-hidden="true"
                         className="shrink-0 text-text-grey transition-transform group-open:rotate-90"
                       />
@@ -411,7 +411,7 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
 
 function InventoryItemDetails({ item }: { item: GroupedItem }) {
   return (
-    <div className="border-t border-outline-variant/20 bg-[#F8FAFF] px-4 py-4 sm:px-6">
+    <div className="border-t border-outline-variant/20 bg-[#F8FAFF] px-4 py-3 sm:px-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p className="font-body text-body-sm text-text-grey">
           Lots are shown in {item.isPerishable ? "FEFO" : "FIFO"} order.
@@ -432,9 +432,9 @@ function InventoryItemDetails({ item }: { item: GroupedItem }) {
         {item.lots.map((lot) => (
           <details
             key={lot.lotId}
-            className="group rounded-lg border border-outline-variant/30 bg-surface-white shadow-elevation-1"
+            className="group w-full max-w-[340px] rounded-lg border border-outline-variant/30 bg-surface-white shadow-elevation-1"
           >
-            <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 outline-none transition-colors hover:bg-surface-light-grey/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy [&::-webkit-details-marker]:hidden">
+            <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 px-3 py-1.5 outline-none transition-colors hover:bg-surface-light-grey/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy [&::-webkit-details-marker]:hidden">
               <span className="flex min-w-0 items-center gap-2.5">
                 <ChevronDown
                   size={17}

@@ -167,15 +167,6 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     group: "Reports",
   },
   {
-    id: "notifications",
-    path: "/notifications",
-    surface: "shared",
-    capability: "notifications.read",
-    featureSpecs: ["14-notifications-and-alerts"],
-    launchStatus: "launch",
-    group: "Main",
-  },
-  {
     id: "profile",
     path: "/profile",
     surface: "shared",

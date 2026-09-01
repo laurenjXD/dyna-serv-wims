@@ -87,10 +87,13 @@ type SortDirection = "asc" | "desc";
 
 interface ApprovalsFilterableTableProps {
   rows: ApprovalRequestRow[];
+  showDeleted?: boolean;
+  archiveAction?: (formData: FormData) => void | Promise<void>;
+  initialSearch?: string;
 }
 
-export function ApprovalsFilterableTable({ rows }: ApprovalsFilterableTableProps) {
-  const [searchQuery, setSearchQuery] = useState("");
+export function ApprovalsFilterableTable({ rows, showDeleted = false, archiveAction, initialSearch = "" }: ApprovalsFilterableTableProps) {
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [selectedReason, setSelectedReason] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("createdAt");
@@ -110,12 +113,13 @@ export function ApprovalsFilterableTable({ rows }: ApprovalsFilterableTableProps
   const filteredAndSorted = useMemo(() => {
     return rows
       .filter((req) => {
-        if (selectedStatus !== "all" && req.status !== selectedStatus) return false;
+        const effectiveStatus = req.status === "pending" && req.expiryAt.getTime() <= Date.now() ? "expired" : req.status;
+        if (selectedStatus !== "all" && effectiveStatus !== selectedStatus) return false;
         if (selectedReason !== "all" && req.reason !== selectedReason) return false;
         if (!searchQuery.trim()) return true;
         const q = searchQuery.toLowerCase().trim();
         const itemLot = getSnapshotItemLotRef(req.targetSnapshot);
-        const corpus = `${req.approvalType} ${req.requesterUserId} ${itemLot} ${req.reason ?? ""} ${req.status}`.toLowerCase();
+        const corpus = `${req.approvalType} ${req.requesterUserId} ${itemLot} ${req.reason ?? ""} ${effectiveStatus}`.toLowerCase();
         return corpus.includes(q);
       })
       .sort((a, b) => {
@@ -309,7 +313,7 @@ export function ApprovalsFilterableTable({ rows }: ApprovalsFilterableTableProps
               </thead>
               <tbody className="divide-y divide-outline-variant/30">
                 {filteredAndSorted.map((req) => {
-                  const status = req.status as ApprovalStatus;
+                  const status = (req.status === "pending" && req.expiryAt.getTime() <= now.getTime() ? "expired" : req.status) as ApprovalStatus;
                   const itemLotRef = getSnapshotItemLotRef(req.targetSnapshot);
                   const reasonLabel = getReasonCategoryLabel(req.reason);
                   const age = relativeTime(req.createdAt, now);
@@ -322,7 +326,7 @@ export function ApprovalsFilterableTable({ rows }: ApprovalsFilterableTableProps
                         {req.approvalType.replace(/_/g, " ")}
                       </td>
                       <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                        {req.requesterUserId}
+                        <span title={req.requesterUserId}>{req.requesterDisplayName ?? req.requesterUserId}</span>
                       </td>
                       <td className="px-4 py-3 font-mono text-mono-md text-on-surface font-bold">
                         {itemLotRef}
@@ -353,12 +357,19 @@ export function ApprovalsFilterableTable({ rows }: ApprovalsFilterableTableProps
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <Link
-                          href={`/approvals/${req.id}`}
-                          className="inline-flex h-11 items-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90"
-                        >
-                          Review
-                        </Link>
+                        <div className="flex justify-end gap-2">
+                          <Link href={`/approvals/${req.id}`} className="inline-flex h-11 items-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90">
+                            {showDeleted ? "View" : "Review"}
+                          </Link>
+                          {!showDeleted && status === "expired" && archiveAction && (
+                            <form action={archiveAction}>
+                              <input type="hidden" name="requestId" value={req.id} />
+                              <button type="submit" className="inline-flex h-11 items-center rounded border border-status-held/40 px-4 font-label text-label font-bold text-status-held hover:bg-status-held/10">
+                                Archive
+                              </button>
+                            </form>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

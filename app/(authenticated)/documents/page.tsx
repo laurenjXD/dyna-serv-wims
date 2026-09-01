@@ -130,6 +130,7 @@ interface PageProps {
     party?: string;
     from?: string;
     to?: string;
+    q?: string;
   }>;
 }
 
@@ -141,7 +142,7 @@ import {
 } from "./_components/DocumentsFilterableTable";
 
 export default async function DocumentsPage({ searchParams }: PageProps) {
-  const { tab: tabParam } = await searchParams;
+  const { tab: tabParam, q: searchQuery } = await searchParams;
 
   const resolver = await createPageResolver();
   const permResult = await requirePermission(resolver, "documents.read");
@@ -211,9 +212,9 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
       {/* Tab content */}
       <div className="mt-5">
         {activeTab === "pick-lists" ? (
-          <FilterablePickListsTable rows={MOCK_PICK_LISTS as MockPickListDoc[]} />
+          <FilterablePickListsTable rows={MOCK_PICK_LISTS as MockPickListDoc[]} initialSearch={searchQuery} />
         ) : (
-          <FilterableARTable rows={MOCK_ACKNOWLEDGEMENT_RECEIPTS as MockARDoc[]} />
+          <FilterableARTable rows={MOCK_ACKNOWLEDGEMENT_RECEIPTS as MockARDoc[]} initialSearch={searchQuery} />
         )}
       </div>
     </div>

@@ -6,8 +6,13 @@
 //   specs/09-approval-queue/design.md §3 (Persistence model), §5 (State machine)
 //   specs/09-approval-queue/tasks.md Testing Matrix §Unit tests
 
-import { eq, and, asc, desc, sql } from "drizzle-orm";
+import { eq, and, asc, desc, sql, isNull, isNotNull } from "drizzle-orm";
+import { aliasedTable } from "drizzle-orm/alias";
 import { approvalRequests, approvalDecisions } from "@/lib/db/schema/approvals";
+import { userProfiles } from "@/lib/db/schema/rbac";
+
+const requesterProfiles = aliasedTable(userProfiles, "approval_requester_profiles");
+const reviewerProfiles = aliasedTable(userProfiles, "approval_reviewer_profiles");
 
 // Minimal structural type that both the real Drizzle db instance and test
 // stubs satisfy.
@@ -27,7 +32,10 @@ export type ApprovalRequestRow = {
   expiryAt: Date;
   createdAt: Date;
   requesterUserId: string;
+  requesterDisplayName?: string | null;
   targetSnapshot: unknown;
+  deletedAt?: Date | null;
+  deletedByUserId?: string | null;
 };
 
 export type RequesterFifoOverrideRow = {
@@ -77,6 +85,7 @@ export async function listRequesterFifoOverrides(
 export type ApprovalDecisionRow = {
   id: string;
   reviewerUserId: string;
+  reviewerDisplayName?: string | null;
   outcome: string;
   reason: string | null;
   decidedAt: Date;
@@ -100,9 +109,13 @@ type RawJoinRow = {
   expiryAt: Date;
   createdAt: Date;
   requesterUserId: string;
+  requesterDisplayName: string | null;
   targetSnapshot: unknown;
+  deletedAt: Date | null;
+  deletedByUserId: string | null;
   decisionId: string | null;
   reviewerUserId: string | null;
+  reviewerDisplayName: string | null;
   outcome: string | null;
   decisionReason: string | null;
   decidedAt: Date | null;
@@ -143,9 +156,11 @@ export async function listPendingApprovalRequests(
       expiryAt: approvalRequests.expiryAt,
       createdAt: approvalRequests.createdAt,
       requesterUserId: approvalRequests.requesterUserId,
+      requesterDisplayName: requesterProfiles.displayName,
       targetSnapshot: approvalRequests.targetSnapshot,
     })
     .from(approvalRequests)
+    .leftJoin(requesterProfiles, eq(requesterProfiles.id, approvalRequests.requesterUserId))
     .where(whereClause)
     .orderBy(asc(approvalRequests.createdAt))
     .limit(opts.limit)
@@ -157,6 +172,45 @@ export async function listPendingApprovalRequests(
     .from(approvalRequests)
     .where(whereClause);
 
+  return { rows, total: Number(countRow.count) };
+}
+
+/** Open or soft-archived approval queue rows for the reviewer UI. */
+export async function listApprovalQueueRequests(
+  db: DbLike,
+  opts: { limit: number; offset: number; approvalType?: string; deleted?: boolean },
+): Promise<{ rows: ApprovalRequestRow[]; total: number }> {
+  const deletedClause = opts.deleted
+    ? isNotNull(approvalRequests.deletedAt)
+    : isNull(approvalRequests.deletedAt);
+  const statusClause = opts.deleted
+    ? isNotNull(approvalRequests.deletedAt)
+    : eq(approvalRequests.status, "pending");
+  const whereClause = opts.approvalType
+    ? and(deletedClause, statusClause, eq(approvalRequests.approvalType, opts.approvalType))
+    : and(deletedClause, statusClause);
+  const rows = (await db
+    .select({
+      id: approvalRequests.id,
+      requestNumber: approvalRequests.requestNumber,
+      approvalType: approvalRequests.approvalType,
+      reason: approvalRequests.reason,
+      status: approvalRequests.status,
+      expiryAt: approvalRequests.expiryAt,
+      createdAt: approvalRequests.createdAt,
+      requesterUserId: approvalRequests.requesterUserId,
+      requesterDisplayName: requesterProfiles.displayName,
+      targetSnapshot: approvalRequests.targetSnapshot,
+      deletedAt: approvalRequests.deletedAt,
+      deletedByUserId: approvalRequests.deletedByUserId,
+    })
+    .from(approvalRequests)
+    .leftJoin(requesterProfiles, eq(requesterProfiles.id, approvalRequests.requesterUserId))
+    .where(whereClause)
+    .orderBy(asc(approvalRequests.createdAt))
+    .limit(opts.limit)
+    .offset(opts.offset)) as ApprovalRequestRow[];
+  const [countRow] = await db.select({ count: sql<string>`count(*)` }).from(approvalRequests).where(whereClause);
   return { rows, total: Number(countRow.count) };
 }
 
@@ -185,21 +239,27 @@ export async function getApprovalRequest(
       expiryAt: approvalRequests.expiryAt,
       createdAt: approvalRequests.createdAt,
       requesterUserId: approvalRequests.requesterUserId,
+      requesterDisplayName: requesterProfiles.displayName,
       targetSnapshot: approvalRequests.targetSnapshot,
+      deletedAt: approvalRequests.deletedAt,
+      deletedByUserId: approvalRequests.deletedByUserId,
       // Decision fields — aliased to avoid collision with request fields
       decisionId: approvalDecisions.id,
       reviewerUserId: approvalDecisions.reviewerUserId,
+      reviewerDisplayName: reviewerProfiles.displayName,
       outcome: approvalDecisions.outcome,
       decisionReason: approvalDecisions.reason,
       decidedAt: approvalDecisions.decidedAt,
       consumedAt: approvalDecisions.consumedAt,
     })
     .from(approvalRequests)
+    .leftJoin(requesterProfiles, eq(requesterProfiles.id, approvalRequests.requesterUserId))
     .where(eq(approvalRequests.id, requestId))
     .leftJoin(
       approvalDecisions,
       eq(approvalDecisions.requestId, approvalRequests.id),
-    );
+    )
+    .leftJoin(reviewerProfiles, eq(reviewerProfiles.id, approvalDecisions.reviewerUserId));
 
   if (joinedRows.length === 0) return null;
 
@@ -212,6 +272,7 @@ export async function getApprovalRequest(
     .map((row) => ({
       id: row.decisionId!,
       reviewerUserId: row.reviewerUserId!,
+      reviewerDisplayName: row.reviewerDisplayName,
       outcome: row.outcome!,
       reason: row.decisionReason,
       decidedAt: row.decidedAt!,
@@ -227,7 +288,10 @@ export async function getApprovalRequest(
     expiryAt: first.expiryAt,
     createdAt: first.createdAt,
     requesterUserId: first.requesterUserId,
+    requesterDisplayName: first.requesterDisplayName,
     targetSnapshot: first.targetSnapshot,
+    deletedAt: first.deletedAt,
+    deletedByUserId: first.deletedByUserId,
     decisions,
   };
 }

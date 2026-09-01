@@ -243,17 +243,11 @@ export default async function ItemDetailPage({ params }: PageProps) {
         </div>
       )}
 
-      {/* Reference prices — clearly labelled as non-final */}
+      {/* Pricing */}
       <div className="mt-6 rounded-xl bg-surface-white shadow-elevation-1 p-6">
         <h2 className="font-heading font-semibold text-data-display text-on-surface">
-          Reference Prices
+          Pricing
         </h2>
-        <div className="mt-2 rounded border border-status-pending/30 bg-status-pending/5 px-4 py-2">
-          <p className="font-body text-body-sm text-on-surface">
-            Reference values only — do not determine any Trading document price
-            or VMI billing amount.
-          </p>
-        </div>
         <dl className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
             <dt className="font-label text-label text-text-grey">
