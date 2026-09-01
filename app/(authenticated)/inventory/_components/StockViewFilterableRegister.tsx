@@ -3,9 +3,10 @@
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import type { ColumnDef, Row } from "@tanstack/react-table";
-import { ChevronDown, Package, Layers, ArrowRight } from "lucide-react";
+import { ChevronDown, Package, Layers, ArrowRight, PackagePlus } from "lucide-react";
 import { DataTable } from "@/components/tables/DataTable";
 import { LotQrViewer } from "./LotQrViewer";
+import { OpeningStockImportModal } from "./OpeningStockImportModal";
 
 export type AggregatedLot = {
   lotId: string;
@@ -46,6 +47,7 @@ export type GroupedItem = {
 
 export function StockViewFilterableRegister({ items }: { items: GroupedItem[] }) {
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const columns = useMemo<ColumnDef<GroupedItem, unknown>[]>(() => [
     // 1. SKU / Item Code (Priority Identifier)
@@ -313,11 +315,20 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
         enableGrouping={false}
         initialSorting={[{ id: "totalQty", desc: true }]}
         emptyMessage="No inventory items match the specified filters."
+        actions={
+          <button
+            type="button"
+            onClick={() => setIsImportModalOpen(true)}
+            className="inline-flex h-8 items-center gap-1.5 rounded-xl bg-brand-navy px-3 text-xs font-bold text-surface-white hover:bg-brand-navy/90 transition-all shadow-sm shrink-0"
+          >
+            <PackagePlus size={14} /> Import Opening Stock
+          </button>
+        }
         renderMobileCard={({ row }: { row: Row<GroupedItem> }) => {
           const item = row.original;
           const isLotsExpanded = expandedItemId === item.itemId;
           const modelVal = String(item.inventoryModel || "TRADING").toUpperCase();
-          const totalCalculated = item.totalQty ?? (item.spq * item.boxesOnHand) ?? 0;
+          const totalCalculated = item.totalQty ?? (item.spq * item.boxesOnHand);
 
           return (
             <div className="rounded-2xl border border-slate-200 bg-surface-white p-3.5 shadow-sm space-y-2.5">
@@ -434,7 +445,7 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
       {expandedItemId && (() => {
         const expandedItem = items.find((i) => i.itemId === expandedItemId);
         if (!expandedItem) return null;
-        const totalCalculated = expandedItem.totalQty ?? (expandedItem.spq * expandedItem.boxesOnHand) ?? 0;
+        const totalCalculated = expandedItem.totalQty ?? (expandedItem.spq * expandedItem.boxesOnHand);
         return (
           <div className="hidden md:block rounded-2xl border border-blue-200 bg-[#F8FAFF] p-4 shadow-elevation-1">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-blue-100 pb-2">
@@ -507,6 +518,16 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
           </div>
         );
       })()}
+
+      {/* Opening Stock Import Modal */}
+      {isImportModalOpen && (
+        <OpeningStockImportModal
+          onClose={() => setIsImportModalOpen(false)}
+          onSuccess={() => {
+            window.location.reload();
+          }}
+        />
+      )}
     </div>
   );
 }
