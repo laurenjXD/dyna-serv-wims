@@ -104,6 +104,7 @@ export interface DataTableProps<TData> {
   initialSorting?: SortingState;
   enableGlobalSearch?: boolean;
   renderRowSubComponent?: (props: { row: Row<TData> }) => ReactNode;
+  isRowExpanded?: (row: Row<TData>) => boolean;
   renderMobileCard?: (props: { row: Row<TData> }) => ReactNode;
   actions?: ReactNode;
   emptyMessage?: string;
@@ -121,6 +122,7 @@ export function DataTable<TData>({
   initialSorting = [],
   enableGlobalSearch = true,
   renderRowSubComponent,
+  isRowExpanded,
   renderMobileCard,
   actions,
   emptyMessage = "No records found matching current criteria.",
@@ -350,7 +352,7 @@ export function DataTable<TData>({
       {/* ── Desktop Data-Dense Table (md:block) ────────────────────────── */}
       <div className="hidden md:block overflow-hidden rounded-2xl border border-slate-200/80 bg-surface-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left text-xs">
+          <table className="w-full border-collapse text-left text-sm">
             {/* Header with Sorting & Google Sheets-Style Filter Popovers */}
             <thead>
               {table.getHeaderGroups().map((headerGroup) => (
@@ -363,7 +365,7 @@ export function DataTable<TData>({
                     return (
                       <th
                         key={header.id}
-                        className={`px-3 py-2.5 font-heading text-[11px] font-bold uppercase tracking-wider text-slate-700 whitespace-nowrap ${
+                        className={`px-3 py-3 font-heading text-sm font-bold uppercase tracking-wider text-slate-700 whitespace-nowrap ${
                           align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left"
                         }`}
                       >
@@ -384,11 +386,11 @@ export function DataTable<TData>({
                             >
                               <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
                               {isSorted === "asc" ? (
-                                <ArrowUp size={12} className="text-brand-navy font-bold shrink-0" />
+                                <ArrowUp size={14} className="text-brand-navy font-bold shrink-0" />
                               ) : isSorted === "desc" ? (
-                                <ArrowDown size={12} className="text-brand-navy font-bold shrink-0" />
+                                <ArrowDown size={14} className="text-brand-navy font-bold shrink-0" />
                               ) : header.column.getCanSort() ? (
-                                <ArrowUpDown size={11} className="opacity-30 shrink-0" />
+                                <ArrowUpDown size={13} className="opacity-30 shrink-0" />
                               ) : null}
                             </div>
 
@@ -411,7 +413,7 @@ export function DataTable<TData>({
                 <tr>
                   <td
                     colSpan={columns.length}
-                    className="px-4 py-12 text-center text-xs text-text-grey italic"
+                            className="px-4 py-12 text-center text-sm text-text-grey italic"
                   >
                     {emptyMessage}
                   </td>
@@ -433,7 +435,7 @@ export function DataTable<TData>({
                               ) : (
                                 <ChevronRight size={15} className="text-brand-navy" />
                               )}
-                              <span className="font-heading text-xs font-bold text-brand-navy">
+                              <span className="font-heading text-sm font-bold text-brand-navy">
                                 {row.groupingColumnId}: {row.groupingColumnId ? String(row.getValue(row.groupingColumnId)) : ""}
                               </span>
                               <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-brand-navy">
@@ -454,7 +456,7 @@ export function DataTable<TData>({
                           return (
                             <td
                               key={cell.id}
-                              className={`px-3 py-2 whitespace-nowrap text-xs ${
+                              className={`px-3 py-3 whitespace-nowrap text-sm ${
                                 align === "right"
                                   ? "text-right"
                                   : align === "center"
@@ -467,7 +469,7 @@ export function DataTable<TData>({
                           );
                         })}
                       </tr>
-                      {row.getIsExpanded() && renderRowSubComponent && (
+                      {(row.getIsExpanded() || isRowExpanded?.(row)) && renderRowSubComponent && (
                         <tr>
                           <td colSpan={row.getVisibleCells().length} className="p-0">
                             {renderRowSubComponent({ row })}
