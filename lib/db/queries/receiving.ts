@@ -38,6 +38,7 @@ export type WrrDocumentRow = {
   vendorPartyId: string;
   // Resolved vendor party name via join — null if vendor party not found (edge case).
   vendorPartyName: string | null;
+  commercialInvoiceNo?: string | null;
   stagedByUserId: string;
   createdAt: Date;
   confirmedAt: Date | null;
@@ -157,6 +158,7 @@ export async function listWrrDocuments(
       flowType: wrrDocuments.flowType,
       vendorPartyId: wrrDocuments.vendorPartyId,
       vendorPartyName: partiesTable.name,
+      commercialInvoiceNo: wrrDocuments.commercialInvoiceNo,
       stagedByUserId: wrrDocuments.stagedByUserId,
       createdAt: wrrDocuments.createdAt,
       confirmedAt: wrrDocuments.confirmedAt,

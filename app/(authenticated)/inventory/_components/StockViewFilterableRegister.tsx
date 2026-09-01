@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import type { ColumnDef, Row } from "@tanstack/react-table";
-import { ChevronDown, Package, Layers, ArrowRight, PackagePlus } from "lucide-react";
+import { ChevronDown, Package, Layers, ArrowRight, PackagePlus, Building2 } from "lucide-react";
 import { DataTable } from "@/components/tables/DataTable";
 import { LotQrViewer } from "./LotQrViewer";
 import { OpeningStockImportModal } from "./OpeningStockImportModal";
@@ -23,6 +23,7 @@ export type GroupedItem = {
   itemId: string;
   itemCode: string;
   itemName: string;
+  organizationName?: string | null;
   categoryName: string | null;
   subcategoryName: string | null;
   inventoryModel: string;
@@ -93,6 +94,27 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
                 {item.customerName}
               </p>
             )}
+          </div>
+        );
+      },
+    },
+
+    // 3. Organization (Search / Filter)
+    {
+      accessorKey: "organizationName",
+      header: "Organization",
+      meta: {
+        filterVariant: "text",
+        filterLabel: "Organization",
+      },
+      cell: (info) => {
+        const val = String(info.getValue() || "—");
+        return (
+          <div className="flex items-center gap-1.5 max-w-[170px]">
+            <Building2 size={13} className="text-slate-400 shrink-0" />
+            <span className="font-medium text-xs text-slate-800 truncate" title={val}>
+              {val}
+            </span>
           </div>
         );
       },

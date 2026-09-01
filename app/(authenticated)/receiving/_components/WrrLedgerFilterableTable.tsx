@@ -3,7 +3,7 @@
 import React, { useMemo } from "react";
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
-import { FileSpreadsheet, FileText, ArrowRight } from "lucide-react";
+import { FileSpreadsheet, FileText, ArrowRight, Clock, Building2, CheckCircle2 } from "lucide-react";
 import { DataTable } from "@/components/tables/DataTable";
 import type { WrrDocumentRow } from "@/lib/db/queries/receiving";
 
@@ -21,29 +21,29 @@ export function WrrLedgerFilterableTable({ rows }: { rows: WrrDocumentRow[] }) {
       header: "WRR Number",
       meta: {
         filterVariant: "text",
-        filterLabel: "WRR #",
+        filterLabel: "WRR Number",
       },
       cell: (info) => {
         const row = info.row.original;
         return (
           <Link
             href={`/receiving/${row.id}`}
-            className="font-mono font-bold text-brand-navy flex items-center gap-1.5 hover:underline"
+            className="group inline-flex items-center gap-1.5 font-mono text-xs font-bold text-brand-navy hover:text-blue-700"
           >
-            <FileText size={14} className="text-brand-navy/60" />
-            {String(info.getValue())}
+            <FileText size={14} className="text-brand-navy/60 group-hover:text-blue-600 transition-colors" />
+            <span className="group-hover:underline">{String(info.getValue())}</span>
           </Link>
         );
       },
     },
 
-    // 2. Flow Type
+    // 2. Inventory Model / Flow Type
     {
       accessorKey: "flowType",
-      header: "Flow Type",
+      header: "Inventory Model",
       meta: {
         filterVariant: "multi-select",
-        filterLabel: "Flow Type",
+        filterLabel: "Model / Flow",
         filterOptions: [
           { label: "VMI (Consignment)", value: "vmi" },
           { label: "Trading (Owned)", value: "trading" },
@@ -54,11 +54,11 @@ export function WrrLedgerFilterableTable({ rows }: { rows: WrrDocumentRow[] }) {
         const flow = String(info.getValue()).toLowerCase();
         return (
           <span
-            className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
               flow === "vmi"
                 ? "bg-blue-50 text-blue-800 border border-blue-200"
                 : flow === "trading"
-                ? "bg-slate-100 text-slate-900 border border-slate-300"
+                ? "bg-slate-100 text-slate-800 border border-slate-300"
                 : "bg-amber-50 text-amber-800 border border-amber-200"
             }`}
           >
@@ -78,51 +78,69 @@ export function WrrLedgerFilterableTable({ rows }: { rows: WrrDocumentRow[] }) {
       },
       cell: () => (
         <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          <CheckCircle2 size={12} className="text-emerald-600" />
           Confirmed
         </span>
       ),
     },
 
-    // 4. Vendor / Supplier
+    // 4. Organization
     {
       accessorKey: "vendorPartyName",
-      header: "Supplier / Vendor",
+      header: "Organization",
       meta: {
         filterVariant: "text",
-        filterLabel: "Supplier",
+        filterLabel: "Organization",
       },
       cell: (info) => (
-        <span className="font-medium text-slate-800">{String(info.getValue() || "—")}</span>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Building2 size={13} className="text-slate-400 shrink-0" />
+          <span className="font-medium text-xs text-slate-800 truncate">
+            {String(info.getValue() || "—")}
+          </span>
+        </div>
       ),
     },
 
-    // 5. Reference / BL #
+    // 5. Commercial Invoice / Reference
     {
-      accessorKey: "referenceNumber",
-      header: "Invoice / BL #",
+      accessorKey: "commercialInvoiceNo",
+      header: "Invoice / CIPL Ref",
       meta: {
         filterVariant: "text",
         filterLabel: "Invoice / Ref #",
       },
       cell: (info) => (
-        <span className="font-mono text-xs text-text-grey">{String(info.getValue() || "—")}</span>
+        <span className="font-mono text-xs text-slate-600">
+          {String(info.getValue() || "—")}
+        </span>
       ),
     },
 
-    // 6. Confirmed Date
+    // 6. Confirmed / Received Timestamp (Date Range Filter)
     {
       accessorKey: "createdAt",
-      header: "Received / Created",
+      header: "Received / Confirmed",
       meta: {
         filterVariant: "date-range",
         filterLabel: "Date Range",
       },
-      cell: (info) => (
-        <span className="font-mono text-xs text-slate-600">
-          {new Date(info.getValue() as string | Date).toLocaleDateString()}
-        </span>
-      ),
+      cell: (info) => {
+        const val = info.getValue();
+        if (!val) return <span className="font-mono text-xs text-text-grey">—</span>;
+        const d = new Date(val as string | Date);
+        return (
+          <div>
+            <div className="font-mono text-xs font-bold text-slate-800">
+              {d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+            </div>
+            <div className="text-[11px] text-text-grey font-mono flex items-center gap-1 mt-0.5">
+              <Clock size={10} className="text-text-grey/70" />
+              {d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            </div>
+          </div>
+        );
+      },
     },
 
     // 7. Action
@@ -137,9 +155,9 @@ export function WrrLedgerFilterableTable({ rows }: { rows: WrrDocumentRow[] }) {
         return (
           <Link
             href={`/receiving/${row.id}`}
-            className="inline-flex items-center gap-1 rounded bg-brand-navy px-2.5 py-1 text-[11px] font-bold text-surface-white hover:bg-brand-navy/90 transition-colors shadow-sm"
+            className="inline-flex items-center gap-1 rounded-lg bg-brand-navy px-3 py-1.5 text-xs font-bold text-surface-white hover:bg-brand-navy/90 transition-colors shadow-sm"
           >
-            View <ArrowRight size={11} />
+            View WRR <ArrowRight size={12} />
           </Link>
         );
       },
@@ -151,7 +169,7 @@ export function WrrLedgerFilterableTable({ rows }: { rows: WrrDocumentRow[] }) {
       columns={columns}
       data={rows}
       title="Incoming Transaction Ledger"
-      subtitle="Immutable registry of confirmed warehouse receipts with per-field Google Sheets filtering, flow types, and date windowing"
+      subtitle="Immutable audit registry of confirmed warehouse receipts with multi-faceted filtering, flow types, and date ranges."
       icon={<FileSpreadsheet size={18} />}
       initialSorting={[{ id: "createdAt", desc: true }]}
       emptyMessage="No confirmed incoming receipts found."

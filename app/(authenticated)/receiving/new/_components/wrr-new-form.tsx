@@ -93,20 +93,31 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
 
   return (
     <form action={action} className="mt-6 space-y-6">
-      {/* Client-generated WRR id — see the useState(() => crypto.randomUUID())
-          comment above. Always sent, whether or not a CIPL was attached. */}
+      {/* Client-generated WRR id */}
       <input type="hidden" name="id" value={wrrId} />
 
-      {/* Header section — office card, Level 1 elevation */}
-      <div className="rounded-xl bg-surface-white shadow-elevation-1 p-6">
-        <h2 className="font-heading font-semibold text-data-display text-on-surface">
-          Header Information
-        </h2>
+      {/* Header section — clean card container */}
+      <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-6 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div>
+            <h2 className="font-heading text-title-md font-bold text-on-surface">
+              Header Information
+            </h2>
+            <p className="font-body text-body-xs text-text-grey">
+              General commercial shipping references and source organization.
+            </p>
+          </div>
+          {selectedVendor?.defaultInventoryModel && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-brand-navy border border-blue-200">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
+              Role: {selectedVendor.roles?.join(" / ") ?? "Assigned"}
+            </span>
+          )}
+        </div>
 
-        {/* Full-width on mobile, two-column grid on desktop per task requirements */}
+        {/* 2-column balanced grid */}
         <div className="mt-4 grid gap-4 md:grid-cols-2">
-          {/* Vendor Organization — dropdown of active vendor/supplier parties,
-              resolves to their party id (their code is shown for identification). */}
+          {/* Vendor Organization — dropdown of active vendor/supplier parties */}
           <div>
             <label
               htmlFor="vendorPartyId"
@@ -134,7 +145,7 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
                   setVendorPartyId("");
                   setIsVendorOpen(true);
                 }}
-                className="h-11 w-full rounded border border-outline-variant/30 bg-surface-white pl-9 pr-9 font-body text-body-md text-on-surface disabled:cursor-not-allowed disabled:bg-surface-light-grey focus:border-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
+                className="h-11 w-full rounded-lg border border-slate-200 bg-surface-white pl-9 pr-9 font-body text-body-md text-on-surface disabled:cursor-not-allowed disabled:bg-surface-light-grey focus:border-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
               />
               <ChevronDown
                 className={`pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-grey transition-transform ${isVendorOpen ? "rotate-180" : ""}`}
@@ -149,11 +160,22 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
                         setVendorPartyId(party.id);
                         setVendorSearch(`${party.code} — ${party.name}`);
                         setIsVendorOpen(false);
+                        // Auto-assign inventory model based on organization role
+                        if (party.defaultInventoryModel) {
+                          setFlowType(party.defaultInventoryModel);
+                        }
                       }}
-                      className="flex w-full items-center rounded-lg px-3 py-2 text-left font-body text-body-sm text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                      className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left font-body text-body-sm text-on-surface hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-navy"
                     >
-                      <span className="font-mono font-bold text-brand-navy">{party.code}</span>
-                      <span className="ml-2 truncate">— {party.name}</span>
+                      <div className="min-w-0">
+                        <span className="font-mono font-bold text-brand-navy">{party.code}</span>
+                        <span className="ml-2 truncate text-slate-700">— {party.name}</span>
+                      </div>
+                      {party.defaultInventoryModel && (
+                        <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-700 border border-slate-200 shrink-0">
+                          {party.defaultInventoryModel}
+                        </span>
+                      )}
                     </button>
                   )) : (
                     <p className="px-3 py-3 font-body text-body-sm text-text-grey">No matching vendor organizations.</p>
@@ -184,30 +206,36 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
             )}
           </div>
 
-          {/* Inventory Model — required. Drives WrrLineItems' conditional
-              Item Code label below. */}
+          {/* Inventory Model — auto-assigned conditionally from party role */}
           <div>
-            <label
-              htmlFor="flowType"
-              className="block font-label text-label text-text-grey"
-            >
-              Inventory Model{" "}
-              <span aria-hidden="true" className="text-brand-red">
-                *
-              </span>
-              <span className="sr-only">(required)</span>
-            </label>
+            <div className="flex items-center justify-between">
+              <label
+                htmlFor="flowType"
+                className="block font-label text-label text-text-grey"
+              >
+                Inventory Model{" "}
+                <span aria-hidden="true" className="text-brand-red">
+                  *
+                </span>
+                <span className="sr-only">(required)</span>
+              </label>
+              {selectedVendor?.defaultInventoryModel && flowType === selectedVendor.defaultInventoryModel && (
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                  Auto-assigned from role
+                </span>
+              )}
+            </div>
             <select
               id="flowType"
               name="flowType"
               required
               value={flowType}
               onChange={(e) => setFlowType(e.target.value)}
-              className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
             >
               <option value="">Select inventory model…</option>
-              <option value="vmi">VMI</option>
-              <option value="trading">Trading</option>
+              <option value="vmi">VMI (Consignment)</option>
+              <option value="trading">Trading (Owned)</option>
               <option value="supplies">Supplies</option>
             </select>
           </div>
@@ -225,14 +253,11 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
               name="commercialInvoiceNo"
               type="text"
               placeholder="CIPL / commercial invoice reference"
-              className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
             />
           </div>
 
-          {/* CIPL / Packing List Document — real Supabase Storage upload,
-              not a pasted URL (2026-08-19 user request). Uploads
-              immediately on selection to the private `cipl-documents`
-              bucket, ahead of the WRR row itself. */}
+          {/* CIPL / Packing List Document */}
           <div>
             <label
               htmlFor="ciplFile"
@@ -240,45 +265,46 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
             >
               CIPL / Packing List Document
             </label>
-            <div className="mt-1 flex items-center gap-3">
+            <div className="mt-1 flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => setShowImportModal(true)}
-                className="inline-flex h-11 items-center gap-2 rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+                className="inline-flex h-11 items-center gap-2 rounded-lg bg-brand-navy px-4 font-label text-label text-surface-white hover:bg-brand-navy/90 transition-colors shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
               >
                 <FileSpreadsheet className="h-4 w-4" />
                 Auto-Parse Excel / PDF CIPL
               </button>
-              <span className="font-body text-body-xs text-text-grey">or upload manually:</span>
+              <label
+                htmlFor="ciplFile"
+                className="inline-flex h-11 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-4 font-label text-label text-slate-700 hover:bg-slate-100 transition-colors"
+              >
+                {ciplFileName ? "Change File" : "Choose File"}
+              </label>
             </div>
             <input
               id="ciplFile"
               type="file"
               accept={CIPL_ACCEPT}
               onChange={handleCiplFileChange}
-              className="mt-2 block w-full font-body text-body-sm text-on-surface file:mr-3 file:h-11 file:cursor-pointer file:rounded file:border-0 file:bg-surface-variant file:px-4 file:font-label file:text-label file:text-on-surface hover:file:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+              className="sr-only"
             />
-            {/* The uploaded object's Storage path — this is what actually
-                gets submitted as ciplFileUrl, never the raw <input type="file">
-                itself (file inputs can't be set programmatically, and the
-                upload already completed by the time the main form submits). */}
             <input type="hidden" name="ciplFileUrl" value={ciplPath ?? ""} />
             {ciplStatus === "uploading" && (
-              <p className="mt-1 font-body text-body-sm text-text-grey">
+              <p className="mt-1.5 font-body text-body-sm text-text-grey">
                 Uploading {ciplFileName}…
               </p>
             )}
             {ciplStatus === "done" && (
-              <p className="mt-1 font-body text-body-sm text-status-available">
-                Uploaded: {ciplFileName}
+              <p className="mt-1.5 font-body text-body-sm text-status-available">
+                ✓ Attached: {ciplFileName}
               </p>
             )}
             {ciplStatus === "error" && (
-              <p role="alert" className="mt-1 font-body text-body-sm text-brand-red">
+              <p role="alert" className="mt-1.5 font-body text-body-sm text-brand-red">
                 {ciplError}
               </p>
             )}
-            <p className="mt-1 font-body text-body-sm text-text-grey">
+            <p className="mt-1 font-body text-[11px] text-text-grey">
               Excel (.xlsx, .csv), PDF, PNG, or JPEG — up to 10MB.
             </p>
 
@@ -292,7 +318,6 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
                     const ciplInput = document.getElementById("commercialInvoiceNo") as HTMLInputElement | null;
                     if (ciplInput) ciplInput.value = header.ciplReference;
                   }
-                  // Automatically populate lines in WrrLineItems
                   setImportedLines(lines);
                   setCiplStatus("done");
                   setCiplFileName("Parsed Document Lines Applied");
@@ -314,7 +339,7 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
               name="ipNumber"
               type="text"
               placeholder="Import permit number"
-              className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
             />
           </div>
 
@@ -331,41 +356,39 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
               name="mawbMblNumber"
               type="text"
               placeholder="Master Air Waybill / Bill of Lading number"
-              className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
             />
           </div>
         </div>
       </div>
 
-      {/* Incoming Shipment Details section */}
-      <div className="border-t border-outline-variant/30 pt-6">
-        <h2 className="font-heading font-semibold text-data-display text-on-surface">
-          Incoming Shipment Details
-        </h2>
-        <p className="mt-1 font-body text-body-sm text-text-grey">
-          At least one line is required. Each line requires a lot number,
-          expected quantity, unit CBM, UOM, and disposition. The putaway
-          location for store-disposition lines is selected on the floor at
-          scan/store time, not here.
-        </p>
-        <div className="mt-4">
+      {/* Incoming Shipment Details section — clean matching card container */}
+      <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-6 shadow-sm space-y-4">
+        <div className="border-b border-slate-100 pb-3">
+          <h2 className="font-heading text-title-md font-bold text-on-surface">
+            Incoming Shipment Details
+          </h2>
+          <p className="mt-1 font-body text-body-sm text-text-grey">
+            At least one line is required. Specify item, shipping lot, expected quantity, unit CBM, and UOM.
+          </p>
+        </div>
+        <div>
           <WrrLineItems flowType={flowType} vendorPartyId={vendorPartyId} itemOptions={itemOptions} importedLines={importedLines} />
         </div>
       </div>
 
       {/* Form actions */}
-      <div className="flex flex-wrap gap-3">
-        {/* Primary CTA — brand-red per brand-design-system.md §9, h-11 office touch target */}
+      <div className="flex flex-wrap items-center gap-3 pt-2">
         <button
           type="submit"
           disabled={vendorParties.length === 0 || ciplStatus === "uploading"}
-          className="flex h-11 items-center justify-center rounded bg-primary px-6 font-label text-label text-surface-white hover:bg-primary-hover motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:opacity-50"
+          className="inline-flex h-11 items-center justify-center rounded-xl bg-brand-navy px-7 font-label text-label font-bold text-surface-white shadow-sm hover:bg-brand-navy/90 motion-safe:active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:opacity-50"
         >
-          {ciplStatus === "uploading" ? "Uploading CIPL…" : "Create WRR"}
+          {ciplStatus === "uploading" ? "Uploading CIPL…" : "Create Staged WRR"}
         </button>
         <Link
           href="/receiving"
-          className="flex h-11 items-center justify-center rounded border border-outline-variant/30 px-6 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+          className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-surface-white px-6 font-label text-label text-slate-700 hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
         >
           Cancel
         </Link>

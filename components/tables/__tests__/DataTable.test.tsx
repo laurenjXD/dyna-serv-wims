@@ -81,6 +81,7 @@ describe("MasterInventoryTable & Universal DataTable", () => {
     render(<MasterInventoryTable data={mockInventoryData} />);
     expect(screen.getAllByText("Item Code")[0]).toBeInTheDocument();
     expect(screen.getAllByText("Item Name")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("Organization")[0]).toBeInTheDocument();
     expect(screen.getAllByText("Model")[0]).toBeInTheDocument();
     expect(screen.getAllByText("Category")[0]).toBeInTheDocument();
     expect(screen.getAllByText("Subcategory")[0]).toBeInTheDocument();

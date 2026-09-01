@@ -2,13 +2,14 @@
 
 import React, { useMemo } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Package } from "lucide-react";
+import { Package, Building2 } from "lucide-react";
 import { DataTable } from "./DataTable";
 
 export type MasterInventoryRow = {
   id: string;
   itemCode: string;
   itemName: string;
+  organizationName?: string;
   inventoryModel: "Trading" | "VMI" | "Consignment" | "Internal" | "Supplies";
   categoryName: string;
   subcategoryName: string;
@@ -49,6 +50,24 @@ export function MasterInventoryTable({
         filterLabel: "Item Name",
       },
       cell: (info) => <span className="font-medium text-slate-800">{String(info.getValue())}</span>,
+    },
+
+    // 3. Organization (Text Search / Filter)
+    {
+      accessorKey: "organizationName",
+      header: "Organization",
+      meta: {
+        filterVariant: "text",
+        filterLabel: "Organization",
+      },
+      cell: (info) => (
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Building2 size={13} className="text-slate-400 shrink-0" />
+          <span className="font-medium text-xs text-slate-800 truncate">
+            {String(info.getValue() || "—")}
+          </span>
+        </div>
+      ),
     },
 
     // 3. Inventory Model (Categorical Multi-select: Trading, VMI, Consignment, Internal)

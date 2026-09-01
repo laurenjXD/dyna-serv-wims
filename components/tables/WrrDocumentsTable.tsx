@@ -114,29 +114,16 @@ export function WrrDocumentsTable({
       },
     },
 
-    // 4. SUPPLIER / VENDOR
+    // 4. ORGANIZATION
     {
       accessorKey: "vendorPartyName",
-      header: "Supplier / Vendor",
+      header: "Organization",
       meta: {
         filterVariant: "text",
-        filterLabel: "Supplier",
+        filterLabel: "Organization",
       },
       cell: (info) => (
         <span className="text-slate-800 font-medium">{String(info.getValue() || "—")}</span>
-      ),
-    },
-
-    // 5. INVOICE / BL #
-    {
-      accessorKey: "referenceNumber",
-      header: "Invoice / BL #",
-      meta: {
-        filterVariant: "text",
-        filterLabel: "Invoice / BL #",
-      },
-      cell: (info) => (
-        <span className="font-mono text-slate-500">{String(info.getValue() || "—")}</span>
       ),
     },
 
