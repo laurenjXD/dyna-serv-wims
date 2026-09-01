@@ -28,6 +28,8 @@ import {
   Search,
   X,
   Database,
+  Filter,
+  SlidersHorizontal,
 } from "lucide-react";
 import { ColumnFilter } from "./ColumnFilter";
 
@@ -102,6 +104,7 @@ export interface DataTableProps<TData> {
   initialSorting?: SortingState;
   enableGlobalSearch?: boolean;
   renderRowSubComponent?: (props: { row: Row<TData> }) => ReactNode;
+  renderMobileCard?: (props: { row: Row<TData> }) => ReactNode;
   actions?: ReactNode;
   emptyMessage?: string;
   className?: string;
@@ -118,6 +121,7 @@ export function DataTable<TData>({
   initialSorting = [],
   enableGlobalSearch = true,
   renderRowSubComponent,
+  renderMobileCard,
   actions,
   emptyMessage = "No records found matching current criteria.",
   className = "",
@@ -128,6 +132,7 @@ export function DataTable<TData>({
   const [globalFilter, setGlobalFilter] = useState<string>("");
   const [grouping, setGrouping] = useState<GroupingState>(initialGrouping);
   const [expanded, setExpanded] = useState<ExpandedState>(true);
+  const [mobileFilterDrawerOpen, setMobileFilterDrawerOpen] = useState(false);
 
   // Auto-attach appropriate filterFn based on meta.filterVariant if not explicitly defined
   const enrichedColumns = useMemo(() => {
@@ -187,7 +192,6 @@ export function DataTable<TData>({
     } else if (initialGrouping.length > 0) {
       setGrouping(initialGrouping);
     } else {
-      // Default to grouping first two grouping-eligible columns
       const groupableCols = columns
         .filter((c) => c.enableGrouping !== false && "accessorKey" in c)
         .map((c) => String((c as { accessorKey?: string }).accessorKey ?? ""));
@@ -202,25 +206,29 @@ export function DataTable<TData>({
     setGlobalFilter("");
   };
 
+  const filterableHeaders = table
+    .getHeaderGroups()[0]
+    ?.headers.filter((header) => header.column.getCanFilter());
+
   return (
-    <div className={`space-y-3.5 ${className}`}>
+    <div className={`space-y-3 ${className}`}>
       {/* ── Bento-Box Header Toolbar (Soft Cream Theme + Glassmorphism) ── */}
-      <div className="rounded-2xl border border-white/60 bg-[#F9F9F6]/90 p-4 shadow-elevation-1 backdrop-blur-md space-y-3">
+      <div className="rounded-2xl border border-slate-200/80 bg-[#F9F9F6] p-3.5 shadow-sm space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           {/* Title & Metadata */}
           <div className="flex items-center gap-3">
             {icon ? (
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-navy text-surface-white shadow-sm">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-navy text-surface-white shadow-sm shrink-0">
                 {icon}
               </div>
             ) : (
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-navy text-surface-white shadow-sm">
-                <Database size={18} />
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-navy text-surface-white shadow-sm shrink-0">
+                <Database size={16} />
               </div>
             )}
             <div>
-              {title && <h2 className="font-heading text-base font-bold text-brand-navy">{title}</h2>}
-              {subtitle && <p className="font-body text-xs text-text-grey">{subtitle}</p>}
+              {title && <h2 className="font-heading text-sm font-bold text-brand-navy leading-tight">{title}</h2>}
+              {subtitle && <p className="font-body text-[11px] text-text-grey mt-0.5">{subtitle}</p>}
             </div>
           </div>
 
@@ -228,25 +236,37 @@ export function DataTable<TData>({
           <div className="flex flex-wrap items-center gap-2">
             {/* Global Omni-Search */}
             {enableGlobalSearch && (
-              <div className="relative min-w-[220px]">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-grey" />
+              <div className="relative min-w-[180px] sm:min-w-[220px] grow sm:grow-0">
+                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-grey" />
                 <input
                   type="text"
                   value={globalFilter ?? ""}
                   onChange={(e) => setGlobalFilter(e.target.value)}
-                  placeholder="Quick search all fields…"
-                  className="h-9 w-full rounded-xl border border-slate-200 bg-surface-white pl-8 pr-8 text-xs text-on-surface placeholder:text-text-grey shadow-sm focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
+                  placeholder="Quick search records…"
+                  className="h-8 w-full rounded-xl border border-slate-200 bg-surface-white pl-8 pr-7 text-xs text-on-surface placeholder:text-text-grey shadow-sm focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
                 />
                 {globalFilter && (
                   <button
                     type="button"
                     onClick={() => setGlobalFilter("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-grey hover:text-on-surface"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-text-grey hover:text-on-surface"
                   >
-                    <X size={13} />
+                    <X size={12} />
                   </button>
                 )}
               </div>
+            )}
+
+            {/* Mobile Filter Sheet Trigger (Visible only on Mobile) */}
+            {filterableHeaders && filterableHeaders.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setMobileFilterDrawerOpen(!mobileFilterDrawerOpen)}
+                className="md:hidden inline-flex h-8 items-center gap-1.5 rounded-xl border border-slate-200 bg-surface-white px-2.5 text-xs font-bold text-slate-800 shadow-sm"
+              >
+                <SlidersHorizontal size={13} />
+                Filters {columnFilters.length > 0 && `(${columnFilters.length})`}
+              </button>
             )}
 
             {/* Grouping Toggle */}
@@ -254,14 +274,14 @@ export function DataTable<TData>({
               <button
                 type="button"
                 onClick={toggleGrouping}
-                className={`inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-xs font-bold transition-all shadow-sm ${
+                className={`inline-flex h-8 items-center gap-1.5 rounded-xl border px-2.5 text-xs font-bold transition-all shadow-sm ${
                   isGrouped
                     ? "bg-brand-navy border-brand-navy text-surface-white"
                     : "bg-surface-white border-slate-200 text-slate-800 hover:bg-slate-50"
                 }`}
               >
-                <Layers size={14} />
-                {isGrouped ? "Ungroup" : "Group Columns"}
+                <Layers size={13} />
+                {isGrouped ? "Ungroup" : "Group"}
               </button>
             )}
 
@@ -273,23 +293,53 @@ export function DataTable<TData>({
               <button
                 type="button"
                 onClick={clearAllFilters}
-                className="inline-flex h-9 items-center gap-1 rounded-xl bg-rose-50 border border-rose-200 px-3 text-xs font-bold text-rose-700 hover:bg-rose-100 transition-colors shadow-sm"
+                className="inline-flex h-8 items-center gap-1 rounded-xl bg-rose-50 border border-rose-200 px-2.5 text-xs font-bold text-rose-700 hover:bg-rose-100 transition-colors shadow-sm"
               >
-                <RotateCcw size={12} /> Reset ({columnFilters.length + (globalFilter ? 1 : 0)})
+                <RotateCcw size={11} /> Reset ({columnFilters.length + (globalFilter ? 1 : 0)})
               </button>
             )}
           </div>
         </div>
 
+        {/* Mobile Filter Drawer Dropdown (when toggled on mobile screens) */}
+        {mobileFilterDrawerOpen && filterableHeaders && (
+          <div className="md:hidden rounded-xl border border-slate-200 bg-white p-3 space-y-3 shadow-inner">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <span className="text-xs font-bold text-brand-navy flex items-center gap-1.5">
+                <Filter size={13} /> Column Filters
+              </span>
+              <button
+                type="button"
+                onClick={() => setMobileFilterDrawerOpen(false)}
+                className="text-[11px] font-bold text-brand-navy hover:underline"
+              >
+                Done
+              </button>
+            </div>
+            <div className="grid grid-cols-1 gap-2">
+              {filterableHeaders.map((header) => {
+                const colHeader = header.column.columnDef.header;
+                const headerText = typeof colHeader === "string" ? colHeader : header.column.id;
+                return (
+                  <div key={header.id} className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50/60 p-2">
+                    <span className="text-xs font-semibold text-slate-800">{headerText}</span>
+                    <ColumnFilter column={header.column} table={table} />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Row count & Active status summary */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200/60 pt-2.5 text-xs text-text-grey">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200/60 pt-2 text-[11px] text-text-grey">
           <div className="flex items-center gap-2">
             <span>
               Showing <strong className="text-on-surface">{table.getRowModel().rows.length}</strong> of{" "}
               <strong className="text-on-surface">{data.length}</strong> records
             </span>
             {hasActiveFilters && (
-              <span className="rounded-full bg-blue-100/70 px-2 py-0.5 text-[10px] font-bold text-brand-navy">
+              <span className="rounded-full bg-blue-100/70 px-2 py-0.5 text-[9px] font-bold text-brand-navy uppercase tracking-wider">
                 Filtered
               </span>
             )}
@@ -297,14 +347,14 @@ export function DataTable<TData>({
         </div>
       </div>
 
-      {/* ── Main Bento-Box Table Container (Horizontally Scrollable) ──── */}
-      <div className="overflow-hidden rounded-2xl border border-white/80 bg-surface-white/95 shadow-elevation-1 backdrop-blur-md">
+      {/* ── Desktop Data-Dense Table (md:block) ────────────────────────── */}
+      <div className="hidden md:block overflow-hidden rounded-2xl border border-slate-200/80 bg-surface-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left text-xs">
             {/* Header with Sorting & Google Sheets-Style Filter Popovers */}
             <thead>
               {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id} className="border-b border-slate-200 bg-[#F2F5FB] select-none">
+                <tr key={headerGroup.id} className="border-b border-slate-200 bg-[#F4F6FB] select-none">
                   {headerGroup.headers.map((header) => {
                     const isSorted = header.column.getIsSorted();
                     const align = header.column.columnDef.meta?.align || "left";
@@ -313,7 +363,7 @@ export function DataTable<TData>({
                     return (
                       <th
                         key={header.id}
-                        className={`px-3.5 py-3 font-heading text-xs font-bold text-slate-700 whitespace-nowrap ${
+                        className={`px-3 py-2.5 font-heading text-[11px] font-bold uppercase tracking-wider text-slate-700 whitespace-nowrap ${
                           align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left"
                         }`}
                       >
@@ -334,11 +384,11 @@ export function DataTable<TData>({
                             >
                               <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
                               {isSorted === "asc" ? (
-                                <ArrowUp size={13} className="text-brand-navy font-bold" />
+                                <ArrowUp size={12} className="text-brand-navy font-bold shrink-0" />
                               ) : isSorted === "desc" ? (
-                                <ArrowDown size={13} className="text-brand-navy font-bold" />
+                                <ArrowDown size={12} className="text-brand-navy font-bold shrink-0" />
                               ) : header.column.getCanSort() ? (
-                                <ArrowUpDown size={12} className="opacity-30" />
+                                <ArrowUpDown size={11} className="opacity-30 shrink-0" />
                               ) : null}
                             </div>
 
@@ -369,20 +419,19 @@ export function DataTable<TData>({
               ) : (
                 table.getRowModel().rows.map((row) => {
                   if (row.getIsGrouped()) {
-                    // Grouped Header Row with Aggregated Sum
                     return (
                       <tr
                         key={row.id}
                         onClick={row.getToggleExpandedHandler()}
                         className="bg-[#EBF2FE]/80 hover:bg-[#E2ECFD] cursor-pointer transition-colors border-y border-blue-200 font-semibold"
                       >
-                        <td colSpan={columns.length} className="px-4 py-2.5">
+                        <td colSpan={columns.length} className="px-3.5 py-2">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               {row.getIsExpanded() ? (
-                                <ChevronDown size={17} className="text-brand-navy" />
+                                <ChevronDown size={15} className="text-brand-navy" />
                               ) : (
-                                <ChevronRight size={17} className="text-brand-navy" />
+                                <ChevronRight size={15} className="text-brand-navy" />
                               )}
                               <span className="font-heading text-xs font-bold text-brand-navy">
                                 {row.groupingColumnId}: {row.groupingColumnId ? String(row.getValue(row.groupingColumnId)) : ""}
@@ -405,7 +454,7 @@ export function DataTable<TData>({
                           return (
                             <td
                               key={cell.id}
-                              className={`px-3.5 py-2.5 whitespace-nowrap ${
+                              className={`px-3 py-2 whitespace-nowrap text-xs ${
                                 align === "right"
                                   ? "text-right"
                                   : align === "center"
@@ -418,7 +467,6 @@ export function DataTable<TData>({
                           );
                         })}
                       </tr>
-                      {/* Optional Expandable Sub-component / Details */}
                       {row.getIsExpanded() && renderRowSubComponent && (
                         <tr>
                           <td colSpan={row.getVisibleCells().length} className="p-0">
@@ -433,6 +481,78 @@ export function DataTable<TData>({
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* ── Mobile Floor-First Card List (block md:hidden) ─────────────── */}
+      <div className="block md:hidden space-y-2.5">
+        {table.getRowModel().rows.length === 0 ? (
+          <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-8 text-center text-xs text-text-grey italic">
+            {emptyMessage}
+          </div>
+        ) : (
+          table.getRowModel().rows.map((row) => {
+            if (renderMobileCard) {
+              return <React.Fragment key={row.id}>{renderMobileCard({ row })}</React.Fragment>;
+            }
+
+            // Default Floor Bento Card for any table
+            const cells = row.getVisibleCells();
+            const primaryCell = cells[0];
+            const actionCell = cells.find((c) => c.column.id === "actions");
+            const detailCells = cells.filter(
+              (c) => c.column.id !== primaryCell?.column.id && c.column.id !== "actions"
+            );
+
+            return (
+              <div
+                key={row.id}
+                className="rounded-2xl border border-slate-200/80 bg-surface-white p-3.5 shadow-sm hover:border-brand-navy/30 transition-all space-y-2.5"
+              >
+                {/* Mobile Card Header */}
+                <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                  <div className="min-w-0">
+                    <span className="text-[10px] uppercase font-bold text-text-grey block">
+                      {String(primaryCell?.column.columnDef.header || "Item")}
+                    </span>
+                    <div className="text-xs font-bold text-brand-navy truncate">
+                      {primaryCell && flexRender(primaryCell.column.columnDef.cell, primaryCell.getContext())}
+                    </div>
+                  </div>
+                  {actionCell && (
+                    <div className="shrink-0">
+                      {flexRender(actionCell.column.columnDef.cell, actionCell.getContext())}
+                    </div>
+                  )}
+                </div>
+
+                {/* Mobile Card Grid Details */}
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  {detailCells.map((cell) => {
+                    const colHeader = cell.column.columnDef.header;
+                    const label = typeof colHeader === "string" ? colHeader : cell.column.id;
+                    return (
+                      <div key={cell.id} className="min-w-0">
+                        <span className="text-[10px] text-text-grey font-medium block truncate">
+                          {label}
+                        </span>
+                        <div className="font-medium text-slate-800 truncate">
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Optional Expandable Details */}
+                {row.getIsExpanded() && renderRowSubComponent && (
+                  <div className="pt-2 border-t border-slate-100">
+                    {renderRowSubComponent({ row })}
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );

@@ -79,20 +79,20 @@ const mockLedgerData: TransactionLedgerRow[] = [
 describe("MasterInventoryTable & Universal DataTable", () => {
   it("renders table headers with Google Sheets-style filter trigger buttons", () => {
     render(<MasterInventoryTable data={mockInventoryData} />);
-    expect(screen.getByText("SKU / Code")).toBeInTheDocument();
-    expect(screen.getByText("Item Name")).toBeInTheDocument();
-    expect(screen.getByText("Model")).toBeInTheDocument();
-    expect(screen.getByText("Category")).toBeInTheDocument();
-    expect(screen.getByText("Subcategory")).toBeInTheDocument();
-    expect(screen.getByText("Status")).toBeInTheDocument();
-    expect(screen.getByText("Total Stock")).toBeInTheDocument();
-    expect(screen.getByText("Available")).toBeInTheDocument();
+    expect(screen.getAllByText("SKU / Code")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("Item Name")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("Model")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("Category")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("Subcategory")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("Status")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("Total Stock")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("Available")[0]).toBeInTheDocument();
   });
 
   it("renders rows and filters by text search on SKU", async () => {
     render(<MasterInventoryTable data={mockInventoryData} />);
-    expect(screen.getByText("TRD-PUMP-01")).toBeInTheDocument();
-    expect(screen.getByText("VMI-VALVE-02")).toBeInTheDocument();
+    expect(screen.getAllByText("TRD-PUMP-01")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("VMI-VALVE-02")[0]).toBeInTheDocument();
 
     // Open filter for SKU
     const filterBtn = screen.getByRole("button", { name: /Filter by SKU/i });
@@ -102,23 +102,23 @@ describe("MasterInventoryTable & Universal DataTable", () => {
     const input = screen.getByPlaceholderText(/Search SKU/i);
     fireEvent.change(input, { target: { value: "VALVE" } });
 
-    expect(screen.getByText("VMI-VALVE-02")).toBeInTheDocument();
+    expect(screen.getAllByText("VMI-VALVE-02")[0]).toBeInTheDocument();
     expect(screen.queryByText("TRD-PUMP-01")).not.toBeInTheDocument();
   });
 
   it("renders category and subcategory columns with item code priority", () => {
     render(<MasterInventoryTable data={mockInventoryData} />);
     expect(screen.getAllByText("Mechanical")[0]).toBeInTheDocument();
-    expect(screen.getByText("Pumps")).toBeInTheDocument();
-    expect(screen.getByText("TRD-PUMP-01")).toBeInTheDocument();
+    expect(screen.getAllByText("Pumps")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("TRD-PUMP-01")[0]).toBeInTheDocument();
   });
 });
 
 describe("TransactionLedgerTable", () => {
   it("renders transaction ledger records and variance exception indicators", () => {
     render(<TransactionLedgerTable data={mockLedgerData} />);
-    expect(screen.getByText("WRR-2026-0891")).toBeInTheDocument();
-    expect(screen.getByText("PL-2026-0042")).toBeInTheDocument();
-    expect(screen.getByText(/0 Match/i)).toBeInTheDocument();
+    expect(screen.getAllByText("WRR-2026-0891")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("PL-2026-0042")[0]).toBeInTheDocument();
+    expect(screen.getAllByText(/0 Match/i)[0]).toBeInTheDocument();
   });
 });

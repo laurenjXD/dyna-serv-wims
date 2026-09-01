@@ -2,8 +2,8 @@
 
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
-import type { ColumnDef } from "@tanstack/react-table";
-import { ChevronDown, Package, Layers } from "lucide-react";
+import type { ColumnDef, Row } from "@tanstack/react-table";
+import { ChevronDown, Package, Layers, ArrowRight } from "lucide-react";
 import { DataTable } from "@/components/tables/DataTable";
 import { LotQrViewer } from "./LotQrViewer";
 
@@ -291,14 +291,128 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
         enableGrouping={false}
         initialSorting={[{ id: "pcsOnHand", desc: true }]}
         emptyMessage="No inventory items match the specified filters."
+        renderMobileCard={({ row }: { row: Row<GroupedItem> }) => {
+          const item = row.original;
+          const isLotsExpanded = expandedItemId === item.itemId;
+          const modelVal = String(item.inventoryModel || "TRADING").toUpperCase();
+
+          return (
+            <div className="rounded-2xl border border-slate-200 bg-surface-white p-3.5 shadow-sm space-y-2.5">
+              {/* Header: SKU / Code + Pick CTA */}
+              <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-sm font-bold text-brand-navy">{item.itemCode}</span>
+                  {item.isPerishable && (
+                    <span className="rounded bg-rose-50 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 border border-rose-200 uppercase">
+                      FEFO
+                    </span>
+                  )}
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${
+                      modelVal === "VMI"
+                        ? "bg-blue-50 text-blue-800 border border-blue-200"
+                        : modelVal === "TRADING"
+                        ? "bg-slate-100 text-slate-800 border border-slate-300"
+                        : "bg-amber-50 text-amber-800 border border-amber-200"
+                    }`}
+                  >
+                    {modelVal}
+                  </span>
+                </div>
+                <Link
+                  href={`/inventory?tab=pick-lists&item=${item.itemCode}`}
+                  className="inline-flex h-8 items-center gap-1 rounded-xl bg-brand-navy px-3 text-xs font-bold text-surface-white shadow-sm hover:bg-brand-navy/90"
+                >
+                  Pick <ArrowRight size={12} />
+                </Link>
+              </div>
+
+              {/* Description & Category */}
+              <div>
+                <p className="text-xs font-semibold text-slate-900">{item.itemName}</p>
+                <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-text-grey mt-0.5">
+                  <span>{item.categoryName || "Uncategorized"}</span>
+                  {item.subcategoryName && (
+                    <>
+                      <span>·</span>
+                      <span>{item.subcategoryName}</span>
+                    </>
+                  )}
+                  {item.customerName && (
+                    <>
+                      <span>·</span>
+                      <span className="font-medium text-slate-700">{item.customerName}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Key Metrics Stats Grid */}
+              <div className="grid grid-cols-3 gap-2 rounded-xl bg-slate-50 p-2.5 border border-slate-100 text-center">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-text-grey block">Total In</span>
+                  <span className="font-mono text-xs font-semibold text-slate-700">
+                    {item.totalIn.toLocaleString()}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-text-grey block">Total Out</span>
+                  <span className="font-mono text-xs font-semibold text-slate-700">
+                    {item.totalOut.toLocaleString()}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-brand-navy block">On Hand</span>
+                  <span className="font-mono text-xs font-bold text-brand-navy">
+                    {item.pcsOnHand.toLocaleString()} <span className="text-[9px] font-normal">{item.uom}</span>
+                  </span>
+                </div>
+              </div>
+
+              {/* Lots & Location Drawer Trigger */}
+              <div className="flex items-center justify-between text-xs pt-1">
+                <span className="text-text-grey text-[11px] font-mono">
+                  Location: <strong className="text-slate-800">{item.locationLabels || "—"}</strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setExpandedItemId(isLotsExpanded ? null : item.itemId)}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-navy hover:underline"
+                >
+                  <Layers size={12} /> {item.lots.length} lot(s) {isLotsExpanded ? "▲" : "▼"}
+                </button>
+              </div>
+
+              {/* Mobile Expanded Lots View */}
+              {isLotsExpanded && (
+                <div className="mt-2 space-y-2 border-t border-slate-100 pt-2">
+                  {item.lots.map((lot) => (
+                    <div key={lot.lotId} className="rounded-lg border border-slate-200 bg-white p-2.5 space-y-1 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono font-bold text-brand-navy">{lot.lotNumber}</span>
+                        <span className="rounded bg-blue-50 px-1.5 py-0.2 text-[10px] font-bold text-brand-navy">
+                          {lot.availableQty.toLocaleString()} {item.uom}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-[11px] text-text-grey">
+                        <span>Location: {lot.locationLabels.join(", ") || "—"}</span>
+                        <span>Exp: {lot.expiryDate || "—"}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        }}
       />
 
-      {/* Lot Details Drawer when an item's lot link is clicked */}
+      {/* Desktop Lot Details Drawer when an item's lot link is clicked */}
       {expandedItemId && (() => {
         const expandedItem = items.find((i) => i.itemId === expandedItemId);
         if (!expandedItem) return null;
         return (
-          <div className="rounded-2xl border border-blue-200 bg-[#F8FAFF] p-4 shadow-elevation-1">
+          <div className="hidden md:block rounded-2xl border border-blue-200 bg-[#F8FAFF] p-4 shadow-elevation-1">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-blue-100 pb-2">
               <div className="text-xs text-slate-700">
                 <span>
