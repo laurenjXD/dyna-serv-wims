@@ -21,7 +21,7 @@ export function LotQrViewer({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`${compact ? "mt-3 h-10" : "mt-4 h-11"} inline-flex w-full items-center justify-center rounded border border-brand-navy/30 bg-surface-white px-3 font-label text-label font-bold text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy`}
+        className={`${compact ? "mt-2 h-8 px-2 text-xs" : "mt-4 h-11 px-3 font-label text-label"} inline-flex w-full items-center justify-center rounded border border-brand-navy/30 bg-surface-white font-bold text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy`}
       >
         View QR
       </button>

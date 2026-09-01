@@ -391,23 +391,23 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
                 </span>
                 <span className="font-mono text-sm font-bold text-brand-navy">Total Available: {total.toLocaleString()} {item.uom}</span>
               </div>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="grid justify-start gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                 {item.lots.map((lot) => (
-                  <details key={lot.lotId} className="group rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm">
-                    <summary className="flex cursor-pointer list-none items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
+                  <div key={lot.lotId} className="w-full max-w-[280px] rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+                    <div className="flex items-center justify-between gap-2">
                       <span className="flex min-w-0 items-center gap-1.5 font-mono text-sm font-bold text-slate-900">
-                        <ChevronDown size={14} className="shrink-0 text-text-grey transition-transform group-open:rotate-180" />
+                        <ChevronDown size={14} className="shrink-0 text-text-grey rotate-180" />
                         <span className="truncate" title={lot.lotNumber}>{lot.lotNumber}</span>
                       </span>
                       <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-bold text-brand-navy">{lot.availableQty.toLocaleString()} {item.uom}</span>
-                    </summary>
+                    </div>
                     <div className="mt-2 space-y-1 border-t border-slate-100 pt-2 text-xs">
                       <div className="flex justify-between gap-2 text-text-grey"><span>Location:</span><span className="font-mono font-semibold text-slate-800">{lot.locationLabels.join(", ") || "—"}</span></div>
                       <div className="flex justify-between gap-2 text-text-grey"><span>Expiry:</span><span className="font-mono text-slate-800">{lot.expiryDate || "Not dated"}</span></div>
                       <div className="flex justify-between gap-2 text-text-grey"><span>Status:</span><span className="font-semibold text-emerald-700 lowercase">{lot.lotStatus}</span></div>
                       <LotQrViewer lotId={lot.lotId} lotNumber={lot.lotNumber} itemCode={item.itemCode} compact />
                     </div>
-                  </details>
+                  </div>
                 ))}
               </div>
             </div>
