@@ -76,19 +76,41 @@ html:not([data-theme="dark"]) .inspection-page [class~="bg-white/15"] {
     @apply rounded-lg border border-border bg-surface font-body text-body-md text-text-primary shadow-sm outline-none placeholder:text-text-secondary/70 focus:border-primary focus:ring-2 focus:ring-primary/20;
   }
 
+  /*
+   * Standardized Table Typography & High-Legibility Rendering
+   */
+  table {
+    @apply border-collapse font-body text-sm text-text-primary;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  table thead th {
+    @apply font-heading text-xs font-bold uppercase tracking-wider text-slate-700 select-none;
+  }
+
+  table tbody td {
+    @apply font-body text-sm text-slate-800 leading-normal;
+  }
+
+  table :is(td, th) .font-mono {
+    @apply font-bold tracking-tight text-slate-900;
+  }
+
   main[data-surface="office"] table,
   main[data-surface="party"] table {
-    @apply overflow-hidden bg-surface;
+    @apply overflow-hidden bg-surface text-sm;
   }
 
   main[data-surface="office"] thead,
   main[data-surface="party"] thead {
-    @apply bg-background;
+    @apply bg-[#F4F6FB];
   }
 
   main[data-surface="office"] th,
   main[data-surface="party"] th {
-    @apply font-label text-label uppercase tracking-[0.06em] text-text-secondary;
+    @apply font-heading text-xs font-bold uppercase tracking-wider text-slate-700;
   }
 
   main[data-surface="office"] tbody tr,

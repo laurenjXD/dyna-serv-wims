@@ -73,7 +73,7 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
               <span className="truncate">{String(info.getValue())}</span>
             </button>
             {item.isPerishable && (
-              <span className="rounded bg-rose-50 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 border border-rose-200 uppercase tracking-wider">
+              <span className="rounded bg-rose-50 px-1.5 py-0.5 text-xs font-bold text-rose-700 border border-rose-200 uppercase tracking-wider">
                 FEFO
               </span>
             )}
@@ -98,7 +98,7 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
               {item.itemName}
             </p>
             {item.customerName && (
-              <p className="text-[11px] text-text-grey truncate" title={item.customerName}>
+              <p className="text-xs text-text-grey truncate" title={item.customerName}>
                 {item.customerName}
               </p>
             )}
@@ -120,7 +120,7 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
         return (
           <div className="flex items-center gap-1.5 max-w-[170px]">
             <Building2 size={13} className="text-slate-400 shrink-0" />
-            <span className="font-medium text-xs text-slate-800 truncate" title={val}>
+            <span className="font-medium text-sm text-slate-800 truncate" title={val}>
               {val}
             </span>
           </div>
@@ -195,7 +195,7 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
         const val = String(info.getValue() || "TRADING").toUpperCase();
         return (
           <span
-            className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+            className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider ${
               val === "VMI"
                 ? "bg-blue-50 text-blue-800 border border-blue-200"
                 : val === "TRADING"
@@ -316,7 +316,7 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
         return (
           <div className="font-mono font-bold text-brand-navy bg-blue-50/80 border border-blue-200/80 rounded px-2 py-0.5 inline-block text-right">
             {total.toLocaleString()}{" "}
-            <span className="text-[10px] font-normal text-text-grey">{item.uom || "PCS"}</span>
+            <span className="text-xs font-normal text-text-grey">{item.uom || "PCS"}</span>
           </div>
         );
       },

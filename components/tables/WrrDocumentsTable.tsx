@@ -66,7 +66,7 @@ export function WrrDocumentsTable({
       cell: (info) => {
         const flow = String(info.getValue()).toLowerCase();
         return (
-          <span className="inline-block rounded-full bg-[#EBF3FE] text-[#1A73E8] border border-[#CBE2FD] px-3 py-0.5 text-[11px] font-bold uppercase tracking-wider">
+          <span className="inline-block rounded-full bg-[#EBF3FE] text-[#1A73E8] border border-[#CBE2FD] px-3 py-0.5 text-xs font-bold uppercase tracking-wider">
             {FLOW_LABELS[flow] ?? flow.toUpperCase()}
           </span>
         );
@@ -123,7 +123,7 @@ export function WrrDocumentsTable({
         filterLabel: "Organization",
       },
       cell: (info) => (
-        <span className="text-slate-800 font-medium">{String(info.getValue() || "—")}</span>
+        <span className="text-slate-800 font-medium text-sm">{String(info.getValue() || "—")}</span>
       ),
     },
 
@@ -140,7 +140,7 @@ export function WrrDocumentsTable({
         if (!val) return <span className="text-slate-400">—</span>;
         const d = new Date(val as string | Date);
         return (
-          <span className="font-mono text-slate-700 text-xs">
+          <span className="font-mono text-slate-700 text-sm font-medium">
             {d.toLocaleDateString("en-US", { month: "numeric", day: "numeric", year: "numeric" })}
           </span>
         );

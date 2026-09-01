@@ -75,10 +75,10 @@ export function OutgoingLedgerClientTable({
         const d = new Date(info.getValue() as string | Date);
         return (
           <div className="min-w-[110px]">
-            <div className="font-mono text-xs font-bold text-slate-800">
+            <div className="font-mono text-sm font-bold text-slate-800">
               {d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
             </div>
-            <div className="text-[11px] text-text-grey font-mono flex items-center gap-1 mt-0.5">
+            <div className="text-xs text-text-grey font-mono flex items-center gap-1 mt-0.5">
               <Clock size={11} className="text-text-grey/70" />
               {d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
             </div>
@@ -106,7 +106,7 @@ export function OutgoingLedgerClientTable({
             <button
               type="button"
               onClick={() => setSelectedDrNumber(drKey)}
-              className="group flex items-center gap-1.5 font-mono text-xs font-bold text-brand-navy hover:text-blue-700 hover:underline focus:outline-none"
+              className="group flex items-center gap-1.5 font-mono text-sm font-bold text-brand-navy hover:text-blue-700 hover:underline focus:outline-none"
               title="Click to view all items under this Delivery Receipt"
             >
               <FileText size={14} className="text-brand-navy/60 group-hover:text-blue-600 transition-colors" />
@@ -116,7 +116,7 @@ export function OutgoingLedgerClientTable({
               <button
                 type="button"
                 onClick={() => setSelectedDrNumber(drKey)}
-                className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 font-label text-[10px] font-bold text-brand-navy border border-blue-200 hover:bg-blue-100 transition-colors"
+                className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 font-label text-xs font-bold text-brand-navy border border-blue-200 hover:bg-blue-100 transition-colors"
                 title={`${groupCount} items dispatched under this DR`}
               >
                 {groupCount} items
@@ -139,7 +139,7 @@ export function OutgoingLedgerClientTable({
         const isUploaded = info.getValue() === "uploaded";
         return (
           <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold ${
               isUploaded
                 ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                 : "bg-amber-50 text-amber-700 border border-amber-200"
@@ -175,7 +175,7 @@ export function OutgoingLedgerClientTable({
                   View
                 </button>
               ) : (
-                <span className="font-body text-[11px] text-text-grey">Uploaded</span>
+                <span className="font-body text-xs text-text-grey">Uploaded</span>
               )}
               <form action={removeDeliveryReceiptAction}>
                 <input type="hidden" name="pickListId" value={row.pickListId ?? ""} />
@@ -228,7 +228,7 @@ export function OutgoingLedgerClientTable({
         filterLabel: "Item Code",
       },
       cell: (info) => (
-        <span className="font-mono font-bold text-xs text-brand-navy">{String(info.getValue())}</span>
+        <span className="font-mono font-bold text-sm text-brand-navy">{String(info.getValue())}</span>
       ),
     },
 
@@ -241,7 +241,7 @@ export function OutgoingLedgerClientTable({
         filterLabel: "Item Name",
       },
       cell: (info) => (
-        <div className="max-w-[200px] font-medium text-xs text-slate-800 truncate" title={String(info.getValue())}>
+        <div className="max-w-[200px] font-medium text-sm text-slate-800 truncate" title={String(info.getValue())}>
           {String(info.getValue())}
         </div>
       ),
@@ -256,7 +256,7 @@ export function OutgoingLedgerClientTable({
         filterLabel: "Lot Number",
       },
       cell: (info) => (
-        <span className="font-mono text-xs text-slate-600">{String(info.getValue())}</span>
+        <span className="font-mono text-sm text-slate-700 font-semibold">{String(info.getValue())}</span>
       ),
     },
 
@@ -270,7 +270,7 @@ export function OutgoingLedgerClientTable({
         align: "right",
       },
       cell: (info) => (
-        <span className="font-mono font-bold text-xs text-slate-900">
+        <span className="font-mono font-bold text-sm text-slate-900">
           {Number(info.getValue()).toLocaleString()}
         </span>
       ),
@@ -285,7 +285,7 @@ export function OutgoingLedgerClientTable({
         filterLabel: "Location",
       },
       cell: (info) => (
-        <span className="inline-flex rounded bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-700 border border-slate-200">
+        <span className="inline-flex rounded bg-slate-100 px-2 py-0.5 font-mono text-xs font-bold text-slate-700 border border-slate-200">
           {String(info.getValue())}
         </span>
       ),
@@ -302,11 +302,11 @@ export function OutgoingLedgerClientTable({
       cell: (info) => {
         const val = String(info.getValue() || "—");
         const row = info.row.original;
-        if (!row.pickListId) return <span className="font-mono text-xs text-text-grey">{val}</span>;
+        if (!row.pickListId) return <span className="font-mono text-sm text-text-grey">{val}</span>;
         return (
           <Link
             href={`/pick-lists/${row.pickListId}/dispatch`}
-            className="font-mono text-xs font-bold text-brand-navy hover:underline"
+            className="font-mono text-sm font-bold text-brand-navy hover:underline"
           >
             {val}
           </Link>
@@ -325,7 +325,7 @@ export function OutgoingLedgerClientTable({
       cell: (info) => (
         <div className="flex items-center gap-1.5 min-w-0 max-w-[180px]">
           <Building2 size={13} className="text-slate-400 shrink-0" />
-          <span className="font-medium text-xs text-slate-800 truncate">
+          <span className="font-medium text-sm text-slate-800 truncate">
             {String(info.getValue() || "—")}
           </span>
         </div>

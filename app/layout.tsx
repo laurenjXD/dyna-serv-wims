@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { DM_Sans } from "next/font/google";
 import "./globals.css";
 
 // Co-locates every route's serverless function with the Supabase database
@@ -15,19 +14,21 @@ import "./globals.css";
 // convention on Vercel).
 export const preferredRegion = "hnd1";
 
-// Glacial Indifference remains the body/UI face. DM Sans is the heading and
-// bold display face, matching the approved clean operations-dashboard refresh.
+// Typography: Etna Sans Serif for headings/displays, Glacial Indifference for body/UI.
 const fontGlacial = localFont({
   variable: "--font-glacial",
   src: [
     { path: "./fonts/GlacialIndifference-Regular.otf", weight: "400", style: "normal" },
     { path: "./fonts/GlacialIndifference-Bold.otf", weight: "700", style: "normal" },
   ],
+  display: "swap",
 });
 
-const fontDmSans = DM_Sans({
-  variable: "--font-dm-sans",
-  subsets: ["latin"],
+const fontEtna = localFont({
+  variable: "--font-etna",
+  src: [
+    { path: "./fonts/etna-free-font.otf", style: "normal" },
+  ],
   display: "swap",
 });
 
@@ -44,7 +45,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${fontDmSans.variable} ${fontGlacial.variable} font-body bg-background text-text-primary antialiased`}
+        className={`${fontEtna.variable} ${fontGlacial.variable} font-body bg-background text-text-primary antialiased`}
       >
         {children}
       </body>

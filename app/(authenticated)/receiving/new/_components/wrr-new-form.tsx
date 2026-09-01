@@ -21,7 +21,7 @@ import type { SupplierPartyOption, WrrItemOption } from "@/lib/db/queries/items"
 import type { UploadCiplFileResult } from "@/lib/actions/receiving";
 import { WrrLineItems, type ImportedWrrLine } from "./wrr-line-items";
 import { CiPlImportModal } from "../../_components/CiPlImportModal";
-import { ChevronDown, ExternalLink, FileSpreadsheet, PlusCircle, Search } from "lucide-react";
+import { ChevronDown, ExternalLink, FileSpreadsheet, PlusCircle, Search, Upload } from "lucide-react";
 
 const CIPL_ACCEPT = "application/pdf,image/png,image/jpeg";
 
@@ -95,6 +95,77 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
     <form action={action} className="mt-6 space-y-6">
       {/* Client-generated WRR id */}
       <input type="hidden" name="id" value={wrrId} />
+
+      {/* ── Top Option: Fast Intake via Auto-Parse CIPL (Excel / PDF) ── */}
+      <div className="relative overflow-hidden rounded-2xl border border-blue-200/80 bg-gradient-to-r from-blue-50/90 via-indigo-50/50 to-surface-white p-5 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3.5">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-navy text-surface-white shadow-sm">
+              <FileSpreadsheet className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="font-heading text-title-sm font-bold text-brand-navy">
+                  Auto-Parse Commercial Invoice / Packing List
+                </h2>
+                <span className="rounded-full bg-blue-100 px-2.5 py-0.5 font-label text-xs font-bold uppercase tracking-wider text-brand-navy">
+                  Fast Intake Option
+                </span>
+              </div>
+              <p className="mt-0.5 font-body text-body-xs text-text-grey">
+                Upload an Excel spreadsheet (.xlsx, .csv) or PDF/image to automatically extract lines, quantities, lot numbers, and invoice references.
+              </p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowImportModal(true)}
+              className="inline-flex h-11 items-center gap-2 rounded-xl bg-brand-navy px-5 font-label text-label font-bold text-surface-white shadow-sm hover:bg-brand-navy/90 motion-safe:active:scale-[0.98] transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              Auto-Parse Excel / PDF CIPL
+            </button>
+          </div>
+        </div>
+
+        {importedLines.length > 0 && (
+          <div className="mt-3 flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50/90 px-4 py-2.5 text-xs font-medium text-emerald-900">
+            <span className="flex items-center gap-1.5 font-bold">
+              <span className="h-2 w-2 rounded-full bg-emerald-600" />
+              {importedLines.length} line item(s) parsed and applied below from document
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setImportedLines([]);
+                setCiplFileName(null);
+                setCiplStatus("idle");
+              }}
+              className="text-emerald-800 underline hover:text-emerald-950 font-bold"
+            >
+              Clear Parsed Lines
+            </button>
+          </div>
+        )}
+      </div>
+
+      {showImportModal && (
+        <CiPlImportModal
+          wrrId={wrrId}
+          itemOptions={itemOptions}
+          onClose={() => setShowImportModal(false)}
+          onApply={(header, lines) => {
+            if (header.ciplReference) {
+              const ciplInput = document.getElementById("commercialInvoiceNo") as HTMLInputElement | null;
+              if (ciplInput) ciplInput.value = header.ciplReference;
+            }
+            setImportedLines(lines);
+            setCiplStatus("done");
+            setCiplFileName("Parsed Document Lines Applied");
+          }}
+        />
+      )}
 
       {/* Header section — clean card container */}
       <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-6 shadow-sm">
@@ -172,7 +243,7 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
                         <span className="ml-2 truncate text-slate-700">— {party.name}</span>
                       </div>
                       {party.defaultInventoryModel && (
-                        <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-700 border border-slate-200 shrink-0">
+                        <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold uppercase text-slate-700 border border-slate-200 shrink-0">
                           {party.defaultInventoryModel}
                         </span>
                       )}
@@ -220,7 +291,7 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
                 <span className="sr-only">(required)</span>
               </label>
               {selectedVendor?.defaultInventoryModel && flowType === selectedVendor.defaultInventoryModel && (
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                   Auto-assigned from role
                 </span>
               )}
@@ -257,29 +328,27 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
             />
           </div>
 
-          {/* CIPL / Packing List Document */}
+          {/* CIPL / Packing List Document (Manual Attachment) */}
           <div>
             <label
               htmlFor="ciplFile"
               className="block font-label text-label text-text-grey"
             >
-              CIPL / Packing List Document
+              CIPL / Packing List Document (Attachment)
             </label>
             <div className="mt-1 flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowImportModal(true)}
-                className="inline-flex h-11 items-center gap-2 rounded-lg bg-brand-navy px-4 font-label text-label text-surface-white hover:bg-brand-navy/90 transition-colors shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
-              >
-                <FileSpreadsheet className="h-4 w-4" />
-                Auto-Parse Excel / PDF CIPL
-              </button>
               <label
                 htmlFor="ciplFile"
-                className="inline-flex h-11 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-4 font-label text-label text-slate-700 hover:bg-slate-100 transition-colors"
+                className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-200 bg-surface-white px-4 font-label text-label font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
               >
-                {ciplFileName ? "Change File" : "Choose File"}
+                <Upload size={15} className="text-slate-500" />
+                {ciplFileName && ciplStatus === "done" ? "Change Attached File" : "Choose File"}
               </label>
+              {ciplFileName && (
+                <span className="truncate text-xs font-semibold text-slate-700 max-w-[200px]" title={ciplFileName}>
+                  {ciplFileName}
+                </span>
+              )}
             </div>
             <input
               id="ciplFile"
@@ -304,26 +373,9 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
                 {ciplError}
               </p>
             )}
-            <p className="mt-1 font-body text-[11px] text-text-grey">
-              Excel (.xlsx, .csv), PDF, PNG, or JPEG — up to 10MB.
+            <p className="mt-1 font-body text-xs text-text-grey">
+              PDF, PNG, or JPEG — up to 10MB.
             </p>
-
-            {showImportModal && (
-              <CiPlImportModal
-                wrrId={wrrId}
-                itemOptions={itemOptions}
-                onClose={() => setShowImportModal(false)}
-                onApply={(header, lines) => {
-                  if (header.ciplReference) {
-                    const ciplInput = document.getElementById("commercialInvoiceNo") as HTMLInputElement | null;
-                    if (ciplInput) ciplInput.value = header.ciplReference;
-                  }
-                  setImportedLines(lines);
-                  setCiplStatus("done");
-                  setCiplFileName("Parsed Document Lines Applied");
-                }}
-              />
-            )}
           </div>
 
           {/* IP Number — optional */}

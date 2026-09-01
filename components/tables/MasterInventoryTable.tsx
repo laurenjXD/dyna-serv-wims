@@ -63,7 +63,7 @@ export function MasterInventoryTable({
       cell: (info) => (
         <div className="flex items-center gap-1.5 min-w-0">
           <Building2 size={13} className="text-slate-400 shrink-0" />
-          <span className="font-medium text-xs text-slate-800 truncate">
+          <span className="font-medium text-sm text-slate-800 truncate">
             {String(info.getValue() || "—")}
           </span>
         </div>
@@ -89,7 +89,7 @@ export function MasterInventoryTable({
         const val = String(info.getValue());
         return (
           <span
-            className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider backdrop-blur-md ${
+            className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider backdrop-blur-md ${
               val === "VMI" || val === "Consignment"
                 ? "bg-blue-50 text-blue-800 border border-blue-200"
                 : val === "Trading"
@@ -138,7 +138,7 @@ export function MasterInventoryTable({
         const st = String(info.getValue());
         return (
           <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold ${
               st === "In-Stock"
                 ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                 : st === "Low Stock"
@@ -168,7 +168,7 @@ export function MasterInventoryTable({
       },
       aggregationFn: "sum",
       cell: (info) => (
-        <span className="font-mono font-bold text-slate-900">
+        <span className="font-mono font-bold text-slate-900 text-sm">
           {Number(info.getValue())?.toLocaleString()}
         </span>
       ),
@@ -185,7 +185,7 @@ export function MasterInventoryTable({
       },
       aggregationFn: "sum",
       cell: (info) => (
-        <span className="font-mono font-bold text-emerald-700">
+        <span className="font-mono font-bold text-emerald-700 text-sm">
           {Number(info.getValue())?.toLocaleString()}
         </span>
       ),
@@ -207,7 +207,7 @@ export function MasterInventoryTable({
           { label: "Roll", value: "Roll" },
         ],
       },
-      cell: (info) => <span className="font-mono text-[11px] text-text-grey uppercase">{String(info.getValue())}</span>,
+      cell: (info) => <span className="font-mono text-xs text-text-grey font-semibold uppercase">{String(info.getValue())}</span>,
     },
 
     // 10. Primary Location (Text Search)
@@ -219,7 +219,7 @@ export function MasterInventoryTable({
         filterLabel: "Primary Location",
       },
       cell: (info) => (
-        <span className="font-mono text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
+        <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
           {String(info.getValue() || "—")}
         </span>
       ),

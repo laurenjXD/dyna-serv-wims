@@ -52,8 +52,8 @@ const config: Config = {
       },
       fontFamily: {
         // Typography System (specs/00-steering/design.md)
-        // DM Sans (headings/displays) + Glacial Indifference (body/UI/nav/badges/buttons)
-        heading: ["var(--font-dm-sans)", "sans-serif"],
+        // Etna Sans Serif (headings/displays) + Glacial Indifference (body/UI/nav/badges/buttons)
+        heading: ["var(--font-etna)", "sans-serif"],
         body: ["var(--font-glacial)", "sans-serif"],
         label: ["var(--font-glacial)", "sans-serif"],
         mono: ["var(--font-glacial)", "sans-serif"],

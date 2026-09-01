@@ -180,7 +180,7 @@ function TextFilterContent<TData extends RowData>({
 
   return (
     <div className="space-y-2.5">
-      <div className="flex rounded-lg bg-slate-100 p-0.5 text-[10px] font-bold text-text-grey">
+      <div className="flex rounded-lg bg-slate-100 p-0.5 text-xs font-bold text-text-grey">
         {(["contains", "startsWith", "equals"] as const).map((m) => (
           <button
             key={m}
@@ -231,7 +231,7 @@ function NumericRangeFilterContent<TData extends RowData>({
     <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="text-[10px] font-bold uppercase text-text-grey">Min</label>
+          <label className="text-xs font-bold uppercase text-text-grey">Min</label>
           <input
             type="number"
             value={min}
@@ -241,7 +241,7 @@ function NumericRangeFilterContent<TData extends RowData>({
           />
         </div>
         <div>
-          <label className="text-[10px] font-bold uppercase text-text-grey">Max</label>
+          <label className="text-xs font-bold uppercase text-text-grey">Max</label>
           <input
             type="number"
             value={max}

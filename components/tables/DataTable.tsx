@@ -329,7 +329,7 @@ export function DataTable<TData>({
                 const headerText = typeof colHeader === "string" ? colHeader : header.column.id;
                 return (
                   <div key={header.id} className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50/60 p-2">
-                    <span className="text-xs font-semibold text-slate-800">{headerText}</span>
+                    <span className="text-sm font-semibold text-slate-800">{headerText}</span>
                     <ColumnFilter column={header.column} table={table} />
                   </div>
                 );
@@ -339,14 +339,14 @@ export function DataTable<TData>({
         )}
 
         {/* Row count & Active status summary */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200/60 pt-2 text-[11px] text-text-grey">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200/60 pt-2 text-xs font-medium text-text-secondary">
           <div className="flex items-center gap-2">
             <span>
-              Showing <strong className="text-on-surface">{table.getRowModel().rows.length}</strong> of{" "}
-              <strong className="text-on-surface">{data.length}</strong> records
+              Showing <strong className="font-bold text-on-surface">{table.getRowModel().rows.length}</strong> of{" "}
+              <strong className="font-bold text-on-surface">{data.length}</strong> records
             </span>
             {hasActiveFilters && (
-              <span className="rounded-full bg-blue-100/70 px-2 py-0.5 text-[9px] font-bold text-brand-navy uppercase tracking-wider">
+              <span className="rounded-full bg-blue-100/80 px-2.5 py-0.5 text-xs font-bold text-brand-navy uppercase tracking-wider">
                 Filtered
               </span>
             )}
@@ -371,7 +371,7 @@ export function DataTable<TData>({
                     return (
                       <th
                         key={header.id}
-                        className={`px-3 py-3 font-heading text-sm font-bold uppercase tracking-wider text-slate-700 whitespace-nowrap ${
+                        className={`px-3 py-3 font-heading text-xs font-bold uppercase tracking-wider text-slate-700 whitespace-nowrap ${
                           align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left"
                         }`}
                       >
@@ -414,7 +414,7 @@ export function DataTable<TData>({
             </thead>
 
             {/* Table Body */}
-            <tbody className="divide-y divide-slate-100 font-body">
+            <tbody className="divide-y divide-slate-100 font-body text-sm">
               {table.getRowModel().rows.length === 0 ? (
                 <tr>
                   <td
@@ -444,7 +444,7 @@ export function DataTable<TData>({
                               <span className="font-heading text-sm font-bold text-brand-navy">
                                 {row.groupingColumnId}: {row.groupingColumnId ? String(row.getValue(row.groupingColumnId)) : ""}
                               </span>
-                              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-brand-navy">
+                              <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-brand-navy">
                                 {row.subRows.length} item{row.subRows.length !== 1 ? "s" : ""}
                               </span>
                             </div>
@@ -462,7 +462,7 @@ export function DataTable<TData>({
                           return (
                             <td
                               key={cell.id}
-                              className={`px-3 py-3 whitespace-nowrap text-sm ${
+                              className={`px-3 py-3 whitespace-nowrap text-sm text-slate-800 ${
                                 align === "right"
                                   ? "text-right"
                                   : align === "center"
@@ -491,10 +491,10 @@ export function DataTable<TData>({
         </div>
       </div>
 
-      {/* ── Mobile Floor-First Card List (block md:hidden) ─────────────── */}
-      <div className="block md:hidden space-y-2.5">
+      {/* ── Mobile Bento-Cards (Stacked Rows for Handhelds) ──────────────── */}
+      <div className="space-y-3 md:hidden">
         {table.getRowModel().rows.length === 0 ? (
-          <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-8 text-center text-xs text-text-grey italic">
+          <div className="rounded-2xl border border-slate-200 bg-surface-white p-8 text-center text-sm text-text-grey italic">
             {emptyMessage}
           </div>
         ) : (
@@ -519,10 +519,10 @@ export function DataTable<TData>({
                 {/* Mobile Card Header */}
                 <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
                   <div className="min-w-0">
-                    <span className="text-[10px] uppercase font-bold text-text-grey block">
+                    <span className="text-xs uppercase font-bold text-text-secondary block">
                       {String(primaryCell?.column.columnDef.header || "Item")}
                     </span>
-                    <div className="text-xs font-bold text-brand-navy truncate">
+                    <div className="text-sm font-bold text-brand-navy truncate">
                       {primaryCell && flexRender(primaryCell.column.columnDef.cell, primaryCell.getContext())}
                     </div>
                   </div>
@@ -534,16 +534,16 @@ export function DataTable<TData>({
                 </div>
 
                 {/* Mobile Card Grid Details */}
-                <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="grid grid-cols-2 gap-2 text-sm">
                   {detailCells.map((cell) => {
                     const colHeader = cell.column.columnDef.header;
                     const label = typeof colHeader === "string" ? colHeader : cell.column.id;
                     return (
                       <div key={cell.id} className="min-w-0">
-                        <span className="text-[10px] text-text-grey font-medium block truncate">
+                        <span className="text-xs text-text-secondary font-medium block truncate">
                           {label}
                         </span>
-                        <div className="font-medium text-slate-800 truncate">
+                        <div className="font-semibold text-slate-800 truncate">
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </div>
                       </div>
