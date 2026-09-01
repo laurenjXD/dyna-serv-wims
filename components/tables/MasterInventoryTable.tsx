@@ -27,13 +27,13 @@ export function MasterInventoryTable({
   onPickItem?: (item: MasterInventoryRow) => void;
 }) {
   const columns = useMemo<ColumnDef<MasterInventoryRow, unknown>[]>(() => [
-    // 1. SKU / Item Code (Text Search: Contains / Starts With)
+    // 1. Item Code (Text Search: Contains / Starts With)
     {
       accessorKey: "itemCode",
-      header: "SKU / Code",
+      header: "Item Code",
       meta: {
         filterVariant: "text",
-        filterLabel: "SKU",
+        filterLabel: "Item Code",
       },
       cell: (info) => (
         <span className="font-mono font-bold text-brand-navy">{String(info.getValue())}</span>

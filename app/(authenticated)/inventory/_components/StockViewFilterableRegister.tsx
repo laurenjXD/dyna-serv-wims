@@ -50,13 +50,13 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const columns = useMemo<ColumnDef<GroupedItem, unknown>[]>(() => [
-    // 1. SKU / Item Code (Priority Identifier)
+    // 1. Item Code (Priority Identifier)
     {
       accessorKey: "itemCode",
-      header: "SKU / Code",
+      header: "Item Code",
       meta: {
         filterVariant: "text",
-        filterLabel: "SKU / Item Code",
+        filterLabel: "Item Code",
       },
       cell: (info) => {
         const item = info.row.original;

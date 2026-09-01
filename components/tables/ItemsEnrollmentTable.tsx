@@ -15,13 +15,13 @@ export function ItemsEnrollmentTable({
   canManage?: boolean;
 }) {
   const columns = useMemo<ColumnDef<ItemListRow, unknown>[]>(() => [
-    // 1. SKU / Item Code
+    // 1. Item Code
     {
       accessorKey: "code",
-      header: "Item Code / SKU",
+      header: "Item Code",
       meta: {
         filterVariant: "text",
-        filterLabel: "SKU / Code",
+        filterLabel: "Item Code",
       },
       cell: (info) => (
         <span className="font-mono font-bold text-brand-navy">{String(info.getValue())}</span>

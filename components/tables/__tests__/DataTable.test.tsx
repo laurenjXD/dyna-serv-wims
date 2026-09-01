@@ -79,7 +79,7 @@ const mockLedgerData: TransactionLedgerRow[] = [
 describe("MasterInventoryTable & Universal DataTable", () => {
   it("renders table headers with Google Sheets-style filter trigger buttons", () => {
     render(<MasterInventoryTable data={mockInventoryData} />);
-    expect(screen.getAllByText("SKU / Code")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("Item Code")[0]).toBeInTheDocument();
     expect(screen.getAllByText("Item Name")[0]).toBeInTheDocument();
     expect(screen.getAllByText("Model")[0]).toBeInTheDocument();
     expect(screen.getAllByText("Category")[0]).toBeInTheDocument();
@@ -89,17 +89,17 @@ describe("MasterInventoryTable & Universal DataTable", () => {
     expect(screen.getAllByText("Available")[0]).toBeInTheDocument();
   });
 
-  it("renders rows and filters by text search on SKU", async () => {
+  it("renders rows and filters by text search on Item Code", async () => {
     render(<MasterInventoryTable data={mockInventoryData} />);
     expect(screen.getAllByText("TRD-PUMP-01")[0]).toBeInTheDocument();
     expect(screen.getAllByText("VMI-VALVE-02")[0]).toBeInTheDocument();
 
-    // Open filter for SKU
-    const filterBtn = screen.getByRole("button", { name: /Filter by SKU/i });
+    // Open filter for Item Code
+    const filterBtn = screen.getByRole("button", { name: /Filter by Item Code/i });
     fireEvent.click(filterBtn);
 
     // Search for "VALVE"
-    const input = screen.getByPlaceholderText(/Search SKU/i);
+    const input = screen.getByPlaceholderText(/Search Item Code/i);
     fireEvent.change(input, { target: { value: "VALVE" } });
 
     expect(screen.getAllByText("VMI-VALVE-02")[0]).toBeInTheDocument();

@@ -36,20 +36,11 @@ export default async function DeliveryReceiptPage({
   const totalBoxes = lines.reduce((sum, line) => sum + line.numberOfBoxes, 0);
 
   return (
-    <main className="delivery-receipt-document min-h-screen bg-[#EEF2F8] p-4 text-[#111827] print:bg-white print:p-0">
+    <main className="min-h-screen bg-[#EEF2F8] p-4 text-[#111827] print:bg-white print:p-0">
       <style
         dangerouslySetInnerHTML={{
           __html: `
             @page { size: A4 landscape; margin: 10mm; }
-            body:has(.delivery-receipt-document) header,
-            body:has(.delivery-receipt-document) aside {
-              display: none !important;
-            }
-            body:has(.delivery-receipt-document) main#main-content,
-            body:has(.delivery-receipt-document) main#main-content > div {
-              padding: 0 !important;
-              margin: 0 !important;
-            }
             @media print {
               .print-hide { display: none !important; }
               body { background: #fff !important; }
@@ -76,7 +67,7 @@ export default async function DeliveryReceiptPage({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo.svg" alt="Dyna-Serv" className="mb-2 h-10 w-auto" />
               <h1 className="text-lg font-bold uppercase tracking-wide">Acknowledgement Receipt</h1>
-              <p className="mt-1 text-xs text-slate-600">Warehouse Inventory Management System</p>
+              <p className="mt-1 text-xs text-slate-600">Dyna-Serv Global Corporation</p>
             </div>
             <dl className="grid grid-cols-[auto_auto] gap-x-4 gap-y-1 text-xs">
               <dt className="font-bold uppercase">Delivery Receipt No.</dt>
@@ -104,16 +95,16 @@ export default async function DeliveryReceiptPage({
           <div className="overflow-x-auto print:overflow-visible">
           <table className="w-full min-w-[1100px] table-fixed border-collapse text-[8px] leading-tight print:min-w-0">
             <colgroup>
-              <col className="w-[3%]" /><col className="w-[6%]" /><col className="w-[5%]" /><col className="w-[7%]" />
-              <col className="w-[10%]" /><col className="w-[9%]" /><col className="w-[15%]" /><col className="w-[10%]" />
-              <col className="w-[9%]" /><col className="w-[9%]" /><col className="w-[10%]" /><col className="w-[7%]" />
+              <col className="w-[4%]" /><col className="w-[6%]" /><col className="w-[5%]" /><col className="w-[8%]" />
+              <col className="w-[10%]" /><col className="w-[9%]" /><col className="w-[14%]" /><col className="w-[10%]" />
+              <col className="w-[8%]" /><col className="w-[8%]" /><col className="w-[9%]" /><col className="w-[9%]" />
             </colgroup>
             <thead>
               <tr className="bg-[#D8DDE5] text-center font-bold uppercase">
                 {[
                   "No.", "Qty", "SPQ", "No. of Boxes", "Item Code", "CUST PN", "Item Description",
                   "Lot Number", "PO Number", "Invoice No.", "Remarks", "Location",
-                ].map((heading) => <th key={heading} className="whitespace-normal break-words border border-[#374151] px-1 py-1.5">{heading}</th>)}
+                ].map((heading) => <th key={heading} className="whitespace-normal border border-[#374151] px-1 py-1.5">{heading}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -134,7 +125,7 @@ export default async function DeliveryReceiptPage({
                 </tr>
               ))}
               <tr className="font-bold">
-                <td className="border border-[#6B7280] px-1.5 py-2">Total</td>
+                <td className="border border-[#6B7280] px-1.5 py-2 text-center">Total</td>
                 <td className="border border-[#6B7280] px-1.5 py-2 text-center">{totalQty.toLocaleString()}</td>
                 <td className="border border-[#6B7280] px-1.5 py-2">—</td>
                 <td className="border border-[#6B7280] px-1.5 py-2 text-center">{totalBoxes.toLocaleString()}</td>
