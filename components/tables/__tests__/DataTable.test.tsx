@@ -106,11 +106,11 @@ describe("MasterInventoryTable & Universal DataTable", () => {
     expect(screen.queryByText("TRD-PUMP-01")).not.toBeInTheDocument();
   });
 
-  it("groups rows by category and subcategory with aggregated volume sum", () => {
+  it("renders category and subcategory columns with item code priority", () => {
     render(<MasterInventoryTable data={mockInventoryData} />);
-    // Verify grouping toggle exists
-    const groupBtn = screen.getByRole("button", { name: /Group/i });
-    expect(groupBtn).toBeInTheDocument();
+    expect(screen.getAllByText("Mechanical")[0]).toBeInTheDocument();
+    expect(screen.getByText("Pumps")).toBeInTheDocument();
+    expect(screen.getByText("TRD-PUMP-01")).toBeInTheDocument();
   });
 });
 

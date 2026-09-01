@@ -214,8 +214,7 @@ export function MasterInventoryTable({
       title="Master Inventory Table"
       subtitle="Google Sheets-style per-column filtering with category hierarchy volume aggregation"
       icon={<Package size={18} />}
-      enableGrouping={true}
-      initialGrouping={["categoryName", "subcategoryName"]}
+      enableGrouping={false}
       initialSorting={[{ id: "totalStock", desc: true }]}
       emptyMessage="No inventory items match the specified filters."
     />
