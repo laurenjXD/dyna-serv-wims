@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { eq } from "drizzle-orm";
+import { ChevronLeft } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
@@ -47,7 +49,14 @@ export default async function DeliveryReceiptPage({
         }}
       />
 
-      <div className="print-hide mx-auto mb-4 flex max-w-[1500px] justify-end">
+      <div className="print-hide mx-auto mb-4 flex max-w-[1500px] items-center justify-between gap-4">
+        <Link
+          href="/outgoing?tab=ledger"
+          className="inline-flex items-center gap-2 rounded border border-outline-variant/40 bg-surface-white px-4 py-2.5 font-label text-label font-bold text-brand-navy hover:bg-surface-light-grey"
+        >
+          <ChevronLeft size={18} aria-hidden="true" />
+          Back to Outgoing Ledger
+        </Link>
         <PickListPrintButton />
       </div>
 
@@ -83,7 +92,8 @@ export default async function DeliveryReceiptPage({
         </header>
 
         <section className="mt-4">
-          <table className="w-full table-fixed border-collapse text-[9px] leading-tight">
+          <div className="overflow-x-auto print:overflow-visible">
+          <table className="w-full min-w-[1100px] table-fixed border-collapse text-[8px] leading-tight print:min-w-0">
             <colgroup>
               <col className="w-[3%]" /><col className="w-[6%]" /><col className="w-[5%]" /><col className="w-[7%]" />
               <col className="w-[10%]" /><col className="w-[9%]" /><col className="w-[15%]" /><col className="w-[10%]" />
@@ -94,7 +104,7 @@ export default async function DeliveryReceiptPage({
                 {[
                   "No.", "Qty", "SPQ", "No. of Boxes", "Item Code", "CUST PN", "Item Description",
                   "Lot Number", "PO Number", "Invoice No.", "Remarks", "Location",
-                ].map((heading) => <th key={heading} className="border border-[#374151] px-1.5 py-2">{heading}</th>)}
+                ].map((heading) => <th key={heading} className="whitespace-normal break-words border border-[#374151] px-1 py-1.5">{heading}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -123,6 +133,7 @@ export default async function DeliveryReceiptPage({
               </tr>
             </tbody>
           </table>
+          </div>
         </section>
 
         <section className="mt-4 border border-[#374151] text-xs">
