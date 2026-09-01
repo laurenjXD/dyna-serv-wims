@@ -376,7 +376,7 @@ export function DataTable<TData>({
                                 ? "justify-end"
                                 : align === "center"
                                 ? "justify-center"
-                                : "justify-between"
+                                : "justify-start"
                             }`}
                           >
                             {/* Sortable Header Label */}

@@ -137,11 +137,21 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
         filterVariant: "text",
         filterLabel: "Lot Number",
       },
-      cell: (info) => (
-        <span className="block max-w-[220px] truncate font-mono text-sm text-text-grey" title={String(info.getValue() || "—")}>
-          {String(info.getValue() || "—")}
-        </span>
-      ),
+      cell: (info) => {
+        const item = info.row.original;
+        const isExpanded = expandedItemId === item.itemId;
+        return (
+          <button
+            type="button"
+            onClick={() => setExpandedItemId(isExpanded ? null : item.itemId)}
+            className="inline-flex max-w-[220px] items-center gap-1 text-left font-mono text-sm text-text-grey hover:text-brand-navy hover:underline"
+            title="Show lot details"
+          >
+            <ChevronDown size={14} className={`shrink-0 transition-transform ${isExpanded ? "rotate-0" : "-rotate-90"}`} />
+            <span className="truncate">{String(info.getValue() || "—")}</span>
+          </button>
+        );
+      },
     },
 
     // 5. Inventory Model (Trading, VMI, Supplies)
