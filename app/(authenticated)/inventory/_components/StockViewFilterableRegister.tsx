@@ -370,7 +370,6 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
         enableGrouping={false}
         initialSorting={[{ id: "totalQty", desc: true }]}
         emptyMessage="No inventory items match the specified filters."
-<<<<<<< HEAD
         actions={
           <button
             type="button"
@@ -380,7 +379,6 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
             <PackagePlus size={14} /> Import Opening Stock
           </button>
         }
-=======
         isRowExpanded={(row) => expandedItemId === row.original.itemId}
         renderRowSubComponent={({ row }) => {
           const item = row.original;
@@ -415,7 +413,6 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
             </div>
           );
         }}
->>>>>>> origin/milestone-2-polish
         renderMobileCard={({ row }: { row: Row<GroupedItem> }) => {
           const item = row.original;
           const isLotsExpanded = expandedItemId === item.itemId;
@@ -533,85 +530,6 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
         }}
       />
 
-<<<<<<< HEAD
-      {/* Desktop Lot Details Drawer when an item's lot link is clicked */}
-      {expandedItemId && (() => {
-        const expandedItem = items.find((i) => i.itemId === expandedItemId);
-        if (!expandedItem) return null;
-        const totalCalculated = expandedItem.totalQty ?? (expandedItem.spq * expandedItem.boxesOnHand);
-        return (
-          <div className="hidden md:block rounded-2xl border border-blue-200 bg-[#F8FAFF] p-4 shadow-elevation-1">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-blue-100 pb-2">
-              <div className="text-xs text-slate-700">
-                <span>
-                  Lots for <strong className="font-mono font-bold text-brand-navy">{expandedItem.itemCode}</strong> ({expandedItem.itemName}) shown in{" "}
-                  <strong>{expandedItem.isPerishable ? "FEFO" : "FIFO"}</strong> order.
-                </span>
-              </div>
-              <div className="flex items-center gap-3 text-xs">
-                <span className="font-mono font-bold text-brand-navy">
-                  Total Available: {totalCalculated.toLocaleString()} {expandedItem.uom}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setExpandedItemId(null)}
-                  className="rounded bg-slate-200 px-2 py-0.5 text-[11px] font-bold text-slate-700 hover:bg-slate-300"
-                >
-                  Close Lots
-                </button>
-              </div>
-            </div>
-
-            <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {expandedItem.lots.map((lot) => (
-                <details
-                  key={lot.lotId}
-                  className="group rounded-xl border border-slate-200 bg-surface-white p-3 shadow-sm hover:border-brand-navy/40 transition-all"
-                >
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-2 outline-none [&::-webkit-details-marker]:hidden">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <ChevronDown size={15} className="text-text-grey transition-transform group-open:rotate-180 shrink-0" />
-                      <span className="font-mono text-xs font-bold text-slate-900 truncate" title={lot.lotNumber}>
-                        {lot.lotNumber}
-                      </span>
-                    </div>
-                    <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-brand-navy">
-                      {lot.availableQty.toLocaleString()} {expandedItem.uom}
-                    </span>
-                  </summary>
-
-                  <div className="mt-3 border-t border-slate-100 pt-2 space-y-1.5 text-xs">
-                    <div className="flex justify-between text-text-grey">
-                      <span>Location:</span>
-                      <span className="font-mono font-semibold text-slate-800">
-                        {lot.locationLabels.join(", ") || "—"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-text-grey">
-                      <span>Expiry:</span>
-                      <span className="font-mono text-slate-800">{lot.expiryDate || "Not dated"}</span>
-                    </div>
-                    <div className="flex justify-between text-text-grey">
-                      <span>Status:</span>
-                      <span className="font-semibold text-emerald-700 lowercase">{lot.lotStatus}</span>
-                    </div>
-
-                    <div className="pt-2">
-                      <LotQrViewer
-                        lotId={lot.lotId}
-                        lotNumber={lot.lotNumber}
-                        itemCode={expandedItem.itemCode}
-                        compact
-                      />
-                    </div>
-                  </div>
-                </details>
-              ))}
-            </div>
-          </div>
-        );
-      })()}
-
       {/* Opening Stock Import Modal */}
       {isImportModalOpen && (
         <OpeningStockImportModal
@@ -621,8 +539,6 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
           }}
         />
       )}
-=======
->>>>>>> origin/milestone-2-polish
     </div>
   );
 }
