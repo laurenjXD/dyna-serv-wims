@@ -1,6 +1,9 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { PDFDocument, StandardFonts, rgb, type PDFPage, type PDFFont } from "pdf-lib";
+import sharp from "sharp";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
@@ -84,8 +87,13 @@ export async function GET(
   const party = partyRows[0];
   const drNumber = `DR-${pickList.pickListNumber.replace(/^PL-/, "")}`;
 
-  page.drawText("ACKNOWLEDGEMENT RECEIPT", { x: MARGIN, y: 535, size: 16, font: bold, color: INK });
-  page.drawText("Warehouse Inventory Management System", { x: MARGIN, y: 516, size: 8, font: regular, color: MUTED });
+  const logoSvg = await readFile(path.join(process.cwd(), "public", "logo.svg"), "utf8");
+  const logoPng = await sharp(Buffer.from(logoSvg)).png().toBuffer();
+  const logo = await pdf.embedPng(logoPng);
+  page.drawImage(logo, { x: MARGIN, y: 512, width: 38, height: 38 });
+  const headerX = MARGIN + 50;
+  page.drawText("ACKNOWLEDGEMENT RECEIPT", { x: headerX, y: 535, size: 16, font: bold, color: INK });
+  page.drawText("Warehouse Inventory Management System", { x: headerX, y: 516, size: 8, font: regular, color: MUTED });
   const meta = [
     ["DELIVERY RECEIPT NO.", drNumber],
     ["PICK LIST NO.", pickList.pickListNumber],
@@ -130,7 +138,8 @@ export async function GET(
     x += widths[column];
   });
 
-  const instructionTop = rowTop - 14;
+  // Leave room for the total row (24pt) before starting the next section.
+  const instructionTop = rowTop - 24 - 14;
   page.drawRectangle({ x: MARGIN, y: instructionTop - 48, width: CONTENT_WIDTH, height: 48, borderColor: GRID, borderWidth: 0.6 });
   page.drawRectangle({ x: MARGIN, y: instructionTop - 18, width: CONTENT_WIDTH, height: 18, color: HEADER_FILL, borderColor: GRID, borderWidth: 0.6 });
   page.drawText("DELIVERY INSTRUCTIONS / REMARKS", { x: MARGIN + 5, y: instructionTop - 13, size: 7, font: bold, color: INK });
