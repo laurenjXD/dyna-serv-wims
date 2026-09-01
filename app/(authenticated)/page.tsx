@@ -76,6 +76,7 @@ type ItemPreviewRow = {
   itemName: string;
   uom: string;
   totalQty: number;
+  flowType?: "vmi" | "trading" | "supplies";
   lots: Array<{
     lotId: string;
     lotNumber: string;
@@ -94,8 +95,6 @@ function buildInventoryPreview(
     const existing = byItem.get(row.itemId);
     if (existing) {
       existing.totalQty += row.qtyRemaining;
-      // Preserve FIFO/FEFO lot order established by listStockView (already sorted
-      // by expiryDate ASC, createdAt ASC per the query). Add lot if not already present.
       if (!existing.lots.find((l) => l.lotId === row.lotId && l.locationLabel === row.locationLabel)) {
         existing.lots.push({
           lotId: row.lotId,
@@ -111,6 +110,7 @@ function buildInventoryPreview(
         itemName: row.itemName,
         uom: row.uom,
         totalQty: row.qtyRemaining,
+        flowType: row.flowType,
         lots: [
           {
             lotId: row.lotId,
@@ -400,6 +400,17 @@ export default async function Home() {
     .sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1))
     .slice(0, 5);
 
+  // Compute stock ownership split for the donut chart
+  const stockOwnershipSplit = stockRows.reduce(
+    (acc, row) => {
+      if (row.flowType === "trading") acc.trading += row.qtyRemaining;
+      else if (row.flowType === "vmi") acc.vmi += row.qtyRemaining;
+      else if (row.flowType === "supplies") acc.supplies += row.qtyRemaining;
+      return acc;
+    },
+    { trading: 0, vmi: 0, supplies: 0 }
+  );
+
   // "office" and "party" tiers both receive the office content shape.
   return (
     <OfficeLanding
@@ -429,6 +440,7 @@ export default async function Home() {
       monthlyTrend={monthlyTrend}
       dispatchRate={dispatchRate}
       flowActivity={flowActivity}
+      stockOwnershipSplit={stockOwnershipSplit}
     />
   );
 }

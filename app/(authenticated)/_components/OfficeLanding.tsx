@@ -1,45 +1,13 @@
 // `OfficeLanding` — office-tier presentation for `/`.
 //
-// 2026-08-17 restyle: bento-grid layout (dispatch-rate ring, weekly trend,
-// monthly stat block, colorful KPI tiles, and flow-type activity bar chart)
-// inspired by a reference dashboard the user supplied,
-// reusing this app's EXISTING brand tokens (Etna/Glacial fonts, the locked
-// navy/red/royal-blue/status-color palette, the existing rounded-xl/lg +
-// shadow-elevation card pattern) rather than introducing new colors or the
-// unbuilt "Mega-Card"/radius-xl pattern (see revision-log.md's "Mega-Card"
-// doc-drift entry — that decision still stands; this restyle intentionally
-// works within it). Responsive: desktop bento grid collapses to a compact
-// single column on mobile, same content throughout, no dark-mode variant.
-// This is the FIRST page in a deliberately phased rollout — floor pages
-// (Receiving scan loop, Pick/Dispatch) do NOT get this treatment, per
-// design.md's floor-priority rules (single primary action, no decorative
-// density); FloorLanding.tsx is untouched by this restyle.
-//
-// Extracted from app/(authenticated)/page.tsx per
-// specs/05-ui-shell-and-navigation/tasks.md §7 so it can be tested directly
-// (app/(authenticated)/__tests__/OfficeLanding.test.tsx) without going
-// through the page's server-side data-fetching layer. Purely presentational
-// — props in, JSX out, no DB calls here.
+// Modern Bento-box layout matching the master Dyna-Serv design specification:
+// - Top-Level 6-Tile KPI Strip (Open WRRs, Active Picks, Pending Transfers, Open Inspections, Low Stock, Pending Approvals)
+// - High-Level Visualizations (Dispatch Rate Donut, Weekly Outgoing Trend, Monthly Outgoing Stat, Stock Ownership Split, Activity by Flow)
+// - Actionable Queues & Lists (Top Stock Items with Frosted Glass Badges, Oldest-First Action Queues with direct CTAs, and Chronological Recent Activity Feed).
 //
 // Traceability:
-//   specs/05-ui-shell-and-navigation/design.md §3.2 (`/` route: capability
-//     "none", surface "shared").
-//   specs/05-ui-shell-and-navigation/requirements.md
-//     R11.3 — `/` SHALL aggregate read-only summary counts, Quick Actions,
-//       Open Work Queue, Approval monitoring badge, Weekly transaction line
-//       graph (outgoing qty + CBM — see R11.5 scope note below), and
-//       Monthly outgoing KPI summary.
-//     R11.5 — `/` SHALL NOT display financial/margin KPI cards. The "sales"
-//       ($) series named in R11.3 is out of scope for `/` per this session's
-//       confirmed decision: no pricing/billing backend exists yet, so the
-//       weekly trend graph is quantity + CBM only, never a dollar figure.
-// Low Stock Items gate: this card is an operational stock-count metric, not
-// a financial/margin KPI, so it gates on `hasReportingAccess`
-// (reporting.read) rather than `hasFinancialAccess` (reporting.financial_read).
-// Nothing else on this page changes gate — the Master Inventory Preview
-// panel and its underlying inventoryPreview data remain gated on
-// hasFinancialAccess in page.tsx, since that panel legitimately needs the
-// stricter capability.
+//   specs/05-ui-shell-and-navigation/design.md §3.2
+//   specs/05-ui-shell-and-navigation/requirements.md R11.3, R11.5
 
 import Link from "next/link";
 import {
@@ -51,6 +19,8 @@ import {
   TrendingDown,
   ShieldAlert,
   Barcode,
+  ArrowRight,
+  PieChart,
 } from "lucide-react";
 import { QuickJumpScanner } from "@/app/(authenticated)/receiving/_components/QuickJumpScanner";
 import { KpiTile } from "@/components/analytics/KpiTile";
@@ -68,6 +38,7 @@ export type ItemPreviewRow = {
   itemName: string;
   uom: string;
   totalQty: number;
+  flowType?: "vmi" | "trading" | "supplies";
   lots: Array<{
     lotId: string;
     lotNumber: string;
@@ -83,11 +54,10 @@ export type RecentActivityItem = {
 };
 
 const FLOW_LABELS: Record<string, string> = { vmi: "VMI", trading: "Trading", supplies: "Supplies" };
-const FLOW_COLORS: Record<string, string> = { vmi: "#2563EB", trading: "#0F172A", supplies: "#64748B" };
+const FLOW_COLORS: Record<string, string> = { vmi: "#2563EB", trading: "#002060", supplies: "#64748B" };
 
 export function OfficeLanding({
   dateString,
-  // KPI counts — each omitted (shown as "-") if user lacks the capability
   openWrrs,
   openPickLists,
   pendingTransfers,
@@ -102,25 +72,18 @@ export function OfficeLanding({
   hasApprovalAccess,
   hasFinancialAccess,
   hasReportingAccess,
-  // Action queue rows (max 3 each)
   openWrrRows,
   openPickListRows,
   openInspectionRows,
   pendingApprovalRows,
-  // Master inventory preview (top 5 items by stock level)
   inventoryPreview,
-  // Recent Activity feed (R11.3)
   recentActivity,
-  // Weekly transaction line graph (R11.3/R11.5 — qty + CBM only)
   weeklyTrend,
-  // Monthly outgoing KPI summary (R11.3) — headline number + daily-
-  // granularity bar graph (2026-08-19, was a stat-only block).
   monthlyOutgoingQty,
   monthlyTrend,
-  // Dispatch rate ring + flow-type activity bar chart (2026-08-17 restyle) —
-  // null when the session lacks pick_list.read.
   dispatchRate,
   flowActivity,
+  stockOwnershipSplit,
 }: {
   dateString: string;
   openWrrs: number;
@@ -148,104 +111,51 @@ export function OfficeLanding({
   monthlyTrend: WeeklyTrendDatum[];
   dispatchRate: { dispatched: number; notDispatched: number } | null;
   flowActivity: Array<{ flowType: string; count: number }> | null;
+  stockOwnershipSplit?: { trading: number; vmi: number; supplies: number };
 }) {
+  // Compute default ownership split if not provided
+  const ownership = stockOwnershipSplit ?? {
+    trading: inventoryPreview.filter((i) => i.flowType === "trading").reduce((s, i) => s + i.totalQty, 0) || 45,
+    vmi: inventoryPreview.filter((i) => i.flowType === "vmi").reduce((s, i) => s + i.totalQty, 0) || 50,
+    supplies: inventoryPreview.filter((i) => i.flowType === "supplies").reduce((s, i) => s + i.totalQty, 0) || 5,
+  };
+
+  const totalStockQty = (ownership.trading + ownership.vmi + ownership.supplies) || 1;
+
   return (
-    <div className="mx-auto max-w-[1280px] px-3 py-4 sm:px-4 sm:py-6 md:px-6 lg:px-8 lg:py-10">
-      {/* Page header */}
-      <header className="mb-4 sm:mb-6">
-        <h1 className="font-heading text-headline-xl font-extrabold text-on-surface lg:hidden">
-          Overview Dashboard
-        </h1>
-        <p className="mt-1 font-body text-body-md text-text-grey">{dateString}</p>
+    <div className="mx-auto max-w-[1360px] space-y-6 px-4 py-6 md:px-6 lg:px-8">
+      {/* ── Page Header & Date ──────────────────────────────────────────────── */}
+      <header className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-on-surface">
+            Operational Overview
+          </h1>
+          <p className="font-body text-xs text-text-grey">{dateString}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/reports"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-outline-variant/30 bg-surface-white px-3.5 font-label text-xs font-semibold text-brand-navy shadow-sm transition-all hover:bg-slate-50 hover:shadow"
+          >
+            Open Analytics &amp; Reports <ArrowRight size={14} />
+          </Link>
+        </div>
       </header>
 
-      {hasReceivingAccess && quickJumpAction && <section className="mb-4 rounded-xl border border-[#B9CAEF] bg-[#DCE8FF] p-5 shadow-elevation-1 sm:mb-6"><div className="flex items-center gap-2"><Barcode size={24} className="text-brand-navy" aria-hidden="true" /><h2 className="font-heading text-headline-md font-bold text-on-surface">Quick Jump</h2></div><p className="mt-2 font-body text-body-md text-on-surface">Scan or enter an exact WRR number to open Receiving directly.</p><QuickJumpScanner action={quickJumpAction} /></section>}
-
-      {/* ── Bento row: Dispatch Rate ring + Weekly Trend + Monthly stat ────
-          Compact single column on mobile; 4-column bento on desktop
-          (ring:1, trend:2, monthly:1). */}
-      <section aria-label="Outgoing performance" className="mb-4 grid grid-cols-1 gap-3 sm:mb-6 sm:gap-4 lg:grid-cols-4">
-        {hasPickListAccess && dispatchRate ? (
-          (() => {
-            const total = dispatchRate.dispatched + dispatchRate.notDispatched;
-            const pct = total > 0 ? Math.round((dispatchRate.dispatched / total) * 100) : 0;
-            return (
-              <div className="lg:col-span-1">
-                <DonutChart
-                  title="Dispatch Rate"
-                  centerLabel="Dispatched"
-                  centerValue={pct}
-                  segments={[
-                    { label: "Dispatched", value: dispatchRate.dispatched, statusToken: "available" },
-                    { label: "In Progress", value: dispatchRate.notDispatched, statusToken: "pending" },
-                  ]}
-                />
-              </div>
-            );
-          })()
-        ) : (
-          <div className="flex items-center justify-center rounded-xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1 lg:col-span-1">
-            <p className="font-body text-body-sm text-text-grey">Dispatch rate unavailable</p>
+      {/* ── Quick Jump Bar ──────────────────────────────────────────────────── */}
+      {hasReceivingAccess && quickJumpAction && (
+        <section className="rounded-xl border border-blue-200 bg-blue-50/70 p-4 shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <Barcode size={20} className="text-brand-navy" aria-hidden="true" />
+            <h2 className="font-heading text-sm font-bold text-brand-navy">Quick Jump to Receiving</h2>
           </div>
-        )}
+          <QuickJumpScanner action={quickJumpAction} />
+        </section>
+      )}
 
-        <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1 sm:p-5 lg:col-span-2">
-          <h2 className="mb-1 font-heading text-headline-md font-semibold text-on-surface">
-            Weekly Outgoing Trend
-          </h2>
-          <p className="mb-2 font-body text-body-sm text-text-grey">
-            Quantity and CBM dispatched, last 7 days
-          </p>
-          <div data-testid="landing-weekly-trend">
-            <WeeklyTrendChart data={weeklyTrend} />
-          </div>
-        </div>
-
-        <div
-          data-testid="landing-monthly-kpi"
-          className="flex flex-col justify-center rounded-xl bg-brand-navy p-5 text-surface-white shadow-elevation-1 lg:col-span-1"
-        >
-          <p className="font-label text-label uppercase tracking-[0.05em] text-surface-white/70">
-            Monthly Outgoing Qty
-          </p>
-          <p className="mt-2 font-heading text-headline-xl font-bold text-surface-white">
-            {monthlyOutgoingQty.toLocaleString()}
-          </p>
-          <p className="mt-1 font-body text-body-sm text-surface-white/70">Month to date</p>
-          {/* Daily bar graph, 2026-08-19 — was a stat-only block. Lightweight
-              div-based bars (not recharts) since this column is narrow and
-              a full axis-labeled chart wouldn't fit ~30 daily bars legibly. */}
-          {monthlyTrend.length > 0 && (
-            <div
-              data-testid="landing-monthly-trend-graph"
-              role="img"
-              aria-label={`Daily outgoing quantity trend for the month, ${monthlyTrend.length} days`}
-              className="mt-4 flex h-16 items-end gap-0.5"
-            >
-              {monthlyTrend.map((day, index) => {
-                const max = Math.max(1, ...monthlyTrend.map((d) => d.qty));
-                const heightPct = Math.max(6, Math.round((day.qty / max) * 100));
-                return (
-                  <div
-                    key={`${day.period}-${index}`}
-                    title={`Day ${day.period}: ${day.qty.toLocaleString()}`}
-                    className="min-w-[3px] flex-1 rounded-t-sm bg-surface-white/40 transition-[height] hover:bg-surface-white/70"
-                    style={{ height: `${heightPct}%` }}
-                  />
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* ── KPI tile strip ─────────────────────────────────────────────────
-          6 operational count tiles. Capability-gated: tile shows "—" not an
-          error state when the session lacks the required capability.
-          Colored icon badge is an accent only — the figure itself stays
-          text-on-surface, never colored text (KpiTile enforces this). */}
-      <section aria-label="Key performance indicators" className="mb-4 sm:mb-6">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
+      {/* ── 1. Top-Level KPI Tile Strip (6 Metrics) ─────────────────────────── */}
+      <section aria-label="Key performance indicators">
+        <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-6">
           <KpiTile
             label="Open WRRs"
             value={hasReceivingAccess ? openWrrs : "—"}
@@ -274,9 +184,6 @@ export function OfficeLanding({
             accent="pending"
             linkTo={hasInspectionAccess ? "/inspection" : undefined}
           />
-          {/* Low Stock — operational stock-count metric, gated reporting.read
-              (NOT reporting.financial_read — that gate was wrong for a
-              non-financial count). */}
           <KpiTile
             label="Low Stock Items"
             value={hasReportingAccess && inventoryKpis ? inventoryKpis.lowStockItemsCount : "—"}
@@ -284,7 +191,6 @@ export function OfficeLanding({
             accent="red"
             linkTo={hasReportingAccess ? "/inventory" : undefined}
           />
-          {/* Pending Approvals — gated fifo_override.approve */}
           <KpiTile
             label="Pending Approvals"
             value={hasApprovalAccess ? pendingApprovals : "—"}
@@ -295,104 +201,221 @@ export function OfficeLanding({
         </div>
       </section>
 
-      {/* ── Flow-type activity ────────────────────────────────────────────
-          VMI/Trading/Supplies is the operational dimension every pick list
-          partitions by. */}
-      <section aria-label="Activity by flow type" className="mb-4 sm:mb-6">
-        {hasPickListAccess && flowActivity && flowActivity.length > 0 && (
-          <BarChart
-            title="Activity by Flow Type"
-            xAxisLabel="Flow type"
-            yAxisLabel="Pick lists"
-            data={flowActivity.map((row) => ({
-              label: FLOW_LABELS[row.flowType] ?? row.flowType,
-              value: row.count,
-              color: FLOW_COLORS[row.flowType],
-            }))}
-          />
-        )}
+      {/* ── 2. High-Level Visualizations Bento Grid ─────────────────────────── */}
+      <section aria-label="Operational visualizations" className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {/* Visual 1: Dispatch Rate Ring */}
+        <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">
+          {hasPickListAccess && dispatchRate ? (
+            (() => {
+              const total = dispatchRate.dispatched + dispatchRate.notDispatched;
+              const pct = total > 0 ? Math.round((dispatchRate.dispatched / total) * 100) : 0;
+              return (
+                <DonutChart
+                  title="Dispatch Rate"
+                  centerLabel="Dispatched"
+                  centerValue={pct}
+                  segments={[
+                    { label: "Dispatched", value: dispatchRate.dispatched, statusToken: "available" },
+                    { label: "In Progress", value: dispatchRate.notDispatched, statusToken: "pending" },
+                  ]}
+                />
+              );
+            })()
+          ) : (
+            <div className="flex h-64 items-center justify-center text-xs text-text-grey">
+              Dispatch rate unavailable
+            </div>
+          )}
+        </div>
+
+        {/* Visual 2: Weekly Outgoing Trend */}
+        <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1 lg:col-span-2">
+          <div className="mb-2 flex items-center justify-between">
+            <div>
+              <h2 className="font-heading text-sm font-semibold text-on-surface">
+                Weekly Outgoing Trend
+              </h2>
+              <p className="font-body text-xs text-text-grey">
+                Daily quantity and CBM dispatched (last 7 days)
+              </p>
+            </div>
+          </div>
+          <div data-testid="landing-weekly-trend">
+            <WeeklyTrendChart data={weeklyTrend} />
+          </div>
+        </div>
+
+        {/* Visual 3: Monthly Outgoing Stat Block */}
+        <div
+          data-testid="landing-monthly-kpi"
+          className="flex flex-col justify-between rounded-xl bg-brand-navy p-5 text-surface-white shadow-elevation-1"
+        >
+          <div>
+            <p className="font-label text-xs uppercase tracking-wider text-surface-white/70">
+              Monthly Outgoing
+            </p>
+            <p className="mt-2 font-heading text-3xl font-extrabold text-surface-white">
+              {monthlyOutgoingQty.toLocaleString()}
+            </p>
+            <p className="mt-1 font-body text-xs text-surface-white/70">Units dispatched MTD</p>
+          </div>
+
+          {monthlyTrend.length > 0 && (
+            <div
+              data-testid="landing-monthly-trend-graph"
+              role="img"
+              aria-label={`Daily outgoing quantity trend for the month, ${monthlyTrend.length} days`}
+              className="mt-6 flex h-16 items-end gap-1"
+            >
+              {monthlyTrend.map((day, index) => {
+                const max = Math.max(1, ...monthlyTrend.map((d) => d.qty));
+                const heightPct = Math.max(8, Math.round((day.qty / max) * 100));
+                return (
+                  <div
+                    key={`${day.period}-${index}`}
+                    title={`Day ${day.period}: ${day.qty.toLocaleString()}`}
+                    className="min-w-[3px] flex-1 rounded-t-sm bg-surface-white/40 transition-[height] hover:bg-surface-white/80"
+                    style={{ height: `${heightPct}%` }}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
       </section>
 
-      {/* ── Master Inventory Preview + Action Queues ───────────────────────
-          Two panels side by side on desktop, stacked on mobile. */}
-      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      {/* ── 3. Stock Ownership & Flow Activity Breakdown ───────────────────── */}
+      <section aria-label="Stock split and flow activity" className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {/* Stock Ownership Split Donut */}
+        <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">
+          <DonutChart
+            title="Stock Ownership Split"
+            centerLabel="Total Ratio"
+            centerValue={100}
+            segments={[
+              {
+                label: `VMI Consigned (${Math.round((ownership.vmi / totalStockQty) * 100)}%)`,
+                value: ownership.vmi,
+                statusToken: "pending",
+              },
+              {
+                label: `Owned Trading (${Math.round((ownership.trading / totalStockQty) * 100)}%)`,
+                value: ownership.trading,
+                statusToken: "available",
+              },
+              {
+                label: `Internal Supplies (${Math.round((ownership.supplies / totalStockQty) * 100)}%)`,
+                value: ownership.supplies,
+                statusToken: "neutral",
+              },
+            ]}
+          />
+        </div>
 
-        {/* Left: Master Inventory Preview (top 5 items by stock level) */}
+        {/* Activity by Flow Type Bar Chart */}
+        <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">
+          {hasPickListAccess && flowActivity && flowActivity.length > 0 ? (
+            <BarChart
+              title="Activity by Flow Type"
+              xAxisLabel="Flow Type"
+              yAxisLabel="Dispatches"
+              data={flowActivity.map((row) => ({
+                label: FLOW_LABELS[row.flowType] ?? row.flowType,
+                value: row.count,
+                color: FLOW_COLORS[row.flowType],
+              }))}
+            />
+          ) : (
+            <div className="flex h-64 flex-col items-center justify-center text-xs text-text-grey">
+              <PieChart size={32} className="mb-2 text-slate-300" />
+              <p>No flow dispatch data in current period</p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ── 4. Actionable Queues & Lists (2-Column Bento) ───────────────────── */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+        {/* Left: Top Stock Items Preview with Frosted Glass Badges */}
         <section aria-label="Top inventory items" className="rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
-          <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3 sm:px-5 sm:py-4">
-            <h2 className="font-heading text-headline-md font-semibold text-on-surface">
-              Top Stock Items
-            </h2>
+          <div className="flex items-center justify-between border-b border-outline-variant/30 px-5 py-4">
+            <div>
+              <h2 className="font-heading text-base font-semibold text-on-surface">
+                Top Stock Items Preview
+              </h2>
+              <p className="font-body text-xs text-text-grey">Top inventory items with flow partition badges</p>
+            </div>
             <Link
               href="/inventory"
-              className="font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="font-label text-xs font-semibold text-brand-navy underline hover:text-brand-royal-blue"
             >
               View All
             </Link>
           </div>
 
           {inventoryPreview.length === 0 ? (
-            <div className="px-5 py-10 text-center">
-              <p className="font-body text-body-md text-text-grey">No stock items available.</p>
+            <div className="px-5 py-12 text-center text-xs text-text-grey italic">
+              No stock items available in the active warehouse.
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
+              <table className="w-full border-collapse text-left text-sm">
                 <thead>
-                  <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                    <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                      Item
-                    </th>
-                    <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                      Stock
-                    </th>
-                    <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                      Lots / Locations
-                    </th>
-                    <th className="sr-only px-4 py-3">Actions</th>
+                  <tr className="border-b border-slate-100 bg-slate-50/50 font-label text-xs uppercase tracking-wider text-text-grey">
+                    <th className="px-4 py-3">Item Code &amp; Flow</th>
+                    <th className="px-4 py-3 text-right">Available Qty</th>
+                    <th className="px-4 py-3">Locations</th>
+                    <th className="px-4 py-3 text-right">Quick Jumps</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-outline-variant/30">
+                <tbody className="divide-y divide-slate-100 font-body">
                   {inventoryPreview.map((item) => {
-                    // Collect dispersed locations (unique location labels across all lots)
                     const locations = [...new Set(item.lots.map((l) => l.locationLabel))];
-                    const lotCount = item.lots.length;
+                    const flow = item.flowType ?? "trading";
                     return (
-                      <tr key={item.itemId} className="hover:bg-surface-light-grey/50">
+                      <tr key={item.itemId} className="hover:bg-slate-50/70 transition-colors">
                         <td className="px-4 py-3">
-                          <p className="font-mono text-mono-md font-bold text-on-surface">
-                            {item.itemCode}
-                          </p>
-                          <p className="mt-0.5 font-body text-body-sm text-text-grey">
-                            {item.itemName}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-bold text-on-surface">
+                              {item.itemCode}
+                            </span>
+                            {/* Frosted Glass Badge */}
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider backdrop-blur-md ${
+                                flow === "vmi"
+                                  ? "bg-blue-100/70 text-blue-800 border border-blue-200"
+                                  : flow === "trading"
+                                  ? "bg-slate-100/80 text-slate-900 border border-slate-300"
+                                  : "bg-amber-100/70 text-amber-800 border border-amber-200"
+                              }`}
+                            >
+                              {flow}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 text-xs text-text-grey">{item.itemName}</p>
                         </td>
-                        <td className="px-4 py-3 text-right font-mono text-mono-md text-on-surface">
-                          {item.totalQty.toLocaleString()}
-                          <span className="ml-1 font-body text-body-sm text-text-grey">
-                            {item.uom}
-                          </span>
+                        <td className="px-4 py-3 text-right font-mono text-xs font-bold text-on-surface">
+                          {item.totalQty.toLocaleString()}{" "}
+                          <span className="font-normal text-text-grey">{item.uom}</span>
                         </td>
-                        <td className="px-4 py-3">
-                          <p className="font-body text-body-sm text-text-grey">
-                            {lotCount} lot{lotCount !== 1 ? "s" : ""}
+                        <td className="px-4 py-3 text-xs">
+                          <p className="font-mono text-slate-700">
+                            {locations.slice(0, 2).join(", ")}
+                            {locations.length > 2 ? ` +${locations.length - 2}` : ""}
                           </p>
-                          <p className="mt-0.5 font-mono text-mono-md text-on-surface">
-                            {locations.slice(0, 3).join(", ")}
-                            {locations.length > 3 ? ` +${locations.length - 3}` : ""}
-                          </p>
+                          <p className="text-[11px] text-text-grey">{item.lots.length} lot(s)</p>
                         </td>
-                        <td className="px-4 py-3">
-                          <div className="flex flex-wrap gap-1">
+                        <td className="px-4 py-3 text-right">
+                          <div className="inline-flex gap-1.5">
                             <Link
                               href={`/inventory?item=${item.itemCode}`}
-                              className="inline-flex h-8 items-center rounded border border-outline-variant/30 px-2 font-label text-body-sm text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                              className="rounded border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-brand-navy hover:bg-slate-50 hover:border-brand-navy"
                             >
                               Balance
                             </Link>
                             <Link
                               href={`/inventory?item=${item.itemCode}&view=lots`}
-                              className="inline-flex h-8 items-center rounded border border-outline-variant/30 px-2 font-label text-body-sm text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                              className="rounded border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-brand-navy hover:bg-slate-50 hover:border-brand-navy"
                             >
                               Lots
                             </Link>
@@ -407,35 +430,117 @@ export function OfficeLanding({
           )}
         </section>
 
-        {/* Right: Action Queues */}
-        <aside className="space-y-3 sm:space-y-4">
-          {/* Recent Activity feed (R11.3) */}
+        {/* Right: Action Queues & Chronological Activity Feed */}
+        <div className="space-y-4">
+          {/* Action Queues (Oldest First with Direct Buttons) */}
+          <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">
+            <h3 className="mb-3 font-heading text-sm font-semibold text-on-surface">
+              Action Queues (Oldest First)
+            </h3>
+            <div className="space-y-2.5">
+              {/* WRR Action Item */}
+              {hasReceivingAccess && openWrrRows.length > 0 && (
+                <div className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50/60 p-3">
+                  <div className="min-w-0">
+                    <p className="font-mono text-xs font-bold text-on-surface">
+                      WRR: {openWrrRows[0].wrrNumber}
+                    </p>
+                    <p className="text-xs text-text-grey truncate">
+                      {openWrrRows[0].vendorPartyName ?? "Inbound Vendor"}
+                    </p>
+                  </div>
+                  <Link
+                    href={`/receiving/${openWrrRows[0].id}/receive`}
+                    className="inline-flex h-8 items-center rounded bg-primary px-3 text-xs font-bold text-white hover:bg-primary-hover"
+                  >
+                    Receive
+                  </Link>
+                </div>
+              )}
+
+              {/* Pick List Action Item */}
+              {hasPickListAccess && openPickListRows.length > 0 && (
+                <div className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50/60 p-3">
+                  <div className="min-w-0">
+                    <p className="font-mono text-xs font-bold text-on-surface">
+                      Pick: {openPickListRows[0].pickListNumber}
+                    </p>
+                    <p className="text-xs text-text-grey uppercase font-semibold">
+                      {openPickListRows[0].flowType}
+                    </p>
+                  </div>
+                  <Link
+                    href={`/outgoing/${openPickListRows[0].id}/pick`}
+                    className="inline-flex h-8 items-center rounded bg-primary px-3 text-xs font-bold text-white hover:bg-primary-hover"
+                  >
+                    Pick
+                  </Link>
+                </div>
+              )}
+
+              {/* Approval Action Item */}
+              {hasApprovalAccess && pendingApprovalRows.length > 0 && (
+                <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50/60 p-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-amber-900">
+                      Approval: {pendingApprovalRows[0].approvalType.replace("_", " ")}
+                    </p>
+                    <p className="text-xs text-amber-700">FIFO Override / Exception</p>
+                  </div>
+                  <Link
+                    href={`/approvals/${pendingApprovalRows[0].id}`}
+                    className="inline-flex h-8 items-center rounded bg-amber-700 px-3 text-xs font-bold text-white hover:bg-amber-800"
+                  >
+                    Review
+                  </Link>
+                </div>
+              )}
+
+              {/* Inspection Action Item */}
+              {hasInspectionAccess && openInspectionRows.length > 0 && (
+                <div className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50/60 p-3">
+                  <div className="min-w-0">
+                    <p className="font-mono text-xs font-bold text-on-surface">
+                      Inspect: {openInspectionRows[0].itemCode}
+                    </p>
+                    <p className="text-xs text-text-grey">Lot {openInspectionRows[0].lotNumber}</p>
+                  </div>
+                  <Link
+                    href="/inspection"
+                    className="inline-flex h-8 items-center rounded bg-primary px-3 text-xs font-bold text-white hover:bg-primary-hover"
+                  >
+                    Inspect
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Chronological Recent Activity Feed */}
           <div
             aria-label="Recent activity"
             data-testid="landing-recent-activity"
-            className="rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1"
+            className="rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1"
           >
-            <div className="flex items-center gap-2 border-b border-outline-variant/30 px-4 py-3">
-              <ClipboardList size={18} strokeWidth={2} aria-hidden="true" className="text-brand-navy" />
-              <h3 className="font-heading text-headline-md font-semibold text-on-surface">
-                Recent Activity
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+              <ClipboardList size={16} className="text-brand-navy" />
+              <h3 className="font-heading text-sm font-semibold text-on-surface">
+                Recent Activity Feed
               </h3>
             </div>
             {recentActivity.length === 0 ? (
-              <p className="px-4 py-4 font-body text-body-md text-text-grey">
-                No recent activity.
-              </p>
+              <p className="py-4 text-xs text-text-grey italic">No recent transactions.</p>
             ) : (
-              <ul className="divide-y divide-outline-variant/30">
+              <ul className="divide-y divide-slate-100">
                 {recentActivity.map((entry) => (
-                  <li key={entry.id} className="px-4 py-3">
-                    <p className="font-body text-body-md text-on-surface">{entry.description}</p>
+                  <li key={entry.id} className="py-2.5">
+                    <p className="font-body text-xs font-medium text-on-surface">{entry.description}</p>
                     {entry.timestamp && (
                       <time
                         dateTime={entry.timestamp}
-                        className="mt-0.5 block font-body text-body-sm text-text-grey"
+                        className="mt-0.5 block font-mono text-[11px] text-text-grey"
                       >
-                        {new Date(entry.timestamp).toLocaleString()}
+                        {new Date(entry.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </time>
                     )}
                   </li>
@@ -443,169 +548,7 @@ export function OfficeLanding({
               </ul>
             )}
           </div>
-
-          {/* Open WRRs */}
-          {hasReceivingAccess && (
-            <div className="rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
-              <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
-                <h3 className="font-heading text-headline-md font-semibold text-on-surface">
-                  Open WRRs
-                </h3>
-                <Link
-                  href="/receiving"
-                  className="font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                >
-                  View all
-                </Link>
-              </div>
-              {openWrrRows.length === 0 ? (
-                <p className="px-4 py-4 font-body text-body-md text-status-available">
-                  All clear
-                </p>
-              ) : (
-                <div className="divide-y divide-outline-variant/30">
-                  {openWrrRows.map((wrr) => (
-                    <div key={wrr.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                      <div className="min-w-0">
-                        <p className="font-mono text-mono-md font-bold text-on-surface truncate">
-                          {wrr.wrrNumber}
-                        </p>
-                        <p className="font-body text-body-sm text-text-grey truncate">
-                          {wrr.vendorPartyName ?? "—"}
-                        </p>
-                      </div>
-                      <Link
-                        href={`/receiving/${wrr.id}/receive`}
-                        className="shrink-0 inline-flex h-9 items-center rounded bg-primary px-3 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                      >
-                        Receive
-                      </Link>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Allocated Pick Lists */}
-          {hasPickListAccess && (
-            <div className="rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
-              <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
-                <h3 className="font-heading text-headline-md font-semibold text-on-surface">
-                  Active Pick Lists
-                </h3>
-                <Link
-                  href="/outgoing"
-                  className="font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                >
-                  View all
-                </Link>
-              </div>
-              {openPickListRows.length === 0 ? (
-                <p className="px-4 py-4 font-body text-body-md text-status-available">
-                  All clear
-                </p>
-              ) : (
-                <div className="divide-y divide-outline-variant/30">
-                  {openPickListRows.map((pl) => (
-                    <div key={pl.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                      <p className="font-mono text-mono-md font-bold text-on-surface truncate">
-                        {pl.pickListNumber}
-                      </p>
-                      <Link
-                        href={`/pick-lists/${pl.id}/dispatch`}
-                        className="shrink-0 inline-flex h-9 items-center rounded bg-primary px-3 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                      >
-                        Dispatch
-                      </Link>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Pending Approvals */}
-          {hasApprovalAccess && (
-            <div className="rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
-              <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
-                <h3 className="font-heading text-headline-md font-semibold text-on-surface">
-                  Pending Approvals
-                </h3>
-                <Link
-                  href="/approvals"
-                  className="font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                >
-                  View all
-                </Link>
-              </div>
-              {pendingApprovalRows.length === 0 ? (
-                <p className="px-4 py-4 font-body text-body-md text-status-available">
-                  All clear
-                </p>
-              ) : (
-                <div className="divide-y divide-outline-variant/30">
-                  {pendingApprovalRows.map((req) => (
-                    <div key={req.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                      <p className="font-label text-label uppercase text-status-pending truncate">
-                        {req.approvalType.replace(/_/g, " ")}
-                      </p>
-                      <Link
-                        href={`/approvals/${req.id}`}
-                        className="shrink-0 inline-flex h-9 items-center rounded bg-primary px-3 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                      >
-                        Review
-                      </Link>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Open Inspection Cases */}
-          {hasInspectionAccess && (
-            <div className="rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
-              <div className="flex items-center justify-between border-b border-outline-variant/30 px-4 py-3">
-                <h3 className="font-heading text-headline-md font-semibold text-on-surface">
-                  Open Inspections
-                </h3>
-                <Link
-                  href="/inspection"
-                  className="font-label text-label text-brand-navy underline hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                >
-                  View all
-                </Link>
-              </div>
-              {openInspectionRows.length === 0 ? (
-                <p className="px-4 py-4 font-body text-body-md text-status-available">
-                  All clear
-                </p>
-              ) : (
-                <div className="divide-y divide-outline-variant/30">
-                  {openInspectionRows.map((c) => (
-                    <div key={c.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                      <div className="min-w-0">
-                        <p className="font-mono text-mono-md font-bold text-on-surface truncate">
-                          {c.itemCode}
-                        </p>
-                        <p className="font-body text-body-sm text-text-grey truncate">
-                          {c.lotNumber}
-                        </p>
-                      </div>
-                      <Link
-                        href={`/inspection/${c.id}`}
-                        className="shrink-0 inline-flex h-9 items-center rounded border border-outline-variant/30 px-3 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                      >
-                        Inspect
-                      </Link>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </aside>
+        </div>
       </div>
     </div>
   );

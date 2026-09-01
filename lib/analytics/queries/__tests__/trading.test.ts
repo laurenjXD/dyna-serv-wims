@@ -9,13 +9,13 @@ import type { AnalyticsExecutor } from "../shared";
 describe("trading queries", () => {
   it("computes GMROI score and turnover ratio with mock executor", async () => {
     const mockExecutor: AnalyticsExecutor = {
-      execute: async () => [
+      execute: async <T>() => [
         {
           gross_margin_total: "500000",
           avg_inventory_value: "200000",
           cogs_total: "800000",
         },
-      ],
+      ] as unknown as T[],
     };
 
     const res = await getGmroiAndTurnover(mockExecutor);
@@ -27,7 +27,7 @@ describe("trading queries", () => {
 
   it("extracts dead stock and aging inventory brackets correctly", async () => {
     const mockExecutor: AnalyticsExecutor = {
-      execute: async () => [
+      execute: async <T>() => [
         {
           item_id: "item-1",
           item_code: "TRD-01",
@@ -39,7 +39,7 @@ describe("trading queries", () => {
           total_qty: "170",
           total_value: "85000",
         },
-      ],
+      ] as unknown as T[],
     };
 
     const res = await getDeadStockAndAgingReport(mockExecutor);
@@ -54,7 +54,7 @@ describe("trading queries", () => {
 
   it("maps stars and dogs coordinates correctly", async () => {
     const mockExecutor: AnalyticsExecutor = {
-      execute: async () => [
+      execute: async <T>() => [
         {
           id: "item-1",
           code: "TRD-VALVE",
@@ -64,7 +64,7 @@ describe("trading queries", () => {
           turnover_velocity: "8.2",
           volume: "300",
         },
-      ],
+      ] as unknown as T[],
     };
 
     const res = await getStarsAndDogsMatrix(mockExecutor);

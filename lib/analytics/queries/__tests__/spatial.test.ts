@@ -18,13 +18,13 @@ describe("spatial queries", () => {
 
   it("builds 2D picking density grid matrix correctly", async () => {
     const mockExecutor: AnalyticsExecutor = {
-      execute: async () => [
+      execute: async <T>() => [
         {
           aisle: "Aisle A",
           bay: "Bay 01",
           pick_count: "85",
         },
-      ],
+      ] as unknown as T[],
     };
 
     const res = await getWarehousePickingDensity(mockExecutor);
@@ -38,11 +38,11 @@ describe("spatial queries", () => {
 
   it("computes space utilization forecast correctly", async () => {
     const mockExecutor: AnalyticsExecutor = {
-      execute: async () => [
+      execute: async <T>() => [
         {
           current_cbm: "600",
         },
-      ],
+      ] as unknown as T[],
     };
 
     const res = await getSpaceUtilizationForecast(mockExecutor);

@@ -9,7 +9,7 @@ import type { AnalyticsExecutor } from "../shared";
 describe("vmi queries", () => {
   it("computes vendor scorecards fill rate percentage correctly", async () => {
     const mockExecutor: AnalyticsExecutor = {
-      execute: async () => [
+      execute: async <T>() => [
         {
           party_id: "vendor-1",
           vendor_name: "Apex Fasteners",
@@ -18,7 +18,7 @@ describe("vmi queries", () => {
           total_scanned: "980",
           discrepancy_count: "1",
         },
-      ],
+      ] as unknown as T[],
     };
 
     const res = await getVendorScorecards(mockExecutor);
@@ -31,7 +31,7 @@ describe("vmi queries", () => {
 
   it("calculates consignment liability aging brackets correctly", async () => {
     const mockExecutor: AnalyticsExecutor = {
-      execute: async () => [
+      execute: async <T>() => [
         {
           party_id: "party-1",
           party_name: "Acuity Electronics",
@@ -41,7 +41,7 @@ describe("vmi queries", () => {
           qty_90_plus: "2000",
           total_val: "52000",
         },
-      ],
+      ] as unknown as T[],
     };
 
     const res = await getConsignmentLiabilityAging(mockExecutor);
@@ -56,7 +56,7 @@ describe("vmi queries", () => {
 
   it("flags VMI items at stockout risk with risk levels", async () => {
     const mockExecutor: AnalyticsExecutor = {
-      execute: async () => [
+      execute: async <T>() => [
         {
           item_id: "item-vmi-1",
           item_code: "VMI-SEAL-01",
@@ -65,7 +65,7 @@ describe("vmi queries", () => {
           qty_available: "20",
           min_reorder_level: "100",
         },
-      ],
+      ] as unknown as T[],
     };
 
     const res = await getVmiStockoutRisk(mockExecutor);
