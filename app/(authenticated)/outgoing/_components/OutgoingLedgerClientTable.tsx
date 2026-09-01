@@ -646,7 +646,9 @@ export function OutgoingLedgerClientTable({
             <div className="flex items-center justify-end border-t border-outline-variant/30 bg-surface-light-grey px-6 py-4">
               {activeDrMeta.pickListId && (
                 <a
-                  href={`/pick-lists/${activeDrMeta.pickListId}/receipt`}
+                  href={`/api/pick-lists/${activeDrMeta.pickListId}/receipt`}
+                  target="_blank"
+                  rel="noreferrer"
                   className="mr-auto inline-flex items-center rounded-xl border border-brand-navy/30 bg-surface-white px-4 py-2.5 font-label text-label font-bold text-brand-navy hover:bg-brand-navy/5"
                 >
                   Export PDF
