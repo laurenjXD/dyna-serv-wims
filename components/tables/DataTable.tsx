@@ -133,7 +133,9 @@ export function DataTable<TData>({
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState<string>("");
   const [grouping, setGrouping] = useState<GroupingState>(initialGrouping);
-  const [expanded, setExpanded] = useState<ExpandedState>(true);
+  // Rows start collapsed; expandable detail panels should only appear after
+  // the user explicitly opens the row.
+  const [expanded, setExpanded] = useState<ExpandedState>({});
   const [mobileFilterDrawerOpen, setMobileFilterDrawerOpen] = useState(false);
 
   // Auto-attach appropriate filterFn based on meta.filterVariant if not explicitly defined
