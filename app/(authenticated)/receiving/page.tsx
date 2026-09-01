@@ -234,7 +234,7 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
       ) : activeTab === "wrrs" ? (
         <WrrsTab statusFilter={statusFilter} pageParam={pageParam} canCreate={canCreate} />
       ) : (
-        <LedgerTab pageParam={pageParam} />
+        <LedgerTab />
       )}
     </div>
   );
