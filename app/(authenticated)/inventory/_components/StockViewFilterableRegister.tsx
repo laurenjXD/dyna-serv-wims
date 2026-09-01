@@ -1,23 +1,11 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  Search,
-  ChevronDown,
-  ChevronRight,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-  X,
-} from "lucide-react";
+import type { ColumnDef, Row } from "@tanstack/react-table";
+import { ChevronDown, Package, Layers, ArrowRight } from "lucide-react";
+import { DataTable } from "@/components/tables/DataTable";
 import { LotQrViewer } from "./LotQrViewer";
-
-const FLOW_LABELS: Record<string, string> = {
-  vmi: "VMI",
-  trading: "Trading",
-  supplies: "Supplies",
-};
 
 export type AggregatedLot = {
   lotId: string;
@@ -34,6 +22,9 @@ export type GroupedItem = {
   itemId: string;
   itemCode: string;
   itemName: string;
+  categoryName: string | null;
+  subcategoryName: string | null;
+  inventoryModel: string;
   uom: string;
   isPerishable: boolean;
   flowType: "vmi" | "trading" | "supplies";
@@ -45,456 +36,477 @@ export type GroupedItem = {
   customerName: string | null;
   totalIn: number;
   totalOut: number;
-  pcsOnHand: number;
+  spq: number;
   boxesOnHand: number;
+  totalQty: number;
+  pcsOnHand?: number;
   cbmOccupied: number;
   lots: AggregatedLot[];
 };
 
-type SortField =
-  | "itemCode"
-  | "itemName"
-  | "customerName"
-  | "totalIn"
-  | "totalOut"
-  | "pcsOnHand"
-  | "boxesOnHand"
-  | "cbmOccupied";
-
-type SortDirection = "asc" | "desc";
-
 export function StockViewFilterableRegister({ items }: { items: GroupedItem[] }) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedFlow, setSelectedFlow] = useState<string>("all");
-  const [stockStatus, setStockStatus] = useState<"all" | "in_stock" | "zero_stock">("all");
-  const [sortField, setSortField] = useState<SortField>("itemCode");
-  const [sortDir, setSortDir] = useState<SortDirection>("asc");
+  const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
 
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDir(sortDir === "asc" ? "desc" : "asc");
-    } else {
-      setSortField(field);
-      setSortDir("asc");
-    }
-  };
-
-  const filteredAndSortedItems = useMemo(() => {
-    return items
-      .filter((item) => {
-        // Flow filter
-        if (selectedFlow !== "all" && item.flowType !== selectedFlow) {
-          return false;
-        }
-
-        // Stock status filter
-        if (stockStatus === "in_stock" && item.pcsOnHand <= 0) {
-          return false;
-        }
-        if (stockStatus === "zero_stock" && item.pcsOnHand > 0) {
-          return false;
-        }
-
-        // Omni-search
-        if (!searchQuery.trim()) return true;
-        const q = searchQuery.toLowerCase().trim();
-        const searchCorpus = `${item.itemCode} ${item.itemName} ${item.codes} ${item.lotNumbers} ${item.locationLabels} ${item.customerName} ${item.flowType}`.toLowerCase();
-        return searchCorpus.includes(q);
-      })
-      .sort((a, b) => {
-        let valA = a[sortField];
-        let valB = b[sortField];
-
-        if (typeof valA === "string") {
-          valA = (valA || "").toLowerCase();
-          valB = ((valB as string) || "").toLowerCase();
-          return sortDir === "asc"
-            ? (valA as string).localeCompare(valB as string)
-            : (valB as string).localeCompare(valA as string);
-        }
-
-        const numA = Number(valA || 0);
-        const numB = Number(valB || 0);
-        return sortDir === "asc" ? numA - numB : numB - numA;
-      });
-  }, [items, searchQuery, selectedFlow, stockStatus, sortField, sortDir]);
-
-  // Metric totals
-  const totals = useMemo(() => {
-    return filteredAndSortedItems.reduce(
-      (acc, item) => {
-        acc.pcs += item.pcsOnHand;
-        acc.boxes += item.boxesOnHand;
-        acc.cbm += item.cbmOccupied;
-        return acc;
+  const columns = useMemo<ColumnDef<GroupedItem, unknown>[]>(() => [
+    // 1. SKU / Item Code (Priority Identifier)
+    {
+      accessorKey: "itemCode",
+      header: "SKU / Code",
+      meta: {
+        filterVariant: "text",
+        filterLabel: "SKU / Item Code",
       },
-      { pcs: 0, boxes: 0, cbm: 0 }
-    );
-  }, [filteredAndSortedItems]);
+      cell: (info) => {
+        const item = info.row.original;
+        return (
+          <div className="flex items-center gap-1.5">
+            <span className="font-mono font-bold text-brand-navy">{String(info.getValue())}</span>
+            {item.isPerishable && (
+              <span className="rounded bg-rose-50 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 border border-rose-200 uppercase tracking-wider">
+                FEFO
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
 
-  const renderSortIcon = (field: SortField) => {
-    if (sortField !== field) {
-      return <ArrowUpDown size={14} className="opacity-40" />;
-    }
-    return sortDir === "asc" ? (
-      <ArrowUp size={14} className="text-brand-navy font-bold" />
-    ) : (
-      <ArrowDown size={14} className="text-brand-navy font-bold" />
-    );
-  };
+    // 2. Description / Item Name
+    {
+      accessorKey: "itemName",
+      header: "Description",
+      meta: {
+        filterVariant: "text",
+        filterLabel: "Description",
+      },
+      cell: (info) => {
+        const item = info.row.original;
+        return (
+          <div className="max-w-[200px]">
+            <p className="font-semibold text-slate-800 truncate" title={item.itemName}>
+              {item.itemName}
+            </p>
+            {item.customerName && (
+              <p className="text-[11px] text-text-grey truncate" title={item.customerName}>
+                {item.customerName}
+              </p>
+            )}
+          </div>
+        );
+      },
+    },
+
+    // 3. Inventory Model (Trading, VMI, Supplies)
+    {
+      accessorKey: "inventoryModel",
+      header: "Model",
+      meta: {
+        filterVariant: "multi-select",
+        filterLabel: "Model",
+        filterOptions: [
+          { label: "Trading (Owned)", value: "TRADING" },
+          { label: "VMI (Consignment)", value: "VMI" },
+          { label: "Supplies", value: "SUPPLIES" },
+        ],
+      },
+      cell: (info) => {
+        const val = String(info.getValue() || "TRADING").toUpperCase();
+        return (
+          <span
+            className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+              val === "VMI"
+                ? "bg-blue-50 text-blue-800 border border-blue-200"
+                : val === "TRADING"
+                ? "bg-slate-100 text-slate-900 border border-slate-300"
+                : "bg-amber-50 text-amber-800 border border-amber-200"
+            }`}
+          >
+            {val}
+          </span>
+        );
+      },
+    },
+
+    // 4. Category
+    {
+      accessorKey: "categoryName",
+      header: "Category",
+      meta: {
+        filterVariant: "multi-select",
+        filterLabel: "Category",
+      },
+      cell: (info) => (
+        <span className="font-medium text-slate-700">{String(info.getValue() || "—")}</span>
+      ),
+    },
+
+    // 5. Subcategory
+    {
+      accessorKey: "subcategoryName",
+      header: "Subcategory",
+      meta: {
+        filterVariant: "dependent-multi-select",
+        parentColumnId: "categoryName",
+        filterLabel: "Subcategory",
+      },
+      cell: (info) => <span className="text-text-grey">{String(info.getValue() || "—")}</span>,
+    },
+
+    // 6. Total In
+    {
+      accessorKey: "totalIn",
+      header: "Total In",
+      meta: {
+        filterVariant: "numeric-range",
+        filterLabel: "Total In",
+        align: "right",
+      },
+      cell: (info) => (
+        <span className="font-mono text-slate-600">
+          {Number(info.getValue() || 0).toLocaleString()}
+        </span>
+      ),
+    },
+
+    // 7. Total Out
+    {
+      accessorKey: "totalOut",
+      header: "Total Out",
+      meta: {
+        filterVariant: "numeric-range",
+        filterLabel: "Total Out",
+        align: "right",
+      },
+      cell: (info) => (
+        <span className="font-mono text-slate-600">
+          {Number(info.getValue() || 0).toLocaleString()}
+        </span>
+      ),
+    },
+
+    // 8. SPQ (Standard Pack Quantity per Box)
+    {
+      accessorKey: "spq",
+      header: "SPQ",
+      meta: {
+        filterVariant: "numeric-range",
+        filterLabel: "SPQ",
+        align: "right",
+      },
+      cell: (info) => {
+        const item = info.row.original;
+        return (
+          <span className="font-mono font-medium text-slate-700">
+            {Number(info.getValue() || item.spq || 1).toLocaleString()}
+          </span>
+        );
+      },
+    },
+
+    // 9. Boxes on Hand
+    {
+      accessorKey: "boxesOnHand",
+      header: "Boxes",
+      meta: {
+        filterVariant: "numeric-range",
+        filterLabel: "Boxes",
+        align: "right",
+      },
+      cell: (info) => (
+        <span className="font-mono text-slate-700">
+          {Number(info.getValue() || 0).toLocaleString()}
+        </span>
+      ),
+    },
+
+    // 10. Total Qty (SPQ × Boxes)
+    {
+      accessorKey: "totalQty",
+      header: "Total Qty",
+      meta: {
+        filterVariant: "numeric-range",
+        filterLabel: "Total Quantity (SPQ × Boxes)",
+        align: "right",
+      },
+      cell: (info) => {
+        const item = info.row.original;
+        const total = Number(info.getValue() || item.totalQty || (item.spq * item.boxesOnHand) || 0);
+        return (
+          <div className="font-mono font-bold text-brand-navy bg-blue-50/80 border border-blue-200/80 rounded px-2 py-0.5 inline-block text-right">
+            {total.toLocaleString()}{" "}
+            <span className="text-[10px] font-normal text-text-grey">{item.uom || "PCS"}</span>
+          </div>
+        );
+      },
+    },
+
+    // 11. CBM
+    {
+      accessorKey: "cbmOccupied",
+      header: "CBM",
+      meta: {
+        filterVariant: "numeric-range",
+        filterLabel: "CBM",
+        align: "right",
+      },
+      cell: (info) => (
+        <span className="font-mono text-slate-600">
+          {Number(info.getValue() || 0).toLocaleString(undefined, { maximumFractionDigits: 3 })}
+        </span>
+      ),
+    },
+
+    // 12. Lots & Locations
+    {
+      accessorKey: "locationLabels",
+      header: "Locations",
+      meta: {
+        filterVariant: "text",
+        filterLabel: "Locations",
+      },
+      cell: (info) => {
+        const item = info.row.original;
+        const isExpanded = expandedItemId === item.itemId;
+        return (
+          <button
+            type="button"
+            onClick={() => setExpandedItemId(isExpanded ? null : item.itemId)}
+            className="flex items-center gap-1 text-[11px] text-brand-navy hover:underline text-left"
+          >
+            <Layers size={13} className="text-brand-navy/70" />
+            <span className="font-semibold">{item.lots.length} lot(s)</span>
+            <span className="font-mono text-text-grey text-[10px]">[{item.locationLabels || "—"}]</span>
+          </button>
+        );
+      },
+    },
+
+    // 13. Quick Action
+    {
+      id: "actions",
+      header: "Action",
+      meta: {
+        align: "right",
+      },
+      cell: (info) => {
+        const item = info.row.original;
+        return (
+          <Link
+            href={`/inventory?tab=pick-lists&item=${item.itemCode}`}
+            className="rounded bg-brand-navy px-2.5 py-1 text-[11px] font-bold text-surface-white hover:bg-brand-navy/90 transition-colors shadow-sm"
+          >
+            Pick
+          </Link>
+        );
+      },
+    },
+  ], [expandedItemId]);
 
   return (
-    <div className="space-y-4">
-      {/* ── Filter & Search Toolbar ────────────────────────────────────── */}
-      <div className="flex flex-col gap-3 rounded-xl border border-outline-variant/40 bg-surface-white p-4 shadow-elevation-1 lg:flex-row lg:items-center lg:justify-between">
-        {/* Omni Search Box */}
-        <div className="relative flex-1 min-w-[280px]">
-          <Search
-            size={18}
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-grey"
-            aria-hidden="true"
-          />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by Item Code, Description, Lot #, Location, Customer…"
-            className="h-11 w-full rounded-xl border border-outline-variant/40 bg-surface-light-grey/40 pl-10 pr-10 font-body text-body-sm text-on-surface placeholder:text-text-grey focus:border-brand-navy focus:bg-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-grey hover:text-on-surface"
-              aria-label="Clear search"
-            >
-              <X size={16} />
-            </button>
-          )}
-        </div>
+    <div className="space-y-3">
+      <DataTable
+        columns={columns}
+        data={items}
+        title="Master Inventory Register"
+        subtitle="Item catalog with per-field Google Sheets filtering by SKU, category, subcategory, SPQ, boxes, and total quantity"
+        icon={<Package size={18} />}
+        enableGrouping={false}
+        initialSorting={[{ id: "totalQty", desc: true }]}
+        emptyMessage="No inventory items match the specified filters."
+        renderMobileCard={({ row }: { row: Row<GroupedItem> }) => {
+          const item = row.original;
+          const isLotsExpanded = expandedItemId === item.itemId;
+          const modelVal = String(item.inventoryModel || "TRADING").toUpperCase();
+          const totalCalculated = item.totalQty ?? (item.spq * item.boxesOnHand) ?? 0;
 
-        {/* Quick Filter Dropdowns */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Flow Type Filter */}
-          <div className="flex items-center gap-1.5 rounded-xl border border-outline-variant/40 bg-surface-white px-3 py-1.5">
-            <span className="font-label text-label-xs uppercase text-text-grey">Flow:</span>
-            <select
-              value={selectedFlow}
-              onChange={(e) => setSelectedFlow(e.target.value)}
-              className="bg-transparent font-body text-body-sm font-semibold text-on-surface focus:outline-none cursor-pointer"
-            >
-              <option value="all">All Flows</option>
-              <option value="vmi">VMI</option>
-              <option value="trading">Trading</option>
-              <option value="supplies">Supplies</option>
-            </select>
-          </div>
+          return (
+            <div className="rounded-2xl border border-slate-200 bg-surface-white p-3.5 shadow-sm space-y-2.5">
+              {/* Header: SKU / Code + Pick CTA */}
+              <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-sm font-bold text-brand-navy">{item.itemCode}</span>
+                  {item.isPerishable && (
+                    <span className="rounded bg-rose-50 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 border border-rose-200 uppercase">
+                      FEFO
+                    </span>
+                  )}
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${
+                      modelVal === "VMI"
+                        ? "bg-blue-50 text-blue-800 border border-blue-200"
+                        : modelVal === "TRADING"
+                        ? "bg-slate-100 text-slate-800 border border-slate-300"
+                        : "bg-amber-50 text-amber-800 border border-amber-200"
+                    }`}
+                  >
+                    {modelVal}
+                  </span>
+                </div>
+                <Link
+                  href={`/inventory?tab=pick-lists&item=${item.itemCode}`}
+                  className="inline-flex h-8 items-center gap-1 rounded-xl bg-brand-navy px-3 text-xs font-bold text-surface-white shadow-sm hover:bg-brand-navy/90"
+                >
+                  Pick <ArrowRight size={12} />
+                </Link>
+              </div>
 
-          {/* Stock Availability Filter */}
-          <div className="flex items-center gap-1.5 rounded-xl border border-outline-variant/40 bg-surface-white px-3 py-1.5">
-            <span className="font-label text-label-xs uppercase text-text-grey">Stock:</span>
-            <select
-              value={stockStatus}
-              onChange={(e) => setStockStatus(e.target.value as "all" | "in_stock" | "zero_stock")}
-              className="bg-transparent font-body text-body-sm font-semibold text-on-surface focus:outline-none cursor-pointer"
-            >
-              <option value="all">All Stock Levels</option>
-              <option value="in_stock">In Stock (&gt;0)</option>
-              <option value="zero_stock">Zero Stock (=0)</option>
-            </select>
-          </div>
+              {/* Description & Category */}
+              <div>
+                <p className="text-xs font-semibold text-slate-900">{item.itemName}</p>
+                <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-text-grey mt-0.5">
+                  <span>{item.categoryName || "Uncategorized"}</span>
+                  {item.subcategoryName && (
+                    <>
+                      <span>·</span>
+                      <span>{item.subcategoryName}</span>
+                    </>
+                  )}
+                  {item.customerName && (
+                    <>
+                      <span>·</span>
+                      <span className="font-medium text-slate-700">{item.customerName}</span>
+                    </>
+                  )}
+                </div>
+              </div>
 
-          {(searchQuery || selectedFlow !== "all" || stockStatus !== "all") && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearchQuery("");
-                setSelectedFlow("all");
-                setStockStatus("all");
-              }}
-              className="inline-flex h-9 items-center gap-1 rounded-lg px-2.5 font-label text-label-xs font-bold text-status-held hover:bg-status-held/10"
-            >
-              Reset Filters
-            </button>
-          )}
-        </div>
-      </div>
+              {/* Key Metrics Stats Grid (SPQ, Boxes, Total Qty) */}
+              <div className="grid grid-cols-3 gap-2 rounded-xl bg-slate-50 p-2.5 border border-slate-100 text-center">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-text-grey block">SPQ</span>
+                  <span className="font-mono text-xs font-semibold text-slate-700">
+                    {item.spq.toLocaleString()}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-text-grey block">Boxes</span>
+                  <span className="font-mono text-xs font-semibold text-slate-700">
+                    {item.boxesOnHand.toLocaleString()}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-brand-navy block">Total Qty</span>
+                  <span className="font-mono text-xs font-bold text-brand-navy">
+                    {totalCalculated.toLocaleString()} <span className="text-[9px] font-normal">{item.uom || "PCS"}</span>
+                  </span>
+                </div>
+              </div>
 
-      {/* ── Summary Stats Strip ────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-4 text-body-sm text-text-grey px-1">
-        <span>Showing <strong className="text-on-surface">{filteredAndSortedItems.length}</strong> items</span>
-        <span>&bull;</span>
-        <span>Total Available: <strong className="font-mono text-on-surface">{totals.pcs.toLocaleString()} PCS</strong></span>
-        <span>&bull;</span>
-        <span>Boxes: <strong className="font-mono text-on-surface">{totals.boxes.toLocaleString()}</strong></span>
-        <span>&bull;</span>
-        <span>Total CBM: <strong className="font-mono text-on-surface">{totals.cbm.toLocaleString(undefined, { maximumFractionDigits: 3 })} m³</strong></span>
-      </div>
-
-      {/* ── Main Inventory Table ──────────────────────────────────────── */}
-      {filteredAndSortedItems.length === 0 ? (
-        <div className="rounded-xl border border-outline-variant/40 bg-surface-white p-12 text-center shadow-elevation-1">
-          <p className="font-body text-body-md font-semibold text-on-surface">No stock matches your search criteria.</p>
-          <p className="mt-1 font-body text-body-sm text-text-grey">Try adjusting your filters or search terms.</p>
-        </div>
-      ) : (
-        <div className="overflow-hidden rounded-xl border border-outline-variant/50 bg-surface-white shadow-elevation-1">
-          <div className="hidden overflow-x-auto md:block">
-            <div className="min-w-[1500px]">
-              {/* Header with Click-to-Sort Columns */}
-              <div
-                role="row"
-                className="grid grid-cols-[1.15fr_1.8fr_1.5fr_1.35fr_1.55fr_1.55fr_0.8fr_0.9fr_0.95fr_1fr_1fr] gap-4 bg-[#EDF2FF] px-5 py-3 font-label text-label font-bold tracking-[0.04em] text-text-grey select-none"
-              >
+              {/* Lots & Location Drawer Trigger */}
+              <div className="flex items-center justify-between text-xs pt-1">
+                <span className="text-text-grey text-[11px] font-mono">
+                  Location: <strong className="text-slate-800">{item.locationLabels || "—"}</strong>
+                </span>
                 <button
                   type="button"
-                  onClick={() => handleSort("itemCode")}
-                  className="flex items-center gap-1 text-left font-bold uppercase hover:text-brand-navy"
+                  onClick={() => setExpandedItemId(isLotsExpanded ? null : item.itemId)}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-navy hover:underline"
                 >
-                  <span>Item Code</span>
-                  {renderSortIcon("itemCode")}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSort("itemName")}
-                  className="flex items-center gap-1 text-left font-bold uppercase hover:text-brand-navy"
-                >
-                  <span>Description</span>
-                  {renderSortIcon("itemName")}
-                </button>
-
-                <span>Codes</span>
-                <span>Lot No.</span>
-                <span>Location</span>
-
-                <button
-                  type="button"
-                  onClick={() => handleSort("customerName")}
-                  className="flex items-center gap-1 text-left font-bold uppercase hover:text-brand-navy"
-                >
-                  <span>Customer</span>
-                  {renderSortIcon("customerName")}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSort("totalIn")}
-                  className="flex items-center justify-end gap-1 font-bold uppercase hover:text-brand-navy"
-                >
-                  <span>Total In</span>
-                  {renderSortIcon("totalIn")}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSort("totalOut")}
-                  className="flex items-center justify-end gap-1 font-bold uppercase hover:text-brand-navy"
-                >
-                  <span>Total Out</span>
-                  {renderSortIcon("totalOut")}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSort("pcsOnHand")}
-                  className="flex items-center justify-end gap-1 font-bold uppercase hover:text-brand-navy"
-                >
-                  <span>SPQ</span>
-                  {renderSortIcon("pcsOnHand")}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSort("boxesOnHand")}
-                  className="flex items-center justify-end gap-1 font-bold uppercase hover:text-brand-navy"
-                >
-                  <span>Boxes</span>
-                  {renderSortIcon("boxesOnHand")}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSort("cbmOccupied")}
-                  className="flex items-center justify-end gap-1 font-bold uppercase hover:text-brand-navy"
-                >
-                  <span>CBM</span>
-                  {renderSortIcon("cbmOccupied")}
+                  <Layers size={12} /> {item.lots.length} lot(s) {isLotsExpanded ? "▲" : "▼"}
                 </button>
               </div>
 
-              {/* Rows */}
-              {filteredAndSortedItems.map((item) => (
-                <details key={item.itemId} className="group border-t border-outline-variant/30">
-                  <summary className="grid cursor-pointer list-none grid-cols-[1.15fr_1.8fr_1.5fr_1.35fr_1.55fr_1.55fr_0.8fr_0.9fr_0.95fr_1fr_1fr] gap-3 px-4 py-3 font-body text-body-sm text-on-surface outline-none transition-colors hover:bg-[#F7F9FF] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy [&::-webkit-details-marker]:hidden">
-                    <span className="flex min-w-0 items-center gap-2 font-heading font-bold">
-                      <ChevronRight
-                        size={18}
-                        aria-hidden="true"
-                        className="shrink-0 text-text-grey transition-transform group-open:rotate-90"
-                      />
-                      <span className="truncate">{item.itemCode}</span>
-                    </span>
-                    <span className="truncate">
-                      {item.itemName}
-                      <span className="ml-2 rounded bg-brand-navy/10 px-1.5 py-0.5 text-body-xs font-bold text-brand-navy">
-                        {FLOW_LABELS[item.flowType]}
+              {/* Mobile Expanded Lots View */}
+              {isLotsExpanded && (
+                <div className="mt-2 space-y-2 border-t border-slate-100 pt-2">
+                  {item.lots.map((lot) => (
+                    <div key={lot.lotId} className="rounded-lg border border-slate-200 bg-white p-2.5 space-y-1 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono font-bold text-brand-navy">{lot.lotNumber}</span>
+                        <span className="rounded bg-blue-50 px-1.5 py-0.2 text-[10px] font-bold text-brand-navy">
+                          {lot.availableQty.toLocaleString()} {item.uom}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-[11px] text-text-grey">
+                        <span>Location: {lot.locationLabels.join(", ") || "—"}</span>
+                        <span>Exp: {lot.expiryDate || "—"}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        }}
+      />
+
+      {/* Desktop Lot Details Drawer when an item's lot link is clicked */}
+      {expandedItemId && (() => {
+        const expandedItem = items.find((i) => i.itemId === expandedItemId);
+        if (!expandedItem) return null;
+        const totalCalculated = expandedItem.totalQty ?? (expandedItem.spq * expandedItem.boxesOnHand) ?? 0;
+        return (
+          <div className="hidden md:block rounded-2xl border border-blue-200 bg-[#F8FAFF] p-4 shadow-elevation-1">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-blue-100 pb-2">
+              <div className="text-xs text-slate-700">
+                <span>
+                  Lots for <strong className="font-mono font-bold text-brand-navy">{expandedItem.itemCode}</strong> ({expandedItem.itemName}) shown in{" "}
+                  <strong>{expandedItem.isPerishable ? "FEFO" : "FIFO"}</strong> order.
+                </span>
+              </div>
+              <div className="flex items-center gap-3 text-xs">
+                <span className="font-mono font-bold text-brand-navy">
+                  Total Available: {totalCalculated.toLocaleString()} {expandedItem.uom}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setExpandedItemId(null)}
+                  className="rounded bg-slate-200 px-2 py-0.5 text-[11px] font-bold text-slate-700 hover:bg-slate-300"
+                >
+                  Close Lots
+                </button>
+              </div>
+            </div>
+
+            <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {expandedItem.lots.map((lot) => (
+                <details
+                  key={lot.lotId}
+                  className="group rounded-xl border border-slate-200 bg-surface-white p-3 shadow-sm hover:border-brand-navy/40 transition-all"
+                >
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-2 outline-none [&::-webkit-details-marker]:hidden">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <ChevronDown size={15} className="text-text-grey transition-transform group-open:rotate-180 shrink-0" />
+                      <span className="font-mono text-xs font-bold text-slate-900 truncate" title={lot.lotNumber}>
+                        {lot.lotNumber}
                       </span>
-                    </span>
-                    <span className="truncate text-text-grey" title={item.codes || undefined}>
-                      {item.codes || "—"}
-                    </span>
-                    <span className="truncate text-text-grey" title={item.lotNumbers}>
-                      {item.lotNumbers || "—"}
-                    </span>
-                    <span className="truncate text-text-grey" title={item.locationLabels}>
-                      {item.locationLabels || "—"}
-                    </span>
-                    <span className="truncate text-text-grey" title={item.customerName || undefined}>
-                      {item.customerName || "—"}
-                    </span>
-                    <span className="text-right font-mono text-mono-md text-on-surface">
-                      {item.totalIn.toLocaleString()}
-                    </span>
-                    <span className="text-right font-mono text-mono-md text-on-surface">
-                      {item.totalOut.toLocaleString()}
-                    </span>
-                    <span className="text-right font-mono text-mono-md font-bold text-on-surface">
-                      {item.pcsOnHand.toLocaleString()}
-                    </span>
-                    <span className="text-right font-mono text-mono-md text-on-surface">
-                      {item.boxesOnHand.toLocaleString()}
-                    </span>
-                    <span className="text-right font-mono text-mono-md text-on-surface">
-                      {item.cbmOccupied.toLocaleString(undefined, { maximumFractionDigits: 3 })}
+                    </div>
+                    <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-brand-navy">
+                      {lot.availableQty.toLocaleString()} {expandedItem.uom}
                     </span>
                   </summary>
-                  <InventoryItemDetails item={item} />
+
+                  <div className="mt-3 border-t border-slate-100 pt-2 space-y-1.5 text-xs">
+                    <div className="flex justify-between text-text-grey">
+                      <span>Location:</span>
+                      <span className="font-mono font-semibold text-slate-800">
+                        {lot.locationLabels.join(", ") || "—"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-text-grey">
+                      <span>Expiry:</span>
+                      <span className="font-mono text-slate-800">{lot.expiryDate || "Not dated"}</span>
+                    </div>
+                    <div className="flex justify-between text-text-grey">
+                      <span>Status:</span>
+                      <span className="font-semibold text-emerald-700 lowercase">{lot.lotStatus}</span>
+                    </div>
+
+                    <div className="pt-2">
+                      <LotQrViewer
+                        lotId={lot.lotId}
+                        lotNumber={lot.lotNumber}
+                        itemCode={expandedItem.itemCode}
+                        compact
+                      />
+                    </div>
+                  </div>
                 </details>
               ))}
             </div>
           </div>
-
-          {/* Mobile responsive accordion view */}
-          <div className="divide-y divide-outline-variant/30 md:hidden">
-            {filteredAndSortedItems.map((item) => (
-              <details key={item.itemId} className="group">
-                <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-4 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy [&::-webkit-details-marker]:hidden">
-                  <ChevronRight
-                    size={21}
-                    aria-hidden="true"
-                    className="shrink-0 text-text-grey transition-transform group-open:rotate-90"
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-heading text-title-md font-bold text-on-surface">
-                      {item.itemCode}
-                    </span>
-                    <span className="mt-1 block truncate font-body text-body-sm text-text-grey">
-                      {item.itemName} &bull; {item.lots.length} lot{item.lots.length === 1 ? "" : "s"}
-                    </span>
-                    <span className="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-mono text-mono-sm text-text-grey">
-                      <span>PCS: <strong className="text-on-surface">{item.pcsOnHand.toLocaleString()}</strong></span>
-                      <span>Boxes: <strong className="text-on-surface">{item.boxesOnHand.toLocaleString()}</strong></span>
-                      <span>CBM: <strong className="text-on-surface">{item.cbmOccupied.toLocaleString(undefined, { maximumFractionDigits: 3 })}</strong></span>
-                    </span>
-                  </span>
-                </summary>
-                <InventoryItemDetails item={item} />
-              </details>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function InventoryItemDetails({ item }: { item: GroupedItem }) {
-  return (
-    <div className="border-t border-outline-variant/20 bg-[#F8FAFF] px-4 py-3 sm:px-5">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <p className="font-body text-body-sm text-text-grey">
-          Lots are shown in {item.isPerishable ? "FEFO" : "FIFO"} order.
-        </p>
-        <div className="flex items-center gap-3">
-          <span className="font-label text-mono-sm text-text-grey">
-            {item.pcsOnHand.toLocaleString()} {item.uom} available
-          </span>
-          <Link
-            href="/inventory?tab=pick-lists"
-            className="inline-flex h-9 items-center rounded-lg bg-brand-navy px-3 font-label text-label-xs font-bold text-surface-white hover:bg-brand-navy/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            Create Pick List
-          </Link>
-        </div>
-      </div>
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-        {item.lots.map((lot) => (
-          <details
-            key={lot.lotId}
-            className="group w-full max-w-[340px] rounded-lg border border-outline-variant/30 bg-surface-white shadow-elevation-1"
-          >
-            <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 px-3 py-1.5 outline-none transition-colors hover:bg-surface-light-grey/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-navy [&::-webkit-details-marker]:hidden">
-              <span className="flex min-w-0 items-center gap-2.5">
-                <ChevronDown
-                  size={17}
-                  aria-hidden="true"
-                  className="shrink-0 text-text-grey transition-transform group-open:rotate-180"
-                />
-                <span className="truncate font-mono text-mono-md font-bold text-on-surface" title={lot.lotNumber}>
-                  {lot.lotNumber}
-                </span>
-              </span>
-              <span className="font-label text-label-xs font-bold text-primary group-open:hidden">
-                View
-              </span>
-            </summary>
-            <div className="border-t border-outline-variant/20 px-3 py-3">
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <p className="font-label text-label-xs font-bold text-text-grey">Lot details</p>
-                <span className="rounded-full bg-brand-navy/10 px-2 py-0.5 font-label text-mono-xs font-bold text-brand-navy">
-                  {item.isPerishable ? "FEFO" : "FIFO"} #{lot.priority}
-                </span>
-              </div>
-              <p
-                className="truncate font-body text-body-sm text-text-grey"
-                title={lot.locationLabels.join(", ")}
-              >
-                {lot.locationLabels.length === 1
-                  ? `Location ${lot.locationLabels[0]}`
-                  : `Locations ${lot.locationLabels.join(", ")}`}
-              </p>
-              <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2">
-                <div>
-                  <dt className="font-label text-mono-xs uppercase text-text-grey">Available</dt>
-                  <dd className="mt-0.5 font-body text-body-md text-on-surface">
-                    {lot.availableQty.toLocaleString()} {item.uom}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-label text-mono-xs uppercase text-text-grey">Expiry</dt>
-                  <dd className="mt-0.5 truncate font-body text-body-md text-on-surface">
-                    {lot.expiryDate ?? "Not dated"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-label text-mono-xs uppercase text-text-grey">Received</dt>
-                  <dd className="mt-0.5 font-body text-body-md text-on-surface">
-                    {new Date(lot.receivedAt).toLocaleDateString()}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-label text-mono-xs uppercase text-text-grey">Status</dt>
-                  <dd className="mt-0.5 truncate font-body text-body-md lowercase text-on-surface">
-                    {lot.lotStatus}
-                  </dd>
-                </div>
-              </dl>
-              <LotQrViewer lotId={lot.lotId} lotNumber={lot.lotNumber} itemCode={item.itemCode} compact />
-            </div>
-          </details>
-        ))}
-      </div>
+        );
+      })()}
     </div>
   );
 }

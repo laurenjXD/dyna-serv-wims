@@ -6,7 +6,7 @@
 
 import { and, asc, eq, gt, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
-import { items } from "@/lib/db/schema/items";
+import { items, itemCategories } from "@/lib/db/schema/items";
 import { parties } from "@/lib/db/schema/parties";
 import { locations } from "@/lib/db/schema/locations";
 import { lotLocationBalances } from "@/lib/db/schema/lot_location_balances";
@@ -14,6 +14,7 @@ import { lots } from "@/lib/db/schema/lots";
 import { allocate, type AllocationResult } from "@/lib/withdrawal/allocation";
 
 const defaultSupplierParties = alias(parties, "default_supplier_parties");
+const parentCategories = alias(itemCategories, "parent_categories");
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type DbLike = { select: (...args: any[]) => any };
@@ -27,6 +28,9 @@ export type StockViewRow = {
   supplierItemCode?: string | null;
   customerItemCode?: string | null;
   dsgcItemNumber?: string | null;
+  categoryName?: string | null;
+  subcategoryName?: string | null;
+  inventoryModel?: string | null;
   customerName?: string | null;
   organizationName?: string | null;
   organizationId?: string | null;
@@ -70,6 +74,9 @@ export async function listStockView(db: DbLike): Promise<StockViewRow[]> {
       supplierItemCode: items.supplierItemCode,
       customerItemCode: items.customerItemCode,
       dsgcItemNumber: items.dsgcItemNumber,
+      categoryName: sql<string | null>`COALESCE(${parentCategories.name}, ${itemCategories.name})`,
+      subcategoryName: sql<string | null>`CASE WHEN ${itemCategories.parentId} IS NOT NULL THEN ${itemCategories.name} ELSE NULL END`,
+      inventoryModel: sql<string>`UPPER(${lots.flowType}::text)`,
       customerName: parties.name,
       organizationName: defaultSupplierParties.name,
       organizationId: items.defaultSupplierPartyId,
@@ -96,6 +103,8 @@ export async function listStockView(db: DbLike): Promise<StockViewRow[]> {
     .innerJoin(lots, eq(lotLocationBalances.lotId, lots.id))
     .innerJoin(items, eq(lots.itemId, items.id))
     .innerJoin(locations, eq(lotLocationBalances.locationId, locations.id))
+    .leftJoin(itemCategories, eq(items.categoryId, itemCategories.id))
+    .leftJoin(parentCategories, eq(itemCategories.parentId, parentCategories.id))
     .leftJoin(parties, eq(lots.ownerPartyId, parties.id))
     .leftJoin(defaultSupplierParties, eq(items.defaultSupplierPartyId, defaultSupplierParties.id))
     .where(and(
