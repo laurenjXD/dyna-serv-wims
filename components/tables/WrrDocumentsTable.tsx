@@ -27,7 +27,7 @@ export function WrrDocumentsTable({
   data: WrrDocumentRow[];
   canCreate?: boolean;
 }) {
-  const columns = useMemo<ColumnDef<WrrDocumentRow, any>[]>(() => [
+  const columns = useMemo<ColumnDef<WrrDocumentRow, unknown>[]>(() => [
     // 1. WRR Number
     {
       accessorKey: "wrrNumber",
@@ -150,7 +150,7 @@ export function WrrDocumentsTable({
       },
       cell: (info) => (
         <span className="font-mono text-xs text-text-grey">
-          {new Date(info.getValue()).toLocaleDateString()}
+          {new Date(info.getValue() as string | Date).toLocaleDateString()}
         </span>
       ),
     },

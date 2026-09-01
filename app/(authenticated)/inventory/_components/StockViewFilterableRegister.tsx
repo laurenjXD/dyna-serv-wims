@@ -3,15 +3,9 @@
 import React, { useMemo } from "react";
 import Link from "next/link";
 import type { ColumnDef, Row } from "@tanstack/react-table";
-import { ChevronDown, Package, Layers } from "lucide-react";
+import { ChevronDown, Package } from "lucide-react";
 import { DataTable } from "@/components/tables/DataTable";
 import { LotQrViewer } from "./LotQrViewer";
-
-const FLOW_LABELS: Record<string, string> = {
-  vmi: "VMI",
-  trading: "Trading",
-  supplies: "Supplies",
-};
 
 export type AggregatedLot = {
   lotId: string;
@@ -49,7 +43,7 @@ export type GroupedItem = {
 };
 
 export function StockViewFilterableRegister({ items }: { items: GroupedItem[] }) {
-  const columns = useMemo<ColumnDef<GroupedItem, any>[]>(() => [
+  const columns = useMemo<ColumnDef<GroupedItem, unknown>[]>(() => [
     // 1. SKU / Item Code (Text Search)
     {
       accessorKey: "itemCode",

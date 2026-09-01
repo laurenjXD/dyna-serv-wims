@@ -398,6 +398,7 @@ function MultiSelectFilterContent<TData extends RowData>({
           return (
             <label
               key={optStr}
+              onClick={() => toggleOption(optStr)}
               className="flex items-center justify-between gap-2 rounded-md px-1.5 py-1 text-xs hover:bg-slate-100/80 cursor-pointer select-none"
             >
               <div className="flex items-center gap-2">
@@ -507,6 +508,7 @@ function DependentMultiSelectFilterContent<TData extends RowData>({
             return (
               <label
                 key={optStr}
+                onClick={() => toggleOption(optStr)}
                 className="flex items-center justify-between gap-2 rounded-md px-1.5 py-1 text-xs hover:bg-slate-100/80 cursor-pointer select-none"
               >
                 <div className="flex items-center gap-2">

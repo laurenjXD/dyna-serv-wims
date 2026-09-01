@@ -2,7 +2,7 @@
 
 import React, { useMemo } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { History, FileText, Clock, AlertTriangle, CheckCircle } from "lucide-react";
+import { History, FileText, Clock } from "lucide-react";
 import { DataTable } from "./DataTable";
 
 export type OrganizationTransactionRow = {
@@ -26,7 +26,7 @@ export function OrganizationLedgerTable({
   data: OrganizationTransactionRow[];
   organizationName?: string;
 }) {
-  const columns = useMemo<ColumnDef<OrganizationTransactionRow, any>[]>(() => [
+  const columns = useMemo<ColumnDef<OrganizationTransactionRow, unknown>[]>(() => [
     // 1. Date / Time (Date Range filter)
     {
       accessorKey: "timestamp",
@@ -36,7 +36,7 @@ export function OrganizationLedgerTable({
         filterLabel: "Date Range",
       },
       cell: (info) => {
-        const d = new Date(info.getValue());
+        const d = new Date(info.getValue() as string | Date);
         return (
           <div>
             <div className="font-mono text-xs font-bold text-slate-800">

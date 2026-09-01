@@ -24,7 +24,7 @@ export function TransactionLedgerTable({
 }: {
   data: TransactionLedgerRow[];
 }) {
-  const columns = useMemo<ColumnDef<TransactionLedgerRow, any>[]>(() => [
+  const columns = useMemo<ColumnDef<TransactionLedgerRow, unknown>[]>(() => [
     // 1. Date / Time (Sortable, descending default, Date Range Picker)
     {
       accessorKey: "timestamp",
@@ -34,7 +34,7 @@ export function TransactionLedgerTable({
         filterLabel: "Date Range",
       },
       cell: (info) => {
-        const d = new Date(info.getValue());
+        const d = new Date(info.getValue() as string | Date);
         return (
           <div>
             <div className="font-mono text-xs font-bold text-slate-800">

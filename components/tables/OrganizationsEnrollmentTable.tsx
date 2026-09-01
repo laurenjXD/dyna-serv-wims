@@ -14,7 +14,7 @@ export function OrganizationsEnrollmentTable({
   data: PartyListRow[];
   canManage?: boolean;
 }) {
-  const columns = useMemo<ColumnDef<PartyListRow, any>[]>(() => [
+  const columns = useMemo<ColumnDef<PartyListRow, unknown>[]>(() => [
     // 1. Organization Code
     {
       accessorKey: "code",
@@ -97,7 +97,7 @@ export function OrganizationsEnrollmentTable({
       },
       cell: (info) => (
         <span className="font-mono text-xs text-text-grey">
-          {new Date(info.getValue()).toLocaleDateString()}
+          {new Date(info.getValue() as string | Date).toLocaleDateString()}
         </span>
       ),
     },

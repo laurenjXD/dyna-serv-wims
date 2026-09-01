@@ -14,7 +14,7 @@ export function LocationsEnrollmentTable({
   data: LocationListRow[];
   canManage?: boolean;
 }) {
-  const columns = useMemo<ColumnDef<LocationListRow, any>[]>(() => [
+  const columns = useMemo<ColumnDef<LocationListRow, unknown>[]>(() => [
     // 1. Location Label (e.g. A-01-01-01)
     {
       accessorKey: "label",

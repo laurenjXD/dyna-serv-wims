@@ -14,7 +14,7 @@ export function ItemsEnrollmentTable({
   data: ItemListRow[];
   canManage?: boolean;
 }) {
-  const columns = useMemo<ColumnDef<ItemListRow, any>[]>(() => [
+  const columns = useMemo<ColumnDef<ItemListRow, unknown>[]>(() => [
     // 1. SKU / Item Code
     {
       accessorKey: "code",
@@ -112,7 +112,7 @@ export function ItemsEnrollmentTable({
       },
       cell: (info) => (
         <span className="font-mono text-xs text-text-grey">
-          {new Date(info.getValue()).toLocaleDateString()}
+          {new Date(info.getValue() as string | Date).toLocaleDateString()}
         </span>
       ),
     },

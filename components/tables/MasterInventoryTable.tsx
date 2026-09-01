@@ -21,12 +21,12 @@ export type MasterInventoryRow = {
 
 export function MasterInventoryTable({
   data,
-  onPickItem,
+  onPickItem: _onPickItem,
 }: {
   data: MasterInventoryRow[];
   onPickItem?: (item: MasterInventoryRow) => void;
 }) {
-  const columns = useMemo<ColumnDef<MasterInventoryRow, any>[]>(() => [
+  const columns = useMemo<ColumnDef<MasterInventoryRow, unknown>[]>(() => [
     // 1. SKU / Item Code (Text Search: Contains / Starts With)
     {
       accessorKey: "itemCode",

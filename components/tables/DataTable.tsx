@@ -32,6 +32,7 @@ import {
 import { ColumnFilter } from "./ColumnFilter";
 
 // ── Built-in Standard TanStack Filter Functions ───────────────────────────────
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const customFilterFns: Record<string, FilterFn<any>> = {
   // Text search
   textSearch: (row, columnId, filterValue: string) => {
@@ -90,6 +91,7 @@ export const customFilterFns: Record<string, FilterFn<any>> = {
 };
 
 export interface DataTableProps<TData> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   columns: ColumnDef<TData, any>[];
   data: TData[];
   title?: string;
@@ -188,7 +190,7 @@ export function DataTable<TData>({
       // Default to grouping first two grouping-eligible columns
       const groupableCols = columns
         .filter((c) => c.enableGrouping !== false && "accessorKey" in c)
-        .map((c) => (c as any).accessorKey as string);
+        .map((c) => String((c as { accessorKey?: string }).accessorKey ?? ""));
       setGrouping(groupableCols.slice(0, 2));
     }
   };
