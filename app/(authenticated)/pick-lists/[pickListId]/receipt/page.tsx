@@ -36,11 +36,20 @@ export default async function DeliveryReceiptPage({
   const totalBoxes = lines.reduce((sum, line) => sum + line.numberOfBoxes, 0);
 
   return (
-    <main className="min-h-screen bg-[#EEF2F8] p-4 text-[#111827] print:bg-white print:p-0">
+    <main className="delivery-receipt-document min-h-screen bg-[#EEF2F8] p-4 text-[#111827] print:bg-white print:p-0">
       <style
         dangerouslySetInnerHTML={{
           __html: `
             @page { size: A4 landscape; margin: 10mm; }
+            body:has(.delivery-receipt-document) header,
+            body:has(.delivery-receipt-document) aside {
+              display: none !important;
+            }
+            body:has(.delivery-receipt-document) main#main-content,
+            body:has(.delivery-receipt-document) main#main-content > div {
+              padding: 0 !important;
+              margin: 0 !important;
+            }
             @media print {
               .print-hide { display: none !important; }
               body { background: #fff !important; }
