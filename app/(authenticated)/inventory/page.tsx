@@ -35,7 +35,7 @@ import { resolveInventoryTab, type TabKey } from "./_lib/resolveInventoryTab";
 import { InspectionTab } from "./_components/InspectionTab";
 import { MultiItemPickListDraft } from "./_components/MultiItemPickListDraft";
 import { LotQrViewer } from "./_components/LotQrViewer";
-import { StockViewFilterableRegister } from "./_components/StockViewFilterableRegister";
+import { StockViewFilterableRegister, type GroupedItem } from "./_components/StockViewFilterableRegister";
 import { createApprovedPickList, createPickList, markPickListReadyForDispatch, requestPickListOverride } from "./actions";
 import { deletePickList } from "../pick-lists/_actions";
 
@@ -204,33 +204,12 @@ type AggregatedLot = {
   priority: number;
 };
 
-type GroupedItem = {
-  itemId: string;
-  itemCode: string;
-  itemName: string;
-  uom: string;
-  isPerishable: boolean;
-  flowType: "vmi" | "trading" | "supplies";
-  organizationId: string | null;
-  availableQty: number;
-  codes: string;
-  customerName: string | null;
-  lotNumbers: string;
-  locationLabels: string;
-  totalIn: number;
-  totalOut: number;
-  pcsOnHand: number;
-  boxesOnHand: number;
-  cbmOccupied: number;
-  lots: AggregatedLot[];
-};
-
 function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
   // First pass: group rows by itemId, then by lotId within each item.
   // The query already orders by (items.code, lots.expiry_date, lots.created_at)
   // so FEFO/FIFO order is preserved by the insertion sequence.
   const itemMap = new Map<string, {
-    itemId: string; itemCode: string; itemName: string; uom: string; isPerishable: boolean; flowType: "vmi" | "trading" | "supplies"; organizationId: string | null;
+    itemId: string; itemCode: string; itemName: string; categoryName: string | null; subcategoryName: string | null; inventoryModel: string; uom: string; isPerishable: boolean; flowType: "vmi" | "trading" | "supplies"; organizationId: string | null;
     codes: string; customerName: string | null; totalIn: number; totalOut: number; pcsOnHand: number; boxesOnHand: number; cbmOccupied: number;
     lotMap: Map<string, { lot: AggregatedLot }>;
     insertionOrder: string[]; // lot IDs in FEFO/FIFO order
@@ -245,6 +224,9 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
         itemId: row.itemId,
         itemCode: row.itemCode,
         itemName: row.itemName,
+        categoryName: row.categoryName ?? null,
+        subcategoryName: row.subcategoryName ?? null,
+        inventoryModel: row.inventoryModel ?? (row.flowType ? row.flowType.toUpperCase() : "TRADING"),
         uom: row.uom,
         isPerishable: row.isPerishable,
         flowType: row.flowType ?? "trading",
@@ -304,6 +286,9 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
       itemId: entry.itemId,
       itemCode: entry.itemCode,
       itemName: entry.itemName,
+      categoryName: entry.categoryName,
+      subcategoryName: entry.subcategoryName,
+      inventoryModel: entry.inventoryModel,
       uom: entry.uom,
       isPerishable: entry.isPerishable,
       flowType: entry.flowType,
