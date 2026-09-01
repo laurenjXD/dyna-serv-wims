@@ -15,13 +15,13 @@
 //   specs/04-services-and-infrastructure/design.md §10 (Supabase Storage
 //     design — `cipl-documents` bucket, object path convention)
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { SupplierPartyOption, WrrItemOption } from "@/lib/db/queries/items";
 import type { UploadCiplFileResult } from "@/lib/actions/receiving";
 import { WrrLineItems, type ImportedWrrLine } from "./wrr-line-items";
 import { CiPlImportModal } from "../../_components/CiPlImportModal";
-import { FileSpreadsheet } from "lucide-react";
+import { ChevronDown, ExternalLink, FileSpreadsheet, PlusCircle, Search } from "lucide-react";
 
 const CIPL_ACCEPT = "application/pdf,image/png,image/jpeg";
 
@@ -35,6 +35,9 @@ interface WrrNewFormProps {
 export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }: WrrNewFormProps) {
   const [flowType, setFlowType] = useState("");
   const [vendorPartyId, setVendorPartyId] = useState("");
+  const [vendorSearch, setVendorSearch] = useState("");
+  const [isVendorOpen, setIsVendorOpen] = useState(false);
+  const vendorSearchRef = useRef<HTMLDivElement>(null);
 
   // Reserved up front (specs/04-services-and-infrastructure/design.md §10.2's
   // path pattern needs a wrr_id before the row exists) so a CIPL file can
@@ -49,6 +52,22 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
   const [ciplError, setCiplError] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importedLines, setImportedLines] = useState<ImportedWrrLine[]>([]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (vendorSearchRef.current && !vendorSearchRef.current.contains(event.target as Node)) {
+        setIsVendorOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredVendorParties = vendorParties.filter((party) => {
+    const query = vendorSearch.trim().toLowerCase();
+    return !query || `${party.code} ${party.name}`.toLowerCase().includes(query);
+  });
+  const selectedVendor = vendorParties.find((party) => party.id === vendorPartyId);
 
   async function handleCiplFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -99,27 +118,65 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
               </span>
               <span className="sr-only">(required)</span>
             </label>
-            <select
-              id="vendorPartyId"
-              name="vendorPartyId"
-              required
-              disabled={vendorParties.length === 0}
-              defaultValue=""
-              value={vendorPartyId}
-              onChange={(e) => setVendorPartyId(e.target.value)}
-              className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface disabled:cursor-not-allowed disabled:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            >
-              <option value="" disabled>
-                {vendorParties.length === 0
-                  ? "No active vendor organizations available"
-                  : "Select vendor organization…"}
-              </option>
-              {vendorParties.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.code} — {p.name}
-                </option>
-              ))}
-            </select>
+            <div className="relative mt-1" ref={vendorSearchRef}>
+              <input type="hidden" name="vendorPartyId" value={vendorPartyId} />
+              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-text-grey" />
+              <input
+                id="vendorPartyId"
+                type="text"
+                required
+                disabled={vendorParties.length === 0}
+                value={vendorSearch || (selectedVendor ? `${selectedVendor.code} — ${selectedVendor.name}` : "")}
+                placeholder={vendorParties.length === 0 ? "No active vendor organizations available" : "Search vendor organization…"}
+                onFocus={() => vendorParties.length > 0 && setIsVendorOpen(true)}
+                onChange={(event) => {
+                  setVendorSearch(event.target.value);
+                  setVendorPartyId("");
+                  setIsVendorOpen(true);
+                }}
+                className="h-11 w-full rounded border border-outline-variant/30 bg-surface-white pl-9 pr-9 font-body text-body-md text-on-surface disabled:cursor-not-allowed disabled:bg-surface-light-grey focus:border-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
+              />
+              <ChevronDown
+                className={`pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-grey transition-transform ${isVendorOpen ? "rotate-180" : ""}`}
+              />
+              {isVendorOpen && vendorParties.length > 0 && (
+                <div className="absolute left-0 right-0 z-50 mt-1 max-h-64 overflow-y-auto rounded-xl border border-outline-variant/40 bg-surface-white p-1 shadow-elevation-4">
+                  {filteredVendorParties.length > 0 ? filteredVendorParties.map((party) => (
+                    <button
+                      key={party.id}
+                      type="button"
+                      onClick={() => {
+                        setVendorPartyId(party.id);
+                        setVendorSearch(`${party.code} — ${party.name}`);
+                        setIsVendorOpen(false);
+                      }}
+                      className="flex w-full items-center rounded-lg px-3 py-2 text-left font-body text-body-sm text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                    >
+                      <span className="font-mono font-bold text-brand-navy">{party.code}</span>
+                      <span className="ml-2 truncate">— {party.name}</span>
+                    </button>
+                  )) : (
+                    <p className="px-3 py-3 font-body text-body-sm text-text-grey">No matching vendor organizations.</p>
+                  )}
+                  <div className="border-t border-outline-variant/30 bg-[#F0F4FF] p-2.5">
+                    <Link
+                      href={`/master-data/parties/new${vendorSearch.trim() ? `?code=${encodeURIComponent(vendorSearch.trim())}` : ""}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group flex min-w-0 items-center justify-between gap-2 rounded-lg border border-brand-navy/30 bg-surface-white px-3 py-2 font-label text-label-xs font-bold text-brand-navy shadow-sm transition-colors hover:bg-brand-navy hover:text-surface-white"
+                    >
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <PlusCircle className="h-4 w-4 shrink-0 text-brand-royal-blue group-hover:text-surface-white" />
+                        <span className="truncate">
+                          {vendorSearch.trim() ? `+ Enroll "${vendorSearch.trim()}" in Master Data` : "+ Enroll New Organization in Master Data"}
+                        </span>
+                      </span>
+                      <ExternalLink className="h-3.5 w-3.5 shrink-0 text-text-grey group-hover:text-surface-white" />
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
             {vendorParties.length === 0 && (
               <p className="mt-1 font-body text-body-sm text-status-held">
                 Create an active Party with the Vendor or Supplier role before creating a WRR.

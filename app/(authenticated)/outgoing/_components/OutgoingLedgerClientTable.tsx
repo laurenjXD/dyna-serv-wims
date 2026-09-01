@@ -102,6 +102,15 @@ export function OutgoingLedgerClientTable({
     return filteredAndSortedRows.reduce((sum, r) => sum + r.qty, 0);
   }, [filteredAndSortedRows]);
 
+  const missingDrCount = useMemo(() => {
+    const missingDrs = new Set(
+      filteredAndSortedRows
+        .filter((row) => row.deliveryReceiptStatus !== "uploaded")
+        .map((row) => row.pickListNumber ?? `TX-${row.transactionNumber}`),
+    );
+    return missingDrs.size;
+  }, [filteredAndSortedRows]);
+
   const selectedRows = selectedDrNumber ? drGroups[selectedDrNumber] ?? [] : [];
   const activeDrMeta = selectedRows[0];
 
@@ -181,6 +190,8 @@ export function OutgoingLedgerClientTable({
         <span>Showing <strong className="text-on-surface">{filteredAndSortedRows.length}</strong> transactions</span>
         <span>&bull;</span>
         <span>Total Units Dispatched: <strong className="font-mono text-on-surface">{totalDispatchedQty.toLocaleString()}</strong></span>
+        <span>&bull;</span>
+        <span>Total Missing DR: <strong className="font-mono text-status-pending">{missingDrCount.toLocaleString()}</strong></span>
       </div>
 
       {/* ── Main Outgoing Ledger Table ─────────────────────────────────── */}
@@ -342,7 +353,7 @@ export function OutgoingLedgerClientTable({
                       </td>
                       <td className="px-4 py-3">
                         {row.deliveryReceiptPath ? (
-                          <div className="flex flex-wrap items-center gap-2">
+                          <div className="flex items-center gap-2 whitespace-nowrap">
                             {row.deliveryReceiptUrl ? (
                               <button
                                 type="button"
@@ -371,20 +382,22 @@ export function OutgoingLedgerClientTable({
                             className="flex min-w-0 max-w-[360px] flex-wrap items-center gap-2"
                           >
                             <input type="hidden" name="pickListId" value={row.pickListId ?? ""} />
-                            <input
-                              required
-                              type="file"
-                              name="deliveryReceipt"
-                              accept="application/pdf,image/png,image/jpeg"
-                              className="h-9 min-w-0 max-w-[190px] flex-1 overflow-hidden rounded-lg border border-outline-variant/40 bg-surface-white px-1 text-xs text-text-grey file:mr-1.5 file:h-8 file:rounded-md file:border-0 file:bg-surface-light-grey file:px-2 file:font-label file:text-xs file:font-semibold file:text-on-surface"
-                            />
-                            <button
-                              type="submit"
-                              className="inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-brand-navy/30 bg-surface-white px-3 font-label text-body-xs font-bold text-brand-navy hover:bg-brand-navy/5"
-                            >
+                            <label className="inline-flex h-9 cursor-pointer shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-brand-navy/30 bg-surface-white px-3 font-label text-body-xs font-bold text-brand-navy hover:bg-brand-navy/5">
                               <Upload className="h-3.5 w-3.5" />
                               Upload
-                            </button>
+                              <input
+                                required
+                                type="file"
+                                name="deliveryReceipt"
+                                accept="application/pdf,image/png,image/jpeg"
+                                className="sr-only"
+                                onChange={(event) => {
+                                  if (event.currentTarget.files?.length) {
+                                    event.currentTarget.form?.requestSubmit();
+                                  }
+                                }}
+                              />
+                            </label>
                           </form>
                         )}
                       </td>
@@ -631,6 +644,16 @@ export function OutgoingLedgerClientTable({
 
             {/* Modal Footer */}
             <div className="flex items-center justify-end border-t border-outline-variant/30 bg-surface-light-grey px-6 py-4">
+              {activeDrMeta.pickListId && (
+                <a
+                  href={`/pick-lists/${activeDrMeta.pickListId}/receipt`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mr-auto inline-flex items-center rounded-xl border border-brand-navy/30 bg-surface-white px-4 py-2.5 font-label text-label font-bold text-brand-navy hover:bg-brand-navy/5"
+                >
+                  Export PDF
+                </a>
+              )}
               <button
                 type="button"
                 onClick={() => setSelectedDrNumber(null)}

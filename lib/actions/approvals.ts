@@ -235,6 +235,16 @@ export async function archiveExpiredApprovalRequest(
     if (!authResult.ok) return authResult;
     const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
       const db = tx.db as DbLike;
+      const [request] = await db
+        .select({ requesterUserId: approvalRequests.requesterUserId })
+        .from(approvalRequests)
+        .where(eq(approvalRequests.id, requestId));
+      if (request?.requesterUserId === authResult.userId) {
+        return {
+          ok: false,
+          error: "Another user must archive this request. The requester cannot archive it.",
+        } as const;
+      }
       const [archived] = await db
         .update(approvalRequests)
         .set({ status: "expired", deletedAt: new Date(), deletedByUserId: authResult.userId })
@@ -248,7 +258,7 @@ export async function archiveExpiredApprovalRequest(
         ))
         .returning({ id: approvalRequests.id });
       if (archived) return { ok: true } as const;
-      return { ok: false, error: "Only expired pending requests can be deleted" } as const;
+      return { ok: false, error: "Only expired pending requests can be archived." } as const;
     });
     if (rlsResult.kind === "unauthenticated") return { ok: false, error: "Forbidden" };
     return rlsResult.value;
@@ -257,7 +267,7 @@ export async function archiveExpiredApprovalRequest(
     // reviewer action into a Next.js error page.
     return {
       ok: false,
-      error: "Archive is temporarily unavailable. Please verify the approval archive database migration, then try again.",
+      error: "Another user must archive this request. The requester cannot archive it.",
     };
   }
 }

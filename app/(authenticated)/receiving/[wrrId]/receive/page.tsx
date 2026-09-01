@@ -521,7 +521,7 @@ export default async function ReceiveFloorPage({
               <div
                 key={item.id}
                 // Floor card: solid surface-white, Level 2 shadow, no glassmorphism
-                className={`rounded-2xl border bg-surface-white p-4 sm:p-5 ${isPrimaryReady ? "border-primary/50 ring-2 ring-primary/10" : "border-outline-variant/40"}`}
+                className={`rounded-2xl border bg-surface-white p-4 shadow-elevation-1 sm:p-5 ${isPrimaryReady ? "border-primary/50 ring-2 ring-primary/10" : "border-outline-variant/40"}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">

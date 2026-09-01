@@ -6,7 +6,7 @@ import { requirePermission } from "@/lib/rbac/guard";
 import { PartyForm } from "../_components/party-form";
 import { createPartyAction } from "../_actions";
 
-export default async function NewPartyPage() {
+export default async function NewPartyPage({ searchParams }: { searchParams: Promise<{ code?: string }> }) {
   const resolver = await createPageResolver();
   const perm = await requirePermission(resolver, "parties.manage");
 
@@ -28,6 +28,7 @@ export default async function NewPartyPage() {
       <div className="rounded-xl bg-surface-white shadow-elevation-1 p-6">
         <PartyForm
           action={createPartyAction}
+          initialCode={(await searchParams).code}
           cancelHref="/enrollment?tab=parties"
         />
       </div>
