@@ -317,7 +317,7 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
           const item = row.original;
           const isLotsExpanded = expandedItemId === item.itemId;
           const modelVal = String(item.inventoryModel || "TRADING").toUpperCase();
-          const totalCalculated = item.totalQty ?? (item.spq * item.boxesOnHand) ?? 0;
+          const totalCalculated = item.totalQty ?? item.spq * item.boxesOnHand;
 
           return (
             <div className="rounded-2xl border border-slate-200 bg-surface-white p-3.5 shadow-sm space-y-2.5">
@@ -434,7 +434,7 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
       {expandedItemId && (() => {
         const expandedItem = items.find((i) => i.itemId === expandedItemId);
         if (!expandedItem) return null;
-        const totalCalculated = expandedItem.totalQty ?? (expandedItem.spq * expandedItem.boxesOnHand) ?? 0;
+        const totalCalculated = expandedItem.totalQty ?? expandedItem.spq * expandedItem.boxesOnHand;
         return (
           <div className="hidden md:block rounded-2xl border border-blue-200 bg-[#F8FAFF] p-4 shadow-elevation-1">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-blue-100 pb-2">
