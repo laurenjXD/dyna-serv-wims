@@ -108,9 +108,9 @@ export function ItemSearchCombobox({
 
       {/* Real-time Recommendations Dropdown */}
       {isOpen && vendorPartyId && (
-        <div className="absolute z-50 mt-1 max-h-80 w-full min-w-[320px] sm:min-w-[440px] overflow-hidden rounded-xl border border-outline-variant/40 bg-surface-white shadow-elevation-4">
+        <div className="absolute left-0 right-0 z-50 mt-1 max-h-80 min-w-0 max-w-full overflow-hidden rounded-xl border border-outline-variant/40 bg-surface-white shadow-elevation-4">
           <div className="border-b border-outline-variant/20 bg-surface-light-grey/60 px-3 py-2">
-            <p className="font-label text-label-xs uppercase tracking-wider text-text-grey">
+            <p className="truncate font-label text-label-xs uppercase tracking-wider text-text-grey">
               Enrolled Item Recommendations ({filteredItems.length})
             </p>
           </div>
@@ -137,12 +137,12 @@ export function ItemSearchCombobox({
                     }`}
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-body-sm font-bold text-brand-navy">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="truncate font-mono text-body-sm font-bold text-brand-navy">
                           {formattedCode}
                         </span>
                         {item.customerItemCode && (
-                          <span className="font-mono text-mono-xs text-text-grey">
+                          <span className="truncate font-mono text-mono-xs text-text-grey">
                             (Cust: {item.customerItemCode})
                           </span>
                         )}
@@ -150,12 +150,12 @@ export function ItemSearchCombobox({
                       <p className="mt-0.5 truncate font-body text-body-sm text-on-surface">
                         {item.name}
                       </p>
-                      <div className="mt-1 flex items-center gap-3 font-mono text-mono-xs text-text-grey">
-                        <span>SPQ: {item.spq}</span>
-                        <span>&bull;</span>
-                        <span>UOM: {item.uom}</span>
-                        <span>&bull;</span>
-                        <span>CBM: {item.volumeCbm}</span>
+                      <div className="mt-1 flex min-w-0 items-center gap-2 overflow-hidden font-mono text-mono-xs text-text-grey">
+                        <span className="shrink-0">SPQ: {item.spq}</span>
+                        <span className="shrink-0">&bull;</span>
+                        <span className="shrink-0">UOM: {item.uom}</span>
+                        <span className="shrink-0">&bull;</span>
+                        <span className="truncate">CBM: {item.volumeCbm}</span>
                       </div>
                     </div>
                     {isSelected && (
@@ -183,11 +183,11 @@ export function ItemSearchCombobox({
               href={`/master-data/items/new${inputValue.trim() ? `?code=${encodeURIComponent(inputValue.trim())}` : ""}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="group flex items-center justify-between gap-2 rounded-lg bg-surface-white border border-brand-navy/30 px-3 py-2 font-label text-label-xs font-bold text-brand-navy shadow-sm hover:bg-brand-navy hover:text-surface-white transition-colors"
+              className="group flex min-w-0 items-center justify-between gap-2 rounded-lg border border-brand-navy/30 bg-surface-white px-3 py-2 font-label text-label-xs font-bold text-brand-navy shadow-sm transition-colors hover:bg-brand-navy hover:text-surface-white"
             >
-              <div className="flex items-center gap-1.5">
+              <div className="flex min-w-0 items-center gap-1.5">
                 <PlusCircle className="h-4 w-4 text-brand-royal-blue group-hover:text-surface-white" />
-                <span>
+                <span className="truncate">
                   {inputValue.trim() ? `+ Enroll "${inputValue.trim()}" in Master Data` : "+ Enroll New Item in Master Data"}
                 </span>
               </div>

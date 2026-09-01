@@ -29,10 +29,11 @@ type PartyFormAction = (
 interface PartyFormProps {
   action: PartyFormAction;
   party?: PartyDetail;
+  initialCode?: string;
   cancelHref: string;
 }
 
-export function PartyForm({ action, party, cancelHref }: PartyFormProps) {
+export function PartyForm({ action, party, initialCode, cancelHref }: PartyFormProps) {
   const [state, formAction, isPending] = useActionState(action, {});
 
   const isEdit = !!party;
@@ -134,7 +135,7 @@ export function PartyForm({ action, party, cancelHref }: PartyFormProps) {
             type="text"
             required
             maxLength={50}
-            defaultValue={party?.code ?? ""}
+            defaultValue={party?.code ?? initialCode ?? ""}
             placeholder="e.g. VENDOR-001"
             className={inputClass("code")}
             {...ariaProps("code")}
