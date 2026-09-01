@@ -67,7 +67,7 @@ export default async function DeliveryReceiptPage({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo.svg" alt="Dyna-Serv" className="mb-2 h-10 w-auto" />
               <h1 className="text-lg font-bold uppercase tracking-wide">Acknowledgement Receipt</h1>
-              <p className="mt-1 text-xs text-slate-600">Warehouse Inventory Management System</p>
+              <p className="mt-1 text-xs text-slate-600">Dyna-Serv Global Corporation</p>
             </div>
             <dl className="grid grid-cols-[auto_auto] gap-x-4 gap-y-1 text-xs">
               <dt className="font-bold uppercase">Delivery Receipt No.</dt>

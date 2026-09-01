@@ -50,7 +50,8 @@ function drawCell(
   page.drawRectangle({ x, y: top - height, width, height, borderColor: GRID, borderWidth: 0.6 });
   const lines = wrapText(value, font, size, width - 8);
   const lineHeight = size + 2;
-  const startY = top - Math.max(size + 3, (height + (lines.length - 1) * lineHeight) / 2 + size / 2 - 1);
+  const textBlockHeight = (lines.length - 1) * lineHeight + size;
+  const startY = top - (height - textBlockHeight) / 2 - size;
   lines.slice(0, 3).forEach((line, index) => {
     const lineWidth = font.widthOfTextAtSize(line, size);
     page.drawText(line, {
@@ -93,7 +94,7 @@ export async function GET(
   page.drawImage(logo, { x: MARGIN, y: 512, width: 38, height: 38 });
   const headerX = MARGIN + 50;
   page.drawText("ACKNOWLEDGEMENT RECEIPT", { x: headerX, y: 535, size: 16, font: bold, color: INK });
-  page.drawText("Warehouse Inventory Management System", { x: headerX, y: 516, size: 8, font: regular, color: MUTED });
+  page.drawText("Dyna-Serv Global Corporation", { x: headerX, y: 516, size: 8, font: regular, color: MUTED });
   const meta = [
     ["DELIVERY RECEIPT NO.", drNumber],
     ["PICK LIST NO.", pickList.pickListNumber],
@@ -101,7 +102,7 @@ export async function GET(
   ];
   meta.forEach(([label, value], index) => {
     page.drawText(label, { x: 595, y: 535 - index * 17, size: 8, font: bold, color: INK });
-    page.drawText(value, { x: 718, y: 535 - index * 17, size: 8, font: index < 2 ? bold : regular, color: INK });
+    page.drawText(value, { x: 718, y: 535 - index * 17, size: 8, font: bold, color: INK });
   });
   page.drawText("DELIVERY TO:", { x: MARGIN, y: 478, size: 8, font: bold, color: INK });
   page.drawText(party?.name ?? pickList.customerPartyId, { x: MARGIN, y: 465, size: 9, font: bold, color: INK });
@@ -125,7 +126,7 @@ export async function GET(
       line.itemCode, line.customerItemCode ?? "—", line.itemDescription ?? "—", line.lotNumber, "—", "—", "—", line.locationLabel,
     ];
     values.forEach((value, column) => {
-      drawCell(page, value, x, rowTop, widths[column], 38, column === 4 ? bold : regular, 7, column < 4 ? "center" : "left");
+      drawCell(page, value, x, rowTop, widths[column], 38, column === 4 ? bold : regular, 7, column < 4 || column === 6 ? "center" : "left");
       x += widths[column];
     });
     rowTop -= 38;
