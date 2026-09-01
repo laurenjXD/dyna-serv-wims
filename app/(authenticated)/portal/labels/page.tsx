@@ -104,7 +104,7 @@ function LabelForm() {
     <div className="mt-6 max-w-xl">
       {/* Non-authoritative quantity disclaimer — design.md §7c: "The UI
           states this non-authority explicitly and prominently." */}
-      <div className="mb-5 flex gap-3 rounded-lg border-l-4 border-status-pending border border-outline-variant/30 bg-status-pending/10 px-4 py-3">
+      <div className="mb-5 flex gap-3 rounded-lg border border-status-pending/40 bg-status-pending/5 p-4 shadow-sm">
         <Info size={20} className="mt-0.5 shrink-0 text-status-pending" aria-hidden="true" />
         <p className="font-body text-body-sm text-on-surface">
           The quantity you declare here is for labeling purposes only and is{" "}

@@ -19,7 +19,7 @@
 // This is the movement-shaping layer only. The day-by-day replay (beginning/
 // ending CBM per day) is a separate module (C.2, lib/billing/vmi-daily-balance.ts).
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { inventoryTransactions } from "@/lib/db/schema/transactions";
 import { lots } from "@/lib/db/schema/lots";
 import { items } from "@/lib/db/schema/items";
@@ -131,7 +131,7 @@ export async function getVmiPartyMovements(
     .from(inventoryTransactions)
     .innerJoin(lots, eq(lots.id, inventoryTransactions.lotId))
     .innerJoin(items, eq(items.id, inventoryTransactions.itemId))
-    .where(and(eq(lots.flowType, "vmi"), eq(lots.ownerPartyId, partyId)));
+    .where(and(inArray(lots.flowType, ["vmi", "trading"]), eq(lots.ownerPartyId, partyId)));
 
   const rows: VmiMovementRow[] = [];
   for (const raw of rawRows) {

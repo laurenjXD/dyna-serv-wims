@@ -176,7 +176,7 @@ export default async function ExecuteTransferPage({
             // on white (#FFFFFF) → >15:1, meets AAA (7:1 floor requirement per
             // brand-design-system.md §1.5). Left border + icon carry the semantic
             // color signal per §1.3 floor color-blind rule.
-            className="mt-4 rounded-md border-l-4 border-status-available bg-white px-4 py-4 shadow-elevation-2"
+            className="mt-4 rounded-xl border border-status-available/40 bg-status-available/5 px-4 py-4 shadow-sm"
           >
             {/* Icon paired with color per §1.3 floor color-blind rule */}
             <p className="font-heading font-semibold text-headline-md text-on-surface">
@@ -196,7 +196,7 @@ export default async function ExecuteTransferPage({
             // on white (#FFFFFF) → >15:1, meets AAA (7:1 floor requirement per
             // brand-design-system.md §1.5). The left border + icon carry the
             // color-semantic signal per §1.3 floor color-blind rule.
-            className="mt-4 rounded-md border-l-4 border-status-held bg-white px-4 py-4 shadow-elevation-2"
+            className="mt-4 rounded-xl border border-status-held/40 bg-status-held/5 px-4 py-4 shadow-sm"
           >
             {/* Icon paired with color per §1.3 floor color-blind rule */}
             <p className="font-heading font-semibold text-headline-md text-on-surface">

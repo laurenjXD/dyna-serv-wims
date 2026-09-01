@@ -328,7 +328,7 @@ describe(
       () => {
         const source = pageSource();
         expect(source).not.toContain("font-body text-body-md text-status-held");
-        expect(source).toContain("border-l-4 border-status-held bg-white");
+        expect(source).toContain("border border-status-held/40 bg-status-held/5");
       },
     );
   },

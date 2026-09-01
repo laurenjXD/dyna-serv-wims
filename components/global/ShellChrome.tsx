@@ -221,11 +221,11 @@ export function ShellChrome({ children }: { children: ReactNode }) {
           exposed strip without changing the header component itself. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none fixed inset-x-0 top-0 z-20 hidden h-5 bg-background lg:block"
+        className="pointer-events-none fixed inset-x-0 top-0 z-20 hidden h-5 bg-background lg:block print:hidden"
       />
 
       <header
-        className={`fixed inset-x-0 top-0 z-30 isolate flex h-14 items-center gap-3 overflow-visible bg-surface px-4 transition-[left] duration-150 motion-reduce:transition-none lg:inset-x-auto lg:top-3 lg:right-3 lg:min-h-[76px] lg:rounded-2xl lg:border-2 lg:border-brand-royal-blue/45 lg:px-7 lg:py-3 lg:shadow-[0_10px_24px_rgba(37,99,235,0.12)] ${
+        className={`print:hidden fixed inset-x-0 top-0 z-30 isolate flex h-14 items-center gap-3 overflow-visible bg-surface px-4 transition-[left] duration-150 motion-reduce:transition-none lg:inset-x-auto lg:top-3 lg:right-3 lg:min-h-[76px] lg:rounded-2xl lg:border-2 lg:border-brand-royal-blue/45 lg:px-7 lg:py-3 lg:shadow-[0_10px_24px_rgba(37,99,235,0.12)] ${
           isDesktopOpen ? "lg:left-[312px]" : "lg:left-0"
         }`}
       >
@@ -513,7 +513,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
       <main
         id="main-content"
         data-surface={tier}
-        className={`min-h-screen pt-14 transition-[padding-left] duration-150 motion-reduce:transition-none lg:pr-6 lg:pt-[106px] ${
+        className={`min-h-screen pt-14 transition-[padding-left] duration-150 motion-reduce:transition-none lg:pr-6 lg:pt-[106px] print:!min-h-0 print:!p-0 print:!m-0 ${
           isDesktopOpen ? "lg:pl-[312px]" : "lg:pl-6"
         } ${showFloorTabBar ? "pb-20" : "lg:pb-6"} ${
           tier === "floor" ? "bg-surface" : "bg-background"
@@ -522,8 +522,8 @@ export function ShellChrome({ children }: { children: ReactNode }) {
         <div
           className={
             tier === "floor"
-              ? "px-floor-padding py-5 lg:px-office-margin lg:py-6"
-              : "px-4 py-5 md:px-6 lg:px-office-margin lg:py-6"
+              ? "px-floor-padding py-5 lg:px-office-margin lg:py-6 print:!p-0 print:!m-0"
+              : "px-4 py-5 md:px-6 lg:px-office-margin lg:py-6 print:!p-0 print:!m-0"
           }
         >
           {children}

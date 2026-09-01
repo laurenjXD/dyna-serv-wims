@@ -118,19 +118,19 @@ const SEVERITY_ICON: Record<Severity, typeof AlertTriangle> = {
 
 const SEVERITY_CLASSES: Record<Severity, { border: string; icon: string; badge: string }> = {
   critical: {
-    border: "border-status-held",
+    border: "border-status-held/40 bg-status-held/5",
     icon: "text-status-held",
     badge: "bg-status-held/10 text-status-held",
   },
   warning: {
-    border: "border-status-pending",
+    border: "border-status-pending/40 bg-status-pending/5",
     icon: "text-status-pending",
     badge: "bg-status-pending/10 text-status-pending",
   },
   info: {
-    border: "border-status-neutral",
-    icon: "text-status-neutral",
-    badge: "bg-status-neutral/10 text-status-neutral",
+    border: "border-border/60 bg-surface-white",
+    icon: "text-brand-navy",
+    badge: "bg-brand-navy/10 text-brand-navy",
   },
 };
 
@@ -217,11 +217,10 @@ export default async function PortalNotificationsPage({ searchParams }: PageProp
           href="/portal/notifications"
           role="tab"
           aria-selected={activeFilter === "all"}
-          className={`flex h-11 items-center px-4 font-label text-label motion-safe:transition-colors motion-safe:duration-150 focus:outline-none focus:ring-2 focus:ring-brand-navy ${
-            activeFilter === "all"
+          className={`flex h-11 items-center px-4 font-label text-label motion-safe:transition-colors motion-safe:duration-150 focus:outline-none focus:ring-2 focus:ring-brand-navy ${activeFilter === "all"
               ? "border-b-2 border-brand-navy text-brand-navy"
               : "text-text-grey hover:text-on-surface"
-          }`}
+            }`}
         >
           All
         </a>
@@ -229,11 +228,10 @@ export default async function PortalNotificationsPage({ searchParams }: PageProp
           href="/portal/notifications?filter=unread"
           role="tab"
           aria-selected={activeFilter === "unread"}
-          className={`flex h-11 items-center gap-2 px-4 font-label text-label motion-safe:transition-colors motion-safe:duration-150 focus:outline-none focus:ring-2 focus:ring-brand-navy ${
-            activeFilter === "unread"
+          className={`flex h-11 items-center gap-2 px-4 font-label text-label motion-safe:transition-colors motion-safe:duration-150 focus:outline-none focus:ring-2 focus:ring-brand-navy ${activeFilter === "unread"
               ? "border-b-2 border-brand-navy text-brand-navy"
               : "text-text-grey hover:text-on-surface"
-          }`}
+            }`}
         >
           Unread
           {unreadCount > 0 && (
@@ -262,7 +260,7 @@ export default async function PortalNotificationsPage({ searchParams }: PageProp
               return (
                 <li
                   key={row.id}
-                  className={`flex gap-4 rounded-2xl border-l-4 border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1 ${classes.border}`}
+                  className={`flex gap-4 rounded-2xl border p-4 shadow-sm transition-all ${classes.border}`}
                 >
                   <Icon size={22} className={`mt-0.5 shrink-0 ${classes.icon}`} aria-hidden="true" />
                   <div className="min-w-0 flex-1">
