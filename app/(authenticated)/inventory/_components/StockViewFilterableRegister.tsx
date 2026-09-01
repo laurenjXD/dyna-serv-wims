@@ -36,8 +36,10 @@ export type GroupedItem = {
   customerName: string | null;
   totalIn: number;
   totalOut: number;
-  pcsOnHand: number;
+  spq: number;
   boxesOnHand: number;
+  totalQty: number;
+  pcsOnHand?: number;
   cbmOccupied: number;
   lots: AggregatedLot[];
 };
@@ -182,27 +184,26 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
       ),
     },
 
-    // 8. Stock on Hand (PCS)
+    // 8. SPQ (Standard Pack Quantity per Box)
     {
-      accessorKey: "pcsOnHand",
-      header: "Stock on Hand",
+      accessorKey: "spq",
+      header: "SPQ",
       meta: {
         filterVariant: "numeric-range",
-        filterLabel: "Stock on Hand",
+        filterLabel: "SPQ",
         align: "right",
       },
       cell: (info) => {
         const item = info.row.original;
         return (
-          <div className="font-mono font-bold text-brand-navy bg-blue-50/70 border border-blue-100 rounded px-2 py-0.5 inline-block">
-            {Number(info.getValue() || 0).toLocaleString()}{" "}
-            <span className="text-[10px] font-normal text-text-grey">{item.uom}</span>
-          </div>
+          <span className="font-mono font-medium text-slate-700">
+            {Number(info.getValue() || item.spq || 1).toLocaleString()}
+          </span>
         );
       },
     },
 
-    // 9. Boxes
+    // 9. Boxes on Hand
     {
       accessorKey: "boxesOnHand",
       header: "Boxes",
@@ -212,13 +213,34 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
         align: "right",
       },
       cell: (info) => (
-        <span className="font-mono text-slate-600">
+        <span className="font-mono text-slate-700">
           {Number(info.getValue() || 0).toLocaleString()}
         </span>
       ),
     },
 
-    // 10. CBM
+    // 10. Total Qty (SPQ × Boxes)
+    {
+      accessorKey: "totalQty",
+      header: "Total Qty",
+      meta: {
+        filterVariant: "numeric-range",
+        filterLabel: "Total Quantity (SPQ × Boxes)",
+        align: "right",
+      },
+      cell: (info) => {
+        const item = info.row.original;
+        const total = Number(info.getValue() || item.totalQty || (item.spq * item.boxesOnHand) || 0);
+        return (
+          <div className="font-mono font-bold text-brand-navy bg-blue-50/80 border border-blue-200/80 rounded px-2 py-0.5 inline-block text-right">
+            {total.toLocaleString()}{" "}
+            <span className="text-[10px] font-normal text-text-grey">{item.uom || "PCS"}</span>
+          </div>
+        );
+      },
+    },
+
+    // 11. CBM
     {
       accessorKey: "cbmOccupied",
       header: "CBM",
@@ -234,7 +256,7 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
       ),
     },
 
-    // 11. Lots & Locations
+    // 12. Lots & Locations
     {
       accessorKey: "locationLabels",
       header: "Locations",
@@ -259,7 +281,7 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
       },
     },
 
-    // 12. Quick Action
+    // 13. Quick Action
     {
       id: "actions",
       header: "Action",
@@ -286,15 +308,16 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
         columns={columns}
         data={items}
         title="Master Inventory Register"
-        subtitle="Item catalog with per-field Google Sheets filtering by SKU, category, subcategory, and stock levels"
+        subtitle="Item catalog with per-field Google Sheets filtering by SKU, category, subcategory, SPQ, boxes, and total quantity"
         icon={<Package size={18} />}
         enableGrouping={false}
-        initialSorting={[{ id: "pcsOnHand", desc: true }]}
+        initialSorting={[{ id: "totalQty", desc: true }]}
         emptyMessage="No inventory items match the specified filters."
         renderMobileCard={({ row }: { row: Row<GroupedItem> }) => {
           const item = row.original;
           const isLotsExpanded = expandedItemId === item.itemId;
           const modelVal = String(item.inventoryModel || "TRADING").toUpperCase();
+          const totalCalculated = item.totalQty ?? (item.spq * item.boxesOnHand) ?? 0;
 
           return (
             <div className="rounded-2xl border border-slate-200 bg-surface-white p-3.5 shadow-sm space-y-2.5">
@@ -347,24 +370,24 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
                 </div>
               </div>
 
-              {/* Key Metrics Stats Grid */}
+              {/* Key Metrics Stats Grid (SPQ, Boxes, Total Qty) */}
               <div className="grid grid-cols-3 gap-2 rounded-xl bg-slate-50 p-2.5 border border-slate-100 text-center">
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-text-grey block">Total In</span>
+                  <span className="text-[10px] uppercase font-bold text-text-grey block">SPQ</span>
                   <span className="font-mono text-xs font-semibold text-slate-700">
-                    {item.totalIn.toLocaleString()}
+                    {item.spq.toLocaleString()}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-text-grey block">Total Out</span>
+                  <span className="text-[10px] uppercase font-bold text-text-grey block">Boxes</span>
                   <span className="font-mono text-xs font-semibold text-slate-700">
-                    {item.totalOut.toLocaleString()}
+                    {item.boxesOnHand.toLocaleString()}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-brand-navy block">On Hand</span>
+                  <span className="text-[10px] uppercase font-bold text-brand-navy block">Total Qty</span>
                   <span className="font-mono text-xs font-bold text-brand-navy">
-                    {item.pcsOnHand.toLocaleString()} <span className="text-[9px] font-normal">{item.uom}</span>
+                    {totalCalculated.toLocaleString()} <span className="text-[9px] font-normal">{item.uom || "PCS"}</span>
                   </span>
                 </div>
               </div>
@@ -411,6 +434,7 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
       {expandedItemId && (() => {
         const expandedItem = items.find((i) => i.itemId === expandedItemId);
         if (!expandedItem) return null;
+        const totalCalculated = expandedItem.totalQty ?? (expandedItem.spq * expandedItem.boxesOnHand) ?? 0;
         return (
           <div className="hidden md:block rounded-2xl border border-blue-200 bg-[#F8FAFF] p-4 shadow-elevation-1">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-blue-100 pb-2">
@@ -422,7 +446,7 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
               </div>
               <div className="flex items-center gap-3 text-xs">
                 <span className="font-mono font-bold text-brand-navy">
-                  Total Available: {expandedItem.pcsOnHand.toLocaleString()} {expandedItem.uom}
+                  Total Available: {totalCalculated.toLocaleString()} {expandedItem.uom}
                 </span>
                 <button
                   type="button"
