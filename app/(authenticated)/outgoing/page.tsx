@@ -172,12 +172,6 @@ async function OutgoingLedgerTab({
         Read-only record of outgoing inventory transactions (picks). No edits
         or deletions — corrections use new approved transactions.
       </p>
-      <form method="GET" className="mt-4 flex flex-wrap items-end gap-3">
-        <input type="hidden" name="tab" value="ledger" />
-        <label className="font-label text-label text-on-surface">Delivery Receipt status<select name="receiptStatus" defaultValue={receiptStatus ?? ""} className="ml-2 h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md"><option value="">All</option><option value="missing">Missing</option><option value="uploaded">Uploaded</option></select></label>
-        <button type="submit" className="h-11 rounded bg-brand-navy px-4 font-label text-label font-bold text-surface-white">Filter</button>
-        {receiptStatus && <Link href="/outgoing?tab=ledger" className="inline-flex h-11 items-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface">Clear</Link>}
-      </form>
       {receiptUpload && <p role="status" className="mt-3 rounded border border-status-available/30 bg-status-available/10 px-4 py-3 font-body text-body-sm text-on-surface">{receiptUpload === "success" ? "Delivery Receipt uploaded." : receiptUpload === "removed" ? "Delivery Receipt removed." : receiptUpload === "invalid" ? "Upload a PDF, PNG, or JPEG up to 10 MB." : receiptUpload === "forbidden" ? "You do not have permission to manage Delivery Receipts." : "Delivery Receipt action failed. Please try again."}</p>}
 
       <OutgoingLedgerClientTable

@@ -21,7 +21,7 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CheckCircle2, ChevronDown, ChevronRight, Clock3, Download, Search, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronRight, Clock3, Download, ShieldCheck } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
@@ -102,16 +102,9 @@ export default async function InventoryPage({ searchParams }: PageProps) {
             );
           })}
         </div>
-        <form method="GET" className="flex items-center gap-2 pb-2">
-          <input type="hidden" name="tab" value={activeTab} />
-          <label htmlFor="inventory-search" className="sr-only">Search inventory</label>
-          <div className="hidden h-10 items-center gap-2 rounded-full border border-outline-variant/30 bg-surface-light-grey px-3 md:flex">
-            <Search size={18} aria-hidden="true" className="text-text-grey" />
-            <input id="inventory-search" name="q" type="search" defaultValue={q ?? ""} placeholder="Search SKU, Lot..." className="w-40 bg-transparent font-body text-body-sm text-on-surface placeholder:text-status-neutral focus:outline-none" />
-          </div>
-          <button type="submit" className="inline-flex h-11 items-center gap-2 rounded border border-outline-variant/30 bg-surface-white px-4 font-label text-label font-semibold text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"><SlidersHorizontal size={16} aria-hidden="true" />Filters</button>
+        <div className="flex items-center pb-2">
           <Link href="/inventory/export" className="inline-flex h-11 items-center gap-2 rounded bg-on-surface px-4 font-label text-label font-semibold text-surface-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"><Download size={16} aria-hidden="true" />Export Excel</Link>
-        </form>
+        </div>
       </div>
 
       {pickListError && (
