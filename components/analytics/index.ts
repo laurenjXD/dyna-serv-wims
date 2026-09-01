@@ -11,3 +11,6 @@ export * from "./AlertBanner";
 export * from "./RecentActivityFeed";
 export * from "./FlowPartitionSummary";
 export * from "./WeeklyTrendChart";
+export * from "./WaterfallChart";
+export * from "./ScatterPlot";
+export * from "./WarehouseHeatmap";
