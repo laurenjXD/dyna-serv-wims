@@ -93,15 +93,10 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
       cell: (info) => {
         const item = info.row.original;
         return (
-          <div className="max-w-[200px]">
+          <div className="max-w-[220px]">
             <p className="font-semibold text-slate-800 truncate" title={item.itemName}>
               {item.itemName}
             </p>
-            {item.customerName && (
-              <p className="text-xs text-text-grey truncate" title={item.customerName}>
-                {item.customerName}
-              </p>
-            )}
           </div>
         );
       },
@@ -314,15 +309,32 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
         const item = info.row.original;
         const total = Number(info.getValue() || item.totalQty || (item.spq * item.boxesOnHand) || 0);
         return (
-          <div className="font-mono font-bold text-brand-navy bg-blue-50/80 border border-blue-200/80 rounded px-2 py-0.5 inline-block text-right">
-            {total.toLocaleString()}{" "}
-            <span className="text-xs font-normal text-text-grey">{item.uom || "PCS"}</span>
-          </div>
+          <span className="font-mono font-bold text-brand-navy">
+            {total.toLocaleString()}
+          </span>
         );
       },
     },
 
-    // 13. CBM
+    // 13. UOM (Unit of Measure from Item Enrollment — beside Total Qty)
+    {
+      accessorKey: "uom",
+      header: "UOM",
+      meta: {
+        filterVariant: "multi-select",
+        filterLabel: "UOM",
+      },
+      cell: (info) => {
+        const val = String(info.getValue() || "").toUpperCase();
+        return (
+          <span className="font-mono text-xs font-semibold text-slate-700 uppercase bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+            {val || "—"}
+          </span>
+        );
+      },
+    },
+
+    // 14. CBM
     {
       accessorKey: "cbmOccupied",
       header: "CBM",

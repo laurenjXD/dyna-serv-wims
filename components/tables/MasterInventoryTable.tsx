@@ -16,7 +16,7 @@ export type MasterInventoryRow = {
   status: "In-Stock" | "Low Stock" | "Out of Stock";
   totalStock: number;
   availableStock: number;
-  uom: "Pallet" | "Box" | "Piece" | "CBM" | "Meter" | "Roll";
+  uom: string;
   primaryLocation: string;
 };
 
@@ -174,7 +174,22 @@ export function MasterInventoryTable({
       ),
     },
 
-    // 8. Available Stock (Numeric range inputs + Aggregated sum)
+    // 8. Unit of Measure (UOM from Item Enrollment — beside Total Stock)
+    {
+      accessorKey: "uom",
+      header: "UOM",
+      meta: {
+        filterVariant: "multi-select",
+        filterLabel: "Unit of Measure",
+      },
+      cell: (info) => (
+        <span className="font-mono text-xs font-semibold text-slate-700 uppercase bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+          {String(info.getValue() || "—")}
+        </span>
+      ),
+    },
+
+    // 9. Available Stock (Numeric range inputs + Aggregated sum)
     {
       accessorKey: "availableStock",
       header: "Available",
@@ -189,25 +204,6 @@ export function MasterInventoryTable({
           {Number(info.getValue())?.toLocaleString()}
         </span>
       ),
-    },
-
-    // 9. Unit of Measure (UOM: Categorical Multi-select)
-    {
-      accessorKey: "uom",
-      header: "UOM",
-      meta: {
-        filterVariant: "multi-select",
-        filterLabel: "Unit of Measure",
-        filterOptions: [
-          { label: "Piece (PCS)", value: "Piece" },
-          { label: "Box", value: "Box" },
-          { label: "Pallet", value: "Pallet" },
-          { label: "CBM", value: "CBM" },
-          { label: "Meter", value: "Meter" },
-          { label: "Roll", value: "Roll" },
-        ],
-      },
-      cell: (info) => <span className="font-mono text-xs text-text-grey font-semibold uppercase">{String(info.getValue())}</span>,
     },
 
     // 10. Primary Location (Text Search)

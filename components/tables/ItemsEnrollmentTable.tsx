@@ -64,16 +64,9 @@ export function ItemsEnrollmentTable({
       meta: {
         filterVariant: "multi-select",
         filterLabel: "UOM",
-        filterOptions: [
-          { label: "Piece", value: "piece" },
-          { label: "Box", value: "box" },
-          { label: "Pallet", value: "pallet" },
-          { label: "Meter", value: "meter" },
-          { label: "Roll", value: "roll" },
-        ],
       },
       cell: (info) => (
-        <span className="font-mono text-xs uppercase text-text-grey font-semibold">{String(info.getValue())}</span>
+        <span className="font-mono text-xs uppercase text-slate-700 font-semibold bg-slate-100 px-2 py-0.5 rounded border border-slate-200">{String(info.getValue() || "—")}</span>
       ),
     },
 
