@@ -6,3 +6,4 @@ export * from "./OrganizationsEnrollmentTable";
 export * from "./ItemsEnrollmentTable";
 export * from "./LocationsEnrollmentTable";
 export * from "./OrganizationLedgerTable";
+export * from "./WrrDocumentsTable";
