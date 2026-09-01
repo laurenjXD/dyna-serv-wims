@@ -99,6 +99,7 @@ export interface DataTableProps<TData> {
   title?: string;
   subtitle?: string;
   icon?: ReactNode;
+  showHeader?: boolean;
   enableGrouping?: boolean;
   initialGrouping?: GroupingState;
   initialSorting?: SortingState;
@@ -116,6 +117,7 @@ export function DataTable<TData>({
   title,
   subtitle,
   icon,
+  showHeader,
   enableGrouping = false,
   initialGrouping = [],
   initialSorting = [],
@@ -210,27 +212,30 @@ export function DataTable<TData>({
     .getHeaderGroups()[0]
     ?.headers.filter((header) => header.column.getCanFilter());
 
+  const shouldRenderHeader = showHeader ?? Boolean(title || subtitle || actions || filterableHeaders?.length || enableGrouping || hasActiveFilters);
+
   return (
     <div className={`space-y-3 ${className}`}>
       {/* ── Bento-Box Header Toolbar (Soft Cream Theme + Glassmorphism) ── */}
-      <div className="rounded-2xl border border-slate-200/80 bg-[#F9F9F6] p-3.5 shadow-sm space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          {/* Title & Metadata */}
-          <div className="flex items-center gap-3">
-            {icon ? (
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-navy text-surface-white shadow-sm shrink-0">
-                {icon}
+      {shouldRenderHeader && (
+        <div className="rounded-2xl border border-slate-200/80 bg-[#F9F9F6] p-3.5 shadow-sm space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {/* Title & Metadata */}
+            <div className="flex items-center gap-3">
+              {icon ? (
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-navy text-surface-white shadow-sm shrink-0">
+                  {icon}
+                </div>
+              ) : (
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-navy text-surface-white shadow-sm shrink-0">
+                  <Database size={16} />
+                </div>
+              )}
+              <div>
+                {title && <h2 className="font-heading text-sm font-bold text-brand-navy leading-tight">{title}</h2>}
+                {subtitle && <p className="font-body text-[11px] text-text-grey mt-0.5">{subtitle}</p>}
               </div>
-            ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-navy text-surface-white shadow-sm shrink-0">
-                <Database size={16} />
-              </div>
-            )}
-            <div>
-              {title && <h2 className="font-heading text-sm font-bold text-brand-navy leading-tight">{title}</h2>}
-              {subtitle && <p className="font-body text-[11px] text-text-grey mt-0.5">{subtitle}</p>}
             </div>
-          </div>
 
           {/* Action Toolbar */}
           <div className="flex flex-wrap items-center gap-2">
@@ -346,6 +351,7 @@ export function DataTable<TData>({
           </div>
         </div>
       </div>
+    )}
 
       {/* ── Desktop Data-Dense Table (md:block) ────────────────────────── */}
       <div className="hidden md:block overflow-hidden rounded-2xl border border-slate-200/80 bg-surface-white shadow-sm">
