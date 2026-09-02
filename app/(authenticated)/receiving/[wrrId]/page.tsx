@@ -26,7 +26,7 @@ import { startReceiving, getCiplSignedUrl, cancelWrr, setWrrLineDisposition } fr
 import type { WrrItemRow } from "@/lib/db/queries/receiving";
 import { WRRUnitLabelGenerator } from "@/components/barcode/WRRUnitLabelGenerator";
 import { CiplDocumentLink, type SignedUrlResult } from "./_components/CiplDocumentLink";
-import { PutawayRoutingChecklist } from "./_components/PutawayRoutingChecklist";
+import { WrrDetailTabs } from "./_components/WrrDetailTabs";
 import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -285,110 +285,107 @@ export default async function WrrDetailPage({ params }: PageProps) {
         </div>
       )}
 
-      {/* Digital Putaway Routing Checklist */}
-      {putawayAllocations.length > 0 && (
-        <div className="mt-6">
-          <PutawayRoutingChecklist
-            wrrId={wrrId}
-            wrrNumber={wrr.wrrNumber}
-            allocations={putawayAllocations}
-          />
-        </div>
-      )}
-
-      {/* Items table — Level 1 office elevation */}
-      <div className="mt-6 overflow-hidden rounded-xl bg-surface-white shadow-elevation-1">
-        <div className="px-6 py-4">
-          <h2 className="font-heading font-semibold text-data-display text-on-surface">
-            Incoming Shipment Details ({wrr.items.length})
-          </h2>
-        </div>
-        {wrr.items.length === 0 ? (
-          <div className="px-6 pb-8 text-center">
-            <p className="font-body text-body-md text-text-grey">
-              No line items on this WRR.
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Lot Number
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Item Code & SPQ
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Customer Code
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Mfg. Date
-                  </th>
-                  <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Expected Qty
-                  </th>
-                  <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Received Qty
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Remarks
-                  </th>
-                  <th className="px-4 py-3 text-center font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Labels
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/30">
-                {wrr.items.map((item: WrrItemRow) => {
-                  const spq = Number(item.spq) || 1;
-                  const isShortage = item.scannedQty < item.expectedQty && wrr.status === "confirmed";
-
-                  return (
-                    <tr key={item.id} className="hover:bg-surface-light-grey/50">
-                      <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                        {item.lotNumber}
-                      </td>
-                      <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                        <span className="block font-mono font-bold text-brand-navy">Dyna-Serv: {item.itemCode ?? "—"}</span>
-                        <span className="mt-0.5 block text-text-grey text-body-sm">Supplier: {item.supplierItemCode ?? "—"}</span>
-                        <span className="mt-1 inline-block rounded bg-surface-light-grey px-1.5 py-0.5 font-label text-label-xs font-bold text-text-grey">
-                          SPQ: {spq} {item.uom || "PCS"}/Box
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 font-mono text-mono-md text-on-surface">{item.customerItemCode ?? "—"}</td>
-                      <td className="px-4 py-3 font-body text-body-md text-on-surface">{item.manufactureDate ?? "—"}</td>
-                      <td className="px-4 py-3 text-right font-body text-body-md text-on-surface">
-                        <span className="font-mono font-bold block">{item.expectedQty} Boxes</span>
-                        <span className="text-text-grey font-mono text-body-xs">({(item.expectedQty * spq).toLocaleString()} {item.uom || "PCS"})</span>
-                      </td>
-                      <td className="px-4 py-3 text-right font-body text-body-md text-on-surface">
-                        <span className={`font-mono font-bold block ${isShortage ? "text-status-held" : ""}`}>
-                          {item.scannedQty} Boxes
-                        </span>
-                        <span className="text-text-grey font-mono text-body-xs">
-                          ({(item.scannedQty * spq).toLocaleString()} {item.uom || "PCS"})
-                        </span>
-                      </td>
-                      <td className="max-w-56 px-4 py-3 font-body text-body-md text-text-grey">{item.remarks ?? "—"}</td>
-                      <td className="min-w-[188px] px-4 py-3 text-center align-middle">
-                        <WRRUnitLabelGenerator
-                          wrrItemId={item.id}
-                          wrrNumber={wrr.wrrNumber}
-                          itemCode={item.itemCode ?? item.lotNumber}
-                          lotNumber={item.lotNumber}
-                          expectedQty={item.expectedQty}
-                        />
-                      </td>
+      {/* WRR Subtabs: Shipment Details vs Putaway Routing */}
+      <WrrDetailTabs
+        wrrId={wrrId}
+        wrrNumber={wrr.wrrNumber}
+        itemsCount={wrr.items.length}
+        allocations={putawayAllocations}
+        shipmentDetailsContent={
+          <div className="overflow-hidden rounded-xl bg-surface-white shadow-elevation-1">
+            <div className="px-6 py-4">
+              <h2 className="font-heading font-semibold text-data-display text-on-surface">
+                Incoming Shipment Details ({wrr.items.length})
+              </h2>
+            </div>
+            {wrr.items.length === 0 ? (
+              <div className="px-6 pb-8 text-center">
+                <p className="font-body text-body-md text-text-grey">
+                  No line items on this WRR.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
+                      <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                        Lot Number
+                      </th>
+                      <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                        Item Code & SPQ
+                      </th>
+                      <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                        Customer Code
+                      </th>
+                      <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                        Mfg. Date
+                      </th>
+                      <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                        Expected Qty
+                      </th>
+                      <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                        Received Qty
+                      </th>
+                      <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                        Remarks
+                      </th>
+                      <th className="px-4 py-3 text-center font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                        Labels
+                      </th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  </thead>
+                  <tbody className="divide-y divide-outline-variant/30">
+                    {wrr.items.map((item: WrrItemRow) => {
+                      const spq = Number(item.spq) || 1;
+                      const isShortage = item.scannedQty < item.expectedQty && wrr.status === "confirmed";
+
+                      return (
+                        <tr key={item.id} className="hover:bg-surface-light-grey/50">
+                          <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
+                            {item.lotNumber}
+                          </td>
+                          <td className="px-4 py-3 font-body text-body-md text-on-surface">
+                            <span className="block font-mono font-bold text-brand-navy">Dyna-Serv: {item.itemCode ?? "—"}</span>
+                            <span className="mt-0.5 block text-text-grey text-body-sm">Supplier: {item.supplierItemCode ?? "—"}</span>
+                            <span className="mt-1 inline-block rounded bg-surface-light-grey px-1.5 py-0.5 font-label text-label-xs font-bold text-text-grey">
+                              SPQ: {spq} {item.uom || "PCS"}/Box
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 font-mono text-mono-md text-on-surface">{item.customerItemCode ?? "—"}</td>
+                          <td className="px-4 py-3 font-body text-body-md text-on-surface">{item.manufactureDate ?? "—"}</td>
+                          <td className="px-4 py-3 text-right font-body text-body-md text-on-surface">
+                            <span className="font-mono font-bold block">{item.expectedQty} Boxes</span>
+                            <span className="text-text-grey font-mono text-body-xs">({(item.expectedQty * spq).toLocaleString()} {item.uom || "PCS"})</span>
+                          </td>
+                          <td className="px-4 py-3 text-right font-body text-body-md text-on-surface">
+                            <span className={`font-mono font-bold block ${isShortage ? "text-status-held" : ""}`}>
+                              {item.scannedQty} Boxes
+                            </span>
+                            <span className="text-text-grey font-mono text-body-xs">
+                              ({(item.scannedQty * spq).toLocaleString()} {item.uom || "PCS"})
+                            </span>
+                          </td>
+                          <td className="max-w-56 px-4 py-3 font-body text-body-md text-text-grey">{item.remarks ?? "—"}</td>
+                          <td className="min-w-[188px] px-4 py-3 text-center align-middle">
+                            <WRRUnitLabelGenerator
+                              wrrItemId={item.id}
+                              wrrNumber={wrr.wrrNumber}
+                              itemCode={item.itemCode ?? item.lotNumber}
+                              lotNumber={item.lotNumber}
+                              expectedQty={item.expectedQty}
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        }
+      />
     </div>
   );
 }

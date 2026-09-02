@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { CheckCircle2, CheckSquare, Square, MapPin, ShieldAlert, ArrowRight } from "lucide-react";
+import { CheckCircle2, CheckSquare, Square, MapPin } from "lucide-react";
 import type { WrrPutawayAllocationRow } from "@/lib/db/queries/receiving";
 
 interface PutawayRoutingChecklistProps {
@@ -12,7 +12,6 @@ interface PutawayRoutingChecklistProps {
 
 export function PutawayRoutingChecklist({
   wrrId,
-  wrrNumber,
   allocations,
 }: PutawayRoutingChecklistProps) {
   const storageKey = `putaway_checklist_${wrrId}`;
@@ -66,25 +65,22 @@ export function PutawayRoutingChecklist({
   const percent = Math.round((completedTasks / totalTasks) * 100);
 
   return (
-    <section aria-label="Putaway Routing Checklist" className="rounded-2xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">
-      {/* Header & Progress */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-outline-variant/20 pb-4">
+    <div className="space-y-4">
+      {/* Progress & Quick Actions Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-surface-light-grey/60 p-4">
         <div>
           <div className="flex items-center gap-2">
             <MapPin className="h-5 w-5 text-brand-navy" />
-            <h3 className="font-heading text-title-md font-bold text-on-surface">
-              Digital Putaway Routing Checklist
-            </h3>
+            <span className="font-heading text-body-md font-bold text-on-surface">
+              Putaway Progress: {completedTasks} of {totalTasks} Shelved ({percent}%)
+            </span>
           </div>
-          <p className="mt-0.5 font-body text-body-sm text-text-grey">
-            Online floor routing for {wrrNumber}. Check off each storage rack or holding bay as items are physically shelved.
+          <p className="mt-0.5 font-body text-body-xs text-text-grey">
+            Check off each rack location as boxes are physically placed onto the shelves.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          <span className="font-mono text-body-sm font-bold text-brand-navy">
-            {completedTasks} / {totalTasks} Shelved ({percent}%)
-          </span>
           {!isAllComplete && (
             <button
               type="button"
@@ -99,7 +95,7 @@ export function PutawayRoutingChecklist({
       </div>
 
       {/* Progress bar */}
-      <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-surface-light-grey">
+      <div className="h-2 w-full overflow-hidden rounded-full bg-surface-light-grey">
         <div
           className={`h-full transition-all duration-300 ${
             isAllComplete ? "bg-status-available" : "bg-primary"
@@ -108,91 +104,141 @@ export function PutawayRoutingChecklist({
         />
       </div>
 
-      {/* 100% complete celebratory banner */}
+      {/* 100% complete banner */}
       {isAllComplete && (
-        <div className="mt-3 flex items-center gap-2.5 rounded-xl border border-status-available/40 bg-status-available/10 p-3 text-status-available">
+        <div className="flex items-center gap-2.5 rounded-xl border border-status-available/40 bg-status-available/10 p-3 text-status-available">
           <CheckCircle2 size={20} className="shrink-0" />
           <p className="font-label text-body-sm font-bold">
-            100% Physical Putaway Complete! All boxes are securely stored in their designated racks.
+            100% Putaway Complete! All boxes are physically stored in their assigned racks.
           </p>
         </div>
       )}
 
-      {/* Task List Cards */}
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        {allocations.map((alloc) => {
-          const isChecked = Boolean(checkedIds[alloc.id]);
-          const isInspection = alloc.locationType === "inspection";
-          const spq = Number(alloc.spq) || 1;
-          const totalPcs = alloc.qty * spq;
+      {/* Tabular List Table (Dense & Clean) */}
+      <div className="overflow-x-auto rounded-xl border border-outline-variant/30 bg-surface-white">
+        <table className="w-full border-collapse text-left font-body text-body-sm">
+          <thead>
+            <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
+              <th className="w-12 px-4 py-3 text-center font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                Shelved
+              </th>
+              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                Target Location
+              </th>
+              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                Item Code
+              </th>
+              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                Lot Number
+              </th>
+              <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                Quantity
+              </th>
+              <th className="px-4 py-3 text-center font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                Status
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-outline-variant/30">
+            {allocations.map((alloc) => {
+              const isChecked = Boolean(checkedIds[alloc.id]);
+              const isInspection = alloc.locationType === "inspection";
+              const spq = Number(alloc.spq) || 1;
+              const isPalletUom = (alloc.uom || "").toLowerCase() === "pallet";
+              const uomLabel = isPalletUom ? "PCS" : alloc.uom || "PCS";
+              const totalPcs = alloc.qty * spq;
 
-          return (
-            <div
-              key={alloc.id}
-              onClick={() => toggleCheck(alloc.id)}
-              className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-all active:scale-[0.99] ${
-                isChecked
-                  ? "border-status-available/40 bg-status-available/5"
-                  : isInspection
-                  ? "border-amber-300 bg-amber-50/40 hover:bg-amber-50/70"
-                  : "border-outline-variant/30 bg-surface-white hover:bg-surface-light-grey/40"
-              }`}
-            >
-              {/* Checkbox button */}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleCheck(alloc.id);
-                }}
-                className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
-                aria-label={`Mark ${alloc.locationLabel} as shelved`}
-              >
-                {isChecked ? (
-                  <div className="flex h-7 w-7 items-center justify-center rounded bg-status-available text-surface-white shadow-sm">
-                    <CheckSquare size={18} className="stroke-[2.5]" />
-                  </div>
-                ) : (
-                  <div className="flex h-7 w-7 items-center justify-center rounded border-2 border-outline-variant/80 bg-surface-white hover:border-brand-navy">
-                    <Square size={16} className="text-text-grey/40" />
-                  </div>
-                )}
-              </button>
+              return (
+                <tr
+                  key={alloc.id}
+                  onClick={() => toggleCheck(alloc.id)}
+                  className={`cursor-pointer transition-colors ${
+                    isChecked
+                      ? "bg-status-available/5 hover:bg-status-available/10"
+                      : "hover:bg-surface-light-grey/50"
+                  }`}
+                >
+                  {/* Checkbox */}
+                  <td className="px-4 py-3 text-center align-middle">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleCheck(alloc.id);
+                      }}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+                      aria-label={`Mark ${alloc.locationLabel} as shelved`}
+                    >
+                      {isChecked ? (
+                        <div className="flex h-6 w-6 items-center justify-center rounded bg-status-available text-surface-white">
+                          <CheckSquare size={16} className="stroke-[2.5]" />
+                        </div>
+                      ) : (
+                        <div className="flex h-6 w-6 items-center justify-center rounded border-2 border-outline-variant/80 bg-surface-white hover:border-brand-navy">
+                          <Square size={14} className="text-text-grey/40" />
+                        </div>
+                      )}
+                    </button>
+                  </td>
 
-              {/* Task Details */}
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono text-title-md font-bold text-brand-navy">
-                    {alloc.locationLabel}
-                  </span>
-                  <span
-                    className={`rounded-full px-2 py-0.5 font-label text-label-xs font-bold uppercase ${
-                      isInspection
-                        ? "bg-amber-100 text-amber-900"
-                        : "bg-brand-royal-blue/10 text-brand-royal-blue"
-                    }`}
-                  >
-                    {isInspection ? "QA Hold" : "Storage"}
-                  </span>
-                </div>
+                  {/* Target Location */}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-mono-md font-bold text-brand-navy">
+                        {alloc.locationLabel}
+                      </span>
+                      <span
+                        className={`rounded px-1.5 py-0.5 font-label text-label-xs font-bold uppercase ${
+                          isInspection
+                            ? "bg-amber-100 text-amber-900"
+                            : "bg-brand-royal-blue/10 text-brand-royal-blue"
+                        }`}
+                      >
+                        {isInspection ? "QA Hold" : "Storage"}
+                      </span>
+                    </div>
+                  </td>
 
-                <p className="mt-1 font-mono text-body-sm font-bold text-on-surface">
-                  {alloc.itemCode ?? "Item"} · Lot: {alloc.lotNumber}
-                </p>
+                  {/* Item Code */}
+                  <td className="px-4 py-3 font-mono font-bold text-on-surface">
+                    {alloc.itemCode ?? "Item"}
+                  </td>
 
-                <div className="mt-2 flex items-center justify-between font-body text-body-xs text-text-grey">
-                  <span>
-                    <strong>{alloc.qty} Box{alloc.qty === 1 ? "" : "es"}</strong> ({totalPcs.toLocaleString()} {alloc.uom || "PCS"})
-                  </span>
-                  <span className="font-label font-bold text-primary flex items-center gap-1">
-                    {isChecked ? "✅ Shelved" : "To Shelve"} <ArrowRight size={12} />
-                  </span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+                  {/* Lot Number */}
+                  <td className="px-4 py-3 font-mono text-on-surface">
+                    {alloc.lotNumber}
+                  </td>
+
+                  {/* Stored Quantity */}
+                  <td className="px-4 py-3 text-right">
+                    <span className="font-mono font-bold block text-on-surface">
+                      {alloc.qty} Box{alloc.qty === 1 ? "" : "es"}
+                    </span>
+                    {spq > 1 && !isPalletUom && (
+                      <span className="font-mono text-body-xs text-text-grey">
+                        ({totalPcs.toLocaleString()} {uomLabel})
+                      </span>
+                    )}
+                  </td>
+
+                  {/* Status */}
+                  <td className="px-4 py-3 text-center">
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-label text-label-xs font-bold uppercase ${
+                        isChecked
+                          ? "bg-status-available/15 text-status-available"
+                          : "bg-status-pending/15 text-status-pending"
+                      }`}
+                    >
+                      {isChecked ? "✅ Shelved" : "To Shelve"}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
-    </section>
+    </div>
   );
 }
