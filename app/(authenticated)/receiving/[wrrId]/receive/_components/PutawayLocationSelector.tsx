@@ -24,14 +24,28 @@ function maxBoxesFor(candidate: PutawayCandidate | undefined, unitCbm: number, q
 }
 
 function buildInitialAssignment(
-  _candidates: PutawayCandidate[],
+  candidates: PutawayCandidate[],
   quantity: number,
-  _unitCbm: number,
+  unitCbm: number,
 ): string[] {
   const safeQuantity = Math.max(0, Math.floor(Number(quantity) || 0));
   if (safeQuantity === 0) return [];
-  // Default to unassigned so warehouse operators explicitly select or scan their target putaway location
-  return Array.from({ length: safeQuantity }, () => "");
+
+  const assignments: string[] = [];
+  const orderedCandidates = [...candidates].sort((a, b) =>
+    (a.label ?? "").localeCompare(b.label ?? "", undefined, {
+      numeric: true,
+      sensitivity: "base",
+    }),
+  );
+
+  for (const candidate of orderedCandidates) {
+    const availableBoxes = maxBoxesFor(candidate, unitCbm, safeQuantity - assignments.length);
+    assignments.push(...Array.from({ length: Math.min(availableBoxes, safeQuantity - assignments.length) }, () => candidate.id));
+    if (assignments.length === safeQuantity) break;
+  }
+
+  return assignments.concat(Array.from({ length: safeQuantity - assignments.length }, () => ""));
 }
 
 export function PutawayLocationSelector({
