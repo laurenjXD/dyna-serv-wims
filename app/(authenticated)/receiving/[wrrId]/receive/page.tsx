@@ -82,10 +82,10 @@ function getScanErrorMessage(reason: string): string {
 
 function getCommitErrorMessage(reason: string): string {
   if (reason.includes("presence_attestation_required")) {
-    return "Confirm that every declared box or pallet is physically present before storing.";
+    return "Confirm that every received box or pallet is physically present before storing.";
   }
   if (reason.includes("allocation_qty_must_equal_expected")) {
-    return "Assign a location to every declared box or pallet before storing.";
+    return "Assign a location to every received box or pallet before storing.";
   }
   if (reason.includes("missing_location")) {
     return "Choose a storage location for every declared box or pallet before storing.";
@@ -646,7 +646,7 @@ export default async function ReceiveFloorPage({
                   Pallet QR Verified
                 </p>
                 <p className="mt-1 font-body text-body-md text-text-grey">
-                  Assign locations for declared boxes (Expected: {primaryReadyLine.expectedQty} Boxes / {((Number(primaryReadyLine.expectedQty) || 0) * (Number(primaryReadyLine.spq) || 1)).toLocaleString()} {primaryReadyLine.uom || "PCS"}).
+                  Assign locations for received boxes (Received: {primaryReadyLine.scannedQty} / {primaryReadyLine.expectedQty} Boxes; {((Number(primaryReadyLine.scannedQty) || 0) * (Number(primaryReadyLine.spq) || 1)).toLocaleString()} / {((Number(primaryReadyLine.expectedQty) || 0) * (Number(primaryReadyLine.spq) || 1)).toLocaleString()} {primaryReadyLine.uom || "PCS"}).
                 </p>
               </div>
             </div>
@@ -655,7 +655,8 @@ export default async function ReceiveFloorPage({
               candidates={primaryStoreCandidates}
               inspectionCandidates={inspectionLocations}
               contents={primaryStoreContents}
-              quantity={primaryReadyLine.expectedQty}
+              quantity={primaryReadyLine.scannedQty}
+              expectedQuantity={primaryReadyLine.expectedQty}
               unitCbm={Number(primaryReadyLine.unitCbm) || 0}
               spq={Number(primaryReadyLine.spq) || 1}
               uom={primaryReadyLine.uom || "PCS"}

@@ -9,6 +9,7 @@ interface PutawayLocationSelectorProps {
   inspectionCandidates?: Array<{ id: string; label: string }>;
   contents: Record<string, LocationStoredItem[]>;
   quantity: number;
+  expectedQuantity?: number;
   unitCbm: number;
   spq?: number;
   uom?: string;
@@ -53,11 +54,16 @@ export function PutawayLocationSelector({
   inspectionCandidates = [],
   contents = {},
   quantity = 0,
+  expectedQuantity,
   unitCbm = 0,
   spq = 1,
   uom = "PCS",
 }: PutawayLocationSelectorProps) {
   const safeQuantity = Math.max(0, Math.floor(Number(quantity) || 0));
+  const safeExpectedQuantity = Math.max(
+    safeQuantity,
+    Math.floor(Number(expectedQuantity ?? quantity) || 0),
+  );
   const safeUnitCbm = Number(unitCbm) || 0;
   const safeSpq = Math.max(1, Number(spq) || 1);
 
@@ -119,6 +125,7 @@ export function PutawayLocationSelector({
 
   const assignedBoxesCount = allocations.reduce((sum, a) => sum + a.qty, 0);
   const shortageBoxesCount = Math.max(0, safeQuantity - assignedBoxesCount);
+  const missingBoxesCount = Math.max(0, safeExpectedQuantity - safeQuantity);
 
   const selectedIds = allocations.map((allocation) => allocation.locationId);
   const singleLocationId =
@@ -154,10 +161,10 @@ export function PutawayLocationSelector({
           <div>
             <p className="font-label text-label font-bold uppercase tracking-[0.1em] text-primary">Step 1 · Primary location</p>
             <label htmlFor="all-boxes-location" className="mt-1 block font-heading text-title-md font-bold text-on-surface">
-              Put all {safeQuantity} boxes in
+              Put all {safeQuantity} received boxes in
             </label>
             <p className="mt-0.5 font-body text-body-sm text-text-grey">
-              Expected: <strong>{safeQuantity} Boxes</strong> ({(safeQuantity * safeSpq).toLocaleString()} {uom}) · SPQ: <strong>{safeSpq} {uom}/Box</strong>
+              Received: <strong>{safeQuantity} Boxes</strong> ({(safeQuantity * safeSpq).toLocaleString()} {uom}) · Expected: <strong>{safeExpectedQuantity} Boxes</strong> · SPQ: <strong>{safeSpq} {uom}/Box</strong>
             </p>
           </div>
           <span className="rounded-full bg-[#EEF3FF] px-3 py-1 font-mono text-mono-sm font-bold text-brand-navy">
@@ -179,7 +186,7 @@ export function PutawayLocationSelector({
           />
         </div>
         <p className="mt-2.5 font-body text-body-md text-text-grey">
-          Choose a primary storage rack or inspection bay. Use Step 2 below if some cartons are damaged (Hold) or missing (Shortage).
+          Choose a primary storage rack or inspection bay. Use Step 2 below only if the received boxes need different locations or a hold disposition.
         </p>
       </section>
 
@@ -244,17 +251,28 @@ export function PutawayLocationSelector({
             <p className="mt-1 font-heading text-title-md font-bold text-on-surface">Placement summary</p>
           </div>
           <span className="font-mono text-mono-sm font-bold text-brand-navy">
-            {assignedBoxesCount}/{safeQuantity} Boxes Assigned ({ (assignedBoxesCount * safeSpq).toLocaleString() }/{ (safeQuantity * safeSpq).toLocaleString() } {uom})
+            {assignedBoxesCount}/{safeQuantity} Received Boxes Assigned ({ (assignedBoxesCount * safeSpq).toLocaleString() }/{ (safeQuantity * safeSpq).toLocaleString() } {uom})
           </span>
         </div>
+
+        {missingBoxesCount > 0 && (
+          <div className="mt-3 rounded-xl border border-status-pending/40 bg-[#FFF9EB] p-3">
+            <p className="font-label text-body-sm font-bold text-amber-900">
+              OS&amp;D shortage: {missingBoxesCount} declared box{missingBoxesCount === 1 ? "" : "es"} missing ({(missingBoxesCount * safeSpq).toLocaleString()} {uom})
+            </p>
+            <p className="mt-0.5 font-body text-body-xs text-amber-800">
+              Only the {safeQuantity} received boxes will be assigned and posted to inventory.
+            </p>
+          </div>
+        )}
 
         {shortageBoxesCount > 0 && (
           <div className="mt-3 rounded-xl border border-status-pending/40 bg-[#FFF9EB] p-3">
             <p className="font-label text-body-sm font-bold text-amber-900">
-              ⚠️ Delivery Shortage Detected: {shortageBoxesCount} Box{shortageBoxesCount === 1 ? "" : "es"} Missing ({(shortageBoxesCount * safeSpq).toLocaleString()} {uom})
+              ⚠️ {shortageBoxesCount} received box{shortageBoxesCount === 1 ? " is" : "es are"} still unassigned ({(shortageBoxesCount * safeSpq).toLocaleString()} {uom})
             </p>
             <p className="mt-0.5 font-body text-body-xs text-amber-800">
-              Only {assignedBoxesCount} physically arrived boxes will be posted to stock. The {shortageBoxesCount} missing boxes will be logged on the OS&D variance report.
+              Assign a location to every received box before confirming. Declared boxes that never arrived are shown separately as the OS&amp;D shortage.
             </p>
           </div>
         )}
@@ -337,8 +355,8 @@ export function PutawayLocationSelector({
           <span className="mt-1 block">
             {assignedBoxesCount > 0 ? (
               <>
-                I confirm that {assignedBoxesCount} of {safeQuantity} declared boxes ({(assignedBoxesCount * safeSpq).toLocaleString()} {uom}) are physically present and assigned.
-                {shortageBoxesCount > 0 && ` (${shortageBoxesCount} box shortage will be logged).`}
+                I confirm that {assignedBoxesCount} received boxes ({(assignedBoxesCount * safeSpq).toLocaleString()} {uom}) are physically present and assigned.
+                {missingBoxesCount > 0 && ` (${missingBoxesCount} declared box${missingBoxesCount === 1 ? "" : "es"} missing; OS&D will be recorded).`}
               </>
             ) : (
               <span className="text-text-grey">
