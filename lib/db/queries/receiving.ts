@@ -10,7 +10,8 @@
 //   specs/07-incoming-receiving/design.md §5.2 — scan-line state and discrepancy.
 
 import { eq, asc, desc, sql } from "drizzle-orm";
-import { wrrDocuments, wrrItems } from "@/lib/db/schema/wrr";
+import { wrrDocuments, wrrItems, wrrItemPutawayAllocations } from "@/lib/db/schema/wrr";
+import { locations } from "@/lib/db/schema/locations";
 // Aliased: getWrrDocument's own `items` local (the mapped WrrItemRow[]
 // result) would otherwise shadow this schema table within the same
 // function scope.
@@ -353,4 +354,46 @@ export async function getWrrDocument(
     confirmedAt: first.confirmedAt,
     items,
   };
+}
+
+export type WrrPutawayAllocationRow = {
+  id: string;
+  wrrItemId: string;
+  itemCode: string | null;
+  lotNumber: string;
+  locationId: string;
+  locationLabel: string;
+  locationType: string;
+  qty: number;
+  spq: number;
+  uom: string;
+};
+
+export async function getWrrPutawayAllocations(
+  db: DbLike,
+  wrrId: string
+): Promise<WrrPutawayAllocationRow[]> {
+  try {
+    return (await db
+      .select({
+        id: wrrItemPutawayAllocations.id,
+        wrrItemId: wrrItemPutawayAllocations.wrrItemId,
+        itemCode: itemsTable.code,
+        lotNumber: wrrItems.lotNumber,
+        locationId: wrrItemPutawayAllocations.locationId,
+        locationLabel: locations.label,
+        locationType: locations.locationType,
+        qty: wrrItemPutawayAllocations.qty,
+        spq: itemsTable.spq,
+        uom: wrrItems.uom,
+      })
+      .from(wrrItemPutawayAllocations)
+      .innerJoin(wrrItems, eq(wrrItems.id, wrrItemPutawayAllocations.wrrItemId))
+      .innerJoin(locations, eq(locations.id, wrrItemPutawayAllocations.locationId))
+      .leftJoin(itemsTable, eq(itemsTable.id, wrrItems.itemId))
+      .where(eq(wrrItems.wrrId, wrrId))
+      .orderBy(asc(locations.label))) as WrrPutawayAllocationRow[];
+  } catch {
+    return [];
+  }
 }

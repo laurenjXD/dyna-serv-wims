@@ -21,11 +21,12 @@ import { notFound, redirect } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
-import { getWrrDocument } from "@/lib/db/queries/receiving";
+import { getWrrDocument, getWrrPutawayAllocations } from "@/lib/db/queries/receiving";
 import { startReceiving, getCiplSignedUrl, cancelWrr, setWrrLineDisposition } from "@/lib/actions/receiving";
 import type { WrrItemRow } from "@/lib/db/queries/receiving";
 import { WRRUnitLabelGenerator } from "@/components/barcode/WRRUnitLabelGenerator";
 import { CiplDocumentLink, type SignedUrlResult } from "./_components/CiplDocumentLink";
+import { PutawayRoutingChecklist } from "./_components/PutawayRoutingChecklist";
 import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -78,6 +79,8 @@ export default async function WrrDetailPage({ params }: PageProps) {
   if (!wrr) {
     notFound();
   }
+
+  const putawayAllocations = await getWrrPutawayAllocations(db, wrrId);
 
   // Captured as its own binding (not `wrr.ciplFileUrl` inline) so the two
   // inline "use server" closures below can reference it — TypeScript
@@ -279,6 +282,17 @@ export default async function WrrDetailPage({ params }: PageProps) {
               </p>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Digital Putaway Routing Checklist */}
+      {putawayAllocations.length > 0 && (
+        <div className="mt-6">
+          <PutawayRoutingChecklist
+            wrrId={wrrId}
+            wrrNumber={wrr.wrrNumber}
+            allocations={putawayAllocations}
+          />
         </div>
       )}
 
