@@ -919,7 +919,10 @@ export async function commitWrrLine(
         .where(or(...targetLocationIds.map((id) => eq(locations.id, id))));
       const normalizedLocationRows = locationRows as Array<{ id: string; isActive: boolean; locationType: string }>;
       const locationsById = new Map(normalizedLocationRows.map((row) => [row.id, row]));
-      const validationLine = { ...line, scannedQty: allocatedTotal };
+      const validationLine = {
+        ...line,
+        scannedQty: isBatch && params.presenceAttested ? line.expectedQty : allocatedTotal,
+      };
       for (const targetLocationId of targetLocationIds) {
         const row = locationsById.get(targetLocationId);
         const location: CommitLocation | null = row
@@ -1158,6 +1161,8 @@ export async function closeWrrWithShortage(
         .update(wrrDocuments)
         .set({
           status: "confirmed",
+          confirmedAt: new Date(),
+          confirmedByUserId: userId,
           updatedAt: new Date(),
         })
         .where(eq(wrrDocuments.id, wrrId));
