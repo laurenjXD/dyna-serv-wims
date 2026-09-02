@@ -183,36 +183,36 @@ export function PutawayLocationSelector({
                 key={index}
                 className="grid grid-cols-[5rem_1fr] items-center gap-2 rounded-lg bg-surface-light-grey p-2"
               >
-                <span className="font-label text-body-sm text-on-surface">Box {index + 1}</span>
-                <LocationCombobox
+                <span className="font-label text-body-sm font-bold text-on-surface">Box {index + 1}</span>
+                <select
                   id={`box-location-${index + 1}`}
-                  options={[
-                    { id: "", label: "— Unassigned / Shortage —" },
-                    ...allLocationOptions.map((opt) => {
-                      const totalAssignedHere = assignedCounts.get(opt.id) ?? 0;
-                      const assignedHereSlot = locationId === opt.id ? 1 : 0;
-                      const assignedElsewhere = totalAssignedHere - assignedHereSlot;
-                      return {
-                        id: opt.id,
-                        label: opt.label,
-                        disabled: opt.raw ? assignedElsewhere >= maxBoxesFor(opt.raw, safeUnitCbm, safeQuantity) : false,
-                        capacity: opt.capacity
-                          ? {
-                              occupied: (opt.capacity.occupied || 0) + totalAssignedHere * safeUnitCbm,
-                              maximum: opt.capacity.maximum || 0,
-                            }
-                          : undefined,
-                      };
-                    }),
-                  ]}
                   value={locationId}
-                  onChange={(nextValue) =>
+                  onChange={(event) => {
+                    const nextValue = event.target.value;
                     setLocationsBySlot((previous) =>
                       previous.map((value, slot) => (slot === index ? nextValue : value)),
-                    )
-                  }
-                  placeholder="Select location or Shortage"
-                />
+                    );
+                  }}
+                  className={`h-11 w-full rounded-lg border-2 px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy ${locationId === "" ? "border-amber-400 bg-amber-50 text-amber-900 font-bold" : "border-outline-variant bg-surface-white"}`}
+                >
+                  <option value="">⚠️ — Unassigned / Shortage —</option>
+                  <optgroup label="Storage Locations">
+                    {candidates.map((cand) => (
+                      <option key={cand.id} value={cand.id}>
+                        {cand.label} (Storage)
+                      </option>
+                    ))}
+                  </optgroup>
+                  {inspectionCandidates.length > 0 && (
+                    <optgroup label="Inspection & Quarantine (Hold)">
+                      {inspectionCandidates.map((insp) => (
+                        <option key={insp.id} value={insp.id}>
+                          {insp.label} (Inspection Bay / Hold)
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
               </label>
             ))}
           </div>

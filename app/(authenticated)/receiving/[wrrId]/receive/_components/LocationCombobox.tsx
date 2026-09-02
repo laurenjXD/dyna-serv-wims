@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export type LocationOption = {
   id: string;
@@ -30,16 +30,29 @@ export function LocationCombobox({
   required?: boolean;
 }) {
   const [internalValue, setInternalValue] = useState(value ?? defaultValue);
-  const selectedValue = value ?? internalValue;
+  const selectedValue = value !== undefined ? value : internalValue;
   const selected = options.find((option) => option.id === selectedValue);
   const [query, setQuery] = useState(selected?.label ?? "");
   const [open, setOpen] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+
+  // Synchronize query when controlled value or options change
+  useEffect(() => {
+    if (!isFocused) {
+      setQuery(selected?.label ?? "");
+    }
+  }, [selectedValue, selected?.label, isFocused]);
+
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
+    // If the input text matches the current selection exactly, show all options on focus
+    if (!normalized || (selected && normalized === selected.label.trim().toLowerCase())) {
+      return options.slice(0, 12);
+    }
     return options
-      .filter((option) => !normalized || `${option.label} ${option.detail ?? ""}`.toLowerCase().includes(normalized))
-      .slice(0, 8);
-  }, [options, query]);
+      .filter((option) => `${option.label} ${option.detail ?? ""}`.toLowerCase().includes(normalized))
+      .slice(0, 12);
+  }, [options, query, selected]);
 
   function choose(option: LocationOption) {
     if (value === undefined) setInternalValue(option.id);
@@ -58,22 +71,32 @@ export function LocationCombobox({
         required={required}
         autoComplete="off"
         placeholder={placeholder}
-        onFocus={() => setOpen(true)}
+        onFocus={() => {
+          setIsFocused(true);
+          setOpen(true);
+        }}
         onChange={(event) => {
-          setQuery(event.target.value);
-          if (selectedValue) {
+          const nextQuery = event.target.value;
+          setQuery(nextQuery);
+          if (!nextQuery.trim()) {
             if (value === undefined) setInternalValue("");
             onChange?.("");
           }
           setOpen(true);
         }}
-        onBlur={() => window.setTimeout(() => setOpen(false), 150)}
+        onBlur={() => {
+          setIsFocused(false);
+          window.setTimeout(() => {
+            setOpen(false);
+            setQuery(selected?.label ?? "");
+          }, 200);
+        }}
         className="h-14 w-full rounded-lg border-2 border-outline-variant bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-text-grey focus:outline-none focus:ring-4 focus:ring-brand-navy"
         aria-controls={`${id}-suggestions`}
         aria-autocomplete="list"
       />
       {open && filtered.length > 0 && (
-        <ul id={`${id}-suggestions`} role="listbox" className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-outline-variant bg-surface-white py-1 shadow-elevation-2">
+        <ul id={`${id}-suggestions`} role="listbox" className="absolute z-30 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-outline-variant bg-surface-white py-1 shadow-elevation-3">
           {filtered.map((option) => {
             const occupied = Number(option.capacity?.occupied) || 0;
             const maximum = Number(option.capacity?.maximum) || 0;
@@ -82,15 +105,15 @@ export function LocationCombobox({
             const pct = Math.min(100, Math.max(0, ratio * 100));
 
             return (
-              <li key={option.id} role="option" aria-selected={option.id === selectedValue}>
+              <li key={option.id || "empty"} role="option" aria-selected={option.id === selectedValue}>
                 <button
                   type="button"
                   disabled={option.disabled}
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => choose(option)}
-                  className={`w-full px-3 py-3 text-left focus:outline-none ${option.disabled ? "cursor-not-allowed bg-surface-light-grey text-text-grey opacity-60" : "hover:bg-surface-light-grey focus:bg-surface-light-grey"}`}
+                  className={`w-full px-3 py-3 text-left focus:outline-none ${option.id === selectedValue ? "bg-[#EEF3FF] font-bold" : ""} ${option.disabled ? "cursor-not-allowed bg-surface-light-grey text-text-grey opacity-60" : "hover:bg-surface-light-grey focus:bg-surface-light-grey"}`}
                 >
-                  <span className="block font-mono text-body-md font-bold text-on-surface">{option.label}</span>
+                  <span className="block font-mono text-body-md text-on-surface">{option.label}</span>
                   {option.detail && <span className="block font-body text-body-sm text-text-grey">{option.detail}</span>}
                   {option.capacity && (
                     <span className="mt-2 block" aria-label={`${occupied.toFixed(2)} of ${maximum.toFixed(2)} CBM occupied`}>
@@ -115,7 +138,7 @@ export function LocationCombobox({
         </ul>
       )}
       {open && query.trim() && filtered.length === 0 && (
-        <p className="absolute z-20 mt-1 w-full rounded-lg border border-outline-variant bg-surface-white px-3 py-3 font-body text-body-sm text-text-grey shadow-elevation-2">No matching locations</p>
+        <p className="absolute z-30 mt-1 w-full rounded-lg border border-outline-variant bg-surface-white px-3 py-3 font-body text-body-sm text-text-grey shadow-elevation-3">No matching locations</p>
       )}
     </div>
   );
