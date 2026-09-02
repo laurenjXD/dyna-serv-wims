@@ -203,3 +203,5 @@ Testing: Full applicable matrix below.
 - [x] Batch-vs-per-unit contradiction resolution (batch model adopted, per-unit model retired) — Second approver: System (standing auto-sign-off), 2026-08-24
 - [x] WRR document-field amendment approval — Product owner: Granted in conversation, 2026-08-24
 - [x] WRR document-field amendment approval — Second approver: Granted in conversation, 2026-08-24
+- [x] One-QR line confirmation and per-box Missing placement amendment approval — Product owner: User, 2026-09-02
+- [x] One-QR line confirmation and per-box Missing placement amendment approval — Second approver: System (standing auto-sign-off), 2026-09-02

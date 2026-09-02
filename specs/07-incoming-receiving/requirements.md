@@ -241,3 +241,9 @@ The Receiving page (`/receiving`) features 4 primary sub-tabs:
 3. All error states SHALL display 3-component error feedback (What happened, Why it failed, Next Action / Solution), consistent with R3.3's scan-exception feedback.
 4. The Work Queue's status dropdown SHALL apply its filter immediately when its value changes, while preserving the selected value in the URL for refresh/sharing/pagination; it SHALL NOT require a separate visible Apply button.
 5. Receiving page headers SHALL omit a generic Filter action when contextual filter controls already exist within the active tab.
+
+### One-QR line confirmation and shortage placement amendment (approved 2026-09-02)
+
+The Work Queue/WRR remains the source of truth for expected lines and quantities. A single valid physical QR scan identifies and confirms the matching WRR line; it does not discover or add expected lines. After that confirmation, the operator may assign each declared box to an eligible storage or inspection location, or mark that box as `Missing`.
+
+Only boxes assigned to storage or inspection are posted to inventory. Boxes marked `Missing` receive no location allocation and are excluded from inventory. The line records the resulting received quantity as the assigned quantity and the shortage as `expected_qty - received_qty`. A shortage on one line does not block other WRR lines. Each line may reach its terminal committed outcome independently; the parent WRR remains `receiving_in_progress` until every line is resolved, then becomes `confirmed` with the OS&D shortage visible on the WRR detail view. No `partial` WRR status is introduced.

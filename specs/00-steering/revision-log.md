@@ -1,5 +1,9 @@
 # Revision Log — Hyperion 3PL / Dyna-Serv
 
+## One-QR receiving confirmation and per-line shortage placement approved (2026-09-02)
+
+Product Owner approved the clarified receiving workflow: the Work Queue/WRR owns expected lines and quantities; one QR scan identifies and confirms the matching receiving line; the operator assigns declared boxes to storage/Hold or marks individual boxes `Missing`; only assigned boxes enter inventory; missing boxes are excluded from location allocations and inventory; lines commit independently; and the WRR becomes `confirmed` after all lines resolve, with OS&D shown as a shortage summary rather than a new `partial` status. The receiving UI implementation is recorded in commit `ac4f5c0` and the approval is captured in `specs/07-incoming-receiving/{requirements,design,tasks}.md`.
+
 ## Organization Billing & 3-Year Monthly Statements Archive Integration (2026-08-31)
 
 **What changed**:
