@@ -170,3 +170,96 @@ export async function deactivateItemAction(
   revalidatePath(`/master-data/items/${id}`);
   return { ok: true };
 }
+
+// ---------------------------------------------------------------------------
+// Category Management Actions (Add & Edit on the fly)
+// ---------------------------------------------------------------------------
+
+export async function createCategoryAction(data: {
+  name: string;
+  flowType?: string | null;
+  parentId?: string | null;
+  description?: string | null;
+}) {
+  const resolver = await createPageResolver();
+  const { requirePermission } = await import("@/lib/rbac/guard");
+  const perm = await requirePermission(resolver, "items.manage");
+  if (perm.kind !== "authorized") {
+    return { ok: false, error: "You do not have permission to manage categories." };
+  }
+
+  const trimmed = data.name.trim();
+  if (!trimmed) {
+    return { ok: false, error: "Category name is required." };
+  }
+
+  try {
+    const { itemCategories } = await import("@/lib/db/schema/items");
+    const [created] = await _db
+      .insert(itemCategories)
+      .values({
+        name: trimmed,
+        flowType: (data.flowType as "vmi" | "trading" | "supplies" | null) || null,
+        parentId: data.parentId || null,
+        description: data.description || null,
+      })
+      .returning({
+        id: itemCategories.id,
+        name: itemCategories.name,
+        flowType: itemCategories.flowType,
+        parentId: itemCategories.parentId,
+      });
+
+    revalidatePath("/master-data/items");
+    revalidatePath("/enrollment");
+
+    return { ok: true, category: created };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `Failed to create category: ${errorMsg}` };
+  }
+}
+
+export async function updateCategoryAction(data: {
+  id: string;
+  name: string;
+  flowType?: string | null;
+}) {
+  const resolver = await createPageResolver();
+  const { requirePermission } = await import("@/lib/rbac/guard");
+  const perm = await requirePermission(resolver, "items.manage");
+  if (perm.kind !== "authorized") {
+    return { ok: false, error: "You do not have permission to manage categories." };
+  }
+
+  const trimmed = data.name.trim();
+  if (!trimmed) {
+    return { ok: false, error: "Category name is required." };
+  }
+
+  try {
+    const { itemCategories } = await import("@/lib/db/schema/items");
+    const { eq } = await import("drizzle-orm");
+    const [updated] = await _db
+      .update(itemCategories)
+      .set({
+        name: trimmed,
+        flowType: (data.flowType as "vmi" | "trading" | "supplies" | null) || null,
+      })
+      .where(eq(itemCategories.id, data.id))
+      .returning({
+        id: itemCategories.id,
+        name: itemCategories.name,
+        flowType: itemCategories.flowType,
+        parentId: itemCategories.parentId,
+      });
+
+    revalidatePath("/master-data/items");
+    revalidatePath("/enrollment");
+
+    return { ok: true, category: updated };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `Failed to update category: ${errorMsg}` };
+  }
+}
