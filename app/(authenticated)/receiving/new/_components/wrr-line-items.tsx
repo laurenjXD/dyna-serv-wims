@@ -164,15 +164,19 @@ export function WrrLineItems({
         return (
           <div
             key={index}
-            className="rounded-xl border border-outline-variant/30 bg-surface-white p-4"
+            className="rounded-2xl border border-slate-200/80 bg-[#FAFAFA] p-5 shadow-sm space-y-4"
           >
-            <div className="mb-3 flex items-center justify-between">
+            {/* Line Card Header */}
+            <div className="flex items-center justify-between border-b border-slate-200/60 pb-3">
               <div className="flex items-center gap-2">
-                <span className="font-label text-label font-bold text-brand-navy">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-navy font-mono text-xs font-bold text-surface-white">
+                  {index + 1}
+                </span>
+                <span className="font-heading text-sm font-bold text-on-surface">
                   Line {index + 1}
                 </span>
                 {isImported && (
-                  <span className="rounded-full bg-brand-navy/10 px-2.5 py-0.5 font-label text-label-xs font-semibold text-brand-navy">
+                  <span className="rounded-full bg-blue-50 px-2.5 py-0.5 font-label text-label-xs font-semibold text-brand-navy border border-blue-200">
                     Auto-populated from CIPL (Locked)
                   </span>
                 )}
@@ -181,26 +185,75 @@ export function WrrLineItems({
                 <button
                   type="button"
                   onClick={() => removeLine(index)}
-                  className="inline-flex h-11 items-center rounded bg-status-held px-3 font-label text-label text-surface-white hover:opacity-90 active:opacity-70 motion-safe:transition-opacity motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  className="inline-flex h-8 items-center rounded-lg border border-rose-200 bg-rose-50 px-3 font-label text-label-xs font-bold text-rose-700 hover:bg-rose-100 transition-colors focus:outline-none focus:ring-2 focus:ring-rose-500"
                 >
-                  Remove
+                  Remove Line
                 </button>
               )}
             </div>
 
-            <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <input type="hidden" name={`line_${index}_itemId`} value={line.itemId} />
-              {/* Lot Number — required */}
-              <div className="order-1">
-                <label
-                  htmlFor={`line-${index}-lotNumber`}
-                  className="block font-label text-label text-text-grey"
-                >
-                  Lot Number{" "}
-                  <span aria-hidden="true" className="text-brand-red">
-                    *
-                  </span>
-                  <span className="sr-only">(required)</span>
+            <input type="hidden" name={`line_${index}_itemId`} value={line.itemId} />
+            <input type="hidden" name={`line_${index}_itemCode`} value={line.itemCode} />
+            <input type="hidden" name={`line_${index}_disposition`} value="store" />
+
+            {/* Row 1: Item Identification (3 balanced columns) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+              {/* Col 1: Item Code (Combobox) */}
+              <div>
+                <label className="block font-label text-label text-text-grey">
+                  {itemCodeLabel(flowType)} <span aria-hidden="true" className="text-brand-red">*</span>
+                </label>
+                <div className="mt-1">
+                  <ItemSearchCombobox
+                    index={index}
+                    flowType={flowType}
+                    vendorPartyId={vendorPartyId}
+                    availableItems={availableItems}
+                    selectedItemId={line.itemId}
+                    selectedItemCode={line.itemCode}
+                    selectedItemDescription={line.itemDescription}
+                    onSelectItem={(item) => chooseItem(index, item.id)}
+                    disabled={isImported}
+                  />
+                </div>
+              </div>
+
+              {/* Col 2: Item Description (Auto-filled) */}
+              <div>
+                <label htmlFor={`line-${index}-itemDescription`} className="block font-label text-label text-text-grey">
+                  Item Description
+                </label>
+                <input
+                  id={`line-${index}-itemDescription`}
+                  value={line.itemDescription}
+                  readOnly
+                  placeholder="Auto-filled from item selection"
+                  className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-slate-100/70 px-3 font-body text-body-md text-slate-700 placeholder:text-status-neutral truncate"
+                />
+              </div>
+
+              {/* Col 3: Customer Item Code */}
+              <div>
+                <label htmlFor={`line-${index}-customerItemCode`} className="block font-label text-label text-text-grey">
+                  Customer Item Code
+                </label>
+                <input
+                  id={`line-${index}-customerItemCode`}
+                  name={`line_${index}_customerItemCode`}
+                  value={line.customerItemCode}
+                  onChange={(e) => updateLine(index, "customerItemCode", e.target.value)}
+                  placeholder="Customer SKU / reference"
+                  className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                />
+              </div>
+            </div>
+
+            {/* Row 2: Lot Number & Dates (3 balanced columns) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+              {/* Col 1: Lot Number */}
+              <div>
+                <label htmlFor={`line-${index}-lotNumber`} className="block font-label text-label text-text-grey">
+                  Lot Number <span aria-hidden="true" className="text-brand-red">*</span>
                 </label>
                 <input
                   id={`line-${index}-lotNumber`}
@@ -211,187 +264,143 @@ export function WrrLineItems({
                   value={line.lotNumber}
                   onChange={(e) => updateLine(index, "lotNumber", e.target.value)}
                   placeholder="e.g. LOT-2026-001"
-                  className={`mt-1 h-11 w-full rounded border border-outline-variant/30 px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy ${isImported ? "bg-surface-light-grey/70 cursor-not-allowed" : "bg-surface-white"}`}
+                  className={`mt-1 h-11 w-full rounded-lg border border-slate-200 px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy ${
+                    isImported ? "bg-slate-100 cursor-not-allowed text-slate-600" : "bg-surface-white"
+                  }`}
                 />
               </div>
 
-            {/* Expected Qty — required */}
-            <div className="order-2">
-              <div className="flex items-center justify-between">
-                <label
-                  htmlFor={`line-${index}-expectedQty`}
-                  className="block font-label text-label text-text-grey"
-                >
-                  Expected Qty (Total Units){" "}
-                  <span aria-hidden="true" className="text-brand-red">
-                    *
-                  </span>
-                  <span className="sr-only">(required)</span>
+              {/* Col 2: Manufacturing Date */}
+              <div>
+                <label htmlFor={`line-${index}-manufactureDate`} className="block font-label text-label text-text-grey">
+                  Manufacturing Date
                 </label>
-                {(() => {
-                  const selItem = itemOptions.find((i) => i.id === line.itemId);
-                  if (!selItem) return null;
-                  const qtyNum = Number(line.expectedQty);
-                  const cartons = qtyNum > 0 && selItem.spq ? (qtyNum / selItem.spq).toFixed(1).replace(/\.0$/, "") : null;
-                  return (
-                    <span className="font-label text-label-xs text-brand-navy">
-                      SPQ: {selItem.spq} / carton {cartons ? `(${cartons} cartons)` : ""}
-                    </span>
-                  );
-                })()}
+                <input
+                  id={`line-${index}-manufactureDate`}
+                  name={`line_${index}_manufactureDate`}
+                  type="date"
+                  value={line.manufactureDate}
+                  onChange={(e) => updateLine(index, "manufactureDate", e.target.value)}
+                  className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                />
               </div>
-              <input
-                id={`line-${index}-expectedQty`}
-                name={`line_${index}_expectedQty`}
-                type="number"
-                required
-                min="1"
-                step="1"
-                readOnly={Boolean(importedLines && importedLines.length > 0 && line.lotNumber)}
-                value={line.expectedQty}
-                onChange={(e) =>
-                  updateLine(index, "expectedQty", e.target.value)
-                }
-                placeholder="0"
-                className={`mt-1 h-11 w-full rounded border border-outline-variant/30 px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy ${Boolean(importedLines && importedLines.length > 0 && line.lotNumber) ? "bg-surface-light-grey/70 cursor-not-allowed" : "bg-surface-white"}`}
-              />
-              <p className="mt-1 font-body text-body-xs text-text-grey">
-                Qty = SPQ (units per carton) &times; No. of packages (cartons)
-              </p>
+
+              {/* Col 3: Remarks */}
+              <div>
+                <label htmlFor={`line-${index}-remarks`} className="block font-label text-label text-text-grey">
+                  Remarks
+                </label>
+                <input
+                  id={`line-${index}-remarks`}
+                  name={`line_${index}_remarks`}
+                  value={line.remarks}
+                  onChange={(e) => updateLine(index, "remarks", e.target.value)}
+                  type="text"
+                  placeholder="Optional receiving or CIPL note"
+                  className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                />
+              </div>
             </div>
 
-            {/* Unit CBM — required */}
-            <div className="order-5">
-              <label
-                htmlFor={`line-${index}-unitCbm`}
-                className="block font-label text-label text-text-grey"
-              >
-                Unit CBM{" "}
-                <span aria-hidden="true" className="text-brand-red">
-                  *
-                </span>
-                <span className="sr-only">(required)</span>
-              </label>
-              <input
-                id={`line-${index}-unitCbm`}
-                name={`line_${index}_unitCbm`}
-                type="number"
-                required
-                min="0.0001"
-                step="0.0001"
-                readOnly={Boolean(importedLines && importedLines.length > 0 && line.lotNumber)}
-                value={line.unitCbm}
-                onChange={(e) => updateLine(index, "unitCbm", e.target.value)}
-                placeholder="0.0000"
-                className={`mt-1 h-11 w-full rounded border border-outline-variant/30 px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy ${Boolean(importedLines && importedLines.length > 0 && line.lotNumber) ? "bg-surface-light-grey/70 cursor-not-allowed" : "bg-surface-white"}`}
-              />
-            </div>
+            {/* Row 3: Quantities, CBM & UOM (3 balanced columns) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+              {/* Col 1: Expected Qty */}
+              <div>
+                <div className="flex items-center justify-between">
+                  <label htmlFor={`line-${index}-expectedQty`} className="block font-label text-label text-text-grey">
+                    Expected Qty (Total Units) <span aria-hidden="true" className="text-brand-red">*</span>
+                  </label>
+                  {(() => {
+                    const selItem = itemOptions.find((i) => i.id === line.itemId);
+                    if (!selItem) return null;
+                    const qtyNum = Number(line.expectedQty);
+                    const cartons = qtyNum > 0 && selItem.spq ? (qtyNum / selItem.spq).toFixed(1).replace(/\.0$/, "") : null;
+                    return (
+                      <span className="font-mono text-[11px] font-bold text-brand-navy bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                        SPQ: {selItem.spq} {cartons ? `(${cartons} ctn)` : ""}
+                      </span>
+                    );
+                  })()}
+                </div>
+                <input
+                  id={`line-${index}-expectedQty`}
+                  name={`line_${index}_expectedQty`}
+                  type="number"
+                  required
+                  min="1"
+                  step="1"
+                  readOnly={Boolean(importedLines && importedLines.length > 0 && line.lotNumber)}
+                  value={line.expectedQty}
+                  onChange={(e) => updateLine(index, "expectedQty", e.target.value)}
+                  placeholder="0"
+                  className={`mt-1 h-11 w-full rounded-lg border border-slate-200 px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy ${
+                    Boolean(importedLines && importedLines.length > 0 && line.lotNumber) ? "bg-slate-100 cursor-not-allowed" : "bg-surface-white"
+                  }`}
+                />
+                <p className="mt-1 font-body text-[11px] text-text-grey">
+                  Total units = SPQ &times; packages/cartons
+                </p>
+              </div>
 
-            {/* UOM — required */}
-            <div className="order-6">
-              <label
-                htmlFor={`line-${index}-uom`}
-                className="block font-label text-label text-text-grey"
-              >
-                UOM{" "}
-                <span aria-hidden="true" className="text-brand-red">
-                  *
-                </span>
-                <span className="sr-only">(required)</span>
-              </label>
-              <input
-                id={`line-${index}-uom`}
-                name={`line_${index}_uom`}
-                type="text"
-                required
-                readOnly={Boolean(importedLines && importedLines.length > 0 && line.lotNumber)}
-                value={line.uom}
-                onChange={(e) => updateLine(index, "uom", e.target.value)}
-                placeholder="e.g. CTN, PCS, ROLL"
-                className={`mt-1 h-11 w-full rounded border border-outline-variant/30 px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy ${Boolean(importedLines && importedLines.length > 0 && line.lotNumber) ? "bg-surface-light-grey/70 cursor-not-allowed" : "bg-surface-white"}`}
-              />
-            </div>
+              {/* Col 2: Unit CBM */}
+              <div>
+                <label htmlFor={`line-${index}-unitCbm`} className="block font-label text-label text-text-grey">
+                  Unit CBM <span aria-hidden="true" className="text-brand-red">*</span>
+                </label>
+                <input
+                  id={`line-${index}-unitCbm`}
+                  name={`line_${index}_unitCbm`}
+                  type="number"
+                  required
+                  min="0.0001"
+                  step="0.0001"
+                  readOnly={Boolean(importedLines && importedLines.length > 0 && line.lotNumber)}
+                  value={line.unitCbm}
+                  onChange={(e) => updateLine(index, "unitCbm", e.target.value)}
+                  placeholder="0.0000"
+                  className={`mt-1 h-11 w-full rounded-lg border border-slate-200 px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy ${
+                    Boolean(importedLines && importedLines.length > 0 && line.lotNumber) ? "bg-slate-100 cursor-not-allowed" : "bg-surface-white"
+                  }`}
+                />
+                <p className="mt-1 font-body text-[11px] text-text-grey">
+                  Cubic meter volume per unit
+                </p>
+              </div>
 
-            {/* WRR creation always stages for store; inspection remains a later workflow. */}
-            <input type="hidden" name={`line_${index}_disposition`} value="store" />
-
-            {/* Item code selection drives the read-only item description and defaults. */}
-            <div className="order-3">
-              <label
-                className="block font-label text-label text-text-grey"
-              >
-                {itemCodeLabel(flowType)}
-              </label>
-              <ItemSearchCombobox
-                index={index}
-                flowType={flowType}
-                vendorPartyId={vendorPartyId}
-                availableItems={availableItems}
-                selectedItemId={line.itemId}
-                selectedItemCode={line.itemCode}
-                selectedItemDescription={line.itemDescription}
-                onSelectItem={(item) => chooseItem(index, item.id)}
-                disabled={isImported}
-              />
-              <input type="hidden" name={`line_${index}_itemCode`} value={line.itemCode} />
-            </div>
-
-            <div className="order-4">
-              <label htmlFor={`line-${index}-itemDescription`} className="block font-label text-label text-text-grey">Item Description</label>
-              <input id={`line-${index}-itemDescription`} value={line.itemDescription} readOnly placeholder="Select an item code to fill this automatically" className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-light-grey px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral" />
-            </div>
-
-            {/* Customer Item Code — optional */}
-            <div className="order-7">
-              <label
-                htmlFor={`line-${index}-customerItemCode`}
-                className="block font-label text-label text-text-grey"
-              >
-                Customer Item Code
-              </label>
-              <input id={`line-${index}-customerItemCode`} name={`line_${index}_customerItemCode`} value={line.customerItemCode} onChange={(e) => updateLine(index, "customerItemCode", e.target.value)} placeholder="Filled from selected item; editable if needed" className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy" />
-            </div>
-
-            <div className="order-8">
-              <label htmlFor={`line-${index}-manufactureDate`} className="block font-label text-label text-text-grey">
-                Manufacturing Date
-              </label>
-              <input
-                id={`line-${index}-manufactureDate`}
-                name={`line_${index}_manufactureDate`}
-                type="date"
-                value={line.manufactureDate}
-                onChange={(e) => updateLine(index, "manufactureDate", e.target.value)}
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              />
-            </div>
-
-            <div className="order-9">
-              <label htmlFor={`line-${index}-remarks`} className="block font-label text-label text-text-grey">
-                Remarks
-              </label>
-              <input
-                id={`line-${index}-remarks`}
-                name={`line_${index}_remarks`}
-                value={line.remarks}
-                onChange={(e) => updateLine(index, "remarks", e.target.value)}
-                type="text"
-                placeholder="Optional receiving or CIPL note"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              />
+              {/* Col 3: UOM */}
+              <div>
+                <label htmlFor={`line-${index}-uom`} className="block font-label text-label text-text-grey">
+                  UOM <span aria-hidden="true" className="text-brand-red">*</span>
+                </label>
+                <input
+                  id={`line-${index}-uom`}
+                  name={`line_${index}_uom`}
+                  type="text"
+                  required
+                  readOnly={Boolean(importedLines && importedLines.length > 0 && line.lotNumber)}
+                  value={line.uom}
+                  onChange={(e) => updateLine(index, "uom", e.target.value)}
+                  placeholder="e.g. PIECE, BOX, CTN"
+                  className={`mt-1 h-11 w-full rounded-lg border border-slate-200 px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy uppercase ${
+                    Boolean(importedLines && importedLines.length > 0 && line.lotNumber) ? "bg-slate-100 cursor-not-allowed" : "bg-surface-white"
+                  }`}
+                />
+                <p className="mt-1 font-body text-[11px] text-text-grey">
+                  Standard unit of measure
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      );
-    })}
+        );
+      })}
 
-      {/* Add Line button — §9 secondary button style */}
+      {/* Add Line button */}
       <button
         type="button"
         onClick={addLine}
-        className="inline-flex h-11 items-center justify-center rounded border-2 border-outline-variant/30 px-4 font-label text-label text-brand-navy hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+        className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-surface-white px-5 font-label text-label font-bold text-brand-navy hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy shadow-sm"
       >
-        + Add Line
+        + Add Another Line
       </button>
     </div>
   );

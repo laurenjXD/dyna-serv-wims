@@ -37,10 +37,10 @@ export function TransactionLedgerTable({
         const d = new Date(info.getValue() as string | Date);
         return (
           <div>
-            <div className="font-mono text-xs font-bold text-slate-800">
+            <div className="font-mono text-sm font-bold text-slate-800">
               {d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
             </div>
-            <div className="text-[11px] text-text-grey font-mono flex items-center gap-1">
+            <div className="text-xs text-text-grey font-mono flex items-center gap-1">
               <Clock size={11} />
               {d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
             </div>
@@ -68,7 +68,7 @@ export function TransactionLedgerTable({
         const type = String(info.getValue());
         return (
           <span
-            className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider backdrop-blur-md ${
+            className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider backdrop-blur-md ${
               type === "Receiving"
                 ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
                 : type === "Dispatch"
@@ -93,7 +93,7 @@ export function TransactionLedgerTable({
         filterLabel: "Reference Doc",
       },
       cell: (info) => (
-        <span className="font-mono text-xs font-bold text-brand-navy flex items-center gap-1">
+        <span className="font-mono text-sm font-bold text-brand-navy flex items-center gap-1">
           <FileText size={13} className="text-slate-400" />
           {String(info.getValue())}
         </span>
@@ -116,7 +116,7 @@ export function TransactionLedgerTable({
         ],
       },
       cell: (info) => (
-        <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-800">
+        <span className="rounded bg-slate-100 px-2.5 py-0.5 text-xs font-bold uppercase text-slate-800">
           {String(info.getValue())}
         </span>
       ),
@@ -130,9 +130,9 @@ export function TransactionLedgerTable({
         align: "right",
       },
       cell: (info) => (
-        <div className="text-right font-mono text-xs text-slate-600">
+        <div className="text-right font-mono text-sm text-slate-600">
           {Number(info.getValue())?.toLocaleString()}{" "}
-          <span className="text-[10px] text-text-grey">{info.row.original.uom}</span>
+          <span className="text-xs text-text-grey">{info.row.original.uom}</span>
         </div>
       ),
     },
@@ -145,9 +145,9 @@ export function TransactionLedgerTable({
         align: "right",
       },
       cell: (info) => (
-        <div className="text-right font-mono text-xs font-bold text-slate-900">
+        <div className="text-right font-mono text-sm font-bold text-slate-900">
           {Number(info.getValue())?.toLocaleString()}{" "}
-          <span className="text-[10px] font-normal text-text-grey">{info.row.original.uom}</span>
+          <span className="text-xs font-normal text-text-grey">{info.row.original.uom}</span>
         </div>
       ),
     },
@@ -191,7 +191,7 @@ export function TransactionLedgerTable({
         filterLabel: "Location",
       },
       cell: (info) => (
-        <span className="font-mono text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
+        <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
           {String(info.getValue() || "—")}
         </span>
       ),
@@ -206,7 +206,7 @@ export function TransactionLedgerTable({
         filterLabel: "Actor",
       },
       cell: (info) => (
-        <span className="flex items-center gap-1 text-xs text-slate-800 font-medium">
+        <span className="flex items-center gap-1 text-sm text-slate-800 font-medium">
           <User size={13} className="text-slate-400" />
           {String(info.getValue())}
         </span>

@@ -15,13 +15,13 @@ export function ItemsEnrollmentTable({
   canManage?: boolean;
 }) {
   const columns = useMemo<ColumnDef<ItemListRow, unknown>[]>(() => [
-    // 1. SKU / Item Code
+    // 1. Item Code
     {
       accessorKey: "code",
-      header: "Item Code / SKU",
+      header: "Item Code",
       meta: {
         filterVariant: "text",
-        filterLabel: "SKU / Code",
+        filterLabel: "Item Code",
       },
       cell: (info) => (
         <span className="font-mono font-bold text-brand-navy">{String(info.getValue())}</span>
@@ -64,16 +64,9 @@ export function ItemsEnrollmentTable({
       meta: {
         filterVariant: "multi-select",
         filterLabel: "UOM",
-        filterOptions: [
-          { label: "Piece", value: "piece" },
-          { label: "Box", value: "box" },
-          { label: "Pallet", value: "pallet" },
-          { label: "Meter", value: "meter" },
-          { label: "Roll", value: "roll" },
-        ],
       },
       cell: (info) => (
-        <span className="font-mono text-[11px] uppercase text-text-grey">{String(info.getValue())}</span>
+        <span className="font-mono text-xs uppercase text-slate-700 font-semibold bg-slate-100 px-2 py-0.5 rounded border border-slate-200">{String(info.getValue() || "—")}</span>
       ),
     },
 
@@ -89,7 +82,7 @@ export function ItemsEnrollmentTable({
         const active = Boolean(info.getValue());
         return (
           <span
-            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${
               active
                 ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                 : "bg-slate-100 text-slate-600 border border-slate-200"
@@ -111,7 +104,7 @@ export function ItemsEnrollmentTable({
         filterLabel: "Created Date",
       },
       cell: (info) => (
-        <span className="font-mono text-xs text-text-grey">
+        <span className="font-mono text-sm text-text-grey font-medium">
           {new Date(info.getValue() as string | Date).toLocaleDateString()}
         </span>
       ),
@@ -130,7 +123,7 @@ export function ItemsEnrollmentTable({
           <div className="flex items-center justify-end gap-1.5">
             <Link
               href={`/master-data/items/${item.id}`}
-              className="rounded bg-slate-100 hover:bg-brand-navy hover:text-white px-2.5 py-1 text-[11px] font-bold text-slate-800 transition-colors shadow-sm"
+              className="rounded bg-slate-100 hover:bg-brand-navy hover:text-white px-2.5 py-1 text-xs font-bold text-slate-800 transition-colors shadow-sm"
             >
               View
             </Link>

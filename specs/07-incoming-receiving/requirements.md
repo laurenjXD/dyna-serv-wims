@@ -195,7 +195,6 @@ The Receiving page (`/receiving`) features 4 primary sub-tabs:
 
 ## 5. Acceptance criteria
 
-<<<<<<< HEAD
 - [ ] A staged WRR with CIPL reference and expected lines can be created, reviewed, and printed without affecting active inventory.
 - [ ] Floor scans match expected WRR lines, visibly track remaining quantities, and reject wrong/duplicate/over-quantity/unknown/flow-type-mismatch scans safely.
 - [ ] Unknown item handling routes to online authorized enrollment or an explicit exception; it never silently creates an item offline.
@@ -242,13 +241,3 @@ The Receiving page (`/receiving`) features 4 primary sub-tabs:
 3. All error states SHALL display 3-component error feedback (What happened, Why it failed, Next Action / Solution), consistent with R3.3's scan-exception feedback.
 4. The Work Queue's status dropdown SHALL apply its filter immediately when its value changes, while preserving the selected value in the URL for refresh/sharing/pagination; it SHALL NOT require a separate visible Apply button.
 5. Receiving page headers SHALL omit a generic Filter action when contextual filter controls already exist within the active tab.
-=======
-- [ ] Receiving sub-tabs (Work Queue, Receive, WRRs, Incoming Ledger) render cleanly.
-- [ ] A staged WRR form supports CRUD of its documented commercial/header and expected-line fields; its read-only detail and printable view show the same values plus system-derived actual receipt values.
-- [ ] User-facing UI labels use Organization, Inventory Model, Organization Portal, and Inspection exclusively.
-- [ ] Batch Store All/Hold All validates declared quantity, presence attestation, active locations, and per-location CBM before posting.
-- [ ] Per-line store/hold commits update distributed lot balances and incoming ledger atomically.
-- [ ] 3-component error feedback is displayed on all scan and receiving errors.
-- [ ] Visual design system tokens (#2563EB, #0F172A, #64748B, #F3F6FC, #FFFFFF) and DM Sans heading + Glacial Indifference body typography are fully applied.
-- [ ] WRR status changes refresh the server-filtered queue immediately without a separate Apply action.
->>>>>>> origin/fix-it-felix

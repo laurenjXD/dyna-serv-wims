@@ -225,8 +225,8 @@ export function ShellChrome({ children }: { children: ReactNode }) {
       />
 
       <header
-        className={`print:hidden fixed inset-x-0 top-0 z-30 isolate flex h-14 items-center gap-3 overflow-visible bg-surface px-4 transition-[left] duration-150 motion-reduce:transition-none lg:inset-x-auto lg:top-3 lg:right-3 lg:min-h-[76px] lg:rounded-2xl lg:border-2 lg:border-brand-royal-blue/45 lg:px-7 lg:py-3 lg:shadow-[0_10px_24px_rgba(37,99,235,0.12)] ${
-          isDesktopOpen ? "lg:left-[312px]" : "lg:left-0"
+        className={`print:hidden fixed inset-x-0 top-0 z-30 isolate flex h-14 items-center gap-4 overflow-visible bg-surface px-4 transition-[left] duration-200 motion-reduce:transition-none lg:inset-x-auto lg:top-3 lg:right-3 lg:min-h-[76px] lg:rounded-2xl lg:border-2 lg:border-brand-royal-blue/45 lg:px-6 lg:py-3 lg:shadow-[0_10px_24px_rgba(37,99,235,0.12)] ${
+          isDesktopOpen ? "lg:left-[312px]" : "lg:left-[96px]"
         }`}
       >
         {tier !== "floor" && (
@@ -247,9 +247,10 @@ export function ShellChrome({ children }: { children: ReactNode }) {
             aria-label={isDesktopOpen ? "Collapse navigation" : "Expand navigation"}
             aria-expanded={isDesktopOpen}
             onClick={toggleDesktop}
-            className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-full text-text-secondary hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:flex"
+            title={isDesktopOpen ? "Collapse sidebar to icons" : "Expand sidebar"}
+            className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-text-secondary hover:bg-slate-100 hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:flex transition-colors"
           >
-            {isDesktopOpen ? <PanelLeftClose size={25} strokeWidth={2} aria-hidden="true" /> : <PanelLeftOpen size={25} strokeWidth={2} aria-hidden="true" />}
+            {isDesktopOpen ? <PanelLeftClose size={22} strokeWidth={2.2} aria-hidden="true" /> : <PanelLeftOpen size={22} strokeWidth={2.2} aria-hidden="true" />}
           </button>
         )}
 
@@ -300,7 +301,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
         </div>
 
         <div className="hidden min-w-0 flex-1 items-center gap-5 lg:flex">
-          <div className="min-w-0 shrink-0 max-w-[300px]">
+          <div className="min-w-0 shrink-0">
             <p
               className="truncate font-heading text-[23px] font-bold leading-tight tracking-[-0.02em] text-text-primary"
               title={pageTitle}
@@ -513,8 +514,8 @@ export function ShellChrome({ children }: { children: ReactNode }) {
       <main
         id="main-content"
         data-surface={tier}
-        className={`min-h-screen pt-14 transition-[padding-left] duration-150 motion-reduce:transition-none lg:pr-6 lg:pt-[106px] print:!min-h-0 print:!p-0 print:!m-0 ${
-          isDesktopOpen ? "lg:pl-[312px]" : "lg:pl-6"
+        className={`min-h-screen pt-14 transition-[padding-left] duration-200 motion-reduce:transition-none lg:pr-6 lg:pt-[106px] print:!min-h-0 print:!p-0 print:!m-0 ${
+          isDesktopOpen ? "lg:pl-[312px]" : "lg:pl-[96px]"
         } ${showFloorTabBar ? "pb-20" : "lg:pb-6"} ${
           tier === "floor" ? "bg-surface" : "bg-background"
         }`}

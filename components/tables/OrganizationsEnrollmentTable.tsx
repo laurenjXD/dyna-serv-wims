@@ -42,7 +42,7 @@ export function OrganizationsEnrollmentTable({
           <div>
             <span className="font-heading font-semibold text-slate-900">{String(info.getValue())}</span>
             {row.contactPerson && (
-              <span className="block text-[11px] text-text-grey">
+              <span className="block text-xs text-text-grey font-medium">
                 Contact: {row.contactPerson} {row.email ? `(${row.email})` : ""}
               </span>
             )}
@@ -59,7 +59,7 @@ export function OrganizationsEnrollmentTable({
         filterVariant: "text",
         filterLabel: "Email",
       },
-      cell: (info) => <span className="font-mono text-xs text-text-grey">{String(info.getValue() || "—")}</span>,
+      cell: (info) => <span className="font-mono text-sm text-text-grey">{String(info.getValue() || "—")}</span>,
     },
 
     // 4. Active Status (Status pill)
@@ -74,7 +74,7 @@ export function OrganizationsEnrollmentTable({
         const active = Boolean(info.getValue());
         return (
           <span
-            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${
               active
                 ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                 : "bg-slate-100 text-slate-600 border border-slate-200"
@@ -96,7 +96,7 @@ export function OrganizationsEnrollmentTable({
         filterLabel: "Enrollment Date",
       },
       cell: (info) => (
-        <span className="font-mono text-xs text-text-grey">
+        <span className="font-mono text-sm text-text-grey font-medium">
           {new Date(info.getValue() as string | Date).toLocaleDateString()}
         </span>
       ),
@@ -115,7 +115,7 @@ export function OrganizationsEnrollmentTable({
           <div className="flex items-center justify-end gap-1.5">
             <Link
               href={`/master-data/parties/${party.id}`}
-              className="rounded bg-slate-100 hover:bg-brand-navy hover:text-white px-2.5 py-1 text-[11px] font-bold text-slate-800 transition-colors shadow-sm"
+              className="rounded bg-slate-100 hover:bg-brand-navy hover:text-white px-2.5 py-1 text-xs font-bold text-slate-800 transition-colors shadow-sm"
             >
               View
             </Link>

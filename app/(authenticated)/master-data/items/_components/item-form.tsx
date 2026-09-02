@@ -11,8 +11,9 @@
 
 import { useActionState, useState, useEffect } from "react";
 import Link from "next/link";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Plus, Pencil, Check, X } from "lucide-react";
 import type { ItemFormState } from "../_actions";
+import { createCategoryAction, updateCategoryAction } from "../_actions";
 import type { ItemDetail, CategoryOption, SupplierPartyOption } from "@/lib/db/queries/items";
 
 const STANDARD_UOM_OPTIONS = [
@@ -75,13 +76,40 @@ export function ItemForm({
   const [state, formAction, isPending] = useActionState(action, {});
   const isEdit = !!item;
 
+  // Local categories list for dynamic on-the-fly addition and editing
+  const [localCategories, setLocalCategories] = useState<CategoryOption[]>(categories);
+
+  // Organization selection & auto-assigned inventory model state
+  const [selectedPartyId, setSelectedPartyId] = useState(item?.defaultSupplierPartyId ?? "");
+  const [autoAssignedInfo, setAutoAssignedInfo] = useState<string | null>(() => {
+    if (item?.defaultSupplierPartyId) {
+      const p = supplierParties.find((party) => party.id === item.defaultSupplierPartyId);
+      if (p?.defaultInventoryModel) {
+        return `Auto-assigned from ${p.code} (${p.roles?.join(", ") || "Party Role"}): ${INVENTORY_MODEL_LABELS[p.defaultInventoryModel]}`;
+      }
+    }
+    return null;
+  });
+
+  // Modal / Inline Drawer states for Category & Subcategory Management
+  const [categoryModal, setCategoryModal] = useState<{
+    mode: "add_category" | "edit_category" | "add_subcategory" | "edit_subcategory" | null;
+    targetId?: string;
+    name: string;
+    flowType: string;
+    parentId?: string | null;
+    loading?: boolean;
+    error?: string | null;
+  }>({
+    mode: null,
+    name: "",
+    flowType: "",
+  });
+
   // Classification cascade: Inventory Model -> Category -> Subcategory.
-  // Only `categoryId` (the most specific of Category/Subcategory chosen) is
-  // ever submitted — Inventory Model and the Category/Subcategory split are
-  // client-side filters over the existing flat item_categories list.
-  const parentCategories = categories.filter((c) => !c.parentId);
+  const parentCategories = localCategories.filter((c) => !c.parentId);
   const childCategoriesByParent = new Map<string, CategoryOption[]>();
-  for (const c of categories) {
+  for (const c of localCategories) {
     if (c.parentId) {
       const siblings = childCategoriesByParent.get(c.parentId) ?? [];
       siblings.push(c);
@@ -89,7 +117,7 @@ export function ItemForm({
     }
   }
 
-  const initialCategory = categories.find((c) => c.id === item?.categoryId);
+  const initialCategory = localCategories.find((c) => c.id === item?.categoryId);
   const initialParentId = initialCategory
     ? (initialCategory.parentId ?? initialCategory.id)
     : "";
@@ -98,21 +126,14 @@ export function ItemForm({
     : "";
   const initialInventoryModel =
     (initialCategory?.parentId
-      ? categories.find((c) => c.id === initialCategory.parentId)?.flowType
+      ? localCategories.find((c) => c.id === initialCategory.parentId)?.flowType
       : initialCategory?.flowType) ?? "";
 
   const [inventoryModel, setInventoryModel] = useState(initialInventoryModel);
   const [parentCategoryId, setParentCategoryId] = useState(initialParentId);
   const [subcategoryId, setSubcategoryId] = useState(initialSubcategoryId);
 
-  // Primary identifier — conditional on Inventory Model (2026-08-19 user
-  // request): VMI items are identified by Supplier Item Code, Trading items
-  // by DSGC Item Number, never both shown at once. Each keeps its own value
-  // so switching Inventory Model doesn't lose what was already typed. The
-  // active one is mirrored into the DB's required `code` column (a separate,
-  // internal Dyna-Serv identifier) via a hidden input below — the user
-  // confirmed the conditional field itself should double as `code` rather
-  // than requiring a redundant third value.
+  // Primary identifier — conditional on Inventory Model
   const [codeValue, setCodeValue] = useState(item?.code ?? initialCode);
   const [supplierItemCodeValue, setSupplierItemCodeValue] = useState(
     item?.supplierItemCode ?? initialCode,
@@ -262,6 +283,43 @@ export function ItemForm({
         </h2>
         <input type="hidden" name="categoryId" value={categoryId} />
         <div className="grid gap-4 md:grid-cols-2">
+          {/* Owner / Default Supplier Organization */}
+          <div>
+            <label htmlFor="defaultSupplierPartyId" className="block font-label text-label text-on-surface">
+              Owner / Default Supplier Organization{" "}
+              <span aria-hidden="true" className="text-brand-red">*</span>
+            </label>
+            <select
+              id="defaultSupplierPartyId"
+              name="defaultSupplierPartyId"
+              value={selectedPartyId}
+              onChange={(e) => {
+                const partyId = e.target.value;
+                setSelectedPartyId(partyId);
+                const org = supplierParties.find((p) => p.id === partyId);
+                if (org?.defaultInventoryModel) {
+                  setInventoryModel(org.defaultInventoryModel);
+                  setAutoAssignedInfo(
+                    `Auto-assigned: ${INVENTORY_MODEL_LABELS[org.defaultInventoryModel]} (${org.roles?.join(", ") || "Party Role"})`
+                  );
+                } else {
+                  setAutoAssignedInfo(null);
+                }
+              }}
+              required
+              className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            >
+              <option value="">Select organization…</option>
+              {supplierParties.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.code} — {p.name} {p.roles && p.roles.length > 0 ? `(${p.roles.join(", ")})` : ""}
+                </option>
+              ))}
+            </select>
+            {fieldError("defaultSupplierPartyId")}
+          </div>
+
+          {/* Inventory Model */}
           <div>
             <label htmlFor="inventoryModel" className="block font-label text-label text-on-surface">
               Inventory Model
@@ -273,6 +331,7 @@ export function ItemForm({
                 setInventoryModel(e.target.value);
                 setParentCategoryId("");
                 setSubcategoryId("");
+                setAutoAssignedInfo(null);
               }}
               className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
             >
@@ -283,72 +342,172 @@ export function ItemForm({
                 </option>
               ))}
             </select>
+            {autoAssignedInfo && (
+              <span className="mt-1.5 inline-block text-[11px] font-bold text-blue-800 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                {autoAssignedInfo}
+              </span>
+            )}
           </div>
 
+          {/* Category with Add / Edit Actions */}
           <div>
-            <label htmlFor="defaultSupplierPartyId" className="block font-label text-label text-on-surface">
-              Owner / Default Supplier Organization{" "}
-              <span aria-hidden="true" className="text-brand-red">*</span>
-            </label>
-            <select
-              id="defaultSupplierPartyId"
-              name="defaultSupplierPartyId"
-              defaultValue={item?.defaultSupplierPartyId ?? ""}
-              required
-              className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            >
-              <option value="">Select organization…</option>
-              {supplierParties.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.code} — {p.name}
+            <div className="flex items-center justify-between">
+              <label htmlFor="parentCategoryId" className="block font-label text-label text-on-surface">
+                Category
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setCategoryModal({
+                    mode: "add_category",
+                    name: "",
+                    flowType: inventoryModel || "",
+                    error: null,
+                  });
+                }}
+                className="text-xs font-bold text-brand-navy hover:underline flex items-center gap-1"
+              >
+                <Plus size={13} /> Add Category
+              </button>
+            </div>
+            <div className="flex items-center gap-1.5 mt-1">
+              <select
+                id="parentCategoryId"
+                value={parentCategoryId}
+                onChange={(e) => {
+                  if (e.target.value === "__NEW_CATEGORY__") {
+                    setCategoryModal({
+                      mode: "add_category",
+                      name: "",
+                      flowType: inventoryModel || "",
+                      error: null,
+                    });
+                    return;
+                  }
+                  setParentCategoryId(e.target.value);
+                  setSubcategoryId("");
+                }}
+                className="block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              >
+                <option value="">None</option>
+                {filteredParentCategories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+                <option value="__NEW_CATEGORY__" className="text-brand-navy font-bold">
+                  + Add New Category...
                 </option>
-              ))}
-            </select>
-            {fieldError("defaultSupplierPartyId")}
+              </select>
+              {parentCategoryId && (
+                <button
+                  type="button"
+                  title="Edit selected category"
+                  onClick={() => {
+                    const cat = localCategories.find((c) => c.id === parentCategoryId);
+                    if (cat) {
+                      setCategoryModal({
+                        mode: "edit_category",
+                        targetId: cat.id,
+                        name: cat.name,
+                        flowType: cat.flowType || "",
+                        error: null,
+                      });
+                    }
+                  }}
+                  className="h-10 w-10 shrink-0 flex items-center justify-center rounded border border-outline-variant/30 bg-slate-50 text-slate-700 hover:bg-slate-100 transition-colors"
+                >
+                  <Pencil size={14} />
+                </button>
+              )}
+            </div>
           </div>
 
+          {/* Subcategory with Add / Edit Actions */}
           <div>
-            <label htmlFor="parentCategoryId" className="block font-label text-label text-on-surface">
-              Category
-            </label>
-            <select
-              id="parentCategoryId"
-              value={parentCategoryId}
-              onChange={(e) => {
-                setParentCategoryId(e.target.value);
-                setSubcategoryId("");
-              }}
-              className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            >
-              <option value="">None</option>
-              {filteredParentCategories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
+            <div className="flex items-center justify-between">
+              <label htmlFor="subcategoryId" className="block font-label text-label text-on-surface">
+                Subcategory
+              </label>
+              {parentCategoryId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCategoryModal({
+                      mode: "add_subcategory",
+                      name: "",
+                      flowType: inventoryModel || "",
+                      parentId: parentCategoryId,
+                      error: null,
+                    });
+                  }}
+                  className="text-xs font-bold text-brand-navy hover:underline flex items-center gap-1"
+                >
+                  <Plus size={13} /> Add Subcategory
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 mt-1">
+              <select
+                id="subcategoryId"
+                value={subcategoryId}
+                onChange={(e) => {
+                  if (e.target.value === "__NEW_SUBCATEGORY__") {
+                    setCategoryModal({
+                      mode: "add_subcategory",
+                      name: "",
+                      flowType: inventoryModel || "",
+                      parentId: parentCategoryId,
+                      error: null,
+                    });
+                    return;
+                  }
+                  setSubcategoryId(e.target.value);
+                }}
+                disabled={!parentCategoryId}
+                className="block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <option value="">
+                  {!parentCategoryId
+                    ? "Select a category first"
+                    : subcategoryOptions.length === 0
+                    ? "None (No subcategories)"
+                    : "None"}
                 </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="subcategoryId" className="block font-label text-label text-on-surface">
-              Subcategory
-            </label>
-            <select
-              id="subcategoryId"
-              value={subcategoryId}
-              onChange={(e) => setSubcategoryId(e.target.value)}
-              disabled={subcategoryOptions.length === 0}
-              className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <option value="">
-                {subcategoryOptions.length === 0 ? "No subcategories" : "None"}
-              </option>
-              {subcategoryOptions.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
+                {subcategoryOptions.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+                {parentCategoryId && (
+                  <option value="__NEW_SUBCATEGORY__" className="text-brand-navy font-bold">
+                    + Add New Subcategory...
+                  </option>
+                )}
+              </select>
+              {subcategoryId && (
+                <button
+                  type="button"
+                  title="Edit selected subcategory"
+                  onClick={() => {
+                    const cat = localCategories.find((c) => c.id === subcategoryId);
+                    if (cat) {
+                      setCategoryModal({
+                        mode: "edit_subcategory",
+                        targetId: cat.id,
+                        name: cat.name,
+                        flowType: cat.flowType || "",
+                        parentId: cat.parentId,
+                        error: null,
+                      });
+                    }
+                  }}
+                  className="h-10 w-10 shrink-0 flex items-center justify-center rounded border border-outline-variant/30 bg-slate-50 text-slate-700 hover:bg-slate-100 transition-colors"
+                >
+                  <Pencil size={14} />
+                </button>
+              )}
+            </div>
           </div>
 
           {inventoryModel === "vmi" ? (
@@ -1049,6 +1208,154 @@ export function ItemForm({
           {isPending ? "Saving…" : isEdit ? "Save Changes" : "Create Item"}
         </button>
       </div>
+      {/* ── Category / Subcategory Quick Management Modal ── */}
+      {categoryModal.mode !== null && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-brand-navy/60 p-4 backdrop-blur-sm animate-in fade-in duration-150"
+        >
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-surface-white p-6 shadow-2xl animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-heading text-base font-bold text-brand-navy">
+                {categoryModal.mode === "add_category"
+                  ? "Add New Category"
+                  : categoryModal.mode === "edit_category"
+                  ? "Edit Category"
+                  : categoryModal.mode === "add_subcategory"
+                  ? "Add New Subcategory"
+                  : "Edit Subcategory"}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setCategoryModal({ mode: null, name: "", flowType: "" })}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-4">
+              {categoryModal.error && (
+                <div className="rounded-lg bg-rose-50 p-2.5 text-xs text-rose-700 border border-rose-200">
+                  {categoryModal.error}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                  {categoryModal.mode.includes("subcategory") ? "Subcategory Name" : "Category Name"}{" "}
+                  <span className="text-brand-red">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={categoryModal.name}
+                  onChange={(e) =>
+                    setCategoryModal((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                  placeholder="e.g. Electrical Components, Packaging Materials"
+                  className="mt-1 block w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  autoFocus
+                />
+              </div>
+
+              {!categoryModal.mode.includes("subcategory") && (
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                    Applicable Inventory Model
+                  </label>
+                  <select
+                    value={categoryModal.flowType}
+                    onChange={(e) =>
+                      setCategoryModal((prev) => ({ ...prev, flowType: e.target.value }))
+                    }
+                    className="mt-1 block w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  >
+                    <option value="">All Models</option>
+                    <option value="vmi">VMI</option>
+                    <option value="trading">Trading</option>
+                    <option value="supplies">Supplies</option>
+                  </select>
+                </div>
+              )}
+
+              {categoryModal.mode.includes("subcategory") && (
+                <div className="rounded-lg bg-slate-50 p-2.5 text-xs text-slate-700 border border-slate-200">
+                  Parent Category:{" "}
+                  <strong className="text-brand-navy">
+                    {localCategories.find((c) => c.id === parentCategoryId)?.name || "Selected Category"}
+                  </strong>
+                </div>
+              )}
+
+              <div className="mt-6 flex justify-end gap-2.5 border-t border-slate-100 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setCategoryModal({ mode: null, name: "", flowType: "" })}
+                  className="rounded-lg border border-slate-300 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={categoryModal.loading || !categoryModal.name.trim()}
+                  onClick={async () => {
+                    setCategoryModal((prev) => ({ ...prev, loading: true, error: null }));
+                    const trimmedName = categoryModal.name.trim();
+
+                    if (categoryModal.mode === "add_category" || categoryModal.mode === "add_subcategory") {
+                      const res = await createCategoryAction({
+                        name: trimmedName,
+                        flowType: categoryModal.flowType || null,
+                        parentId: categoryModal.mode === "add_subcategory" ? parentCategoryId : null,
+                      });
+
+                      if (res.ok && res.category) {
+                        const newCat = res.category as CategoryOption;
+                        setLocalCategories((prev) => [...prev, newCat]);
+                        if (categoryModal.mode === "add_category") {
+                          setParentCategoryId(newCat.id);
+                          setSubcategoryId("");
+                        } else {
+                          setSubcategoryId(newCat.id);
+                        }
+                        setCategoryModal({ mode: null, name: "", flowType: "" });
+                      } else {
+                        setCategoryModal((prev) => ({ ...prev, loading: false, error: res.error || "Failed to create category" }));
+                      }
+                    } else if (categoryModal.mode === "edit_category" || categoryModal.mode === "edit_subcategory") {
+                      if (!categoryModal.targetId) return;
+                      const res = await updateCategoryAction({
+                        id: categoryModal.targetId,
+                        name: trimmedName,
+                        flowType: categoryModal.flowType || null,
+                      });
+
+                      if (res.ok && res.category) {
+                        const updatedCat = res.category as CategoryOption;
+                        setLocalCategories((prev) =>
+                          prev.map((c) => (c.id === updatedCat.id ? { ...c, ...updatedCat } : c))
+                        );
+                        setCategoryModal({ mode: null, name: "", flowType: "" });
+                      } else {
+                        setCategoryModal((prev) => ({ ...prev, loading: false, error: res.error || "Failed to update category" }));
+                      }
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-brand-navy px-4 py-2 text-xs font-bold text-surface-white hover:bg-brand-navy/90 transition-all disabled:opacity-50"
+                >
+                  {categoryModal.loading ? (
+                    <RefreshCw size={13} className="animate-spin" />
+                  ) : (
+                    <Check size={13} />
+                  )}
+                  {categoryModal.mode?.startsWith("add") ? "Create & Select" : "Save Changes"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

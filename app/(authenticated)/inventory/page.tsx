@@ -182,7 +182,7 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
   // The query already orders by (items.code, lots.expiry_date, lots.created_at)
   // so FEFO/FIFO order is preserved by the insertion sequence.
   const itemMap = new Map<string, {
-    itemId: string; itemCode: string; itemName: string; categoryName: string | null; subcategoryName: string | null; inventoryModel: string; uom: string; isPerishable: boolean; flowType: "vmi" | "trading" | "supplies"; organizationId: string | null;
+    itemId: string; itemCode: string; itemName: string; organizationName: string | null; categoryName: string | null; subcategoryName: string | null; inventoryModel: string; uom: string; isPerishable: boolean; flowType: "vmi" | "trading" | "supplies"; organizationId: string | null;
     codes: string; customerName: string | null; totalIn: number; totalOut: number; spq: number; pcsOnHand: number; boxesOnHand: number; cbmOccupied: number;
     lotMap: Map<string, { lot: AggregatedLot }>;
     insertionOrder: string[]; // lot IDs in FEFO/FIFO order
@@ -197,6 +197,7 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
         itemId: row.itemId,
         itemCode: row.itemCode,
         itemName: row.itemName,
+        organizationName: row.organizationName ?? row.customerName ?? null,
         categoryName: row.categoryName ?? null,
         subcategoryName: row.subcategoryName ?? null,
         inventoryModel: row.inventoryModel ?? (row.flowType ? row.flowType.toUpperCase() : "TRADING"),
@@ -262,6 +263,7 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
       itemId: entry.itemId,
       itemCode: entry.itemCode,
       itemName: entry.itemName,
+      organizationName: entry.organizationName,
       categoryName: entry.categoryName,
       subcategoryName: entry.subcategoryName,
       inventoryModel: entry.inventoryModel,

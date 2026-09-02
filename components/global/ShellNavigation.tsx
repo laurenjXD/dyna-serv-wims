@@ -143,6 +143,7 @@ function NavLink({
   variant = "tab",
   onNavigate,
   compact = false,
+  isMini = false,
   pendingApprovalCount = 0,
   shortcutNumber,
 }: {
@@ -152,6 +153,7 @@ function NavLink({
   variant?: "tab" | "list";
   onNavigate?: () => void;
   compact?: boolean;
+  isMini?: boolean;
   pendingApprovalCount?: number;
   shortcutNumber?: number;
 }) {
@@ -182,6 +184,35 @@ function NavLink({
     );
   }
 
+  if (isMini) {
+    return (
+      <Link
+        href={entry.path}
+        data-testid={`nav-entry-${entry.id}`}
+        aria-current={isActive ? "page" : undefined}
+        onClick={onNavigate}
+        title={`${label}${shortcutNumber ? ` (${shortcutLabel(shortcutNumber - 1)})` : ""}`}
+        data-active={isActive ? "true" : "false"}
+        className={`group relative flex h-11 w-11 items-center justify-center rounded-xl mx-auto
+          motion-safe:transition-all motion-safe:duration-150
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-primary
+          ${isActive
+            ? "bg-primary text-surface shadow-elevation-1"
+            : "text-text-secondary hover:bg-accent-indigo-50 hover:text-brand-navy"}`}
+      >
+        <Icon size={20} strokeWidth={2.1} aria-hidden="true" />
+        {entry.id === "approvals" && pendingApprovalCount > 0 && (
+          <span
+            data-testid="approval-count-badge"
+            className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full border border-surface bg-red-500 text-[10px] font-bold text-surface"
+          >
+            {pendingApprovalCount > 9 ? "9+" : pendingApprovalCount}
+          </span>
+        )}
+      </Link>
+    );
+  }
+
   return (
     <Link
       href={entry.path}
@@ -189,7 +220,7 @@ function NavLink({
       aria-current={isActive ? "page" : undefined}
       onClick={onNavigate}
       data-active={isActive ? "true" : "false"}
-    className={`group relative flex ${compact ? "h-11 gap-3 rounded-md px-2.5" : "h-12 gap-3 rounded-md px-3"} items-center overflow-hidden font-label font-semibold
+      className={`group relative flex ${compact ? "h-11 gap-3 rounded-md px-2.5" : "h-12 gap-3 rounded-md px-3"} items-center overflow-hidden font-label font-semibold
         ${floorText ? "text-mono-md" : "text-label"}
         motion-safe:transition-[background-color,color,box-shadow,transform] motion-safe:duration-150
         focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1
@@ -222,6 +253,7 @@ function GroupedSections({
   tier,
   onNavigate,
   compact = false,
+  isMini = false,
   pendingApprovalCount = 0,
   shortcutNumberById,
 }: {
@@ -230,10 +262,37 @@ function GroupedSections({
   tier: SessionPresentationTier;
   onNavigate?: () => void;
   compact?: boolean;
+  isMini?: boolean;
   pendingApprovalCount?: number;
   shortcutNumberById?: ReadonlyMap<string, number>;
 }) {
   const floorText = tier === "floor";
+
+  if (isMini) {
+    return (
+      <div className="flex flex-col gap-1.5 py-1">
+        {sections.map((section, sIdx) => (
+          <div key={section.group} className="flex flex-col items-center gap-1">
+            {sIdx > 0 && <div className="my-1 h-px w-6 bg-border/60" aria-hidden="true" />}
+            {section.entries.map((entry) => (
+              <NavLink
+                key={entry.id}
+                entry={entry}
+                isActive={entry.id === activeId}
+                tier={tier}
+                variant="list"
+                isMini={true}
+                onNavigate={onNavigate}
+                pendingApprovalCount={pendingApprovalCount}
+                shortcutNumber={shortcutNumberById?.get(entry.id)}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <>
       {sections.map((section) => (
@@ -407,9 +466,9 @@ export function ShellNavigation({
       <nav
         data-testid="desktop-sidebar"
         aria-label="Primary navigation"
-        aria-hidden={!desktopOpen}
-        className={`hidden h-[calc(100vh-1.5rem)] flex-col overflow-hidden bg-surface lg:fixed lg:bottom-3 lg:left-3 lg:top-3 lg:z-40 lg:w-[286px] lg:rounded-2xl lg:border lg:border-border lg:shadow-elevation-2 ${
-          desktopOpen ? "lg:flex" : "lg:hidden"
+        aria-hidden={false}
+        className={`hidden h-[calc(100vh-1.5rem)] flex-col overflow-hidden bg-surface lg:fixed lg:bottom-3 lg:left-3 lg:top-3 lg:z-40 lg:flex lg:rounded-2xl lg:border lg:border-border lg:shadow-elevation-2 transition-all duration-200 motion-reduce:transition-none ${
+          desktopOpen ? "lg:w-[286px]" : "lg:w-[72px]"
         }`}
       >
         <a
@@ -421,32 +480,50 @@ export function ShellNavigation({
           Skip to content
         </a>
 
-        <div className="relative border-b border-border bg-background px-4 py-2.5">
-          <div aria-hidden="true" className="absolute inset-y-0 left-0 w-1 bg-primary" />
-          <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-md border border-border bg-surface shadow-elevation-1">
-              <Image src="/logo.svg" alt="Dyna-Serv WIMS" width={30} height={30} priority />
+        {/* Logo / Header */}
+        <div className={`relative border-b border-border bg-background py-2.5 ${desktopOpen ? "px-4" : "px-2 text-center"}`}>
+          {desktopOpen && <div aria-hidden="true" className="absolute inset-y-0 left-0 w-1 bg-primary" />}
+          <div className={`flex items-center ${desktopOpen ? "gap-3" : "justify-center"}`}>
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-surface shadow-elevation-1">
+              <Image src="/logo.svg" alt="Dyna-Serv WIMS" width={28} height={28} priority />
             </span>
-            <div className="min-w-0">
-              <p className="truncate font-heading text-title-lg font-bold tracking-tight text-text-primary">Dyna-Serv WIMS</p>
-            </div>
+            {desktopOpen && (
+              <div className="min-w-0">
+                <p className="truncate font-heading text-title-lg font-bold tracking-tight text-text-primary">Dyna-Serv WIMS</p>
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-hidden px-3 py-0.5">
-          <GroupedSections sections={sections} activeId={activeId} tier={tier} compact pendingApprovalCount={pendingApprovalCount} shortcutNumberById={shortcutNumberById} />
+        {/* Navigation Section List */}
+        <div className={`min-h-0 flex-1 overflow-hidden py-1 ${desktopOpen ? "px-3" : "px-1.5"}`}>
+          <GroupedSections
+            sections={sections}
+            activeId={activeId}
+            tier={tier}
+            compact
+            isMini={!desktopOpen}
+            pendingApprovalCount={pendingApprovalCount}
+            shortcutNumberById={shortcutNumberById}
+          />
         </div>
 
-        <div className="border-t border-border bg-background p-2">
-          <div className="flex items-center gap-3 rounded-md border border-border bg-surface p-2.5 shadow-elevation-1">
-            <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-navy font-heading text-label font-bold text-surface">
+        {/* User Footer Card */}
+        <div className={`border-t border-border bg-background ${desktopOpen ? "p-2" : "p-2 text-center"}`}>
+          <div className={`flex items-center rounded-xl border border-border bg-surface shadow-elevation-1 ${desktopOpen ? "gap-3 p-2.5" : "justify-center p-2"}`}>
+            <span
+              className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-navy font-heading text-label font-bold text-surface"
+              title={`${displayName ?? "Signed-in user"} (${roleLabel})`}
+            >
               {initials(displayName)}
               <span aria-hidden="true" className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-surface bg-status-available" />
             </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-label text-label font-bold text-text-primary">{displayName ?? "Signed-in user"}</p>
-              <p className="mt-0.5 truncate font-body text-mono-sm text-text-secondary">{roleLabel}</p>
-            </div>
+            {desktopOpen && (
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-label text-label font-bold text-text-primary">{displayName ?? "Signed-in user"}</p>
+                <p className="mt-0.5 truncate font-body text-mono-sm text-text-secondary">{roleLabel}</p>
+              </div>
+            )}
           </div>
         </div>
       </nav>

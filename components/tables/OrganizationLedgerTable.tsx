@@ -39,10 +39,10 @@ export function OrganizationLedgerTable({
         const d = new Date(info.getValue() as string | Date);
         return (
           <div>
-            <div className="font-mono text-xs font-bold text-slate-800">
+            <div className="font-mono text-sm font-bold text-slate-800">
               {d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
             </div>
-            <div className="text-[11px] text-text-grey font-mono flex items-center gap-1">
+            <div className="text-xs text-text-grey font-mono flex items-center gap-1">
               <Clock size={11} />
               {d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
             </div>
@@ -70,7 +70,7 @@ export function OrganizationLedgerTable({
         const type = String(info.getValue());
         return (
           <span
-            className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider backdrop-blur-md ${
+            className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider backdrop-blur-md ${
               type === "inbound_receipt"
                 ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
                 : type === "outbound_dispatch" || type === "vmi_consumption"
@@ -95,7 +95,7 @@ export function OrganizationLedgerTable({
         filterLabel: "Ref Doc",
       },
       cell: (info) => (
-        <span className="font-mono text-xs font-bold text-brand-navy flex items-center gap-1">
+        <span className="font-mono text-sm font-bold text-brand-navy flex items-center gap-1">
           <FileText size={13} className="text-slate-400" />
           {String(info.getValue())}
         </span>
@@ -114,8 +114,8 @@ export function OrganizationLedgerTable({
         const row = info.row.original;
         return (
           <div>
-            <span className="font-mono font-bold text-slate-900">{String(info.getValue())}</span>
-            <span className="block text-[11px] text-text-grey truncate max-w-[200px]">{row.itemName}</span>
+            <span className="font-mono text-sm font-bold text-slate-900">{String(info.getValue())}</span>
+            <span className="block text-xs text-text-grey truncate max-w-[200px]">{row.itemName}</span>
           </div>
         );
       },
@@ -130,7 +130,7 @@ export function OrganizationLedgerTable({
         filterLabel: "Lot Number",
       },
       cell: (info) => (
-        <span className="font-mono text-xs text-slate-800 font-semibold">{String(info.getValue())}</span>
+        <span className="font-mono text-sm text-slate-800 font-semibold">{String(info.getValue())}</span>
       ),
     },
 
@@ -149,9 +149,9 @@ export function OrganizationLedgerTable({
         const qty = Number(info.getValue());
         const isPositive = row.movementType === "inbound_receipt" || qty > 0;
         return (
-          <div className={`text-right font-mono text-xs font-bold ${isPositive ? "text-emerald-700" : "text-slate-900"}`}>
+          <div className={`text-right font-mono text-sm font-bold ${isPositive ? "text-emerald-700" : "text-slate-900"}`}>
             {isPositive ? `+${qty.toLocaleString()}` : qty.toLocaleString()}{" "}
-            <span className="text-[10px] font-normal text-text-grey">{row.uom}</span>
+            <span className="text-xs font-normal text-text-grey">{row.uom}</span>
           </div>
         );
       },
@@ -166,7 +166,7 @@ export function OrganizationLedgerTable({
         filterLabel: "Location",
       },
       cell: (info) => (
-        <span className="font-mono text-xs text-text-grey bg-slate-100 px-2 py-0.5 rounded">
+        <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
           {String(info.getValue() || "—")}
         </span>
       ),
@@ -185,9 +185,9 @@ export function OrganizationLedgerTable({
         const val = info.getValue();
         if (val === undefined || val === null) return <span className="text-text-grey">—</span>;
         return (
-          <div className="text-right font-mono text-xs font-bold text-brand-navy">
+          <div className="text-right font-mono text-sm font-bold text-brand-navy">
             {Number(val).toLocaleString()}{" "}
-            <span className="text-[10px] font-normal text-text-grey">{info.row.original.uom}</span>
+            <span className="text-xs font-normal text-text-grey">{info.row.original.uom}</span>
           </div>
         );
       },

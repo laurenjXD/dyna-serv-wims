@@ -1,15 +1,23 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
+import Link from "next/link";
+import type { ColumnDef } from "@tanstack/react-table";
 import {
   FileText,
   X,
   Upload,
-  Search,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
+  Clock,
+  Building2,
+  CheckCircle2,
+  AlertCircle,
+  Package,
+  Layers,
+  FileSpreadsheet,
+  Trash2,
+  ExternalLink,
 } from "lucide-react";
+import { DataTable } from "@/components/tables/DataTable";
 import type { OutgoingLedgerRow } from "@/lib/db/queries/withdrawals";
 
 interface OutgoingLedgerClientTableProps {
@@ -18,18 +26,6 @@ interface OutgoingLedgerClientTableProps {
   removeDeliveryReceiptAction: (formData: FormData) => void;
 }
 
-type SortField =
-  | "createdAt"
-  | "drKey"
-  | "deliveryReceiptStatus"
-  | "transactionNumber"
-  | "itemCode"
-  | "itemName"
-  | "qty"
-  | "customerPartyName";
-
-type SortDirection = "asc" | "desc";
-
 export function OutgoingLedgerClientTable({
   rows,
   uploadDeliveryReceiptAction,
@@ -37,521 +33,406 @@ export function OutgoingLedgerClientTable({
 }: OutgoingLedgerClientTableProps) {
   const [selectedDrNumber, setSelectedDrNumber] = useState<string | null>(null);
   const [selectedReceipt, setSelectedReceipt] = useState<OutgoingLedgerRow | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "uploaded" | "missing">("all");
-  const [sortField, setSortField] = useState<SortField>("createdAt");
-  const [sortDir, setSortDir] = useState<SortDirection>("desc");
 
   // Group rows by Delivery Receipt (or Pick List #)
   const drGroups = useMemo(() => {
     return rows.reduce<Record<string, OutgoingLedgerRow[]>>((acc, row) => {
-      const drKey = row.pickListNumber ? `DR-${row.pickListNumber.replace(/^PL-/, "")}` : `TX-${row.transactionNumber}`;
+      const drKey = row.pickListNumber
+        ? `DR-${row.pickListNumber.replace(/^PL-/, "")}`
+        : "Direct Dispatch";
       if (!acc[drKey]) acc[drKey] = [];
       acc[drKey].push(row);
       return acc;
     }, {});
   }, [rows]);
 
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDir(sortDir === "asc" ? "desc" : "asc");
-    } else {
-      setSortField(field);
-      setSortDir("asc");
-    }
-  };
-
-  const filteredAndSortedRows = useMemo(() => {
-    return rows
-      .filter((row) => {
-        // Status filter
-        if (statusFilter !== "all" && row.deliveryReceiptStatus !== statusFilter) {
-          return false;
-        }
-
-        // Omni Search
-        if (!searchQuery.trim()) return true;
-        const q = searchQuery.toLowerCase().trim();
-        const drKey = row.pickListNumber ? `DR-${row.pickListNumber.replace(/^PL-/, "")}` : `TX-${row.transactionNumber}`;
-        const searchCorpus = `${drKey} ${row.transactionNumber} ${row.pickListNumber ?? ""} ${row.itemCode} ${row.itemName} ${row.lotNumber} ${row.fromLocationLabel} ${row.customerPartyName ?? ""} ${row.performedByUserId ?? ""}`.toLowerCase();
-        return searchCorpus.includes(q);
-      })
-      .sort((a, b) => {
-        const getDrKey = (r: OutgoingLedgerRow) => (r.pickListNumber ? `DR-${r.pickListNumber.replace(/^PL-/, "")}` : `TX-${r.transactionNumber}`);
-
-        if (sortField === "createdAt") {
-          const timeA = new Date(a.createdAt).getTime();
-          const timeB = new Date(b.createdAt).getTime();
-          return sortDir === "asc" ? timeA - timeB : timeB - timeA;
-        }
-
-        if (sortField === "qty") {
-          return sortDir === "asc" ? a.qty - b.qty : b.qty - a.qty;
-        }
-
-        let valA = sortField === "drKey" ? getDrKey(a) : ((a[sortField as keyof OutgoingLedgerRow] as string) || "");
-        let valB = sortField === "drKey" ? getDrKey(b) : ((b[sortField as keyof OutgoingLedgerRow] as string) || "");
-
-        valA = valA.toLowerCase();
-        valB = valB.toLowerCase();
-        return sortDir === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
-      });
-  }, [rows, searchQuery, statusFilter, sortField, sortDir]);
-
   const totalDispatchedQty = useMemo(() => {
-    return filteredAndSortedRows.reduce((sum, r) => sum + r.qty, 0);
-  }, [filteredAndSortedRows]);
+    return rows.reduce((sum, r) => sum + r.qty, 0);
+  }, [rows]);
 
   const missingDrCount = useMemo(() => {
     const missingDrs = new Set(
-      filteredAndSortedRows
+      rows
         .filter((row) => row.deliveryReceiptStatus !== "uploaded")
-        .map((row) => row.pickListNumber ?? `TX-${row.transactionNumber}`),
+        .map((row) => row.pickListNumber ?? row.transactionId),
     );
     return missingDrs.size;
-  }, [filteredAndSortedRows]);
+  }, [rows]);
 
   const selectedRows = selectedDrNumber ? drGroups[selectedDrNumber] ?? [] : [];
   const activeDrMeta = selectedRows[0];
 
-  const renderSortIcon = (field: SortField) => {
-    if (sortField !== field) {
-      return <ArrowUpDown size={14} className="opacity-40" />;
-    }
-    return sortDir === "asc" ? (
-      <ArrowUp size={14} className="text-brand-navy font-bold" />
-    ) : (
-      <ArrowDown size={14} className="text-brand-navy font-bold" />
-    );
-  };
+  const columns = useMemo<ColumnDef<OutgoingLedgerRow, unknown>[]>(() => [
+    // 1. Date / Time (Date Range Filter)
+    {
+      accessorKey: "createdAt",
+      header: "Date / Time",
+      meta: {
+        filterVariant: "date-range",
+        filterLabel: "Date Range",
+      },
+      cell: (info) => {
+        const d = new Date(info.getValue() as string | Date);
+        return (
+          <div className="min-w-[110px]">
+            <div className="font-mono text-sm font-bold text-slate-800">
+              {d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+            </div>
+            <div className="text-xs text-text-grey font-mono flex items-center gap-1 mt-0.5">
+              <Clock size={11} className="text-text-grey/70" />
+              {d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            </div>
+          </div>
+        );
+      },
+    },
+
+    // 2. Delivery Receipt #
+    {
+      id: "drKey",
+      accessorFn: (row) =>
+        row.pickListNumber ? `DR-${row.pickListNumber.replace(/^PL-/, "")}` : "Direct Dispatch",
+      header: "Delivery Receipt #",
+      meta: {
+        filterVariant: "text",
+        filterLabel: "DR #",
+      },
+      cell: (info) => {
+        const drKey = String(info.getValue());
+        const groupCount = drGroups[drKey]?.length ?? 1;
+
+        return (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedDrNumber(drKey)}
+              className="group flex items-center gap-1.5 font-mono text-sm font-bold text-brand-navy hover:text-blue-700 hover:underline focus:outline-none"
+              title="Click to view all items under this Delivery Receipt"
+            >
+              <FileText size={14} className="text-brand-navy/60 group-hover:text-blue-600 transition-colors" />
+              <span>{drKey}</span>
+            </button>
+            {groupCount > 1 && (
+              <button
+                type="button"
+                onClick={() => setSelectedDrNumber(drKey)}
+                className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 font-label text-xs font-bold text-brand-navy border border-blue-200 hover:bg-blue-100 transition-colors"
+                title={`${groupCount} items dispatched under this DR`}
+              >
+                {groupCount} items
+              </button>
+            )}
+          </div>
+        );
+      },
+    },
+
+    // 3. DR Status
+    {
+      accessorKey: "deliveryReceiptStatus",
+      header: "DR Status",
+      meta: {
+        filterVariant: "status-pill",
+        filterLabel: "DR Status",
+      },
+      cell: (info) => {
+        const isUploaded = info.getValue() === "uploaded";
+        return (
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold ${
+              isUploaded
+                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                : "bg-amber-50 text-amber-700 border border-amber-200"
+            }`}
+          >
+            {isUploaded ? <CheckCircle2 size={11} className="text-emerald-600" /> : <AlertCircle size={11} className="text-amber-600" />}
+            {isUploaded ? "Uploaded" : "Missing POD"}
+          </span>
+        );
+      },
+    },
+
+    // 4. Signed POD Document Actions
+    {
+      id: "podDocument",
+      header: "Signed POD",
+      meta: {
+        align: "center",
+      },
+      cell: (info) => {
+        const row = info.row.original;
+        if (row.deliveryReceiptPath) {
+          return (
+            <div className="flex items-center gap-1.5">
+              {row.deliveryReceiptUrl ? (
+                <button
+                  type="button"
+                  onClick={() => setSelectedReceipt(row)}
+                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-200 bg-surface-white px-2.5 font-label text-xs font-bold text-brand-navy hover:bg-slate-50 transition-colors shadow-sm"
+                  title="View uploaded delivery receipt document"
+                >
+                  <FileText size={12} />
+                  View
+                </button>
+              ) : (
+                <span className="font-body text-xs text-text-grey">Uploaded</span>
+              )}
+              <form action={removeDeliveryReceiptAction}>
+                <input type="hidden" name="pickListId" value={row.pickListId ?? ""} />
+                <button
+                  type="submit"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 transition-colors"
+                  title="Remove uploaded document"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </form>
+            </div>
+          );
+        }
+
+        return (
+          <form
+            action={uploadDeliveryReceiptAction}
+            encType="multipart/form-data"
+            className="flex items-center gap-1"
+          >
+            <input type="hidden" name="pickListId" value={row.pickListId ?? ""} />
+            <label className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 font-label text-xs font-bold text-brand-navy hover:bg-blue-100 transition-colors">
+              <Upload size={12} />
+              Upload POD
+              <input
+                required
+                type="file"
+                name="deliveryReceipt"
+                accept="application/pdf,image/png,image/jpeg"
+                className="sr-only"
+                onChange={(event) => {
+                  if (event.currentTarget.files?.length) {
+                    event.currentTarget.form?.requestSubmit();
+                  }
+                }}
+              />
+            </label>
+          </form>
+        );
+      },
+    },
+
+    // 5. Item Code
+    {
+      accessorKey: "itemCode",
+      header: "Item Code",
+      meta: {
+        filterVariant: "text",
+        filterLabel: "Item Code",
+      },
+      cell: (info) => (
+        <span className="font-mono font-bold text-sm text-brand-navy">{String(info.getValue())}</span>
+      ),
+    },
+
+    // 6. Item Name
+    {
+      accessorKey: "itemName",
+      header: "Item Name",
+      meta: {
+        filterVariant: "text",
+        filterLabel: "Item Name",
+      },
+      cell: (info) => (
+        <div className="max-w-[200px] font-medium text-sm text-slate-800 truncate" title={String(info.getValue())}>
+          {String(info.getValue())}
+        </div>
+      ),
+    },
+
+    // 7. Lot Number
+    {
+      accessorKey: "lotNumber",
+      header: "Lot Number",
+      meta: {
+        filterVariant: "text",
+        filterLabel: "Lot Number",
+      },
+      cell: (info) => (
+        <span className="font-mono text-sm text-slate-700 font-semibold">{String(info.getValue())}</span>
+      ),
+    },
+
+    // 8. Dispatched Qty
+    {
+      accessorKey: "qty",
+      header: "Dispatched Qty",
+      meta: {
+        filterVariant: "numeric-range",
+        filterLabel: "Qty Range",
+        align: "right",
+      },
+      cell: (info) => (
+        <span className="font-mono font-bold text-sm text-slate-900">
+          {Number(info.getValue()).toLocaleString()}
+        </span>
+      ),
+    },
+
+    // 9. From Location
+    {
+      accessorKey: "fromLocationLabel",
+      header: "From Location",
+      meta: {
+        filterVariant: "text",
+        filterLabel: "Location",
+      },
+      cell: (info) => (
+        <span className="inline-flex rounded bg-slate-100 px-2 py-0.5 font-mono text-xs font-bold text-slate-700 border border-slate-200">
+          {String(info.getValue())}
+        </span>
+      ),
+    },
+
+    // 10. Pick List #
+    {
+      accessorKey: "pickListNumber",
+      header: "Pick List #",
+      meta: {
+        filterVariant: "text",
+        filterLabel: "Pick List #",
+      },
+      cell: (info) => {
+        const val = String(info.getValue() || "—");
+        const row = info.row.original;
+        if (!row.pickListId) return <span className="font-mono text-sm text-text-grey">{val}</span>;
+        return (
+          <Link
+            href={`/pick-lists/${row.pickListId}/dispatch`}
+            className="font-mono text-sm font-bold text-brand-navy hover:underline"
+          >
+            {val}
+          </Link>
+        );
+      },
+    },
+
+    // 11. Customer Organization
+    {
+      accessorKey: "customerPartyName",
+      header: "Customer Organization",
+      meta: {
+        filterVariant: "text",
+        filterLabel: "Customer",
+      },
+      cell: (info) => (
+        <div className="flex items-center gap-1.5 min-w-0 max-w-[180px]">
+          <Building2 size={13} className="text-slate-400 shrink-0" />
+          <span className="font-medium text-sm text-slate-800 truncate">
+            {String(info.getValue() || "—")}
+          </span>
+        </div>
+      ),
+    },
+
+    // 12. Performed By
+    {
+      accessorKey: "performedByDisplayName",
+      header: "Dispatched By",
+      meta: {
+        filterVariant: "text",
+        filterLabel: "Dispatched By",
+      },
+      cell: (info) => {
+        const row = info.row.original;
+        return (
+          <span className="text-xs text-text-grey truncate max-w-[140px]" title={row.performedByUserId}>
+            {String(info.getValue() || row.performedByUserId)}
+          </span>
+        );
+      },
+    },
+  ], [drGroups, removeDeliveryReceiptAction, uploadDeliveryReceiptAction]);
 
   return (
     <div className="space-y-4">
-      {/* ── Search & Filter Toolbar ────────────────────────────────────── */}
-      <div className="flex flex-col gap-3 rounded-xl border border-outline-variant/40 bg-surface-white p-4 shadow-elevation-1 lg:flex-row lg:items-center lg:justify-between">
-        {/* Omni Search Box */}
-        <div className="relative flex-1 min-w-[280px]">
-          <Search
-            size={18}
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-grey"
-            aria-hidden="true"
-          />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by DR #, Transaction #, Item Code, Lot #, Location, Customer…"
-            className="h-11 w-full rounded-xl border border-outline-variant/40 bg-surface-light-grey/40 pl-10 pr-10 font-body text-body-sm text-on-surface placeholder:text-text-grey focus:border-brand-navy focus:bg-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-grey hover:text-on-surface"
-              aria-label="Clear search"
-            >
-              <X size={16} />
-            </button>
-          )}
-        </div>
-
-        {/* DR Status Dropdown */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="flex items-center gap-1.5 rounded-xl border border-outline-variant/40 bg-surface-white px-3 py-1.5">
-            <span className="font-label text-label-xs uppercase text-text-grey">DR Status:</span>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as "all" | "uploaded" | "missing")}
-              className="bg-transparent font-body text-body-sm font-semibold text-on-surface focus:outline-none cursor-pointer"
-            >
-              <option value="all">All DR Statuses</option>
-              <option value="uploaded">Uploaded</option>
-              <option value="missing">Missing</option>
-            </select>
-          </div>
-
-          {(searchQuery || statusFilter !== "all") && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearchQuery("");
-                setStatusFilter("all");
-              }}
-              className="inline-flex h-9 items-center gap-1 rounded-lg px-2.5 font-label text-label-xs font-bold text-status-held hover:bg-status-held/10"
-            >
-              Reset Filters
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* ── Summary Stats ────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-4 text-body-sm text-text-grey px-1">
-        <span>Showing <strong className="text-on-surface">{filteredAndSortedRows.length}</strong> transactions</span>
-        <span>&bull;</span>
-        <span>Total Units Dispatched: <strong className="font-mono text-on-surface">{totalDispatchedQty.toLocaleString()}</strong></span>
-        <span>&bull;</span>
-        <span>Total Missing DR: <strong className="font-mono text-status-pending">{missingDrCount.toLocaleString()}</strong></span>
-      </div>
-
-      {/* ── Main Outgoing Ledger Table ─────────────────────────────────── */}
-      <div className="overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-2">
-        {filteredAndSortedRows.length === 0 ? (
-          <div className="px-6 py-12 text-center">
-            <p className="font-body text-body-md font-semibold text-on-surface">No outgoing transactions match your filter.</p>
-            <p className="mt-1 font-body text-body-sm text-text-grey">Try adjusting your search terms or DR status.</p>
-          </div>
-        ) : (
-          <div>
-            {/* Desktop Table View */}
-            <div className="hidden overflow-x-auto md:block">
-              <table className="w-full border-collapse text-left">
-                <thead>
-                <tr className="border-b border-outline-variant/30 bg-surface-light-grey select-none">
-                  <th className="px-4 py-3 font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("createdAt")}
-                      className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>Date/Time</span>
-                      {renderSortIcon("createdAt")}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("drKey")}
-                      className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>Delivery Receipt #</span>
-                      {renderSortIcon("drKey")}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("deliveryReceiptStatus")}
-                      className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>DR Status</span>
-                      {renderSortIcon("deliveryReceiptStatus")}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    DR / POD Upload
-                  </th>
-                  <th className="px-4 py-3 font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("transactionNumber")}
-                      className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>Transaction #</span>
-                      {renderSortIcon("transactionNumber")}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("itemCode")}
-                      className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>Item Code</span>
-                      {renderSortIcon("itemCode")}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("itemName")}
-                      className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>Item Name</span>
-                      {renderSortIcon("itemName")}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Lot Number
-                  </th>
-                  <th className="px-4 py-3 font-label text-label uppercase tracking-[0.05em] text-text-grey text-right">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("qty")}
-                      className="flex items-center justify-end gap-1 font-bold uppercase hover:text-brand-navy w-full"
-                    >
-                      <span>Qty</span>
-                      {renderSortIcon("qty")}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    From Location
-                  </th>
-                  <th className="px-4 py-3 font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Pick List #
-                  </th>
-                  <th className="px-4 py-3 font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("customerPartyName")}
-                      className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>Customer Organization</span>
-                      {renderSortIcon("customerPartyName")}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Performed By
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/30">
-                {filteredAndSortedRows.map((row) => {
-                  const drKey = row.pickListNumber
-                    ? `DR-${row.pickListNumber.replace(/^PL-/, "")}`
-                    : `TX-${row.transactionNumber}`;
-                  const groupCount = drGroups[drKey]?.length ?? 1;
-
-                  return (
-                    <tr key={row.transactionId} className="hover:bg-surface-light-grey/50">
-                      <td className="whitespace-nowrap px-4 py-3 font-body text-body-md text-text-grey">
-                        {row.createdAt.toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3 align-top">
-                        <div className="flex min-w-0 items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedDrNumber(drKey)}
-                            className="group flex items-center gap-1.5 whitespace-nowrap rounded font-mono text-mono-md font-bold text-brand-navy hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
-                            title="Click to view all items associated with this Delivery Receipt"
-                          >
-                            <FileText className="h-4 w-4 text-brand-navy/70 group-hover:text-brand-navy" />
-                            <span>{drKey}</span>
-                          </button>
-                          {groupCount > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => setSelectedDrNumber(drKey)}
-                              className="inline-flex items-center whitespace-nowrap rounded-full bg-brand-navy/10 px-2 py-0.5 font-label text-label-xs font-semibold text-brand-navy hover:bg-brand-navy/20"
-                              title={`${groupCount} items dispatched under this DR`}
-                            >
-                              {groupCount} items
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex rounded-full px-2 py-1 font-label text-mono-sm font-bold ${
-                            row.deliveryReceiptStatus === "uploaded"
-                              ? "bg-status-available/15 text-status-available"
-                              : "bg-status-pending/15 text-status-pending"
-                          }`}
-                        >
-                          {row.deliveryReceiptStatus === "uploaded" ? "Uploaded" : "Missing"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        {row.deliveryReceiptPath ? (
-                          <div className="flex items-center gap-2 whitespace-nowrap">
-                            {row.deliveryReceiptUrl ? (
-                              <button
-                                type="button"
-                                onClick={() => setSelectedReceipt(row)}
-                                className="inline-flex h-9 items-center whitespace-nowrap rounded-lg border border-brand-navy/30 bg-surface-white px-3 font-label text-body-xs font-bold text-brand-navy hover:bg-brand-navy/5"
-                              >
-                                View
-                              </button>
-                            ) : (
-                              <span className="font-body text-body-xs text-text-grey">View unavailable</span>
-                            )}
-                            <form action={removeDeliveryReceiptAction}>
-                              <input type="hidden" name="pickListId" value={row.pickListId ?? ""} />
-                              <button
-                                type="submit"
-                                className="inline-flex h-9 items-center whitespace-nowrap rounded-lg border border-status-held/40 bg-surface-white px-3 font-label text-body-xs font-bold text-status-held hover:bg-status-held/5"
-                              >
-                                Remove
-                              </button>
-                            </form>
-                          </div>
-                        ) : (
-                          <form
-                            action={uploadDeliveryReceiptAction}
-                            encType="multipart/form-data"
-                            className="flex min-w-0 max-w-[360px] flex-wrap items-center gap-2"
-                          >
-                            <input type="hidden" name="pickListId" value={row.pickListId ?? ""} />
-                            <label className="inline-flex h-9 cursor-pointer shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-brand-navy/30 bg-surface-white px-3 font-label text-body-xs font-bold text-brand-navy hover:bg-brand-navy/5">
-                              <Upload className="h-3.5 w-3.5" />
-                              Upload
-                              <input
-                                required
-                                type="file"
-                                name="deliveryReceipt"
-                                accept="application/pdf,image/png,image/jpeg"
-                                className="sr-only"
-                                onChange={(event) => {
-                                  if (event.currentTarget.files?.length) {
-                                    event.currentTarget.form?.requestSubmit();
-                                  }
-                                }}
-                              />
-                            </label>
-                          </form>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 font-mono text-mono-md text-text-grey">
-                        {row.transactionNumber}
-                      </td>
-                      <td className="px-4 py-3 font-mono text-mono-md font-bold text-on-surface">
-                        {row.itemCode}
-                      </td>
-                      <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                        {row.itemName}
-                      </td>
-                      <td className="px-4 py-3 font-mono text-mono-md text-text-grey">
-                        {row.lotNumber}
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono text-mono-md font-bold text-on-surface">
-                        {row.qty.toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3 font-body text-body-md text-text-grey">
-                        {row.fromLocationLabel}
-                      </td>
-                      <td className="px-4 py-3 font-mono text-mono-md text-text-grey">
-                        {row.pickListNumber ?? "—"}
-                      </td>
-                      <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                        {row.customerPartyName ?? "—"}
-                      </td>
-                      <td className="px-4 py-3 font-body text-body-md text-text-grey">
-                        <span title={row.performedByUserId}>{row.performedByDisplayName ?? row.performedByUserId}</span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile Card View (< 768px) */}
-            <div className="divide-y divide-outline-variant/30 md:hidden">
-              {filteredAndSortedRows.map((row) => {
-                const drKey = row.pickListNumber
-                  ? `DR-${row.pickListNumber.replace(/^PL-/, "")}`
-                  : `TX-${row.transactionNumber}`;
-                const groupCount = drGroups[drKey]?.length ?? 1;
-
-                return (
-                  <div key={row.transactionId} className="p-4 space-y-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedDrNumber(drKey)}
-                            className="font-mono text-title-sm font-bold text-brand-navy hover:underline"
-                          >
-                            {drKey}
-                          </button>
-                          {groupCount > 1 && (
-                            <span className="rounded-full bg-brand-navy/10 px-2 py-0.5 font-label text-label-xs font-semibold text-brand-navy">
-                              {groupCount} items
-                            </span>
-                          )}
-                        </div>
-                        <p className="mt-0.5 font-body text-body-sm font-semibold text-on-surface">
-                          {row.customerPartyName ?? "Customer not recorded"}
-                        </p>
-                      </div>
-                      <span
-                        className={`inline-flex rounded-full px-2 py-0.5 font-label text-label-xs font-bold ${
-                          row.deliveryReceiptStatus === "uploaded"
-                            ? "bg-status-available/15 text-status-available"
-                            : "bg-status-pending/15 text-status-pending"
-                        }`}
-                      >
-                        {row.deliveryReceiptStatus === "uploaded" ? "DR Uploaded" : "DR Missing"}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 rounded-lg bg-surface-light-grey/60 p-2.5 font-mono text-body-xs">
-                      <div>
-                        <span className="text-text-grey block text-mono-xs uppercase">Item Code</span>
-                        <span className="font-bold text-on-surface">{row.itemCode}</span>
-                      </div>
-                      <div>
-                        <span className="text-text-grey block text-mono-xs uppercase">Dispatched Qty</span>
-                        <span className="font-bold text-brand-navy">{row.qty.toLocaleString()} PCS</span>
-                      </div>
-                      <div>
-                        <span className="text-text-grey block text-mono-xs uppercase">Lot Number</span>
-                        <span className="text-on-surface">{row.lotNumber}</span>
-                      </div>
-                      <div>
-                        <span className="text-text-grey block text-mono-xs uppercase">From Location</span>
-                        <span className="text-on-surface">{row.fromLocationLabel}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-2 pt-1">
-                      <span className="text-body-xs text-text-grey">
-                        {row.createdAt.toLocaleDateString()}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        {row.deliveryReceiptPath ? (
-                          <>
-                            {row.deliveryReceiptUrl ? (
-                              <button
-                                type="button"
-                                onClick={() => setSelectedReceipt(row)}
-                                className="inline-flex h-9 items-center rounded-lg border border-brand-navy/30 bg-surface-white px-3 font-label text-label-xs font-bold text-brand-navy hover:bg-brand-navy/5"
-                              >
-                                View
-                              </button>
-                            ) : null}
-                            <form action={removeDeliveryReceiptAction}>
-                              <input type="hidden" name="pickListId" value={row.pickListId ?? ""} />
-                              <button
-                                type="submit"
-                                className="inline-flex h-9 items-center rounded-lg border border-status-held/40 bg-surface-white px-3 font-label text-label-xs font-bold text-status-held hover:bg-status-held/5"
-                              >
-                                Remove
-                              </button>
-                            </form>
-                          </>
-                        ) : null}
-                        <button
-                          type="button"
-                          onClick={() => setSelectedDrNumber(drKey)}
-                          className="inline-flex h-9 items-center rounded-lg border border-outline-variant/60 bg-surface-white px-3 font-label text-label-xs font-bold text-brand-navy hover:bg-surface-light-grey"
-                        >
-                          View DR Details &rarr;
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+      {/* ── KPI Summary Cards ──────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-brand-navy border border-blue-200">
+              <Package size={20} />
+            </div>
+            <div>
+              <p className="font-label text-[11px] font-bold uppercase tracking-wider text-text-grey">
+                Total Dispatched Units
+              </p>
+              <p className="font-mono text-title-md font-bold text-brand-navy">
+                {totalDispatchedQty.toLocaleString()} <span className="text-xs font-normal text-text-grey">PCS</span>
+              </p>
             </div>
           </div>
-        )}
+        </div>
+
+        <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-700 border border-slate-200">
+              <Layers size={20} />
+            </div>
+            <div>
+              <p className="font-label text-[11px] font-bold uppercase tracking-wider text-text-grey">
+                Delivery Receipts
+              </p>
+              <p className="font-mono text-title-md font-bold text-slate-800">
+                {Object.keys(drGroups).length} <span className="text-xs font-normal text-text-grey">Total DRs</span>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className={`flex h-10 w-10 items-center justify-center rounded-xl border ${
+              missingDrCount > 0
+                ? "bg-amber-50 text-amber-700 border-amber-200"
+                : "bg-emerald-50 text-emerald-700 border-emerald-200"
+            }`}>
+              {missingDrCount > 0 ? <AlertCircle size={20} /> : <CheckCircle2 size={20} />}
+            </div>
+            <div>
+              <p className="font-label text-[11px] font-bold uppercase tracking-wider text-text-grey">
+                Missing Signed PODs
+              </p>
+              <p className={`font-mono text-title-md font-bold ${missingDrCount > 0 ? "text-amber-700" : "text-emerald-700"}`}>
+                {missingDrCount} <span className="text-xs font-normal text-text-grey">{missingDrCount > 0 ? "Pending Upload" : "All Uploaded"}</span>
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
+      {/* ── TanStack DataTable ─────────────────────────────────────────── */}
+      <DataTable
+        columns={columns}
+        data={rows}
+        title="Outgoing Dispatch Ledger"
+        subtitle="Immutable transaction audit log of released shipments with multi-field filtering, date ranges, and POD proof-of-delivery tracking."
+        icon={<FileSpreadsheet size={18} />}
+        initialSorting={[{ id: "createdAt", desc: true }]}
+        emptyMessage="No outgoing transactions recorded."
+      />
+
+      {/* ── PDF / Image Receipt Viewer Modal ───────────────────────────── */}
       {selectedReceipt?.deliveryReceiptUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-surface-white shadow-elevation-5">
             <div className="flex items-start justify-between gap-4 border-b border-outline-variant/30 bg-surface-light-grey px-5 py-4">
               <div>
                 <span className="font-label text-label-xs font-bold uppercase tracking-wider text-text-grey">
-                  Delivery Receipt
+                  Signed Delivery Receipt Document
                 </span>
                 <h2 className="font-mono text-headline-sm font-bold text-brand-navy">
-                  {selectedReceipt.pickListNumber ? `DR-${selectedReceipt.pickListNumber.replace(/^PL-/, "")}` : `TX-${selectedReceipt.transactionNumber}`}
+                  {selectedReceipt.pickListNumber ? `DR-${selectedReceipt.pickListNumber.replace(/^PL-/, "")}` : `Pick List #${selectedReceipt.pickListId}`}
                 </h2>
                 <p className="mt-1 font-body text-body-sm text-text-grey">
-                  Uploaded: {selectedReceipt.deliveryReceiptUploadedAt?.toLocaleString() ?? "Date unavailable"}
+                  Uploaded: {selectedReceipt.deliveryReceiptUploadedAt ? new Date(selectedReceipt.deliveryReceiptUploadedAt).toLocaleString() : "Date unavailable"}
                 </p>
               </div>
               <button
@@ -580,7 +461,7 @@ export function OutgoingLedgerClientTable({
             <div className="flex items-center justify-between border-b border-outline-variant/30 bg-surface-light-grey px-6 py-4">
               <div>
                 <span className="font-label text-label-xs font-bold uppercase tracking-wider text-text-grey">
-                  Delivery Receipt Details
+                  Delivery Receipt Inspection
                 </span>
                 <h2 className="font-mono text-headline-md font-bold text-brand-navy">
                   {selectedDrNumber}
@@ -599,20 +480,20 @@ export function OutgoingLedgerClientTable({
             {/* DR Metadata Bar */}
             <div className="grid grid-cols-2 gap-4 border-b border-outline-variant/20 bg-[#F8FAFF] px-6 py-3 font-body text-body-sm sm:grid-cols-4">
               <div>
-                <span className="text-text-grey block">Customer:</span>
+                <span className="text-text-grey block text-xs">Customer:</span>
                 <strong className="text-on-surface">{activeDrMeta.customerPartyName ?? "—"}</strong>
               </div>
               <div>
-                <span className="text-text-grey block">Pick List:</span>
+                <span className="text-text-grey block text-xs">Pick List:</span>
                 <strong className="font-mono text-on-surface">{activeDrMeta.pickListNumber ?? "—"}</strong>
               </div>
               <div>
-                <span className="text-text-grey block">Dispatched Date:</span>
-                <strong className="text-on-surface">{activeDrMeta.createdAt.toLocaleDateString()}</strong>
+                <span className="text-text-grey block text-xs">Dispatched Date:</span>
+                <strong className="text-on-surface">{new Date(activeDrMeta.createdAt).toLocaleDateString()}</strong>
               </div>
               <div>
-                <span className="text-text-grey block">Total Items:</span>
-                <strong className="text-on-surface">{selectedRows.length} Line Items</strong>
+                <span className="text-text-grey block text-xs">Line Items:</span>
+                <strong className="text-on-surface">{selectedRows.length} items</strong>
               </div>
             </div>
 
@@ -621,14 +502,14 @@ export function OutgoingLedgerClientTable({
               <table className="w-full border-collapse text-left">
                 <thead>
                   <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                    <th className="px-4 py-2 font-label text-label uppercase text-text-grey">Item Code</th>
-                    <th className="px-4 py-2 font-label text-label uppercase text-text-grey">Item Name</th>
-                    <th className="px-4 py-2 font-label text-label uppercase text-text-grey">Lot Number</th>
-                    <th className="px-4 py-2 font-label text-label uppercase text-text-grey text-right">Dispatched Qty</th>
-                    <th className="px-4 py-2 font-label text-label uppercase text-text-grey">From Location</th>
+                    <th className="px-4 py-2.5 font-label text-label uppercase text-text-grey">Item Code</th>
+                    <th className="px-4 py-2.5 font-label text-label uppercase text-text-grey">Item Name</th>
+                    <th className="px-4 py-2.5 font-label text-label uppercase text-text-grey">Lot Number</th>
+                    <th className="px-4 py-2.5 font-label text-label uppercase text-text-grey text-right">Qty</th>
+                    <th className="px-4 py-2.5 font-label text-label uppercase text-text-grey">Location</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-outline-variant/30">
+                <tbody className="divide-y divide-outline-variant/30 font-body text-body-sm">
                   {selectedRows.map((item) => (
                     <tr key={item.transactionId} className="hover:bg-surface-light-grey/30">
                       <td className="px-4 py-3 font-mono font-bold text-on-surface">{item.itemCode}</td>
@@ -643,21 +524,22 @@ export function OutgoingLedgerClientTable({
             </div>
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-end border-t border-outline-variant/30 bg-surface-light-grey px-6 py-4">
+            <div className="flex items-center justify-between border-t border-outline-variant/30 bg-surface-light-grey px-6 py-4">
               {activeDrMeta.pickListId && (
                 <a
                   href={`/api/pick-lists/${activeDrMeta.pickListId}/receipt`}
                   target="_blank"
                   rel="noreferrer"
-                  className="mr-auto inline-flex items-center rounded-xl border border-brand-navy/30 bg-surface-white px-4 py-2.5 font-label text-label font-bold text-brand-navy hover:bg-brand-navy/5"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-brand-navy/30 bg-surface-white px-4 py-2 font-label text-xs font-bold text-brand-navy hover:bg-brand-navy/5 transition-colors shadow-sm"
                 >
-                  Export PDF
+                  <ExternalLink size={13} />
+                  Print Acknowledgement Receipt
                 </a>
               )}
               <button
                 type="button"
                 onClick={() => setSelectedDrNumber(null)}
-                className="rounded-xl bg-brand-navy px-5 py-2.5 font-label text-label font-bold text-surface-white hover:bg-brand-navy/90 focus:outline-none"
+                className="rounded-xl bg-brand-navy px-5 py-2 font-label text-xs font-bold text-surface-white hover:bg-brand-navy/90 transition-colors shadow-sm focus:outline-none"
               >
                 Close
               </button>

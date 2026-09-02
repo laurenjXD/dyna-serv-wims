@@ -154,7 +154,22 @@ export function MultiItemPickListDraft({
   const updateLine = (id: string, patch: Partial<DraftLine>) => setLines((current) => current.map((line) => line.id === id ? { ...line, ...patch } : line));
   const removeLine = (id: string) => setLines((current) => current.filter((line) => line.id !== id));
   const resetDraft = () => setLines([]);
-  const handleOrganization = (value: string) => { setOrganizationId(value); setFlowType(""); resetDraft(); };
+  const handleOrganization = (value: string) => {
+    setOrganizationId(value);
+    resetDraft();
+    if (!value) {
+      setFlowType("");
+      return;
+    }
+    const availableFlows = (["vmi", "trading", "supplies"] as const).filter((flow) =>
+      stock.some((row) => row.organizationId === value && row.flowType === flow)
+    );
+    if (availableFlows.length > 0) {
+      setFlowType(availableFlows[0]);
+    } else {
+      setFlowType("");
+    }
+  };
   const handleFlow = (value: "" | "vmi" | "trading" | "supplies") => { setFlowType(value); resetDraft(); };
 
   async function handleDraImport(e: React.ChangeEvent<HTMLInputElement>) {
@@ -364,31 +379,59 @@ export function MultiItemPickListDraft({
         </div>
 
         <div className="mt-5 grid gap-4 md:grid-cols-2">
-          <label className="grid gap-2 font-label text-label font-bold text-on-surface">Organization
-            <select value={organizationId} onChange={(event) => handleOrganization(event.target.value)} className="h-12 rounded border border-outline-variant bg-surface-white px-3 font-body text-body-md font-normal text-on-surface outline-none focus:ring-2 focus:ring-primary">
+          <label className="grid gap-2 font-label text-label font-bold text-on-surface">
+            Organization
+            <select
+              value={organizationId}
+              onChange={(event) => handleOrganization(event.target.value)}
+              className="h-12 rounded-lg border border-slate-200 bg-surface-white px-3 font-body text-body-md font-normal text-on-surface outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/20"
+            >
               <option value="">Select organization…</option>
-              {organizations.map((organization) => <option key={organization.id} value={organization.id}>{organization.name}</option>)}
+              {organizations.map((organization) => (
+                <option key={organization.id} value={organization.id}>
+                  {organization.name}
+                </option>
+              ))}
             </select>
           </label>
-          <label className="grid gap-2 font-label text-label font-bold text-on-surface">Inventory Model
-            <select value={flowType} onChange={(event) => handleFlow(event.target.value as typeof flowType)} disabled={!organizationId} className="h-12 rounded border border-outline-variant bg-surface-white px-3 font-body text-body-md font-normal text-on-surface outline-none focus:ring-2 focus:ring-primary disabled:bg-surface-light-grey disabled:text-text-grey">
+
+          <div className="grid gap-2 font-label text-label font-bold text-on-surface">
+            <div className="flex items-center justify-between">
+              <span>Inventory Model</span>
+              {flowType && organizationId && (
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                  Auto-assigned: {flowType.toUpperCase()}
+                </span>
+              )}
+            </div>
+            <select
+              value={flowType}
+              onChange={(event) => handleFlow(event.target.value as typeof flowType)}
+              disabled={!organizationId}
+              className="h-12 rounded-lg border border-slate-200 bg-surface-white px-3 font-body text-body-md font-normal text-on-surface outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/20 disabled:bg-surface-light-grey disabled:text-text-grey"
+            >
               <option value="">Select inventory model…</option>
-              {(["vmi", "trading", "supplies"] as const).filter((flow) => stock.some((row) => row.organizationId === organizationId && row.flowType === flow)).map((flow) => <option key={flow} value={flow}>{flow.toUpperCase()}</option>)}
+              {(["vmi", "trading", "supplies"] as const)
+                .filter((flow) => stock.some((row) => row.organizationId === organizationId && row.flowType === flow))
+                .map((flow) => (
+                  <option key={flow} value={flow}>
+                    {flow === "vmi" ? "VMI (Consignment)" : flow === "trading" ? "Trading (Owned)" : "Supplies"}
+                  </option>
+                ))}
             </select>
-          </label>
+          </div>
         </div>
 
-        {/* 10-Column Pick List Table per User Specification */}
+        {/* Pick List Table */}
         <div className="mt-6 overflow-x-auto rounded-lg border border-outline-variant/30">
-          <div className="min-w-[1380px]">
-            <div className="grid grid-cols-[110px_90px_110px_minmax(160px,1fr)_140px_minmax(180px,1.2fr)_100px_140px_110px_minmax(180px,1.1fr)_48px] gap-3 bg-surface-light-grey px-4 py-3 font-label text-label-xs font-bold uppercase tracking-[0.04em] text-text-grey">
+          <div className="min-w-[1280px]">
+            <div className="grid grid-cols-[110px_90px_110px_minmax(160px,1fr)_140px_minmax(180px,1.2fr)_140px_110px_minmax(180px,1.1fr)_48px] gap-3 bg-surface-light-grey px-4 py-3 font-label text-label-xs font-bold uppercase tracking-[0.04em] text-text-grey">
               <span>Qty</span>
               <span>SPQ</span>
               <span>No. of Pckgs</span>
               <span>ITEM CODE</span>
               <span>CUST PN</span>
               <span>ITEM DESCRIPTION</span>
-              <span>METERAGE</span>
               <span>LOT NUMBER</span>
               <span>MFG DATE</span>
               <span>LOCATION</span>
@@ -401,10 +444,8 @@ export function MultiItemPickListDraft({
               </div>
             ) : (
               lineDetails.map(({ line, item, source, effectiveSpq, numBoxes, computedTotalUnits }) => {
-                const totalMeterage = item?.spqMeter && numBoxes > 0 ? (numBoxes * Number(item.spqMeter)).toFixed(2) : "—";
-
                 return (
-                  <div key={line.id} className="grid grid-cols-[110px_90px_110px_minmax(160px,1fr)_140px_minmax(180px,1.2fr)_100px_140px_110px_minmax(180px,1.1fr)_48px] items-center gap-3 border-t border-outline-variant/30 px-4 py-3">
+                  <div key={line.id} className="grid grid-cols-[110px_90px_110px_minmax(160px,1fr)_140px_minmax(180px,1.2fr)_140px_110px_minmax(180px,1.1fr)_48px] items-center gap-3 border-t border-outline-variant/30 px-4 py-3">
                     {/* Qty (Total Units input) */}
                     <label className="flex h-11 items-center rounded border border-outline-variant bg-surface-white px-2 focus-within:ring-2 focus-within:ring-primary">
                       <input
@@ -471,9 +512,6 @@ export function MultiItemPickListDraft({
                     <p className="font-body text-body-sm text-on-surface truncate" title={item?.itemName ?? undefined}>
                       {item?.itemName ?? "—"}
                     </p>
-
-                    {/* METERAGE */}
-                    <p className="font-mono text-mono-sm text-on-surface">{totalMeterage}</p>
 
                     {/* LOT NUMBER */}
                     <p className="font-mono text-mono-sm text-on-surface truncate" title={source?.lotNumber ?? undefined}>

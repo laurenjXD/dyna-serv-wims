@@ -159,7 +159,7 @@ export function TradingCapitalSection({
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left text-sm">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 font-label text-xs uppercase tracking-wider text-text-grey">
+              <tr className="border-b border-slate-200 bg-[#F4F6FB] font-heading text-xs font-bold uppercase tracking-wider text-slate-700">
                 <th className="px-4 py-3">Item Code & Name</th>
                 <th className="px-4 py-3 text-right">0–30 Days</th>
                 <th className="px-4 py-3 text-right">31–60 Days</th>
@@ -168,7 +168,7 @@ export function TradingCapitalSection({
                 <th className="px-4 py-3 text-right">Tied Value (₱)</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 font-body">
+            <tbody className="divide-y divide-slate-100 font-body text-sm">
               {filteredAging.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-6 text-center text-text-grey italic">
@@ -177,24 +177,28 @@ export function TradingCapitalSection({
                 </tr>
               ) : (
                 filteredAging.map((row) => (
-                  <tr key={row.itemId} className="hover:bg-slate-50">
+                  <tr key={row.itemId} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-3">
-                      <p className="font-mono text-xs font-bold text-on-surface">{row.itemCode}</p>
-                      <p className="text-xs text-text-grey">{row.itemName}</p>
+                      <p className="font-mono text-sm font-bold text-on-surface">{row.itemCode}</p>
+                      <p className="text-xs text-text-grey font-medium">{row.itemName}</p>
                     </td>
-                    <td className="px-4 py-3 text-right font-mono text-xs text-text-grey">
-                      {row.qty30Days.toLocaleString()} {row.uom}
+                    <td className="px-4 py-3 text-right font-mono text-sm text-text-grey">
+                      {row.qty30Days.toLocaleString()}{" "}
+                      <span className="text-xs font-normal">{row.uom}</span>
                     </td>
-                    <td className="px-4 py-3 text-right font-mono text-xs text-amber-700">
-                      {row.qty60Days.toLocaleString()} {row.uom}
+                    <td className="px-4 py-3 text-right font-mono text-sm font-semibold text-amber-700">
+                      {row.qty60Days.toLocaleString()}{" "}
+                      <span className="text-xs font-normal">{row.uom}</span>
                     </td>
-                    <td className="px-4 py-3 text-right font-mono text-xs font-bold text-status-held">
-                      {row.qty90PlusDays.toLocaleString()} {row.uom}
+                    <td className="px-4 py-3 text-right font-mono text-sm font-bold text-status-held">
+                      {row.qty90PlusDays.toLocaleString()}{" "}
+                      <span className="text-xs font-normal">{row.uom}</span>
                     </td>
-                    <td className="px-4 py-3 text-right font-mono text-xs font-semibold text-on-surface">
-                      {row.totalQty.toLocaleString()} {row.uom}
+                    <td className="px-4 py-3 text-right font-mono text-sm font-semibold text-on-surface">
+                      {row.totalQty.toLocaleString()}{" "}
+                      <span className="text-xs font-normal">{row.uom}</span>
                     </td>
-                    <td className="px-4 py-3 text-right font-mono text-xs font-bold text-brand-navy">
+                    <td className="px-4 py-3 text-right font-mono text-sm font-bold text-brand-navy">
                       ₱{row.totalValue.toLocaleString()}
                     </td>
                   </tr>

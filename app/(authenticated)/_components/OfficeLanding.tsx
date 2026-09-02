@@ -361,14 +361,14 @@ export function OfficeLanding({
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-left text-sm">
                 <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50/50 font-label text-xs uppercase tracking-wider text-text-grey">
+                  <tr className="border-b border-slate-200 bg-[#F4F6FB] font-heading text-xs font-bold uppercase tracking-wider text-slate-700">
                     <th className="px-4 py-3">Item Code &amp; Flow</th>
                     <th className="px-4 py-3 text-right">Available Qty</th>
                     <th className="px-4 py-3">Locations</th>
                     <th className="px-4 py-3 text-right">Quick Jumps</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 font-body">
+                <tbody className="divide-y divide-slate-100 font-body text-sm">
                   {inventoryPreview.map((item) => {
                     const locations = [...new Set(item.lots.map((l) => l.locationLabel))];
                     const flow = item.flowType ?? "trading";
@@ -376,12 +376,12 @@ export function OfficeLanding({
                       <tr key={item.itemId} className="hover:bg-slate-50/70 transition-colors">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs font-bold text-on-surface">
+                            <span className="font-mono text-sm font-bold text-on-surface">
                               {item.itemCode}
                             </span>
                             {/* Frosted Glass Badge */}
                             <span
-                              className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider backdrop-blur-md ${
+                              className={`rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider backdrop-blur-md ${
                                 flow === "vmi"
                                   ? "bg-blue-100/70 text-blue-800 border border-blue-200"
                                   : flow === "trading"
@@ -392,24 +392,24 @@ export function OfficeLanding({
                               {flow}
                             </span>
                           </div>
-                          <p className="mt-0.5 text-xs text-text-grey">{item.itemName}</p>
+                          <p className="mt-0.5 text-xs font-medium text-text-grey">{item.itemName}</p>
                         </td>
-                        <td className="px-4 py-3 text-right font-mono text-xs font-bold text-on-surface">
+                        <td className="px-4 py-3 text-right font-mono text-sm font-bold text-on-surface">
                           {item.totalQty.toLocaleString()}{" "}
-                          <span className="font-normal text-text-grey">{item.uom}</span>
+                          <span className="font-normal text-xs text-text-grey">{item.uom}</span>
                         </td>
-                        <td className="px-4 py-3 text-xs">
-                          <p className="font-mono text-slate-700">
+                        <td className="px-4 py-3 text-sm">
+                          <p className="font-mono text-xs font-semibold text-slate-700">
                             {locations.slice(0, 2).join(", ")}
                             {locations.length > 2 ? ` +${locations.length - 2}` : ""}
                           </p>
-                          <p className="text-[11px] text-text-grey">{item.lots.length} lot(s)</p>
+                          <p className="text-xs text-text-grey font-medium">{item.lots.length} lot(s)</p>
                         </td>
                         <td className="px-4 py-3 text-right">
                           <div className="inline-flex gap-1.5">
                             <Link
                               href={`/inventory?item=${item.itemCode}`}
-                              className="rounded border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-brand-navy hover:bg-slate-50 hover:border-brand-navy"
+                              className="rounded border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-brand-navy hover:bg-slate-50 hover:border-brand-navy"
                             >
                               Balance
                             </Link>

@@ -45,7 +45,21 @@ export function ColumnFilter<TData extends RowData>({
   const filterLabel = meta?.filterLabel || columnHeader;
 
   const [isOpen, setIsOpen] = useState(false);
+  const [placement, setPlacement] = useState<"left" | "right">("left");
   const popoverRef = useRef<HTMLDivElement>(null);
+
+  // Dynamically calculate whether popover should open left or right based on viewport & column position
+  useEffect(() => {
+    if (isOpen && popoverRef.current) {
+      const rect = popoverRef.current.getBoundingClientRect();
+      const spaceRight = window.innerWidth - rect.right;
+      if (spaceRight < 300 || meta?.align === "right") {
+        setPlacement("right");
+      } else {
+        setPlacement("left");
+      }
+    }
+  }, [isOpen, meta?.align]);
 
   // Determine if column currently has an active filter
   const filterValue = column.getFilterValue();
@@ -104,23 +118,25 @@ export function ColumnFilter<TData extends RowData>({
       {isOpen && (
         <div
           onClick={(e) => e.stopPropagation()}
-          className="absolute left-0 top-full mt-2 z-50 min-w-[240px] max-w-[320px] rounded-2xl border border-white/80 bg-surface-white/95 p-4 shadow-elevation-2 backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
+          className={`absolute top-full mt-2 z-[999] w-[280px] max-w-[calc(100vw-32px)] rounded-2xl border border-slate-200/90 bg-surface-white p-4 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100 ${
+            placement === "right" ? "right-0" : "left-0"
+          }`}
           style={{
             boxShadow:
-              "0 20px 25px -5px rgba(0, 32, 96, 0.08), 0 8px 10px -6px rgba(0, 32, 96, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.9)",
+              "0 20px 25px -5px rgba(0, 32, 96, 0.12), 0 8px 10px -6px rgba(0, 32, 96, 0.06), inset 0 1px 1px rgba(255, 255, 255, 0.9)",
           }}
         >
           {/* Popover Header */}
           <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3">
-            <span className="font-heading text-xs font-bold text-brand-navy flex items-center gap-1.5">
-              <Filter size={12} className="text-brand-navy" />
-              {filterLabel}
+            <span className="font-heading text-xs font-bold text-brand-navy flex items-center gap-1.5 truncate max-w-[190px]">
+              <Filter size={12} className="text-brand-navy shrink-0" />
+              <span className="truncate">{filterLabel}</span>
             </span>
             {isActive && (
               <button
                 type="button"
                 onClick={handleClear}
-                className="text-[11px] font-bold text-rose-600 hover:text-rose-800 flex items-center gap-0.5"
+                className="text-[11px] font-bold text-rose-600 hover:text-rose-800 flex items-center gap-0.5 shrink-0"
               >
                 <X size={12} /> Clear
               </button>
@@ -128,33 +144,35 @@ export function ColumnFilter<TData extends RowData>({
           </div>
 
           {/* Context-Specific Filter Controls based on meta.filterVariant */}
-          {filterVariant === "text" && (
-            <TextFilterContent column={column} filterLabel={filterLabel} />
-          )}
+          <div className="max-w-full overflow-hidden">
+            {filterVariant === "text" && (
+              <TextFilterContent column={column} filterLabel={filterLabel} />
+            )}
 
-          {filterVariant === "numeric-range" && (
-            <NumericRangeFilterContent column={column} />
-          )}
+            {filterVariant === "numeric-range" && (
+              <NumericRangeFilterContent column={column} />
+            )}
 
-          {filterVariant === "date-range" && (
-            <DateRangeFilterContent column={column} />
-          )}
+            {filterVariant === "date-range" && (
+              <DateRangeFilterContent column={column} />
+            )}
 
-          {filterVariant === "multi-select" && (
-            <MultiSelectFilterContent column={column} table={table} />
-          )}
+            {filterVariant === "multi-select" && (
+              <MultiSelectFilterContent column={column} table={table} />
+            )}
 
-          {filterVariant === "dependent-multi-select" && (
-            <DependentMultiSelectFilterContent column={column} table={table} />
-          )}
+            {filterVariant === "dependent-multi-select" && (
+              <DependentMultiSelectFilterContent column={column} table={table} />
+            )}
 
-          {filterVariant === "status-pill" && (
-            <StatusPillFilterContent column={column} />
-          )}
+            {filterVariant === "status-pill" && (
+              <StatusPillFilterContent column={column} />
+            )}
 
-          {filterVariant === "boolean" && (
-            <BooleanFilterContent column={column} filterLabel={filterLabel} />
-          )}
+            {filterVariant === "boolean" && (
+              <BooleanFilterContent column={column} filterLabel={filterLabel} />
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -180,7 +198,7 @@ function TextFilterContent<TData extends RowData>({
 
   return (
     <div className="space-y-2.5">
-      <div className="flex rounded-lg bg-slate-100 p-0.5 text-[10px] font-bold text-text-grey">
+      <div className="flex rounded-lg bg-slate-100 p-0.5 text-xs font-bold text-text-grey">
         {(["contains", "startsWith", "equals"] as const).map((m) => (
           <button
             key={m}
@@ -231,7 +249,7 @@ function NumericRangeFilterContent<TData extends RowData>({
     <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="text-[10px] font-bold uppercase text-text-grey">Min</label>
+          <label className="text-xs font-bold uppercase text-text-grey">Min</label>
           <input
             type="number"
             value={min}
@@ -241,7 +259,7 @@ function NumericRangeFilterContent<TData extends RowData>({
           />
         </div>
         <div>
-          <label className="text-[10px] font-bold uppercase text-text-grey">Max</label>
+          <label className="text-xs font-bold uppercase text-text-grey">Max</label>
           <input
             type="number"
             value={max}

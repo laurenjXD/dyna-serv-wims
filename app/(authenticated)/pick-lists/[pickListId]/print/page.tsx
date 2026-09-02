@@ -160,15 +160,10 @@ export default async function PickListPrintPage({
                   <th className="px-3 py-3 text-right font-label font-bold uppercase text-on-surface">SPQ</th>
                   <th className="px-3 py-3 text-right font-label font-bold uppercase text-on-surface">Boxes</th>
                   <th className="px-3 py-3 text-right font-label font-bold uppercase text-on-surface">Qty (PCS)</th>
-                  <th className="px-3 py-3 text-right font-label font-bold uppercase text-on-surface">Meterage</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/30">
                 {lines.map((line, index) => {
-                  const totalMeterage = line.spqMeter
-                    ? (line.numberOfBoxes * Number(line.spqMeter)).toFixed(2) + " m"
-                    : "—";
-
                   return (
                     <tr key={line.id} className="hover:bg-surface-light-grey/30">
                       {/* Physical Floor Verification Checkbox Box */}
@@ -188,7 +183,6 @@ export default async function PickListPrintPage({
                       <td className="px-3 py-3 text-right font-mono font-bold text-on-surface">
                         {line.qty.toLocaleString()}
                       </td>
-                      <td className="px-3 py-3 text-right font-mono text-text-grey">{totalMeterage}</td>
                     </tr>
                   );
                 })}
@@ -203,11 +197,6 @@ export default async function PickListPrintPage({
                   </td>
                   <td className="px-3 py-3 text-right font-mono text-mono-md font-bold text-brand-navy">
                     {totalPieces.toLocaleString()}
-                  </td>
-                  <td className="px-3 py-3 text-right font-mono text-text-grey">
-                    {lines.reduce((sum, line) => sum + (line.spqMeter ? line.numberOfBoxes * Number(line.spqMeter) : 0), 0) > 0
-                      ? `${lines.reduce((sum, line) => sum + (line.spqMeter ? line.numberOfBoxes * Number(line.spqMeter) : 0), 0).toFixed(2)} m`
-                      : "—"}
                   </td>
                 </tr>
               </tfoot>

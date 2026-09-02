@@ -2,20 +2,21 @@
 
 import React, { useMemo } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Package } from "lucide-react";
+import { Package, Building2 } from "lucide-react";
 import { DataTable } from "./DataTable";
 
 export type MasterInventoryRow = {
   id: string;
   itemCode: string;
   itemName: string;
+  organizationName?: string;
   inventoryModel: "Trading" | "VMI" | "Consignment" | "Internal" | "Supplies";
   categoryName: string;
   subcategoryName: string;
   status: "In-Stock" | "Low Stock" | "Out of Stock";
   totalStock: number;
   availableStock: number;
-  uom: "Pallet" | "Box" | "Piece" | "CBM" | "Meter" | "Roll";
+  uom: string;
   primaryLocation: string;
 };
 
@@ -27,13 +28,13 @@ export function MasterInventoryTable({
   onPickItem?: (item: MasterInventoryRow) => void;
 }) {
   const columns = useMemo<ColumnDef<MasterInventoryRow, unknown>[]>(() => [
-    // 1. SKU / Item Code (Text Search: Contains / Starts With)
+    // 1. Item Code (Text Search: Contains / Starts With)
     {
       accessorKey: "itemCode",
-      header: "SKU / Code",
+      header: "Item Code",
       meta: {
         filterVariant: "text",
-        filterLabel: "SKU",
+        filterLabel: "Item Code",
       },
       cell: (info) => (
         <span className="font-mono font-bold text-brand-navy">{String(info.getValue())}</span>
@@ -49,6 +50,24 @@ export function MasterInventoryTable({
         filterLabel: "Item Name",
       },
       cell: (info) => <span className="font-medium text-slate-800">{String(info.getValue())}</span>,
+    },
+
+    // 3. Organization (Text Search / Filter)
+    {
+      accessorKey: "organizationName",
+      header: "Organization",
+      meta: {
+        filterVariant: "text",
+        filterLabel: "Organization",
+      },
+      cell: (info) => (
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Building2 size={13} className="text-slate-400 shrink-0" />
+          <span className="font-medium text-sm text-slate-800 truncate">
+            {String(info.getValue() || "—")}
+          </span>
+        </div>
+      ),
     },
 
     // 3. Inventory Model (Categorical Multi-select: Trading, VMI, Consignment, Internal)
@@ -70,7 +89,7 @@ export function MasterInventoryTable({
         const val = String(info.getValue());
         return (
           <span
-            className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider backdrop-blur-md ${
+            className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider backdrop-blur-md ${
               val === "VMI" || val === "Consignment"
                 ? "bg-blue-50 text-blue-800 border border-blue-200"
                 : val === "Trading"
@@ -119,7 +138,7 @@ export function MasterInventoryTable({
         const st = String(info.getValue());
         return (
           <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold ${
               st === "In-Stock"
                 ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                 : st === "Low Stock"
@@ -149,13 +168,28 @@ export function MasterInventoryTable({
       },
       aggregationFn: "sum",
       cell: (info) => (
-        <span className="font-mono font-bold text-slate-900">
+        <span className="font-mono font-bold text-slate-900 text-sm">
           {Number(info.getValue())?.toLocaleString()}
         </span>
       ),
     },
 
-    // 8. Available Stock (Numeric range inputs + Aggregated sum)
+    // 8. Unit of Measure (UOM from Item Enrollment — beside Total Stock)
+    {
+      accessorKey: "uom",
+      header: "UOM",
+      meta: {
+        filterVariant: "multi-select",
+        filterLabel: "Unit of Measure",
+      },
+      cell: (info) => (
+        <span className="font-mono text-xs font-semibold text-slate-700 uppercase bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+          {String(info.getValue() || "—")}
+        </span>
+      ),
+    },
+
+    // 9. Available Stock (Numeric range inputs + Aggregated sum)
     {
       accessorKey: "availableStock",
       header: "Available",
@@ -166,29 +200,10 @@ export function MasterInventoryTable({
       },
       aggregationFn: "sum",
       cell: (info) => (
-        <span className="font-mono font-bold text-emerald-700">
+        <span className="font-mono font-bold text-emerald-700 text-sm">
           {Number(info.getValue())?.toLocaleString()}
         </span>
       ),
-    },
-
-    // 9. Unit of Measure (UOM: Categorical Multi-select)
-    {
-      accessorKey: "uom",
-      header: "UOM",
-      meta: {
-        filterVariant: "multi-select",
-        filterLabel: "Unit of Measure",
-        filterOptions: [
-          { label: "Piece (PCS)", value: "Piece" },
-          { label: "Box", value: "Box" },
-          { label: "Pallet", value: "Pallet" },
-          { label: "CBM", value: "CBM" },
-          { label: "Meter", value: "Meter" },
-          { label: "Roll", value: "Roll" },
-        ],
-      },
-      cell: (info) => <span className="font-mono text-[11px] text-text-grey uppercase">{String(info.getValue())}</span>,
     },
 
     // 10. Primary Location (Text Search)
@@ -200,7 +215,7 @@ export function MasterInventoryTable({
         filterLabel: "Primary Location",
       },
       cell: (info) => (
-        <span className="font-mono text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
+        <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
           {String(info.getValue() || "—")}
         </span>
       ),

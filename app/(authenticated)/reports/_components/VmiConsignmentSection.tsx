@@ -158,7 +158,7 @@ export function VmiConsignmentSection({
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left text-sm">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 font-label text-xs uppercase tracking-wider text-text-grey">
+              <tr className="border-b border-slate-200 bg-[#F4F6FB] font-heading text-xs font-bold uppercase tracking-wider text-slate-700">
                 <th className="px-4 py-3">Vendor / Supplier</th>
                 <th className="px-4 py-3 text-right">0–30 Days</th>
                 <th className="px-4 py-3 text-right">31–60 Days</th>
@@ -167,25 +167,25 @@ export function VmiConsignmentSection({
                 <th className="px-4 py-3 text-right">Total Liability (₱)</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 font-body">
+            <tbody className="divide-y divide-slate-100 font-body text-sm">
               {liabilityAging.map((row) => (
-                <tr key={row.vendorPartyId} className="hover:bg-slate-50">
+                <tr key={row.vendorPartyId} className="hover:bg-slate-50 transition-colors">
                   <td className="px-4 py-3 font-semibold text-on-surface">
                     {row.vendorName}
                   </td>
-                  <td className="px-4 py-3 text-right font-mono text-xs text-text-grey">
+                  <td className="px-4 py-3 text-right font-mono text-sm text-text-grey">
                     ₱{row.current0To30Days.toLocaleString()}
                   </td>
-                  <td className="px-4 py-3 text-right font-mono text-xs text-text-grey">
+                  <td className="px-4 py-3 text-right font-mono text-sm text-text-grey">
                     ₱{row.aging31To60Days.toLocaleString()}
                   </td>
-                  <td className="px-4 py-3 text-right font-mono text-xs text-amber-700">
+                  <td className="px-4 py-3 text-right font-mono text-sm text-amber-700 font-semibold">
                     ₱{row.aging61To90Days.toLocaleString()}
                   </td>
-                  <td className="px-4 py-3 text-right font-mono text-xs font-bold text-status-held">
+                  <td className="px-4 py-3 text-right font-mono text-sm font-bold text-status-held">
                     ₱{row.aging90PlusDays.toLocaleString()}
                   </td>
-                  <td className="px-4 py-3 text-right font-mono text-xs font-bold text-brand-navy">
+                  <td className="px-4 py-3 text-right font-mono text-sm font-bold text-brand-navy">
                     ₱{row.totalUnbilledLiability.toLocaleString()}
                   </td>
                 </tr>
@@ -208,7 +208,7 @@ export function VmiConsignmentSection({
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left text-sm">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 font-label text-xs uppercase tracking-wider text-text-grey">
+              <tr className="border-b border-slate-200 bg-[#F4F6FB] font-heading text-xs font-bold uppercase tracking-wider text-slate-700">
                 <th className="px-4 py-3">Vendor</th>
                 <th className="px-4 py-3 text-center">WRR Batches</th>
                 <th className="px-4 py-3 text-right">Received Qty</th>
@@ -217,21 +217,21 @@ export function VmiConsignmentSection({
                 <th className="px-4 py-3 text-center">Discrepancies</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 font-body">
+            <tbody className="divide-y divide-slate-100 font-body text-sm">
               {vendorScorecards.map((vendor) => (
-                <tr key={vendor.partyId} className="hover:bg-slate-50">
+                <tr key={vendor.partyId} className="hover:bg-slate-50 transition-colors">
                   <td className="px-4 py-3 font-semibold text-on-surface">
                     {vendor.vendorName}
                   </td>
-                  <td className="px-4 py-3 text-center font-mono text-xs">
+                  <td className="px-4 py-3 text-center font-mono text-sm font-semibold">
                     {vendor.wrrCount}
                   </td>
-                  <td className="px-4 py-3 text-right font-mono text-xs">
+                  <td className="px-4 py-3 text-right font-mono text-sm font-semibold">
                     {vendor.totalReceivedQty.toLocaleString()}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span
-                      className={`inline-block rounded px-2 py-0.5 font-mono text-xs font-bold ${
+                      className={`inline-block rounded px-2.5 py-0.5 font-mono text-xs font-bold ${
                         vendor.fillRatePct >= 98
                           ? "bg-emerald-100 text-emerald-800"
                           : vendor.fillRatePct >= 95

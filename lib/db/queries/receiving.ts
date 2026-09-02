@@ -38,6 +38,7 @@ export type WrrDocumentRow = {
   vendorPartyId: string;
   // Resolved vendor party name via join — null if vendor party not found (edge case).
   vendorPartyName: string | null;
+  commercialInvoiceNo?: string | null;
   stagedByUserId: string;
   createdAt: Date;
   confirmedAt: Date | null;
@@ -82,6 +83,7 @@ export type WrrItemRow = {
   // wrr_items.uom — not resolved via a join, a native column on this table.
   uom: string;
   unitCbm: number;
+  spq: number;
   putawayLocationId: string | null;
   committedAt: Date | null;
 };
@@ -128,6 +130,7 @@ type RawJoinRow = {
   itemRemarks: string | null;
   itemUom: string | null;
   itemUnitCbm: string | number | null;
+  itemSpq: number | null;
   itemPutawayLocationId: string | null;
   itemCommittedAt: Date | null;
 };
@@ -157,6 +160,7 @@ export async function listWrrDocuments(
       flowType: wrrDocuments.flowType,
       vendorPartyId: wrrDocuments.vendorPartyId,
       vendorPartyName: partiesTable.name,
+      commercialInvoiceNo: wrrDocuments.commercialInvoiceNo,
       stagedByUserId: wrrDocuments.stagedByUserId,
       createdAt: wrrDocuments.createdAt,
       confirmedAt: wrrDocuments.confirmedAt,
@@ -289,6 +293,7 @@ export async function getWrrDocument(
       itemRemarks: wrrItems.remarks,
       itemUom: wrrItems.uom,
       itemUnitCbm: wrrItems.unitCbm,
+      itemSpq: itemsTable.spq,
       itemPutawayLocationId: wrrItems.putawayLocationId,
       itemCommittedAt: wrrItems.committedAt,
     })
@@ -324,6 +329,7 @@ export async function getWrrDocument(
       remarks: row.itemRemarks,
       uom: row.itemUom ?? "",
       unitCbm: Number(row.itemUnitCbm ?? 0),
+      spq: Number(row.itemSpq ?? 1) > 0 ? Number(row.itemSpq) : 1,
       putawayLocationId: row.itemPutawayLocationId,
       committedAt: row.itemCommittedAt,
     }));

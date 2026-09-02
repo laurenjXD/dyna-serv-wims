@@ -3,9 +3,11 @@
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import type { ColumnDef, Row } from "@tanstack/react-table";
-import { ChevronDown, Package, Layers, ArrowRight } from "lucide-react";
+import { ChevronDown, Package, Layers, ArrowRight, PackagePlus, Building2, Eye } from "lucide-react";
 import { DataTable } from "@/components/tables/DataTable";
 import { LotQrViewer } from "./LotQrViewer";
+import { OpeningStockImportModal } from "./OpeningStockImportModal";
+import { ItemDetailModal } from "./ItemDetailModal";
 
 export type AggregatedLot = {
   lotId: string;
@@ -22,6 +24,7 @@ export type GroupedItem = {
   itemId: string;
   itemCode: string;
   itemName: string;
+  organizationName?: string | null;
   categoryName: string | null;
   subcategoryName: string | null;
   inventoryModel: string;
@@ -46,15 +49,17 @@ export type GroupedItem = {
 
 export function StockViewFilterableRegister({ items }: { items: GroupedItem[] }) {
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
+  const [selectedItemForView, setSelectedItemForView] = useState<GroupedItem | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const columns = useMemo<ColumnDef<GroupedItem, unknown>[]>(() => [
-    // 1. SKU / Item Code (Priority Identifier)
+    // 1. Item Code (Priority Identifier)
     {
       accessorKey: "itemCode",
-      header: "SKU / Code",
+      header: "Item Code",
       meta: {
         filterVariant: "text",
-        filterLabel: "SKU / Item Code",
+        filterLabel: "Item Code",
       },
       cell: (info) => {
         const item = info.row.original;
@@ -70,7 +75,7 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
               <span className="truncate">{String(info.getValue())}</span>
             </button>
             {item.isPerishable && (
-              <span className="rounded bg-rose-50 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 border border-rose-200 uppercase tracking-wider">
+              <span className="rounded bg-rose-50 px-1.5 py-0.5 text-xs font-bold text-rose-700 border border-rose-200 uppercase tracking-wider">
                 FEFO
               </span>
             )}
@@ -90,71 +95,76 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
       cell: (info) => {
         const item = info.row.original;
         return (
-          <div className="max-w-[200px]">
+          <div className="max-w-[220px]">
             <p className="font-semibold text-slate-800 truncate" title={item.itemName}>
               {item.itemName}
             </p>
-            {item.customerName && (
-              <p className="text-[11px] text-text-grey truncate" title={item.customerName}>
-                {item.customerName}
-              </p>
-            )}
           </div>
         );
       },
     },
 
-    // 3. Locations
+    // 3. Organization (Search / Filter)
     {
-      accessorKey: "locationLabels",
-      header: "Location",
+      accessorKey: "organizationName",
+      header: "Organization",
       meta: {
         filterVariant: "text",
-        filterLabel: "Location",
+        filterLabel: "Organization",
+      },
+      cell: (info) => {
+        const val = String(info.getValue() || "—");
+        return (
+          <div className="flex items-center gap-1.5 max-w-[170px]">
+            <Building2 size={13} className="text-slate-400 shrink-0" />
+            <span className="font-medium text-sm text-slate-800 truncate" title={val}>
+              {val}
+            </span>
+          </div>
+        );
+      },
+    },
+
+    // 4. Lots & Locations (Consolidated Interactive Pill)
+    {
+      id: "lotsAndLocations",
+      accessorFn: (row) => `${row.lotNumbers} ${row.locationLabels}`,
+      header: "Lots & Locations",
+      meta: {
+        filterVariant: "text",
+        filterLabel: "Lot or Location",
       },
       cell: (info) => {
         const item = info.row.original;
         const isExpanded = expandedItemId === item.itemId;
+        const lotCount = item.lots.length;
+        const locationCount = new Set(item.lots.flatMap((l) => l.locationLabels).filter(Boolean)).size;
+
         return (
           <button
             type="button"
             onClick={() => setExpandedItemId(isExpanded ? null : item.itemId)}
-            className="flex max-w-[220px] items-center gap-1 text-left text-sm text-brand-navy hover:underline"
-            title={item.locationLabels || "—"}
+            className={`group inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold transition-all shadow-sm ${
+              isExpanded
+                ? "border-brand-navy bg-brand-navy text-surface-white"
+                : "border-slate-200 bg-surface-white text-brand-navy hover:bg-slate-50 hover:border-brand-navy/40"
+            }`}
+            title={`View ${lotCount} lot(s) across ${locationCount} location(s)`}
           >
-            <Layers size={14} className="shrink-0 text-brand-navy/70" />
-            <span className="truncate font-semibold">{item.locationLabels || "—"}</span>
+            <Layers size={13} className={isExpanded ? "text-surface-white" : "text-brand-navy/70"} />
+            <span>
+              {lotCount} {lotCount === 1 ? "Lot" : "Lots"} · {locationCount} {locationCount === 1 ? "Loc" : "Locs"}
+            </span>
+            <ChevronDown
+              size={13}
+              className={`transition-transform duration-200 ${isExpanded ? "rotate-180 text-surface-white" : "text-slate-400 group-hover:text-brand-navy"}`}
+            />
           </button>
         );
       },
     },
 
-    // 4. Lot numbers
-    {
-      accessorKey: "lotNumbers",
-      header: "Lot No.",
-      meta: {
-        filterVariant: "text",
-        filterLabel: "Lot Number",
-      },
-      cell: (info) => {
-        const item = info.row.original;
-        const isExpanded = expandedItemId === item.itemId;
-        return (
-          <button
-            type="button"
-            onClick={() => setExpandedItemId(isExpanded ? null : item.itemId)}
-            className="inline-flex max-w-[220px] items-center gap-1 text-left font-mono text-sm text-text-grey hover:text-brand-navy hover:underline"
-            title="Show lot details"
-          >
-            <ChevronDown size={14} className={`shrink-0 transition-transform ${isExpanded ? "rotate-0" : "-rotate-90"}`} />
-            <span className="truncate">{String(info.getValue() || "—")}</span>
-          </button>
-        );
-      },
-    },
-
-    // 5. Inventory Model (Trading, VMI, Supplies)
+    // 6. Inventory Model (Trading, VMI, Supplies)
     {
       accessorKey: "inventoryModel",
       header: "Model",
@@ -171,7 +181,7 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
         const val = String(info.getValue() || "TRADING").toUpperCase();
         return (
           <span
-            className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+            className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider ${
               val === "VMI"
                 ? "bg-blue-50 text-blue-800 border border-blue-200"
                 : val === "TRADING"
@@ -290,15 +300,32 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
         const item = info.row.original;
         const total = Number(info.getValue() || item.totalQty || (item.spq * item.boxesOnHand) || 0);
         return (
-          <div className="font-mono font-bold text-brand-navy bg-blue-50/80 border border-blue-200/80 rounded px-2 py-0.5 inline-block text-right">
-            {total.toLocaleString()}{" "}
-            <span className="text-[10px] font-normal text-text-grey">{item.uom || "PCS"}</span>
-          </div>
+          <span className="font-mono font-bold text-brand-navy">
+            {total.toLocaleString()}
+          </span>
         );
       },
     },
 
-    // 13. CBM
+    // 13. UOM (Unit of Measure from Item Enrollment — beside Total Qty)
+    {
+      accessorKey: "uom",
+      header: "UOM",
+      meta: {
+        filterVariant: "multi-select",
+        filterLabel: "UOM",
+      },
+      cell: (info) => {
+        const val = String(info.getValue() || "").toUpperCase();
+        return (
+          <span className="font-mono text-xs font-semibold text-slate-700 uppercase bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+            {val || "—"}
+          </span>
+        );
+      },
+    },
+
+    // 14. CBM
     {
       accessorKey: "cbmOccupied",
       header: "CBM",
@@ -314,7 +341,7 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
       ),
     },
 
-    // 14. Quick Action
+    // 14. Quick Action (View Item Master Details & Movement Audit)
     {
       id: "actions",
       header: "Action",
@@ -324,12 +351,13 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
       cell: (info) => {
         const item = info.row.original;
         return (
-          <Link
-            href={`/inventory?tab=pick-lists&item=${item.itemCode}`}
-            className="rounded bg-brand-navy px-2.5 py-1 text-[11px] font-bold text-surface-white hover:bg-brand-navy/90 transition-colors shadow-sm"
+          <button
+            type="button"
+            onClick={() => setSelectedItemForView(item)}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-navy px-3 py-1.5 text-xs font-bold text-surface-white hover:bg-brand-navy/90 transition-all shadow-sm"
           >
-            Pick
-          </Link>
+            <Eye size={13} /> View
+          </button>
         );
       },
     },
@@ -346,6 +374,15 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
         enableGrouping={false}
         initialSorting={[{ id: "totalQty", desc: true }]}
         emptyMessage="No inventory items match the specified filters."
+        actions={
+          <button
+            type="button"
+            onClick={() => setIsImportModalOpen(true)}
+            className="inline-flex h-8 items-center gap-1.5 rounded-xl bg-brand-navy px-3 text-xs font-bold text-surface-white hover:bg-brand-navy/90 transition-all shadow-sm shrink-0"
+          >
+            <PackagePlus size={14} /> Import Opening Stock
+          </button>
+        }
         isRowExpanded={(row) => expandedItemId === row.original.itemId}
         renderRowSubComponent={({ row }) => {
           const item = row.original;
@@ -380,25 +417,27 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
             </div>
           );
         }}
-        renderMobileCard={({ row }: { row: Row<GroupedItem> }) => {
+        renderMobileCard={({ row }) => {
           const item = row.original;
           const isLotsExpanded = expandedItemId === item.itemId;
+          const totalCalculated = item.totalQty || (item.spq * item.boxesOnHand) || 0;
           const modelVal = String(item.inventoryModel || "TRADING").toUpperCase();
-          const totalCalculated = item.totalQty ?? item.spq * item.boxesOnHand;
 
           return (
-            <div className="rounded-2xl border border-slate-200 bg-surface-white p-3.5 shadow-sm space-y-2.5">
-              {/* Header: SKU / Code + Pick CTA */}
-              <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-sm font-bold text-brand-navy">{item.itemCode}</span>
-                  {item.isPerishable && (
-                    <span className="rounded bg-rose-50 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 border border-rose-200 uppercase">
-                      FEFO
-                    </span>
-                  )}
+            <div className="space-y-3">
+              {/* Card Header: Item Code, Model Badge & View Action */}
+              <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono text-sm font-bold text-brand-navy">{item.itemCode}</span>
+                    {item.isPerishable && (
+                      <span className="rounded bg-rose-50 px-1 py-0.2 text-[10px] font-bold text-rose-700 border border-rose-200">
+                        FEFO
+                      </span>
+                    )}
+                  </div>
                   <span
-                    className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${
+                    className={`inline-block rounded-full px-2 py-0.2 text-[10px] font-bold uppercase tracking-wider ${
                       modelVal === "VMI"
                         ? "bg-blue-50 text-blue-800 border border-blue-200"
                         : modelVal === "TRADING"
@@ -409,12 +448,13 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
                     {modelVal}
                   </span>
                 </div>
-                <Link
-                  href={`/inventory?tab=pick-lists&item=${item.itemCode}`}
+                <button
+                  type="button"
+                  onClick={() => setSelectedItemForView(item)}
                   className="inline-flex h-8 items-center gap-1 rounded-xl bg-brand-navy px-3 text-xs font-bold text-surface-white shadow-sm hover:bg-brand-navy/90"
                 >
-                  Pick <ArrowRight size={12} />
-                </Link>
+                  <Eye size={12} /> View
+                </button>
               </div>
 
               {/* Description & Category */}
@@ -437,25 +477,22 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
                 </div>
               </div>
 
-              {/* Key Metrics Stats Grid (SPQ, Boxes, Total Qty) */}
-              <div className="grid grid-cols-3 gap-2 rounded-xl bg-slate-50 p-2.5 border border-slate-100 text-center">
+              {/* Key Metrics: Current Net Balance (Total Qty) with Boxes & SPQ as subtitle */}
+              <div className="rounded-xl bg-slate-50 p-3 border border-slate-100 flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-text-grey block">SPQ</span>
-                  <span className="font-mono text-xs font-semibold text-slate-700">
-                    {item.spq.toLocaleString()}
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-brand-navy block">
+                    Current Net Balance
                   </span>
+                  <p className="font-mono text-base font-bold text-brand-navy mt-0.5">
+                    {totalCalculated.toLocaleString()}{" "}
+                    <span className="text-xs font-normal text-slate-600">{item.uom || "PCS"}</span>
+                  </p>
+                  <p className="text-[11px] font-mono text-text-grey mt-0.5">
+                    {item.boxesOnHand.toLocaleString()} boxes · SPQ: {item.spq.toLocaleString()} {item.uom || "PCS"}/box
+                  </p>
                 </div>
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-text-grey block">Boxes</span>
-                  <span className="font-mono text-xs font-semibold text-slate-700">
-                    {item.boxesOnHand.toLocaleString()}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-brand-navy block">Total Qty</span>
-                  <span className="font-mono text-xs font-bold text-brand-navy">
-                    {totalCalculated.toLocaleString()} <span className="text-[9px] font-normal">{item.uom || "PCS"}</span>
-                  </span>
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-brand-navy">
+                  <Package size={18} />
                 </div>
               </div>
 
@@ -497,6 +534,22 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
         }}
       />
 
+      {/* Item Detail & Movement Audit Modal */}
+      <ItemDetailModal
+        isOpen={Boolean(selectedItemForView)}
+        onClose={() => setSelectedItemForView(null)}
+        groupedItem={selectedItemForView}
+      />
+
+      {/* Opening Stock Import Modal */}
+      {isImportModalOpen && (
+        <OpeningStockImportModal
+          onClose={() => setIsImportModalOpen(false)}
+          onSuccess={() => {
+            window.location.reload();
+          }}
+        />
+      )}
     </div>
   );
 }

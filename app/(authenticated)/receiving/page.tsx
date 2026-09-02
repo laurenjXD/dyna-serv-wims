@@ -29,7 +29,6 @@ import { WrrLedgerFilterableTable } from "./_components/WrrLedgerFilterableTable
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const QUEUE_PAGE_SIZE = 20;
-const LEDGER_PAGE_SIZE = 50;
 
 // Status badges — brand-design-system.md §1.3 semantic color mapping:
 // staged/in_progress → status-pending (amber); confirmed → status-available (green);
@@ -235,7 +234,7 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
       ) : activeTab === "wrrs" ? (
         <WrrsTab statusFilter={statusFilter} pageParam={pageParam} canCreate={canCreate} />
       ) : (
-        <LedgerTab pageParam={pageParam} />
+        <LedgerTab />
       )}
     </div>
   );
@@ -424,54 +423,18 @@ async function WrrsTab({
 // inventory_transactions integration (unchanged from the former standalone
 // incoming-ledger/page.tsx).
 
-async function LedgerTab({ pageParam }: { pageParam?: string }) {
-  const currentPage = Math.max(1, Number(pageParam ?? "1") || 1);
-  const offset = (currentPage - 1) * LEDGER_PAGE_SIZE;
-
+async function LedgerTab() {
   // Always confirmed — ledger shows only committed receipts.
-  const { rows, total } = await listWrrDocuments(db, {
-    limit: LEDGER_PAGE_SIZE,
-    offset,
+  // Powered by TanStack DataTable with client-side sorting, pagination, search, and Google Sheets filters.
+  const { rows } = await listWrrDocuments(db, {
+    limit: 500,
+    offset: 0,
     status: "confirmed",
   });
 
-  const totalPages = Math.ceil(total / LEDGER_PAGE_SIZE);
-
   return (
-    <div className="space-y-4">
-      <p className="mt-6 font-body text-body-md text-text-grey">
-        Read-only view of confirmed warehouse receipts. Corrections create new
-        transactions; history is immutable per design.md §10.
-      </p>
-
+    <div className="mt-6">
       <WrrLedgerFilterableTable rows={rows} />
-
-      {/* Pagination controls */}
-      {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between font-body text-body-sm text-text-grey">
-          <span>
-            Page {currentPage} of {totalPages} ({total} total)
-          </span>
-          <div className="flex gap-2">
-            {currentPage > 1 && (
-              <Link
-                href={`/receiving?tab=ledger&page=${currentPage - 1}`}
-                className="inline-flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              >
-                Previous
-              </Link>
-            )}
-            {currentPage < totalPages && (
-              <Link
-                href={`/receiving?tab=ledger&page=${currentPage + 1}`}
-                className="inline-flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              >
-                Next
-              </Link>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -67,6 +67,8 @@ export type SupplierPartyOption = {
   id: string;
   code: string;
   name: string;
+  roles?: string[];
+  defaultInventoryModel?: "vmi" | "trading" | "supplies";
 };
 
 /** A catalog projection safe for the WRR pre-receiving form. */
@@ -246,6 +248,8 @@ export async function getItem(
   return item;
 }
 
+export const getItemDetail = getItem;
+
 // ---------------------------------------------------------------------------
 // getItemOperationalRecords
 // ---------------------------------------------------------------------------
@@ -297,11 +301,12 @@ export async function getItemOperationalRecords(
 export async function getActiveSupplierParties(
   db: DbLike,
 ): Promise<SupplierPartyOption[]> {
-  const rows = await db
+  const rows = (await db
     .select({
       id: parties.id,
       code: parties.code,
       name: parties.name,
+      role: partyRoles.role,
     })
     .from(parties)
     .innerJoin(partyRoles, eq(partyRoles.partyId, parties.id))
@@ -311,21 +316,58 @@ export async function getActiveSupplierParties(
         or(
           eq(partyRoles.role, "vendor" as const),
           eq(partyRoles.role, "supplier" as const),
+          eq(partyRoles.role, "customer" as const),
+          eq(partyRoles.role, "end_customer" as const),
+          eq(partyRoles.role, "internal_warehouse" as const),
         ),
       ),
     )
-    .orderBy(parties.name);
+    .orderBy(parties.name)) as Array<{
+      id: string;
+      code: string;
+      name: string;
+      role: string;
+    }>;
 
-  // Deduplicate: a party with both vendor+supplier roles would appear twice
-  const seen = new Set<string>();
-  const deduplicated: SupplierPartyOption[] = [];
-  for (const row of rows as SupplierPartyOption[]) {
-    if (!seen.has(row.id)) {
-      seen.add(row.id);
-      deduplicated.push(row);
+  // Group roles by party
+  const map = new Map<string, { id: string; code: string; name: string; roles: string[] }>();
+  for (const row of rows) {
+    const existing = map.get(row.id);
+    if (!existing) {
+      map.set(row.id, {
+        id: row.id,
+        code: row.code,
+        name: row.name,
+        roles: [row.role],
+      });
+    } else {
+      if (!existing.roles.includes(row.role)) {
+        existing.roles.push(row.role);
+      }
     }
   }
-  return deduplicated;
+
+  return Array.from(map.values()).map((p) => {
+    // Map assigned party role to automatic default inventory model
+    let defaultInventoryModel: "vmi" | "trading" | "supplies" | undefined;
+    if (p.roles.includes("vendor")) {
+      defaultInventoryModel = "vmi";
+    } else if (p.roles.includes("supplier")) {
+      defaultInventoryModel = "trading";
+    } else if (p.roles.includes("internal_warehouse")) {
+      defaultInventoryModel = "supplies";
+    } else if (p.roles.includes("customer") || p.roles.includes("end_customer")) {
+      defaultInventoryModel = "trading";
+    }
+
+    return {
+      id: p.id,
+      code: p.code,
+      name: p.name,
+      roles: p.roles,
+      defaultInventoryModel,
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------
