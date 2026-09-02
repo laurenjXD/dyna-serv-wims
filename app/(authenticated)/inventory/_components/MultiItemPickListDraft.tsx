@@ -422,17 +422,16 @@ export function MultiItemPickListDraft({
           </div>
         </div>
 
-        {/* 10-Column Pick List Table per User Specification */}
+        {/* Pick List Table */}
         <div className="mt-6 overflow-x-auto rounded-lg border border-outline-variant/30">
-          <div className="min-w-[1380px]">
-            <div className="grid grid-cols-[110px_90px_110px_minmax(160px,1fr)_140px_minmax(180px,1.2fr)_100px_140px_110px_minmax(180px,1.1fr)_48px] gap-3 bg-surface-light-grey px-4 py-3 font-label text-label-xs font-bold uppercase tracking-[0.04em] text-text-grey">
+          <div className="min-w-[1280px]">
+            <div className="grid grid-cols-[110px_90px_110px_minmax(160px,1fr)_140px_minmax(180px,1.2fr)_140px_110px_minmax(180px,1.1fr)_48px] gap-3 bg-surface-light-grey px-4 py-3 font-label text-label-xs font-bold uppercase tracking-[0.04em] text-text-grey">
               <span>Qty</span>
               <span>SPQ</span>
               <span>No. of Pckgs</span>
               <span>ITEM CODE</span>
               <span>CUST PN</span>
               <span>ITEM DESCRIPTION</span>
-              <span>METERAGE</span>
               <span>LOT NUMBER</span>
               <span>MFG DATE</span>
               <span>LOCATION</span>
@@ -445,10 +444,8 @@ export function MultiItemPickListDraft({
               </div>
             ) : (
               lineDetails.map(({ line, item, source, effectiveSpq, numBoxes, computedTotalUnits }) => {
-                const totalMeterage = item?.spqMeter && numBoxes > 0 ? (numBoxes * Number(item.spqMeter)).toFixed(2) : "—";
-
                 return (
-                  <div key={line.id} className="grid grid-cols-[110px_90px_110px_minmax(160px,1fr)_140px_minmax(180px,1.2fr)_100px_140px_110px_minmax(180px,1.1fr)_48px] items-center gap-3 border-t border-outline-variant/30 px-4 py-3">
+                  <div key={line.id} className="grid grid-cols-[110px_90px_110px_minmax(160px,1fr)_140px_minmax(180px,1.2fr)_140px_110px_minmax(180px,1.1fr)_48px] items-center gap-3 border-t border-outline-variant/30 px-4 py-3">
                     {/* Qty (Total Units input) */}
                     <label className="flex h-11 items-center rounded border border-outline-variant bg-surface-white px-2 focus-within:ring-2 focus-within:ring-primary">
                       <input
@@ -515,9 +512,6 @@ export function MultiItemPickListDraft({
                     <p className="font-body text-body-sm text-on-surface truncate" title={item?.itemName ?? undefined}>
                       {item?.itemName ?? "—"}
                     </p>
-
-                    {/* METERAGE */}
-                    <p className="font-mono text-mono-sm text-on-surface">{totalMeterage}</p>
 
                     {/* LOT NUMBER */}
                     <p className="font-mono text-mono-sm text-on-surface truncate" title={source?.lotNumber ?? undefined}>
