@@ -24,6 +24,10 @@ import {
   RefreshCw,
   TrendingUp,
   Truck,
+  Search,
+  CalendarDays,
+  SlidersHorizontal,
+  Filter,
 } from "lucide-react";
 import type { GroupedItem } from "./StockViewFilterableRegister";
 import { getItemAuditDetailAction } from "../_actions";
@@ -43,6 +47,12 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
   const [itemDetail, setItemDetail] = useState<ItemDetail | null>(null);
   const [movements, setMovements] = useState<ItemMovementRow[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  // Movement tab interactive filters
+  const [movementDateFilter, setMovementDateFilter] = useState<string>("");
+  const [movementTypeFilter, setMovementTypeFilter] = useState<"all" | "inbound" | "outbound" | "transfer">("all");
+  const [movementSearch, setMovementSearch] = useState<string>("");
+  const [isDailyTrailGrouped, setIsDailyTrailGrouped] = useState<boolean>(true);
 
   useEffect(() => {
     if (isOpen && groupedItem) {
@@ -67,6 +77,9 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
       setItemDetail(null);
       setMovements([]);
       setActiveTab("specs");
+      setMovementDateFilter("");
+      setMovementTypeFilter("all");
+      setMovementSearch("");
     }
   }, [isOpen, groupedItem]);
 
@@ -90,14 +103,97 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
   const totalStockCostValuation = unitBuyingPrice !== null ? unitBuyingPrice * totalUnits : null;
   const totalStockSellingValuation = unitSellingPrice !== null ? unitSellingPrice * totalUnits : null;
 
-  // Compute movement aggregations
-  const totalInboundUnits = movements
-    .filter((m) => m.movementType === "receive" || m.movementType === "putaway")
-    .reduce((sum, m) => sum + (m.qty || 0), 0);
+  // Filtered movements logic
+  const filteredMovements = movements.filter((txn) => {
+    // 1. Date filter (format: YYYY-MM-DD)
+    if (movementDateFilter) {
+      const txnDateStr = new Date(txn.createdAt).toISOString().slice(0, 10);
+      if (txnDateStr !== movementDateFilter) return false;
+    }
+    // 2. Type filter
+    if (movementTypeFilter === "inbound") {
+      if (txn.movementType !== "receive" && txn.movementType !== "putaway") return false;
+    } else if (movementTypeFilter === "outbound") {
+      if (txn.movementType !== "pick" && txn.movementType !== "dispatch") return false;
+    } else if (movementTypeFilter === "transfer") {
+      if (
+        txn.movementType === "receive" ||
+        txn.movementType === "putaway" ||
+        txn.movementType === "pick" ||
+        txn.movementType === "dispatch"
+      ) {
+        return false;
+      }
+    }
+    // 3. Search filter
+    if (movementSearch.trim()) {
+      const term = movementSearch.toLowerCase().trim();
+      const match =
+        txn.transactionNumber?.toLowerCase().includes(term) ||
+        txn.lotNumber?.toLowerCase().includes(term) ||
+        txn.wrrNumber?.toLowerCase().includes(term) ||
+        txn.pickListNumber?.toLowerCase().includes(term) ||
+        txn.commercialInvoiceNo?.toLowerCase().includes(term) ||
+        txn.arReferenceNo?.toLowerCase().includes(term) ||
+        txn.fromLocationLabel?.toLowerCase().includes(term) ||
+        txn.toLocationLabel?.toLowerCase().includes(term) ||
+        txn.performedByUserName?.toLowerCase().includes(term);
+      if (!match) return false;
+    }
+    return true;
+  });
 
-  const totalOutboundUnits = movements
-    .filter((m) => m.movementType === "pick" || m.movementType === "dispatch")
-    .reduce((sum, m) => sum + (m.qty || 0), 0);
+  // Calculate filtered totals
+  let filteredInBoxes = 0;
+  let filteredOutBoxes = 0;
+  for (const txn of filteredMovements) {
+    if (txn.movementType === "receive" || txn.movementType === "putaway") {
+      filteredInBoxes += txn.qty;
+    } else if (txn.movementType === "pick" || txn.movementType === "dispatch") {
+      filteredOutBoxes += txn.qty;
+    }
+  }
+  const filteredNetBoxes = filteredInBoxes - filteredOutBoxes;
+  const filteredInUnits = filteredInBoxes * effectiveSpq;
+  const filteredOutUnits = filteredOutBoxes * effectiveSpq;
+  const filteredNetUnits = filteredNetBoxes * effectiveSpq;
+
+  // Group by date for Daily History Trail
+  const dailyGroups = (() => {
+    const map = new Map<
+      string,
+      {
+        date: string;
+        dateObj: Date;
+        inBoxes: number;
+        outBoxes: number;
+        txns: ItemMovementRow[];
+      }
+    >();
+    for (const txn of filteredMovements) {
+      const dateKey = new Date(txn.createdAt).toLocaleDateString("en-CA"); // YYYY-MM-DD
+      let group = map.get(dateKey);
+      if (!group) {
+        group = {
+          date: dateKey,
+          dateObj: new Date(txn.createdAt),
+          inBoxes: 0,
+          outBoxes: 0,
+          txns: [],
+        };
+        map.set(dateKey, group);
+      }
+      if (txn.movementType === "receive" || txn.movementType === "putaway") {
+        group.inBoxes += txn.qty;
+      } else if (txn.movementType === "pick" || txn.movementType === "dispatch") {
+        group.outBoxes += txn.qty;
+      }
+      group.txns.push(txn);
+    }
+    return Array.from(map.values()).sort(
+      (a, b) => b.dateObj.getTime() - a.dateObj.getTime(),
+    );
+  })();
 
   return (
     <div
@@ -571,102 +667,439 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
 
               {/* ── Tab 3: Movement History & Person in Charge Audit Ledger ── */}
               {activeTab === "movements" && (
-                <div className="space-y-6">
-                  {/* Aggregated In/Out Metrics */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-                    <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/60 p-4 shadow-sm flex items-center justify-between">
-                      <div>
-                        <span className="text-xs font-bold uppercase tracking-wider text-emerald-900">Total Inbound</span>
-                        <p className="font-mono text-xl font-bold text-emerald-800 mt-1">
-                          +{groupedItem.totalIn.toLocaleString()} <span className="text-xs font-normal">boxes</span>
-                        </p>
+                <div className="space-y-5">
+                  {/* Filter & Search Toolbar */}
+                  <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 shadow-sm space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      {/* Left: Date Filter & Presets */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex items-center gap-1.5 bg-surface-white px-3 py-1.5 rounded-xl border border-slate-200 text-xs shadow-sm">
+                          <CalendarDays size={14} className="text-brand-navy shrink-0" />
+                          <input
+                            type="date"
+                            value={movementDateFilter}
+                            onChange={(e) => setMovementDateFilter(e.target.value)}
+                            aria-label="Filter by specific date"
+                            className="bg-transparent font-mono text-xs text-slate-800 focus:outline-none"
+                          />
+                          {movementDateFilter && (
+                            <button
+                              type="button"
+                              onClick={() => setMovementDateFilter("")}
+                              className="ml-1 text-[11px] font-bold text-slate-400 hover:text-slate-700"
+                              title="Clear date filter"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setMovementDateFilter("")}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                              !movementDateFilter
+                                ? "bg-brand-navy text-surface-white shadow-sm"
+                                : "bg-surface-white text-slate-600 border border-slate-200 hover:bg-slate-100"
+                            }`}
+                          >
+                            All Time
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const todayStr = new Date().toLocaleDateString("en-CA");
+                              setMovementDateFilter(todayStr);
+                            }}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                              movementDateFilter === new Date().toLocaleDateString("en-CA")
+                                ? "bg-brand-navy text-surface-white shadow-sm"
+                                : "bg-surface-white text-slate-600 border border-slate-200 hover:bg-slate-100"
+                            }`}
+                          >
+                            Today
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
-                        <ArrowDownRight size={20} />
+
+                      {/* Right: View Mode Toggle & Search */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="relative">
+                          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                          <input
+                            type="text"
+                            value={movementSearch}
+                            onChange={(e) => setMovementSearch(e.target.value)}
+                            placeholder="Search lot, doc #, operator..."
+                            className="h-8 w-48 rounded-xl border border-slate-200 bg-surface-white pl-8 pr-3 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                          />
+                        </div>
+
+                        <div className="flex rounded-xl border border-slate-200 bg-surface-white p-0.5 shadow-sm">
+                          <button
+                            type="button"
+                            onClick={() => setIsDailyTrailGrouped(true)}
+                            className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
+                              isDailyTrailGrouped
+                                ? "bg-brand-navy text-surface-white shadow-sm"
+                                : "text-slate-600 hover:text-slate-900"
+                            }`}
+                          >
+                            Daily Trail
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsDailyTrailGrouped(false)}
+                            className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
+                              !isDailyTrailGrouped
+                                ? "bg-brand-navy text-surface-white shadow-sm"
+                                : "text-slate-600 hover:text-slate-900"
+                            }`}
+                          >
+                            Flat Log
+                          </button>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-rose-200/80 bg-rose-50/60 p-4 shadow-sm flex items-center justify-between">
-                      <div>
-                        <span className="text-xs font-bold uppercase tracking-wider text-rose-900">Total Outbound</span>
-                        <p className="font-mono text-xl font-bold text-rose-800 mt-1">
-                          -{groupedItem.totalOut.toLocaleString()} <span className="text-xs font-normal">boxes</span>
-                        </p>
-                      </div>
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
-                        <ArrowUpRight size={20} />
-                      </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-blue-200/80 bg-blue-50/60 p-4 shadow-sm flex items-center justify-between">
-                      <div>
-                        <span className="text-xs font-bold uppercase tracking-wider text-blue-900">Current Net Balance</span>
-                        <p className="font-mono text-xl font-bold text-brand-navy mt-1">
-                          {totalBoxes.toLocaleString()} <span className="text-xs font-normal">boxes</span> ({totalUnits.toLocaleString()} {uom})
-                        </p>
-                      </div>
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-brand-navy">
-                        <Package size={20} />
-                      </div>
+                    {/* Movement Type Filter Tabs */}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-200/60">
+                      <span className="text-[11px] font-bold text-slate-500 mr-1 flex items-center gap-1">
+                        <Filter size={12} /> Movement Type:
+                      </span>
+                      {[
+                        { id: "all", label: "All Movements" },
+                        { id: "inbound", label: "Inbound / Received" },
+                        { id: "outbound", label: "Outbound / Dispatched" },
+                        { id: "transfer", label: "Internal Transfers" },
+                      ].map((tab) => (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setMovementTypeFilter(tab.id as typeof movementTypeFilter)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                            movementTypeFilter === tab.id
+                              ? "bg-brand-navy text-surface-white shadow-sm"
+                              : "bg-surface-white text-slate-600 border border-slate-200 hover:bg-slate-100"
+                          }`}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
                     </div>
                   </div>
 
-                  {/* Transaction Ledger Table with Person in Charge Audit */}
-                  <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-5 shadow-sm space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-heading text-xs font-bold uppercase tracking-wider text-brand-navy flex items-center gap-2">
-                        <History size={15} /> Full Inventory Movement Ledger & Accountability Audit
-                      </h3>
-                      <span className="text-xs font-mono text-text-grey">{movements.length} total movements</span>
+                  {/* Summary Metric Cards for Filtered Range */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/70 p-3.5 shadow-sm">
+                      <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-emerald-900">
+                        <span>Received (Inbound)</span>
+                        <ArrowDownRight size={16} className="text-emerald-700" />
+                      </div>
+                      <p className="font-mono text-lg font-bold text-emerald-800 mt-1">
+                        +{filteredInBoxes.toLocaleString()} <span className="text-xs font-normal">boxes</span>
+                      </p>
+                      <p className="font-mono text-xs text-emerald-700 mt-0.5">
+                        +{filteredInUnits.toLocaleString()} {uom}
+                      </p>
                     </div>
 
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse text-left text-xs">
-                        <thead>
-                          <tr className="border-b border-slate-200 bg-slate-50 text-slate-700 font-bold uppercase">
-                            <th className="py-2.5 px-3">Date / Timestamp</th>
-                            <th className="py-2.5 px-3">Txn Number</th>
-                            <th className="py-2.5 px-3">Movement Type</th>
-                            <th className="py-2.5 px-3 text-right">Quantity</th>
-                            <th className="py-2.5 px-3">From → To</th>
-                            <th className="py-2.5 px-3">Reference Doc</th>
-                            <th className="py-2.5 px-3">Person in Charge (Audit)</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 font-body">
-                          {movements.length === 0 ? (
-                            <tr>
-                              <td colSpan={7} className="py-8 text-center text-text-grey italic">
-                                No physical transactions recorded for this item yet.
-                              </td>
+                    <div className="rounded-2xl border border-rose-200/80 bg-rose-50/70 p-3.5 shadow-sm">
+                      <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-rose-900">
+                        <span>Dispatched (Outbound)</span>
+                        <ArrowUpRight size={16} className="text-rose-700" />
+                      </div>
+                      <p className="font-mono text-lg font-bold text-rose-800 mt-1">
+                        -{filteredOutBoxes.toLocaleString()} <span className="text-xs font-normal">boxes</span>
+                      </p>
+                      <p className="font-mono text-xs text-rose-700 mt-0.5">
+                        -{filteredOutUnits.toLocaleString()} {uom}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-blue-200/80 bg-blue-50/70 p-3.5 shadow-sm">
+                      <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-blue-900">
+                        <span>Net Range Delta</span>
+                        <TrendingUp size={16} className="text-brand-navy" />
+                      </div>
+                      <p className="font-mono text-lg font-bold text-brand-navy mt-1">
+                        {filteredNetBoxes >= 0 ? `+${filteredNetBoxes.toLocaleString()}` : filteredNetBoxes.toLocaleString()} <span className="text-xs font-normal">boxes</span>
+                      </p>
+                      <p className="font-mono text-xs text-blue-800 mt-0.5">
+                        {filteredNetUnits >= 0 ? `+${filteredNetUnits.toLocaleString()}` : filteredNetUnits.toLocaleString()} {uom}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-purple-200/80 bg-purple-50/70 p-3.5 shadow-sm">
+                      <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-purple-900">
+                        <span>Pack SPQ Factor</span>
+                        <Package size={16} className="text-purple-700" />
+                      </div>
+                      <p className="font-mono text-lg font-bold text-purple-800 mt-1">
+                        {effectiveSpq.toLocaleString()} <span className="text-xs font-normal">{uom}/box</span>
+                      </p>
+                      <p className="font-mono text-xs text-purple-700 mt-0.5">
+                        Current On Hand: {totalBoxes.toLocaleString()} boxes
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Daily Trail Sections or Flat Table */}
+                  {filteredMovements.length === 0 ? (
+                    <div className="rounded-2xl border border-slate-200 bg-surface-white p-12 text-center text-text-grey italic shadow-sm">
+                      No inventory movements match the selected date or filter criteria.
+                    </div>
+                  ) : isDailyTrailGrouped ? (
+                    <div className="space-y-4">
+                      {dailyGroups.map((group) => {
+                        const dayNetBoxes = group.inBoxes - group.outBoxes;
+                        const dayInUnits = group.inBoxes * effectiveSpq;
+                        const dayOutUnits = group.outBoxes * effectiveSpq;
+                        const dayNetUnits = dayNetBoxes * effectiveSpq;
+
+                        return (
+                          <div
+                            key={group.date}
+                            className="rounded-2xl border border-slate-200/90 bg-surface-white overflow-hidden shadow-sm"
+                          >
+                            {/* Day Header Banner */}
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-[#F8FAFF] px-4 py-2.5">
+                              <div className="flex items-center gap-2">
+                                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-navy text-surface-white">
+                                  <CalendarDays size={14} />
+                                </span>
+                                <div>
+                                  <span className="font-heading text-xs font-bold text-brand-navy">
+                                    {group.dateObj.toLocaleDateString(undefined, {
+                                      weekday: "long",
+                                      year: "numeric",
+                                      month: "short",
+                                      day: "numeric",
+                                    })}
+                                  </span>
+                                  <span className="text-[11px] font-mono text-text-grey ml-2">
+                                    ({group.txns.length} transactions)
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Day KPI summary pill */}
+                              <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono font-bold">
+                                {group.inBoxes > 0 && (
+                                  <span className="rounded-md bg-emerald-100/70 text-emerald-800 px-2 py-0.5 border border-emerald-200">
+                                    Recv: +{group.inBoxes} bx (+{dayInUnits.toLocaleString()} {uom})
+                                  </span>
+                                )}
+                                {group.outBoxes > 0 && (
+                                  <span className="rounded-md bg-rose-100/70 text-rose-800 px-2 py-0.5 border border-rose-200">
+                                    Disp: -{group.outBoxes} bx (-{dayOutUnits.toLocaleString()} {uom})
+                                  </span>
+                                )}
+                                <span className="rounded-md bg-blue-100/70 text-brand-navy px-2 py-0.5 border border-blue-200">
+                                  Net: {dayNetBoxes >= 0 ? `+${dayNetBoxes}` : dayNetBoxes} bx ({dayNetUnits >= 0 ? `+${dayNetUnits.toLocaleString()}` : dayNetUnits.toLocaleString()} {uom})
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Day Ledger Table */}
+                            <div className="overflow-x-auto">
+                              <table className="w-full border-collapse text-left text-xs">
+                                <thead>
+                                  <tr className="border-b border-slate-100 bg-slate-50/50 text-[11px] text-slate-600 font-bold uppercase tracking-wider">
+                                    <th className="py-2 px-3">Time</th>
+                                    <th className="py-2 px-3">Txn Number</th>
+                                    <th className="py-2 px-3">Movement Type</th>
+                                    <th className="py-2 px-3">From → To</th>
+                                    <th className="py-2 px-3 text-right">SPQ</th>
+                                    <th className="py-2 px-3 text-right">Boxes</th>
+                                    <th className="py-2 px-3 text-right">Total Qty</th>
+                                    <th className="py-2 px-3">Reference Doc</th>
+                                    <th className="py-2 px-3">Person in Charge</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 font-body">
+                                  {group.txns.map((txn) => {
+                                    const isInbound = txn.movementType === "receive" || txn.movementType === "putaway";
+                                    const isOutbound = txn.movementType === "pick" || txn.movementType === "dispatch";
+                                    const calculatedTotalQty = txn.qty * effectiveSpq;
+
+                                    return (
+                                      <tr key={txn.id} className="hover:bg-slate-50/70 transition-colors">
+                                        {/* Time */}
+                                        <td className="py-2.5 px-3 font-mono text-slate-700 whitespace-nowrap">
+                                          {new Date(txn.createdAt).toLocaleTimeString(undefined, {
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                          })}
+                                        </td>
+
+                                        {/* Txn Number & Lot */}
+                                        <td className="py-2.5 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
+                                          <div>{txn.transactionNumber}</div>
+                                          {txn.lotNumber && (
+                                            <span className="text-[10px] font-normal text-text-grey">
+                                              Lot: {txn.lotNumber}
+                                            </span>
+                                          )}
+                                        </td>
+
+                                        {/* Movement Type Badge */}
+                                        <td className="py-2.5 px-3 whitespace-nowrap">
+                                          <span
+                                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                                              isInbound
+                                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                                : isOutbound
+                                                ? "bg-rose-50 text-rose-700 border border-rose-200"
+                                                : "bg-blue-50 text-blue-700 border border-blue-200"
+                                            }`}
+                                          >
+                                            {isInbound ? (
+                                              <ArrowDownRight size={11} />
+                                            ) : isOutbound ? (
+                                              <ArrowUpRight size={11} />
+                                            ) : (
+                                              <RefreshCw size={10} />
+                                            )}
+                                            {txn.movementType}
+                                          </span>
+                                        </td>
+
+                                        {/* From → To */}
+                                        <td className="py-2.5 px-3 font-mono text-slate-800 whitespace-nowrap">
+                                          <div className="flex items-center gap-1">
+                                            {txn.fromLocationLabel ? (
+                                              <>
+                                                <span>{txn.fromLocationLabel}</span>
+                                                <ArrowRight size={11} className="text-slate-400 shrink-0" />
+                                                <span>{txn.toLocationLabel || "—"}</span>
+                                              </>
+                                            ) : (
+                                              <>
+                                                <ArrowRight size={11} className="text-slate-400 shrink-0" />
+                                                <span>{txn.toLocationLabel || "Staging"}</span>
+                                              </>
+                                            )}
+                                          </div>
+                                        </td>
+
+                                        {/* SPQ */}
+                                        <td className="py-2.5 px-3 text-right font-mono text-slate-600 whitespace-nowrap">
+                                          {effectiveSpq.toLocaleString()}
+                                        </td>
+
+                                        {/* Boxes */}
+                                        <td
+                                          className={`py-2.5 px-3 text-right font-mono font-bold whitespace-nowrap ${
+                                            isInbound
+                                              ? "text-emerald-700"
+                                              : isOutbound
+                                              ? "text-rose-700"
+                                              : "text-slate-900"
+                                          }`}
+                                        >
+                                          {isInbound ? "+" : isOutbound ? "-" : ""}
+                                          {txn.qty.toLocaleString()} bx
+                                        </td>
+
+                                        {/* Total Qty */}
+                                        <td
+                                          className={`py-2.5 px-3 text-right font-mono font-bold whitespace-nowrap ${
+                                            isInbound
+                                              ? "text-emerald-700"
+                                              : isOutbound
+                                              ? "text-rose-700"
+                                              : "text-slate-900"
+                                          }`}
+                                        >
+                                          {isInbound ? "+" : isOutbound ? "-" : ""}
+                                          {calculatedTotalQty.toLocaleString()} {uom}
+                                        </td>
+
+                                        {/* Reference Document */}
+                                        <td className="py-2.5 px-3 font-mono text-slate-700 whitespace-nowrap">
+                                          {txn.wrrNumber ? (
+                                            <span className="font-bold text-brand-navy">
+                                              WRR: {txn.wrrNumber}
+                                              {txn.commercialInvoiceNo && ` (${txn.commercialInvoiceNo})`}
+                                            </span>
+                                          ) : txn.pickListNumber ? (
+                                            <span className="font-bold text-blue-700">
+                                              Pick: {txn.pickListNumber}
+                                              {txn.arReferenceNo && ` (${txn.arReferenceNo})`}
+                                            </span>
+                                          ) : (
+                                            txn.arReferenceNo || txn.commercialInvoiceNo || "—"
+                                          )}
+                                        </td>
+
+                                        {/* Person in Charge */}
+                                        <td className="py-2.5 px-3 whitespace-nowrap">
+                                          <div className="flex items-center gap-1.5 min-w-0">
+                                            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+                                              <User size={10} />
+                                            </div>
+                                            <div className="truncate">
+                                              <p className="font-bold text-slate-800 text-[11px] truncate">
+                                                {txn.performedByUserName || "System / Operator"}
+                                              </p>
+                                            </div>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    /* Flat Table View */
+                    <div className="rounded-2xl border border-slate-200/90 bg-surface-white overflow-hidden shadow-sm">
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse text-left text-xs">
+                          <thead>
+                            <tr className="border-b border-slate-200 bg-slate-50 text-slate-700 font-bold uppercase">
+                              <th className="py-2.5 px-3">Date / Time</th>
+                              <th className="py-2.5 px-3">Txn Number</th>
+                              <th className="py-2.5 px-3">Movement Type</th>
+                              <th className="py-2.5 px-3">From → To</th>
+                              <th className="py-2.5 px-3 text-right">SPQ</th>
+                              <th className="py-2.5 px-3 text-right">Boxes</th>
+                              <th className="py-2.5 px-3 text-right">Total Qty</th>
+                              <th className="py-2.5 px-3">Reference Doc</th>
+                              <th className="py-2.5 px-3">Person in Charge</th>
                             </tr>
-                          ) : (
-                            movements.map((txn) => {
-                              const isInbound =
-                                txn.movementType === "receive" || txn.movementType === "putaway";
-                              const isOutbound =
-                                txn.movementType === "pick" || txn.movementType === "dispatch";
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 font-body">
+                            {filteredMovements.map((txn) => {
+                              const isInbound = txn.movementType === "receive" || txn.movementType === "putaway";
+                              const isOutbound = txn.movementType === "pick" || txn.movementType === "dispatch";
+                              const calculatedTotalQty = txn.qty * effectiveSpq;
 
                               return (
                                 <tr key={txn.id} className="hover:bg-slate-50/80 transition-colors">
-                                  {/* Timestamp */}
                                   <td className="py-3 px-3 font-mono text-slate-700 whitespace-nowrap">
                                     {new Date(txn.createdAt).toLocaleString(undefined, {
                                       month: "short",
                                       day: "2-digit",
-                                      year: "numeric",
                                       hour: "2-digit",
                                       minute: "2-digit",
                                     })}
                                   </td>
-
-                                  {/* Transaction Number */}
-                                  <td className="py-3 px-3 font-mono font-bold text-slate-900">
-                                    {txn.transactionNumber}
+                                  <td className="py-3 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
+                                    <div>{txn.transactionNumber}</div>
+                                    {txn.lotNumber && (
+                                      <span className="text-[10px] font-normal text-text-grey">
+                                        Lot: {txn.lotNumber}
+                                      </span>
+                                    )}
                                   </td>
-
-                                  {/* Movement Type */}
-                                  <td className="py-3 px-3">
+                                  <td className="py-3 px-3 whitespace-nowrap">
                                     <span
                                       className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase ${
                                         isInbound
@@ -686,24 +1119,8 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
                                       {txn.movementType}
                                     </span>
                                   </td>
-
-                                  {/* Quantity */}
-                                  <td
-                                    className={`py-3 px-3 text-right font-mono font-bold ${
-                                      isInbound
-                                        ? "text-emerald-700"
-                                        : isOutbound
-                                        ? "text-rose-700"
-                                        : "text-slate-900"
-                                    }`}
-                                  >
-                                    {isInbound ? "+" : isOutbound ? "-" : ""}
-                                    {txn.qty.toLocaleString()} boxes
-                                  </td>
-
-                                  {/* From -> To */}
-                                  <td className="py-3 px-3 font-mono text-slate-800">
-                                    <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                  <td className="py-3 px-3 font-mono text-slate-800 whitespace-nowrap">
+                                    <div className="flex items-center gap-1.5">
                                       {txn.fromLocationLabel ? (
                                         <>
                                           <span>{txn.fromLocationLabel}</span>
@@ -718,9 +1135,34 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
                                       )}
                                     </div>
                                   </td>
-
-                                  {/* Reference Document */}
-                                  <td className="py-3 px-3 font-mono text-slate-700">
+                                  <td className="py-3 px-3 text-right font-mono text-slate-600 whitespace-nowrap">
+                                    {effectiveSpq.toLocaleString()}
+                                  </td>
+                                  <td
+                                    className={`py-3 px-3 text-right font-mono font-bold whitespace-nowrap ${
+                                      isInbound
+                                        ? "text-emerald-700"
+                                        : isOutbound
+                                        ? "text-rose-700"
+                                        : "text-slate-900"
+                                    }`}
+                                  >
+                                    {isInbound ? "+" : isOutbound ? "-" : ""}
+                                    {txn.qty.toLocaleString()} bx
+                                  </td>
+                                  <td
+                                    className={`py-3 px-3 text-right font-mono font-bold whitespace-nowrap ${
+                                      isInbound
+                                        ? "text-emerald-700"
+                                        : isOutbound
+                                        ? "text-rose-700"
+                                        : "text-slate-900"
+                                    }`}
+                                  >
+                                    {isInbound ? "+" : isOutbound ? "-" : ""}
+                                    {calculatedTotalQty.toLocaleString()} {uom}
+                                  </td>
+                                  <td className="py-3 px-3 font-mono text-slate-700 whitespace-nowrap">
                                     {txn.wrrNumber ? (
                                       <span className="font-bold text-brand-navy">
                                         WRR: {txn.wrrNumber}
@@ -735,9 +1177,7 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
                                       txn.arReferenceNo || txn.commercialInvoiceNo || "—"
                                     )}
                                   </td>
-
-                                  {/* Person in Charge (Audit) */}
-                                  <td className="py-3 px-3">
+                                  <td className="py-3 px-3 whitespace-nowrap">
                                     <div className="flex items-center gap-1.5 min-w-0">
                                       <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600">
                                         <User size={12} />
@@ -754,12 +1194,12 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
                                   </td>
                                 </tr>
                               );
-                            })
-                          )}
-                        </tbody>
-                      </table>
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
             </>

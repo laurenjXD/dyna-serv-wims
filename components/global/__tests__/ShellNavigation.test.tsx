@@ -117,7 +117,7 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
     expect(sidebar).not.toHaveAttribute("aria-hidden", "true");
   });
 
-  it("desktop sidebar switches to lg:hidden and aria-hidden when desktopOpen=false (2026-08-17 collapse toggle)", () => {
+  it("desktop sidebar switches to mini icon-rail (lg:w-[72px]) when desktopOpen=false (collapsed icon mode)", () => {
     render(
       <ShellNavigation
         tier="office"
@@ -127,8 +127,7 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
       />,
     );
     const sidebar = screen.getByTestId("desktop-sidebar");
-    expect(sidebar.className).toContain("lg:hidden");
-    expect(sidebar).toHaveAttribute("aria-hidden", "true");
+    expect(sidebar.className).toContain("lg:w-[72px]");
   });
 
   it("omits nav entries the context has no grant for (R3.4 — hidden, not disabled)", () => {
