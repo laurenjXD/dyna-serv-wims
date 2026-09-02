@@ -12,6 +12,7 @@ interface PutawayLocationSelectorProps {
   unitCbm: number;
   spq?: number;
   uom?: string;
+  lotNumber?: string;
 }
 
 function maxBoxesFor(candidate: PutawayCandidate | undefined, unitCbm: number, quantity: number): number {
@@ -42,6 +43,7 @@ export function PutawayLocationSelector({
   unitCbm = 0,
   spq = 1,
   uom = "PCS",
+  lotNumber,
 }: PutawayLocationSelectorProps) {
   const safeQuantity = Math.max(0, Math.floor(Number(quantity) || 0));
   const safeUnitCbm = Number(unitCbm) || 0;
@@ -181,9 +183,12 @@ export function PutawayLocationSelector({
             {locationsBySlot.map((locationId, index) => (
               <label
                 key={index}
-                className="grid grid-cols-[5rem_1fr] items-center gap-2 rounded-lg bg-surface-light-grey p-2"
+                className="grid grid-cols-[7.5rem_1fr] items-center gap-2 rounded-lg bg-surface-light-grey p-2.5"
               >
-                <span className="font-label text-body-sm font-bold text-on-surface">Box {index + 1}</span>
+                <span className="font-mono text-body-sm font-bold text-on-surface leading-tight">
+                  {lotNumber ? `${lotNumber} · ` : ""}CTN-{String(index + 1).padStart(2, "0")}
+                  <span className="block text-text-grey font-label text-[11px] font-normal">Box {index + 1} of {safeQuantity}</span>
+                </span>
                 <select
                   id={`box-location-${index + 1}`}
                   value={locationId}

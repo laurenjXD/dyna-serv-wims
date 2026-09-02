@@ -659,6 +659,7 @@ export default async function ReceiveFloorPage({
               unitCbm={Number(primaryReadyLine.unitCbm) || 0}
               spq={Number(primaryReadyLine.spq) || 1}
               uom={primaryReadyLine.uom || "PCS"}
+              lotNumber={primaryReadyLine.lotNumber}
             />
 
             <button
