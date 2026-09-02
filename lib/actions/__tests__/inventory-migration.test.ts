@@ -72,7 +72,7 @@ describe("Opening Stock Migration (Excel/CSV Bulk Import)", () => {
   });
 
   it("commits valid opening stock lines transactionally and creates WRR document", async () => {
-    const resolver = makeResolver({ kind: "authenticated", context: confirmContext });
+    const resolver = makeResolver({ kind: "authorized", context: confirmContext });
 
     const mockRows: ValidatedOpeningStockRow[] = [
       {
@@ -126,7 +126,7 @@ describe("Opening Stock Migration (Excel/CSV Bulk Import)", () => {
   });
 
   it("rejects unauthorized users from committing opening stock", async () => {
-    const resolver = makeResolver({ kind: "authenticated", context: unauthorizedContext });
+    const resolver = makeResolver({ kind: "authorized", context: unauthorizedContext });
 
     const result = await commitOpeningStockMigration(
       resolver,

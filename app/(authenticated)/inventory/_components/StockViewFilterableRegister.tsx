@@ -427,12 +427,10 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
                     </div>
                     <div className="mt-2 flex items-center justify-end border-t border-slate-100 pt-2">
                       <LotQrViewer
+                        lotId={lot.lotId}
                         lotNumber={lot.lotNumber}
                         itemCode={item.itemCode}
-                        itemName={item.itemName}
-                        locationLabel={lot.locationLabels[0] || "—"}
-                        qtyOnHand={lot.availableQty}
-                        expiryDate={lot.expiryDate}
+                        compact
                       />
                     </div>
                   </div>

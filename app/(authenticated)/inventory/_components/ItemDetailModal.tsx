@@ -232,19 +232,19 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
                       <div>
                         <span className="text-text-grey font-medium">Customer Item Code (PN)</span>
                         <p className="font-mono font-bold text-slate-900 mt-0.5">
-                          {itemDetail?.customerItemCode || groupedItem.customerItemCode || "—"}
+                          {itemDetail?.customerItemCode || "—"}
                         </p>
                       </div>
                       <div>
                         <span className="text-text-grey font-medium">Supplier Item Code</span>
                         <p className="font-mono font-bold text-slate-900 mt-0.5">
-                          {itemDetail?.supplierItemCode || groupedItem.supplierItemCode || "—"}
+                          {itemDetail?.supplierItemCode || "—"}
                         </p>
                       </div>
                       <div>
                         <span className="text-text-grey font-medium">DSGC Item Number</span>
                         <p className="font-mono font-bold text-slate-900 mt-0.5">
-                          {itemDetail?.dsgcItemNumber || groupedItem.dsgcItemNumber || "—"}
+                          {itemDetail?.dsgcItemNumber || "—"}
                         </p>
                       </div>
                       <div>
@@ -551,12 +551,10 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
                                   </td>
                                   <td className="py-3 px-3 text-right">
                                     <LotQrViewer
+                                      lotId={lot.lotId}
                                       lotNumber={lot.lotNumber}
                                       itemCode={groupedItem.itemCode}
-                                      itemName={groupedItem.itemName}
-                                      locationLabel={lot.locationLabels?.[0] || "—"}
-                                      qtyOnHand={lot.availableQty}
-                                      expiryDate={lot.expiryDate}
+                                      compact
                                     />
                                   </td>
                                 </tr>

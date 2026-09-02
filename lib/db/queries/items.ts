@@ -248,6 +248,8 @@ export async function getItem(
   return item;
 }
 
+export const getItemDetail = getItem;
+
 // ---------------------------------------------------------------------------
 // getItemOperationalRecords
 // ---------------------------------------------------------------------------

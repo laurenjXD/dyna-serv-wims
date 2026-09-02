@@ -76,15 +76,15 @@ export async function getItemAuditDetailAction(itemId: string) {
   if (!itemId) return { ok: false, error: "Invalid item ID" };
 
   try {
-    const resolver = await createPageResolver();
-    const { getItemDetail } = await import("@/lib/db/queries/items");
+    const { db } = await import("@/lib/db/client");
+    const { getItem } = await import("@/lib/db/queries/items");
     const { getItemMovementHistory } = await import("@/lib/db/queries/inventory");
-    const item = await getItemDetail(resolver.db, itemId);
+    const item = await getItem(db, itemId);
     if (!item) {
       return { ok: false, error: "Item not found in master records." };
     }
 
-    const movements = await getItemMovementHistory(resolver.db, itemId);
+    const movements = await getItemMovementHistory(db, itemId);
 
     return {
       ok: true,
