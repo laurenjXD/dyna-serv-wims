@@ -10,6 +10,7 @@ import {
   Barcode,
   ArrowDownRight,
   ArrowUpRight,
+  ArrowRight,
   FileText,
   User,
   ShieldCheck,
@@ -627,7 +628,7 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
                             <th className="py-2.5 px-3">Txn Number</th>
                             <th className="py-2.5 px-3">Movement Type</th>
                             <th className="py-2.5 px-3 text-right">Quantity</th>
-                            <th className="py-2.5 px-3">From $\rightarrow$ To</th>
+                            <th className="py-2.5 px-3">From → To</th>
                             <th className="py-2.5 px-3">Reference Doc</th>
                             <th className="py-2.5 px-3">Person in Charge (Audit)</th>
                           </tr>
@@ -702,13 +703,20 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
 
                                   {/* From -> To */}
                                   <td className="py-3 px-3 font-mono text-slate-800">
-                                    {txn.fromLocationLabel ? (
-                                      <span>
-                                        {txn.fromLocationLabel} $\rightarrow$ {txn.toLocationLabel || "—"}
-                                      </span>
-                                    ) : (
-                                      <span>$\rightarrow$ {txn.toLocationLabel || "Staging"}</span>
-                                    )}
+                                    <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                      {txn.fromLocationLabel ? (
+                                        <>
+                                          <span>{txn.fromLocationLabel}</span>
+                                          <ArrowRight size={12} className="text-slate-400 shrink-0" />
+                                          <span>{txn.toLocationLabel || "—"}</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <ArrowRight size={12} className="text-slate-400 shrink-0" />
+                                          <span>{txn.toLocationLabel || "Staging"}</span>
+                                        </>
+                                      )}
+                                    </div>
                                   </td>
 
                                   {/* Reference Document */}
