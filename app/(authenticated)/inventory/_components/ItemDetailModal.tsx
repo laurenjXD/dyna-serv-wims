@@ -539,19 +539,15 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
               {activeTab === "stock" && (
                 <div className="space-y-6">
                   {/* Stock Position KPI Cards */}
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div className="rounded-2xl border border-blue-200/80 bg-blue-50/60 p-3.5 shadow-sm">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-blue-900 block truncate">Total Boxes</span>
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-blue-900 block truncate">Current Net Balance</span>
                       <p className="font-mono text-xl font-bold text-brand-navy mt-1">
-                        {totalBoxes.toLocaleString()}{" "}
-                        <span className="text-xs font-normal text-text-grey">boxes</span>
-                      </p>
-                    </div>
-                    <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/60 p-3.5 shadow-sm">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-900 block truncate">Total Quantity</span>
-                      <p className="font-mono text-xl font-bold text-emerald-800 mt-1">
                         {totalUnits.toLocaleString()}{" "}
                         <span className="text-xs font-normal text-text-grey">{uom}</span>
+                      </p>
+                      <p className="font-mono text-xs text-slate-600 mt-0.5">
+                        {totalBoxes.toLocaleString()} boxes (SPQ: {effectiveSpq})
                       </p>
                     </div>
                     <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/40 p-3.5 shadow-sm">

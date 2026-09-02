@@ -499,25 +499,22 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
                 </div>
               </div>
 
-              {/* Key Metrics Stats Grid (SPQ, Boxes, Total Qty) */}
-              <div className="grid grid-cols-3 gap-2 rounded-xl bg-slate-50 p-2.5 border border-slate-100 text-center">
+              {/* Key Metrics: Current Net Balance (Total Qty) with Boxes & SPQ as subtitle */}
+              <div className="rounded-xl bg-slate-50 p-3 border border-slate-100 flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-text-grey block">SPQ</span>
-                  <span className="font-mono text-xs font-semibold text-slate-700">
-                    {item.spq.toLocaleString()}
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-brand-navy block">
+                    Current Net Balance
                   </span>
+                  <p className="font-mono text-base font-bold text-brand-navy mt-0.5">
+                    {totalCalculated.toLocaleString()}{" "}
+                    <span className="text-xs font-normal text-slate-600">{item.uom || "PCS"}</span>
+                  </p>
+                  <p className="text-[11px] font-mono text-text-grey mt-0.5">
+                    {item.boxesOnHand.toLocaleString()} boxes · SPQ: {item.spq.toLocaleString()} {item.uom || "PCS"}/box
+                  </p>
                 </div>
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-text-grey block">Boxes</span>
-                  <span className="font-mono text-xs font-semibold text-slate-700">
-                    {item.boxesOnHand.toLocaleString()}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-brand-navy block">Total Qty</span>
-                  <span className="font-mono text-xs font-bold text-brand-navy">
-                    {totalCalculated.toLocaleString()} <span className="text-[9px] font-normal">{item.uom || "PCS"}</span>
-                  </span>
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-brand-navy">
+                  <Package size={18} />
                 </div>
               </div>
 
