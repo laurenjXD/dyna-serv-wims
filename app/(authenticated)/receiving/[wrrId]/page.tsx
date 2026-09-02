@@ -271,10 +271,10 @@ export default async function WrrDetailPage({ params }: PageProps) {
               </h3>
               <p className="mt-1 font-body text-body-md text-text-grey">
                 This shipment was finalized with fewer units than declared on the Pre-Alert / CIPL.
-                Total expected: <strong className="font-mono text-on-surface">{wrr.items.reduce((s, i) => s + i.expectedQty, 0)} PCS</strong> |
-                Total received & posted: <strong className="font-mono text-on-surface">{wrr.items.reduce((s, i) => s + i.scannedQty, 0)} PCS</strong> (
+                Total expected: <strong className="font-mono text-on-surface">{wrr.items.reduce((s, i) => s + i.expectedQty, 0)} Boxes ({wrr.items.reduce((s, i) => s + i.expectedQty * (Number(i.spq) || 1), 0).toLocaleString()} PCS)</strong> |
+                Total received & posted: <strong className="font-mono text-on-surface">{wrr.items.reduce((s, i) => s + i.scannedQty, 0)} Boxes ({wrr.items.reduce((s, i) => s + i.scannedQty * (Number(i.spq) || 1), 0).toLocaleString()} PCS)</strong> (
                 <span className="font-mono font-bold text-status-held">
-                  {wrr.items.reduce((s, i) => s + i.scannedQty - i.expectedQty, 0)} PCS
+                  {wrr.items.reduce((s, i) => s + i.scannedQty - i.expectedQty, 0)} Boxes / {wrr.items.reduce((s, i) => s + (i.scannedQty - i.expectedQty) * (Number(i.spq) || 1), 0).toLocaleString()} PCS
                 </span>).
               </p>
             </div>
@@ -304,7 +304,7 @@ export default async function WrrDetailPage({ params }: PageProps) {
                     Lot Number
                   </th>
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Item Code
+                    Item Code & SPQ
                   </th>
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                     Customer Code
@@ -316,7 +316,7 @@ export default async function WrrDetailPage({ params }: PageProps) {
                     Expected Qty
                   </th>
                   <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Scanned Qty
+                    Received Qty
                   </th>
                   <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                     Remarks
@@ -327,35 +327,49 @@ export default async function WrrDetailPage({ params }: PageProps) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/30">
-                {wrr.items.map((item: WrrItemRow) => (
-                  <tr key={item.id} className="hover:bg-surface-light-grey/50">
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {item.lotNumber}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      <span className="block">Dyna-Serv: {item.itemCode ?? "—"}</span>
-                      <span className="mt-1 block text-text-grey">Supplier: {item.supplierItemCode ?? "—"}</span>
-                    </td>
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">{item.customerItemCode ?? "—"}</td>
-                    <td className="px-4 py-3 font-body text-body-md text-on-surface">{item.manufactureDate ?? "—"}</td>
-                    <td className="px-4 py-3 text-right font-mono text-mono-md text-on-surface">
-                      {item.expectedQty}
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono text-mono-md text-on-surface">
-                      {item.scannedQty}
-                    </td>
-                    <td className="max-w-56 px-4 py-3 font-body text-body-md text-text-grey">{item.remarks ?? "—"}</td>
-                    <td className="min-w-[188px] px-4 py-3 text-center align-middle">
-                      <WRRUnitLabelGenerator
-                        wrrItemId={item.id}
-                        wrrNumber={wrr.wrrNumber}
-                        itemCode={item.itemCode ?? item.lotNumber}
-                        lotNumber={item.lotNumber}
-                        expectedQty={item.expectedQty}
-                      />
-                    </td>
-                  </tr>
-                ))}
+                {wrr.items.map((item: WrrItemRow) => {
+                  const spq = Number(item.spq) || 1;
+                  const isShortage = item.scannedQty < item.expectedQty && wrr.status === "confirmed";
+
+                  return (
+                    <tr key={item.id} className="hover:bg-surface-light-grey/50">
+                      <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
+                        {item.lotNumber}
+                      </td>
+                      <td className="px-4 py-3 font-body text-body-md text-on-surface">
+                        <span className="block font-mono font-bold text-brand-navy">Dyna-Serv: {item.itemCode ?? "—"}</span>
+                        <span className="mt-0.5 block text-text-grey text-body-sm">Supplier: {item.supplierItemCode ?? "—"}</span>
+                        <span className="mt-1 inline-block rounded bg-surface-light-grey px-1.5 py-0.5 font-label text-label-xs font-bold text-text-grey">
+                          SPQ: {spq} {item.uom || "PCS"}/Box
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 font-mono text-mono-md text-on-surface">{item.customerItemCode ?? "—"}</td>
+                      <td className="px-4 py-3 font-body text-body-md text-on-surface">{item.manufactureDate ?? "—"}</td>
+                      <td className="px-4 py-3 text-right font-body text-body-md text-on-surface">
+                        <span className="font-mono font-bold block">{item.expectedQty} Boxes</span>
+                        <span className="text-text-grey font-mono text-body-xs">({(item.expectedQty * spq).toLocaleString()} {item.uom || "PCS"})</span>
+                      </td>
+                      <td className="px-4 py-3 text-right font-body text-body-md text-on-surface">
+                        <span className={`font-mono font-bold block ${isShortage ? "text-status-held" : ""}`}>
+                          {item.scannedQty} Boxes
+                        </span>
+                        <span className="text-text-grey font-mono text-body-xs">
+                          ({(item.scannedQty * spq).toLocaleString()} {item.uom || "PCS"})
+                        </span>
+                      </td>
+                      <td className="max-w-56 px-4 py-3 font-body text-body-md text-text-grey">{item.remarks ?? "—"}</td>
+                      <td className="min-w-[188px] px-4 py-3 text-center align-middle">
+                        <WRRUnitLabelGenerator
+                          wrrItemId={item.id}
+                          wrrNumber={wrr.wrrNumber}
+                          itemCode={item.itemCode ?? item.lotNumber}
+                          lotNumber={item.lotNumber}
+                          expectedQty={item.expectedQty}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

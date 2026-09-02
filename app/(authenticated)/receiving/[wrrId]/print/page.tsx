@@ -297,32 +297,42 @@ export default async function WrrPrintPage({ params }: PageProps) {
                       </tr>
                     </thead>
                     <tbody>
-                      {wrr.items.map((item: WrrItemRow) => (
-                        <tr key={item.id} className="border-b border-outline-variant/30">
-                          <td className="border border-outline-variant/30 px-3 py-2 font-mono text-mono-md text-on-surface">
-                            <span className="block">Dyna-Serv: {item.itemCode ?? "—"}</span>
-                            <span className="block text-text-grey">Supplier: {item.supplierItemCode ?? "—"}</span>
-                          </td>
-                          <td className="border border-outline-variant/30 px-3 py-2 font-body text-body-sm text-on-surface">
-                            {item.itemName ?? "—"}
-                          </td>
-                          <td className="border border-outline-variant/30 px-3 py-2 font-mono text-mono-md text-on-surface">{item.customerItemCode ?? "—"}</td>
-                          <td className="border border-outline-variant/30 px-3 py-2 font-mono text-mono-md text-on-surface">
-                            {item.lotNumber}
-                          </td>
-                          <td className="border border-outline-variant/30 px-3 py-2 font-body text-body-sm text-on-surface">{item.manufactureDate ?? "—"}</td>
-                          <td className="border border-outline-variant/30 px-3 py-2 text-right font-mono text-mono-md text-on-surface">
-                            {item.expectedQty} {item.uom}
-                          </td>
-                          <td className="border border-outline-variant/30 px-3 py-2 text-right font-mono text-mono-md text-on-surface client-export-hide-cbm">
-                            {item.unitCbm.toFixed(4)}
-                          </td>
-                          <td className="border border-outline-variant/30 px-3 py-2 text-right font-mono text-mono-md text-on-surface">
-                            {item.scannedQty > 0 ? `${item.scannedQty} ${item.uom}` : "—"}
-                          </td>
-                          <td className="border border-outline-variant/30 px-3 py-2 font-body text-body-sm text-on-surface">{item.remarks ?? "—"}</td>
-                        </tr>
-                      ))}
+                      {wrr.items.map((item: WrrItemRow) => {
+                        const spq = Number(item.spq) || 1;
+                        return (
+                          <tr key={item.id} className="border-b border-outline-variant/30">
+                            <td className="border border-outline-variant/30 px-3 py-2 font-mono text-mono-md text-on-surface">
+                              <span className="block font-bold">Dyna-Serv: {item.itemCode ?? "—"}</span>
+                              <span className="block text-text-grey text-body-xs">Supplier: {item.supplierItemCode ?? "—"}</span>
+                              <span className="block font-label text-label-xs text-text-grey">SPQ: {spq} {item.uom || "PCS"}/Box</span>
+                            </td>
+                            <td className="border border-outline-variant/30 px-3 py-2 font-body text-body-sm text-on-surface">
+                              {item.itemName ?? "—"}
+                            </td>
+                            <td className="border border-outline-variant/30 px-3 py-2 font-mono text-mono-md text-on-surface">{item.customerItemCode ?? "—"}</td>
+                            <td className="border border-outline-variant/30 px-3 py-2 font-mono text-mono-md text-on-surface">
+                              {item.lotNumber}
+                            </td>
+                            <td className="border border-outline-variant/30 px-3 py-2 font-body text-body-sm text-on-surface">{item.manufactureDate ?? "—"}</td>
+                            <td className="border border-outline-variant/30 px-3 py-2 text-right font-body text-body-sm text-on-surface">
+                              <span className="font-mono font-bold block">{item.expectedQty} Boxes</span>
+                              <span className="text-text-grey font-mono text-body-xs">({(item.expectedQty * spq).toLocaleString()} {item.uom || "PCS"})</span>
+                            </td>
+                            <td className="border border-outline-variant/30 px-3 py-2 text-right font-mono text-mono-md text-on-surface client-export-hide-cbm">
+                              {item.unitCbm.toFixed(4)}
+                            </td>
+                            <td className="border border-outline-variant/30 px-3 py-2 text-right font-body text-body-sm text-on-surface">
+                              {item.scannedQty > 0 ? (
+                                <>
+                                  <span className="font-mono font-bold block">{item.scannedQty} Boxes</span>
+                                  <span className="text-text-grey font-mono text-body-xs">({(item.scannedQty * spq).toLocaleString()} {item.uom || "PCS"})</span>
+                                </>
+                              ) : "—"}
+                            </td>
+                            <td className="border border-outline-variant/30 px-3 py-2 font-body text-body-sm text-on-surface">{item.remarks ?? "—"}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                     <tfoot className="border-t-2 border-brand-navy bg-surface-light-grey/80 font-bold">
                       <tr>
@@ -330,13 +340,13 @@ export default async function WrrPrintPage({ params }: PageProps) {
                           Total Receiving Quantities:
                         </td>
                         <td className="border border-outline-variant/30 px-3 py-2 text-right font-mono text-mono-md font-bold text-brand-navy">
-                          {wrr.items.reduce((sum, item) => sum + item.expectedQty, 0).toLocaleString()}
+                          {wrr.items.reduce((sum, item) => sum + item.expectedQty, 0).toLocaleString()} Boxes
                         </td>
                         <td className="border border-outline-variant/30 px-3 py-2 text-right font-mono text-mono-md font-bold text-brand-navy client-export-hide-cbm">
                           {wrr.items.reduce((sum, item) => sum + (item.unitCbm * item.expectedQty), 0).toFixed(4)}
                         </td>
                         <td className="border border-outline-variant/30 px-3 py-2 text-right font-mono text-mono-md font-bold text-brand-navy">
-                          {wrr.items.reduce((sum, item) => sum + item.scannedQty, 0).toLocaleString()}
+                          {wrr.items.reduce((sum, item) => sum + item.scannedQty, 0).toLocaleString()} Boxes
                         </td>
                         <td className="border border-outline-variant/30 px-3 py-2 font-label text-label-xs uppercase text-text-grey">
                           {wrr.items.reduce((sum, item) => sum + item.scannedQty, 0) >= wrr.items.reduce((sum, item) => sum + item.expectedQty, 0) ? "Complete" : "Variance / Short"}
@@ -351,12 +361,20 @@ export default async function WrrPrintPage({ params }: PageProps) {
                   <div className="w-full max-w-sm rounded-lg border border-outline-variant/40 bg-surface-light-grey/40 p-4 font-body text-body-md">
                     <dl className="space-y-1.5">
                       <div className="flex justify-between">
-                        <dt className="text-text-grey">Total Expected Units:</dt>
-                        <dd className="font-mono font-bold text-on-surface">{wrr.items.reduce((sum, item) => sum + item.expectedQty, 0).toLocaleString()} PCS</dd>
+                        <dt className="text-text-grey">Total Expected Boxes:</dt>
+                        <dd className="font-mono font-bold text-on-surface">{wrr.items.reduce((sum, item) => sum + item.expectedQty, 0).toLocaleString()} Boxes</dd>
                       </div>
                       <div className="flex justify-between">
-                        <dt className="text-text-grey">Total Actual Received Units:</dt>
-                        <dd className="font-mono font-bold text-brand-navy">{wrr.items.reduce((sum, item) => sum + item.scannedQty, 0).toLocaleString()} PCS</dd>
+                        <dt className="text-text-grey">Total Expected Pieces:</dt>
+                        <dd className="font-mono font-bold text-on-surface">{wrr.items.reduce((sum, item) => sum + item.expectedQty * (Number(item.spq) || 1), 0).toLocaleString()} PCS</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-text-grey">Total Actual Received Boxes:</dt>
+                        <dd className="font-mono font-bold text-brand-navy">{wrr.items.reduce((sum, item) => sum + item.scannedQty, 0).toLocaleString()} Boxes</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-text-grey">Total Actual Received Pieces:</dt>
+                        <dd className="font-mono font-bold text-brand-navy">{wrr.items.reduce((sum, item) => sum + item.scannedQty * (Number(item.spq) || 1), 0).toLocaleString()} PCS</dd>
                       </div>
                       <div className="flex justify-between border-t border-outline-variant/30 pt-1.5 client-export-hide-cbm">
                         <dt className="text-text-grey">Total Shipment CBM:</dt>

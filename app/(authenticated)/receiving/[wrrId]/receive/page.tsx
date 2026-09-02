@@ -182,15 +182,24 @@ export default async function ReceiveFloorPage({
   );
   const primaryReadyLine: WrrItemRow | null = readyLines.length > 0 ? readyLines[0] : null;
 
-  // Fetch putaway suggestions (store) / active inspection locations (inspect).
-  // Candidate data includes remainingCbm and the selector renders it per box.
-  // only for the single primary ready line.
+  // Fetch putaway suggestions (store) and active inspection locations.
   let primaryStoreCandidates: PutawayCandidate[] = [];
   let primaryStoreContents: Record<string, Awaited<ReturnType<typeof getPutawayLocationContents>>[string]> = {};
   let inspectionLocations: Array<{ id: string; label: string }> = [];
-  if (primaryReadyLine?.disposition === "store") {
-    // A location-preview failure must never remove the scan screen. It is a
-    // recoverable placement error, not a reason to fail the entire WRR route.
+
+  if (primaryReadyLine) {
+    try {
+      inspectionLocations = ((await db
+        .select({ id: locations.id, label: locations.label })
+        .from(locations)
+        .where(and(eq(locations.locationType, "inspection"), eq(locations.isActive, true)))) as Array<{
+          id: string;
+          label: string;
+        }>).sort((a, b) => (a.label ?? "").localeCompare(b.label ?? "", undefined, { numeric: true, sensitivity: "base" }));
+    } catch {
+      inspectionLocations = [];
+    }
+
     try {
       primaryStoreCandidates = await suggestPutawayLocations(db, {
         itemUnitCbm: Number(primaryReadyLine.unitCbm ?? 0),
@@ -204,18 +213,6 @@ export default async function ReceiveFloorPage({
     } catch {
       primaryStoreCandidates = [];
       primaryStoreContents = {};
-    }
-  } else if (primaryReadyLine?.disposition === "inspect") {
-    try {
-      inspectionLocations = ((await db
-        .select({ id: locations.id, label: locations.label })
-        .from(locations)
-        .where(and(eq(locations.locationType, "inspection"), eq(locations.isActive, true)))) as Array<{
-          id: string;
-          label: string;
-        }>).sort((a, b) => (a.label ?? "").localeCompare(b.label ?? "", undefined, { numeric: true, sensitivity: "base" }));
-    } catch {
-      inspectionLocations = [];
     }
   }
 
@@ -458,21 +455,22 @@ export default async function ReceiveFloorPage({
           scannedBarcode={barcodeParam}
         />
 
-        {fullyScannedLines > 0 && fullyScannedLines < totalLines && (
+        {/* Shortage / Partial Receipt Banner — available whenever any line has shortages or uncommitted boxes */}
+        {isReceivable && (wrr.items ?? []).some((i: WrrItemRow) => i.committedAt === null || i.scannedQty < i.expectedQty) && (
           <div className="mt-4 rounded-xl border border-status-pending/40 bg-[#FFF9EB] p-4 shadow-elevation-1">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="font-heading text-body-md font-bold text-on-surface">
-                  Partial Receipt / Delivery Shortage
+                  Partial Receipt / Delivery Shortage (OS&D)
                 </p>
                 <p className="mt-1 font-body text-body-sm text-text-grey">
-                  {fullyScannedLines} of {totalLines} lines are ready. If the remaining items are not physically arriving on this truck, you can finalize this WRR with shortage.
+                  {fullyScannedLines} of {totalLines} lines completed. If any remaining boxes or items are missing from this truck, you can finalize this WRR with shortage.
                 </p>
               </div>
               <form action={handleCloseShortage}>
                 <button
                   type="submit"
-                  className="inline-flex h-11 items-center justify-center rounded-lg border border-status-held/40 bg-surface-white px-4 font-label text-label font-bold text-status-held hover:bg-status-held/10 focus:outline-none focus:ring-2 focus:ring-brand-navy whitespace-nowrap"
+                  className="inline-flex h-11 items-center justify-center rounded-lg border border-status-held/40 bg-surface-white px-4 font-label text-label font-bold text-status-held hover:bg-status-held/10 focus:outline-none focus:ring-2 focus:ring-brand-navy whitespace-nowrap shadow-sm"
                 >
                   Finalize with Shortage (OS&D)
                 </button>
@@ -516,42 +514,51 @@ export default async function ReceiveFloorPage({
           </div>
         )}
 
-        {/* Item progress list — card-based, NOT a dense table.
-            brand-design-system.md §9: floor tables are a fail case;
-            use card-based list, one item per row. */}
+        {/* Item progress list — card-based, NOT a dense table. */}
         <div className="mt-4 space-y-3">
           {wrr.items.map((item: WrrItemRow) => {
+            const itemSpq = Number(item.spq) || 1;
             const fullyScanned = item.scannedQty >= item.expectedQty;
             const isCommitted = item.committedAt !== null;
-            // Batch putaway begins after one accepted physical QR. The final
-            // command still needs the attestation and a complete allocation;
-            // it is not an unverified shortcut around reconciliation.
             const readyToCommit = item.scannedQty >= 1 && !isCommitted;
             const isPrimaryReady = primaryReadyLine !== null && item.id === primaryReadyLine.id;
 
             return (
               <div
                 key={item.id}
-                // Floor card: solid surface-white, Level 2 shadow, no glassmorphism
                 className={`rounded-2xl border bg-surface-white p-4 shadow-elevation-1 sm:p-5 ${isPrimaryReady ? "border-primary/50 ring-2 ring-primary/10" : "border-outline-variant/40"}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    {/* Lot number — Roboto Mono per §9, min 16px on floor */}
-                    <p className="font-mono text-mono-lg font-bold text-on-surface">
-                      {item.lotNumber}
+                    {/* Lot number & SPQ Badge */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-mono text-mono-lg font-bold text-on-surface">
+                        {item.lotNumber}
+                      </p>
+                      <span className="rounded-md bg-surface-light-grey px-2 py-0.5 font-label text-label-xs font-bold text-text-grey">
+                        SPQ: {itemSpq} {item.uom || "PCS"}/Box
+                      </span>
+                    </div>
+
+                    {/* Item Code and Name */}
+                    <p className="mt-1 font-body text-body-sm text-text-grey">
+                      <span className="font-mono font-semibold text-brand-navy">{item.itemCode ?? "—"}</span>
+                      {item.itemName ? ` · ${item.itemName}` : ""}
                     </p>
-                    {/* Qty progress */}
-                    <p className="mt-1 font-body text-body-md text-on-surface">
-                      {item.scannedQty} / {item.expectedQty} scanned
+
+                    {/* Qty progress in both Boxes and Total Pieces */}
+                    <p className="mt-1.5 font-body text-body-md text-on-surface">
+                      <strong>{item.scannedQty} / {item.expectedQty} Boxes</strong>
+                      {" "}<span className="text-text-grey font-mono">({(item.scannedQty * itemSpq).toLocaleString()} / {(item.expectedQty * itemSpq).toLocaleString()} {item.uom || "PCS"})</span>
                     </p>
-                    {/* Disposition — label + badge with icon, never color alone per §1.3 floor rule */}
-                    <div className="mt-1 flex items-center gap-2">
-                      <span className="text-body-md font-body text-on-surface">
+
+                    {/* Disposition badge */}
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-body-sm font-body text-text-grey">
                         Disposition:
                       </span>
                       <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-body-md font-label uppercase ${item.disposition === "store"
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-body-sm font-label uppercase ${item.disposition === "store"
                             ? "bg-status-available/10 text-emerald-800 border border-status-available/20"
                             : "bg-status-pending/10 text-amber-800 border border-status-pending/20"
                           }`}
@@ -574,7 +581,7 @@ export default async function ReceiveFloorPage({
                       </button>
                     )}
                   </div>
-                  {/* Completion / committed indicator — visible, accessible */}
+                  {/* Completion / committed indicator */}
                   {isCommitted ? (
                     <span
                       aria-label="Committed"
@@ -585,7 +592,7 @@ export default async function ReceiveFloorPage({
                   ) : (
                     (fullyScanned || readyToCommit) && (
                       <span
-                        aria-label="Fully scanned"
+                        aria-label="Ready to commit"
                         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-status-pending text-surface-white font-heading font-bold"
                       >
                         <Check size={20} strokeWidth={3} />
@@ -594,18 +601,11 @@ export default async function ReceiveFloorPage({
                   )}
                 </div>
 
-                {/* At most one full-width brand-red primary CTA is ever visible at
-                    a time on this floor screen (brand-design-system.md §3). The
-                    actual Store/Hold commit form for the primary ready line lives
-                    in the sticky bottom primary-action area below, not inline
-                    here. Any OTHER ready-but-not-yet-committed line gets a
-                    compact, secondary-styled indicator instead of a second
-                    equal-weight primary button. design.md §6.2/§6.3. */}
                 {readyToCommit && isPrimaryReady && (
                   <div className="mt-3 flex items-center gap-2 border-t border-outline-variant/30 pt-3">
                     <ArrowDown size={18} aria-hidden="true" className="text-brand-navy" />
-                    <p className="font-label text-body-md text-brand-navy">
-                      QR verified — {item.disposition === "store" ? "assign locations" : "choose the inspection location"} below
+                    <p className="font-label text-body-md text-brand-navy font-bold">
+                      QR verified — assign storage and/or inspection bays below
                     </p>
                   </div>
                 )}
@@ -624,97 +624,50 @@ export default async function ReceiveFloorPage({
         </div>
       </div>
 
-      {/* Primary action — bottom third of screen, full-width, exactly ONE
-          brand-red CTA at a time (brand-design-system.md §3). Priority:
-          if a line is fully scanned and awaiting commit, THAT line's
-          Store/Hold form is the primary action here (design.md §6.2/§6.3/§9)
-          — scanning resumes once it's resolved. Otherwise, if lines remain
-          unscanned, the scan input is the primary action. 64px minimum
-          height for floor primary actions throughout. */}
+      {/* Primary action — bottom third of screen, full-width */}
       {isReceivable && primaryReadyLine && (
         <div className="sticky bottom-0 z-10 -mx-4 mt-2 border-t border-outline-variant/40 bg-surface-white px-4 pb-6 pt-4 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] sm:-mx-6 sm:rounded-t-2xl sm:border-x">
           <form action={handleCommitLine} className="flex flex-col gap-3">
             <input type="hidden" name="wrrItemId" value={primaryReadyLine.id} />
-            <p className="font-mono text-mono-lg font-bold text-on-surface">
-              {primaryReadyLine.lotNumber}
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-mono text-mono-lg font-bold text-on-surface">
+                {primaryReadyLine.lotNumber}
+              </p>
+              <span className="rounded bg-brand-navy/10 px-2 py-0.5 font-label text-label-xs font-bold text-brand-navy">
+                SPQ: {primaryReadyLine.spq ?? 1} {primaryReadyLine.uom || "PCS"}/Box
+              </span>
+            </div>
             <div className="flex items-start gap-3 rounded-xl border border-status-available/30 bg-[#F0FDF8] px-4 py-3">
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-status-available font-heading font-bold text-surface-white" aria-hidden="true">
                 <Check size={18} strokeWidth={3} />
               </span>
               <div>
                 <p className="font-label text-body-md font-bold text-on-surface">
-                  Pallet verified
+                  Pallet QR Verified
                 </p>
                 <p className="mt-1 font-body text-body-md text-text-grey">
-                  Assign all {primaryReadyLine.expectedQty} declared boxes before storing.
+                  Assign locations for declared boxes (Expected: {primaryReadyLine.expectedQty} Boxes / {((Number(primaryReadyLine.expectedQty) || 0) * (Number(primaryReadyLine.spq) || 1)).toLocaleString()} {primaryReadyLine.uom || "PCS"}).
                 </p>
               </div>
             </div>
-            {primaryReadyLine.disposition === "store" ? (
-              <>
-                {primaryStoreCandidates.length > 0 ? (
-                  <>
-                    <p className="rounded border border-outline-variant/30 bg-surface-light-grey px-3 py-2 font-body text-body-md text-on-surface">
-                      This receipt needs {((Number(primaryReadyLine.unitCbm) || 0) * (Number(primaryReadyLine.expectedQty) || 0)).toFixed(2)} CBM. Choose a location, review its capacity and current contents, then store.
-                    </p>
-                    <PutawayLocationSelector
-                      candidates={primaryStoreCandidates}
-                      contents={primaryStoreContents}
-                      quantity={primaryReadyLine.expectedQty}
-                      unitCbm={Number(primaryReadyLine.unitCbm) || 0}
-                    />
-                  </>
-                ) : (
-                  <div role="alert" className="rounded-lg border border-status-held/40 bg-status-held/5 px-3 py-2 shadow-sm">
-                    <p className="flex items-center gap-2 font-body text-body-md text-on-surface">
-                      <AlertTriangle size={18} aria-hidden="true" className="text-status-held" />
-                      No storage location has enough remaining capacity. Contact a supervisor.
-                    </p>
-                  </div>
-                )}
-                <button
-                  type="submit"
-                  disabled={primaryStoreCandidates.length === 0}
-                  className="flex h-16 w-full items-center justify-center rounded bg-primary font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white disabled:opacity-50"
-                >
-                  Store all {primaryReadyLine.expectedQty} boxes
-                </button>
-              </>
-            ) : (
-              <>
-                <label
-                  htmlFor="location-primary"
-                  className="text-body-md font-body text-on-surface"
-                >
-                  Inspection location
-                </label>
-                {inspectionLocations.length > 0 ? (
-                  <LocationCombobox
-                    id="location-primary"
-                    name="locationId"
-                    required={inspectionLocations.length > 1}
-                    options={inspectionLocations}
-                    defaultValue={inspectionLocations.length === 1 ? inspectionLocations[0].id : ""}
-                    placeholder="Search or choose an inspection location"
-                  />
-                ) : (
-                  <div role="alert" className="rounded-lg border border-status-held/40 bg-status-held/5 px-3 py-2 shadow-sm">
-                    <p className="flex items-center gap-2 font-body text-body-md text-on-surface">
-                      <AlertTriangle size={18} aria-hidden="true" className="text-status-held" />
-                      No active inspection location is configured. Contact a supervisor.
-                    </p>
-                  </div>
-                )}
-                <button
-                  type="submit"
-                  disabled={inspectionLocations.length === 0}
-                  className="flex h-16 w-full items-center justify-center rounded bg-primary font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white disabled:opacity-50"
-                >
-                  Hold
-                </button>
-              </>
-            )}
+
+            <PutawayLocationSelector
+              candidates={primaryStoreCandidates}
+              inspectionCandidates={inspectionLocations}
+              contents={primaryStoreContents}
+              quantity={primaryReadyLine.expectedQty}
+              unitCbm={Number(primaryReadyLine.unitCbm) || 0}
+              spq={Number(primaryReadyLine.spq) || 1}
+              uom={primaryReadyLine.uom || "PCS"}
+            />
+
+            <button
+              type="submit"
+              disabled={primaryStoreCandidates.length === 0 && inspectionLocations.length === 0}
+              className="flex h-16 w-full items-center justify-center rounded bg-primary font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white disabled:opacity-50 shadow-md"
+            >
+              Confirm & Store / Hold Boxes
+            </button>
           </form>
         </div>
       )}

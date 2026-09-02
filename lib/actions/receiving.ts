@@ -883,10 +883,7 @@ export async function commitWrrLine(
       const requestedUnitLocations = params.unitLocationIds?.filter(
         (locationId) => typeof locationId === "string" && locationId.length > 0,
       );
-      if (requestedUnitLocations && requestedUnitLocations.length !== line.expectedQty) {
-        return { ok: false, errors: ["unit_location_count_mismatch"] } satisfies CommitWrrLineResult;
-      }
-      if (requestedUnitLocations) {
+      if (requestedUnitLocations && requestedUnitLocations.length > 0 && !params.allocations?.length) {
         const grouped = requestedUnitLocations.reduce<Record<string, number>>((result, locationId) => {
           result[locationId] = (result[locationId] ?? 0) + 1;
           return result;
@@ -894,11 +891,15 @@ export async function commitWrrLine(
         batchAllocations = Object.entries(grouped).map(([locationId, qty]) => ({ locationId, qty }));
       }
       const isBatch = batchAllocations.length > 0;
+      const allocatedTotal = isBatch
+        ? batchAllocations.reduce((sum, allocation) => sum + allocation.qty, 0)
+        : line.expectedQty;
+
       if (isBatch && !params.presenceAttested) {
         return { ok: false, errors: ["presence_attestation_required"] } satisfies CommitWrrLineResult;
       }
-      if (isBatch && batchAllocations.reduce((sum, allocation) => sum + allocation.qty, 0) !== line.expectedQty) {
-        return { ok: false, errors: ["allocation_qty_must_equal_expected"] } satisfies CommitWrrLineResult;
+      if (isBatch && (allocatedTotal < 1 || allocatedTotal > line.expectedQty)) {
+        return { ok: false, errors: ["allocation_qty_invalid"] } satisfies CommitWrrLineResult;
       }
 
       const targetLocationIds = isBatch
@@ -918,7 +919,7 @@ export async function commitWrrLine(
         .where(or(...targetLocationIds.map((id) => eq(locations.id, id))));
       const normalizedLocationRows = locationRows as Array<{ id: string; isActive: boolean; locationType: string }>;
       const locationsById = new Map(normalizedLocationRows.map((row) => [row.id, row]));
-      const validationLine = { ...line, scannedQty: line.expectedQty };
+      const validationLine = { ...line, scannedQty: allocatedTotal };
       for (const targetLocationId of targetLocationIds) {
         const row = locationsById.get(targetLocationId);
         const location: CommitLocation | null = row
@@ -940,13 +941,16 @@ export async function commitWrrLine(
         .update(wrrItems)
         .set({
           committedAt: new Date(),
-          scannedQty: line.expectedQty,
+          scannedQty: allocatedTotal,
           ...(line.disposition === "store" && !isBatch ? { putawayLocationId: targetLocationIds[0] } : {}),
         })
         .where(and(eq(wrrItems.id, wrrItemId), isNull(wrrItems.committedAt)))
         .returning({ id: wrrItems.id });
 
       if (claimed.length === 1) {
+        const hasStorageLocation = targetLocationIds.some((id) => locationsById.get(id)?.locationType === "storage");
+        const hasInspectionLocation = targetLocationIds.some((id) => locationsById.get(id)?.locationType === "inspection");
+
         const [lot] = await tx
           .insert(lots)
           .values({
@@ -955,7 +959,7 @@ export async function commitWrrLine(
             itemId: line.itemId!,
             flowType: doc.flowType as "vmi" | "trading" | "supplies",
             ownerPartyId: doc.flowType === "vmi" ? doc.vendorPartyId : null,
-            status: line.disposition === "store" ? "available" : "quarantined",
+            status: hasStorageLocation ? "available" : "quarantined",
             pezaNumber: doc.pezaNumber,
             commercialInvoiceNo: doc.commercialInvoiceNo,
             ipNumber: doc.ipNumber,
@@ -966,22 +970,26 @@ export async function commitWrrLine(
         const committedAllocations = isBatch
           ? batchAllocations
           : [{ locationId: targetLocationIds[0], qty: line.expectedQty }];
-        const committedUnitLocations = requestedUnitLocations
-          ?? (isBatch
+        const committedUnitLocations = (requestedUnitLocations && requestedUnitLocations.length === allocatedTotal)
+          ? requestedUnitLocations
+          : (isBatch
             ? committedAllocations.flatMap((allocation) =>
                 Array.from({ length: allocation.qty }, () => allocation.locationId),
               )
             : Array.from({ length: line.expectedQty }, () => targetLocationIds[0]));
 
-        if (isBatch && line.disposition === "store") {
-          await tx.insert(wrrItemPutawayAllocations).values(
-            committedAllocations.map((allocation) => ({
-              wrrItemId: line.id,
-              locationId: allocation.locationId,
-              qty: allocation.qty,
-              createdByUserId: userId,
-            })),
-          );
+        if (isBatch) {
+          const storageAllocations = committedAllocations.filter((a) => locationsById.get(a.locationId)?.locationType === "storage");
+          if (storageAllocations.length > 0) {
+            await tx.insert(wrrItemPutawayAllocations).values(
+              storageAllocations.map((allocation) => ({
+                wrrItemId: line.id,
+                locationId: allocation.locationId,
+                qty: allocation.qty,
+                createdByUserId: userId,
+              })),
+            );
+          }
         }
 
         await tx.insert(lotLocationBalances).values(committedAllocations.map((allocation) => ({
@@ -995,6 +1003,7 @@ export async function commitWrrLine(
         await tx.insert(inventoryUnits).values(
           committedUnitLocations.map((locationId, index) => {
             const unitId = deriveWrrUnitId(line.id, index + 1);
+            const isInspectLocation = locationsById.get(locationId)?.locationType === "inspection";
             return {
               unitId,
               cartonId: cartonIdFromUnitId(unitId),
@@ -1002,16 +1011,12 @@ export async function commitWrrLine(
               wrrItemId: line.id,
               lotId: lot.id,
               locationId,
-              status: line.disposition === "store" ? "available" : "quarantined",
+              status: isInspectLocation ? "quarantined" : "available",
             };
           }),
         );
 
         await tx.insert(inventoryTransactions).values(committedAllocations.map((allocation) => ({
-          // A WRR item UUID is globally unique and keeps the receipt reference
-          // below the schema's 50-character limit, unlike concatenating two
-          // full UUIDs. It also makes a retried commit deterministically refer
-          // to the same physical line.
           transactionNumber: `RCV-${line.id.slice(0, 8)}-${allocation.locationId.slice(0, 8)}`,
           lotId: lot.id,
           itemId: line.itemId!,
@@ -1024,12 +1029,7 @@ export async function commitWrrLine(
           performedByUserId: userId,
         })));
 
-        // An inspect-disposition receipt is not complete when the lot is merely
-        // quarantined. It must also open the shared inbound inspection case that
-        // drives Master Inventory's Inspection tab and the subsequent resolution
-        // workflow. Keeping this in the same transaction means a successfully
-        // committed held lot can never be stranded without an inspection task.
-        if (line.disposition === "inspect") {
+        if (hasInspectionLocation || line.disposition === "inspect") {
           await tx.insert(inspectionCases).values({
             contextType: "inbound",
             sourceRefType: "wrr_item",
