@@ -3,10 +3,11 @@
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import type { ColumnDef, Row } from "@tanstack/react-table";
-import { ChevronDown, Package, Layers, ArrowRight, PackagePlus, Building2 } from "lucide-react";
+import { ChevronDown, Package, Layers, ArrowRight, PackagePlus, Building2, Eye } from "lucide-react";
 import { DataTable } from "@/components/tables/DataTable";
 import { LotQrViewer } from "./LotQrViewer";
 import { OpeningStockImportModal } from "./OpeningStockImportModal";
+import { ItemDetailModal } from "./ItemDetailModal";
 
 export type AggregatedLot = {
   lotId: string;
@@ -48,6 +49,7 @@ export type GroupedItem = {
 
 export function StockViewFilterableRegister({ items }: { items: GroupedItem[] }) {
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
+  const [selectedItemForView, setSelectedItemForView] = useState<GroupedItem | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const columns = useMemo<ColumnDef<GroupedItem, unknown>[]>(() => [
@@ -339,7 +341,7 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
       ),
     },
 
-    // 14. Quick Action
+    // 14. Quick Action (View Item Master Details & Movement Audit)
     {
       id: "actions",
       header: "Action",
@@ -349,12 +351,13 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
       cell: (info) => {
         const item = info.row.original;
         return (
-          <Link
-            href={`/inventory?tab=pick-lists&item=${item.itemCode}`}
-            className="rounded bg-brand-navy px-2.5 py-1 text-[11px] font-bold text-surface-white hover:bg-brand-navy/90 transition-colors shadow-sm"
+          <button
+            type="button"
+            onClick={() => setSelectedItemForView(item)}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-navy px-3 py-1.5 text-xs font-bold text-surface-white hover:bg-brand-navy/90 transition-all shadow-sm"
           >
-            Pick
-          </Link>
+            <Eye size={13} /> View
+          </button>
         );
       },
     },
@@ -394,19 +397,43 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
               </div>
               <div className="grid justify-start gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                 {item.lots.map((lot) => (
-                  <div key={lot.lotId} className="w-full max-w-[280px] rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="flex min-w-0 items-center gap-1.5 font-mono text-sm font-bold text-slate-900">
-                        <ChevronDown size={14} className="shrink-0 text-text-grey rotate-180" />
-                        <span className="truncate" title={lot.lotNumber}>{lot.lotNumber}</span>
-                      </span>
-                      <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-bold text-brand-navy">{lot.availableQty.toLocaleString()} {item.uom}</span>
+                  <div key={lot.lotId} className="flex min-w-[200px] flex-col justify-between rounded border border-blue-200 bg-surface-white p-2.5 text-xs shadow-sm">
+                    <div>
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="font-mono font-bold text-brand-navy">{lot.lotNumber}</span>
+                        <span
+                          className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${
+                            lot.lotStatus === "available"
+                              ? "bg-status-available/15 text-status-available"
+                              : lot.lotStatus === "hold"
+                              ? "bg-status-held/15 text-status-held"
+                              : "bg-status-pending/15 text-status-pending"
+                          }`}
+                        >
+                          {lot.lotStatus}
+                        </span>
+                      </div>
+                      <p className="mt-1 font-mono text-[11px] text-slate-700">
+                        Locations: <strong>{lot.locationLabels.join(", ") || "—"}</strong>
+                      </p>
+                      {lot.expiryDate && (
+                        <p className="font-mono text-[11px] text-text-grey">
+                          Exp: {new Date(lot.expiryDate).toLocaleDateString()}
+                        </p>
+                      )}
+                      <p className="font-mono text-sm font-bold text-slate-900 mt-1">
+                        {lot.availableQty.toLocaleString()} <span className="text-xs font-normal text-text-grey">pckgs</span>
+                      </p>
                     </div>
-                    <div className="mt-2 space-y-1 border-t border-slate-100 pt-2 text-xs">
-                      <div className="flex justify-between gap-2 text-text-grey"><span>Location:</span><span className="font-mono font-semibold text-slate-800">{lot.locationLabels.join(", ") || "—"}</span></div>
-                      <div className="flex justify-between gap-2 text-text-grey"><span>Expiry:</span><span className="font-mono text-slate-800">{lot.expiryDate || "Not dated"}</span></div>
-                      <div className="flex justify-between gap-2 text-text-grey"><span>Status:</span><span className="font-semibold text-emerald-700 lowercase">{lot.lotStatus}</span></div>
-                      <LotQrViewer lotId={lot.lotId} lotNumber={lot.lotNumber} itemCode={item.itemCode} compact />
+                    <div className="mt-2 flex items-center justify-end border-t border-slate-100 pt-2">
+                      <LotQrViewer
+                        lotNumber={lot.lotNumber}
+                        itemCode={item.itemCode}
+                        itemName={item.itemName}
+                        locationLabel={lot.locationLabels[0] || "—"}
+                        qtyOnHand={lot.availableQty}
+                        expiryDate={lot.expiryDate}
+                      />
                     </div>
                   </div>
                 ))}
@@ -414,25 +441,27 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
             </div>
           );
         }}
-        renderMobileCard={({ row }: { row: Row<GroupedItem> }) => {
+        renderMobileCard={({ row }) => {
           const item = row.original;
           const isLotsExpanded = expandedItemId === item.itemId;
+          const totalCalculated = item.totalQty || (item.spq * item.boxesOnHand) || 0;
           const modelVal = String(item.inventoryModel || "TRADING").toUpperCase();
-          const totalCalculated = item.totalQty ?? (item.spq * item.boxesOnHand);
 
           return (
-            <div className="rounded-2xl border border-slate-200 bg-surface-white p-3.5 shadow-sm space-y-2.5">
-              {/* Header: SKU / Code + Pick CTA */}
-              <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-sm font-bold text-brand-navy">{item.itemCode}</span>
-                  {item.isPerishable && (
-                    <span className="rounded bg-rose-50 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 border border-rose-200 uppercase">
-                      FEFO
-                    </span>
-                  )}
+            <div className="space-y-3">
+              {/* Card Header: Item Code, Model Badge & View Action */}
+              <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono text-sm font-bold text-brand-navy">{item.itemCode}</span>
+                    {item.isPerishable && (
+                      <span className="rounded bg-rose-50 px-1 py-0.2 text-[10px] font-bold text-rose-700 border border-rose-200">
+                        FEFO
+                      </span>
+                    )}
+                  </div>
                   <span
-                    className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${
+                    className={`inline-block rounded-full px-2 py-0.2 text-[10px] font-bold uppercase tracking-wider ${
                       modelVal === "VMI"
                         ? "bg-blue-50 text-blue-800 border border-blue-200"
                         : modelVal === "TRADING"
@@ -443,12 +472,13 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
                     {modelVal}
                   </span>
                 </div>
-                <Link
-                  href={`/inventory?tab=pick-lists&item=${item.itemCode}`}
+                <button
+                  type="button"
+                  onClick={() => setSelectedItemForView(item)}
                   className="inline-flex h-8 items-center gap-1 rounded-xl bg-brand-navy px-3 text-xs font-bold text-surface-white shadow-sm hover:bg-brand-navy/90"
                 >
-                  Pick <ArrowRight size={12} />
-                </Link>
+                  <Eye size={12} /> View
+                </button>
               </div>
 
               {/* Description & Category */}
@@ -529,6 +559,13 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
             </div>
           );
         }}
+      />
+
+      {/* Item Detail & Movement Audit Modal */}
+      <ItemDetailModal
+        isOpen={Boolean(selectedItemForView)}
+        onClose={() => setSelectedItemForView(null)}
+        groupedItem={selectedItemForView}
       />
 
       {/* Opening Stock Import Modal */}

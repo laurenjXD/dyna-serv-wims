@@ -4,13 +4,17 @@
 //   specs/08-outgoing-withdrawal-and-two-stage-commitment/design.md §5
 //   specs/08-outgoing-withdrawal-and-two-stage-commitment/requirements.md R3
 
-import { and, asc, eq, gt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { items, itemCategories } from "@/lib/db/schema/items";
 import { parties } from "@/lib/db/schema/parties";
 import { locations } from "@/lib/db/schema/locations";
 import { lotLocationBalances } from "@/lib/db/schema/lot_location_balances";
 import { lots } from "@/lib/db/schema/lots";
+import { inventoryTransactions } from "@/lib/db/schema/transactions";
+import { wrrDocuments } from "@/lib/db/schema/wrr";
+import { pickLists } from "@/lib/db/schema/pick_lists";
+import { userProfiles } from "@/lib/db/schema/rbac";
 import { allocate, type AllocationResult } from "@/lib/withdrawal/allocation";
 
 const defaultSupplierParties = alias(parties, "default_supplier_parties");
@@ -194,4 +198,61 @@ export function buildStockAllocationPreview(
   return result.ok
     ? { ok: true, strategy, lines: result.lines }
     : { ok: false, strategy, error: "insufficient_stock" };
+}
+
+export type ItemMovementRow = {
+  id: string;
+  transactionNumber: string;
+  movementType: string;
+  qty: number;
+  flowType: string;
+  lotNumber: string;
+  fromLocationLabel: string | null;
+  toLocationLabel: string | null;
+  wrrNumber: string | null;
+  commercialInvoiceNo: string | null;
+  pickListNumber: string | null;
+  arReferenceNo: string | null;
+  performedByUserName: string | null;
+  performedByUserId: string;
+  createdAt: Date;
+};
+
+/**
+ * Retrieves the complete movement and audit transaction ledger for a specific item.
+ */
+export async function getItemMovementHistory(
+  db: DbLike,
+  itemId: string,
+): Promise<ItemMovementRow[]> {
+  const fromLocations = alias(locations, "from_locations");
+  const toLocations = alias(locations, "to_locations");
+
+  return (await db
+    .select({
+      id: inventoryTransactions.id,
+      transactionNumber: inventoryTransactions.transactionNumber,
+      movementType: inventoryTransactions.movementType,
+      qty: inventoryTransactions.qty,
+      flowType: inventoryTransactions.flowType,
+      lotNumber: lots.lotNumber,
+      fromLocationLabel: fromLocations.label,
+      toLocationLabel: toLocations.label,
+      wrrNumber: wrrDocuments.wrrNumber,
+      commercialInvoiceNo: inventoryTransactions.commercialInvoiceNo,
+      pickListNumber: pickLists.pickListNumber,
+      arReferenceNo: inventoryTransactions.arReferenceNo,
+      performedByUserName: userProfiles.displayName,
+      performedByUserId: inventoryTransactions.performedByUserId,
+      createdAt: inventoryTransactions.createdAt,
+    })
+    .from(inventoryTransactions)
+    .innerJoin(lots, eq(inventoryTransactions.lotId, lots.id))
+    .leftJoin(fromLocations, eq(inventoryTransactions.fromLocationId, fromLocations.id))
+    .leftJoin(toLocations, eq(inventoryTransactions.toLocationId, toLocations.id))
+    .leftJoin(wrrDocuments, eq(inventoryTransactions.wrrId, wrrDocuments.id))
+    .leftJoin(pickLists, eq(inventoryTransactions.pickListId, pickLists.id))
+    .leftJoin(userProfiles, eq(inventoryTransactions.performedByUserId, userProfiles.id))
+    .where(eq(inventoryTransactions.itemId, itemId))
+    .orderBy(desc(inventoryTransactions.createdAt))) as ItemMovementRow[];
 }

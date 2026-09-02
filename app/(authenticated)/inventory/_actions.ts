@@ -72,3 +72,31 @@ export async function parseDraDocumentAction(formData: FormData) {
   }
 }
 
+export async function getItemAuditDetailAction(itemId: string) {
+  if (!itemId) return { ok: false, error: "Invalid item ID" };
+
+  try {
+    const resolver = await createPageResolver();
+    const { getItemDetail } = await import("@/lib/db/queries/items");
+    const { getItemMovementHistory } = await import("@/lib/db/queries/inventory");
+    const item = await getItemDetail(resolver.db, itemId);
+    if (!item) {
+      return { ok: false, error: "Item not found in master records." };
+    }
+
+    const movements = await getItemMovementHistory(resolver.db, itemId);
+
+    return {
+      ok: true,
+      item,
+      movements,
+    };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    return {
+      ok: false,
+      error: `Failed to load item audit details: ${errorMsg}`,
+    };
+  }
+}
+

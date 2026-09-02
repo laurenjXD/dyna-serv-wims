@@ -358,8 +358,8 @@ export function DataTable<TData>({
     )}
 
       {/* ── Desktop Data-Dense Table (md:block) ────────────────────────── */}
-      <div className="hidden md:block overflow-hidden rounded-2xl border border-slate-200/80 bg-surface-white shadow-sm">
-        <div className="overflow-x-auto">
+      <div className="hidden md:block rounded-2xl border border-slate-200/80 bg-surface-white shadow-sm">
+        <div className="overflow-x-auto rounded-2xl">
           <table className="w-full border-collapse text-left text-sm">
             {/* Header with Sorting & Google Sheets-Style Filter Popovers */}
             <thead>
