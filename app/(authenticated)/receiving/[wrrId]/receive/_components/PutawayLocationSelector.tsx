@@ -24,29 +24,14 @@ function maxBoxesFor(candidate: PutawayCandidate | undefined, unitCbm: number, q
 }
 
 function buildInitialAssignment(
-  candidates: PutawayCandidate[],
+  _candidates: PutawayCandidate[],
   quantity: number,
-  unitCbm: number,
+  _unitCbm: number,
 ): string[] {
   const safeQuantity = Math.max(0, Math.floor(Number(quantity) || 0));
   if (safeQuantity === 0) return [];
-  const assignment: string[] = [];
-
-  for (const candidate of candidates) {
-    if (!candidate?.id) continue;
-    const availableBoxes = maxBoxesFor(candidate, unitCbm, safeQuantity);
-    const needed = Math.max(0, safeQuantity - assignment.length);
-    const boxesToAssign = Math.max(0, Math.min(availableBoxes, needed));
-    for (let i = 0; i < boxesToAssign; i++) {
-      assignment.push(candidate.id);
-    }
-    if (assignment.length >= safeQuantity) break;
-  }
-
-  while (assignment.length < safeQuantity) {
-    assignment.push("");
-  }
-  return assignment;
+  // Default to unassigned so warehouse operators explicitly select or scan their target putaway location
+  return Array.from({ length: safeQuantity }, () => "");
 }
 
 export function PutawayLocationSelector({
@@ -260,75 +245,92 @@ export function PutawayLocationSelector({
           </div>
         )}
 
-        <div className="mt-3 space-y-2">
-          {allocations.map((allocation) => {
-            const opt = allLocationOptions.find((o) => o.id === allocation.locationId);
-            if (!opt) return null;
-            const location = candidates.find((c) => c.id === allocation.locationId);
-            const storedItems = location ? (contents[location.id] ?? []) : [];
-            const occupied = location ? (Number(location.occupiedCbm) || 0) : 0;
-            const maxCapacity = location ? (Number(location.maxCbmCapacity) || 0) : 0;
-            const isInspection = opt.locationType === "inspection";
+        {assignedBoxesCount === 0 ? (
+          <div className="mt-3 rounded-xl border border-dashed border-outline-variant/60 bg-surface-white p-4 text-center">
+            <p className="font-body text-body-md text-text-grey">
+              No location selected yet. Choose a primary storage or inspection bay in Step 1, or allocate individual boxes in Step 2.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-3 space-y-2">
+            {allocations.map((allocation) => {
+              const opt = allLocationOptions.find((o) => o.id === allocation.locationId);
+              if (!opt) return null;
+              const location = candidates.find((c) => c.id === allocation.locationId);
+              const storedItems = location ? (contents[location.id] ?? []) : [];
+              const occupied = location ? (Number(location.occupiedCbm) || 0) : 0;
+              const maxCapacity = location ? (Number(location.maxCbmCapacity) || 0) : 0;
+              const isInspection = opt.locationType === "inspection";
 
-            return (
-              <details key={allocation.locationId} className="rounded-xl border border-outline-variant/20 bg-surface-white px-4 py-3">
-                <summary className="cursor-pointer font-body text-body-md text-on-surface">
-                  <span className="font-label font-bold">{opt.label}</span>
-                  {" · "}{allocation.qty} box{allocation.qty === 1 ? "" : "es"} ({(allocation.qty * safeSpq).toLocaleString()} {uom})
-                  {isInspection && (
-                    <span className="ml-2 rounded bg-status-pending/10 px-1.5 py-0.5 font-label text-label-xs font-bold uppercase text-status-pending">
-                      Quarantine / On Hold
-                    </span>
-                  )}
-                </summary>
-                <div className="mt-2 border-t border-outline-variant/30 pt-2">
-                  {location ? (
-                    <>
-                      <p className="font-body text-body-md text-text-grey">
-                        Currently used: {occupied.toFixed(2)} of {maxCapacity.toFixed(2)} CBM
-                      </p>
-                      {storedItems.length > 0 ? (
-                        <ul className="mt-2 space-y-1">
-                          {storedItems.map((item) => (
-                            <li
-                              key={`${item.itemCode}-${item.lotNumber}`}
-                              className="font-body text-body-md text-text-grey"
-                            >
-                              {item.itemCode} · {item.lotNumber} · {item.qtyRemaining} remaining
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="mt-2 font-body text-body-md text-text-grey">Location is empty.</p>
-                      )}
-                    </>
-                  ) : (
-                    <p className="font-body text-body-md text-text-grey">Inbound Inspection Holding Bay. Stock placed here will be quarantined for QA review.</p>
-                  )}
-                </div>
-              </details>
-            );
-          })}
-        </div>
+              return (
+                <details key={allocation.locationId} className="rounded-xl border border-outline-variant/20 bg-surface-white px-4 py-3">
+                  <summary className="cursor-pointer font-body text-body-md text-on-surface">
+                    <span className="font-label font-bold">{opt.label}</span>
+                    {" · "}{allocation.qty} box{allocation.qty === 1 ? "" : "es"} ({(allocation.qty * safeSpq).toLocaleString()} {uom})
+                    {isInspection && (
+                      <span className="ml-2 rounded bg-status-pending/10 px-1.5 py-0.5 font-label text-label-xs font-bold uppercase text-status-pending">
+                        Quarantine / On Hold
+                      </span>
+                    )}
+                  </summary>
+                  <div className="mt-2 border-t border-outline-variant/30 pt-2">
+                    {location ? (
+                      <>
+                        <p className="font-body text-body-md text-text-grey">
+                          Currently used: {occupied.toFixed(2)} of {maxCapacity.toFixed(2)} CBM
+                        </p>
+                        {storedItems.length > 0 ? (
+                          <ul className="mt-2 space-y-1">
+                            {storedItems.map((item) => (
+                              <li
+                                key={`${item.itemCode}-${item.lotNumber}`}
+                                className="font-body text-body-md text-text-grey"
+                              >
+                                {item.itemCode} · {item.lotNumber} · {item.qtyRemaining} remaining
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="mt-2 font-body text-body-md text-text-grey">Location is empty.</p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="font-body text-body-md text-text-grey">Inbound Inspection Holding Bay. Stock placed here will be quarantined for QA review.</p>
+                    )}
+                  </div>
+                </details>
+              );
+            })}
+          </div>
+        )}
       </section>
 
-      <label className="flex items-start gap-3 rounded-2xl border-2 border-status-available/30 bg-[#F0FDF8] p-4 font-body text-body-md text-on-surface">
+      <label className={`flex items-start gap-3 rounded-2xl border-2 p-4 font-body text-body-md text-on-surface ${assignedBoxesCount > 0 ? "border-status-available/30 bg-[#F0FDF8]" : "border-outline-variant/40 bg-surface-light-grey/40 opacity-70"}`}>
         <input
           required
           type="checkbox"
           name="presenceAttested"
           value="true"
-          checked={attested}
+          disabled={assignedBoxesCount === 0}
+          checked={attested && assignedBoxesCount > 0}
           onChange={(event) => setAttested(event.target.checked)}
-          className="mt-0.5 h-6 w-6 shrink-0 cursor-pointer"
+          className="mt-0.5 h-6 w-6 shrink-0 cursor-pointer disabled:cursor-not-allowed"
         />
         <span>
           <span className="block font-label text-label font-bold uppercase tracking-[0.1em] text-status-available">
             Step 4 · Confirm
           </span>
           <span className="mt-1 block">
-            I confirm that {assignedBoxesCount} of {safeQuantity} declared boxes ({(assignedBoxesCount * safeSpq).toLocaleString()} {uom}) are physically present and assigned.
-            {shortageBoxesCount > 0 && ` (${shortageBoxesCount} box shortage will be logged).`}
+            {assignedBoxesCount > 0 ? (
+              <>
+                I confirm that {assignedBoxesCount} of {safeQuantity} declared boxes ({(assignedBoxesCount * safeSpq).toLocaleString()} {uom}) are physically present and assigned.
+                {shortageBoxesCount > 0 && ` (${shortageBoxesCount} box shortage will be logged).`}
+              </>
+            ) : (
+              <span className="text-text-grey">
+                Select a target location above before attesting and confirming placement.
+              </span>
+            )}
           </span>
         </span>
       </label>
