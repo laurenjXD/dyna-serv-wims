@@ -154,7 +154,22 @@ export function MultiItemPickListDraft({
   const updateLine = (id: string, patch: Partial<DraftLine>) => setLines((current) => current.map((line) => line.id === id ? { ...line, ...patch } : line));
   const removeLine = (id: string) => setLines((current) => current.filter((line) => line.id !== id));
   const resetDraft = () => setLines([]);
-  const handleOrganization = (value: string) => { setOrganizationId(value); setFlowType(""); resetDraft(); };
+  const handleOrganization = (value: string) => {
+    setOrganizationId(value);
+    resetDraft();
+    if (!value) {
+      setFlowType("");
+      return;
+    }
+    const availableFlows = (["vmi", "trading", "supplies"] as const).filter((flow) =>
+      stock.some((row) => row.organizationId === value && row.flowType === flow)
+    );
+    if (availableFlows.length > 0) {
+      setFlowType(availableFlows[0]);
+    } else {
+      setFlowType("");
+    }
+  };
   const handleFlow = (value: "" | "vmi" | "trading" | "supplies") => { setFlowType(value); resetDraft(); };
 
   async function handleDraImport(e: React.ChangeEvent<HTMLInputElement>) {
@@ -364,18 +379,47 @@ export function MultiItemPickListDraft({
         </div>
 
         <div className="mt-5 grid gap-4 md:grid-cols-2">
-          <label className="grid gap-2 font-label text-label font-bold text-on-surface">Organization
-            <select value={organizationId} onChange={(event) => handleOrganization(event.target.value)} className="h-12 rounded border border-outline-variant bg-surface-white px-3 font-body text-body-md font-normal text-on-surface outline-none focus:ring-2 focus:ring-primary">
+          <label className="grid gap-2 font-label text-label font-bold text-on-surface">
+            Organization
+            <select
+              value={organizationId}
+              onChange={(event) => handleOrganization(event.target.value)}
+              className="h-12 rounded-lg border border-slate-200 bg-surface-white px-3 font-body text-body-md font-normal text-on-surface outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/20"
+            >
               <option value="">Select organization…</option>
-              {organizations.map((organization) => <option key={organization.id} value={organization.id}>{organization.name}</option>)}
+              {organizations.map((organization) => (
+                <option key={organization.id} value={organization.id}>
+                  {organization.name}
+                </option>
+              ))}
             </select>
           </label>
-          <label className="grid gap-2 font-label text-label font-bold text-on-surface">Inventory Model
-            <select value={flowType} onChange={(event) => handleFlow(event.target.value as typeof flowType)} disabled={!organizationId} className="h-12 rounded border border-outline-variant bg-surface-white px-3 font-body text-body-md font-normal text-on-surface outline-none focus:ring-2 focus:ring-primary disabled:bg-surface-light-grey disabled:text-text-grey">
+
+          <div className="grid gap-2 font-label text-label font-bold text-on-surface">
+            <div className="flex items-center justify-between">
+              <span>Inventory Model</span>
+              {flowType && organizationId && (
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                  Auto-assigned: {flowType.toUpperCase()}
+                </span>
+              )}
+            </div>
+            <select
+              value={flowType}
+              onChange={(event) => handleFlow(event.target.value as typeof flowType)}
+              disabled={!organizationId}
+              className="h-12 rounded-lg border border-slate-200 bg-surface-white px-3 font-body text-body-md font-normal text-on-surface outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/20 disabled:bg-surface-light-grey disabled:text-text-grey"
+            >
               <option value="">Select inventory model…</option>
-              {(["vmi", "trading", "supplies"] as const).filter((flow) => stock.some((row) => row.organizationId === organizationId && row.flowType === flow)).map((flow) => <option key={flow} value={flow}>{flow.toUpperCase()}</option>)}
+              {(["vmi", "trading", "supplies"] as const)
+                .filter((flow) => stock.some((row) => row.organizationId === organizationId && row.flowType === flow))
+                .map((flow) => (
+                  <option key={flow} value={flow}>
+                    {flow === "vmi" ? "VMI (Consignment)" : flow === "trading" ? "Trading (Owned)" : "Supplies"}
+                  </option>
+                ))}
             </select>
-          </label>
+          </div>
         </div>
 
         {/* 10-Column Pick List Table per User Specification */}
