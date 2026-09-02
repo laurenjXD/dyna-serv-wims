@@ -174,6 +174,12 @@ export default async function ReceiveFloorPage({
     (item: WrrItemRow) => (Number(item.scannedQty) || 0) >= (Number(item.expectedQty) || 0) && (Number(item.expectedQty) || 0) > 0
   ).length;
   const allLinesScanned = totalLines > 0 && fullyScannedLines === totalLines;
+  const hasShortage = (wrr.items ?? []).some(
+    (item: WrrItemRow) => item.scannedQty < item.expectedQty,
+  );
+  const hasUncommittedReceivedLines = (wrr.items ?? []).some(
+    (item: WrrItemRow) => item.committedAt === null && item.scannedQty > 0,
+  );
 
   // One accepted label may open batch placement for a whole declared line.
   const readyLines = (wrr.items ?? []).filter(
@@ -455,30 +461,6 @@ export default async function ReceiveFloorPage({
           scannedBarcode={barcodeParam}
         />
 
-        {/* Shortage / Partial Receipt Banner — available whenever any line has shortages or uncommitted boxes */}
-        {isReceivable && (wrr.items ?? []).some((i: WrrItemRow) => i.committedAt === null || i.scannedQty < i.expectedQty) && (
-          <div className="mt-4 rounded-xl border border-status-pending/40 bg-[#FFF9EB] p-4 shadow-elevation-1">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="font-heading text-body-md font-bold text-on-surface">
-                  Partial Receipt / Delivery Shortage (OS&D)
-                </p>
-                <p className="mt-1 font-body text-body-sm text-text-grey">
-                  {fullyScannedLines} of {totalLines} lines completed. If any remaining boxes or items are missing from this truck, you can finalize this WRR with shortage.
-                </p>
-              </div>
-              <form action={handleCloseShortage}>
-                <button
-                  type="submit"
-                  className="inline-flex h-11 items-center justify-center rounded-lg border border-status-held/40 bg-surface-white px-4 font-label text-label font-bold text-status-held hover:bg-status-held/10 focus:outline-none focus:ring-2 focus:ring-brand-navy whitespace-nowrap shadow-sm"
-                >
-                  Finalize with Shortage (OS&D)
-                </button>
-              </form>
-            </div>
-          </div>
-        )}
-
         {commitSuccess && (
           <div
             role="status"
@@ -515,7 +497,7 @@ export default async function ReceiveFloorPage({
         )}
 
         {/* Item progress list — card-based, NOT a dense table. */}
-        <div className="mt-4 space-y-3">
+         <div className="mt-4 space-y-3">
           {wrr.items.map((item: WrrItemRow) => {
             const itemSpq = Number(item.spq) || 1;
             const fullyScanned = item.scannedQty >= item.expectedQty;
@@ -621,8 +603,24 @@ export default async function ReceiveFloorPage({
               </div>
             );
           })}
-        </div>
-      </div>
+         </div>
+
+         {isReceivable && hasShortage && !hasUncommittedReceivedLines && (
+           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-outline-variant/30 pt-4">
+             <p className="font-body text-body-sm text-text-grey">
+               Missing boxes will be recorded in the WRR&apos;s OS&amp;D summary.
+             </p>
+             <form action={handleCloseShortage}>
+               <button
+                 type="submit"
+                 className="inline-flex h-11 items-center justify-center rounded-lg border border-status-held/40 bg-surface-white px-4 font-label text-label font-bold text-status-held hover:bg-status-held/10 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+               >
+                 Finalize WRR with Shortage
+               </button>
+             </form>
+           </div>
+         )}
+       </div>
 
       {/* Primary action — bottom third of screen, full-width */}
       {isReceivable && primaryReadyLine && (
