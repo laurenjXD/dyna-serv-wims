@@ -5,6 +5,7 @@
 // brand-design-system.md §3 (floor surface rules — mobile-first, no glassmorphism)
 
 import { useState } from "react";
+import { Camera } from "lucide-react";
 import { MobileQRScanner } from "@/components/barcode/MobileQRScanner";
 
 interface ReceivingCameraScannerProps {
@@ -50,7 +51,7 @@ export function ReceivingCameraScanner({
           onClick={() => setIsOpen(true)}
           className="flex h-14 w-full items-center justify-center gap-2 rounded bg-surface-white font-heading font-semibold text-body-md text-brand-navy shadow-elevation-2 active:scale-[0.98] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
         >
-          <span aria-hidden="true">&#128247;</span>
+          <Camera size={18} aria-hidden="true" />
           <span>Open Camera Scanner</span>
         </button>
       ) : (

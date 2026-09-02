@@ -25,6 +25,14 @@ import { db } from "@/lib/db/client";
 import { getTransferRequest } from "@/lib/db/queries/transfers";
 import { updateTransferStatus } from "@/lib/actions/transfers";
 import type { TransferLineRow } from "@/lib/db/queries/transfers";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  CheckCircle2,
+  AlertTriangle,
+  AlertCircle,
+} from "lucide-react";
 
 // ─── Error reason → plain language ──────────────────────────────────────────
 
@@ -117,8 +125,7 @@ export default async function ExecuteTransferPage({
             href={`/transfers/${transferId}`}
             className="inline-flex h-14 items-center gap-2 font-label text-body-md text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy active:scale-[0.97]"
           >
-            {/* Left arrow — no icon dependency, unicode for floor performance */}
-            <span aria-hidden="true">&#8592;</span>
+            <ArrowLeft size={18} aria-hidden="true" />
             <span>Back to Transfer</span>
           </Link>
           {/* Flow type badge — Epilogue, floor-visible */}
@@ -136,11 +143,11 @@ export default async function ExecuteTransferPage({
             Execute Transfer
           </h1>
           {/* Route — Roboto Mono for location IDs per §9; min 16px on floor per §2 */}
-          <p className="mt-2 font-body text-body-md text-on-surface">
+          <div className="mt-2 flex items-center gap-2 font-body text-body-md text-on-surface">
             <span className="font-mono text-mono-md">{transfer.fromLocationId}</span>
-            {" "}&#8594;{" "}
+            <ArrowRight size={16} className="text-slate-400 shrink-0" aria-hidden="true" />
             <span className="font-mono text-mono-md">{transfer.toLocationId}</span>
-          </p>
+          </div>
           {/* Progress — no text below 16px (body-md) on floor screens per §2 */}
           <p className="mt-2 font-body text-body-md text-on-surface">
             <span className="font-mono text-mono-lg font-bold">
@@ -154,8 +161,8 @@ export default async function ExecuteTransferPage({
               className="mt-3 rounded bg-status-pending px-3 py-2"
             >
               {/* Icon paired with color per §1.3 floor color-blind rule */}
-              <p className="font-body text-body-md text-on-surface">
-                <span aria-hidden="true">&#9888; </span>
+              <p className="flex items-center gap-2 font-body text-body-md text-on-surface">
+                <AlertTriangle size={18} className="text-amber-800 shrink-0" aria-hidden="true" />
                 This transfer is not in progress. Return to the transfer detail
                 to start it first.
               </p>
@@ -179,8 +186,8 @@ export default async function ExecuteTransferPage({
             className="mt-4 rounded-xl border border-status-available/40 bg-status-available/5 px-4 py-4 shadow-sm"
           >
             {/* Icon paired with color per §1.3 floor color-blind rule */}
-            <p className="font-heading font-semibold text-headline-md text-on-surface">
-              <span aria-hidden="true">&#10003; </span>Transfer Completed
+            <p className="font-heading font-semibold text-headline-md text-on-surface flex items-center gap-2">
+              <CheckCircle2 size={22} className="text-status-available" aria-hidden="true" /> Transfer Completed
             </p>
             <p className="mt-1 font-body text-body-md text-on-surface">
               Stock movement has been recorded successfully.
@@ -199,8 +206,8 @@ export default async function ExecuteTransferPage({
             className="mt-4 rounded-xl border border-status-held/40 bg-status-held/5 px-4 py-4 shadow-sm"
           >
             {/* Icon paired with color per §1.3 floor color-blind rule */}
-            <p className="font-heading font-semibold text-headline-md text-on-surface">
-              <span aria-hidden="true">&#33; </span>Action Failed
+            <p className="font-heading font-semibold text-headline-md text-on-surface flex items-center gap-2">
+              <AlertCircle size={22} className="text-status-held" aria-hidden="true" /> Action Failed
             </p>
             <p className="mt-1 font-body text-body-md text-on-surface">
               {getExecuteErrorMessage(errorReason)}
@@ -261,9 +268,9 @@ export default async function ExecuteTransferPage({
                   {isCompleted && (
                     <span
                       aria-label="Line completed"
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-status-available text-on-surface font-heading font-bold text-data-display"
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-status-available text-surface-white font-heading font-bold"
                     >
-                      &#10003;
+                      <Check size={20} strokeWidth={3} />
                     </span>
                   )}
                 </div>

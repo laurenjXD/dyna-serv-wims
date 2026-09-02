@@ -38,6 +38,18 @@ import { CameraScanBridge } from "./_components/CameraScanBridge";
 import { PutawayLocationSelector } from "./_components/PutawayLocationSelector";
 import { LocationCombobox } from "./_components/LocationCombobox";
 import { ReceiveDiscrepancyClient } from "./_components/ReceiveDiscrepancyClient";
+import {
+  ArrowLeft,
+  ArrowRight,
+  ArrowDown,
+  Check,
+  CheckCircle2,
+  AlertTriangle,
+  AlertCircle,
+  Archive,
+  ShieldAlert,
+  CircleDot,
+} from "lucide-react";
 
 // ─── Error reason → plain language ──────────────────────────────────────────
 
@@ -326,7 +338,7 @@ export default async function ReceiveFloorPage({
               aria-hidden="true"
               className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-status-available text-surface-white font-heading font-bold text-headline-md"
             >
-              &#10003;
+              <Check size={32} strokeWidth={3} />
             </span>
             <h1 className="mt-4 font-heading font-semibold text-headline-md text-brand-navy">
               Receipt complete
@@ -361,7 +373,7 @@ export default async function ReceiveFloorPage({
             className="inline-flex h-14 items-center gap-2 text-body-md font-body text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
           >
             {/* Left arrow — no icon dependency, pure text/unicode for floor performance */}
-            <span aria-hidden="true">&#8592;</span>
+            <ArrowLeft size={18} aria-hidden="true" />
             <span>Back to WRR</span>
           </Link>
           {/* WRR reference — Roboto Mono per §9 */}
@@ -417,8 +429,8 @@ export default async function ReceiveFloorPage({
             // (near-black on white >15:1). Icon carries the semantic green signal.
             className="mt-4 rounded-xl border border-status-available/40 bg-status-available/5 px-4 py-4 shadow-sm"
           >
-            <p className="font-heading font-semibold text-headline-md text-on-surface">
-              &#10003; Scanned
+            <p className="font-heading font-semibold text-headline-md text-on-surface flex items-center gap-2">
+              <CheckCircle2 className="text-status-available" size={22} /> Scanned
             </p>
             {remainingQty !== null && (
               <p className="mt-1 font-body text-body-md text-on-surface">
@@ -475,8 +487,8 @@ export default async function ReceiveFloorPage({
             aria-live="assertive"
             className="mt-4 rounded-xl border border-status-available/40 bg-status-available/5 px-4 py-4 shadow-sm"
           >
-            <p className="font-heading font-semibold text-headline-md text-on-surface">
-              &#10003; Line committed
+            <p className="font-heading font-semibold text-headline-md text-on-surface flex items-center gap-2">
+              <CheckCircle2 className="text-status-available" size={22} /> Line committed
             </p>
             <p className="mt-1 font-body text-body-md text-on-surface">
               This line has been posted to inventory.
@@ -490,8 +502,8 @@ export default async function ReceiveFloorPage({
             aria-live="assertive"
             className="mt-4 rounded-xl border border-status-held/40 bg-status-held/5 px-4 py-4 shadow-sm"
           >
-            <p className="font-heading font-semibold text-headline-md text-on-surface">
-              &#33; Could not complete line
+            <p className="font-heading font-semibold text-headline-md text-on-surface flex items-center gap-2">
+              <AlertCircle className="text-status-held" size={22} /> Could not complete line
             </p>
             <p className="mt-1 font-body text-body-md text-on-surface">
               {getCommitErrorMessage(errorReason)}
@@ -540,15 +552,16 @@ export default async function ReceiveFloorPage({
                       </span>
                       <span
                         className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-body-md font-label uppercase ${item.disposition === "store"
-                            ? "bg-status-available/10 text-on-surface"
-                            : "bg-status-pending/10 text-on-surface"
+                            ? "bg-status-available/10 text-emerald-800 border border-status-available/20"
+                            : "bg-status-pending/10 text-amber-800 border border-status-pending/20"
                           }`}
                       >
-                        {/* Icon paired with color to satisfy §1.3 floor color-blind rule */}
-                        <span aria-hidden="true">
-                          {item.disposition === "store" ? "&#9660;" : "&#9675;"}
-                        </span>
-                        {item.disposition === "store" ? "STORE" : "INSPECT"}
+                        {item.disposition === "store" ? (
+                          <Archive size={14} className="text-emerald-700 shrink-0" aria-hidden="true" />
+                        ) : (
+                          <ShieldAlert size={14} className="text-amber-700 shrink-0" aria-hidden="true" />
+                        )}
+                        <span>{item.disposition === "store" ? "STORE" : "INSPECT"}</span>
                       </span>
                     </div>
                     {!isCommitted && item.scannedQty === 0 && (
@@ -565,17 +578,17 @@ export default async function ReceiveFloorPage({
                   {isCommitted ? (
                     <span
                       aria-label="Committed"
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-status-available text-surface-white font-heading font-bold text-data-display"
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-status-available text-surface-white font-heading font-bold"
                     >
-                      &#10003;
+                      <Check size={20} strokeWidth={3} />
                     </span>
                   ) : (
                     (fullyScanned || readyToCommit) && (
                       <span
                         aria-label="Fully scanned"
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-status-pending text-surface-white font-heading font-bold text-data-display"
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-status-pending text-surface-white font-heading font-bold"
                       >
-                        &#10003;
+                        <Check size={20} strokeWidth={3} />
                       </span>
                     )
                   )}
@@ -590,9 +603,7 @@ export default async function ReceiveFloorPage({
                     equal-weight primary button. design.md §6.2/§6.3. */}
                 {readyToCommit && isPrimaryReady && (
                   <div className="mt-3 flex items-center gap-2 border-t border-outline-variant/30 pt-3">
-                    <span aria-hidden="true" className="text-brand-navy">
-                      &#8595;
-                    </span>
+                    <ArrowDown size={18} aria-hidden="true" className="text-brand-navy" />
                     <p className="font-label text-body-md text-brand-navy">
                       QR verified — {item.disposition === "store" ? "assign locations" : "choose the inspection location"} below
                     </p>
@@ -601,9 +612,7 @@ export default async function ReceiveFloorPage({
 
                 {readyToCommit && !isPrimaryReady && (
                   <div className="mt-3 flex items-center gap-2 border-t border-outline-variant/30 pt-3">
-                    <span aria-hidden="true" className="text-status-pending">
-                      &#9679;
-                    </span>
+                    <CircleDot size={16} aria-hidden="true" className="text-status-pending" />
                     <p className="font-label text-body-md text-on-surface">
                       QR verified — complete the current line first
                     </p>
@@ -630,7 +639,9 @@ export default async function ReceiveFloorPage({
               {primaryReadyLine.lotNumber}
             </p>
             <div className="flex items-start gap-3 rounded-xl border border-status-available/30 bg-[#F0FDF8] px-4 py-3">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-status-available font-heading font-bold text-surface-white" aria-hidden="true">&#10003;</span>
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-status-available font-heading font-bold text-surface-white" aria-hidden="true">
+                <Check size={18} strokeWidth={3} />
+              </span>
               <div>
                 <p className="font-label text-body-md font-bold text-on-surface">
                   Pallet verified
@@ -657,9 +668,7 @@ export default async function ReceiveFloorPage({
                 ) : (
                   <div role="alert" className="rounded-lg border border-status-held/40 bg-status-held/5 px-3 py-2 shadow-sm">
                     <p className="flex items-center gap-2 font-body text-body-md text-on-surface">
-                      <span aria-hidden="true" className="text-status-held">
-                        &#33;
-                      </span>
+                      <AlertTriangle size={18} aria-hidden="true" className="text-status-held" />
                       No storage location has enough remaining capacity. Contact a supervisor.
                     </p>
                   </div>
@@ -692,9 +701,7 @@ export default async function ReceiveFloorPage({
                 ) : (
                   <div role="alert" className="rounded-lg border border-status-held/40 bg-status-held/5 px-3 py-2 shadow-sm">
                     <p className="flex items-center gap-2 font-body text-body-md text-on-surface">
-                      <span aria-hidden="true" className="text-status-held">
-                        &#33;
-                      </span>
+                      <AlertTriangle size={18} aria-hidden="true" className="text-status-held" />
                       No active inspection location is configured. Contact a supervisor.
                     </p>
                   </div>
@@ -740,7 +747,7 @@ export default async function ReceiveFloorPage({
                 className="flex h-16 w-16 shrink-0 items-center justify-center rounded bg-primary font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white"
                 aria-label="Submit scan"
               >
-                &#8594;
+                <ArrowRight size={22} />
               </button>
             </div>
           </form>
