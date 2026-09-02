@@ -75,6 +75,19 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
   const effectiveSpq = itemDetail?.spq ?? groupedItem.spq ?? 1;
   const totalUnits = groupedItem.totalQty ?? totalBoxes * effectiveSpq;
   const uom = (itemDetail?.uom || groupedItem.uom || "PCS").toUpperCase();
+  const currency = itemDetail?.currency || "USD";
+
+  // Financial & Pricing calculations
+  const unitBuyingPrice = itemDetail?.buyingPrice ? Number(itemDetail.buyingPrice) : null;
+  const unitSellingPrice = itemDetail?.sellingPrice ? Number(itemDetail.sellingPrice) : null;
+  const boxBuyingPrice = unitBuyingPrice !== null ? unitBuyingPrice * effectiveSpq : null;
+  const boxSellingPrice = unitSellingPrice !== null ? unitSellingPrice * effectiveSpq : null;
+  const marginPercent =
+    unitBuyingPrice !== null && unitSellingPrice !== null && unitBuyingPrice > 0
+      ? (((unitSellingPrice - unitBuyingPrice) / unitBuyingPrice) * 100).toFixed(1)
+      : null;
+  const totalStockCostValuation = unitBuyingPrice !== null ? unitBuyingPrice * totalUnits : null;
+  const totalStockSellingValuation = unitSellingPrice !== null ? unitSellingPrice * totalUnits : null;
 
   // Compute movement aggregations
   const totalInboundUnits = movements
@@ -305,26 +318,83 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
                     </div>
                   </div>
 
+                  {/* Pricing, Valuation & Rate Structure */}
+                  <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/30 p-5 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between border-b border-emerald-200/60 pb-3">
+                      <h3 className="font-heading text-xs font-bold uppercase tracking-wider text-emerald-950 flex items-center gap-2">
+                        <Tag size={15} className="text-emerald-700" /> Reference Pricing & Inventory Valuation
+                      </h3>
+                      <span className="font-mono text-xs font-bold text-emerald-800 bg-emerald-100/80 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                        Currency: {currency}
+                      </span>
+                    </div>
+
+                    {/* Pricing KPI Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+                      {/* Buying Price (Unit) */}
+                      <div className="rounded-xl border border-slate-200/80 bg-surface-white p-3.5 shadow-sm">
+                        <span className="text-[11px] font-medium text-text-grey block">Buying Price (per {uom})</span>
+                        <p className="font-mono text-lg font-bold text-slate-900 mt-1">
+                          {unitBuyingPrice !== null ? `${currency} ${unitBuyingPrice.toFixed(4)}` : "—"}
+                        </p>
+                        {boxBuyingPrice !== null && (
+                          <span className="text-[10px] font-mono text-text-grey block mt-0.5">
+                            ≈ {currency} {boxBuyingPrice.toFixed(2)} / box
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Selling Price (Unit) */}
+                      <div className="rounded-xl border border-slate-200/80 bg-surface-white p-3.5 shadow-sm">
+                        <span className="text-[11px] font-medium text-text-grey block">Selling Price (per {uom})</span>
+                        <p className="font-mono text-lg font-bold text-brand-navy mt-1">
+                          {unitSellingPrice !== null ? `${currency} ${unitSellingPrice.toFixed(4)}` : "—"}
+                        </p>
+                        {boxSellingPrice !== null && (
+                          <span className="text-[10px] font-mono text-text-grey block mt-0.5">
+                            ≈ {currency} {boxSellingPrice.toFixed(2)} / box
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Gross Margin % */}
+                      <div className="rounded-xl border border-slate-200/80 bg-surface-white p-3.5 shadow-sm">
+                        <span className="text-[11px] font-medium text-text-grey block">Est. Margin / Markup</span>
+                        <p className="font-mono text-lg font-bold text-emerald-700 mt-1">
+                          {marginPercent !== null ? `+${marginPercent}%` : "—"}
+                        </p>
+                        <span className="text-[10px] text-text-grey block mt-0.5">
+                          {marginPercent !== null ? "Ref spread" : "No pricing baseline"}
+                        </span>
+                      </div>
+
+                      {/* Total On-Hand Stock Valuation */}
+                      <div className="rounded-xl border border-emerald-300 bg-emerald-50/80 p-3.5 shadow-sm">
+                        <span className="text-[11px] font-bold text-emerald-900 block">Total Stock Valuation</span>
+                        <p className="font-mono text-lg font-bold text-emerald-950 mt-1">
+                          {totalStockCostValuation !== null
+                            ? `${currency} ${totalStockCostValuation.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                            : totalStockSellingValuation !== null
+                            ? `${currency} ${totalStockSellingValuation.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                            : "—"}
+                        </p>
+                        <span className="text-[10px] font-mono text-emerald-800 block mt-0.5">
+                          {totalUnits.toLocaleString()} {uom} on hand
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Valuation & Inventory Rules */}
                   <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-5 shadow-sm space-y-4">
                     <h3 className="font-heading text-xs font-bold uppercase tracking-wider text-brand-navy flex items-center gap-2">
-                      <Tag size={15} /> Valuation, Thresholds & Flow Classification
+                      <Tag size={15} /> Thresholds, Flow Classification & Metadata
                     </h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
                       <div>
-                        <span className="text-text-grey font-medium">Currency</span>
-                        <p className="font-mono font-bold text-slate-900 mt-0.5">{itemDetail?.currency || "USD"}</p>
-                      </div>
-                      <div>
-                        <span className="text-text-grey font-medium">Reference Buying Price</span>
-                        <p className="font-mono font-bold text-slate-900 mt-0.5">
-                          {itemDetail?.buyingPrice ? `${itemDetail.currency || "USD"} ${Number(itemDetail.buyingPrice).toFixed(2)}` : "—"}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-text-grey font-medium">Reference Selling Price</span>
-                        <p className="font-mono font-bold text-slate-900 mt-0.5">
-                          {itemDetail?.sellingPrice ? `${itemDetail.currency || "USD"} ${Number(itemDetail.sellingPrice).toFixed(2)}` : "—"}
+                        <span className="text-text-grey font-medium">Inventory Model / Flow</span>
+                        <p className="font-mono font-bold text-brand-navy mt-0.5 uppercase">
+                          {groupedItem.inventoryModel}
                         </p>
                       </div>
                       <div>
@@ -357,6 +427,12 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
                           {itemDetail?.updatedAt ? new Date(itemDetail.updatedAt).toLocaleDateString() : "—"}
                         </p>
                       </div>
+                      <div>
+                        <span className="text-text-grey font-medium">Active Master Status</span>
+                        <p className="font-semibold text-emerald-700 mt-0.5">
+                          {itemDetail?.isActive !== false ? "Active for Operations" : "Inactive"}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -366,31 +442,41 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
               {activeTab === "stock" && (
                 <div className="space-y-6">
                   {/* Stock Position KPI Cards */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
-                    <div className="rounded-2xl border border-blue-200/80 bg-blue-50/60 p-4 shadow-sm">
-                      <span className="text-xs font-bold uppercase tracking-wider text-blue-900">Total Boxes on Hand</span>
-                      <p className="font-mono text-2xl font-bold text-brand-navy mt-1">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    <div className="rounded-2xl border border-blue-200/80 bg-blue-50/60 p-3.5 shadow-sm">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-blue-900 block truncate">Total Boxes</span>
+                      <p className="font-mono text-xl font-bold text-brand-navy mt-1">
                         {totalBoxes.toLocaleString()}{" "}
                         <span className="text-xs font-normal text-text-grey">boxes</span>
                       </p>
                     </div>
-                    <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/60 p-4 shadow-sm">
-                      <span className="text-xs font-bold uppercase tracking-wider text-emerald-900">Total Quantity Available</span>
-                      <p className="font-mono text-2xl font-bold text-emerald-800 mt-1">
+                    <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/60 p-3.5 shadow-sm">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-900 block truncate">Total Quantity</span>
+                      <p className="font-mono text-xl font-bold text-emerald-800 mt-1">
                         {totalUnits.toLocaleString()}{" "}
                         <span className="text-xs font-normal text-text-grey">{uom}</span>
                       </p>
                     </div>
-                    <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-4 shadow-sm">
-                      <span className="text-xs font-bold uppercase tracking-wider text-slate-700">Total Occupied Space</span>
-                      <p className="font-mono text-2xl font-bold text-slate-900 mt-1">
+                    <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/40 p-3.5 shadow-sm">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-900 block truncate">Stock Valuation</span>
+                      <p className="font-mono text-xl font-bold text-emerald-900 mt-1 truncate" title={totalStockCostValuation ? `${currency} ${totalStockCostValuation.toFixed(2)}` : "—"}>
+                        {totalStockCostValuation !== null
+                          ? `${currency} ${totalStockCostValuation.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                          : totalStockSellingValuation !== null
+                          ? `${currency} ${totalStockSellingValuation.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                          : "—"}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-3.5 shadow-sm">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700 block truncate">Occupied Space</span>
+                      <p className="font-mono text-xl font-bold text-slate-900 mt-1">
                         {Number(groupedItem.cbmOccupied || 0).toFixed(3)}{" "}
                         <span className="text-xs font-normal text-text-grey">CBM</span>
                       </p>
                     </div>
-                    <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-4 shadow-sm">
-                      <span className="text-xs font-bold uppercase tracking-wider text-slate-700">Active Lots & Staging</span>
-                      <p className="font-mono text-2xl font-bold text-brand-navy mt-1">
+                    <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-3.5 shadow-sm">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700 block truncate">Active Lots</span>
+                      <p className="font-mono text-xl font-bold text-brand-navy mt-1">
                         {groupedItem.lots.length}{" "}
                         <span className="text-xs font-normal text-text-grey">lots active</span>
                       </p>
