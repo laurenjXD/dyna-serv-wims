@@ -179,9 +179,9 @@ export default async function PreAlertExportPage({ params }: PageProps) {
                 {wrr.items.map((item, index) => (
                   <tr key={item.id} className="hover:bg-surface-light-grey/30">
                     <td className="px-3 py-2.5 font-mono text-text-grey">{index + 1}</td>
-                    <td className="px-3 py-2.5 font-mono font-bold text-on-surface">{item.itemCode ?? "—"}</td>
+                    <td className="px-3 py-2.5 font-mono font-bold text-on-surface">{item.itemCode ?? item.supplierItemCode ?? "—"}</td>
                     <td className="px-3 py-2.5 font-mono text-text-grey">{item.customerItemCode ?? "—"}</td>
-                    <td className="px-3 py-2.5 text-on-surface">{item.itemName ?? "—"}</td>
+                    <td className="px-3 py-2.5 text-on-surface">{item.itemName ?? item.itemCode ?? item.supplierItemCode ?? "—"}</td>
                     <td className="px-3 py-2.5 font-mono text-on-surface">{item.lotNumber}</td>
                     <td className="px-3 py-2.5 font-mono text-text-grey">{item.manufactureDate ?? "—"}</td>
                     <td className="px-3 py-2.5 text-right font-mono font-bold text-on-surface">
