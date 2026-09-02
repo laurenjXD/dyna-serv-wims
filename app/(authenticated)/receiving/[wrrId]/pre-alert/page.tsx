@@ -56,7 +56,6 @@ export default async function PreAlertExportPage({ params }: PageProps) {
               }
               main {
                 padding: 0 !important;
-                margin: 0 !important;
               }
               @page {
                 size: A4 portrait;
@@ -156,7 +155,7 @@ export default async function PreAlertExportPage({ params }: PageProps) {
               Expected Line Items ({wrr.items.length})
             </h2>
             <span className="font-mono text-body-sm font-bold text-brand-navy">
-              Total Expected Units: {totalExpectedUnits.toLocaleString()}
+              Total Expected Quantity: {totalExpectedUnits.toLocaleString()}
             </span>
           </div>
 
@@ -179,7 +178,9 @@ export default async function PreAlertExportPage({ params }: PageProps) {
                 {wrr.items.map((item, index) => (
                   <tr key={item.id} className="hover:bg-surface-light-grey/30">
                     <td className="px-3 py-2.5 font-mono text-text-grey">{index + 1}</td>
-                    <td className="px-3 py-2.5 font-mono font-bold text-on-surface">{item.itemCode ?? item.supplierItemCode ?? "—"}</td>
+                    <td className="px-3 py-2.5 font-mono font-bold text-on-surface">
+                      {item.itemCode ?? item.supplierItemCode ?? "—"}
+                    </td>
                     <td className="px-3 py-2.5 font-mono text-text-grey">{item.customerItemCode ?? "—"}</td>
                     <td className="px-3 py-2.5 text-on-surface">{item.itemName ?? item.itemCode ?? item.supplierItemCode ?? "—"}</td>
                     <td className="px-3 py-2.5 font-mono text-on-surface">{item.lotNumber}</td>
@@ -187,7 +188,7 @@ export default async function PreAlertExportPage({ params }: PageProps) {
                     <td className="px-3 py-2.5 text-right font-mono font-bold text-on-surface">
                       {item.expectedQty.toLocaleString()}
                     </td>
-                    <td className="px-3 py-2.5 font-label uppercase text-text-grey">{item.uom}</td>
+                    <td className="px-3 py-2.5 font-label uppercase text-text-grey">{item.uom || "PCS"}</td>
                     <td className="px-3 py-2.5 text-text-grey">{item.remarks ?? "—"}</td>
                   </tr>
                 ))}
@@ -200,9 +201,7 @@ export default async function PreAlertExportPage({ params }: PageProps) {
                   <td className="px-3 py-3 text-right font-mono text-mono-md font-bold text-brand-navy">
                     {totalExpectedUnits.toLocaleString()}
                   </td>
-                  <td colSpan={2} className="px-3 py-3 font-label uppercase text-text-grey">
-                    PCS / UNITS
-                  </td>
+                  <td colSpan={2} className="px-3 py-3 font-label uppercase text-text-grey"></td>
                 </tr>
               </tfoot>
             </table>
@@ -210,7 +209,7 @@ export default async function PreAlertExportPage({ params }: PageProps) {
 
           {/* Summary totals box */}
           <div className="mt-4 flex justify-end">
-            <div className="w-full max-w-xs rounded-lg border border-outline-variant/40 bg-surface-light-grey/40 p-4 font-body text-body-md">
+            <div className="w-full max-w-sm rounded-lg border border-outline-variant/40 bg-surface-light-grey/40 p-4 font-body text-body-md">
               <dl className="space-y-1.5">
                 <div className="flex justify-between">
                   <dt className="text-text-grey">Total Expected Lines:</dt>
