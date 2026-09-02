@@ -84,6 +84,13 @@ export default async function WrrDetailPage({ params }: PageProps) {
   // doesn't retain the `!wrr` early-return's narrowing of `wrr` itself
   // across a hoisted `function` declaration's body.
   const ciplFileUrl = wrr.ciplFileUrl;
+  const shortageItems = wrr.items.filter((item) => item.scannedQty < item.expectedQty);
+  const totalExpectedBoxes = wrr.items.reduce((sum, item) => sum + item.expectedQty, 0);
+  const totalReceivedBoxes = wrr.items.reduce((sum, item) => sum + item.scannedQty, 0);
+  const totalMissingBoxes = shortageItems.reduce(
+    (sum, item) => sum + Math.max(0, item.expectedQty - item.scannedQty),
+    0,
+  );
 
   // ─── Inline server action: startReceiving ──────────────────────────────────
   async function handleStartReceiving(): Promise<void> {
@@ -259,7 +266,7 @@ export default async function WrrDetailPage({ params }: PageProps) {
       </div>
 
       {/* OS&D Discrepancy Notice */}
-      {wrr.status === "confirmed" && wrr.items.some((i) => i.scannedQty < i.expectedQty) && (
+      {wrr.status === "confirmed" && shortageItems.length > 0 && (
         <div className="mt-6 rounded-xl border border-status-held/40 bg-status-held/10 p-5 shadow-elevation-1">
           <div className="flex items-start gap-3">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-status-held text-surface-white font-bold text-body-sm">
@@ -271,12 +278,47 @@ export default async function WrrDetailPage({ params }: PageProps) {
               </h3>
               <p className="mt-1 font-body text-body-md text-text-grey">
                 This shipment was finalized with fewer units than declared on the Pre-Alert / CIPL.
-                Total expected: <strong className="font-mono text-on-surface">{wrr.items.reduce((s, i) => s + i.expectedQty, 0)} Boxes ({wrr.items.reduce((s, i) => s + i.expectedQty * (Number(i.spq) || 1), 0).toLocaleString()} PCS)</strong> |
-                Total received & posted: <strong className="font-mono text-on-surface">{wrr.items.reduce((s, i) => s + i.scannedQty, 0)} Boxes ({wrr.items.reduce((s, i) => s + i.scannedQty * (Number(i.spq) || 1), 0).toLocaleString()} PCS)</strong> (
+                Total expected: <strong className="font-mono text-on-surface">{totalExpectedBoxes} Boxes</strong> |
+                Total received & posted to inventory: <strong className="font-mono text-on-surface">{totalReceivedBoxes} Boxes</strong> |
                 <span className="font-mono font-bold text-status-held">
-                  {wrr.items.reduce((s, i) => s + i.scannedQty - i.expectedQty, 0)} Boxes / {wrr.items.reduce((s, i) => s + (i.scannedQty - i.expectedQty) * (Number(i.spq) || 1), 0).toLocaleString()} PCS
-                </span>).
+                  {totalMissingBoxes} Boxes missing
+                </span>.
               </p>
+              <div className="mt-4 overflow-x-auto rounded-lg border border-status-held/20 bg-surface-white">
+                <table className="w-full min-w-[620px] border-collapse text-left">
+                  <thead>
+                    <tr className="border-b border-status-held/20 bg-status-held/5">
+                      <th className="px-3 py-2 font-label text-label uppercase text-text-grey">Item / Lot</th>
+                      <th className="px-3 py-2 text-right font-label text-label uppercase text-text-grey">Expected</th>
+                      <th className="px-3 py-2 text-right font-label text-label uppercase text-text-grey">Posted</th>
+                      <th className="px-3 py-2 text-right font-label text-label uppercase text-text-grey">Missing</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-status-held/10">
+                    {shortageItems.map((item) => {
+                      const missingBoxes = Math.max(0, item.expectedQty - item.scannedQty);
+                      const spq = Number(item.spq) || 1;
+                      return (
+                        <tr key={item.id}>
+                          <td className="px-3 py-2 font-body text-body-sm text-on-surface">
+                            <span className="block font-mono font-bold">{item.itemCode ?? "—"}</span>
+                            <span className="block text-text-grey">Lot {item.lotNumber}</span>
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono text-body-sm text-on-surface">
+                            {item.expectedQty} boxes ({(item.expectedQty * spq).toLocaleString()} {item.uom || "PCS"})
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono text-body-sm text-status-available">
+                            {item.scannedQty} boxes ({(item.scannedQty * spq).toLocaleString()} {item.uom || "PCS"})
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono text-body-sm font-bold text-status-held">
+                            {missingBoxes} boxes ({(missingBoxes * spq).toLocaleString()} {item.uom || "PCS"})
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
