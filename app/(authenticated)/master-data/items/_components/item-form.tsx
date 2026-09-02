@@ -283,36 +283,6 @@ export function ItemForm({
         </h2>
         <input type="hidden" name="categoryId" value={categoryId} />
         <div className="grid gap-4 md:grid-cols-2">
-          {/* Inventory Model */}
-          <div>
-            <label htmlFor="inventoryModel" className="block font-label text-label text-on-surface">
-              Inventory Model
-            </label>
-            <select
-              id="inventoryModel"
-              value={inventoryModel}
-              onChange={(e) => {
-                setInventoryModel(e.target.value);
-                setParentCategoryId("");
-                setSubcategoryId("");
-                setAutoAssignedInfo(null);
-              }}
-              className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            >
-              <option value="">All</option>
-              {INVENTORY_MODEL_OPTIONS.map((m) => (
-                <option key={m} value={m}>
-                  {INVENTORY_MODEL_LABELS[m]}
-                </option>
-              ))}
-            </select>
-            {autoAssignedInfo && (
-              <span className="mt-1.5 inline-block text-[11px] font-bold text-blue-800 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                {autoAssignedInfo}
-              </span>
-            )}
-          </div>
-
           {/* Owner / Default Supplier Organization */}
           <div>
             <label htmlFor="defaultSupplierPartyId" className="block font-label text-label text-on-surface">
@@ -347,6 +317,36 @@ export function ItemForm({
               ))}
             </select>
             {fieldError("defaultSupplierPartyId")}
+          </div>
+
+          {/* Inventory Model */}
+          <div>
+            <label htmlFor="inventoryModel" className="block font-label text-label text-on-surface">
+              Inventory Model
+            </label>
+            <select
+              id="inventoryModel"
+              value={inventoryModel}
+              onChange={(e) => {
+                setInventoryModel(e.target.value);
+                setParentCategoryId("");
+                setSubcategoryId("");
+                setAutoAssignedInfo(null);
+              }}
+              className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            >
+              <option value="">All</option>
+              {INVENTORY_MODEL_OPTIONS.map((m) => (
+                <option key={m} value={m}>
+                  {INVENTORY_MODEL_LABELS[m]}
+                </option>
+              ))}
+            </select>
+            {autoAssignedInfo && (
+              <span className="mt-1.5 inline-block text-[11px] font-bold text-blue-800 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                {autoAssignedInfo}
+              </span>
+            )}
           </div>
 
           {/* Category with Add / Edit Actions */}
