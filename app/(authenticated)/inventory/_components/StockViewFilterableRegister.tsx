@@ -123,51 +123,40 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
       },
     },
 
-    // 4. Locations
+    // 4. Lots & Locations (Consolidated Interactive Pill)
     {
-      accessorKey: "locationLabels",
-      header: "Location",
+      id: "lotsAndLocations",
+      accessorFn: (row) => `${row.lotNumbers} ${row.locationLabels}`,
+      header: "Lots & Locations",
       meta: {
         filterVariant: "text",
-        filterLabel: "Location",
+        filterLabel: "Lot or Location",
       },
       cell: (info) => {
         const item = info.row.original;
         const isExpanded = expandedItemId === item.itemId;
-        return (
-          <button
-            type="button"
-            onClick={() => setExpandedItemId(isExpanded ? null : item.itemId)}
-            className="flex max-w-[220px] items-center gap-1 text-left text-sm text-brand-navy hover:underline"
-            title={item.locationLabels || "—"}
-          >
-            <Layers size={14} className="shrink-0 text-brand-navy/70" />
-            <span className="truncate font-semibold">{item.locationLabels || "—"}</span>
-          </button>
-        );
-      },
-    },
+        const lotCount = item.lots.length;
+        const locationCount = new Set(item.lots.flatMap((l) => l.locationLabels).filter(Boolean)).size;
 
-    // 5. Lot numbers
-    {
-      accessorKey: "lotNumbers",
-      header: "Lot No.",
-      meta: {
-        filterVariant: "text",
-        filterLabel: "Lot Number",
-      },
-      cell: (info) => {
-        const item = info.row.original;
-        const isExpanded = expandedItemId === item.itemId;
         return (
           <button
             type="button"
             onClick={() => setExpandedItemId(isExpanded ? null : item.itemId)}
-            className="inline-flex max-w-[220px] items-center gap-1 text-left font-mono text-sm text-text-grey hover:text-brand-navy hover:underline"
-            title="Show lot details"
+            className={`group inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold transition-all shadow-sm ${
+              isExpanded
+                ? "border-brand-navy bg-brand-navy text-surface-white"
+                : "border-slate-200 bg-surface-white text-brand-navy hover:bg-slate-50 hover:border-brand-navy/40"
+            }`}
+            title={`View ${lotCount} lot(s) across ${locationCount} location(s)`}
           >
-            <ChevronDown size={14} className={`shrink-0 transition-transform ${isExpanded ? "rotate-0" : "-rotate-90"}`} />
-            <span className="truncate">{String(info.getValue() || "—")}</span>
+            <Layers size={13} className={isExpanded ? "text-surface-white" : "text-brand-navy/70"} />
+            <span>
+              {lotCount} {lotCount === 1 ? "Lot" : "Lots"} · {locationCount} {locationCount === 1 ? "Loc" : "Locs"}
+            </span>
+            <ChevronDown
+              size={13}
+              className={`transition-transform duration-200 ${isExpanded ? "rotate-180 text-surface-white" : "text-slate-400 group-hover:text-brand-navy"}`}
+            />
           </button>
         );
       },
