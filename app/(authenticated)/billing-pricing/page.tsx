@@ -35,6 +35,7 @@ import { VmiDailyBalanceLedgerTable } from "./_components/VmiDailyBalanceLedgerT
 import { VmiContractTermsTable } from "./_components/VmiContractTermsTable";
 import { TradingMarginLedgerTable } from "./_components/TradingMarginLedgerTable";
 import { TradingRateCardsTable } from "./_components/TradingRateCardsTable";
+import { LogisticsRateMatrixTable } from "./_components/LogisticsRateMatrixTable";
 
 const MONTHS = [
   "January",
@@ -103,6 +104,8 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
       ? "policies"
       : tabParam === "vmi-contracts"
       ? "vmi-contracts"
+      : tabParam === "logistics-rates"
+      ? "logistics-rates"
       : "vmi";
 
   const currentYear = new Date().getFullYear();
@@ -217,6 +220,18 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
           }`}
         >
           Trading Margin Ledger
+        </Link>
+        <Link
+          href={`/billing-pricing?tab=logistics-rates${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`}
+          role="tab"
+          aria-selected={activeTab === "logistics-rates"}
+          className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
+            activeTab === "logistics-rates"
+              ? "border-b-2 border-on-surface text-on-surface font-bold"
+              : "text-text-grey hover:text-on-surface"
+          }`}
+        >
+          Logistics Rate Matrix
         </Link>
         <Link
           href="/billing-pricing/contracts"
@@ -387,6 +402,11 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
             parties={partyOptions}
             items={itemOptions}
           />
+        )}
+
+        {/* Logistics Rate Matrix Tab */}
+        {activeTab === "logistics-rates" && (
+          <LogisticsRateMatrixTable />
         )}
       </div>
     </div>
