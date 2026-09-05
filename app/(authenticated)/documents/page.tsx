@@ -178,72 +178,150 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
         activeTabLabel={tabLabelMap[activeTab]}
       />
 
-      {/* 5-Tab Navigation Strip */}
-      <div
-        role="tablist"
-        aria-label="Documents Center sections"
-        className="mb-6 flex flex-wrap items-center gap-1 border-b border-outline-variant/30"
-      >
-        <Link
-          href="/documents?tab=wrr"
-          role="tab"
-          aria-selected={activeTab === "wrr"}
-          className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
-            activeTab === "wrr"
-              ? "border-b-2 border-on-surface text-on-surface font-bold"
-              : "text-text-grey hover:text-on-surface"
-          }`}
-        >
-          WRRs (Receiving Reports)
-        </Link>
-        <Link
-          href="/documents?tab=cipl"
-          role="tab"
-          aria-selected={activeTab === "cipl"}
-          className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
-            activeTab === "cipl"
-              ? "border-b-2 border-on-surface text-on-surface font-bold"
-              : "text-text-grey hover:text-on-surface"
-          }`}
-        >
-          Inbound CI/PL &amp; Invoices
-        </Link>
-        <Link
-          href="/documents?tab=pick-lists"
-          role="tab"
-          aria-selected={activeTab === "pick-lists"}
-          className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
-            activeTab === "pick-lists"
-              ? "border-b-2 border-on-surface text-on-surface font-bold"
-              : "text-text-grey hover:text-on-surface"
-          }`}
-        >
-          Pick Lists &amp; DRA/WRF
-        </Link>
-        <Link
-          href="/documents?tab=acknowledgement-receipts"
-          role="tab"
-          aria-selected={activeTab === "acknowledgement-receipts"}
-          className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
-            activeTab === "acknowledgement-receipts"
-              ? "border-b-2 border-on-surface text-on-surface font-bold"
-              : "text-text-grey hover:text-on-surface"
-          }`}
-        >
-          Delivery Receipts &amp; POD (DR/AR)
-        </Link>
-        <Link
-          href="/documents?tab=soa"
-          role="tab"
-          aria-selected={activeTab === "soa"}
-          className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
-            activeTab === "soa"
-              ? "border-b-2 border-on-surface text-on-surface font-bold"
-              : "text-text-grey hover:text-on-surface"
-          }`}
-        >
-          Statements of Account (SOAs)
-        </Link>
+      {/* Workflow Grouped Tab Navigation */}
+      <div className="mb-6">
+        <div className="grid grid-cols-1 gap-3.5 md:grid-cols-3">
+          {/* Group 1: Inbound Receiving Workflow */}
+          <div
+            className={`rounded-2xl border p-3.5 transition-all ${
+              activeTab === "wrr" || activeTab === "cipl"
+                ? "border-brand-navy/60 bg-brand-navy/[0.02] ring-1 ring-brand-navy/30 shadow-elevation-1"
+                : "border-outline-variant/30 bg-surface-white"
+            }`}
+          >
+            <div className="mb-2.5 flex items-center justify-between">
+              <span className="inline-flex items-center gap-1.5 font-label text-body-xs font-extrabold uppercase tracking-wider text-brand-navy">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-navy/10 text-brand-navy font-bold">1</span>
+                Inbound Receiving
+              </span>
+              <Link
+                href="/receiving"
+                className="font-label text-body-xs font-semibold text-text-grey transition-colors hover:text-brand-navy hover:underline"
+              >
+                /receiving ↗
+              </Link>
+            </div>
+            <div className="flex gap-2">
+              <Link
+                href="/documents?tab=wrr"
+                role="tab"
+                aria-selected={activeTab === "wrr"}
+                className={`flex-1 rounded-xl px-3 py-2 text-center font-label text-label transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
+                  activeTab === "wrr"
+                    ? "bg-brand-navy text-surface-white font-bold shadow-sm"
+                    : "bg-surface-light-grey text-on-surface hover:bg-outline-variant/30 font-medium"
+                }`}
+              >
+                WRRs &amp; Receipts
+              </Link>
+              <Link
+                href="/documents?tab=cipl"
+                role="tab"
+                aria-selected={activeTab === "cipl"}
+                className={`flex-1 rounded-xl px-3 py-2 text-center font-label text-label transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
+                  activeTab === "cipl"
+                    ? "bg-brand-navy text-surface-white font-bold shadow-sm"
+                    : "bg-surface-light-grey text-on-surface hover:bg-outline-variant/30 font-medium"
+                }`}
+              >
+                Inbound CI/PL
+              </Link>
+            </div>
+          </div>
+
+          {/* Group 2: Outbound Dispatch Workflow */}
+          <div
+            className={`rounded-2xl border p-3.5 transition-all ${
+              activeTab === "pick-lists" || activeTab === "acknowledgement-receipts"
+                ? "border-brand-navy/60 bg-brand-navy/[0.02] ring-1 ring-brand-navy/30 shadow-elevation-1"
+                : "border-outline-variant/30 bg-surface-white"
+            }`}
+          >
+            <div className="mb-2.5 flex items-center justify-between">
+              <span className="inline-flex items-center gap-1.5 font-label text-body-xs font-extrabold uppercase tracking-wider text-brand-navy">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-navy/10 text-brand-navy font-bold">2</span>
+                Outbound Dispatch
+              </span>
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/pick-lists"
+                  className="font-label text-body-xs font-semibold text-text-grey transition-colors hover:text-brand-navy hover:underline"
+                >
+                  /pick-lists ↗
+                </Link>
+                <span className="text-text-grey/40">·</span>
+                <Link
+                  href="/outgoing"
+                  className="font-label text-body-xs font-semibold text-text-grey transition-colors hover:text-brand-navy hover:underline"
+                >
+                  /outgoing ↗
+                </Link>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Link
+                href="/documents?tab=pick-lists"
+                role="tab"
+                aria-selected={activeTab === "pick-lists"}
+                className={`flex-1 rounded-xl px-3 py-2 text-center font-label text-label transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
+                  activeTab === "pick-lists"
+                    ? "bg-brand-navy text-surface-white font-bold shadow-sm"
+                    : "bg-surface-light-grey text-on-surface hover:bg-outline-variant/30 font-medium"
+                }`}
+              >
+                Pick Lists &amp; DRA
+              </Link>
+              <Link
+                href="/documents?tab=acknowledgement-receipts"
+                role="tab"
+                aria-selected={activeTab === "acknowledgement-receipts"}
+                className={`flex-1 rounded-xl px-3 py-2 text-center font-label text-label transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
+                  activeTab === "acknowledgement-receipts"
+                    ? "bg-brand-navy text-surface-white font-bold shadow-sm"
+                    : "bg-surface-light-grey text-on-surface hover:bg-outline-variant/30 font-medium"
+                }`}
+              >
+                Delivery Receipts / POD
+              </Link>
+            </div>
+          </div>
+
+          {/* Group 3: Financial Billing Workflow */}
+          <div
+            className={`rounded-2xl border p-3.5 transition-all ${
+              activeTab === "soa"
+                ? "border-brand-navy/60 bg-brand-navy/[0.02] ring-1 ring-brand-navy/30 shadow-elevation-1"
+                : "border-outline-variant/30 bg-surface-white"
+            }`}
+          >
+            <div className="mb-2.5 flex items-center justify-between">
+              <span className="inline-flex items-center gap-1.5 font-label text-body-xs font-extrabold uppercase tracking-wider text-brand-navy">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-navy/10 text-brand-navy font-bold">3</span>
+                Financial &amp; Billing
+              </span>
+              <Link
+                href="/billing-pricing/soa"
+                className="font-label text-body-xs font-semibold text-text-grey transition-colors hover:text-brand-navy hover:underline"
+              >
+                /billing-pricing ↗
+              </Link>
+            </div>
+            <div className="flex gap-2">
+              <Link
+                href="/documents?tab=soa"
+                role="tab"
+                aria-selected={activeTab === "soa"}
+                className={`w-full rounded-xl px-3 py-2 text-center font-label text-label transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
+                  activeTab === "soa"
+                    ? "bg-brand-navy text-surface-white font-bold shadow-sm"
+                    : "bg-surface-light-grey text-on-surface hover:bg-outline-variant/30 font-medium"
+                }`}
+              >
+                Statements of Account (SOA)
+              </Link>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Unified Search & Filters */}

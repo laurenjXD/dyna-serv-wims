@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, RotateCw, CheckCircle2, Info } from "lucide-react";
+import Link from "next/link";
+import { Eye, RotateCw, CheckCircle2, Info, ExternalLink } from "lucide-react";
 import type { AcknowledgementReceiptArchiveRow } from "@/lib/db/queries/documents";
 import { DocumentPreviewModal, type PreviewDocData } from "./DocumentPreviewModal";
 import { DocumentReprintDialog } from "./DocumentReprintDialog";
@@ -152,6 +153,12 @@ export function AcknowledgementReceiptsTable({ rows }: AcknowledgementReceiptsTa
                         >
                           <RotateCw size={14} /> Reprint
                         </button>
+                        <Link
+                          href={`/pick-lists/${r.pickListId}/receipt`}
+                          className="inline-flex h-9 items-center gap-1 rounded-lg bg-surface-light-grey px-2.5 font-label text-label font-medium text-on-surface hover:bg-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                        >
+                          <ExternalLink size={14} /> View Receipt
+                        </Link>
                       </div>
                     </td>
                   </tr>
