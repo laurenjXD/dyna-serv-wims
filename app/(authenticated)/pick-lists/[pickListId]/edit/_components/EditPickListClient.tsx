@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, Save, ShieldCheck } from "lucide-react";
 import { updateQueuedPickListLineItems } from "../../../_actions";
+import { TablePagination } from "@/components/ui/TablePagination";
 
 export type EditablePickListItem = {
   id: string;
@@ -30,6 +31,8 @@ export function EditPickListClient({
   initialItems: EditablePickListItem[];
 }) {
   const [items, setItems] = useState<EditablePickListItem[]>(initialItems);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
 
   const updateItem = (id: string, patch: Partial<EditablePickListItem>) => {
     setItems((current) =>
@@ -154,7 +157,7 @@ export function EditPickListClient({
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/30">
-              {items.map((item) => (
+              {items.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize).map((item) => (
                 <tr key={item.id} className="hover:bg-surface-light-grey/40">
                   {/* QTY Input */}
                   <td className="px-4 py-3">
@@ -227,6 +230,21 @@ export function EditPickListClient({
             </tbody>
           </table>
         </div>
+
+        <TablePagination
+          pageIndex={pageIndex}
+          pageSize={pageSize}
+          totalCount={items.length}
+          pageCount={Math.ceil(items.length / pageSize) || 1}
+          canPreviousPage={pageIndex > 0}
+          canNextPage={pageIndex < (Math.ceil(items.length / pageSize) || 1) - 1}
+          onPageChange={(newPageIndex) => setPageIndex(newPageIndex)}
+          onPageSizeChange={(newPageSize) => {
+            setPageSize(newPageSize);
+            setPageIndex(0);
+          }}
+          pageSizeOptions={[5, 10, 20, 50]}
+        />
       </div>
     </div>
   );

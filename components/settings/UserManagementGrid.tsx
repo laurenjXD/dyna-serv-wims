@@ -17,6 +17,7 @@ import { useMemo, useState } from "react";
 import { roleLabel } from "@/lib/user-settings/roles";
 import { InviteUserModal } from "./InviteUserModal";
 import { SuspendUserDialog } from "./SuspendUserDialog";
+import { TablePagination } from "@/components/ui/TablePagination";
 import type {
   ActivePartyOption,
   TeamMember,
@@ -85,6 +86,8 @@ export function UserManagementGrid({
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [suspendTarget, setSuspendTarget] = useState<TeamMember | null>(null);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
 
   const filtered = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -97,6 +100,13 @@ export function UserManagementGrid({
       return matchesQuery && matchesStatus;
     });
   }, [members, query, statusFilter]);
+
+  const totalCount = filtered.length;
+  const pageCount = Math.ceil(totalCount / pageSize) || 1;
+  const pagedMembers = filtered.slice(
+    pageIndex * pageSize,
+    (pageIndex + 1) * pageSize
+  );
 
   async function handleInvite(input: InviteUserInput) {
     const result = await inviteUser(input);
@@ -153,13 +163,19 @@ export function UserManagementGrid({
           data-testid="team-search-input"
           placeholder="Search by name or email"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setPageIndex(0);
+          }}
           className="min-h-11 flex-1 rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
         />
         <select
           data-testid="team-status-filter"
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => {
+            setStatusFilter(e.target.value);
+            setPageIndex(0);
+          }}
           className="min-h-11 rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
         >
           <option value="all">All statuses</option>
@@ -194,7 +210,7 @@ export function UserManagementGrid({
             </tr>
           </thead>
           <tbody>
-            {filtered.map((member) => (
+            {pagedMembers.map((member) => (
               <tr key={member.id} className="border-b border-outline-variant/30 last:border-0">
                 <td className="px-4 py-3 font-body text-body-md text-on-surface">
                   {member.displayName}
@@ -254,6 +270,24 @@ export function UserManagementGrid({
             )}
           </tbody>
         </table>
+
+        {/* User Management Grid Pagination */}
+        {filtered.length > 0 && (
+          <TablePagination
+            pageIndex={pageIndex}
+            pageSize={pageSize}
+            totalCount={totalCount}
+            pageCount={pageCount}
+            canPreviousPage={pageIndex > 0}
+            canNextPage={pageIndex < pageCount - 1}
+            onPageChange={(newPageIndex) => setPageIndex(newPageIndex)}
+            onPageSizeChange={(newPageSize) => {
+              setPageSize(newPageSize);
+              setPageIndex(0);
+            }}
+            pageSizeOptions={[5, 10, 20]}
+          />
+        )}
       </div>
 
       {inviteOpen && (

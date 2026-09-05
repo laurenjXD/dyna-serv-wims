@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import type { VmiBillingRow } from "./types";
 import { VMI_BILLING_SEED } from "./data/reportsSeedData";
+import { TablePagination } from "@/components/ui/TablePagination";
 
 interface VmiBillingTableProps {
   onGenerateInvoicePdf: (row: VmiBillingRow) => void;
@@ -29,6 +30,8 @@ export function VmiBillingTable({
   const [data, setData] = useState<VmiBillingRow[]>(VMI_BILLING_SEED);
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedRows, setExpandedRows] = useState<string[]>(["vmi-bill-1"]);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(5);
 
   const toggleRowExpand = (id: string) => {
     setExpandedRows((prev) =>
@@ -40,6 +43,18 @@ export function VmiBillingTable({
     row.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     row.clientCode.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const totalCount = filteredData.length;
+  const pageCount = Math.ceil(totalCount / pageSize) || 1;
+  const pagedData = filteredData.slice(
+    pageIndex * pageSize,
+    (pageIndex + 1) * pageSize
+  );
+
+  const handleSearchChange = (term: string) => {
+    setSearchTerm(term);
+    setPageIndex(0);
+  };
 
   const totalAccrued = data.reduce((acc, row) => acc + row.mtdAccruedStorage, 0);
   const totalOccupied = data.reduce((acc, row) => acc + row.occupiedCbm, 0);
@@ -73,7 +88,7 @@ export function VmiBillingTable({
               type="text"
               placeholder="Search consignor..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="h-8 w-44 rounded-lg border border-slate-200 bg-white pl-7 pr-2.5 font-body text-xs text-brand-navy focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy shadow-2xs"
             />
           </div>
@@ -91,7 +106,12 @@ export function VmiBillingTable({
       {/* 📱 MOBILE EXPANDABLE CARD FEED (< 1024px)                           */}
       {/* ─────────────────────────────────────────────────────────────────── */}
       <div className="p-4 block lg:hidden space-y-3">
-        {filteredData.map((row) => {
+        {pagedData.length === 0 ? (
+          <div className="p-8 text-center text-xs text-text-grey italic">
+            No consignor records match &ldquo;{searchTerm}&rdquo;
+          </div>
+        ) : (
+          pagedData.map((row) => {
           const isExpanded = expandedRows.includes(row.id);
           const utilColor =
             row.utilizationPct > 80
@@ -205,7 +225,8 @@ export function VmiBillingTable({
               </button>
             </div>
           );
-        })}
+        })
+        )}
       </div>
 
       {/* ─────────────────────────────────────────────────────────────────── */}
@@ -226,7 +247,14 @@ export function VmiBillingTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 font-body">
-            {filteredData.map((row) => {
+            {pagedData.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="px-4 py-8 text-center text-xs text-text-grey italic">
+                  No consignor records match &ldquo;{searchTerm}&rdquo;
+                </td>
+              </tr>
+            ) : (
+              pagedData.map((row) => {
               const utilColor =
                 row.utilizationPct > 80
                   ? "bg-rose-500"
@@ -330,10 +358,27 @@ export function VmiBillingTable({
                   </td>
                 </tr>
               );
-            })}
+            })
+            )}
           </tbody>
         </table>
       </div>
+
+      {/* ── Table Pagination ─────────────────────────────────────────────── */}
+      <TablePagination
+        pageIndex={pageIndex}
+        pageSize={pageSize}
+        totalCount={totalCount}
+        pageCount={pageCount}
+        canPreviousPage={pageIndex > 0}
+        canNextPage={pageIndex < pageCount - 1}
+        onPageChange={(newPageIndex) => setPageIndex(newPageIndex)}
+        onPageSizeChange={(newPageSize) => {
+          setPageSize(newPageSize);
+          setPageIndex(0);
+        }}
+        pageSizeOptions={[5, 10, 20]}
+      />
 
       {/* ── Table Footer Summary ────────────────────────────────────────── */}
       <div className="border-t border-slate-200 bg-slate-50/50 p-4 flex flex-wrap items-center justify-between gap-3 text-xs">

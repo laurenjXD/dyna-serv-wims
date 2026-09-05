@@ -21,6 +21,7 @@ import {
   LOGISTICS_RATE_MATRIX,
   type LogisticsRateEntry,
 } from "@/lib/logistics/rate-matrix";
+import { TablePagination } from "@/components/ui/TablePagination";
 
 export function LogisticsRateMatrixTable() {
   const [matrixData, setMatrixData] = useState<Record<string, LogisticsRateEntry>>(LOGISTICS_RATE_MATRIX);
@@ -29,6 +30,10 @@ export function LogisticsRateMatrixTable() {
   const [fxRate, setFxRate] = useState<number>(61.71);
   const [isSyncingFx, setIsSyncingFx] = useState<boolean>(false);
   const [fxSourceLabel, setFxSourceLabel] = useState<string>("June Baseline Contract Rate");
+
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [pageIndex, setPageIndex] = useState<number>(0);
+  const [pageSize, setPageSize] = useState<number>(10);
 
   const handleSyncLiveBspRate = async () => {
     setIsSyncingFx(true);
@@ -76,7 +81,14 @@ export function LogisticsRateMatrixTable() {
     setEditForm({});
   };
 
-  const entries = Object.values(matrixData);
+  const filteredEntries = Object.values(matrixData).filter((entry) => {
+    if (!searchQuery.trim()) return true;
+    return entry.destination.toLowerCase().includes(searchQuery.toLowerCase().trim());
+  });
+
+  const totalCount = filteredEntries.length;
+  const pageCount = Math.ceil(totalCount / pageSize) || 1;
+  const pagedEntries = filteredEntries.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
 
   return (
     <div className="space-y-6">
@@ -128,7 +140,7 @@ export function LogisticsRateMatrixTable() {
 
       {/* ── Rate Card Table ──────────────────────────────────────────────── */}
       <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-surface-white shadow-sm">
-        <div className="border-b border-slate-100 bg-slate-50/70 p-4 flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+        <div className="border-b border-slate-100 bg-slate-50/70 p-4 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
           <div>
             <h4 className="font-heading font-bold text-sm text-brand-navy">
               Standard Freight Rate Matrix (PHP / Run)
@@ -137,7 +149,17 @@ export function LogisticsRateMatrixTable() {
               Effective rates apply automatically across all Outgoing shipments based on vehicle type selected.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setPageIndex(0);
+              }}
+              placeholder="Filter destination…"
+              className="h-8 w-44 rounded-lg border border-slate-200 bg-white px-2.5 font-body text-xs text-slate-800 placeholder:text-slate-400 focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
+            />
             <Link
               href="/outgoing?tab=logistics"
               className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 font-label text-xs font-bold text-brand-navy hover:bg-slate-50 transition-colors shadow-2xs"
@@ -163,7 +185,14 @@ export function LogisticsRateMatrixTable() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-body">
-              {entries.map((entry) => {
+              {pagedEntries.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="p-8 text-center text-text-grey">
+                    No destinations match &quot;{searchQuery}&quot;.
+                  </td>
+                </tr>
+              ) : (
+                pagedEntries.map((entry) => {
                 const isEditing = editingDest === entry.destination;
 
                 if (isEditing) {
@@ -297,10 +326,25 @@ export function LogisticsRateMatrixTable() {
                     </td>
                   </tr>
                 );
-              })}
+              }))}
             </tbody>
           </table>
         </div>
+
+        <TablePagination
+          pageIndex={pageIndex}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          pageCount={pageCount}
+          canPreviousPage={pageIndex > 0}
+          canNextPage={pageIndex < pageCount - 1}
+          onPageChange={(newPageIndex) => setPageIndex(newPageIndex)}
+          onPageSizeChange={(newPageSize) => {
+            setPageSize(newPageSize);
+            setPageIndex(0);
+          }}
+          pageSizeOptions={[5, 10, 20, 50]}
+        />
       </div>
 
       {/* ── Operational Specification Card ──────────────────────────────── */}

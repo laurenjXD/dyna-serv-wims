@@ -8,6 +8,7 @@ import {
   type VehicleType,
   lookupEffectiveLogisticsRate,
 } from "@/lib/logistics/rate-matrix";
+import { TablePagination } from "@/components/ui/TablePagination";
 
 export type LogisticsDrRow = {
   id: string;
@@ -59,6 +60,9 @@ export function LogisticsLedgerClientTable() {
   const [fxRate, setFxRate] = useState<number>(61.71); // Daily Forex Rate (USD -> PHP)
   const [isSyncingFx, setIsSyncingFx] = useState<boolean>(false);
   const [fxSourceLabel, setFxSourceLabel] = useState<string>("June Baseline Contract Rate");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [pageIndex, setPageIndex] = useState<number>(0);
+  const [pageSize, setPageSize] = useState<number>(10);
 
   const handleSyncLiveBspRate = async () => {
     setIsSyncingFx(true);
@@ -126,6 +130,21 @@ export function LogisticsLedgerClientTable() {
     setEditingId(null);
     setEditForm({});
   };
+
+  const filteredRows = rows.filter((r) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase().trim();
+    return (
+      r.drReference.toLowerCase().includes(q) ||
+      r.consignee.toLowerCase().includes(q) ||
+      r.vehicleType.toLowerCase().includes(q) ||
+      r.remarks.toLowerCase().includes(q)
+    );
+  });
+
+  const totalCount = filteredRows.length;
+  const pageCount = Math.ceil(totalCount / pageSize) || 1;
+  const pagedRows = filteredRows.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
 
   const totalDeliveryPhp = rows.reduce((sum, r) => sum + r.deliveryChargePhp, 0);
   const totalDocUsd = rows.reduce((sum, r) => sum + r.documentationChargeUsd, 0);
@@ -215,7 +234,7 @@ export function LogisticsLedgerClientTable() {
 
       {/* Logistics DR Table */}
       <div className="overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
-        <div className="border-b border-outline-variant/30 bg-surface-light-grey p-4 flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+        <div className="border-b border-outline-variant/30 bg-surface-light-grey p-4 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
           <div>
             <h3 className="font-heading font-bold text-headline-sm text-on-surface">
               Delivery Receipt (DR) Logistics &amp; Freight Ledger
@@ -224,9 +243,21 @@ export function LogisticsLedgerClientTable() {
               Effective contract rates automatically computed by <strong>Vehicle Type</strong> (4W, 6W, 6W Forward, 10W Forward) and <strong>Destination</strong>. Batched multi-DR runs share one vehicle trip charge.
             </p>
           </div>
-          <span className="inline-flex items-center shrink-0 rounded-full bg-brand-navy/10 px-3 py-1 font-mono text-mono-xs font-bold text-brand-navy">
-            Vehicle Rate Matrix Active
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setPageIndex(0);
+              }}
+              placeholder="Filter by DR, plant, vehicle…"
+              className="h-8 w-52 rounded-lg border border-outline-variant/40 bg-white px-2.5 font-body text-xs text-on-surface placeholder:text-text-grey focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
+            />
+            <span className="inline-flex items-center shrink-0 rounded-full bg-brand-navy/10 px-3 py-1 font-mono text-mono-xs font-bold text-brand-navy">
+              Vehicle Rate Matrix Active
+            </span>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -244,7 +275,14 @@ export function LogisticsLedgerClientTable() {
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/30 font-body text-body-md text-on-surface">
-              {rows.map((row) => (
+              {pagedRows.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="p-8 text-center text-text-grey">
+                    No delivery receipt runs match &quot;{searchQuery}&quot;.
+                  </td>
+                </tr>
+              ) : (
+                pagedRows.map((row) => (
                 <tr key={row.id} className="hover:bg-surface-light-grey/40 transition-colors text-xs">
                   <td className="px-3.5 py-3 font-mono font-semibold whitespace-nowrap">{row.date}</td>
                   <td className="px-3.5 py-3 font-mono font-bold text-brand-navy">{row.drReference}</td>
@@ -379,10 +417,25 @@ export function LogisticsLedgerClientTable() {
                     </>
                   )}
                 </tr>
-              ))}
+              )))}
             </tbody>
           </table>
         </div>
+
+        <TablePagination
+          pageIndex={pageIndex}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          pageCount={pageCount}
+          canPreviousPage={pageIndex > 0}
+          canNextPage={pageIndex < pageCount - 1}
+          onPageChange={(newPageIndex) => setPageIndex(newPageIndex)}
+          onPageSizeChange={(newPageSize) => {
+            setPageSize(newPageSize);
+            setPageIndex(0);
+          }}
+          pageSizeOptions={[5, 10, 20, 50]}
+        />
       </div>
     </div>
   );

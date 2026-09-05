@@ -27,12 +27,22 @@ import {
 } from "lucide-react";
 import type { TradingMarginRow, TradingCategoryPerformance } from "./types";
 import { TRADING_MARGIN_SEED, TRADING_CATEGORY_SEED } from "./data/reportsSeedData";
+import { TablePagination } from "@/components/ui/TablePagination";
 
 export function TradingMarginSection() {
   const marginData: TradingMarginRow[] = TRADING_MARGIN_SEED;
   const categoryData: TradingCategoryPerformance[] = TRADING_CATEGORY_SEED;
 
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+  const [categoryPageIndex, setCategoryPageIndex] = useState(0);
+  const [categoryPageSize, setCategoryPageSize] = useState(5);
+
+  const totalCategoryCount = categoryData.length;
+  const categoryPageCount = Math.ceil(totalCategoryCount / categoryPageSize) || 1;
+  const pagedCategoryData = categoryData.slice(
+    categoryPageIndex * categoryPageSize,
+    (categoryPageIndex + 1) * categoryPageSize
+  );
 
   const currentMonthData = marginData[marginData.length - 1];
   const totalRevenue = categoryData.reduce((acc, c) => acc + c.grossRevenue, 0);
@@ -194,7 +204,7 @@ export function TradingMarginSection() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
-                  {categoryData.map((cat) => {
+                  {pagedCategoryData.map((cat) => {
                     const isAboveSla = cat.deltaVsSlaPct >= 0;
                     return (
                       <tr key={cat.category} className="hover:bg-slate-50/80 dark:hover:bg-zinc-800/50 transition-colors">
@@ -227,6 +237,22 @@ export function TradingMarginSection() {
                 </tbody>
               </table>
             </div>
+
+            {/* Category Table Pagination */}
+            <TablePagination
+              pageIndex={categoryPageIndex}
+              pageSize={categoryPageSize}
+              totalCount={totalCategoryCount}
+              pageCount={categoryPageCount}
+              canPreviousPage={categoryPageIndex > 0}
+              canNextPage={categoryPageIndex < categoryPageCount - 1}
+              onPageChange={(newPageIndex) => setCategoryPageIndex(newPageIndex)}
+              onPageSizeChange={(newPageSize) => {
+                setCategoryPageSize(newPageSize);
+                setCategoryPageIndex(0);
+              }}
+              pageSizeOptions={[3, 5, 10]}
+            />
           </div>
 
           <div className="p-3 bg-slate-50/50 dark:bg-zinc-800/30 border-t border-slate-100 dark:border-zinc-800 text-[11px] text-text-grey flex justify-between items-center">
@@ -253,7 +279,7 @@ export function TradingMarginSection() {
                   Product Category Margin Breakdown
                 </h3>
                 <p className="font-body text-xs text-text-grey">
-                  Financial contribution &amp; SLA compliance
+                  Financial contribution &amp; SLA compliance ({totalCategoryCount} categories)
                 </p>
               </div>
               <button
@@ -268,7 +294,7 @@ export function TradingMarginSection() {
 
             {/* Content List */}
             <div className="overflow-y-auto py-4 space-y-3">
-              {categoryData.map((cat) => {
+              {pagedCategoryData.map((cat) => {
                 const isAboveSla = cat.deltaVsSlaPct >= 0;
                 return (
                   <div
@@ -312,6 +338,22 @@ export function TradingMarginSection() {
                   </div>
                 );
               })}
+
+              {/* Mobile Drawer Pagination */}
+              <TablePagination
+                pageIndex={categoryPageIndex}
+                pageSize={categoryPageSize}
+                totalCount={totalCategoryCount}
+                pageCount={categoryPageCount}
+                canPreviousPage={categoryPageIndex > 0}
+                canNextPage={categoryPageIndex < categoryPageCount - 1}
+                onPageChange={(newPageIndex) => setCategoryPageIndex(newPageIndex)}
+                onPageSizeChange={(newPageSize) => {
+                  setCategoryPageSize(newPageSize);
+                  setCategoryPageIndex(0);
+                }}
+                pageSizeOptions={[3, 5, 10]}
+              />
             </div>
 
             {/* Bottom Action */}

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import type { TradingPolicyRow } from "@/lib/db/queries/trading-policies";
 import { PolicyFormModal } from "../trading/policies/_components/PolicyFormModal";
+import { TablePagination } from "@/components/ui/TablePagination";
 
 type Option = { id: string; name: string; code: string };
 
@@ -38,8 +39,11 @@ export function TradingRateCardsTable({ rows, parties, items }: Props) {
   const [marginTypeFilter, setMarginTypeFilter] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("partyName");
   const [sortDir, setSortDir] = useState<SortDirection>("asc");
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
 
   const handleSort = (field: SortField) => {
+    setPageIndex(0);
     if (sortField === field) {
       setSortDir(sortDir === "asc" ? "desc" : "asc");
     } else {
@@ -80,6 +84,13 @@ export function TradingRateCardsTable({ rows, parties, items }: Props) {
         return sortDir === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
       });
   }, [rows, searchQuery, marginTypeFilter, sortField, sortDir]);
+
+  const totalCount = filteredAndSortedRows.length;
+  const pageCount = Math.ceil(totalCount / pageSize) || 1;
+  const pagedRows = filteredAndSortedRows.slice(
+    pageIndex * pageSize,
+    (pageIndex + 1) * pageSize
+  );
 
   const renderSortIcon = (field: SortField) => {
     if (sortField !== field) {
@@ -127,14 +138,20 @@ export function TradingRateCardsTable({ rows, parties, items }: Props) {
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setPageIndex(0);
+            }}
             placeholder="Search by customer, item code, item name…"
             className="h-11 w-full rounded-xl border border-outline-variant/40 bg-surface-light-grey/40 pl-10 pr-10 font-body text-body-sm text-on-surface placeholder:text-text-grey focus:border-brand-navy focus:bg-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
           />
           {searchQuery && (
             <button
               type="button"
-              onClick={() => setSearchQuery("")}
+              onClick={() => {
+                setSearchQuery("");
+                setPageIndex(0);
+              }}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-text-grey hover:text-on-surface"
               aria-label="Clear search"
             >
@@ -149,7 +166,10 @@ export function TradingRateCardsTable({ rows, parties, items }: Props) {
             <span className="font-label text-label-xs uppercase text-text-grey">Margin Type:</span>
             <select
               value={marginTypeFilter}
-              onChange={(e) => setMarginTypeFilter(e.target.value)}
+              onChange={(e) => {
+                setMarginTypeFilter(e.target.value);
+                setPageIndex(0);
+              }}
               className="bg-transparent font-body text-body-sm font-semibold text-on-surface focus:outline-none cursor-pointer"
             >
               <option value="all">All Types</option>
@@ -164,6 +184,7 @@ export function TradingRateCardsTable({ rows, parties, items }: Props) {
               onClick={() => {
                 setSearchQuery("");
                 setMarginTypeFilter("all");
+                setPageIndex(0);
               }}
               className="inline-flex h-9 items-center gap-1 rounded-lg px-2.5 font-label text-label-xs font-bold text-status-held hover:bg-status-held/10"
             >
@@ -200,7 +221,7 @@ export function TradingRateCardsTable({ rows, parties, items }: Props) {
                       onClick={() => handleSort("partyName")}
                       className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
                     >
-                      <span>Customer Organization</span>
+                      <span>Customer</span>
                       {renderSortIcon("partyName")}
                     </button>
                   </th>
@@ -210,7 +231,7 @@ export function TradingRateCardsTable({ rows, parties, items }: Props) {
                       onClick={() => handleSort("itemCode")}
                       className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
                     >
-                      <span>Item Code &amp; Name</span>
+                      <span>Item / SKU</span>
                       {renderSortIcon("itemCode")}
                     </button>
                   </th>
@@ -220,7 +241,7 @@ export function TradingRateCardsTable({ rows, parties, items }: Props) {
                       onClick={() => handleSort("buyCost")}
                       className="inline-flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
                     >
-                      <span>Buy Cost</span>
+                      <span>Buy Cost (USD)</span>
                       {renderSortIcon("buyCost")}
                     </button>
                   </th>
@@ -230,7 +251,7 @@ export function TradingRateCardsTable({ rows, parties, items }: Props) {
                       onClick={() => handleSort("marginType")}
                       className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
                     >
-                      <span>Margin Formula</span>
+                      <span>Margin Policy</span>
                       {renderSortIcon("marginType")}
                     </button>
                   </th>
@@ -240,7 +261,7 @@ export function TradingRateCardsTable({ rows, parties, items }: Props) {
                       onClick={() => handleSort("sellPrice")}
                       className="inline-flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
                     >
-                      <span>Sell Price</span>
+                      <span>Target Sell (PHP)</span>
                       {renderSortIcon("sellPrice")}
                     </button>
                   </th>
@@ -267,7 +288,7 @@ export function TradingRateCardsTable({ rows, parties, items }: Props) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/30">
-                {filteredAndSortedRows.map((row) => (
+                {pagedRows.map((row) => (
                   <tr key={row.id} className="hover:bg-surface-light-grey/40">
                     <td className="px-4 py-3 font-body text-body-md text-on-surface font-semibold">
                       {row.partyCode} — {row.partyName}
@@ -318,6 +339,24 @@ export function TradingRateCardsTable({ rows, parties, items }: Props) {
                 ))}
               </tbody>
             </table>
+
+            {/* Table Pagination */}
+            <div className="border-t border-outline-variant/30 p-3">
+              <TablePagination
+                pageIndex={pageIndex}
+                pageSize={pageSize}
+                totalCount={totalCount}
+                pageCount={pageCount}
+                canPreviousPage={pageIndex > 0}
+                canNextPage={pageIndex < pageCount - 1}
+                onPageChange={(newPageIndex) => setPageIndex(newPageIndex)}
+                onPageSizeChange={(newPageSize) => {
+                  setPageSize(newPageSize);
+                  setPageIndex(0);
+                }}
+                pageSizeOptions={[5, 10, 20, 50]}
+              />
+            </div>
           </div>
         )}
       </div>

@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Search, Filter } from "lucide-react";
+import { TablePagination } from "@/components/ui/TablePagination";
 
 export interface ContractItem {
   id: string;
@@ -25,6 +26,8 @@ interface ContractTableClientProps {
 export function ContractTableClient({ initialContracts }: ContractTableClientProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
 
   const filteredContracts = useMemo(() => {
     return initialContracts.filter((c) => {
@@ -38,6 +41,12 @@ export function ContractTableClient({ initialContracts }: ContractTableClientPro
     });
   }, [initialContracts, searchTerm, statusFilter]);
 
+  const totalCount = filteredContracts.length;
+  const pageCount = Math.ceil(totalCount / pageSize) || 1;
+  const pagedContracts = useMemo(() => {
+    return filteredContracts.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
+  }, [filteredContracts, pageIndex, pageSize]);
+
   return (
     <div className="overflow-hidden rounded-card bg-surface-white border border-border-light shadow-card">
       <div className="border-b border-border-light bg-surface-background p-4 flex flex-col sm:flex-row gap-4 justify-between items-center">
@@ -46,7 +55,10 @@ export function ContractTableClient({ initialContracts }: ContractTableClientPro
           <input
             type="text"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setPageIndex(0);
+            }}
             placeholder="Search contract # or customer..."
             className="w-full rounded-btn border border-border-medium bg-surface-white pl-9 pr-3 py-1.5 font-body text-body-sm focus:border-brand-blue focus:outline-none"
           />
@@ -57,7 +69,10 @@ export function ContractTableClient({ initialContracts }: ContractTableClientPro
           <span className="font-body text-body-sm text-text-grey">Filter:</span>
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPageIndex(0);
+            }}
             className="rounded-btn border border-border-medium bg-surface-white px-3 py-1.5 font-body text-body-sm"
           >
             <option value="">All Statuses</option>
@@ -93,7 +108,7 @@ export function ContractTableClient({ initialContracts }: ContractTableClientPro
                 </td>
               </tr>
             ) : (
-              filteredContracts.map((contract) => (
+              pagedContracts.map((contract) => (
                 <tr key={contract.id} className="hover:bg-surface-background/50 transition-colors">
                   <td className="py-3.5 px-4 font-mono text-mono-md font-semibold text-brand-blue">
                     <Link href={`/billing-pricing/contracts/${contract.id}`}>
@@ -136,6 +151,21 @@ export function ContractTableClient({ initialContracts }: ContractTableClientPro
           </tbody>
         </table>
       </div>
+
+      <TablePagination
+        pageIndex={pageIndex}
+        pageSize={pageSize}
+        totalCount={totalCount}
+        pageCount={pageCount}
+        canPreviousPage={pageIndex > 0}
+        canNextPage={pageIndex < pageCount - 1}
+        onPageChange={(newPageIndex) => setPageIndex(newPageIndex)}
+        onPageSizeChange={(newPageSize) => {
+          setPageSize(newPageSize);
+          setPageIndex(0);
+        }}
+        pageSizeOptions={[5, 10, 20, 50]}
+      />
     </div>
   );
 }

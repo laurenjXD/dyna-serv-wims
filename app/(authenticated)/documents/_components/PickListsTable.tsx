@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Eye, RotateCw, Download, Package, ExternalLink } from "lucide-react";
 import type { PickListArchiveRow } from "@/lib/db/queries/documents";
 import { DocumentPreviewModal, type PreviewDocData } from "./DocumentPreviewModal";
 import { DocumentReprintDialog } from "./DocumentReprintDialog";
+import { TablePagination } from "@/components/ui/TablePagination";
 
 interface PickListsTableProps {
   rows: PickListArchiveRow[];
@@ -22,6 +23,14 @@ const PICK_STATUS_CLASSES: Record<string, string> = {
 export function PickListsTable({ rows }: PickListsTableProps) {
   const [previewDoc, setPreviewDoc] = useState<PreviewDocData | null>(null);
   const [reprintTarget, setReprintTarget] = useState<{ id: string; number: string } | null>(null);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+
+  const totalCount = rows.length;
+  const pageCount = Math.ceil(totalCount / pageSize) || 1;
+  const pagedRows = useMemo(() => {
+    return rows.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
+  }, [rows, pageIndex, pageSize]);
 
   if (rows.length === 0) {
     return (
@@ -63,7 +72,7 @@ export function PickListsTable({ rows }: PickListsTableProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/30">
-              {rows.map((r) => {
+              {pagedRows.map((r) => {
                 const statusClass = PICK_STATUS_CLASSES[r.status] ?? "bg-status-neutral/10 text-status-neutral";
                 const formattedDate = new Date(r.createdAt).toISOString().slice(0, 10);
 
@@ -146,6 +155,20 @@ export function PickListsTable({ rows }: PickListsTableProps) {
             </tbody>
           </table>
         </div>
+        <TablePagination
+          pageIndex={pageIndex}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          pageCount={pageCount}
+          canPreviousPage={pageIndex > 0}
+          canNextPage={pageIndex < pageCount - 1}
+          onPageChange={(newPageIndex) => setPageIndex(newPageIndex)}
+          onPageSizeChange={(newPageSize) => {
+            setPageSize(newPageSize);
+            setPageIndex(0);
+          }}
+          pageSizeOptions={[5, 10, 20, 50]}
+        />
       </div>
 
       <DocumentPreviewModal

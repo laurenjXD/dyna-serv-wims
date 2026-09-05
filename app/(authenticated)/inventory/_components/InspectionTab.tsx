@@ -1,3 +1,5 @@
+"use client";
+
 // Presentational Inspection tab body — the merged transfer + inspection
 // work queue for the Master Inventory hub.
 //
@@ -22,9 +24,11 @@
 //
 // Surface: Office — desktop-first, secondary mobile support.
 
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { ArrowLeftRight, FlaskConical } from "lucide-react";
 import type { InspectionAndTransferQueueRow } from "@/lib/db/queries/transfers";
+import { TablePagination } from "@/components/ui/TablePagination";
 
 const TYPE_BADGE: Record<InspectionAndTransferQueueRow["type"], { label: string; icon: typeof ArrowLeftRight; classes: string }> = {
   transfer: {
@@ -47,6 +51,15 @@ const STATUS_CLASSES: Record<string, string> = {
 };
 
 export function InspectionTab({ rows }: { rows: InspectionAndTransferQueueRow[] }) {
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+
+  const totalCount = rows.length;
+  const pageCount = Math.ceil(totalCount / pageSize) || 1;
+  const pagedRows = useMemo(() => {
+    return rows.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
+  }, [rows, pageIndex, pageSize]);
+
   if (rows.length === 0) {
     return (
       <div className="mt-6 rounded-xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-1">
@@ -76,7 +89,7 @@ export function InspectionTab({ rows }: { rows: InspectionAndTransferQueueRow[] 
             </tr>
           </thead>
           <tbody className="divide-y divide-outline-variant/30">
-            {rows.map((row) => {
+            {pagedRows.map((row) => {
               const badge = TYPE_BADGE[row.type];
               const Icon = badge.icon;
               // A row's title already spells out its type in plain text for
@@ -120,6 +133,21 @@ export function InspectionTab({ rows }: { rows: InspectionAndTransferQueueRow[] 
           </tbody>
         </table>
       </div>
+
+      <TablePagination
+        pageIndex={pageIndex}
+        pageSize={pageSize}
+        totalCount={totalCount}
+        pageCount={pageCount}
+        canPreviousPage={pageIndex > 0}
+        canNextPage={pageIndex < pageCount - 1}
+        onPageChange={(newPageIndex) => setPageIndex(newPageIndex)}
+        onPageSizeChange={(newPageSize) => {
+          setPageSize(newPageSize);
+          setPageIndex(0);
+        }}
+        pageSizeOptions={[5, 10, 20, 50]}
+      />
     </div>
   );
 }

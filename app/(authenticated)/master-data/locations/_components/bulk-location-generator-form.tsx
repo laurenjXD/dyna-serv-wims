@@ -17,6 +17,7 @@
 import { useActionState, useMemo, useState } from "react";
 import Link from "next/link";
 import type { BulkGenerateFormState } from "../_actions";
+import { TablePagination } from "@/components/ui/TablePagination";
 
 const LOCATION_TYPES = [
   { value: "receiving_bay", label: "Receiving Bay" },
@@ -114,28 +115,7 @@ export function BulkLocationGeneratorForm({
         </div>
 
         {created.length > 0 && (
-          <div className="mt-4 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                    <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                      Label
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-outline-variant/30">
-                  {created.map((row) => (
-                    <tr key={row.id}>
-                      <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                        {row.label}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <CreatedLocationsTable created={created} />
         )}
 
         {skippedDuplicates.length > 0 && (
@@ -377,5 +357,57 @@ export function BulkLocationGeneratorForm({
         </button>
       </div>
     </form>
+  );
+}
+
+function CreatedLocationsTable({ created }: { created: Array<{ id: string; label: string }> }) {
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+
+  const totalCount = created.length;
+  const pageCount = Math.ceil(totalCount / pageSize) || 1;
+  const pagedRows = useMemo(() => {
+    return created.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
+  }, [created, pageIndex, pageSize]);
+
+  return (
+    <div className="mt-4 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
+              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                Label
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-outline-variant/30">
+            {pagedRows.map((row) => (
+              <tr key={row.id}>
+                <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
+                  {row.label}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="p-4 border-t border-outline-variant/30">
+        <TablePagination
+          pageIndex={pageIndex}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          pageCount={pageCount}
+          canPreviousPage={pageIndex > 0}
+          canNextPage={pageIndex < pageCount - 1}
+          onPageChange={(newPageIndex) => setPageIndex(newPageIndex)}
+          onPageSizeChange={(newPageSize) => {
+            setPageSize(newPageSize);
+            setPageIndex(0);
+          }}
+          pageSizeOptions={[10, 20, 50, 100]}
+        />
+      </div>
+    </div>
   );
 }

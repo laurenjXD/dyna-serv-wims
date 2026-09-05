@@ -37,7 +37,7 @@
 // billing-statement gate below — not something silently faked here.
 
 import Link from "next/link";
-import { FileText, Download, CheckCircle2, Package } from "lucide-react";
+import { FileText } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { resolveActivePartyScope } from "@/lib/portal/resolve-party-scope";
@@ -47,37 +47,12 @@ import {
   listPartyAcknowledgementReceiptDocuments,
   type PartyDocumentRow,
 } from "@/lib/db/queries/documents";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-// Status values mirror generated_documents.status exactly (lib/db/schema/documents.ts):
-// 'pending' | 'generating' | 'ready' | 'failed' | 'voided'.
-
-type DocStatus = "pending" | "generating" | "ready" | "failed" | "voided";
-
-interface DocRow {
-  id: string;
-  docNumber: string;
-  date: string;
-  status: DocStatus;
-}
-
-// ─── Status helpers — tokens from tailwind.config.ts, no raw hex ──────────────
-
-const DOC_STATUS_CLASSES: Record<DocStatus, string> = {
-  pending: "bg-status-pending/10 text-status-pending",
-  generating: "bg-status-pending/10 text-status-pending",
-  ready: "bg-status-available/10 text-status-available",
-  failed: "bg-status-held/10 text-status-held",
-  voided: "bg-status-neutral/10 text-status-neutral",
-};
-
-const DOC_STATUS_LABELS: Record<DocStatus, string> = {
-  pending: "PENDING",
-  generating: "GENERATING",
-  ready: "READY",
-  failed: "FAILED",
-  voided: "VOIDED",
-};
+import {
+  PickListsTab,
+  AcknowledgementReceiptsTab,
+  type DocRow,
+  type DocStatus,
+} from "./_components/PortalDocumentsTables";
 
 function toDocRow(row: PartyDocumentRow): DocRow {
   return {
@@ -221,171 +196,6 @@ function NoPartyScope() {
       <p className="mt-2 font-body text-body-sm text-text-grey">
         Contact your administrator to request portal access.
       </p>
-    </div>
-  );
-}
-
-// ─── Pick Lists tab ───────────────────────────────────────────────────────────
-
-function PickListsTab({ docs }: { docs: DocRow[] }) {
-  if (docs.length === 0) {
-    return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-1">
-        <Package size={40} className="text-text-grey" aria-hidden="true" />
-        <p className="font-body text-body-md text-text-grey">
-          No pick lists yet.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                Doc #
-              </th>
-              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                Date
-              </th>
-              <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                Status
-              </th>
-              <th className="sr-only px-4 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-outline-variant/30">
-            {docs.map((doc) => (
-              <tr key={doc.id} className="hover:bg-surface-light-grey/50">
-                <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                  {doc.docNumber}
-                </td>
-                <td className="px-4 py-3 font-body text-body-md text-text-grey">
-                  {doc.date}
-                </td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase tracking-[0.05em] ${DOC_STATUS_CLASSES[doc.status]}`}
-                  >
-                    {DOC_STATUS_LABELS[doc.status]}
-                  </span>
-                </td>
-                {/* Download PDF — h-11 (44px) office touch target.
-                    TODO: wire to signed URL request (≤60-min TTL) per Task 5 —
-                    no signed-URL infra exists in this codebase yet. */}
-                <td className="px-4 py-3 text-right">
-                  <button
-                    type="button"
-                    disabled={doc.status !== "ready"}
-                    className="inline-flex h-11 items-center gap-2 rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:transition-transform motion-safe:duration-100 motion-safe:active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <Download size={16} aria-hidden="true" />
-                    Download PDF
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-// ─── Acknowledgement Receipts tab ─────────────────────────────────────────────
-// requirements.md R4.3: VMI acknowledgement-receipt artifact rendered
-// unmodified, with disclaimer text present and unedited.
-// CLAUDE.md: "VMI prices shown on any document are a per-release reference
-// only — if you're building a VMI-flow document view, it needs the
-// 'reference amount, not your final bill' distinction visible."
-
-function AcknowledgementReceiptsTab({ docs }: { docs: DocRow[] }) {
-  if (docs.length === 0) {
-    return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-1">
-        <CheckCircle2
-          size={40}
-          className="text-text-grey"
-          aria-hidden="true"
-        />
-        <p className="font-body text-body-md text-text-grey">
-          No acknowledgement receipts yet.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      {/* VMI reference disclaimer — visible before the table.
-          requirements.md R4.3 + CLAUDE.md: must not imply the price is
-          the authoritative VMI bill. */}
-      <div className="mb-4 rounded-xl border border-status-pending/30 bg-status-pending/10 px-4 py-3">
-        <p className="font-body text-body-sm text-on-surface">
-          <strong>VMI reference note:</strong> prices shown on VMI
-          acknowledgement receipts are a per-release reference amount only
-          and are not your final bill. Your actual VMI invoice is based on the
-          period-average consumption rate — contact your account manager for
-          billing statements.
-        </p>
-      </div>
-
-      <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                  Doc #
-                </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                  Date
-                </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                  Status
-                </th>
-                <th className="sr-only px-4 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline-variant/30">
-              {docs.map((doc) => (
-                <tr key={doc.id} className="hover:bg-surface-light-grey/50">
-                  <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                    {doc.docNumber}
-                  </td>
-                  <td className="px-4 py-3 font-body text-body-md text-text-grey">
-                    {doc.date}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase tracking-[0.05em] ${DOC_STATUS_CLASSES[doc.status]}`}
-                    >
-                      {DOC_STATUS_LABELS[doc.status]}
-                    </span>
-                  </td>
-                  {/* Download PDF — h-11 (44px) office touch target.
-                      TODO: wire to signed URL request (≤60-min TTL) per Task 5.
-                      requirements.md R4.3: document artifact rendered unmodified
-                      with VMI disclaimer text present. */}
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      type="button"
-                      disabled={doc.status !== "ready"}
-                      className="inline-flex h-11 items-center gap-2 rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:transition-transform motion-safe:duration-100 motion-safe:active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <Download size={16} aria-hidden="true" />
-                      Download PDF
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
     </div>
   );
 }

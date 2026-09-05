@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { FileText, Eye, ExternalLink, Package } from "lucide-react";
 import type { WrrArchiveRow } from "@/lib/db/queries/documents";
 import { DocumentPreviewModal, type PreviewDocData } from "./DocumentPreviewModal";
+import { TablePagination } from "@/components/ui/TablePagination";
 
 interface WrrDocumentsTableProps {
   rows: WrrArchiveRow[];
@@ -30,6 +31,14 @@ const WRR_STATUS_LABELS: Record<string, string> = {
 
 export function WrrDocumentsTable({ rows }: WrrDocumentsTableProps) {
   const [previewDoc, setPreviewDoc] = useState<PreviewDocData | null>(null);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+
+  const totalCount = rows.length;
+  const pageCount = Math.ceil(totalCount / pageSize) || 1;
+  const pagedRows = useMemo(() => {
+    return rows.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
+  }, [rows, pageIndex, pageSize]);
 
   if (rows.length === 0) {
     return (
@@ -71,7 +80,7 @@ export function WrrDocumentsTable({ rows }: WrrDocumentsTableProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/30">
-              {rows.map((r) => {
+              {pagedRows.map((r) => {
                 const statusClass = WRR_STATUS_CLASSES[r.status] ?? "bg-status-neutral/10 text-status-neutral";
                 const statusLabel = WRR_STATUS_LABELS[r.status] ?? r.status.toUpperCase();
                 const formattedDate = new Date(r.createdAt).toISOString().slice(0, 10);
@@ -148,6 +157,21 @@ export function WrrDocumentsTable({ rows }: WrrDocumentsTableProps) {
             </tbody>
           </table>
         </div>
+
+        <TablePagination
+          pageIndex={pageIndex}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          pageCount={pageCount}
+          canPreviousPage={pageIndex > 0}
+          canNextPage={pageIndex < pageCount - 1}
+          onPageChange={(newPageIndex) => setPageIndex(newPageIndex)}
+          onPageSizeChange={(newPageSize) => {
+            setPageSize(newPageSize);
+            setPageIndex(0);
+          }}
+          pageSizeOptions={[5, 10, 20, 50]}
+        />
       </div>
 
       <DocumentPreviewModal doc={previewDoc} onClose={() => setPreviewDoc(null)} />

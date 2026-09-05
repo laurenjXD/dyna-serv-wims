@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Lock, FileText, Download, ShieldAlert, Eye, Building } from "lucide-react";
 import type { StatementOfAccountArchiveRow } from "@/lib/db/queries/documents";
 import { DocumentPreviewModal, type PreviewDocData } from "./DocumentPreviewModal";
+import { TablePagination } from "@/components/ui/TablePagination";
 
 interface StatementsOfAccountTableProps {
   rows: StatementOfAccountArchiveRow[];
@@ -22,6 +23,14 @@ export function StatementsOfAccountTable({
   canReadFinancial,
 }: StatementsOfAccountTableProps) {
   const [previewDoc, setPreviewDoc] = useState<PreviewDocData | null>(null);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+
+  const totalCount = rows.length;
+  const pageCount = Math.ceil(totalCount / pageSize) || 1;
+  const pagedRows = useMemo(() => {
+    return rows.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
+  }, [rows, pageIndex, pageSize]);
 
   if (!canReadFinancial) {
     return (
@@ -83,7 +92,7 @@ export function StatementsOfAccountTable({
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/30">
-              {rows.map((r) => {
+              {pagedRows.map((r) => {
                 const statusClass = SOA_STATUS_CLASSES[r.status] ?? "bg-status-neutral/10 text-status-neutral";
                 const totalPhp = r.billingStatementTotalUsd * r.lockedExchangeRatePhp;
 
@@ -160,6 +169,21 @@ export function StatementsOfAccountTable({
             </tbody>
           </table>
         </div>
+
+        <TablePagination
+          pageIndex={pageIndex}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          pageCount={pageCount}
+          canPreviousPage={pageIndex > 0}
+          canNextPage={pageIndex < pageCount - 1}
+          onPageChange={(newPageIndex) => setPageIndex(newPageIndex)}
+          onPageSizeChange={(newPageSize) => {
+            setPageSize(newPageSize);
+            setPageIndex(0);
+          }}
+          pageSizeOptions={[5, 10, 20, 50]}
+        />
       </div>
 
       <DocumentPreviewModal doc={previewDoc} onClose={() => setPreviewDoc(null)} />

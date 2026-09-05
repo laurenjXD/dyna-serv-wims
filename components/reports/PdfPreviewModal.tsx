@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   X,
   Printer,
@@ -13,6 +13,16 @@ import {
   Lock,
   Share2,
 } from "lucide-react";
+import { TablePagination } from "@/components/ui/TablePagination";
+
+const PDF_SAMPLE_ROWS = [
+  { id: "1", name: "Siemens AG (Industrial)", flow: "VMI", cbm: "382.0 m³", rate: "$0.48/m³", valuation: "$5,684.16" },
+  { id: "2", name: "ABB Group (Power Systems)", flow: "VMI", cbm: "215.0 m³", rate: "$0.50/m³", valuation: "$3,332.50" },
+  { id: "3", name: "Fanuc Corp (Robotics)", flow: "VMI", cbm: "198.0 m³", rate: "$0.46/m³", valuation: "$2,823.36" },
+  { id: "4", name: "Bearings & Transmission", flow: "Trading", cbm: "420.0 m³", rate: "22.4% Margin", valuation: "$245,000.00" },
+  { id: "5", name: "Schneider Electric (Automation)", flow: "VMI", cbm: "164.0 m³", rate: "$0.45/m³", valuation: "$2,214.00" },
+  { id: "6", name: "Omron Electronics (Sensors)", flow: "Trading", cbm: "110.0 m³", rate: "18.5% Margin", valuation: "$82,400.00" },
+];
 
 interface PdfPreviewModalProps {
   isOpen: boolean;
@@ -29,7 +39,14 @@ export function PdfPreviewModal({
   reportSubtitle = "Official Consolidated WMS Balance Sheet & CBM Space Reconciliation",
   reportRefNumber = "DS-RPT-2026-0831-VAL",
 }: PdfPreviewModalProps) {
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(3);
+
   if (!isOpen) return null;
+
+  const totalCount = PDF_SAMPLE_ROWS.length;
+  const pageCount = Math.ceil(totalCount / pageSize) || 1;
+  const pagedRows = PDF_SAMPLE_ROWS.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
 
   const handlePrint = () => {
     window.print();
@@ -172,34 +189,15 @@ export function PdfPreviewModal({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-zinc-800 font-body">
-                  <tr>
-                    <td className="p-2 font-bold border-r border-slate-200 dark:border-zinc-700">Siemens AG (Industrial)</td>
-                    <td className="p-2 text-center border-r border-slate-200 dark:border-zinc-700 font-mono text-[11px]">VMI</td>
-                    <td className="p-2 text-right border-r border-slate-200 dark:border-zinc-700 font-mono">382.0 m³</td>
-                    <td className="p-2 text-right border-r border-slate-200 dark:border-zinc-700 font-mono">$0.48/m³</td>
-                    <td className="p-2 text-right font-mono font-bold text-slate-900 dark:text-zinc-100">$5,684.16</td>
-                  </tr>
-                  <tr>
-                    <td className="p-2 font-bold border-r border-slate-200 dark:border-zinc-700">ABB Group (Power Systems)</td>
-                    <td className="p-2 text-center border-r border-slate-200 dark:border-zinc-700 font-mono text-[11px]">VMI</td>
-                    <td className="p-2 text-right border-r border-slate-200 dark:border-zinc-700 font-mono">215.0 m³</td>
-                    <td className="p-2 text-right border-r border-slate-200 dark:border-zinc-700 font-mono">$0.50/m³</td>
-                    <td className="p-2 text-right font-mono font-bold text-slate-900 dark:text-zinc-100">$3,332.50</td>
-                  </tr>
-                  <tr>
-                    <td className="p-2 font-bold border-r border-slate-200 dark:border-zinc-700">Fanuc Corp (Robotics)</td>
-                    <td className="p-2 text-center border-r border-slate-200 dark:border-zinc-700 font-mono text-[11px]">VMI</td>
-                    <td className="p-2 text-right border-r border-slate-200 dark:border-zinc-700 font-mono">198.0 m³</td>
-                    <td className="p-2 text-right border-r border-slate-200 dark:border-zinc-700 font-mono">$0.46/m³</td>
-                    <td className="p-2 text-right font-mono font-bold text-slate-900 dark:text-zinc-100">$2,823.36</td>
-                  </tr>
-                  <tr>
-                    <td className="p-2 font-bold border-r border-slate-200 dark:border-zinc-700">Bearings &amp; Transmission</td>
-                    <td className="p-2 text-center border-r border-slate-200 dark:border-zinc-700 font-mono text-[11px]">Trading</td>
-                    <td className="p-2 text-right border-r border-slate-200 dark:border-zinc-700 font-mono">420.0 m³</td>
-                    <td className="p-2 text-right border-r border-slate-200 dark:border-zinc-700 font-mono">22.4% Margin</td>
-                    <td className="p-2 text-right font-mono font-bold text-slate-900 dark:text-zinc-100">$245,000.00</td>
-                  </tr>
+                  {pagedRows.map((row) => (
+                    <tr key={row.id}>
+                      <td className="p-2 font-bold border-r border-slate-200 dark:border-zinc-700">{row.name}</td>
+                      <td className="p-2 text-center border-r border-slate-200 dark:border-zinc-700 font-mono text-[11px]">{row.flow}</td>
+                      <td className="p-2 text-right border-r border-slate-200 dark:border-zinc-700 font-mono">{row.cbm}</td>
+                      <td className="p-2 text-right border-r border-slate-200 dark:border-zinc-700 font-mono">{row.rate}</td>
+                      <td className="p-2 text-right font-mono font-bold text-slate-900 dark:text-zinc-100">{row.valuation}</td>
+                    </tr>
+                  ))}
                   <tr className="bg-slate-50 dark:bg-zinc-800 font-bold border-t-2 border-slate-300 dark:border-zinc-700">
                     <td className="p-2 border-r border-slate-200 dark:border-zinc-700" colSpan={2}>CONSOLIDATED TOTAL</td>
                     <td className="p-2 text-right border-r border-slate-200 dark:border-zinc-700 font-mono">1,215.0 m³</td>
@@ -208,6 +206,22 @@ export function PdfPreviewModal({
                   </tr>
                 </tbody>
               </table>
+
+              {/* Itemized Table Pagination */}
+              <TablePagination
+                pageIndex={pageIndex}
+                pageSize={pageSize}
+                totalCount={totalCount}
+                pageCount={pageCount}
+                canPreviousPage={pageIndex > 0}
+                canNextPage={pageIndex < pageCount - 1}
+                onPageChange={(newPageIndex) => setPageIndex(newPageIndex)}
+                onPageSizeChange={(newPageSize) => {
+                  setPageSize(newPageSize);
+                  setPageIndex(0);
+                }}
+                pageSizeOptions={[2, 3, 5]}
+              />
             </div>
 
             {/* 5. Formal Verification & Sign-off Block */}

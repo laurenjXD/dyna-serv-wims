@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { FileText, Eye, ExternalLink, Paperclip, Download } from "lucide-react";
 import type { CiplArchiveRow } from "@/lib/db/queries/documents";
 import { DocumentPreviewModal, type PreviewDocData } from "./DocumentPreviewModal";
+import { TablePagination } from "@/components/ui/TablePagination";
 
 interface CiplDocumentsTableProps {
   rows: CiplArchiveRow[];
@@ -30,6 +31,14 @@ const CIPL_STATUS_LABELS: Record<string, string> = {
 
 export function CiplDocumentsTable({ rows }: CiplDocumentsTableProps) {
   const [previewDoc, setPreviewDoc] = useState<PreviewDocData | null>(null);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+
+  const totalCount = rows.length;
+  const pageCount = Math.ceil(totalCount / pageSize) || 1;
+  const pagedRows = useMemo(() => {
+    return rows.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
+  }, [rows, pageIndex, pageSize]);
 
   if (rows.length === 0) {
     return (
@@ -74,7 +83,7 @@ export function CiplDocumentsTable({ rows }: CiplDocumentsTableProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/20">
-              {rows.map((row) => {
+              {pagedRows.map((row) => {
                 const statusClass = CIPL_STATUS_CLASSES[row.status] || "bg-status-neutral/10 text-status-neutral";
                 const statusLabel = CIPL_STATUS_LABELS[row.status] || row.status.toUpperCase();
                 const displayInvoice = row.commercialInvoiceNo || "CIPL / Invoice";
@@ -173,6 +182,20 @@ export function CiplDocumentsTable({ rows }: CiplDocumentsTableProps) {
             </tbody>
           </table>
         </div>
+        <TablePagination
+          pageIndex={pageIndex}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          pageCount={pageCount}
+          canPreviousPage={pageIndex > 0}
+          canNextPage={pageIndex < pageCount - 1}
+          onPageChange={(newPageIndex) => setPageIndex(newPageIndex)}
+          onPageSizeChange={(newPageSize) => {
+            setPageSize(newPageSize);
+            setPageIndex(0);
+          }}
+          pageSizeOptions={[5, 10, 20, 50]}
+        />
       </div>
 
       {previewDoc && (

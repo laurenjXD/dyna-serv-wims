@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import type { ReportArchiveItem, ReportCategory, ReportFormat } from "./types";
 import { REPORT_ARCHIVE_SEED } from "./data/reportsSeedData";
+import { TablePagination } from "@/components/ui/TablePagination";
 
 interface ReportArchiveTableProps {
   onDownloadReport: (item: ReportArchiveItem) => void;
@@ -34,6 +35,8 @@ export function ReportArchiveTable({
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFormat, setSelectedFormat] = useState<string>("ALL");
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(5);
 
   const filteredArchive = archive.filter((item) => {
     const matchesSearch =
@@ -43,6 +46,28 @@ export function ReportArchiveTable({
     const matchesCategory = selectedCategory === "ALL" || item.category === selectedCategory;
     return matchesSearch && matchesFormat && matchesCategory;
   });
+
+  const totalCount = filteredArchive.length;
+  const pageCount = Math.ceil(totalCount / pageSize) || 1;
+  const pagedArchive = filteredArchive.slice(
+    pageIndex * pageSize,
+    (pageIndex + 1) * pageSize
+  );
+
+  const handleSearchChange = (term: string) => {
+    setSearchTerm(term);
+    setPageIndex(0);
+  };
+
+  const handleCategoryChange = (cat: string) => {
+    setSelectedCategory(cat);
+    setPageIndex(0);
+  };
+
+  const handleFormatChange = (fmt: string) => {
+    setSelectedFormat(fmt);
+    setPageIndex(0);
+  };
 
   const handleDelete = (id: string) => {
     if (confirm("Are you sure you want to archive this historical report?")) {
@@ -88,7 +113,7 @@ export function ReportArchiveTable({
               type="text"
               placeholder="Search reports or operators..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="h-8.5 w-full sm:w-64 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 pl-8 pr-3 font-body text-xs text-brand-navy dark:text-zinc-100 focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy shadow-2xs"
             />
           </div>
@@ -100,7 +125,7 @@ export function ReportArchiveTable({
                 <button
                   key={cat}
                   type="button"
-                  onClick={() => setSelectedCategory(cat)}
+                  onClick={() => handleCategoryChange(cat)}
                   className={`rounded-lg px-2.5 py-1 transition-all text-[11px] ${
                     selectedCategory === cat
                       ? "bg-white dark:bg-zinc-700 text-brand-navy dark:text-white font-bold shadow-2xs"
@@ -118,7 +143,7 @@ export function ReportArchiveTable({
                 <button
                   key={fmt}
                   type="button"
-                  onClick={() => setSelectedFormat(fmt)}
+                  onClick={() => handleFormatChange(fmt)}
                   className={`rounded-lg px-2 py-1 uppercase text-[10px] font-bold transition-all ${
                     selectedFormat === fmt
                       ? "bg-brand-navy dark:bg-blue-600 text-white shadow-2xs"
@@ -149,7 +174,14 @@ export function ReportArchiveTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-zinc-800 font-body">
-            {filteredArchive.map((item) => (
+            {pagedArchive.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="px-4 py-8 text-center text-xs text-text-grey italic">
+                  No generated reports found matching criteria.
+                </td>
+              </tr>
+            ) : (
+              pagedArchive.map((item) => (
               <tr key={item.id} className="hover:bg-slate-50/80 dark:hover:bg-zinc-800/50 transition-colors">
                 {/* Report Name */}
                 <td className="px-4 py-3 font-semibold text-slate-900 dark:text-zinc-100">
@@ -265,14 +297,20 @@ export function ReportArchiveTable({
                   </div>
                 </td>
               </tr>
-            ))}
+            ))
+            )}
           </tbody>
         </table>
       </div>
 
       {/* ── 2. Mobile Chronological Card Feed (< 1024px) ───────────────────────── */}
       <div className="block lg:hidden divide-y divide-slate-100 dark:divide-zinc-800 p-3 space-y-3">
-        {filteredArchive.map((item) => (
+        {pagedArchive.length === 0 ? (
+          <div className="p-8 text-center text-xs text-text-grey italic">
+            No generated reports found matching criteria.
+          </div>
+        ) : (
+          pagedArchive.map((item) => (
           <div
             key={item.id}
             className="rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 shadow-sm space-y-3"
@@ -344,8 +382,25 @@ export function ReportArchiveTable({
               </button>
             </div>
           </div>
-        ))}
+        ))
+        )}
       </div>
+
+      {/* ── Table Pagination ─────────────────────────────────────────────── */}
+      <TablePagination
+        pageIndex={pageIndex}
+        pageSize={pageSize}
+        totalCount={totalCount}
+        pageCount={pageCount}
+        canPreviousPage={pageIndex > 0}
+        canNextPage={pageIndex < pageCount - 1}
+        onPageChange={(newPageIndex) => setPageIndex(newPageIndex)}
+        onPageSizeChange={(newPageSize) => {
+          setPageSize(newPageSize);
+          setPageIndex(0);
+        }}
+        pageSizeOptions={[5, 10, 20]}
+      />
     </div>
   );
 }

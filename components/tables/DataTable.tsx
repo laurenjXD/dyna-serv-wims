@@ -8,12 +8,14 @@ import {
   getSortedRowModel,
   getGroupedRowModel,
   getExpandedRowModel,
+  getPaginationRowModel,
   flexRender,
   type ColumnDef,
   type SortingState,
   type ColumnFiltersState,
   type GroupingState,
   type ExpandedState,
+  type PaginationState,
   type Row,
   type FilterFn,
 } from "@tanstack/react-table";
@@ -32,6 +34,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { ColumnFilter } from "./ColumnFilter";
+import { TablePagination } from "@/components/ui/TablePagination";
 
 // ── Built-in Standard TanStack Filter Functions ───────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -104,6 +107,9 @@ export interface DataTableProps<TData> {
   initialGrouping?: GroupingState;
   initialSorting?: SortingState;
   enableGlobalSearch?: boolean;
+  enablePagination?: boolean;
+  initialPageSize?: number;
+  pageSizeOptions?: number[];
   renderRowSubComponent?: (props: { row: Row<TData> }) => ReactNode;
   isRowExpanded?: (row: Row<TData>) => boolean;
   renderMobileCard?: (props: { row: Row<TData> }) => ReactNode;
@@ -123,6 +129,9 @@ export function DataTable<TData>({
   initialGrouping = [],
   initialSorting = [],
   enableGlobalSearch = true,
+  enablePagination = true,
+  initialPageSize = 10,
+  pageSizeOptions = [5, 10, 20, 50],
   renderRowSubComponent,
   isRowExpanded,
   renderMobileCard,
@@ -135,6 +144,10 @@ export function DataTable<TData>({
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState<string>("");
   const [grouping, setGrouping] = useState<GroupingState>(initialGrouping);
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: initialPageSize,
+  });
   // Rows start collapsed; expandable detail panels should only appear after
   // the user explicitly opens the row.
   const [expanded, setExpanded] = useState<ExpandedState>({});
@@ -177,17 +190,20 @@ export function DataTable<TData>({
       globalFilter,
       grouping,
       expanded,
+      pagination: enablePagination ? pagination : undefined,
     },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
     onGroupingChange: setGrouping,
     onExpandedChange: setExpanded,
+    onPaginationChange: enablePagination ? setPagination : undefined,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getGroupedRowModel: enableGrouping ? getGroupedRowModel() : undefined,
     getExpandedRowModel: getExpandedRowModel(),
+    getPaginationRowModel: enablePagination ? getPaginationRowModel() : undefined,
     filterFns: customFilterFns,
   });
 
@@ -564,6 +580,21 @@ export function DataTable<TData>({
           })
         )}
       </div>
+
+      {/* ── Table Pagination ─────────────────────────────────────────────── */}
+      {enablePagination && table.getFilteredRowModel().rows.length > 0 && (
+        <TablePagination
+          pageIndex={table.getState().pagination.pageIndex}
+          pageSize={table.getState().pagination.pageSize}
+          totalCount={table.getFilteredRowModel().rows.length}
+          pageCount={table.getPageCount()}
+          canPreviousPage={table.getCanPreviousPage()}
+          canNextPage={table.getCanNextPage()}
+          onPageChange={(p) => table.setPageIndex(p)}
+          onPageSizeChange={(s) => table.setPageSize(s)}
+          pageSizeOptions={pageSizeOptions}
+        />
+      )}
     </div>
   );
 }
