@@ -388,7 +388,7 @@ export function ItemForm({
           <div>
             <div className="flex items-center justify-between">
               <label htmlFor="parentCategoryId" className="block font-label text-label text-on-surface font-bold">
-                Category <span className="text-xs font-normal text-text-grey">(Based on {inventoryModel ? INVENTORY_MODEL_LABELS[inventoryModel] : "Model"})</span>
+                Category
               </label>
               <button
                 type="button"
@@ -471,11 +471,13 @@ export function ItemForm({
             </div>
           </div>
 
-          {/* Beside Category: FG or RAW Classification */}
+          {/* FG or RAW Classification */}
           <div>
-            <label htmlFor="vmiMovementCategory" className="block font-label text-label text-on-surface font-bold">
-              FG / RAW Classification <span aria-hidden="true" className="text-brand-red">*</span>
-            </label>
+            <div className="flex items-center justify-between">
+              <label htmlFor="vmiMovementCategory" className="block font-label text-label text-on-surface font-bold">
+                FG / RAW Classification <span aria-hidden="true" className="text-brand-red">*</span>
+              </label>
+            </div>
             <select
               id="vmiMovementCategory"
               name="vmiMovementCategory"
@@ -483,19 +485,16 @@ export function ItemForm({
               onChange={(e) => setMovementCategory(e.target.value)}
               className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
             >
-              <option value="fg">Finished Goods (FG) — Outbound Shipments / Assemblies</option>
-              <option value="raw_material">Raw Materials (RAW) — Inbound Components / Resins / Tapes / Reels</option>
+              <option value="fg">Finished Goods (FG)</option>
+              <option value="raw_material">Raw Materials (RAW)</option>
               <option value="for_process">Work in Process (WIP)</option>
               <option value="reject">Rejects &amp; Scrap</option>
               <option value="re_inspect">Quality Hold / Re-Inspection</option>
             </select>
-            <p className="mt-1 font-body text-body-xs text-text-grey">
-              Dictates CBM storage reporting and item classification.
-            </p>
           </div>
 
           {/* Subcategory (Last in Hierarchy) */}
-          <div className="md:col-span-2">
+          <div>
             <div className="flex items-center justify-between">
               <label htmlFor="subcategoryId" className="block font-label text-label text-on-surface font-bold">
                 Subcategory <span className="text-xs font-semibold text-brand-navy bg-brand-navy/10 px-1.5 py-0.5 rounded">Last in Hierarchy</span>
@@ -733,26 +732,6 @@ export function ItemForm({
               />
             </div>
           )}
-
-          <div className="rounded-lg border border-slate-200/80 bg-slate-50/50 p-3">
-            <span className="block font-label text-label text-on-surface font-semibold">
-              Warehousing CBM Storage Classification
-            </span>
-            <p className="mt-1 font-body text-body-sm text-brand-navy font-bold">
-              {movementCategory === "fg"
-                ? "Finished Goods (FG) — Outbound Shipments / Assemblies"
-                : movementCategory === "raw_material"
-                ? "Raw Materials (RAW) — Inbound Components / Tapes / Reels"
-                : movementCategory === "for_process"
-                ? "Work in Process (WIP)"
-                : movementCategory === "reject"
-                ? "Rejects & Scrap"
-                : "Quality Hold / Re-Inspection"}
-            </p>
-            <p className="mt-0.5 font-body text-body-xs text-text-grey">
-              Synchronized from Classification Group above. Controls SOA Page 4 IN/OUT CBM categorization.
-            </p>
-          </div>
 
           <div className="md:col-span-2">
             <label htmlFor="description" className="block font-label text-label text-on-surface">
