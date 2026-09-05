@@ -85,7 +85,12 @@ const SHORT_LABEL_OVERRIDES: Record<string, string> = {
   // per multi-agent-work-division.md's confirmed sidebar target ("Master
   // Inventory (/inventory — Stock View, Pick Lists, Inspection tabs...)").
   // See specs/00-steering/revision-log.md's matching entry.
+  receiving: "Receiving / Incoming",
   inventory: "Master Inventory",
+  outgoing: "Withdrawal / Outgoing",
+  approvals: "Approvals",
+  reports: "Reports & Analytics",
+  documents: "Documents",
   enrollment: "Enrollment",
   portal: "Organization Portal",
   "billing-pricing": "Billing & Pricing",
@@ -132,7 +137,46 @@ function shortcutLabel(index: number): string {
  */
 function resolveNavigationActiveId(currentPath: string, activeId: string | null): string | null {
   const path = currentPath.split("?")[0].split("#")[0].replace(/\/$/, "");
+  if (path === "" || path === "/" || path === "/dashboard") return "root";
   if (path === "/receiving" || path.startsWith("/receiving/")) return "receiving";
+  if (
+    path === "/inventory" ||
+    path.startsWith("/inventory/") ||
+    path === "/transfers" ||
+    path.startsWith("/transfers/") ||
+    path === "/inspection" ||
+    path.startsWith("/inspection/")
+  ) {
+    return "inventory";
+  }
+  if (
+    path === "/outgoing" ||
+    path.startsWith("/outgoing/") ||
+    path.startsWith("/pick-lists/")
+  ) {
+    return "outgoing";
+  }
+  if (path === "/approvals" || path.startsWith("/approvals/")) return "approvals";
+  if (path === "/reports" || path.startsWith("/reports/")) return "reports";
+  if (path === "/documents" || path.startsWith("/documents/")) return "documents";
+  if (
+    path === "/enrollment" ||
+    path.startsWith("/enrollment/") ||
+    path.startsWith("/master-data/")
+  ) {
+    return "enrollment";
+  }
+  if (path === "/billing-pricing" || path.startsWith("/billing-pricing/")) return "billing-pricing";
+  if (path === "/settings" || path.startsWith("/settings/")) return "settings";
+  if (path === "/profile" || path.startsWith("/profile/")) return "profile";
+  if (path === "/portal" || path.startsWith("/portal/")) {
+    if (path === "/portal/inventory" || path.startsWith("/portal/inventory/")) return "portal-inventory";
+    if (path === "/portal/orders" || path.startsWith("/portal/orders/")) return "portal-orders";
+    if (path === "/portal/documents" || path.startsWith("/portal/documents/")) return "portal-documents";
+    if (path === "/portal/notifications" || path.startsWith("/portal/notifications/")) return "portal-notifications";
+    if (path === "/portal/labels" || path.startsWith("/portal/labels/")) return "portal-labels";
+    return "portal";
+  }
   return activeId;
 }
 
@@ -496,7 +540,7 @@ export function ShellNavigation({
         </div>
 
         {/* Navigation Section List */}
-        <div className={`min-h-0 flex-1 overflow-hidden py-1 ${desktopOpen ? "px-3" : "px-1.5"}`}>
+        <div className={`min-h-0 flex-1 overflow-y-auto py-1 ${desktopOpen ? "px-3" : "px-1.5"}`}>
           <GroupedSections
             sections={sections}
             activeId={activeId}
