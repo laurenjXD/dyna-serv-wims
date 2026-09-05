@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // lib/db/queries/documents.ts
 //
 // Party Portal — generated_documents reads scoped to the caller's own party.
@@ -49,7 +50,6 @@ import { parties } from "@/lib/db/schema/parties";
 import { userProfiles } from "@/lib/db/schema/rbac";
 import { vmiBillingPeriods, vmiPermits } from "@/lib/db/schema/vmi_billing";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type DbLike = { select: (...args: any[]) => any };
 
 export type PartyDocumentRow = {

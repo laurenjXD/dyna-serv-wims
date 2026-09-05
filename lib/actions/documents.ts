@@ -1,4 +1,5 @@
 "use server";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Document actions — requestDocumentReprint / getDocumentSignedUrl / retryDocumentGeneration.
 //
 // Traceability:
@@ -11,7 +12,6 @@ import { requirePermission } from "@/lib/rbac/guard";
 import { db as globalDb } from "@/lib/db/client";
 import { generatedDocuments, documentEvents } from "@/lib/db/schema/documents";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DbLike = {
   select: (...args: any[]) => any;
   insert: (...args: any[]) => any;

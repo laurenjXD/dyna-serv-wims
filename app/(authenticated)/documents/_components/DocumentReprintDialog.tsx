@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { RotateCw, X, AlertCircle } from "lucide-react";
-import { requestDocumentReprint } from "@/lib/actions/documents";
-import { createPageResolver } from "@/lib/auth/page-resolver";
+import { requestDocumentReprintAction } from "../_actions";
 
 interface DocumentReprintDialogProps {
   documentId: string;
@@ -28,8 +27,7 @@ export function DocumentReprintDialog({
     setErrorMsg(null);
 
     try {
-      const resolver = await createPageResolver();
-      const res = await requestDocumentReprint(resolver, {
+      const res = await requestDocumentReprintAction({
         documentId,
         reason: reason.trim() || undefined,
       });
