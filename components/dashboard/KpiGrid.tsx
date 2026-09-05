@@ -23,10 +23,14 @@ interface KpiGridProps {
 }
 
 export function KpiGrid({ data }: KpiGridProps) {
-  const { valuation, floorQueues, stockHealth, financialSummary } = data;
+  const { valuation, floorQueues, financialSummary } = data;
+  const totalOpenTasks =
+    floorQueues.pendingReceivingWrrs +
+    floorQueues.activePickLists +
+    floorQueues.pendingQcInspections;
 
   return (
-    <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
       {/* ── CARD 1: Total Inventory Valuation ────────────────────────────── */}
       <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-surface-white p-5 shadow-sm transition-all hover:shadow-md">
         <div className="flex items-start justify-between">
@@ -62,15 +66,21 @@ export function KpiGrid({ data }: KpiGridProps) {
         </div>
       </div>
 
-      {/* ── CARD 2: Open Floor Queues ────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-surface-white p-5 shadow-sm transition-all hover:shadow-md flex flex-col justify-between">
+      {/* ── CARD 2: Open Floor Queues (Alerting Urgent Status) ───────────── */}
+      <div className="relative overflow-hidden rounded-2xl border-2 border-amber-300/80 bg-gradient-to-b from-amber-50/40 via-surface-white to-surface-white p-5 shadow-sm transition-all hover:shadow-md flex flex-col justify-between">
         <div>
           <div className="flex items-center justify-between">
-            <p className="font-label text-[11px] font-bold uppercase tracking-wider text-text-grey">
-              Open Floor Queues
-            </p>
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[10px] font-bold text-slate-700">
-              {floorQueues.pendingReceivingWrrs + floorQueues.activePickLists + floorQueues.pendingQcInspections} Tasks
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+              </span>
+              <p className="font-label text-[11px] font-black uppercase tracking-wider text-amber-900">
+                Open Floor Queues
+              </p>
+            </div>
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-0.5 font-mono text-[11px] font-black text-white shadow-2xs">
+              {totalOpenTasks} PENDING
             </span>
           </div>
 
@@ -78,13 +88,13 @@ export function KpiGrid({ data }: KpiGridProps) {
             {/* Receiving Queue */}
             <Link
               href="/receiving"
-              className="group flex items-center justify-between rounded-xl bg-slate-50/90 px-3 py-2 text-xs font-medium text-slate-800 hover:bg-blue-50 hover:text-brand-navy transition-colors border border-slate-200/60"
+              className="group flex items-center justify-between rounded-xl bg-amber-100/60 hover:bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-950 transition-colors border border-amber-200/80 shadow-2xs"
             >
               <div className="flex items-center gap-2">
-                <PackageCheck size={14} className="text-blue-600 group-hover:scale-110 transition-transform" />
+                <PackageCheck size={15} className="text-amber-700 group-hover:scale-110 transition-transform shrink-0" />
                 <span>Pending Receiving WRRs</span>
               </div>
-              <span className="font-mono font-bold text-brand-navy bg-white px-2 py-0.5 rounded-md border border-slate-200 shadow-2xs">
+              <span className="font-mono font-black text-xs text-white bg-amber-600 group-hover:bg-amber-700 px-2.5 py-0.5 rounded-md shadow-xs ring-2 ring-amber-300/80">
                 {floorQueues.pendingReceivingWrrs}
               </span>
             </Link>
@@ -92,13 +102,13 @@ export function KpiGrid({ data }: KpiGridProps) {
             {/* Pick Lists Queue */}
             <Link
               href="/outgoing"
-              className="group flex items-center justify-between rounded-xl bg-slate-50/90 px-3 py-2 text-xs font-medium text-slate-800 hover:bg-blue-50 hover:text-brand-navy transition-colors border border-slate-200/60"
+              className="group flex items-center justify-between rounded-xl bg-blue-100/60 hover:bg-blue-100 px-3 py-2 text-xs font-semibold text-blue-950 transition-colors border border-blue-200/80 shadow-2xs"
             >
               <div className="flex items-center gap-2">
-                <ClipboardList size={14} className="text-indigo-600 group-hover:scale-110 transition-transform" />
+                <ClipboardList size={15} className="text-blue-700 group-hover:scale-110 transition-transform shrink-0" />
                 <span>Active Pick Lists to Execute</span>
               </div>
-              <span className="font-mono font-bold text-indigo-900 bg-white px-2 py-0.5 rounded-md border border-slate-200 shadow-2xs">
+              <span className="font-mono font-black text-xs text-white bg-blue-600 group-hover:bg-blue-700 px-2.5 py-0.5 rounded-md shadow-xs ring-2 ring-blue-300/80">
                 {floorQueues.activePickLists}
               </span>
             </Link>
@@ -106,13 +116,13 @@ export function KpiGrid({ data }: KpiGridProps) {
             {/* QC Queue */}
             <Link
               href="/inspection"
-              className="group flex items-center justify-between rounded-xl bg-slate-50/90 px-3 py-2 text-xs font-medium text-slate-800 hover:bg-blue-50 hover:text-brand-navy transition-colors border border-slate-200/60"
+              className="group flex items-center justify-between rounded-xl bg-rose-100/60 hover:bg-rose-100 px-3 py-2 text-xs font-semibold text-rose-950 transition-colors border border-rose-200/80 shadow-2xs"
             >
               <div className="flex items-center gap-2">
-                <FlaskConical size={14} className="text-amber-600 group-hover:scale-110 transition-transform" />
+                <FlaskConical size={15} className="text-rose-700 group-hover:scale-110 transition-transform shrink-0" />
                 <span>Pending QC Inspections</span>
               </div>
-              <span className="font-mono font-bold text-amber-900 bg-white px-2 py-0.5 rounded-md border border-slate-200 shadow-2xs">
+              <span className="font-mono font-black text-xs text-white bg-rose-600 group-hover:bg-rose-700 px-2.5 py-0.5 rounded-md shadow-xs ring-2 ring-rose-300/80">
                 {floorQueues.pendingQcInspections}
               </span>
             </Link>
@@ -120,57 +130,7 @@ export function KpiGrid({ data }: KpiGridProps) {
         </div>
       </div>
 
-      {/* ── CARD 3: Stock Health & Quality ──────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-surface-white p-5 shadow-sm transition-all hover:shadow-md flex flex-col justify-between">
-        <div>
-          <div className="flex items-center justify-between">
-            <p className="font-label text-[11px] font-bold uppercase tracking-wider text-text-grey">
-              Stock Health &amp; Quality
-            </p>
-            <span className="inline-flex items-center gap-1 font-mono text-xs font-bold text-emerald-700">
-              <CheckCircle2 size={13} />
-              {stockHealth.qcPassRatePct}% Pass
-            </span>
-          </div>
-
-          <div className="mt-3 space-y-2">
-            {/* Low Stock Alert */}
-            <div className="flex items-center justify-between rounded-xl bg-amber-50/80 border border-amber-200/70 px-3 py-2 text-xs">
-              <div className="flex items-center gap-2 text-amber-900 font-medium">
-                <AlertTriangle size={14} className="text-amber-600 shrink-0" />
-                <span>Low Stock Reorder Alerts</span>
-              </div>
-              <span className="font-mono font-bold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-md">
-                {stockHealth.lowStockCount} items
-              </span>
-            </div>
-
-            {/* Held / Quarantined Lots */}
-            <div className="flex items-center justify-between rounded-xl bg-rose-50/80 border border-rose-200/70 px-3 py-2 text-xs">
-              <div className="flex items-center gap-2 text-rose-900 font-medium">
-                <Lock size={14} className="text-rose-600 shrink-0" />
-                <span>Held / Quarantined Lots</span>
-              </div>
-              <span className="font-mono font-bold text-rose-800 bg-rose-100/80 px-2 py-0.5 rounded-md">
-                {stockHealth.heldLotsCount} lots
-              </span>
-            </div>
-
-            {/* QC Pass Rate */}
-            <div className="flex items-center justify-between rounded-xl bg-emerald-50/80 border border-emerald-200/70 px-3 py-2 text-xs">
-              <div className="flex items-center gap-2 text-emerald-900 font-medium">
-                <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
-                <span>QC Pass Rate (30d)</span>
-              </div>
-              <span className="font-mono font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-md">
-                {stockHealth.qcPassRatePct}%
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── CARD 4: Financial Summary ────────────────────────────────────── */}
+      {/* ── CARD 3: Financial Summary ────────────────────────────────────── */}
       <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-surface-white p-5 shadow-sm transition-all hover:shadow-md flex flex-col justify-between">
         <div>
           <div className="flex items-center justify-between">

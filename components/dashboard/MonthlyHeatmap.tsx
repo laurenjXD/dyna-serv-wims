@@ -187,13 +187,16 @@ export function MonthlyHeatmap() {
 
       {/* Heatmap Matrix with Responsive Horizontal Scroll */}
       <div className="mt-4 overflow-x-auto pb-2">
-        <div className="min-w-[840px]">
+        <div className="min-w-[900px]">
           {/* Day Numbers Header Row (1 to 31) */}
           <div className="flex items-center gap-1 mb-1.5">
             <div className="w-16 shrink-0 font-label text-[11px] font-bold text-text-grey uppercase tracking-wider text-right pr-2">
               Rack Row
             </div>
-            <div className="flex-1 grid grid-cols-31 gap-1">
+            <div
+              className="flex-1 gap-1"
+              style={{ display: "grid", gridTemplateColumns: "repeat(31, minmax(22px, 1fr))" }}
+            >
               {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => {
                 const isWeekend = (day + 5) % 7 === 0 || (day + 5) % 7 === 6;
                 return (
@@ -221,7 +224,10 @@ export function MonthlyHeatmap() {
                 </div>
 
                 {/* 31 Day Cells */}
-                <div className="flex-1 grid grid-cols-31 gap-1">
+                <div
+                  className="flex-1 gap-1"
+                  style={{ display: "grid", gridTemplateColumns: "repeat(31, minmax(22px, 1fr))" }}
+                >
                   {(rowMap[row] || []).map((cell) => {
                     const colorClass = getCellColor(cell);
                     return (
