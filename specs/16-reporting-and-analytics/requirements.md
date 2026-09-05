@@ -29,8 +29,11 @@ Across all user-facing reporting dashboards, charts, tables, and headers:
 The Reporting dashboard (`/reports`) features:
 1. **Overview KPI Cards**: Receipts MTD, Dispatches MTD, Total Lots in Stock, Total Committed Qty, Low Stock Items Count, Pending Inspections Count.
 2. **`<ActivityHeatmap>` Widget**: Trailing 52-week grid of transaction volume filterable by Inventory Model.
-3. **Domain Tabs**: Inventory Analytics, Receiving Analytics, Outbound Analytics, VMI Analytics, Trading Analytics.
-4. **Excel Exports**: Inventory Snapshot, Transaction Ledger, Receiving History, Dispatch History, Connected Lot History.
+3. **Movement & Conformance Trend Graphs**:
+   - **Movement Trend**: 30-day transactional velocity curve.
+   - **`<DeliveryConformanceChart>`**: Outbound delivery conformance & OTIF trend tracking percentage of dispatches with uploaded/approved signed POD/DR against a 98.0% benchmark target, with cross-navigation to Outgoing Ledger (`/outgoing?tab=ledger`).
+4. **Domain Tabs**: Operational & Heatmap, Trading & Capital BI, VMI & Consignment BI, Warehouse & Spatial Analytics, Exports.
+5. **Excel Exports**: Inventory Snapshot, Transaction Ledger, Receiving History, Dispatch History, Connected Lot History.
 
 ## 5. Visual Design System & Error Feedback
 
@@ -40,6 +43,7 @@ The Reporting dashboard (`/reports`) features:
 ## 6. Acceptance criteria
 
 - [ ] Reporting dashboard renders at `/reports` with KPI cards, `<ActivityHeatmap>`, and domain tabs.
+- [ ] Operational tab displays `<DeliveryConformanceChart>` with live conformance percentage and link to Outgoing Ledger.
 - [ ] User-facing UI labels use Organization, Inventory Model, and Organization Portal exclusively.
 - [ ] Permanent tiered retention policy is enforced for `lot_history_export`.
 - [ ] Financial columns are gated by `reporting.financial_read` for Supervisor and Administrator.

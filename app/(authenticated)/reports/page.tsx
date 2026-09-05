@@ -37,9 +37,14 @@ import { KpiCard } from "@/components/analytics/KpiCard";
 import { KpiCardGroup } from "@/components/analytics/KpiCardGroup";
 import { MovementChart, type MovementChartDatum } from "@/components/reporting/MovementChart";
 import { MonthlyFlowChart, type MonthlyFlowDatum } from "@/components/reporting/MonthlyFlowChart";
+import { DeliveryConformanceChart } from "@/components/reporting/DeliveryConformanceChart";
 import { getInventoryKpis } from "@/lib/analytics/queries/inventory";
 import { getWrrVolumeTrend } from "@/lib/analytics/queries/receiving";
 import { getPickListVolumeTrend } from "@/lib/analytics/queries/outbound";
+import {
+  getDeliveryConformanceKpi,
+  getDeliveryConformanceTrend,
+} from "@/lib/analytics/queries/conformance";
 import { getActivityHeatmap } from "@/lib/analytics/queries/heatmap";
 import {
   getGmroiAndTurnover,
@@ -256,6 +261,8 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     pickingDensity,
     profitabilityHeatmap,
     spaceForecast,
+    conformanceTrend,
+    conformanceKpi,
   ] = await Promise.all([
     getInventoryKpis(),
     getWrrVolumeTrend(mtdRange, activeFilter, "month"),
@@ -280,6 +287,8 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     getWarehousePickingDensity(),
     getStorageProfitabilityHeatmap(),
     getSpaceUtilizationForecast(),
+    getDeliveryConformanceTrend(mtdRange),
+    getDeliveryConformanceKpi(mtdRange),
   ]);
 
   const totalReceiptsMtd = mtdReceiptsRaw.length > 0
@@ -483,6 +492,15 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               </div>
             </section>
           )}
+
+          {/* ── Delivery Conformance KPI Line Graph ─────────────────────── */}
+          <section id="conformance" aria-label="Delivery conformance KPI trend">
+            <DeliveryConformanceChart
+              data={conformanceTrend}
+              currentRate={conformanceKpi.conformanceRate}
+              targetRate={98.0}
+            />
+          </section>
 
           <section aria-label="Monthly flow breakdown">
             <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">

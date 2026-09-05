@@ -1,5 +1,24 @@
 # Revision Log — Hyperion 3PL / Dyna-Serv
 
+## Delivery Conformance KPI Dropdown & Trend Line Graph Dashboard Integration (`08`, `16`) (2026-09-05)
+
+**What changed**:
+1. **Delivery Conformance Analytics Layer (`16-reporting-and-analytics`)**:
+   - Created `lib/analytics/queries/conformance.ts` implementing `getDeliveryConformanceKpi` and `getDeliveryConformanceTrend`.
+   - Computes delivery conformance rate based on dispatched outbound transactions having uploaded/verified Proof of Delivery (POD/DR) documents:
+     $$\text{Conformance Rate (\%)} = \left(\frac{\text{Conforming Dispatches}}{\text{Total Dispatches}}\right) \times 100$$
+   - Added unit test suite `lib/analytics/queries/__tests__/conformance.test.ts` (3/3 passing).
+2. **Delivery Conformance Trend Line Graph (`components/reporting/DeliveryConformanceChart.tsx`)**:
+   - Built responsive Recharts Line Graph displaying conformance percentage over time alongside a 98.0% benchmark target reference line.
+   - Mounted directly in the **Operational & Heatmap** tab of the Reports dashboard (`/reports#conformance`) with live rate badge and navigation link to the Outgoing Ledger.
+3. **Outgoing Ledger Interactive KPI Dropdown (`08-outgoing-withdrawal-and-two-stage-commitment`)**:
+   - Enhanced `OutgoingLedgerClientTable.tsx` with a 4-card KPI summary grid featuring the **Delivery Conformance KPI Card**.
+   - Integrated an interactive filter dropdown allowing operators to isolate **All Dispatches**, **Conforming (Signed DR Attached)**, or **Pending Proof of Delivery (Missing DR)** in real-time.
+   - Linked directly to the Delivery Conformance Trend Line Graph (`/reports#conformance`).
+4. **Item Enrollment Layout Uniformity (`06-party-and-item-enrollment`)**:
+   - Removed redundant `"Warehousing CBM Storage Classification"` card and cleaned whitespace in `app/(authenticated)/master-data/items/_components/item-form.tsx`.
+   - Equalized field sizes into a clean, uniform 3-row $\times$ 2-column grid across Owner Organization, Inventory Model, Category, FG/RAW Classification, Subcategory, and Primary Item Code.
+
 ## Removal of `/sync` Page, Central Documents Archive (`10-pick-list-and-acknowledgement-receipt`), & Item Classification Hierarchy (2026-09-05)
 
 **What changed**:

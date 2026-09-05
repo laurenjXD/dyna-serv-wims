@@ -1,14 +1,6 @@
-// `OfficeLanding` — office-tier presentation for `/`.
-//
-// Modern Bento-box layout matching the master Dyna-Serv design specification:
-// - Top-Level 6-Tile KPI Strip (Open WRRs, Active Picks, Pending Transfers, Open Inspections, Low Stock, Pending Approvals)
-// - High-Level Visualizations (Dispatch Rate Donut, Weekly Outgoing Trend, Monthly Outgoing Stat, Stock Ownership Split, Activity by Flow)
-// - Actionable Queues & Lists (Top Stock Items with Frosted Glass Badges, Oldest-First Action Queues with direct CTAs, and Chronological Recent Activity Feed).
-//
-// Traceability:
-//   specs/05-ui-shell-and-navigation/design.md §3.2
-//   specs/05-ui-shell-and-navigation/requirements.md R11.3, R11.5
+"use client";
 
+import React, { useState } from "react";
 import Link from "next/link";
 import {
   PackageCheck,
@@ -21,12 +13,15 @@ import {
   Barcode,
   ArrowRight,
   PieChart,
+  LayoutDashboard,
+  Layers,
 } from "lucide-react";
 import { QuickJumpScanner } from "@/app/(authenticated)/receiving/_components/QuickJumpScanner";
 import { KpiTile } from "@/components/analytics/KpiTile";
 import { DonutChart } from "@/components/analytics/DonutChart";
 import { BarChart } from "@/components/analytics/BarChart";
 import { WeeklyTrendChart, type WeeklyTrendDatum } from "@/components/analytics/WeeklyTrendChart";
+import { OperationsDashboard } from "@/components/dashboard/OperationsDashboard";
 import type { WrrDocumentRow } from "@/lib/db/queries/receiving";
 import type { PickListRow } from "@/lib/db/queries/withdrawals";
 import type { InspectionCaseListRow } from "@/lib/db/queries/transfers";
@@ -122,22 +117,79 @@ export function OfficeLanding({
 
   const totalStockQty = (ownership.trading + ownership.vmi + ownership.supplies) || 1;
 
+  const [viewMode, setViewMode] = useState<"dashboard" | "queues">("dashboard");
+
+  if (viewMode === "dashboard") {
+    return (
+      <div className="space-y-4">
+        <div className="mx-auto max-w-container px-4 sm:px-6 lg:px-8 pt-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5 rounded-xl bg-slate-200/80 p-1 font-label text-xs font-semibold shadow-inner">
+            <button
+              type="button"
+              onClick={() => setViewMode("dashboard")}
+              className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 font-bold text-brand-navy shadow-xs transition-all"
+            >
+              <LayoutDashboard size={14} className="text-brand-navy" />
+              <span>Operations Dashboard</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("queues")}
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-slate-600 hover:text-slate-900 transition-all"
+            >
+              <Layers size={14} className="text-slate-400" />
+              <span>Floor Action Queues</span>
+            </button>
+          </div>
+
+          <Link
+            href="/reports"
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 font-label text-xs font-bold text-brand-navy shadow-2xs hover:bg-slate-50 transition-colors"
+          >
+            <span>Analytics &amp; Reports Center</span>
+            <ArrowRight size={13} />
+          </Link>
+        </div>
+
+        <OperationsDashboard />
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-[1360px] space-y-6 px-4 py-6 md:px-6 lg:px-8">
-      {/* ── Page Header & Date ──────────────────────────────────────────────── */}
+      {/* ── Page Header & View Switcher ─────────────────────────────────────── */}
       <header className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="font-heading text-2xl font-bold tracking-tight text-on-surface">
-            Operational Overview
+            Operational Overview &amp; Queues
           </h1>
           <p className="font-body text-xs text-text-grey">{dateString}</p>
         </div>
         <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 rounded-xl bg-slate-200/80 p-1 font-label text-xs font-semibold shadow-inner">
+            <button
+              type="button"
+              onClick={() => setViewMode("dashboard")}
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-slate-600 hover:text-slate-900 transition-all"
+            >
+              <LayoutDashboard size={14} className="text-slate-400" />
+              <span>Operations Dashboard</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("queues")}
+              className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 font-bold text-brand-navy shadow-xs transition-all"
+            >
+              <Layers size={14} className="text-brand-navy" />
+              <span>Floor Action Queues</span>
+            </button>
+          </div>
           <Link
             href="/reports"
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-outline-variant/30 bg-surface-white px-3.5 font-label text-xs font-semibold text-brand-navy shadow-sm transition-all hover:bg-slate-50 hover:shadow"
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-outline-variant/30 bg-surface-white px-3.5 font-label text-xs font-semibold text-brand-navy shadow-sm transition-all hover:bg-slate-50 hover:shadow"
           >
-            Open Analytics &amp; Reports <ArrowRight size={14} />
+            Reports Center
           </Link>
         </div>
       </header>
