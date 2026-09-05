@@ -80,14 +80,9 @@ const ROUTE_ICON_MAP: Record<string, LucideIcon> = {
 
 const SHORT_LABEL_OVERRIDES: Record<string, string> = {
   root: "Dashboard",
-  // Sidebar nav entry label. "Stock View" is one of the tabs INSIDE this
-  // page (Stock View / Pick Lists / Inspection), not the page's own name —
-  // per multi-agent-work-division.md's confirmed sidebar target ("Master
-  // Inventory (/inventory — Stock View, Pick Lists, Inspection tabs...)").
-  // See specs/00-steering/revision-log.md's matching entry.
-  receiving: "Receiving / Incoming",
+  receiving: "Receiving",
   inventory: "Master Inventory",
-  outgoing: "Withdrawal / Outgoing",
+  outgoing: "Outgoing",
   approvals: "Approvals",
   reports: "Reports & Analytics",
   documents: "Documents",
@@ -540,7 +535,7 @@ export function ShellNavigation({
         </div>
 
         {/* Navigation Section List */}
-        <div className={`min-h-0 flex-1 overflow-y-auto py-1 ${desktopOpen ? "px-3" : "px-1.5"}`}>
+        <div className={`min-h-0 flex-1 py-1 ${desktopOpen ? "px-3" : "px-1.5"}`}>
           <GroupedSections
             sections={sections}
             activeId={activeId}

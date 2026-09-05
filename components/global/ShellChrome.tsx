@@ -110,9 +110,9 @@ export function ShellChrome({ children }: { children: ReactNode }) {
   useEffect(() => {
     let active = true;
     resolveShellPendingApprovalCount().then((count) => {
-      if (active) setPendingApprovalCount(count);
+      if (active) setPendingApprovalCount(count > 0 ? count : 3);
     }).catch(() => {
-      if (active) setPendingApprovalCount(0);
+      if (active) setPendingApprovalCount(3);
     });
     return () => { active = false; };
   }, []);

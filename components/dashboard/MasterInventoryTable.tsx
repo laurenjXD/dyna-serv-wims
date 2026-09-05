@@ -326,8 +326,104 @@ export function MasterInventoryTable() {
         </div>
       </div>
 
-      {/* TanStack Table Grid */}
-      <div className="mt-4 overflow-x-auto">
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* 📱 MOBILE CARD FEED (< 1024px)                                      */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      <div className="mt-4 block lg:hidden space-y-3">
+        {filteredData.length > 0 ? (
+          filteredData.map((item) => (
+            <div
+              key={item.id}
+              className="rounded-2xl border border-black/5 dark:border-white/10 bg-white dark:bg-zinc-900 p-4 shadow-sm space-y-3"
+            >
+              {/* Line 1: Bold Monospace SKU + Status Badge */}
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-sm font-black text-brand-navy">
+                  {item.itemCode}
+                </span>
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-mono text-[11px] font-bold ${
+                    item.status === "available"
+                      ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                      : item.status === "low_stock"
+                      ? "bg-amber-50 text-amber-800 border border-amber-200"
+                      : "bg-rose-50 text-rose-800 border border-rose-200"
+                  }`}
+                >
+                  {item.status === "available" && <CheckCircle2 size={11} />}
+                  {item.status === "low_stock" && <AlertTriangle size={11} />}
+                  {item.status === "held" && <Lock size={11} />}
+                  {item.status === "available"
+                    ? "Available"
+                    : item.status === "low_stock"
+                    ? "Low Stock"
+                    : "Held / Quarantine"}
+                </span>
+              </div>
+
+              {/* Line 2: Description & Vendor */}
+              <div>
+                <p className="font-body text-xs font-semibold text-slate-800">
+                  {item.description}
+                </p>
+                <div className="mt-1 flex items-center gap-1.5 text-[11px] text-text-grey">
+                  <Building2 size={12} className="text-slate-400" />
+                  <span>{item.partyName}</span>
+                  <span>·</span>
+                  <span className="uppercase font-mono font-bold text-slate-700">{item.flowType}</span>
+                </div>
+              </div>
+
+              {/* Line 3: Stock: 1,450 Units Available (Reorder: 200) */}
+              <div className="flex items-center justify-between rounded-xl bg-slate-50 p-2.5">
+                <div>
+                  <p className="font-label text-[10px] uppercase font-bold text-text-grey">
+                    Available Stock
+                  </p>
+                  <p className="font-mono text-sm font-black text-slate-900">
+                    {item.availableQty.toLocaleString()} {item.uom}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="font-label text-[10px] uppercase font-bold text-text-grey">
+                    Reorder Threshold
+                  </p>
+                  <p className="font-mono text-xs font-semibold text-amber-800">
+                    {item.reorderLevel.toLocaleString()} {item.uom}
+                  </p>
+                </div>
+              </div>
+
+              {/* Actions: Two 44px+ touch buttons per card */}
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <Link
+                  href="/inventory"
+                  className="flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white font-label text-xs font-bold text-slate-700 shadow-2xs active:bg-slate-100"
+                >
+                  <Layers size={14} className="text-slate-500" />
+                  <span>View Lots</span>
+                </Link>
+                <Link
+                  href="/outgoing"
+                  className="flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl bg-brand-navy font-label text-xs font-bold text-white shadow-2xs active:bg-brand-navy/90"
+                >
+                  <ClipboardList size={14} />
+                  <span>Allocate Pick</span>
+                </Link>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-xs text-text-grey">
+            No inventory items match your filter criteria.
+          </div>
+        )}
+      </div>
+
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* 🖥️ DESKTOP TANSTACK TABLE (>= 1024px)                               */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      <div className="mt-4 hidden lg:block overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -383,3 +479,4 @@ export function MasterInventoryTable() {
     </div>
   );
 }
+

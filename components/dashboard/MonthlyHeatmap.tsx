@@ -27,6 +27,7 @@ export function MonthlyHeatmap() {
   const [metricView, setMetricView] = useState<HeatmapMetricView>("pickActivity");
   const [selectedAuditRecord, setSelectedAuditRecord] = useState<BinAuditRecord | null>(null);
   const [showMonthMenu, setShowMonthMenu] = useState(false);
+  const [mobileSelectedBin, setMobileSelectedBin] = useState("A1-01");
 
   const activeMonthConfig = MONTHS.find((m) => m.name === selectedMonth) ?? MONTHS[0];
 
@@ -185,8 +186,66 @@ export function MonthlyHeatmap() {
         </div>
       </div>
 
-      {/* Heatmap Matrix with Responsive Horizontal Scroll */}
-      <div className="mt-4 overflow-x-auto pb-2">
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* 📱 MOBILE 31-DAY BIN CALENDAR VIEW (< 1024px)                       */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      <div className="mt-4 block lg:hidden space-y-3">
+        {/* Bin Row Selector Dropdown */}
+        <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2">
+          <span className="font-label text-xs font-bold text-slate-700">Select Rack Row:</span>
+          <select
+            value={mobileSelectedBin}
+            onChange={(e) => setMobileSelectedBin(e.target.value)}
+            className="h-10 rounded-lg border border-slate-300 bg-white px-3 font-mono text-xs font-bold text-brand-navy shadow-xs focus:ring-2 focus:ring-brand-navy"
+          >
+            {BIN_ROWS.map((row) => (
+              <option key={row} value={row}>
+                Rack Row {row}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* 31-Day Visual Calendar Grid (Large Glove-Friendly Tiles) */}
+        <div className="grid grid-cols-7 gap-1.5 pt-1">
+          {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
+            <div key={i} className="text-center font-label text-[10px] font-bold text-text-grey uppercase">
+              {d}
+            </div>
+          ))}
+          {(rowMap[mobileSelectedBin] || []).map((cell) => {
+            const colorClass = getCellColor(cell);
+            return (
+              <button
+                key={`${cell.binRow}-${cell.day}`}
+                type="button"
+                onClick={() => {
+                  const recordWithCurrentMetric = {
+                    ...cell.auditRecord,
+                    metricType: metricView,
+                    metricFormatted:
+                      metricView === "pickActivity"
+                        ? `${cell.pickActivityCount} picks/hr`
+                        : metricView === "inventoryAging"
+                        ? `${cell.inventoryAgingDays} days dwell`
+                        : `${cell.varianceRatePct}% variance`,
+                  };
+                  setSelectedAuditRecord(recordWithCurrentMetric);
+                }}
+                className={`flex min-h-[48px] flex-col items-center justify-center rounded-xl p-1 font-mono text-xs font-bold shadow-2xs active:scale-95 transition-transform ${colorClass}`}
+              >
+                <span className="text-[10px] opacity-75 leading-none">D{cell.day}</span>
+                <span className="text-xs font-black mt-0.5 leading-none">{getMetricDisplayValue(cell)}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* 🖥️ DESKTOP CONTINUOUS 31-DAY MATRIX (>= 1024px)                     */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      <div className="mt-4 hidden lg:block overflow-x-auto pb-2">
         <div className="min-w-[900px]">
           {/* Day Numbers Header Row (1 to 31) */}
           <div className="flex items-center gap-1 mb-1.5">

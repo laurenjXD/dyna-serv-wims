@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   FileText,
   Download,
@@ -10,6 +10,9 @@ import {
   Filter,
   Sparkles,
   ChevronDown,
+  Search,
+  BadgePercent,
+  SlidersHorizontal,
 } from "lucide-react";
 import type { DateHorizon, FacilityZone } from "./types";
 
@@ -40,12 +43,56 @@ export function ReportsHeader({
   onQuickGeneratePdf,
   onExportRawData,
 }: ReportsHeaderProps) {
-  const [showExportMenu, setShowExportMenu] = React.useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [mobileSearch, setMobileSearch] = useState("");
 
   return (
     <div className="space-y-4">
-      {/* ── Title and Top Level Actions ─────────────────────────────────── */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* 📱 MOBILE STICKY TITLE & FAST CONTROLS (< 1024px)                   */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      <div className="block lg:hidden space-y-3 rounded-2xl border border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-900/80 p-4 shadow-sm backdrop-blur-md">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="font-heading text-xl font-black text-brand-navy">
+              Reports &amp; Settlement
+            </h1>
+            <div className="mt-0.5 flex items-center gap-1.5">
+              <span className="rounded-md bg-blue-50 px-2 py-0.5 font-mono text-[10px] font-bold text-brand-navy border border-blue-200">
+                Aug 2026 MTD
+              </span>
+              <span className="text-[11px] text-text-grey">All Facilities</span>
+            </div>
+          </div>
+
+          {/* Primary + New Report Button (Min 48px Touch Target) */}
+          <button
+            type="button"
+            onClick={onOpenReportBuilder}
+            className="flex min-h-[48px] items-center justify-center gap-1.5 rounded-xl bg-brand-navy px-3.5 font-heading text-xs font-bold text-white shadow-md active:scale-95 transition-transform"
+          >
+            <Plus size={16} />
+            <span>+ New Report</span>
+          </button>
+        </div>
+
+        {/* Instant Report Search Bar */}
+        <div className="relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search report archive, VMI consignors..."
+            value={mobileSearch}
+            onChange={(e) => setMobileSearch(e.target.value)}
+            className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/80 pl-9 pr-3 font-body text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-navy"
+          />
+        </div>
+      </div>
+
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* 🖥️ DESKTOP TITLE & CONTROLS (>= 1024px)                             */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      <div className="hidden lg:flex flex-row items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="font-heading text-2xl sm:text-3xl font-black text-brand-navy tracking-tight">
@@ -62,7 +109,6 @@ export function ReportsHeader({
 
         {/* Action Buttons Toolbar */}
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Export Raw Data Dropdown */}
           <div className="relative">
             <button
               type="button"
@@ -73,7 +119,6 @@ export function ReportsHeader({
               <span>Export Raw Data</span>
               <ChevronDown size={13} className="text-slate-400" />
             </button>
-
             {showExportMenu && (
               <div className="absolute right-0 z-40 mt-1.5 w-48 rounded-xl border border-slate-200 bg-white p-1.5 shadow-elevation-3 animate-in fade-in">
                 <button
@@ -102,7 +147,6 @@ export function ReportsHeader({
             )}
           </div>
 
-          {/* Quick-Run: Generate Full Inventory PDF */}
           <button
             type="button"
             onClick={onQuickGeneratePdf}
@@ -112,7 +156,6 @@ export function ReportsHeader({
             <span>Generate Full Inventory PDF</span>
           </button>
 
-          {/* Primary: + Custom Report Builder */}
           <button
             type="button"
             onClick={onOpenReportBuilder}
@@ -125,7 +168,7 @@ export function ReportsHeader({
       </div>
 
       {/* ── Global Filters Toolbar ────────────────────────────────────────── */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-slate-200/80 bg-surface-white p-3 shadow-2xs">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-900/80 p-3 shadow-2xs backdrop-blur-md">
         <div className="flex flex-wrap items-center gap-3">
           {/* Facility & Zone Selector */}
           <div className="flex items-center gap-1.5">
@@ -157,7 +200,7 @@ export function ReportsHeader({
                 horizon === "7D" ? "bg-white text-brand-navy font-bold shadow-2xs" : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              Last 7 Days (7D)
+              7D
             </button>
             <button
               type="button"
@@ -166,7 +209,7 @@ export function ReportsHeader({
                 horizon === "30D" ? "bg-white text-brand-navy font-bold shadow-2xs" : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              Last 30 Days (30D MTD)
+              30D MTD
             </button>
             <button
               type="button"
@@ -175,7 +218,7 @@ export function ReportsHeader({
                 horizon === "90D" ? "bg-white text-brand-navy font-bold shadow-2xs" : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              Last 90 Days (90D QTD)
+              90D QTD
             </button>
             <button
               type="button"
@@ -189,25 +232,25 @@ export function ReportsHeader({
           </div>
         </div>
 
-        {/* Inline Date Range Picker (shown when Custom is selected) */}
+        {/* Inline Date Range Picker for Custom Horizon */}
         {horizon === "custom" && (
-          <div className="flex flex-wrap items-center gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 animate-in fade-in">
+          <div className="flex items-center gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
             <div className="flex items-center gap-1.5">
-              <span className="font-label text-xs text-text-grey font-medium">From:</span>
+              <span className="font-label text-[11px] font-bold text-text-grey">From:</span>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => onStartDateChange(e.target.value)}
-                className="h-8 rounded-lg border border-slate-200 bg-slate-50 px-2 font-mono text-xs font-semibold text-brand-navy focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
+                className="h-8 rounded-lg border border-slate-200 bg-white px-2 font-mono text-xs text-slate-800 focus:border-brand-navy focus:outline-none"
               />
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="font-label text-xs text-text-grey font-medium">To:</span>
+              <span className="font-label text-[11px] font-bold text-text-grey">To:</span>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => onEndDateChange(e.target.value)}
-                className="h-8 rounded-lg border border-slate-200 bg-slate-50 px-2 font-mono text-xs font-semibold text-brand-navy focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
+                className="h-8 rounded-lg border border-slate-200 bg-white px-2 font-mono text-xs text-slate-800 focus:border-brand-navy focus:outline-none"
               />
             </div>
           </div>
