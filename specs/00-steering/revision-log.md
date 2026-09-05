@@ -1,5 +1,19 @@
 # Revision Log — Hyperion 3PL / Dyna-Serv
 
+## Removal of `/sync` Page & Central Documents Archive Specification (`10-pick-list-and-acknowledgement-receipt`) (2026-09-05)
+
+**What changed**:
+1. **Removal of `/sync` Page**:
+   - Deleted `app/(authenticated)/sync` directory.
+   - Removed `/sync` route entry from `ROUTE_REGISTRY` in [`lib/shell/registry.ts`](file:///d:/School-related%20docus/dyna-serv%20wims/lib/shell/registry.ts).
+   - Removed `/sync` mapping from [`components/global/ShellChrome.tsx`](file:///d:/School-related%20docus/dyna-serv%20wims/components/global/ShellChrome.tsx).
+   - Updated shell navigation and registry tests (`lib/shell/__tests__/navigation.test.ts`, `lib/shell/__tests__/registry.test.ts`, `components/global/__tests__/ShellNavigation.test.tsx`).
+   - Verified 16/16 test suites (250 tests) green.
+2. **Documents Center Page Specification (`10-pick-list-and-acknowledgement-receipt`)**:
+   - Updated [`specs/10-pick-list-and-acknowledgement-receipt/requirements.md`](file:///d:/School-related%20docus/dyna-serv%20wims/specs/10-pick-list-and-acknowledgement-receipt/requirements.md), [`design.md`](file:///d:/School-related%20docus/dyna-serv%20wims/specs/10-pick-list-and-acknowledgement-receipt/design.md), and [`tasks.md`](file:///d:/School-related%20docus/dyna-serv%20wims/specs/10-pick-list-and-acknowledgement-receipt/tasks.md) to define the full specification for the `/documents` page.
+   - Defined 5 authoritative sub-tabs: WRRs, Pick Lists, Delivery Receipts / Acknowledgement Receipts (DR/AR), Statements of Account (SOAs - gated `reporting.financial_read`), and PEZA/Logistics Documents.
+   - Specified data access layer (`lib/db/queries/documents.ts`), server actions & audit trail (`lib/actions/documents.ts`), unified filter bar (search, organization, date range, status), accessible PDF preview modal, watermarked reprint flow (`document_events`), and permanent tiered retention.
+
 ## Organization Billing & 3-Year Monthly Statements Archive Integration (2026-08-31)
 
 **What changed**:

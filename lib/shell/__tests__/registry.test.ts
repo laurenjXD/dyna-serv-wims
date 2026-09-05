@@ -102,13 +102,8 @@ const EXPECTED_ROUTES: Array<{
   { id: "outgoing", path: "/outgoing", surface: "shared", capability: "pick_list.execute", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
   { id: "inventory-pick-list-execute", path: "/pick-lists/[pickListId]/pick", surface: "floor", capability: "pick_list.execute", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
   { id: "inventory-pick-list-dispatch", path: "/pick-lists/[pickListId]/dispatch", surface: "floor", capability: "dispatch.execute", featureSpecs: ["08-outgoing-withdrawal-and-two-stage-commitment"], launchStatus: "launch" },
-  { id: "documents", path: "/documents", surface: "office", capability: "documents.read", featureSpecs: ["10-pick-list-and-acknowledgement-receipt"], launchStatus: "planned" },
+  { id: "documents", path: "/documents", surface: "office", capability: "documents.read", featureSpecs: ["10-pick-list-and-acknowledgement-receipt"], launchStatus: "launch" },
   { id: "approvals", path: "/approvals", surface: "office", capability: "fifo_override.approve", featureSpecs: ["09-approval-queue"], launchStatus: "launch" },
-  // 2026-08-17: surface corrected floor -> shared. multi-agent-work-division.md's
-  // confirmed sidebar target lists Sync under the office sidebar's SYSTEM
-  // group — a status indicator page, not a floor-scan-loop action, so there
-  // is no reason to hide it from office/administrator sessions. See revision-log.md.
-  { id: "sync", path: "/sync", surface: "shared", capability: "none", featureSpecs: ["03-offline-mode-and-client-storage"], launchStatus: "launch" },
   // 2026-08-17: 'transfers', 'inspection', and 'inspection-detail' rows were
   // removed from this fixture — the merged Transfer+Inspection queue
   // restructure retired their pages to redirects (see the second describe
@@ -179,21 +174,6 @@ describe("lib/shell/registry — route catalog matches design.md §3.2 exactly (
     const enrollment = ROUTE_REGISTRY.find((row) => row.path === "/enrollment");
     expect(enrollment?.capability).toBe("parties.read");
     expect(enrollment?.group).toBe("Master Data");
-  });
-
-  it("marks '/sync' as offline-feature-gated rather than capability-gated (design.md §3.2 rule: not a data-access gate)", async () => {
-    const { ROUTE_REGISTRY } = await import("../registry");
-    const sync = ROUTE_REGISTRY.find((row) => row.path === "/sync");
-    expect(sync?.capability).toBe("none");
-    expect(sync?.offlineFeatureGated).toBe(true);
-  });
-
-  it("does not mark any other route as offlineFeatureGated", async () => {
-    const { ROUTE_REGISTRY } = await import("../registry");
-    const gatedOthers = ROUTE_REGISTRY.filter(
-      (row) => row.path !== "/sync" && row.offlineFeatureGated === true,
-    );
-    expect(gatedOthers).toEqual([]);
   });
 
   it("has unique, non-empty ids and unique paths across every row", async () => {
@@ -293,11 +273,9 @@ describe("lib/shell/registry — 2026-08-17 sidebar/IA restructure (R3.2, multi-
   //   reports, documents -> "Reports"
   //   enrollment, billing-pricing -> "Master Data"
   //   sync -> "System"
-  //   profile, settings -> "Account"
   const REASSIGNED_TO_MAIN = ["root", "receiving", "inventory", "outgoing", "approvals"];
   const REASSIGNED_TO_REPORTS = ["reports", "documents"];
   const REASSIGNED_TO_MASTER_DATA = ["enrollment", "billing-pricing"];
-  const REASSIGNED_TO_SYSTEM = ["sync"];
   const REASSIGNED_TO_ACCOUNT = ["profile", "settings"];
 
   it.each(REASSIGNED_TO_MAIN)("entry '%s' has group 'Main'", async (id) => {
@@ -319,13 +297,6 @@ describe("lib/shell/registry — 2026-08-17 sidebar/IA restructure (R3.2, multi-
     const entry = ROUTE_REGISTRY.find((row) => row.id === id);
     expect(entry, `expected a registry row with id ${id}`).toBeDefined();
     expect(entry!.group).toBe("Master Data");
-  });
-
-  it.each(REASSIGNED_TO_SYSTEM)("entry '%s' has group 'System'", async (id) => {
-    const { ROUTE_REGISTRY } = await import("../registry");
-    const entry = ROUTE_REGISTRY.find((row) => row.id === id);
-    expect(entry, `expected a registry row with id ${id}`).toBeDefined();
-    expect(entry!.group).toBe("System");
   });
 
   it.each(REASSIGNED_TO_ACCOUNT)("entry '%s' has group 'Account'", async (id) => {

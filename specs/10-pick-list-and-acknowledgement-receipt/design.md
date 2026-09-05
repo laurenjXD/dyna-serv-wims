@@ -266,18 +266,71 @@ Maximum 3 generation attempts per document request. Delay between attempts: 30 s
 - **Floor/office user:** Sees "Document unavailable — retry or contact supervisor" with a retry button. The retry button re-queues the same generation request; it does not re-render or re-fetch the pricing snapshot.
 - **Workflow impact:** Dispatch, handoff, and inventory state are NOT blocked by document generation failure. The underlying inventory transaction and commitment execution are committed regardless of document status. `08` must not poll or await document readiness before marking a dispatch complete.
 
-## 9. UI integration
+## 9. Documents Center UI (`/documents`)
 
-Provisional routes:
+### 9.1 Route architecture and layout
 
 ```text
 app/(authenticated)/
   documents/
-    pick-lists/[pickListId]/page.tsx
-    acknowledgement-receipts/[receiptId]/page.tsx
+    page.tsx                                # Main Documents archive hub (Server Component)
+    _components/
+      DocumentsHeader.tsx                   # Title, count summary, refresh action
+      DocumentsTabs.tsx                     # 5-tab switch (WRRs, Pick Lists, ARs, SOAs, PEZA)
+      DocumentsFilterBar.tsx                # Unified search, organization dropdown, date range, status
+      WrrDocumentsTable.tsx                 # Tab 1: WRR archive table
+      PickListsTable.tsx                    # Tab 2: Pick List archive table
+      AcknowledgementReceiptsTable.tsx      # Tab 3: Delivery / Acknowledgement Receipt table
+      StatementsOfAccountTable.tsx          # Tab 4: VMI SOA bundles table
+      PezaDocumentsTable.tsx                # Tab 5: Logistics & PEZA permits table
+      DocumentPreviewModal.tsx              # Shared accessible PDF preview modal + metadata inspector
+      DocumentReprintDialog.tsx             # Reprint confirmation and audit reason dialog
+    [documentId]/
+      page.tsx                              # Standalone full-page document view & print trigger
 ```
 
-`08` links to document status from the pick/dispatch workflow. `10` provides preview, download, print, reprint, generation-attention, and history controls. The office surface remains usable on mobile; print actions have accessible labels and status feedback. Floor workflows receive compact document references/print actions but do not render dense document-management UI during active scanning.
+### 9.2 Data Access Layer (`lib/db/queries/documents.ts`)
+
+The Documents page consumes type-safe query functions that resolve joined metadata from authoritative tables without client-side data synthesis:
+
+1. **`listWrrArchiveDocuments(db, filters)`**:
+   - Joins `wrr_documents`, `parties`, `users` (received_by).
+   - Aggregates item counts from `wrr_items`.
+   - Filters by date range, supplier/client party ID, status, and search term (`document_number`, `cipl_number`, `bill_of_lading`).
+2. **`listPickListArchiveDocuments(db, filters)`**:
+   - Joins `generated_documents` (type: `'pick_list'`), `inventory_commitments`, `pick_lists`, `parties`, and `users` (authorized_by / created_by).
+   - Resolves committed packaging/line totals from `pick_list_items`.
+   - Filters by date range, customer party ID, flow type, and status.
+3. **`listAcknowledgementReceiptArchiveDocuments(db, filters)`**:
+   - Joins `generated_documents` (type: `'acknowledgement_receipt'`), `inventory_commitments`, `pick_lists`, `parties`, and `users` (dispatched_by).
+   - Resolves dispatched quantities and frozen financial totals.
+   - Filters by date range, customer party ID, flow type, status.
+4. **`listStatementOfAccountArchiveDocuments(db, filters)`**:
+   - Joins `vmi_billing_periods`, `parties`, and `generated_documents` (SOA artifacts).
+   - Gated by `reporting.financial_read` capability.
+   - Resolves period CBM totals, total PHP/USD billing lines.
+5. **`listPezaArchiveDocuments(db, filters)`**:
+   - Queries customs/PEZA cross-referenced documents and linked dispatch/receiving entities.
+
+### 9.3 Server Actions & Audit Trail (`lib/actions/documents.ts`)
+
+1. **`requestDocumentReprint(input: { documentId: string, reason?: string })`**:
+   - Validates caller holds `documents.read`.
+   - Resolves target `generated_documents` row (must have `status = 'ready'`).
+   - Inserts append-only event into `document_events` (`event_type = 'reprinted'`, `actor_id = auth.uid()`, metadata with reprint timestamp).
+   - Returns signed artifact URL with watermarked overlay directive.
+2. **`getDocumentSignedUrl(documentId: string)`**:
+   - Validates caller capability and party/flow scope.
+   - Generates 60-minute Supabase Storage signed URL from `documents` private bucket.
+3. **`retryDocumentGeneration(documentId: string)`**:
+   - For rows stuck in `failed` status.
+   - Validates retry bounds (≤ 3 attempts) and re-executes generation pipeline without altering historical source snapshots.
+
+### 9.4 Office Visual Standards
+- Adheres strictly to `specs/00-steering/brand-design-system.md` office Level 1 elevation (`bg-surface-white`, border `border-outline-variant/30`, shadow `shadow-elevation-1`).
+- Typography: Headline `font-heading font-extrabold text-headline-xl`, table text `font-body text-body-md`, document numbers/IDs/dates `font-mono text-mono-md`.
+- Status Tokens: `status-available` (green), `status-pending` (amber), `status-held` (red), `status-neutral` (grey).
+- Touch and click targets: Minimum `h-11` (44px) on office controls.
 
 ## 10. Audit, failure, and re-generation rules
 

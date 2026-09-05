@@ -1,148 +1,59 @@
-// `/documents` — Documents Center: generated pick lists + acknowledgement receipts.
+// `/documents` — Documents Center: Central archive for WRRs, pick lists, DR/AR, SOAs, and PEZA documents.
 //
 // Traceability:
-//   specs/10-pick-list-and-acknowledgement-receipt/design.md (document generation,
-//     pick_list + acknowledgement_receipt tables, print view)
-//   specs/00-steering/brand-design-system.md §6 (office Level 1 elevation:
-//     bg-surface-white), §2 (typography), §9 (office table pattern)
+//   specs/10-pick-list-and-acknowledgement-receipt/requirements.md §3, §4
+//   specs/10-pick-list-and-acknowledgement-receipt/design.md §9
+//   specs/10-pick-list-and-acknowledgement-receipt/tasks.md Task 7
+//   specs/00-steering/brand-design-system.md §6, §2, §9
 //
-// Surface: Office. Capability gate: documents.read.
-// Offline: document listing is Tier 2 — online only, never cached.
-// TODO: wire to pick_lists + acknowledgement_receipts query
+// Surface: Office. Capability gate: documents.read (SOAs additionally require reporting.financial_read).
+// Offline: Tier 2 — online only, never cached.
 
 import Link from "next/link";
-import { FileText, Printer, Package, CheckCircle2 } from "lucide-react";
+import { FileText, ShieldAlert } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
+import { db } from "@/lib/db/client";
+import { listParties } from "@/lib/db/queries/parties";
+import {
+  listWrrArchiveDocuments,
+  listPickListArchiveDocuments,
+  listAcknowledgementReceiptArchiveDocuments,
+  listStatementOfAccountArchiveDocuments,
+  listPezaArchiveDocuments,
+} from "@/lib/db/queries/documents";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type FlowType = "VMI" | "Trading" | "Supplies";
-type PickListStatus = "committed" | "dispatched" | "cancelled";
-type ARStatus = "pending_signature" | "signed" | "disputed";
-
-// ─── Status helpers — tokens from tailwind.config.ts, no raw hex ──────────────
-// brand-design-system.md §1.3:
-//   committed / pending_signature → status-pending (amber)
-//   dispatched / signed           → status-available (green)
-//   cancelled / disputed          → status-held (red)
-
-const PICK_STATUS_CLASSES: Record<PickListStatus, string> = {
-  committed: "bg-status-pending/10 text-status-pending",
-  dispatched: "bg-status-available/10 text-status-available",
-  cancelled: "bg-status-held/10 text-status-held",
-};
-
-const PICK_STATUS_LABELS: Record<PickListStatus, string> = {
-  committed: "COMMITTED",
-  dispatched: "DISPATCHED",
-  cancelled: "CANCELLED",
-};
-
-const AR_STATUS_CLASSES: Record<ARStatus, string> = {
-  pending_signature: "bg-status-pending/10 text-status-pending",
-  signed: "bg-status-available/10 text-status-available",
-  disputed: "bg-status-held/10 text-status-held",
-};
-
-const AR_STATUS_LABELS: Record<ARStatus, string> = {
-  pending_signature: "PENDING SIGNATURE",
-  signed: "SIGNED",
-  disputed: "DISPUTED",
-};
-
-const FLOW_CLASSES: Record<FlowType, string> = {
-  VMI: "bg-brand-royal-blue/10 text-brand-royal-blue",
-  Trading: "bg-brand-navy/10 text-brand-navy",
-  Supplies: "bg-status-neutral/10 text-status-neutral",
-};
-
-// ─── Mock data ────────────────────────────────────────────────────────────────
-// TODO: wire to pick_lists + acknowledgement_receipts query
-
-const MOCK_PICK_LISTS = [
-  {
-    id: "pl-001",
-    number: "PL-2026-001",
-    party: "Acme Logistics Co.",
-    itemsCount: 4,
-    flow: "VMI" as FlowType,
-    status: "dispatched" as PickListStatus,
-    createdAt: "2026-08-07",
-  },
-  {
-    id: "pl-002",
-    number: "PL-2026-002",
-    party: "Nexus Distribution Ltd.",
-    itemsCount: 7,
-    flow: "Trading" as FlowType,
-    status: "committed" as PickListStatus,
-    createdAt: "2026-08-08",
-  },
-  {
-    id: "pl-003",
-    number: "PL-2026-003",
-    party: "Dyna-Serv Internal",
-    itemsCount: 2,
-    flow: "Supplies" as FlowType,
-    status: "cancelled" as PickListStatus,
-    createdAt: "2026-08-09",
-  },
-];
-
-const MOCK_ACKNOWLEDGEMENT_RECEIPTS = [
-  {
-    id: "ar-001",
-    number: "AR-2026-001",
-    party: "Acme Logistics Co.",
-    pickListNumber: "PL-2026-001",
-    itemsCount: 4,
-    status: "signed" as ARStatus,
-    date: "2026-08-07",
-  },
-  {
-    id: "ar-002",
-    number: "AR-2026-002",
-    party: "Nexus Distribution Ltd.",
-    pickListNumber: "PL-2026-002",
-    itemsCount: 7,
-    status: "pending_signature" as ARStatus,
-    date: "2026-08-08",
-  },
-  {
-    id: "ar-003",
-    number: "AR-2026-003",
-    party: "Global Parts Inc.",
-    pickListNumber: "PL-2025-044",
-    itemsCount: 3,
-    status: "disputed" as ARStatus,
-    date: "2026-08-05",
-  },
-];
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
+import { DocumentsHeader } from "./_components/DocumentsHeader";
+import { DocumentsFilterBar, type FilterPartyOption } from "./_components/DocumentsFilterBar";
+import { WrrDocumentsTable } from "./_components/WrrDocumentsTable";
+import { PickListsTable } from "./_components/PickListsTable";
+import { AcknowledgementReceiptsTable } from "./_components/AcknowledgementReceiptsTable";
+import { StatementsOfAccountTable } from "./_components/StatementsOfAccountTable";
+import { PezaDocumentsTable } from "./_components/PezaDocumentsTable";
 
 interface PageProps {
   searchParams: Promise<{
     tab?: string;
-    type?: string;
+    q?: string;
+    partyId?: string;
+    flowType?: string;
     status?: string;
-    party?: string;
     from?: string;
     to?: string;
-    q?: string;
+    page?: string;
   }>;
 }
 
-import {
-  FilterablePickListsTable,
-  FilterableARTable,
-  type MockPickListDoc,
-  type MockARDoc,
-} from "./_components/DocumentsFilterableTable";
-
 export default async function DocumentsPage({ searchParams }: PageProps) {
-  const { tab: tabParam, q: searchQuery } = await searchParams;
+  const {
+    tab: tabParam,
+    q: searchQuery,
+    partyId: partyParam,
+    flowType: flowParam,
+    status: statusParam,
+    from: fromParam,
+    to: toParam,
+  } = await searchParams;
 
   const resolver = await createPageResolver();
   const permResult = await requirePermission(resolver, "documents.read");
@@ -155,34 +66,133 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
           className="mx-auto mb-3 text-text-grey"
           aria-hidden="true"
         />
-        <p className="font-body text-body-md text-text-grey">
-          You do not have permission to view documents.
+        <h2 className="font-heading text-headline-md font-bold text-on-surface">
+          Access Restricted
+        </h2>
+        <p className="mt-1 font-body text-body-md text-text-grey">
+          You do not have permission to view the Documents Center.
         </p>
         <p className="mt-2 font-body text-body-sm text-text-grey">
           This page requires the{" "}
-          <span className="font-mono text-mono-md">documents.read</span>{" "}
+          <span className="font-mono text-mono-md font-bold">documents.read</span>{" "}
           capability.
         </p>
       </div>
     );
   }
 
-  const activeTab = tabParam === "acknowledgement-receipts" ? "ar" : "pick-lists";
+  // Financial clearance check for the Statements of Account tab
+  const financialPerm = await requirePermission(resolver, "reporting.financial_read");
+  const canReadFinancial = financialPerm.kind === "authorized";
+
+  // Active tab resolution
+  const validTabs = ["wrr", "pick-lists", "acknowledgement-receipts", "soa", "peza"] as const;
+  type DocTab = typeof validTabs[number];
+  const activeTab: DocTab = validTabs.includes(tabParam as DocTab) ? (tabParam as DocTab) : "wrr";
+
+  const filters = {
+    search: searchQuery,
+    partyId: partyParam,
+    flowType: flowParam,
+    status: statusParam,
+    from: fromParam,
+    to: toParam,
+    limit: 50,
+  };
+
+  // Parallel loading of organization options & active tab data
+  const [partiesResult, wrrRows, pickListRows, arRows, soaRows, pezaRows] = await Promise.all([
+    listParties(db, { limit: 100 }),
+    activeTab === "wrr" ? listWrrArchiveDocuments(db, filters) : Promise.resolve([]),
+    activeTab === "pick-lists" ? listPickListArchiveDocuments(db, filters) : Promise.resolve([]),
+    activeTab === "acknowledgement-receipts" ? listAcknowledgementReceiptArchiveDocuments(db, filters) : Promise.resolve([]),
+    activeTab === "soa" && canReadFinancial ? listStatementOfAccountArchiveDocuments(db, filters) : Promise.resolve([]),
+    activeTab === "peza" ? listPezaArchiveDocuments(db, filters) : Promise.resolve([]),
+  ]);
+
+  const organizationOptions: FilterPartyOption[] = partiesResult.rows.map((p) => ({
+    id: p.id,
+    name: p.name,
+    code: p.code,
+  }));
+
+  // Status options per tab
+  const statusOptionsMap: Record<DocTab, { label: string; value: string }[]> = {
+    wrr: [
+      { label: "Pending Arrival", value: "staged_pending_arrival" },
+      { label: "In Progress", value: "receiving_in_progress" },
+      { label: "Completed", value: "completed" },
+      { label: "Quarantined", value: "quarantined" },
+    ],
+    "pick-lists": [
+      { label: "Ready", value: "ready" },
+      { label: "Pending", value: "pending" },
+      { label: "Generating", value: "generating" },
+      { label: "Failed", value: "failed" },
+    ],
+    "acknowledgement-receipts": [
+      { label: "Ready", value: "ready" },
+      { label: "Pending", value: "pending" },
+      { label: "Generating", value: "generating" },
+      { label: "Failed", value: "failed" },
+      { label: "Voided", value: "voided" },
+    ],
+    soa: [
+      { label: "Draft", value: "draft" },
+      { label: "Issued", value: "issued" },
+      { label: "Voided", value: "voided" },
+    ],
+    peza: [
+      { label: "Active", value: "active" },
+      { label: "Expired", value: "expired" },
+    ],
+  };
+
+  const tabLabelMap: Record<DocTab, string> = {
+    wrr: "WRR",
+    "pick-lists": "Pick List",
+    "acknowledgement-receipts": "Delivery Receipt",
+    soa: "Statement of Account",
+    peza: "PEZA & Customs Permit",
+  };
+
+  const currentCount =
+    activeTab === "wrr"
+      ? wrrRows.length
+      : activeTab === "pick-lists"
+      ? pickListRows.length
+      : activeTab === "acknowledgement-receipts"
+      ? arRows.length
+      : activeTab === "soa"
+      ? soaRows.length
+      : pezaRows.length;
 
   return (
     <div className="mx-auto max-w-container">
-      {/* Page header — text-headline-xl Fira Sans Bold per brand-design-system.md §2 */}
-      <div>
-        <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
-          Documents
-        </h1>
-        <p className="mt-1 font-body text-body-md text-text-grey">
-          Generated pick lists and acknowledgement receipts.
-        </p>
-      </div>
+      {/* Header */}
+      <DocumentsHeader
+        totalCount={currentCount}
+        activeTabLabel={tabLabelMap[activeTab]}
+      />
 
-      {/* Tabs */}
-      <div role="tablist" aria-label="Documents sections" className="mt-6 flex gap-1 border-b border-outline-variant/30">
+      {/* 5-Tab Navigation Strip */}
+      <div
+        role="tablist"
+        aria-label="Documents Center sections"
+        className="mb-6 flex flex-wrap items-center gap-1 border-b border-outline-variant/30"
+      >
+        <Link
+          href="/documents?tab=wrr"
+          role="tab"
+          aria-selected={activeTab === "wrr"}
+          className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
+            activeTab === "wrr"
+              ? "border-b-2 border-on-surface text-on-surface font-bold"
+              : "text-text-grey hover:text-on-surface"
+          }`}
+        >
+          WRRs (Receiving Reports)
+        </Link>
         <Link
           href="/documents?tab=pick-lists"
           role="tab"
@@ -198,24 +208,62 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
         <Link
           href="/documents?tab=acknowledgement-receipts"
           role="tab"
-          aria-selected={activeTab === "ar"}
+          aria-selected={activeTab === "acknowledgement-receipts"}
           className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
-            activeTab === "ar"
+            activeTab === "acknowledgement-receipts"
               ? "border-b-2 border-on-surface text-on-surface font-bold"
               : "text-text-grey hover:text-on-surface"
           }`}
         >
-          Acknowledgement Receipts
+          Delivery Receipts / AR
+        </Link>
+        <Link
+          href="/documents?tab=soa"
+          role="tab"
+          aria-selected={activeTab === "soa"}
+          className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
+            activeTab === "soa"
+              ? "border-b-2 border-on-surface text-on-surface font-bold"
+              : "text-text-grey hover:text-on-surface"
+          }`}
+        >
+          Statements of Account (SOAs)
+        </Link>
+        <Link
+          href="/documents?tab=peza"
+          role="tab"
+          aria-selected={activeTab === "peza"}
+          className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
+            activeTab === "peza"
+              ? "border-b-2 border-on-surface text-on-surface font-bold"
+              : "text-text-grey hover:text-on-surface"
+          }`}
+        >
+          PEZA & Logistics Permits
         </Link>
       </div>
 
-      {/* Tab content */}
-      <div className="mt-5">
-        {activeTab === "pick-lists" ? (
-          <FilterablePickListsTable rows={MOCK_PICK_LISTS as MockPickListDoc[]} initialSearch={searchQuery} />
-        ) : (
-          <FilterableARTable rows={MOCK_ACKNOWLEDGEMENT_RECEIPTS as MockARDoc[]} initialSearch={searchQuery} />
+      {/* Unified Search & Filters */}
+      <DocumentsFilterBar
+        organizations={organizationOptions}
+        statusOptions={statusOptionsMap[activeTab] ?? []}
+        activeTab={activeTab}
+      />
+
+      {/* Tab Table Body */}
+      <div>
+        {activeTab === "wrr" && <WrrDocumentsTable rows={wrrRows} />}
+        {activeTab === "pick-lists" && <PickListsTable rows={pickListRows} />}
+        {activeTab === "acknowledgement-receipts" && (
+          <AcknowledgementReceiptsTable rows={arRows} />
         )}
+        {activeTab === "soa" && (
+          <StatementsOfAccountTable
+            rows={soaRows}
+            canReadFinancial={canReadFinancial}
+          />
+        )}
+        {activeTab === "peza" && <PezaDocumentsTable rows={pezaRows} />}
       </div>
     </div>
   );

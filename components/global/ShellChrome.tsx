@@ -552,6 +552,5 @@ function getPageTitle(pathname: string): string {
   if (pathname.startsWith("/portal")) return "Organization Portal";
   if (pathname.startsWith("/settings")) return "Settings";
   if (pathname.startsWith("/profile")) return "Profile";
-  if (pathname.startsWith("/sync")) return "Sync Center";
   return "Dyna-Serv WIMS";
 }
