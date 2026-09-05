@@ -5,7 +5,7 @@ import {
   listPickListArchiveDocuments,
   listAcknowledgementReceiptArchiveDocuments,
   listStatementOfAccountArchiveDocuments,
-  listPezaArchiveDocuments,
+  listCiplArchiveDocuments,
 } from "../documents";
 
 describe("lib/db/queries/documents archive query suite", () => {
@@ -229,19 +229,25 @@ describe("lib/db/queries/documents archive query suite", () => {
     expect(result[0].lockedExchangeRatePhp).toBe(58.5);
   });
 
-  it("listPezaArchiveDocuments executes and maps database rows correctly", async () => {
+  it("listCiplArchiveDocuments executes and maps database rows correctly", async () => {
     const mockRows = [
       {
-        id: "permit-1",
-        permitNumber: "ELSE-LTP1-IE-007994-26E",
-        itemScope: "Reel, carrier tape, tray",
-        partyId: "cust-1",
-        partyName: "Nexus Distribution",
-        partyCode: "NEXUS",
-        validFrom: new Date("2026-01-01"),
-        validTo: new Date("2026-12-31"),
-        isActive: true,
-        createdAt: new Date("2026-01-01"),
+        id: "wrr-cipl-1",
+        wrrNumber: "WRR-2026-00045",
+        commercialInvoiceNo: "INV-2026-0889",
+        ciplFileUrl: "https://storage.example.com/inbound/cipl-0889.pdf",
+        pezaNumber: "PEZA-8105-01",
+        ipNumber: "IP-001",
+        mawbMblNumber: "MAWB-999",
+        vendorPartyId: "cust-1",
+        vendorPartyName: "Nexus Distribution",
+        vendorPartyCode: "NEXUS",
+        flowType: "vmi",
+        status: "completed",
+        createdAt: new Date("2026-08-05T08:00:00Z"),
+        confirmedAt: new Date("2026-08-05T10:00:00Z"),
+        itemCount: 8,
+        totalQuantity: 400,
       },
     ];
 
@@ -261,12 +267,14 @@ describe("lib/db/queries/documents archive query suite", () => {
       }),
     };
 
-    const result = await listPezaArchiveDocuments(mockDb, {
-      status: "active",
+    const result = await listCiplArchiveDocuments(mockDb, {
+      search: "INV-2026",
     });
 
     expect(result).toHaveLength(1);
-    expect(result[0].permitNumber).toBe("ELSE-LTP1-IE-007994-26E");
-    expect(result[0].status).toBe("active");
+    expect(result[0].commercialInvoiceNo).toBe("INV-2026-0889");
+    expect(result[0].ciplFileUrl).toBe("https://storage.example.com/inbound/cipl-0889.pdf");
+    expect(result[0].wrrNumber).toBe("WRR-2026-00045");
+    expect(result[0].itemCount).toBe(8);
   });
 });

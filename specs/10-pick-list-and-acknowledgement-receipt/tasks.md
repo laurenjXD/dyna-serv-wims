@@ -103,16 +103,16 @@ Testing: Unit rendering/metadata tests; Storage integration; Playwright print/re
 
 Testing: Unit query/component tests; Playwright archive search/filter/reprint/preview flows.
 
-- [ ] **7.1 Build Query Layer (`lib/db/queries/documents.ts`)**: Implement `listWrrArchiveDocuments`, `listPickListArchiveDocuments`, `listAcknowledgementReceiptArchiveDocuments`, `listStatementOfAccountArchiveDocuments`, and `listPezaArchiveDocuments` with typed filters (date range, organization, status, search keyword) and pagination.
+- [ ] **7.1 Build Query Layer (`lib/db/queries/documents.ts`)**: Implement `listWrrArchiveDocuments`, `listCiplArchiveDocuments`, `listPickListArchiveDocuments`, `listAcknowledgementReceiptArchiveDocuments`, and `listStatementOfAccountArchiveDocuments` with typed filters (date range, organization, status, search keyword) and pagination.
 - [ ] **7.2 Build Server Actions & Audit (`lib/actions/documents.ts`)**: Implement `requestDocumentReprint` (with append-only `document_events` logging), `getDocumentSignedUrl` (≤60-min TTL), and `retryDocumentGeneration` with RBAC guard (`documents.read`, `reporting.financial_read` for SOAs).
-- [ ] **7.3 Implement Documents Hub & Tabs (`app/(authenticated)/documents/page.tsx`)**: Render the 5-tab archive surface (WRRs, Pick Lists, Delivery Receipts / Acknowledgement Receipts, Statements of Account, PEZA Documents) with server-side URL search params integration (`tab`, `q`, `organizationId`, `from`, `to`, `status`, `page`).
+- [ ] **7.3 Implement Documents Hub & Tabs (`app/(authenticated)/documents/page.tsx`)**: Render the 5-tab archive surface (WRRs & Receipts, Inbound CI/PL & Invoices, Pick Lists & DRA/WRF, Delivery Receipts & Proof of Delivery, Statements of Account) with server-side URL search params integration (`tab`, `q`, `organizationId`, `from`, `to`, `status`, `page`).
 - [ ] **7.4 Implement Unified Filter & Search Bar**: Debounced keyword search, organization selector, date-range picker, and status filter pills using brand design system tokens.
 - [ ] **7.5 Implement 5 Dedicated Sub-tab Tables**:
   - `WrrDocumentsTable`: WRR #, receiving date, supplier/client organization, inventory model, items count, total quantity, status pill, preview/download action.
+  - `CiplDocumentsTable`: Commercial Invoice #, linked WRR #, vendor organization, inventory model, items count, total quantity, view/download CI/PL action.
   - `PickListsTable`: Pick list #, generation date/time, customer organization, inventory model, items count, package count, status pill, preview/reprint/download action.
-  - `AcknowledgementReceiptsTable`: AR #, dispatch date/time, customer organization, inventory model, currency & total, status pill, preview/reprint/download action.
+  - `AcknowledgementReceiptsTable`: DR/AR #, dispatch date/time, customer organization, inventory model, currency & total, status pill, preview/reprint/download action.
   - `StatementsOfAccountTable`: SOA #, month/year range, organization, CBM storage volume, total charges (PHP/USD), status pill, 4-document bundle download (gated `reporting.financial_read`).
-  - `PezaDocumentsTable`: Permit/document #, issuance date, organization, movement type, expiry/clearance date, status pill, preview/download action.
 - [ ] **7.6 Implement Document Preview Modal & Metadata Inspector**: Accessible preview dialog rendering PDF via blob/signed URL, collapsible metadata inspector (SHA-256 hash, template version, timestamp Asia/Manila, actor/correlation ID), and 3-component error state fallback.
 - [ ] **7.7 Implement Watermarked Reprint Flow**: Confirmation dialog, reason capture, `document_events` append-only audit entry, and diagonal watermark overlay (`REPRINT — [Timestamp]`).
 - [ ] **7.8 Enforce Permissions & Scopes**: Office shell mount under `Reports` group with `surface: "office"`, gating `documents.read` on base page and `reporting.financial_read` on SOA tab. Update `ROUTE_REGISTRY` launchStatus to `"launch"`.

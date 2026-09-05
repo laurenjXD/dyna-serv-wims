@@ -1,6 +1,6 @@
 # Revision Log — Hyperion 3PL / Dyna-Serv
 
-## Removal of `/sync` Page & Central Documents Archive Specification (`10-pick-list-and-acknowledgement-receipt`) (2026-09-05)
+## Removal of `/sync` Page, Central Documents Archive (`10-pick-list-and-acknowledgement-receipt`), & Item Classification Hierarchy (2026-09-05)
 
 **What changed**:
 1. **Removal of `/sync` Page**:
@@ -9,10 +9,20 @@
    - Removed `/sync` mapping from [`components/global/ShellChrome.tsx`](file:///d:/School-related%20docus/dyna-serv%20wims/components/global/ShellChrome.tsx).
    - Updated shell navigation and registry tests (`lib/shell/__tests__/navigation.test.ts`, `lib/shell/__tests__/registry.test.ts`, `components/global/__tests__/ShellNavigation.test.tsx`).
    - Verified 16/16 test suites (250 tests) green.
-2. **Documents Center Page Specification (`10-pick-list-and-acknowledgement-receipt`)**:
-   - Updated [`specs/10-pick-list-and-acknowledgement-receipt/requirements.md`](file:///d:/School-related%20docus/dyna-serv%20wims/specs/10-pick-list-and-acknowledgement-receipt/requirements.md), [`design.md`](file:///d:/School-related%20docus/dyna-serv%20wims/specs/10-pick-list-and-acknowledgement-receipt/design.md), and [`tasks.md`](file:///d:/School-related%20docus/dyna-serv%20wims/specs/10-pick-list-and-acknowledgement-receipt/tasks.md) to define the full specification for the `/documents` page.
-   - Defined 5 authoritative sub-tabs: WRRs, Pick Lists, Delivery Receipts / Acknowledgement Receipts (DR/AR), Statements of Account (SOAs - gated `reporting.financial_read`), and PEZA/Logistics Documents.
-   - Specified data access layer (`lib/db/queries/documents.ts`), server actions & audit trail (`lib/actions/documents.ts`), unified filter bar (search, organization, date range, status), accessible PDF preview modal, watermarked reprint flow (`document_events`), and permanent tiered retention.
+2. **Documents Center Real Warehouse Taxonomy (`10-pick-list-and-acknowledgement-receipt`)**:
+   - Updated [`specs/10-pick-list-and-acknowledgement-receipt/requirements.md`](file:///d:/School-related%20docus/dyna-serv%20wims/specs/10-pick-list-and-acknowledgement-receipt/requirements.md), [`design.md`](file:///d:/School-related%20docus/dyna-serv%20wims/specs/10-pick-list-and-acknowledgement-receipt/design.md), and [`tasks.md`](file:///d:/School-related%20docus/dyna-serv%20wims/specs/10-pick-list-and-acknowledgement-receipt/tasks.md) to reflect actual warehouse document workflows:
+     - **WRRs & Inbound Receipts**: Generated WRR PDFs & Inbound Receipts (`wrr_documents`).
+     - **Inbound CI/PL & Invoices**: Uploaded Commercial Invoices, Packing Lists & Attached Supplier Receipts (`wrr_documents.cipl_file_url`).
+     - **Pick Lists & DRA/WRF**: Generated Pick Lists (`generated_documents` `pick_list`) & Uploaded Withdrawal Request Forms (WRF) / Delivery Request Authorizations (DRA).
+     - **Delivery Receipts & Proof of Delivery (DR / POD)**: Generated Delivery Receipts / Acknowledgement Receipts (`generated_documents` `acknowledgement_receipt`) & Uploaded Signed Proof of Delivery (POD).
+     - **Statements of Account (SOA)**: Monthly Billing Statements (`vmi_billing_periods` gated by `reporting.financial_read`).
+   - **PEZA Logistics Permits Removed**: Removed PEZA logistics permit documents from active taxonomy per operational confirmation that Dyna-Serv WIMS does not process PEZA logistics permit documents.
+   - Implemented `listCiplArchiveDocuments` in `lib/db/queries/documents.ts` and `CiplDocumentsTable.tsx` in `app/(authenticated)/documents/_components/`.
+   - Wired Server Action `requestDocumentReprintAction` via `app/(authenticated)/documents/_actions.ts` with `"use server"`, preventing client-side `next/headers` leaks.
+3. **Item Enrollment Classification Hierarchy (`06-party-and-item-enrollment`)**:
+   - Updated `app/(authenticated)/master-data/items/_components/item-form.tsx` classification hierarchy:
+     - Hierarchy: Inventory Model ➔ Category (grouped into Finished Goods & Raw Materials optgroups) ➔ FG/RAW Classification (beside category) ➔ Subcategory (last in hierarchy).
+     - Live breadcrumb and visual badge helper guide user through the selection flow.
 
 ## Organization Billing & 3-Year Monthly Statements Archive Integration (2026-08-31)
 

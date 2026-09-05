@@ -274,15 +274,16 @@ Maximum 3 generation attempts per document request. Delay between attempts: 30 s
 app/(authenticated)/
   documents/
     page.tsx                                # Main Documents archive hub (Server Component)
+    _actions.ts                             # Server Actions (requestDocumentReprintAction, etc.)
     _components/
       DocumentsHeader.tsx                   # Title, count summary, refresh action
-      DocumentsTabs.tsx                     # 5-tab switch (WRRs, Pick Lists, ARs, SOAs, PEZA)
+      DocumentsTabs.tsx                     # 5-tab switch (WRRs, Inbound CI/PL, Pick Lists & DRA, DR & POD, SOAs)
       DocumentsFilterBar.tsx                # Unified search, organization dropdown, date range, status
-      WrrDocumentsTable.tsx                 # Tab 1: WRR archive table
-      PickListsTable.tsx                    # Tab 2: Pick List archive table
-      AcknowledgementReceiptsTable.tsx      # Tab 3: Delivery / Acknowledgement Receipt table
-      StatementsOfAccountTable.tsx          # Tab 4: VMI SOA bundles table
-      PezaDocumentsTable.tsx                # Tab 5: Logistics & PEZA permits table
+      WrrDocumentsTable.tsx                 # Tab 1: WRRs & Inbound Receipts table
+      CiplDocumentsTable.tsx                # Tab 2: Uploaded Inbound CI/PL & Supplier Invoices table
+      PickListsTable.tsx                    # Tab 3: Pick Lists & DRA/WRF table
+      AcknowledgementReceiptsTable.tsx      # Tab 4: Delivery Receipts & Proof of Delivery (DR / POD) table
+      StatementsOfAccountTable.tsx          # Tab 5: Statements of Account (SOA) table
       DocumentPreviewModal.tsx              # Shared accessible PDF preview modal + metadata inspector
       DocumentReprintDialog.tsx             # Reprint confirmation and audit reason dialog
     [documentId]/
@@ -294,23 +295,24 @@ app/(authenticated)/
 The Documents page consumes type-safe query functions that resolve joined metadata from authoritative tables without client-side data synthesis:
 
 1. **`listWrrArchiveDocuments(db, filters)`**:
-   - Joins `wrr_documents`, `parties`, `users` (received_by).
-   - Aggregates item counts from `wrr_items`.
-   - Filters by date range, supplier/client party ID, status, and search term (`document_number`, `cipl_number`, `bill_of_lading`).
-2. **`listPickListArchiveDocuments(db, filters)`**:
-   - Joins `generated_documents` (type: `'pick_list'`), `inventory_commitments`, `pick_lists`, `parties`, and `users` (authorized_by / created_by).
+   - Joins `wrr_documents`, `parties`, `user_profiles` (staged_by).
+   - Aggregates item counts and total quantity from `wrr_items`.
+   - Filters by date range, vendor party ID, status, and search term (`wrr_number`, `commercial_invoice_no`, `peza_number`, `mawb_mbl_number`).
+2. **`listCiplArchiveDocuments(db, filters)`**:
+   - Queries `wrr_documents` with attached Commercial Invoice / Packing List URLs (`cipl_file_url`), vendor party, and item count.
+   - Filters by date range, vendor party ID, status, and search term.
+3. **`listPickListArchiveDocuments(db, filters)`**:
+   - Joins `generated_documents` (type: `'pick_list'`), `inventory_commitments`, `pick_lists`, `parties`, and `user_profiles` (created_by).
    - Resolves committed packaging/line totals from `pick_list_items`.
    - Filters by date range, customer party ID, flow type, and status.
-3. **`listAcknowledgementReceiptArchiveDocuments(db, filters)`**:
-   - Joins `generated_documents` (type: `'acknowledgement_receipt'`), `inventory_commitments`, `pick_lists`, `parties`, and `users` (dispatched_by).
-   - Resolves dispatched quantities and frozen financial totals.
+4. **`listAcknowledgementReceiptArchiveDocuments(db, filters)`**:
+   - Joins `generated_documents` (type: `'acknowledgement_receipt'`), `inventory_commitments`, `pick_lists`, `parties`, and `user_profiles` (dispatched_by).
+   - Resolves dispatched quantities, pricing currency, and frozen financial totals.
    - Filters by date range, customer party ID, flow type, status.
-4. **`listStatementOfAccountArchiveDocuments(db, filters)`**:
-   - Joins `vmi_billing_periods`, `parties`, and `generated_documents` (SOA artifacts).
+5. **`listStatementOfAccountArchiveDocuments(db, filters)`**:
+   - Joins `vmi_billing_periods`, `parties`, and `user_profiles` (closed_by).
    - Gated by `reporting.financial_read` capability.
    - Resolves period CBM totals, total PHP/USD billing lines.
-5. **`listPezaArchiveDocuments(db, filters)`**:
-   - Queries customs/PEZA cross-referenced documents and linked dispatch/receiving entities.
 
 ### 9.3 Server Actions & Audit Trail (`lib/actions/documents.ts`)
 

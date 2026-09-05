@@ -38,38 +38,38 @@ Across all user-facing document screens, forms, headers, previews, and PDFs:
 The Documents page (`/documents`) provides an integrated, office-grade central document archive for internal office staff, supervisors, and administrators.
 
 ### 3.1 Sub-tab structure
-The Documents surface is divided into five authoritative sub-tabs:
+The Documents surface is divided into five authoritative sub-tabs matching real warehouse operations:
 
-1. **WRRs (Warehouse Receiving Reports)**:
-   - Archive of inbound receiving documents (`wrr_documents`).
+1. **WRRs (Warehouse Receiving Reports & Receipts)**:
+   - Archive of generated inbound receiving documents (`wrr_documents`) and inbound receipts.
    - Sourced from inbound receiving workflows (`07-incoming-receiving`).
    - Fields: WRR Document Number (`WRR-YYYY-NNNNNN`), Arrival/Receiving Date, Supplier/Client Organization, Inventory Model, Item Count, Total Quantity, Received By Staff, Status (`draft`, `pending_inspection`, `completed`, `cancelled`).
    - Actions: Open Record Summary, Preview Printable WRR PDF, Download PDF Artifact, Direct Link to `/receiving/[wrr_id]`.
 
-2. **Pick Lists**:
-   - Archive of outbound picking instructions (`generated_documents` WHERE `document_type = 'pick_list'`).
+2. **Inbound CI/PL & Invoices**:
+   - Archive of uploaded Commercial Invoices, Packing Lists, and attached supplier receipts.
+   - Sourced from inbound pre-receiving and receiving documentation (`07-incoming-receiving`).
+   - Fields: Commercial Invoice Number, Linked WRR Number, Vendor/Supplier Organization, Inventory Model, Item Count, Total Quantity, Upload Date, File Link / Storage URL.
+   - Actions: Open Linked WRR, View/Download Attached CI/PL PDF or Image.
+
+3. **Pick Lists & DRA / WRF**:
+   - Archive of generated outbound picking instructions (`generated_documents` WHERE `document_type = 'pick_list'`) and uploaded Delivery Request Authorizations (DRA) / Withdrawal Request Forms (WRF).
    - Sourced from committed outbound allocations (`08-outgoing-withdrawal-and-two-stage-commitment`).
    - Fields: Pick List Number (`PL-YYYY-NNNNNN`), Generation Date/Time, Customer Organization, Inventory Model, Line Item Count, Total Package/Box Count, Authorized By Staff, Status (`allocated`, `picked`, `dispatched`, `cancelled`).
    - Actions: Open Snapshot Detail, View/Print Read-Only PDF, Trigger Reprint with Watermark, Download PDF Artifact.
 
-3. **Delivery Receipts / Acknowledgement Receipts (DR / AR)**:
-   - Archive of outbound proof-of-dispatch and physical handoff documents (`generated_documents` WHERE `document_type = 'acknowledgement_receipt'`).
+4. **Delivery Receipts & Proof of Delivery (DR / POD / AR)**:
+   - Archive of generated outbound Delivery Receipts / Acknowledgement Receipts (`generated_documents` WHERE `document_type = 'acknowledgement_receipt'`) and uploaded signed Proof of Delivery (POD / DR).
    - Sourced from completed Stage 2 dispatches (`08`) with pricing snapshot from `12` (VMI reference) or `13` (Trading final).
-   - Fields: AR Number (`AR-YYYY-NNNNNN`), Dispatch Date/Time, Customer Organization, Inventory Model, Currency, Total Amount (Trading final; VMI reference with disclaimer; Supplies omitted), Dispatched By Staff, Status (`pending`, `generating`, `ready`, `failed`, `voided`).
-   - Actions: Open Snapshot Detail, View/Print PDF, Reprint with Watermark, Download PDF Artifact, View Supersession History.
+   - Fields: DR/AR Number (`AR-YYYY-NNNNNN`), Dispatch Date/Time, Customer Organization, Inventory Model, Currency, Total Amount (Trading final; VMI reference with disclaimer; Supplies omitted), Dispatched By Staff, Status (`pending`, `generating`, `ready`, `failed`, `voided`).
+   - Actions: Open Snapshot Detail, View/Print PDF, Reprint with Watermark, Download PDF Artifact, View Signed POD Uploads, View Supersession History.
 
-4. **Statements of Account (SOAs)**:
+5. **Statements of Account (SOAs)**:
    - Archive of monthly commercial billing statement bundles (`vmi_billing_periods` + `generated_documents`).
    - Sourced from period-close billing calculations (`12-vmi-billing`).
    - Gated by `reporting.financial_read` capability.
    - Fields: Period Identifier (`SOA-YYYY-MM-NN`), Period Date Range (Month/Year), Organization, Total Storage Volume (CBM), Total Incurred Charges (PHP / USD), Issued Date, Closed By Staff, Status (`draft`, `issued`, `settled`, `superseded`).
    - Actions: View Billing Period Breakdown, Download 4-Document PDF Bundle (Statement of Account, CBM Calculation Sheet, Itemized Movement / Storage Ledger, Letter of Authority), View Charge Adjustments.
-
-5. **Logistics & PEZA Documents**:
-   - Archive of regulatory compliance, customs, and logistics clearance documents.
-   - Cross-referenced against dispatches, transfers, and bonded inventory movements.
-   - Fields: Document/Permit Number (e.g. PEZA Form 8105/8106, Boat Note, Gate Pass, Carrier Waybill), Issuance Date, Organization, Movement Type, Expiry / Clearance Date, Status (`active`, `cleared`, `expired`, `cancelled`).
-   - Actions: View Permit Details, Link to Associated WRR or Pick List, Download Attached/Generated PDF.
 
 ### 3.2 Global Controls & Filter Surface
 All sub-tabs share a unified office filtering and search interface:
@@ -105,7 +105,7 @@ All sub-tabs share a unified office filtering and search interface:
 ### R2. Documents Archive Page (`/documents`)
 
 1. The office shell SHALL provide `/documents` under the **Reports** navigation group with `surface: "office"` and `capability: "documents.read"`.
-2. The page SHALL render five discrete tabs: WRRs, Pick Lists, Delivery Receipts / Acknowledgement Receipts, Statements of Account, and PEZA Documents.
+2. The page SHALL render five discrete tabs: WRRs & Inbound Receipts, Inbound CI/PL & Invoices, Pick Lists & DRA/WRF, Delivery Receipts & Proof of Delivery (DR / POD), and Statements of Account.
 3. Access to the Statements of Account tab SHALL additionally require the `reporting.financial_read` capability. If a user holds `documents.read` but lacks `reporting.financial_read`, the SOA tab is rendered in a disabled/restricted state with a clear explanation or omitted.
 4. All tab views SHALL support unified search, date-range filtering, organization filtering, and status filtering.
 5. Document status pills SHALL strictly use brand tokens:
@@ -131,7 +131,7 @@ All sub-tabs share a unified office filtering and search interface:
 
 - [ ] Documents generate synchronously inline with nightly orphan cleanup.
 - [ ] User-facing UI labels use Organization, Inventory Model, Organization Portal, and Delivery Receipt / Acknowledgement Receipt exclusively.
-- [ ] Central Documents page (`/documents`) mounts all 5 sub-tabs (WRRs, Pick Lists, Delivery Receipts / Acknowledgement Receipts, Statements of Account, PEZA Documents) with real database queries.
+- [ ] Central Documents page (`/documents`) mounts all 5 sub-tabs (WRRs & Receipts, Inbound CI/PL, Pick Lists & DRA/WRF, Delivery Receipts & POD, Statements of Account) with real database queries.
 - [ ] Global search, organization filter, date-range picker, and status filters work across all sub-tabs.
 - [ ] PDF preview modal allows viewing, downloading, and printing generated artifacts.
 - [ ] Reprint action logs an append-only `document_events` record and displays the required watermark.

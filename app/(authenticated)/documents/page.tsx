@@ -17,19 +17,19 @@ import { db } from "@/lib/db/client";
 import { listParties } from "@/lib/db/queries/parties";
 import {
   listWrrArchiveDocuments,
+  listCiplArchiveDocuments,
   listPickListArchiveDocuments,
   listAcknowledgementReceiptArchiveDocuments,
   listStatementOfAccountArchiveDocuments,
-  listPezaArchiveDocuments,
 } from "@/lib/db/queries/documents";
 
 import { DocumentsHeader } from "./_components/DocumentsHeader";
 import { DocumentsFilterBar, type FilterPartyOption } from "./_components/DocumentsFilterBar";
 import { WrrDocumentsTable } from "./_components/WrrDocumentsTable";
+import { CiplDocumentsTable } from "./_components/CiplDocumentsTable";
 import { PickListsTable } from "./_components/PickListsTable";
 import { AcknowledgementReceiptsTable } from "./_components/AcknowledgementReceiptsTable";
 import { StatementsOfAccountTable } from "./_components/StatementsOfAccountTable";
-import { PezaDocumentsTable } from "./_components/PezaDocumentsTable";
 
 interface PageProps {
   searchParams: Promise<{
@@ -85,8 +85,9 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
   const financialPerm = await requirePermission(resolver, "reporting.financial_read");
   const canReadFinancial = financialPerm.kind === "authorized";
 
-  // Active tab resolution
-  const validTabs = ["wrr", "pick-lists", "acknowledgement-receipts", "soa", "peza"] as const;
+  // Active tab resolution — Real warehouse document categories:
+  // WRR (PDFs) | CI/PL (Uploaded invoices & packing lists) | Pick Lists & DRA/WRF | Delivery Receipts & POD | SOAs
+  const validTabs = ["wrr", "cipl", "pick-lists", "acknowledgement-receipts", "soa"] as const;
   type DocTab = typeof validTabs[number];
   const activeTab: DocTab = validTabs.includes(tabParam as DocTab) ? (tabParam as DocTab) : "wrr";
 
@@ -101,13 +102,13 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
   };
 
   // Parallel loading of organization options & active tab data
-  const [partiesResult, wrrRows, pickListRows, arRows, soaRows, pezaRows] = await Promise.all([
+  const [partiesResult, wrrRows, ciplRows, pickListRows, arRows, soaRows] = await Promise.all([
     listParties(db, { limit: 100 }),
     activeTab === "wrr" ? listWrrArchiveDocuments(db, filters) : Promise.resolve([]),
+    activeTab === "cipl" ? listCiplArchiveDocuments(db, filters) : Promise.resolve([]),
     activeTab === "pick-lists" ? listPickListArchiveDocuments(db, filters) : Promise.resolve([]),
     activeTab === "acknowledgement-receipts" ? listAcknowledgementReceiptArchiveDocuments(db, filters) : Promise.resolve([]),
     activeTab === "soa" && canReadFinancial ? listStatementOfAccountArchiveDocuments(db, filters) : Promise.resolve([]),
-    activeTab === "peza" ? listPezaArchiveDocuments(db, filters) : Promise.resolve([]),
   ]);
 
   const organizationOptions: FilterPartyOption[] = partiesResult.rows.map((p) => ({
@@ -122,6 +123,12 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
       { label: "Pending Arrival", value: "staged_pending_arrival" },
       { label: "In Progress", value: "receiving_in_progress" },
       { label: "Completed", value: "completed" },
+      { label: "Quarantined", value: "quarantined" },
+    ],
+    cipl: [
+      { label: "Pending Arrival", value: "staged_pending_arrival" },
+      { label: "In Progress", value: "receiving_in_progress" },
+      { label: "Received & Matched", value: "completed" },
       { label: "Quarantined", value: "quarantined" },
     ],
     "pick-lists": [
@@ -142,30 +149,26 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
       { label: "Issued", value: "issued" },
       { label: "Voided", value: "voided" },
     ],
-    peza: [
-      { label: "Active", value: "active" },
-      { label: "Expired", value: "expired" },
-    ],
   };
 
   const tabLabelMap: Record<DocTab, string> = {
-    wrr: "WRR",
-    "pick-lists": "Pick List",
-    "acknowledgement-receipts": "Delivery Receipt",
+    wrr: "WRR (Receiving Report)",
+    cipl: "Inbound CI/PL & Invoice",
+    "pick-lists": "Pick List & DRA/WRF",
+    "acknowledgement-receipts": "Delivery Receipt & POD",
     soa: "Statement of Account",
-    peza: "PEZA & Customs Permit",
   };
 
   const currentCount =
     activeTab === "wrr"
       ? wrrRows.length
+      : activeTab === "cipl"
+      ? ciplRows.length
       : activeTab === "pick-lists"
       ? pickListRows.length
       : activeTab === "acknowledgement-receipts"
       ? arRows.length
-      : activeTab === "soa"
-      ? soaRows.length
-      : pezaRows.length;
+      : soaRows.length;
 
   return (
     <div className="mx-auto max-w-container">
@@ -194,6 +197,18 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
           WRRs (Receiving Reports)
         </Link>
         <Link
+          href="/documents?tab=cipl"
+          role="tab"
+          aria-selected={activeTab === "cipl"}
+          className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
+            activeTab === "cipl"
+              ? "border-b-2 border-on-surface text-on-surface font-bold"
+              : "text-text-grey hover:text-on-surface"
+          }`}
+        >
+          Inbound CI/PL &amp; Invoices
+        </Link>
+        <Link
           href="/documents?tab=pick-lists"
           role="tab"
           aria-selected={activeTab === "pick-lists"}
@@ -203,7 +218,7 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
               : "text-text-grey hover:text-on-surface"
           }`}
         >
-          Pick Lists
+          Pick Lists &amp; DRA/WRF
         </Link>
         <Link
           href="/documents?tab=acknowledgement-receipts"
@@ -215,7 +230,7 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
               : "text-text-grey hover:text-on-surface"
           }`}
         >
-          Delivery Receipts / AR
+          Delivery Receipts &amp; POD (DR/AR)
         </Link>
         <Link
           href="/documents?tab=soa"
@@ -229,18 +244,6 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
         >
           Statements of Account (SOAs)
         </Link>
-        <Link
-          href="/documents?tab=peza"
-          role="tab"
-          aria-selected={activeTab === "peza"}
-          className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
-            activeTab === "peza"
-              ? "border-b-2 border-on-surface text-on-surface font-bold"
-              : "text-text-grey hover:text-on-surface"
-          }`}
-        >
-          PEZA & Logistics Permits
-        </Link>
       </div>
 
       {/* Unified Search & Filters */}
@@ -253,6 +256,7 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
       {/* Tab Table Body */}
       <div>
         {activeTab === "wrr" && <WrrDocumentsTable rows={wrrRows} />}
+        {activeTab === "cipl" && <CiplDocumentsTable rows={ciplRows} />}
         {activeTab === "pick-lists" && <PickListsTable rows={pickListRows} />}
         {activeTab === "acknowledgement-receipts" && (
           <AcknowledgementReceiptsTable rows={arRows} />
@@ -263,7 +267,6 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
             canReadFinancial={canReadFinancial}
           />
         )}
-        {activeTab === "peza" && <PezaDocumentsTable rows={pezaRows} />}
       </div>
     </div>
   );

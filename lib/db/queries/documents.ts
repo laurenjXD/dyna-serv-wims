@@ -161,21 +161,27 @@ export type StatementOfAccountArchiveRow = {
   createdAt: Date;
 };
 
-export type PezaArchiveRow = {
+export type CiplArchiveRow = {
   id: string;
-  permitNumber: string;
-  permitType: string;
-  partyId: string;
-  partyName: string;
-  partyCode: string;
-  referenceDocType: "wrr" | "pick_list" | "standalone";
-  referenceDocNumber: string | null;
-  referenceDocId: string | null;
-  issuedDate: string | Date;
-  expiryDate: string | Date | null;
+  wrrId: string;
+  wrrNumber: string;
+  commercialInvoiceNo: string | null;
+  ciplFileUrl: string | null;
+  pezaNumber: string | null;
+  ipNumber: string | null;
+  mawbMblNumber: string | null;
+  vendorPartyId: string;
+  vendorPartyName: string;
+  vendorPartyCode: string;
+  flowType: string;
   status: string;
-  fileUrl: string | null;
+  itemCount: number;
+  totalQuantity: number;
+  createdAt: Date;
+  confirmedAt: Date | null;
 };
+
+export type PezaArchiveRow = CiplArchiveRow;
 
 /**
  * Party Portal — pick_list documents scoped to the caller's own party
@@ -616,69 +622,90 @@ export async function listStatementOfAccountArchiveDocuments(
 }
 
 /**
- * Documents Center — Tab 5: Logistics & PEZA Permits archive query.
+ * Documents Center — Tab 2: Commercial Invoices & Packing Lists (CI/PL) archive query.
  */
-export async function listPezaArchiveDocuments(
+export async function listCiplArchiveDocuments(
   db: DbLike,
   filters: DocumentArchiveFilter = {},
-): Promise<PezaArchiveRow[]> {
+): Promise<CiplArchiveRow[]> {
   const conditions = [];
 
   if (filters.partyId) {
-    conditions.push(eq(vmiPermits.partyId, filters.partyId));
+    conditions.push(eq(wrrDocuments.vendorPartyId, filters.partyId));
+  }
+  if (filters.flowType) {
+    conditions.push(eq(wrrDocuments.flowType, filters.flowType as any));
   }
   if (filters.status) {
-    if (filters.status === "active") {
-      conditions.push(eq(vmiPermits.isActive, true));
-    } else if (filters.status === "expired" || filters.status === "inactive") {
-      conditions.push(eq(vmiPermits.isActive, false));
-    }
+    conditions.push(eq(wrrDocuments.status, filters.status as any));
+  }
+  if (filters.from) {
+    conditions.push(gte(wrrDocuments.createdAt, new Date(`${filters.from}T00:00:00.000Z`)));
+  }
+  if (filters.to) {
+    conditions.push(lte(wrrDocuments.createdAt, new Date(`${filters.to}T23:59:59.999Z`)));
   }
   if (filters.search) {
     const term = `%${filters.search.trim()}%`;
-    conditions.push(
-      or(
-        ilike(vmiPermits.permitNumber, term),
-        ilike(vmiPermits.itemScope, term),
-        ilike(parties.name, term),
-        ilike(parties.code, term),
-      ),
+    const searchCondition = or(
+      ilike(wrrDocuments.wrrNumber, term),
+      ilike(wrrDocuments.commercialInvoiceNo, term),
+      ilike(wrrDocuments.pezaNumber, term),
+      ilike(wrrDocuments.ipNumber, term),
+      ilike(wrrDocuments.mawbMblNumber, term),
+      ilike(parties.name, term),
+      ilike(parties.code, term),
     );
+    if (searchCondition) {
+      conditions.push(searchCondition);
+    }
   }
 
   const rows = await db
     .select({
-      id: vmiPermits.id,
-      permitNumber: vmiPermits.permitNumber,
-      itemScope: vmiPermits.itemScope,
-      partyId: vmiPermits.partyId,
-      partyName: parties.name,
-      partyCode: parties.code,
-      validFrom: vmiPermits.validFrom,
-      validTo: vmiPermits.validTo,
-      isActive: vmiPermits.isActive,
-      createdAt: vmiPermits.createdAt,
+      id: wrrDocuments.id,
+      wrrNumber: wrrDocuments.wrrNumber,
+      commercialInvoiceNo: wrrDocuments.commercialInvoiceNo,
+      ciplFileUrl: wrrDocuments.ciplFileUrl,
+      pezaNumber: wrrDocuments.pezaNumber,
+      ipNumber: wrrDocuments.ipNumber,
+      mawbMblNumber: wrrDocuments.mawbMblNumber,
+      vendorPartyId: wrrDocuments.vendorPartyId,
+      vendorPartyName: parties.name,
+      vendorPartyCode: parties.code,
+      flowType: wrrDocuments.flowType,
+      status: wrrDocuments.status,
+      createdAt: wrrDocuments.createdAt,
+      confirmedAt: wrrDocuments.confirmedAt,
+      itemCount: sql<number>`coalesce((select count(*)::int from ${wrrItems} where ${wrrItems.wrrId} = ${wrrDocuments.id}), 0)`,
+      totalQuantity: sql<number>`coalesce((select sum(${wrrItems.expectedQty})::int from ${wrrItems} where ${wrrItems.wrrId} = ${wrrDocuments.id}), 0)`,
     })
-    .from(vmiPermits)
-    .innerJoin(parties, eq(parties.id, vmiPermits.partyId))
+    .from(wrrDocuments)
+    .innerJoin(parties, eq(parties.id, wrrDocuments.vendorPartyId))
     .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(desc(vmiPermits.createdAt))
+    .orderBy(desc(wrrDocuments.createdAt))
     .limit(filters.limit ?? 50)
     .offset(filters.offset ?? 0);
 
   return rows.map((r: any) => ({
     id: r.id,
-    permitNumber: r.permitNumber,
-    permitType: "PEZA LOA Permit",
-    partyId: r.partyId,
-    partyName: r.partyName ?? "Unknown Organization",
-    partyCode: r.partyCode ?? "",
-    referenceDocType: "standalone" as const,
-    referenceDocNumber: null,
-    referenceDocId: null,
-    issuedDate: r.validFrom,
-    expiryDate: r.validTo,
-    status: r.isActive ? "active" : "expired",
-    fileUrl: null,
+    wrrId: r.id,
+    wrrNumber: r.wrrNumber,
+    commercialInvoiceNo: r.commercialInvoiceNo,
+    ciplFileUrl: r.ciplFileUrl,
+    pezaNumber: r.pezaNumber,
+    ipNumber: r.ipNumber,
+    mawbMblNumber: r.mawbMblNumber,
+    vendorPartyId: r.vendorPartyId,
+    vendorPartyName: r.vendorPartyName ?? "Unknown Organization",
+    vendorPartyCode: r.vendorPartyCode ?? "",
+    flowType: r.flowType,
+    status: r.status,
+    itemCount: Number(r.itemCount ?? 0),
+    totalQuantity: Number(r.totalQuantity ?? 0),
+    createdAt: r.createdAt,
+    confirmedAt: r.confirmedAt,
   }));
 }
+
+export const listPezaArchiveDocuments = listCiplArchiveDocuments;
