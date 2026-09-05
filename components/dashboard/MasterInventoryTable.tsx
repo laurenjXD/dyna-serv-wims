@@ -15,7 +15,6 @@ import {
 } from "@tanstack/react-table";
 import {
   Search,
-  Package,
   Layers,
   FlaskConical,
   ClipboardList,
@@ -25,15 +24,16 @@ import {
   Lock,
   CheckCircle2,
   ExternalLink,
-  ChevronRight,
-  Filter,
 } from "lucide-react";
 import type { MasterInventoryItem, FlowTypeFilter } from "./types";
-import { MASTER_INVENTORY_SEED } from "./data/seedData";
 import { TablePagination } from "@/components/ui/TablePagination";
 
-export function MasterInventoryTable() {
-  const [data] = useState<MasterInventoryItem[]>(MASTER_INVENTORY_SEED);
+interface MasterInventoryTableProps {
+  initialData?: MasterInventoryItem[];
+}
+
+export function MasterInventoryTable({ initialData }: MasterInventoryTableProps) {
+  const [data] = useState<MasterInventoryItem[]>(initialData || []);
   const [globalFilter, setGlobalFilter] = useState("");
   const [flowFilter, setFlowFilter] = useState<FlowTypeFilter>("all");
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -498,5 +498,3 @@ export function MasterInventoryTable() {
     </div>
   );
 }
-
-

@@ -147,8 +147,8 @@ export function StatementsOfAccountTable({
                               organizationName: r.partyName,
                               actorName: r.closedByUserName,
                               generatedAt: r.closedAt ?? r.createdAt,
-                              previewUrl: null,
-                              downloadUrl: null,
+                              previewUrl: `/billing-pricing/soa/${r.id}`,
+                              downloadUrl: `/billing-pricing/soa/${r.id}`,
                             })
                           }
                           className="inline-flex h-9 items-center gap-1 rounded-lg border border-outline-variant/40 bg-surface-white px-2.5 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"

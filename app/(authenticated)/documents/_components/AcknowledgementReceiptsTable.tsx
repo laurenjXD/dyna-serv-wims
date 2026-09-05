@@ -146,8 +146,8 @@ export function AcknowledgementReceiptsTable({ rows }: AcknowledgementReceiptsTa
                               generatedAt: r.generatedAt ?? r.createdAt,
                               organizationName: r.customerPartyName,
                               actorName: r.dispatchedByName,
-                              previewUrl: null,
-                              downloadUrl: null,
+                              previewUrl: `/pick-lists/${r.pickListId}/receipt`,
+                              downloadUrl: `/pick-lists/${r.pickListId}/receipt`,
                             })
                           }
                           className="inline-flex h-9 items-center gap-1 rounded-lg border border-outline-variant/40 bg-surface-white px-2.5 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"

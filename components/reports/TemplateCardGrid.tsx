@@ -15,22 +15,79 @@ import {
   FileSpreadsheet,
 } from "lucide-react";
 import type { PreBuiltTemplate, ReportFormat } from "./types";
-import { PRE_BUILT_TEMPLATES_SEED } from "./data/reportsSeedData";
 
 interface TemplateCardGridProps {
   onRunTemplate: (template: PreBuiltTemplate, format: ReportFormat) => void;
   onScheduleTemplate: (template: PreBuiltTemplate) => void;
 }
 
+const DEFAULT_TEMPLATES: PreBuiltTemplate[] = [
+  {
+    id: "tpl-01",
+    title: "Master Inventory Valuation & Balance Sheet",
+    description: "Executive valuation summary of all active VMI and Trading SKU lots with aging tier breakdown.",
+    category: "Financial",
+    lastRunDate: "Today at 08:30",
+    scheduleFrequency: "Daily at 08:00 AM",
+    supportedFormats: ["PDF", "CSV", "XLSX"],
+    recordCount: 1420,
+    estimatedGenerationSec: 2,
+  },
+  {
+    id: "tpl-02",
+    title: "VMI Storage & CBM Reconciliation Statement",
+    description: "Monthly customer billable CBM logs, dwell days, and accrued storage charges ready for invoicing.",
+    category: "Settlement",
+    lastRunDate: "Yesterday at 17:00",
+    scheduleFrequency: "Monthly on 1st",
+    supportedFormats: ["PDF", "XLSX"],
+    recordCount: 380,
+    estimatedGenerationSec: 3,
+  },
+  {
+    id: "tpl-03",
+    title: "Warehouse Throughput & Movement Audit",
+    description: "Detailed inbound receipts, outbound picks, and internal transfer transactions with badge operator signatures.",
+    category: "Operations",
+    lastRunDate: "Aug 31 at 18:00",
+    scheduleFrequency: "Weekly on Monday",
+    supportedFormats: ["CSV", "XLSX"],
+    recordCount: 4890,
+    estimatedGenerationSec: 4,
+  },
+  {
+    id: "tpl-04",
+    title: "Delivery OTIF & Carrier SLA Performance",
+    description: "On-time in-full delivery metrics, lead time distributions, and carrier damage claim rates.",
+    category: "Operations",
+    lastRunDate: "Aug 30 at 19:15",
+    scheduleFrequency: "Weekly on Friday",
+    supportedFormats: ["PDF", "CSV"],
+    recordCount: 650,
+    estimatedGenerationSec: 2,
+  },
+  {
+    id: "tpl-05",
+    title: "Trading Revenue & Realized Margin Report",
+    description: "Consolidated sales revenue vs. cost of goods sold (COGS) with product line margin percentages.",
+    category: "Financial",
+    lastRunDate: "Aug 31 at 20:00",
+    scheduleFrequency: "Monthly on End",
+    supportedFormats: ["PDF", "XLSX"],
+    recordCount: 920,
+    estimatedGenerationSec: 3,
+  },
+];
+
 export function TemplateCardGrid({
   onRunTemplate,
   onScheduleTemplate,
 }: TemplateCardGridProps) {
-  const templates: PreBuiltTemplate[] = PRE_BUILT_TEMPLATES_SEED;
+  const templates: PreBuiltTemplate[] = DEFAULT_TEMPLATES;
   const [selectedFormats, setSelectedFormats] = useState<Record<string, ReportFormat>>({
     "tpl-01": "PDF",
     "tpl-02": "PDF",
-    "tpl-03": "PDF",
+    "tpl-03": "CSV",
     "tpl-04": "PDF",
     "tpl-05": "PDF",
   });
@@ -61,20 +118,17 @@ export function TemplateCardGrid({
           return (
             <div
               key={tpl.id}
-              className="relative rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md p-5 shadow-sm transition-all hover:shadow-md flex flex-col justify-between"
+              className="rounded-2xl border border-slate-200/80 bg-surface-white p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
             >
               <div>
-                {/* Category Badge & Estimate */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-start justify-between gap-2">
                   <span
-                    className={`rounded-full px-2.5 py-0.5 font-label text-[10px] font-bold ${
+                    className={`rounded-full px-2.5 py-0.5 font-mono text-[10px] font-bold ${
                       tpl.category === "Financial"
-                        ? "bg-purple-50 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
-                        : tpl.category === "Inventory"
-                        ? "bg-blue-50 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                        ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
                         : tpl.category === "Settlement"
-                        ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                        : "bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-zinc-300 border border-slate-200 dark:border-zinc-700"
+                        ? "bg-blue-50 text-blue-800 border border-blue-200"
+                        : "bg-purple-50 text-purple-800 border border-purple-200"
                     }`}
                   >
                     {tpl.category}
@@ -82,44 +136,44 @@ export function TemplateCardGrid({
 
                   <span className="font-mono text-[10px] text-text-grey flex items-center gap-1">
                     <Clock size={11} />
-                    ~{tpl.estimatedGenerationSec}s run
+                    {tpl.estimatedGenerationSec}s run
                   </span>
                 </div>
 
-                {/* Title & Description */}
-                <h4 className="mt-3 font-heading text-base font-bold text-slate-900 dark:text-zinc-100 leading-snug">
+                <h4 className="mt-2.5 font-heading text-title-sm font-bold text-brand-navy">
                   {tpl.title}
                 </h4>
-                <p className="mt-1.5 font-body text-xs text-text-grey leading-relaxed line-clamp-2">
+
+                <p className="mt-1 font-body text-xs text-text-grey line-clamp-2">
                   {tpl.description}
                 </p>
 
-                {/* Meta details */}
-                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-zinc-800 space-y-1.5 text-[11px] font-body">
-                  <div className="flex items-center justify-between text-slate-600 dark:text-zinc-400">
-                    <span className="text-text-grey">Auto-Schedule:</span>
-                    <span className="font-semibold text-slate-800 dark:text-zinc-200">{tpl.scheduleFrequency}</span>
+                {/* Metadata Pills */}
+                <div className="mt-3 flex items-center gap-3 text-[11px] text-text-grey font-mono bg-slate-50 p-2 rounded-xl border border-slate-100">
+                  <div>
+                    <span className="text-[10px] uppercase text-slate-400 block">Records:</span>
+                    <span className="font-bold text-slate-800">{tpl.recordCount.toLocaleString()}</span>
                   </div>
-                  <div className="flex items-center justify-between text-slate-600 dark:text-zinc-400">
-                    <span className="text-text-grey">Last Run:</span>
-                    <span className="font-mono text-slate-700 dark:text-zinc-300">{tpl.lastRunDate}</span>
+                  <div className="border-l border-slate-200 pl-3">
+                    <span className="text-[10px] uppercase text-slate-400 block">Schedule:</span>
+                    <span className="font-semibold text-slate-700 truncate block max-w-[120px]">{tpl.scheduleFrequency}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Format Selectors & Action Buttons */}
-              <div className="mt-5 space-y-3">
-                {/* Format selection pills */}
-                <div className="flex items-center gap-1 rounded-xl bg-slate-100 dark:bg-zinc-800 p-1 font-label text-xs">
+              {/* Action Controls Footer */}
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                {/* Format Radio Pills */}
+                <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-[10px] font-mono font-bold">
                   {tpl.supportedFormats.map((fmt) => (
                     <button
                       key={fmt}
                       type="button"
                       onClick={() => handleFormatChange(tpl.id, fmt)}
-                      className={`flex-1 rounded-lg py-1 text-center font-bold text-[10px] transition-all ${
+                      className={`px-2 py-0.5 rounded-md transition-all ${
                         activeFormat === fmt
-                          ? "bg-white dark:bg-zinc-700 text-brand-navy dark:text-white shadow-2xs"
-                          : "text-slate-600 dark:text-zinc-400 hover:text-slate-900"
+                          ? "bg-white text-brand-navy shadow-2xs font-black"
+                          : "text-slate-600 hover:text-slate-900"
                       }`}
                     >
                       {fmt}
@@ -127,65 +181,41 @@ export function TemplateCardGrid({
                   ))}
                 </div>
 
-                {/* Run Now & Schedule Buttons */}
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onRunTemplate(tpl, activeFormat)}
-                    className="flex-1 inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-brand-navy dark:bg-blue-600 px-3 font-label text-xs font-bold text-white shadow-2xs hover:bg-brand-navy/90 dark:hover:bg-blue-700 transition-colors"
-                  >
-                    <Download size={13} className="text-white" />
-                    <span>Download {activeFormat}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => onScheduleTemplate(tpl)}
-                    className="inline-flex h-9 items-center justify-center gap-1 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 font-label text-xs font-bold text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-700 transition-colors shadow-2xs"
-                    title="Configure Automated Schedule"
-                  >
-                    <Calendar size={13} className="text-slate-500" />
-                    <span>Schedule</span>
-                  </button>
-                </div>
+                {/* Run CTA Button */}
+                <button
+                  type="button"
+                  onClick={() => onRunTemplate(tpl, activeFormat)}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-xl bg-brand-navy px-3 font-label text-xs font-bold text-white shadow-2xs hover:bg-brand-navy/90 active:scale-95 transition-all"
+                >
+                  <Play size={12} fill="white" />
+                  <span>Run</span>
+                </button>
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* ── Mobile Snap Carousel (< 1024px) ── */}
+      {/* ── Mobile Horizontal Swipe Feed (< 1024px) ── */}
       <div className="block lg:hidden">
-        <div className="flex gap-3 overflow-x-auto pb-3 pt-1 snap-x snap-mandatory scroll-smooth no-scrollbar">
+        <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2 scrollbar-none">
           {templates.map((tpl) => {
             const activeFormat = selectedFormats[tpl.id] ?? tpl.supportedFormats[0];
 
             return (
               <div
                 key={tpl.id}
-                className="w-[85vw] max-w-[340px] shrink-0 snap-center rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-white/90 dark:bg-zinc-900/90 p-4.5 shadow-sm flex flex-col justify-between space-y-4"
+                className="min-w-[280px] snap-start rounded-2xl border border-slate-200 bg-white p-4 shadow-sm flex flex-col justify-between"
               >
                 <div>
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 font-label text-[10px] font-bold ${
-                        tpl.category === "Financial"
-                          ? "bg-purple-50 text-purple-800 border border-purple-200"
-                          : tpl.category === "Inventory"
-                          ? "bg-blue-50 text-blue-800 border border-blue-200"
-                          : tpl.category === "Settlement"
-                          ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                          : "bg-slate-100 text-slate-800 border border-slate-200"
-                      }`}
-                    >
+                  <div className="flex justify-between items-center">
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[10px] font-bold text-slate-700">
                       {tpl.category}
                     </span>
-                    <span className="font-mono text-[10px] text-text-grey">
-                      ~{tpl.estimatedGenerationSec}s execution
-                    </span>
+                    <span className="font-mono text-[10px] text-text-grey">{tpl.recordCount} rows</span>
                   </div>
 
-                  <h4 className="mt-2.5 font-heading text-sm font-bold text-slate-900 dark:text-zinc-100">
+                  <h4 className="mt-2 font-heading text-sm font-bold text-brand-navy">
                     {tpl.title}
                   </h4>
                   <p className="mt-1 font-body text-xs text-text-grey line-clamp-2">
@@ -193,18 +223,15 @@ export function TemplateCardGrid({
                   </p>
                 </div>
 
-                {/* Mobile Format Switcher & 48px Action Button */}
-                <div className="space-y-2.5">
-                  <div className="flex items-center gap-1 rounded-xl bg-slate-100 dark:bg-zinc-800 p-1 font-label text-xs">
+                <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                  <div className="flex gap-1">
                     {tpl.supportedFormats.map((fmt) => (
                       <button
                         key={fmt}
                         type="button"
                         onClick={() => handleFormatChange(tpl.id, fmt)}
-                        className={`flex-1 min-h-[36px] rounded-lg py-1 text-center font-bold text-xs transition-all ${
-                          activeFormat === fmt
-                            ? "bg-white dark:bg-zinc-700 text-brand-navy dark:text-white shadow-xs"
-                            : "text-slate-600 dark:text-zinc-400"
+                        className={`px-2 py-1 rounded-md text-[10px] font-mono font-bold ${
+                          activeFormat === fmt ? "bg-brand-navy text-white" : "bg-slate-100 text-slate-700"
                         }`}
                       >
                         {fmt}
@@ -215,10 +242,10 @@ export function TemplateCardGrid({
                   <button
                     type="button"
                     onClick={() => onRunTemplate(tpl, activeFormat)}
-                    className="w-full flex items-center justify-center gap-2 min-h-[48px] rounded-xl bg-brand-navy dark:bg-blue-600 text-white font-label text-xs font-bold shadow-sm active:scale-98 transition-all"
+                    className="flex min-h-[40px] items-center gap-1 rounded-xl bg-brand-navy px-3 font-label text-xs font-bold text-white shadow-2xs"
                   >
-                    <Download size={16} />
-                    <span>Download {activeFormat} Report</span>
+                    <Play size={12} fill="white" />
+                    <span>Run</span>
                   </button>
                 </div>
               </div>

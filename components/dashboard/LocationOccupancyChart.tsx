@@ -8,12 +8,24 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
-import { Warehouse, Layers, Maximize2 } from "lucide-react";
-import { LOCATION_OCCUPANCY_DATA } from "./data/seedData";
+import type { LocationOccupancyDatum } from "./types";
 
-export function LocationOccupancyChart() {
-  const totalOccupancy = LOCATION_OCCUPANCY_DATA.reduce((sum, d) => sum + d.value, 0);
-  const totalCbmUsed = LOCATION_OCCUPANCY_DATA.reduce((sum, d) => sum + d.cbmUsed, 0);
+interface LocationOccupancyChartProps {
+  initialData?: LocationOccupancyDatum[];
+}
+
+export function LocationOccupancyChart({ initialData }: LocationOccupancyChartProps) {
+  const defaultOccupancy: LocationOccupancyDatum[] = [
+    { name: "Zone A (Pallet Racks)", value: 78, color: "#002B49", cbmUsed: 780, cbmTotal: 1000 },
+    { name: "Zone B (Mezzanine Bins)", value: 64, color: "#00A8B5", cbmUsed: 320, cbmTotal: 500 },
+    { name: "Zone C (Cold Chain)", value: 42, color: "#2563EB", cbmUsed: 126, cbmTotal: 300 },
+    { name: "Zone D (Staging Floor)", value: 85, color: "#F59E0B", cbmUsed: 340, cbmTotal: 400 },
+  ];
+
+  const data = initialData && initialData.length > 0 ? initialData : defaultOccupancy;
+  const totalCbmUsed = data.reduce((sum, d) => sum + d.cbmUsed, 0);
+  const totalCbmCapacity = data.reduce((sum, d) => sum + (d.cbmTotal || 500), 0);
+  const overallPct = totalCbmCapacity > 0 ? Math.round((totalCbmUsed / totalCbmCapacity) * 100) : 76;
 
   return (
     <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-5 shadow-sm flex flex-col justify-between">
@@ -29,7 +41,7 @@ export function LocationOccupancyChart() {
             </p>
           </div>
           <span className="rounded-md bg-blue-50 px-2 py-0.5 font-mono text-[10px] font-bold text-brand-navy border border-blue-200/80">
-            {totalCbmUsed.toLocaleString()} / 5,000 m³
+            {totalCbmUsed.toLocaleString()} / {totalCbmCapacity.toLocaleString()} m³
           </span>
         </div>
 
@@ -38,7 +50,7 @@ export function LocationOccupancyChart() {
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={LOCATION_OCCUPANCY_DATA}
+                data={data}
                 cx="50%"
                 cy="50%"
                 innerRadius={50}
@@ -46,20 +58,20 @@ export function LocationOccupancyChart() {
                 paddingAngle={3}
                 dataKey="value"
               >
-                {LOCATION_OCCUPANCY_DATA.map((entry, index) => (
+                {data.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} stroke="#FFFFFF" strokeWidth={2} />
                 ))}
               </Pie>
               <Tooltip
                 content={({ active, payload }) => {
                   if (active && payload && payload.length) {
-                    const data = payload[0].payload;
+                    const d = payload[0].payload;
                     return (
                       <div className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-elevation-2 font-body text-xs">
-                        <p className="font-bold text-slate-900 mb-1">{data.name}</p>
+                        <p className="font-bold text-slate-900 mb-1">{d.name}</p>
                         <div className="space-y-0.5">
-                          <p className="text-brand-navy font-bold">{data.value}% of capacity</p>
-                          <p className="text-text-grey">{data.cbmUsed} m³ allocated</p>
+                          <p className="text-brand-navy font-bold">{d.value}% of capacity</p>
+                          <p className="text-text-grey">{d.cbmUsed} m³ allocated</p>
                         </div>
                       </div>
                     );
@@ -73,7 +85,7 @@ export function LocationOccupancyChart() {
           {/* Center Metric */}
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
             <span className="font-mono text-xl font-black text-brand-navy leading-none">
-              82.4%
+              {overallPct}%
             </span>
             <span className="text-[10px] font-label font-bold uppercase tracking-wider text-text-grey mt-0.5">
               UTILIZED
@@ -84,7 +96,7 @@ export function LocationOccupancyChart() {
 
       {/* Breakdown Legend Grid */}
       <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs">
-        {LOCATION_OCCUPANCY_DATA.map((zone) => (
+        {data.map((zone) => (
           <div
             key={zone.name}
             className="flex items-center justify-between rounded-lg bg-slate-50/80 px-2.5 py-1.5 border border-slate-200/60"

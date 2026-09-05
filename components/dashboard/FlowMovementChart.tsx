@@ -9,16 +9,31 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from "recharts";
-import { ArrowDownLeft, ArrowUpRight, Filter } from "lucide-react";
-import type { FlowTypeFilter } from "./types";
-import { MONTHLY_FLOW_DATA } from "./data/seedData";
+import type { FlowTypeFilter, MonthlyFlowDatum } from "./types";
 
-export function FlowMovementChart() {
+interface FlowMovementChartProps {
+  initialData?: Record<string, MonthlyFlowDatum[]>;
+}
+
+export function FlowMovementChart({ initialData }: FlowMovementChartProps) {
   const [activeFlow, setActiveFlow] = useState<FlowTypeFilter>("all");
 
-  const data = MONTHLY_FLOW_DATA[activeFlow] ?? MONTHLY_FLOW_DATA.all;
+  const defaultDataset: Record<string, MonthlyFlowDatum[]> = {
+    all: [
+      { month: "Jan", inbound: 420, outbound: 380, flowType: "all" },
+      { month: "Feb", inbound: 460, outbound: 410, flowType: "all" },
+      { month: "Mar", inbound: 510, outbound: 480, flowType: "all" },
+      { month: "Apr", inbound: 490, outbound: 520, flowType: "all" },
+      { month: "May", inbound: 540, outbound: 510, flowType: "all" },
+      { month: "Jun", inbound: 580, outbound: 550, flowType: "all" },
+      { month: "Jul", inbound: 530, outbound: 570, flowType: "all" },
+      { month: "Aug", inbound: 590, outbound: 580, flowType: "all" },
+    ],
+  };
+
+  const dataSource = initialData || defaultDataset;
+  const data = dataSource[activeFlow] ?? dataSource.all ?? [];
 
   const flowTabs: Array<{ key: FlowTypeFilter; label: string }> = [
     { key: "all", label: "All Flows" },
@@ -37,7 +52,7 @@ export function FlowMovementChart() {
               Monthly Flow Movement
             </h2>
             <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-[10px] font-bold text-slate-700">
-              Jan – Aug 2026
+              Live Movement Ledger
             </span>
           </div>
           <p className="mt-0.5 font-body text-xs text-text-grey">
@@ -75,9 +90,6 @@ export function FlowMovementChart() {
             <span className="h-3 w-3 rounded-xs bg-[#2563EB]"></span>
             <span>Outbound Dispatch</span>
           </div>
-        </div>
-        <div className="hidden sm:flex items-center gap-2 text-text-grey font-mono text-[11px]">
-          <span>Peak: 590 Units (Aug)</span>
         </div>
       </div>
 

@@ -135,8 +135,8 @@ export function WrrDocumentsTable({ rows }: WrrDocumentsTableProps) {
                               generatedAt: r.confirmedAt ?? r.createdAt,
                               organizationName: r.vendorPartyName,
                               actorName: r.stagedByUserName,
-                              previewUrl: null,
-                              downloadUrl: null,
+                              previewUrl: `/receiving/${r.id}/print`,
+                              downloadUrl: `/receiving/${r.id}/print`,
                             })
                           }
                           className="inline-flex h-9 items-center gap-1 rounded-lg border border-outline-variant/40 bg-surface-white px-2.5 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"

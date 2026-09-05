@@ -2,29 +2,28 @@
 
 import React, { useState } from "react";
 import {
-  FileText,
   DollarSign,
-  TrendingUp,
   Activity,
-  Layers,
   Archive,
-  Sparkles,
   CheckCircle2,
-  Download,
+  AlertCircle,
   Flame,
 } from "lucide-react";
 import type {
   DateHorizon,
   FacilityZone,
-  FlowSegment,
   VmiBillingRow,
   ReportArchiveItem,
   PreBuiltTemplate,
   ReportFormat,
   ReportCategory,
+  TradingMarginRow,
+  TradingCategoryPerformance,
+  MovementThroughputDatum,
+  DeliverySlaDatum,
 } from "./types";
 import { ReportsHeader } from "./ReportsHeader";
-import { ReportKpis } from "./ReportKpis";
+import { ReportKpis, type ReportKpisProps } from "./ReportKpis";
 import { VmiBillingTable } from "./VmiBillingTable";
 import { TradingMarginSection } from "./TradingMarginSection";
 import { ThroughputSection } from "./ThroughputSection";
@@ -34,8 +33,30 @@ import { TemplateCardGrid } from "./TemplateCardGrid";
 import { ReportArchiveTable } from "./ReportArchiveTable";
 import { PdfPreviewModal } from "./PdfPreviewModal";
 import { CustomReportBuilderModal } from "./CustomReportBuilderModal";
+import { exportRawTransactionsCsvAction, generateCustomReportAction } from "@/lib/actions/reports";
 
-export function WarehouseReportsHub() {
+export interface WarehouseReportsHubProps {
+  kpis?: ReportKpisProps["kpis"];
+  vmiBillingRows?: VmiBillingRow[];
+  tradingMargin?: {
+    marginHistory: TradingMarginRow[];
+    categoryBreakdown: TradingCategoryPerformance[];
+  };
+  throughput?: MovementThroughputDatum[];
+  deliverySla?: DeliverySlaDatum[];
+  archiveItems?: ReportArchiveItem[];
+  canReadFinancial?: boolean;
+}
+
+export function WarehouseReportsHub({
+  kpis,
+  vmiBillingRows,
+  tradingMargin,
+  throughput,
+  deliverySla,
+  archiveItems,
+  canReadFinancial = true,
+}: WarehouseReportsHubProps) {
   const [facility, setFacility] = useState<FacilityZone>("all");
   const [horizon, setHorizon] = useState<DateHorizon>("30D");
   const [startDate, setStartDate] = useState("2026-08-01");
@@ -50,18 +71,28 @@ export function WarehouseReportsHub() {
 
   const [isBuilderOpen, setIsBuilderOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
+    setErrorMessage(null);
     setTimeout(() => {
       setToastMessage(null);
-    }, 4000);
+    }, 4500);
+  };
+
+  const showError = (msg: string) => {
+    setErrorMessage(msg);
+    setToastMessage(null);
+    setTimeout(() => {
+      setErrorMessage(null);
+    }, 4500);
   };
 
   // Quick PDF Generator
   const handleQuickGeneratePdf = () => {
     setPdfModalTitle("Consolidated Warehouse Valuation & Inventory Position");
-    setPdfModalSubtitle("Executive overview of all 1,420 lots across VMI and Trading accounts");
+    setPdfModalSubtitle("Executive overview of all active lots across VMI and Trading accounts");
     setPdfModalRef("DS-RPT-VAL-MTD");
     setIsPdfPreviewOpen(true);
   };
@@ -69,13 +100,13 @@ export function WarehouseReportsHub() {
   // VMI Billing Row PDF
   const handleGenerateInvoicePdf = (row: VmiBillingRow) => {
     setPdfModalTitle(`Statement of Account — ${row.clientName}`);
-    setPdfModalSubtitle(`CBM Storage & Consignment Handling for Period Ending Aug 31, 2026 (${row.unbilledDays} Unbilled Days)`);
+    setPdfModalSubtitle(`CBM Storage & Consignment Handling for Period (${row.unbilledDays} Unbilled Days)`);
     setPdfModalRef(`SOA-${row.clientCode}-202608`);
     setIsPdfPreviewOpen(true);
   };
 
   const handleAuditDwellTime = (row: VmiBillingRow) => {
-    showToast(`Opening Dwell Time Audit logs for ${row.clientName} (${row.occupiedCbm} m³ consumed).`);
+    showToast(`Dwell Time Audit opened for ${row.clientName} (${row.occupiedCbm} m³ consumed).`);
   };
 
   const handleRunTemplate = (template: PreBuiltTemplate, format: ReportFormat) => {
@@ -85,7 +116,7 @@ export function WarehouseReportsHub() {
       setPdfModalRef(`DS-TPL-${template.id.toUpperCase()}`);
       setIsPdfPreviewOpen(true);
     } else {
-      showToast(`Generating ${template.title} (.${format})... Export will download shortly.`);
+      showToast(`Generating ${template.title} (.${format})... Export prepared.`);
     }
   };
 
@@ -108,23 +139,53 @@ export function WarehouseReportsHub() {
     setIsPdfPreviewOpen(true);
   };
 
-  const handleExportRawData = (format: "csv" | "xlsx") => {
-    showToast(`Exporting raw warehouse transaction ledger (.${format.toUpperCase()})...`);
+  // Live Raw Ledger Export Action
+  const handleExportRawData = async (format: "csv" | "xlsx") => {
+    try {
+      const res = await exportRawTransactionsCsvAction(format);
+      if (res.success && res.csvContent) {
+        // Trigger client download of genuine database transactions
+        const blob = new Blob([res.csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", res.filename || "dyna-serv-ledger.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast(res.message);
+      } else {
+        showError(res.message || "Failed to export raw transactions.");
+      }
+    } catch (err) {
+      console.error(err);
+      showError("Error exporting raw transaction data.");
+    }
   };
 
-  const handleCustomBuildComplete = (config: {
+  const handleCustomBuildComplete = async (config: {
     title: string;
     category: ReportCategory;
     format: ReportFormat;
     metrics: string[];
     dimensions: string[];
   }) => {
-    showToast(`Custom report "${config.title}" generated successfully with ${config.metrics.length} metrics.`);
-    if (config.format === "PDF") {
-      setPdfModalTitle(config.title);
-      setPdfModalSubtitle(`Custom ${config.category} Query · ${config.dimensions.join(", ")}`);
-      setPdfModalRef(`DS-CUST-${Date.now().toString().slice(-6)}`);
-      setIsPdfPreviewOpen(true);
+    try {
+      const res = await generateCustomReportAction(config);
+      if (res.success) {
+        showToast(res.message);
+        if (config.format === "PDF") {
+          setPdfModalTitle(config.title);
+          setPdfModalSubtitle(`Custom ${config.category} Query · ${config.dimensions.join(", ")}`);
+          setPdfModalRef(`DS-CUST-${Date.now().toString().slice(-6)}`);
+          setIsPdfPreviewOpen(true);
+        }
+      } else {
+        showError(res.message);
+      }
+    } catch (err) {
+      console.error(err);
+      showError("Failed to build custom report.");
     }
   };
 
@@ -162,8 +223,25 @@ export function WarehouseReportsHub() {
         </div>
       )}
 
+      {/* Error Toast */}
+      {errorMessage && (
+        <div className="flex items-center justify-between rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-bold text-rose-900 shadow-sm animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={16} className="text-rose-600 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setErrorMessage(null)}
+            className="text-rose-700 hover:text-rose-950 font-mono text-[11px] underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* ── 2. Executive Reporting & Settlement KPIs (Bento Row) ───────────── */}
-      <ReportKpis />
+      <ReportKpis kpis={kpis} />
 
       {/* ── Section Quick Navigation Filter Bar ───────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 pb-2">
@@ -180,18 +258,20 @@ export function WarehouseReportsHub() {
             All Reports &amp; Analytics
           </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveSection("financial")}
-            className={`rounded-xl px-3.5 py-1.5 transition-all flex items-center gap-1.5 ${
-              activeSection === "financial"
-                ? "bg-brand-navy text-white font-bold shadow-2xs"
-                : "text-slate-600 hover:text-slate-900 bg-slate-100"
-            }`}
-          >
-            <DollarSign size={13} />
-            <span>Financial Settlement &amp; Margins</span>
-          </button>
+          {canReadFinancial && (
+            <button
+              type="button"
+              onClick={() => setActiveSection("financial")}
+              className={`rounded-xl px-3.5 py-1.5 transition-all flex items-center gap-1.5 ${
+                activeSection === "financial"
+                  ? "bg-brand-navy text-white font-bold shadow-2xs"
+                  : "text-slate-600 hover:text-slate-900 bg-slate-100"
+              }`}
+            >
+              <DollarSign size={13} />
+              <span>Financial Settlement &amp; Margins</span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -235,16 +315,17 @@ export function WarehouseReportsHub() {
       </div>
 
       {/* ── 3. Dedicated Financial Settlement & Margin Reports ─────────────── */}
-      {(activeSection === "all" || activeSection === "financial") && (
+      {canReadFinancial && (activeSection === "all" || activeSection === "financial") && (
         <section className="space-y-6 animate-in fade-in">
           {/* A. VMI Client Storage & CBM Billing Reconciliation */}
           <VmiBillingTable
+            initialData={vmiBillingRows}
             onGenerateInvoicePdf={handleGenerateInvoicePdf}
             onAuditDwellTime={handleAuditDwellTime}
           />
 
           {/* B & C. Trading Revenue, COGS, Margin Realization & Product Line Margin Table */}
-          <TradingMarginSection />
+          <TradingMarginSection initialData={tradingMargin} />
         </section>
       )}
 
@@ -252,10 +333,10 @@ export function WarehouseReportsHub() {
       {(activeSection === "all" || activeSection === "operations") && (
         <section className="space-y-6 animate-in fade-in">
           {/* A & C. Movement Volume Throughput & Location Occupancy */}
-          <ThroughputSection />
+          <ThroughputSection initialData={throughput} />
 
           {/* B. Delivery SLA & OTIF Fulfillment Report */}
-          <DeliveryPerformanceReport />
+          <DeliveryPerformanceReport initialData={deliverySla} />
         </section>
       )}
 
@@ -277,6 +358,7 @@ export function WarehouseReportsHub() {
 
           {/* Generated Reports Archive */}
           <ReportArchiveTable
+            initialData={archiveItems}
             onDownloadReport={handleDownloadReport}
             onShareReport={handleShareReport}
             onPreviewReport={handlePreviewReport}

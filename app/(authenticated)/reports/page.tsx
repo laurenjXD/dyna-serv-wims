@@ -17,6 +17,14 @@ import { BarChart2 } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { WarehouseReportsHub } from "@/components/reports/WarehouseReportsHub";
+import {
+  getReportsExecutiveKpis,
+  getVmiBillingReconciliationReport,
+  getTradingMarginReport,
+  getThroughputReport,
+  getDeliveryPerformanceReport,
+  getReportArchiveList,
+} from "@/lib/db/queries/reports";
 
 export default async function ReportsPage() {
   const resolver = await createPageResolver();
@@ -38,9 +46,37 @@ export default async function ReportsPage() {
     );
   }
 
+  const financialPerm = await requirePermission(resolver, "reporting.financial_read");
+  const canReadFinancial = financialPerm.kind === "authorized";
+
+  // Fetch live reports datasets in parallel
+  const [
+    kpis,
+    vmiBillingRows,
+    tradingMargin,
+    throughput,
+    deliverySla,
+    archiveItems,
+  ] = await Promise.all([
+    getReportsExecutiveKpis(),
+    canReadFinancial ? getVmiBillingReconciliationReport() : Promise.resolve([]),
+    canReadFinancial ? getTradingMarginReport() : Promise.resolve(undefined),
+    getThroughputReport("daily"),
+    getDeliveryPerformanceReport(),
+    getReportArchiveList(),
+  ]);
+
   return (
     <div className="mx-auto max-w-container px-4 sm:px-6 lg:px-8 py-6">
-      <WarehouseReportsHub />
+      <WarehouseReportsHub
+        kpis={kpis}
+        vmiBillingRows={vmiBillingRows}
+        tradingMargin={tradingMargin}
+        throughput={throughput}
+        deliverySla={deliverySla}
+        archiveItems={archiveItems}
+        canReadFinancial={canReadFinancial}
+      />
     </div>
   );
 }

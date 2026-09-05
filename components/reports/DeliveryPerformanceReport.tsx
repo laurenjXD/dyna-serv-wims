@@ -14,16 +14,26 @@ import {
 } from "recharts";
 import {
   Truck,
-  CheckCircle2,
   Clock,
   ShieldCheck,
-  Target,
 } from "lucide-react";
 import type { DeliverySlaDatum } from "./types";
-import { DELIVERY_SLA_SEED } from "./data/reportsSeedData";
 
-export function DeliveryPerformanceReport() {
-  const data: DeliverySlaDatum[] = DELIVERY_SLA_SEED;
+interface DeliveryPerformanceReportProps {
+  initialData?: DeliverySlaDatum[];
+}
+
+export function DeliveryPerformanceReport({ initialData }: DeliveryPerformanceReportProps) {
+  const defaultSlaData: DeliverySlaDatum[] = [
+    { period: "Mar 2026", otifRate: 96.4, otdRate: 97.5, fillRate: 98.9, targetOtif: 95.0 },
+    { period: "Apr 2026", otifRate: 95.8, otdRate: 97.2, fillRate: 98.6, targetOtif: 95.0 },
+    { period: "May 2026", otifRate: 97.1, otdRate: 98.4, fillRate: 99.0, targetOtif: 95.0 },
+    { period: "Jun 2026", otifRate: 96.8, otdRate: 98.0, fillRate: 98.8, targetOtif: 95.0 },
+    { period: "Jul 2026", otifRate: 97.9, otdRate: 98.9, fillRate: 99.3, targetOtif: 95.0 },
+    { period: "Aug 2026 (MTD)", otifRate: 98.2, otdRate: 99.1, fillRate: 99.5, targetOtif: 95.0 },
+  ];
+
+  const data: DeliverySlaDatum[] = initialData && initialData.length > 0 ? initialData : defaultSlaData;
   const latest = data[data.length - 1];
 
   return (
@@ -60,66 +70,85 @@ export function DeliveryPerformanceReport() {
           </div>
 
           <div className="flex items-center gap-2 bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-200">
-            <Target size={13} className="text-blue-700" />
-            <span className="text-[11px] font-label text-blue-800">Current OTIF:</span>
-            <span className="font-mono font-black text-xs text-blue-900">{latest.otifRate}%</span>
+            <span className="text-[11px] font-label text-brand-navy">Current OTIF:</span>
+            <span className="font-mono font-black text-xs text-brand-navy">{latest?.otifRate}%</span>
           </div>
         </div>
       </div>
 
-      {/* ── Recharts Line Chart ─────────────────────────────────────────── */}
+      {/* ── Multi-Line SLA Chart ────────────────────────────────────────── */}
       <div className="mt-4 h-72 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 15, right: 20, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+          <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
             <XAxis
               dataKey="period"
-              tick={{ fontSize: 11, fill: "#64748B", fontWeight: 600 }}
-              axisLine={{ stroke: "#CBD5E1" }}
+              axisLine={false}
               tickLine={false}
+              tick={{ fill: "#64748B", fontSize: 11, fontWeight: 600 }}
             />
             <YAxis
               domain={[90, 100]}
-              tick={{ fontSize: 11, fill: "#64748B", fontFamily: "var(--font-glacial)" }}
-              axisLine={{ stroke: "#CBD5E1" }}
+              ticks={[90, 92, 94, 96, 98, 100]}
+              axisLine={false}
               tickLine={false}
-              tickFormatter={(val) => `${val}%`}
+              tick={{ fill: "#64748B", fontSize: 10, fontFamily: "monospace" }}
+              tickFormatter={(v) => `${v}%`}
             />
             <Tooltip
               content={({ active, payload, label }) => {
-                if (!active || !payload || !payload.length) return null;
-                const d = payload[0].payload as DeliverySlaDatum;
-                return (
-                  <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-elevation-2 font-body text-xs">
-                    <p className="font-bold text-slate-900 border-b border-slate-100 pb-1 mb-1.5">{label}</p>
-                    <div className="space-y-1 font-mono">
-                      <p className="text-blue-600 flex justify-between gap-4">
-                        <span>OTIF Rate:</span>
-                        <strong>{d.otifRate}%</strong>
+                if (active && payload && payload.length) {
+                  return (
+                    <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-elevation-2 font-body text-xs">
+                      <p className="font-bold text-brand-navy mb-1.5 border-b border-slate-100 pb-1">
+                        {label} Fulfillment Performance
                       </p>
-                      <p className="text-emerald-700 flex justify-between gap-4">
-                        <span>On-Time Delivery (OTD):</span>
-                        <strong>{d.otdRate}%</strong>
-                      </p>
-                      <p className="text-purple-700 flex justify-between gap-4">
-                        <span>Order Fill Rate:</span>
-                        <strong>{d.fillRate}%</strong>
-                      </p>
+                      <div className="space-y-1 font-mono">
+                        {payload.map((entry, idx) => (
+                          <div key={idx} className="flex justify-between gap-4">
+                            <span className="text-slate-600 font-sans">{entry.name}:</span>
+                            <span className="font-bold text-slate-900">{entry.value}%</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                );
+                  );
+                }
+                return null;
               }}
             />
-            <Legend verticalAlign="top" align="right" wrapperStyle={{ paddingBottom: 10, fontSize: 11, fontWeight: 600 }} />
+            <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
             <ReferenceLine
-              y={95.0}
-              stroke="#EF4444"
+              y={95}
+              stroke="#10B981"
               strokeDasharray="4 4"
-              label={{ value: "95% OTIF Target", fill: "#EF4444", fontSize: 10, position: "top" }}
+              label={{ value: "95.0% Contractual SLA Target", fill: "#059669", fontSize: 10, position: "insideBottomRight" }}
             />
-            <Line type="monotone" dataKey="otifRate" name="OTIF Rate (%)" stroke="#2563EB" strokeWidth={3} dot={{ r: 4, fill: "#2563EB" }} />
-            <Line type="monotone" dataKey="otdRate" name="On-Time Delivery (%)" stroke="#10B981" strokeWidth={2} strokeDasharray="3 3" dot={{ r: 3, fill: "#10B981" }} />
-            <Line type="monotone" dataKey="fillRate" name="Order Fill Rate (%)" stroke="#7C3AED" strokeWidth={2} dot={{ r: 3, fill: "#7C3AED" }} />
+            <Line
+              type="monotone"
+              dataKey="otifRate"
+              name="OTIF Realized Rate"
+              stroke="#002060"
+              strokeWidth={3}
+              dot={{ fill: "#002060", r: 3 }}
+              activeDot={{ r: 5 }}
+            />
+            <Line
+              type="monotone"
+              dataKey="otdRate"
+              name="On-Time Delivery (OTD)"
+              stroke="#2563EB"
+              strokeWidth={2}
+              dot={{ fill: "#2563EB", r: 2 }}
+            />
+            <Line
+              type="monotone"
+              dataKey="fillRate"
+              name="Order Line Fill Rate"
+              stroke="#0D9488"
+              strokeWidth={2}
+              dot={{ fill: "#0D9488", r: 2 }}
+            />
           </LineChart>
         </ResponsiveContainer>
       </div>

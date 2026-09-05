@@ -10,15 +10,40 @@ import {
   Tooltip,
   ResponsiveContainer,
   ReferenceLine,
-  Legend,
 } from "recharts";
-import { Clock, CheckCheck, ShieldAlert, Sparkles, Target } from "lucide-react";
-import {
-  DELIVERY_PERFORMANCE_DATA,
-  DELIVERY_MINI_METRICS,
-} from "./data/seedData";
+import { Clock, CheckCheck, ShieldAlert } from "lucide-react";
+import type { DeliveryPerformanceDatum, DeliveryPerformanceMiniMetrics } from "./types";
 
-export function DeliveryPerformanceChart() {
+interface DeliveryPerformanceChartProps {
+  initialData?: {
+    chartData: DeliveryPerformanceDatum[];
+    miniMetrics: DeliveryPerformanceMiniMetrics;
+  };
+}
+
+export function DeliveryPerformanceChart({ initialData }: DeliveryPerformanceChartProps) {
+  const defaultChartData: DeliveryPerformanceDatum[] = [
+    { month: "Jan", otifRate: 94.2, otdRate: 96.1, inFullRate: 98.0 },
+    { month: "Feb", otifRate: 95.0, otdRate: 96.8, inFullRate: 98.1 },
+    { month: "Mar", otifRate: 96.4, otdRate: 97.5, inFullRate: 98.9 },
+    { month: "Apr", otifRate: 95.8, otdRate: 97.2, inFullRate: 98.6 },
+    { month: "May", otifRate: 97.1, otdRate: 98.4, inFullRate: 99.0 },
+    { month: "Jun", otifRate: 96.8, otdRate: 98.0, inFullRate: 98.8 },
+    { month: "Jul", otifRate: 97.9, otdRate: 98.9, inFullRate: 99.3 },
+    { month: "Aug", otifRate: 98.2, otdRate: 99.1, inFullRate: 99.5 },
+  ];
+
+  const defaultMiniMetrics: DeliveryPerformanceMiniMetrics = {
+    avgLeadTimeHours: 18.5,
+    firstAttemptDeliveryRatePct: 97.8,
+    freightDamageClaimsPct: 0.12,
+    slaTargetPct: 95.0,
+  };
+
+  const chartData = initialData?.chartData || defaultChartData;
+  const miniMetrics = initialData?.miniMetrics || defaultMiniMetrics;
+  const currentOtif = chartData.length > 0 ? chartData[chartData.length - 1].otifRate : 98.2;
+
   return (
     <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-5 shadow-sm">
       {/* Header with Title & Mini-metrics */}
@@ -29,11 +54,11 @@ export function DeliveryPerformanceChart() {
               Total Delivery Performance &amp; OTIF
             </h2>
             <span className="rounded-md bg-emerald-50 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-700 border border-emerald-200/80">
-              98.2% OTIF (Current)
+              {currentOtif}% OTIF (Current)
             </span>
           </div>
           <p className="mt-0.5 font-body text-xs text-text-grey">
-            On-Time In-Full tracking with 95.0% contractual benchmark SLA line
+            On-Time In-Full tracking with {miniMetrics.slaTargetPct}% contractual benchmark SLA line
           </p>
         </div>
 
@@ -44,7 +69,7 @@ export function DeliveryPerformanceChart() {
             <Clock size={12} className="text-slate-400" />
             <span className="text-text-grey font-medium">Lead Time:</span>
             <span className="font-mono font-bold text-slate-800">
-              {DELIVERY_MINI_METRICS.avgLeadTimeHours}h (&lt;24h)
+              {miniMetrics.avgLeadTimeHours}h (&lt;24h)
             </span>
           </div>
 
@@ -53,7 +78,7 @@ export function DeliveryPerformanceChart() {
             <CheckCheck size={12} className="text-emerald-600" />
             <span className="text-emerald-800 font-medium">1st Attempt:</span>
             <span className="font-mono font-bold text-emerald-900">
-              {DELIVERY_MINI_METRICS.firstAttemptDeliveryRatePct}%
+              {miniMetrics.firstAttemptDeliveryRatePct}%
             </span>
           </div>
 
@@ -62,7 +87,7 @@ export function DeliveryPerformanceChart() {
             <ShieldAlert size={12} className="text-slate-400" />
             <span className="text-text-grey font-medium">Damage Claims:</span>
             <span className="font-mono font-bold text-emerald-700">
-              {DELIVERY_MINI_METRICS.freightDamageClaimsPct}% (&lt;0.5%)
+              {miniMetrics.freightDamageClaimsPct}% (&lt;0.5%)
             </span>
           </div>
         </div>
@@ -84,14 +109,14 @@ export function DeliveryPerformanceChart() {
         </div>
         <div className="flex items-center gap-1.5 text-emerald-600">
           <span className="h-0.5 w-4 border-t-2 border-dashed border-emerald-500"></span>
-          <span>SLA Target (95.0%)</span>
+          <span>SLA Target ({miniMetrics.slaTargetPct}%)</span>
         </div>
       </div>
 
       {/* Recharts Multi-Line Chart */}
       <div className="mt-4 h-64 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={DELIVERY_PERFORMANCE_DATA} margin={{ top: 15, right: 15, left: -20, bottom: 0 }}>
+          <LineChart data={chartData} margin={{ top: 15, right: 15, left: -20, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
             <XAxis
               dataKey="month"
@@ -132,14 +157,14 @@ export function DeliveryPerformanceChart() {
                 return null;
               }}
             />
-            {/* 95% SLA Target Line */}
+            {/* SLA Target Line */}
             <ReferenceLine
-              y={DELIVERY_MINI_METRICS.slaTargetPct}
+              y={miniMetrics.slaTargetPct}
               stroke="#10B981"
               strokeDasharray="4 4"
               strokeWidth={1.5}
               label={{
-                value: "SLA Target (95%)",
+                value: `SLA Target (${miniMetrics.slaTargetPct}%)`,
                 fill: "#10B981",
                 fontSize: 10,
                 fontWeight: 700,
