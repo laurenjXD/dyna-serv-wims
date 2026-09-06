@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
 import {
   PackageCheck,
@@ -13,15 +13,12 @@ import {
   Barcode,
   ArrowRight,
   PieChart,
-  LayoutDashboard,
-  Layers,
 } from "lucide-react";
 import { QuickJumpScanner } from "@/app/(authenticated)/receiving/_components/QuickJumpScanner";
 import { KpiTile } from "@/components/analytics/KpiTile";
 import { DonutChart } from "@/components/analytics/DonutChart";
 import { BarChart } from "@/components/analytics/BarChart";
 import { WeeklyTrendChart, type WeeklyTrendDatum } from "@/components/analytics/WeeklyTrendChart";
-import { OperationsDashboard } from "@/components/dashboard/OperationsDashboard";
 import type { WrrDocumentRow } from "@/lib/db/queries/receiving";
 import type { PickListRow } from "@/lib/db/queries/withdrawals";
 import type { InspectionCaseListRow } from "@/lib/db/queries/transfers";
@@ -65,12 +62,12 @@ export function OfficeLanding({
   hasTransferAccess,
   hasInspectionAccess,
   hasApprovalAccess,
-  hasFinancialAccess,
+  hasFinancialAccess: _hasFinancialAccess,
   hasReportingAccess,
-  openWrrRows,
-  openPickListRows,
-  openInspectionRows,
-  pendingApprovalRows,
+  openWrrRows: _openWrrRows,
+  openPickListRows: _openPickListRows,
+  openInspectionRows: _openInspectionRows,
+  pendingApprovalRows: _pendingApprovalRows,
   inventoryPreview,
   recentActivity,
   weeklyTrend,
@@ -120,12 +117,12 @@ export function OfficeLanding({
   return (
     <div className="mx-auto max-w-[1360px] space-y-6 px-4 py-6 md:px-6 lg:px-8">
       {/* ── Page Header ─────────────────────────────────────────────────────── */}
-      <header className="flex flex-wrap items-center justify-between gap-2">
+      <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-on-surface">
+          <h1 className="font-heading text-2xl sm:text-3xl font-bold tracking-tight text-on-surface">
             Operational Overview
           </h1>
-          <p className="font-body text-xs text-text-grey">{dateString}</p>
+          <p className="font-body text-xs sm:text-sm text-text-grey mt-0.5">{dateString}</p>
         </div>
         <div className="flex items-center gap-2">
           <Link
@@ -140,7 +137,7 @@ export function OfficeLanding({
 
       {/* ── Quick Jump Bar ──────────────────────────────────────────────────── */}
       {hasReceivingAccess && quickJumpAction && (
-        <section className="rounded-xl border border-blue-200 bg-blue-50/70 p-4 shadow-sm">
+        <section className="rounded-2xl border border-blue-200/80 bg-blue-50/70 p-4 shadow-sm">
           <div className="flex items-center gap-2 mb-2">
             <Barcode size={20} className="text-brand-navy" aria-hidden="true" />
             <h2 className="font-heading text-sm font-bold text-brand-navy">Quick Jump to Receiving</h2>
@@ -200,7 +197,7 @@ export function OfficeLanding({
       {/* ── 2. High-Level Visualizations Bento Grid ─────────────────────────── */}
       <section aria-label="Operational visualizations" className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         {/* Visual 1: Dispatch Rate Ring */}
-        <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">
+        <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">
           {hasPickListAccess && dispatchRate ? (
             (() => {
               const total = dispatchRate.dispatched + dispatchRate.notDispatched;
@@ -218,14 +215,14 @@ export function OfficeLanding({
               );
             })()
           ) : (
-            <div className="flex h-64 items-center justify-center text-xs text-text-grey">
+            <div className="flex h-64 items-center justify-center text-xs text-text-grey font-medium">
               Dispatch rate unavailable
             </div>
           )}
         </div>
 
         {/* Visual 2: Weekly Outgoing Trend */}
-        <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1 lg:col-span-2">
+        <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1 lg:col-span-2">
           <div className="mb-2 flex items-center justify-between">
             <div>
               <h2 className="font-heading text-sm font-semibold text-on-surface">
@@ -244,10 +241,10 @@ export function OfficeLanding({
         {/* Visual 3: Monthly Outgoing Stat Block */}
         <div
           data-testid="landing-monthly-kpi"
-          className="flex flex-col justify-between rounded-xl bg-brand-navy p-5 text-surface-white shadow-elevation-1"
+          className="flex flex-col justify-between rounded-2xl bg-brand-navy p-5 text-surface-white shadow-elevation-1"
         >
           <div>
-            <p className="font-label text-xs uppercase tracking-wider text-surface-white/70">
+            <p className="font-label text-xs uppercase tracking-wider text-surface-white/70 font-bold">
               Monthly Outgoing
             </p>
             <p className="mt-2 font-heading text-3xl font-extrabold text-surface-white">
@@ -283,7 +280,7 @@ export function OfficeLanding({
       {/* ── 3. Stock Ownership & Flow Activity Breakdown ───────────────────── */}
       <section aria-label="Stock split and flow activity" className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Stock Ownership Split Donut */}
-        <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">
+        <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">
           <DonutChart
             title="Stock Ownership Split"
             centerLabel="Total Ratio"
@@ -309,7 +306,7 @@ export function OfficeLanding({
         </div>
 
         {/* Activity by Flow Type Bar Chart */}
-        <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">
+        <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">
           {hasPickListAccess && flowActivity && flowActivity.length > 0 ? (
             <BarChart
               title="Activity by Flow Type"
@@ -322,7 +319,7 @@ export function OfficeLanding({
               }))}
             />
           ) : (
-            <div className="flex h-64 flex-col items-center justify-center text-xs text-text-grey">
+            <div className="flex h-64 flex-col items-center justify-center text-xs text-text-grey font-medium">
               <PieChart size={32} className="mb-2 text-slate-300" />
               <p>No flow dispatch data in current period</p>
             </div>
@@ -333,7 +330,7 @@ export function OfficeLanding({
       {/* ── 4. Actionable Queues & Lists (2-Column Bento) ───────────────────── */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         {/* Left: Top Stock Items Preview with Frosted Glass Badges */}
-        <section aria-label="Top inventory items" className="rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
+        <section aria-label="Top inventory items" className="rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1 overflow-hidden">
           <div className="flex items-center justify-between border-b border-outline-variant/30 px-5 py-4">
             <div>
               <h2 className="font-heading text-base font-semibold text-on-surface">
@@ -343,7 +340,7 @@ export function OfficeLanding({
             </div>
             <Link
               href="/inventory"
-              className="font-label text-xs font-semibold text-brand-navy underline hover:text-brand-royal-blue"
+              className="font-label text-xs font-bold text-brand-navy underline hover:text-brand-royal-blue"
             >
               View All
             </Link>
@@ -405,13 +402,13 @@ export function OfficeLanding({
                           <div className="inline-flex gap-1.5">
                             <Link
                               href={`/inventory?item=${item.itemCode}`}
-                              className="rounded border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-brand-navy hover:bg-slate-50 hover:border-brand-navy"
+                              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-brand-navy hover:bg-slate-50 hover:border-brand-navy shadow-2xs"
                             >
                               Balance
                             </Link>
                             <Link
                               href={`/inventory?item=${item.itemCode}&view=lots`}
-                              className="rounded border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-brand-navy hover:bg-slate-50 hover:border-brand-navy"
+                              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-brand-navy hover:bg-slate-50 hover:border-brand-navy shadow-2xs"
                             >
                               Lots
                             </Link>
@@ -428,12 +425,10 @@ export function OfficeLanding({
 
         {/* Right: Chronological Activity Feed */}
         <div className="space-y-4">
-
-          {/* Chronological Recent Activity Feed */}
           <div
             aria-label="Recent activity"
             data-testid="landing-recent-activity"
-            className="rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1"
+            className="rounded-2xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1"
           >
             <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
               <ClipboardList size={16} className="text-brand-navy" />
@@ -442,7 +437,7 @@ export function OfficeLanding({
               </h3>
             </div>
             {recentActivity.length === 0 ? (
-              <p className="py-4 text-xs text-text-grey italic">No recent transactions.</p>
+              <p className="py-6 text-xs text-text-grey italic text-center">No recent transactions recorded today.</p>
             ) : (
               <ul className="divide-y divide-slate-100">
                 {recentActivity.map((entry) => (
