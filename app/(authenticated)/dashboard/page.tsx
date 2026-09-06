@@ -9,6 +9,8 @@ import {
   getDashboardMasterInventory,
 } from "@/lib/db/queries/dashboard";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "WMS Operations Dashboard | Dyna-Serv WIMS",
   description: "Real-time warehouse operations telemetry, inventory valuation, location heatmap, and performance metrics.",

@@ -25,14 +25,28 @@ function maxBoxesFor(candidate: PutawayCandidate | undefined, unitCbm: number, q
 }
 
 function buildInitialAssignment(
-  _candidates: PutawayCandidate[],
+  candidates: PutawayCandidate[],
   quantity: number,
-  _unitCbm: number,
+  unitCbm: number,
 ): string[] {
   const safeQuantity = Math.max(0, Math.floor(Number(quantity) || 0));
   if (safeQuantity === 0) return [];
-  // Default to unassigned so warehouse operators explicitly select or scan their target putaway location
-  return Array.from({ length: safeQuantity }, () => "");
+
+  const assignments: string[] = [];
+  const orderedCandidates = [...candidates].sort((a, b) =>
+    (a.label ?? "").localeCompare(b.label ?? "", undefined, {
+      numeric: true,
+      sensitivity: "base",
+    }),
+  );
+
+  for (const candidate of orderedCandidates) {
+    const availableBoxes = maxBoxesFor(candidate, unitCbm, safeQuantity - assignments.length);
+    assignments.push(...Array.from({ length: Math.min(availableBoxes, safeQuantity - assignments.length) }, () => candidate.id));
+    if (assignments.length === safeQuantity) break;
+  }
+
+  return assignments.concat(Array.from({ length: safeQuantity - assignments.length }, () => ""));
 }
 
 export function PutawayLocationSelector({
@@ -106,7 +120,7 @@ export function PutawayLocationSelector({
   }, [locationsBySlot]);
 
   const assignedBoxesCount = allocations.reduce((sum, a) => sum + a.qty, 0);
-  const shortageBoxesCount = Math.max(0, safeQuantity - assignedBoxesCount);
+  const missingBoxesCount = Math.max(0, safeQuantity - assignedBoxesCount);
 
   const selectedIds = allocations.map((allocation) => allocation.locationId);
   const singleLocationId =
@@ -142,10 +156,10 @@ export function PutawayLocationSelector({
           <div>
             <p className="font-label text-label font-bold uppercase tracking-[0.1em] text-primary">Step 1 · Primary location</p>
             <label htmlFor="all-boxes-location" className="mt-1 block font-heading text-title-md font-bold text-on-surface">
-              Put all {safeQuantity} boxes in
+              Put all {safeQuantity} declared boxes in
             </label>
             <p className="mt-0.5 font-body text-body-sm text-text-grey">
-              Expected: <strong>{safeQuantity} Boxes</strong> ({(safeQuantity * safeSpq).toLocaleString()} {uom}) · SPQ: <strong>{safeSpq} {uom}/Box</strong>
+              Expected: <strong>{safeQuantity} Boxes</strong> ({(safeQuantity * safeSpq).toLocaleString()} {uom}) · Mark boxes that did not arrive as <strong>Missing</strong> · SPQ: <strong>{safeSpq} {uom}/Box</strong>
             </p>
           </div>
           <span className="rounded-full bg-[#EEF3FF] px-3 py-1 font-mono text-mono-sm font-bold text-brand-navy">
@@ -167,7 +181,7 @@ export function PutawayLocationSelector({
           />
         </div>
         <p className="mt-2.5 font-body text-body-md text-text-grey">
-          Choose a primary storage rack or inspection bay. Use Step 2 below if some cartons are damaged (Hold) or missing (Shortage).
+          Choose a primary storage rack or inspection bay. Use Step 2 below to mark individual boxes as Missing or place them on Hold.
         </p>
       </section>
 
@@ -189,35 +203,35 @@ export function PutawayLocationSelector({
                   {lotNumber ? `${lotNumber} · ` : ""}CTN-{String(index + 1).padStart(2, "0")}
                   <span className="block text-text-grey font-label text-[11px] font-normal">Box {index + 1} of {safeQuantity}</span>
                 </span>
-                <select
+                <LocationCombobox
                   id={`box-location-${index + 1}`}
+                  options={[
+                    { id: "", label: "— Missing / Shortage —" },
+                    ...allLocationOptions.map((opt) => {
+                      const totalAssignedHere = assignedCounts.get(opt.id) ?? 0;
+                      const assignedHereSlot = locationId === opt.id ? 1 : 0;
+                      const assignedElsewhere = totalAssignedHere - assignedHereSlot;
+                      return {
+                        id: opt.id,
+                        label: opt.label,
+                        disabled: opt.raw ? assignedElsewhere >= maxBoxesFor(opt.raw, safeUnitCbm, safeQuantity) : false,
+                        capacity: opt.capacity
+                          ? {
+                              occupied: (opt.capacity.occupied || 0) + totalAssignedHere * safeUnitCbm,
+                              maximum: opt.capacity.maximum || 0,
+                            }
+                          : undefined,
+                      };
+                    }),
+                  ]}
                   value={locationId}
-                  onChange={(event) => {
-                    const nextValue = event.target.value;
+                  onChange={(nextValue) =>
                     setLocationsBySlot((previous) =>
                       previous.map((value, slot) => (slot === index ? nextValue : value)),
-                    );
-                  }}
-                  className={`h-11 w-full rounded-lg border-2 px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy ${locationId === "" ? "border-amber-400 bg-amber-50 text-amber-900 font-bold" : "border-outline-variant bg-surface-white"}`}
-                >
-                  <option value="">⚠️ — Unassigned / Shortage —</option>
-                  <optgroup label="Storage Locations">
-                    {candidates.map((cand) => (
-                      <option key={cand.id} value={cand.id}>
-                        {cand.label} (Storage)
-                      </option>
-                    ))}
-                  </optgroup>
-                  {inspectionCandidates.length > 0 && (
-                    <optgroup label="Inspection & Quarantine (Hold)">
-                      {inspectionCandidates.map((insp) => (
-                        <option key={insp.id} value={insp.id}>
-                          {insp.label} (Inspection Bay / Hold)
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
-                </select>
+                    )
+                  }
+                  placeholder="Select location or Missing"
+                />
               </label>
             ))}
           </div>
@@ -239,16 +253,17 @@ export function PutawayLocationSelector({
           </span>
         </div>
 
-        {shortageBoxesCount > 0 && (
+        {missingBoxesCount > 0 && (
           <div className="mt-3 rounded-xl border border-status-pending/40 bg-[#FFF9EB] p-3">
             <p className="font-label text-body-sm font-bold text-amber-900">
-              ⚠️ Delivery Shortage Detected: {shortageBoxesCount} Box{shortageBoxesCount === 1 ? "" : "es"} Missing ({(shortageBoxesCount * safeSpq).toLocaleString()} {uom})
+              OS&amp;D shortage: {missingBoxesCount} declared box{missingBoxesCount === 1 ? "" : "es"} marked Missing ({(missingBoxesCount * safeSpq).toLocaleString()} {uom})
             </p>
             <p className="mt-0.5 font-body text-body-xs text-amber-800">
-              Only {assignedBoxesCount} physically arrived boxes will be posted to stock. The {shortageBoxesCount} missing boxes will be logged on the OS&D variance report.
+              Only the {assignedBoxesCount} received boxes will be assigned and posted to inventory.
             </p>
           </div>
         )}
+
 
         {assignedBoxesCount === 0 ? (
           <div className="mt-3 rounded-xl border border-dashed border-outline-variant/60 bg-surface-white p-4 text-center">
@@ -329,7 +344,7 @@ export function PutawayLocationSelector({
             {assignedBoxesCount > 0 ? (
               <>
                 I confirm that {assignedBoxesCount} of {safeQuantity} declared boxes ({(assignedBoxesCount * safeSpq).toLocaleString()} {uom}) are physically present and assigned.
-                {shortageBoxesCount > 0 && ` (${shortageBoxesCount} box shortage will be logged).`}
+                {missingBoxesCount > 0 && ` (${missingBoxesCount} declared box${missingBoxesCount === 1 ? "" : "es"} missing; OS&D will be recorded).`}
               </>
             ) : (
               <span className="text-text-grey">

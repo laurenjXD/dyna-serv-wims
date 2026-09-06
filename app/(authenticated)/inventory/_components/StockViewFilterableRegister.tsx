@@ -395,45 +395,23 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
                 </span>
                 <span className="font-mono text-sm font-bold text-brand-navy">Total Available: {total.toLocaleString()} {item.uom}</span>
               </div>
-              <div className="grid justify-start gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+              <div className="flex flex-wrap items-start gap-2">
                 {item.lots.map((lot) => (
-                  <div key={lot.lotId} className="flex min-w-[200px] flex-col justify-between rounded border border-blue-200 bg-surface-white p-2.5 text-xs shadow-sm">
-                    <div>
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="font-mono font-bold text-brand-navy">{lot.lotNumber}</span>
-                        <span
-                          className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${
-                            lot.lotStatus === "available"
-                              ? "bg-status-available/15 text-status-available"
-                              : lot.lotStatus === "hold"
-                              ? "bg-status-held/15 text-status-held"
-                              : "bg-status-pending/15 text-status-pending"
-                          }`}
-                        >
-                          {lot.lotStatus}
-                        </span>
-                      </div>
-                      <p className="mt-1 font-mono text-[11px] text-slate-700">
-                        Locations: <strong>{lot.locationLabels.join(", ") || "—"}</strong>
-                      </p>
-                      {lot.expiryDate && (
-                        <p className="font-mono text-[11px] text-text-grey">
-                          Exp: {new Date(lot.expiryDate).toLocaleDateString()}
-                        </p>
-                      )}
-                      <p className="font-mono text-sm font-bold text-slate-900 mt-1">
-                        {lot.availableQty.toLocaleString()} <span className="text-xs font-normal text-text-grey">pckgs</span>
-                      </p>
+                  <details key={lot.lotId} className="group w-full max-w-[280px] rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
+                      <span className="flex min-w-0 items-center gap-1.5 font-mono text-sm font-bold text-slate-900">
+                        <ChevronDown size={14} className="shrink-0 text-text-grey transition-transform group-open:rotate-180" />
+                        <span className="truncate" title={lot.lotNumber}>{lot.lotNumber}</span>
+                      </span>
+                      <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-bold text-brand-navy">{lot.availableQty.toLocaleString()} {item.uom}</span>
+                    </summary>
+                    <div className="mt-2 space-y-1 border-t border-slate-100 pt-2 text-xs">
+                      <div className="flex justify-between gap-2 text-text-grey"><span>Location:</span><span className="font-mono font-semibold text-slate-800">{lot.locationLabels.join(", ") || "—"}</span></div>
+                      <div className="flex justify-between gap-2 text-text-grey"><span>Expiry:</span><span className="font-mono text-slate-800">{lot.expiryDate || "Not dated"}</span></div>
+                      <div className="flex justify-between gap-2 text-text-grey"><span>Status:</span><span className="font-semibold text-emerald-700 lowercase">{lot.lotStatus}</span></div>
+                      <LotQrViewer lotId={lot.lotId} lotNumber={lot.lotNumber} itemCode={item.itemCode} compact />
                     </div>
-                    <div className="mt-2 flex items-center justify-end border-t border-slate-100 pt-2">
-                      <LotQrViewer
-                        lotId={lot.lotId}
-                        lotNumber={lot.lotNumber}
-                        itemCode={item.itemCode}
-                        compact
-                      />
-                    </div>
-                  </div>
+                  </details>
                 ))}
               </div>
             </div>

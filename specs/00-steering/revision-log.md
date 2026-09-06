@@ -1,5 +1,8 @@
 # Revision Log — Hyperion 3PL / Dyna-Serv
 
+## One-QR receiving confirmation and per-line shortage placement approved (2026-09-02)
+
+Product Owner approved the clarified receiving workflow: the Work Queue/WRR owns expected lines and quantities; one QR scan identifies and confirms the matching receiving line; the operator assigns declared boxes to storage/Hold or marks individual boxes `Missing`; only assigned boxes enter inventory; missing boxes are excluded from location allocations and inventory; lines commit independently; and the WRR becomes `confirmed` after all lines resolve, with OS&D shown as a shortage summary rather than a new `partial` status. The receiving UI implementation is recorded in commit `ac4f5c0` and the approval is captured in `specs/07-incoming-receiving/{requirements,design,tasks}.md`.
 ## Delivery Conformance KPI Dropdown & Trend Line Graph Dashboard Integration (`08`, `16`) (2026-09-05)
 
 **What changed**:
@@ -331,7 +334,6 @@ Both specs' prior `Status: Approved` versions (2026-08-06) are superseded in ful
 **`13-trading-orders-and-pricing`**: retires the `trading_orders` → `trading_order_items` → `trading_price_snapshots` order lifecycle entirely — no order entity exists in the new model. Replaced with a pre-configured `trading_policies` rate card keyed by `(party_id, item_id)`; a missing rate card blocks pick-list generation for that line rather than silently defaulting to `items.selling_price`. Price freezes into an immutable, hashed `trading_invoice_lines` row at pick-list generation, before `08` Stage 1 commitment.
 
 **Approved with one item explicitly still open**: `13`'s Task 1 — taxes, discounts, returns, and post-dispatch corrections for the new pricing model — was not carried over from the prior order-based design and has not been resolved. Product Owner decision: approve now rather than block on it; resolve as part of completing Task 4 (price resolution and freeze) during implementation, not before. Both specs' `tasks.md` sign-off lines completed 2026-08-19; `specs/00-steering/gantt-mapping.md` rows 3.6/3.6a updated to reflect the rewrite and re-approval.
-=======
 ## Multi-item Pick Lists-tab workflow (2026-08-25) — approved
 
 The Product Owner approved a change from direct, single-item Stock View generation to a table-like draft in Master Inventory's **Pick Lists** tab:
@@ -362,7 +364,6 @@ The Product Owner clarified the field ownership for the supplied Warehouse Recei
 - **Delivery-only template fields are not invented.** Client D.R. No., DGC D.R. No., delivery date, and delivery instructions cannot be derived from Master Inventory and remain unavailable in v1 until an approved owning workflow exists; `19-dispatch-scheduling-and-delivery-tracking` remains deferred. The pick-list number must not be misrepresented as a delivery-receipt number.
 
 This affects `01-core-data-model` (new WRR-line persistence), `07-incoming-receiving` (WRR form/read-only/print contract), and `10-pick-list-and-acknowledgement-receipt` (document field/source contract). Both approvals were granted in conversation on 2026-08-24; all three specifications are **Approved** and implementation is authorized.
->>>>>>> origin/fix-it-felix
 
 ## Track B Milestone 2 scope calls: Logistics tab deferred, bulk location generator in scope (2026-08-17)
 
