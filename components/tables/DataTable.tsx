@@ -373,8 +373,8 @@ export function DataTable<TData>({
       </div>
     )}
 
-      {/* ── Desktop Data-Dense Table (md:block) ────────────────────────── */}
-      <div className="hidden md:block rounded-2xl border border-slate-200/80 bg-surface-white shadow-sm">
+      {/* ── Desktop Data-Dense Table (lg:block) ────────────────────────── */}
+      <div className="hidden lg:block rounded-2xl border border-slate-200/80 bg-surface-white shadow-sm">
         <div className="overflow-x-auto rounded-2xl">
           <table className="w-full border-collapse text-left text-sm">
             {/* Header with Sorting & Google Sheets-Style Filter Popovers */}
@@ -437,7 +437,7 @@ export function DataTable<TData>({
                 <tr>
                   <td
                     colSpan={columns.length}
-                            className="px-4 py-12 text-center text-sm text-text-grey italic"
+                    className="px-4 py-12 text-center text-sm text-text-grey italic"
                   >
                     {emptyMessage}
                   </td>
@@ -448,24 +448,27 @@ export function DataTable<TData>({
                     return (
                       <tr
                         key={row.id}
+                        className="bg-slate-100/80 font-semibold text-brand-navy cursor-pointer"
                         onClick={row.getToggleExpandedHandler()}
-                        className="bg-[#EBF2FE]/80 hover:bg-[#E2ECFD] cursor-pointer transition-colors border-y border-blue-200 font-semibold"
                       >
-                        <td colSpan={columns.length} className="px-3.5 py-2">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              {row.getIsExpanded() ? (
-                                <ChevronDown size={15} className="text-brand-navy" />
-                              ) : (
-                                <ChevronRight size={15} className="text-brand-navy" />
-                              )}
-                              <span className="font-heading text-sm font-bold text-brand-navy">
-                                {row.groupingColumnId}: {row.groupingColumnId ? String(row.getValue(row.groupingColumnId)) : ""}
-                              </span>
-                              <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-brand-navy">
-                                {row.subRows.length} item{row.subRows.length !== 1 ? "s" : ""}
-                              </span>
-                            </div>
+                        <td colSpan={row.getVisibleCells().length} className="px-4 py-2.5">
+                          <div className="flex items-center gap-2">
+                            {row.getIsExpanded() ? (
+                              <ChevronDown size={16} />
+                            ) : (
+                              <ChevronRight size={16} />
+                            )}
+                            <span>
+                              {(() => {
+                                const col = row.groupingColumnId ? table.getColumn(row.groupingColumnId) : undefined;
+                                const headerDef = col?.columnDef.header;
+                                return typeof headerDef === "string" ? headerDef : (row.groupingColumnId ?? "");
+                              })()}
+                              : <strong className="ml-1 text-on-surface">{String(row.groupingValue ?? "")}</strong>
+                            </span>
+                            <span className="ml-2 rounded-full bg-slate-200/80 px-2 py-0.5 text-xs text-text-secondary">
+                              ({row.subRows.length} items)
+                            </span>
                           </div>
                         </td>
                       </tr>
@@ -509,8 +512,8 @@ export function DataTable<TData>({
         </div>
       </div>
 
-      {/* ── Mobile Bento-Cards (Stacked Rows for Handhelds) ──────────────── */}
-      <div className="space-y-3 md:hidden">
+      {/* ── Mobile Bento-Cards (Stacked Rows for Handhelds / Screens < 1024px) ── */}
+      <div className="space-y-3 block lg:hidden">
         {table.getRowModel().rows.length === 0 ? (
           <div className="rounded-2xl border border-slate-200 bg-surface-white p-8 text-center text-sm text-text-grey italic">
             {emptyMessage}
@@ -532,12 +535,12 @@ export function DataTable<TData>({
             return (
               <div
                 key={row.id}
-                className="rounded-2xl border border-slate-200/80 bg-surface-white p-3.5 shadow-sm hover:border-brand-navy/30 transition-all space-y-2.5"
+                className="rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1 transition-all space-y-3"
               >
                 {/* Mobile Card Header */}
-                <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
                   <div className="min-w-0">
-                    <span className="text-xs uppercase font-bold text-text-secondary block">
+                    <span className="text-xs uppercase font-bold text-text-grey block">
                       {String(primaryCell?.column.columnDef.header || "Item")}
                     </span>
                     <div className="text-sm font-bold text-brand-navy truncate">
@@ -552,16 +555,16 @@ export function DataTable<TData>({
                 </div>
 
                 {/* Mobile Card Grid Details */}
-                <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="grid grid-cols-2 gap-2.5 text-sm">
                   {detailCells.map((cell) => {
                     const colHeader = cell.column.columnDef.header;
                     const label = typeof colHeader === "string" ? colHeader : cell.column.id;
                     return (
                       <div key={cell.id} className="min-w-0">
-                        <span className="text-xs text-text-secondary font-medium block truncate">
+                        <span className="text-xs text-text-grey font-medium block truncate">
                           {label}
                         </span>
-                        <div className="font-semibold text-slate-800 truncate">
+                        <div className="font-semibold text-on-surface truncate">
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </div>
                       </div>
@@ -570,7 +573,7 @@ export function DataTable<TData>({
                 </div>
 
                 {/* Optional Expandable Details */}
-                {row.getIsExpanded() && renderRowSubComponent && (
+                {(row.getIsExpanded() || isRowExpanded?.(row)) && renderRowSubComponent && (
                   <div className="pt-2 border-t border-slate-100">
                     {renderRowSubComponent({ row })}
                   </div>

@@ -446,43 +446,50 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
           const modelVal = String(item.inventoryModel || "TRADING").toUpperCase();
 
           return (
-            <div className="space-y-3">
+            <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1 space-y-3 transition-all">
               {/* Card Header: Item Code, Model Badge & View Action */}
-              <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2">
+              <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2.5">
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5">
                     <span className="font-mono text-sm font-bold text-brand-navy">{item.itemCode}</span>
                     {item.isPerishable && (
-                      <span className="rounded bg-rose-50 px-1 py-0.2 text-[10px] font-bold text-rose-700 border border-rose-200">
+                      <span className="rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-700 border border-rose-200 uppercase tracking-wider">
                         FEFO
                       </span>
                     )}
                   </div>
-                  <span
-                    className={`inline-block rounded-full px-2 py-0.2 text-[10px] font-bold uppercase tracking-wider ${
-                      modelVal === "VMI"
-                        ? "bg-blue-50 text-blue-800 border border-blue-200"
-                        : modelVal === "TRADING"
-                        ? "bg-slate-100 text-slate-800 border border-slate-300"
-                        : "bg-amber-50 text-amber-800 border border-amber-200"
-                    }`}
-                  >
-                    {modelVal}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                        modelVal === "VMI"
+                          ? "bg-blue-50 text-blue-800 border border-blue-200"
+                          : modelVal === "TRADING"
+                          ? "bg-slate-100 text-slate-800 border border-slate-300"
+                          : "bg-amber-50 text-amber-800 border border-amber-200"
+                      }`}
+                    >
+                      {modelVal}
+                    </span>
+                    {item.organizationName && (
+                      <span className="text-[11px] font-medium text-slate-500 truncate max-w-[140px]">
+                        {item.organizationName}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setSelectedItemForView(item)}
-                  className="inline-flex h-8 items-center gap-1 rounded-xl bg-brand-navy px-3 text-xs font-bold text-surface-white shadow-sm hover:bg-brand-navy/90"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-brand-navy px-3.5 text-xs font-bold text-surface-white shadow-sm hover:bg-brand-navy/90 active:scale-[0.98] transition-all shrink-0"
                 >
-                  <Eye size={12} /> View
+                  <Eye size={13} /> View
                 </button>
               </div>
 
               {/* Description & Category */}
               <div>
-                <p className="text-xs font-semibold text-slate-900">{item.itemName}</p>
-                <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-text-grey mt-0.5">
+                <p className="text-sm font-semibold text-slate-900 leading-snug">{item.itemName}</p>
+                <div className="flex flex-wrap items-center gap-1.5 text-xs text-text-grey mt-1">
                   <span>{item.categoryName || "Uncategorized"}</span>
                   {item.subcategoryName && (
                     <>
@@ -490,62 +497,95 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
                       <span>{item.subcategoryName}</span>
                     </>
                   )}
-                  {item.customerName && (
-                    <>
-                      <span>·</span>
-                      <span className="font-medium text-slate-700">{item.customerName}</span>
-                    </>
-                  )}
                 </div>
               </div>
 
-              {/* Key Metrics: Current Net Balance (Total Qty) with Boxes & SPQ as subtitle */}
-              <div className="rounded-xl bg-slate-50 p-3 border border-slate-100 flex items-center justify-between">
+              {/* Key Metrics: Current Net Balance (Total Qty) with Boxes & SPQ */}
+              <div className="rounded-xl bg-slate-50/90 p-3.5 border border-slate-200/70 flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-brand-navy block">
-                    Current Net Balance
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-text-grey block">
+                    Total Quantity On Hand
                   </span>
-                  <p className="font-mono text-base font-bold text-brand-navy mt-0.5">
+                  <p className="font-mono text-lg font-bold text-brand-navy mt-0.5">
                     {totalCalculated.toLocaleString()}{" "}
                     <span className="text-xs font-normal text-slate-600">{item.uom || "PCS"}</span>
                   </p>
-                  <p className="text-[11px] font-mono text-text-grey mt-0.5">
-                    {item.boxesOnHand.toLocaleString()} boxes · SPQ: {item.spq.toLocaleString()} {item.uom || "PCS"}/box
+                  <p className="text-xs font-mono text-slate-600 mt-0.5">
+                    <strong>{item.boxesOnHand.toLocaleString()}</strong> boxes · SPQ: {item.spq.toLocaleString()} {item.uom || "PCS"}/box
                   </p>
                 </div>
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-brand-navy">
-                  <Package size={18} />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-brand-navy border border-blue-100 shadow-sm">
+                  <Package size={20} />
                 </div>
               </div>
 
-              {/* Lots & Location Drawer Trigger */}
-              <div className="flex items-center justify-between text-xs pt-1">
-                <span className="text-text-grey text-[11px] font-mono">
-                  Location: <strong className="text-slate-800">{item.locationLabels || "—"}</strong>
+              {/* Lots & Locations Accordion Bar */}
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-xs text-slate-600 font-mono truncate max-w-[180px]">
+                  Locs: <strong className="text-slate-800">{item.locationLabels || "—"}</strong>
                 </span>
                 <button
                   type="button"
                   onClick={() => setExpandedItemId(isLotsExpanded ? null : item.itemId)}
-                  className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-navy hover:underline"
+                  className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-all shadow-sm ${
+                    isLotsExpanded
+                      ? "border-brand-navy bg-brand-navy text-surface-white"
+                      : "border-slate-200 bg-surface-white text-brand-navy hover:bg-slate-50"
+                  }`}
                 >
-                  <Layers size={12} /> {item.lots.length} lot(s) {isLotsExpanded ? "▲" : "▼"}
+                  <Layers size={13} />
+                  <span>{item.lots.length} {item.lots.length === 1 ? "Lot" : "Lots"}</span>
+                  <ChevronDown
+                    size={13}
+                    className={`transition-transform duration-200 ${isLotsExpanded ? "rotate-180 text-surface-white" : "text-slate-400"}`}
+                  />
                 </button>
               </div>
 
               {/* Mobile Expanded Lots View */}
               {isLotsExpanded && (
-                <div className="mt-2 space-y-2 border-t border-slate-100 pt-2">
+                <div className="space-y-2 border-t border-slate-100 pt-3">
                   {item.lots.map((lot) => (
-                    <div key={lot.lotId} className="rounded-lg border border-slate-200 bg-white p-2.5 space-y-1 text-xs">
+                    <div
+                      key={lot.lotId}
+                      className="rounded-xl border border-slate-200 bg-slate-50/60 p-3 space-y-2 text-xs"
+                    >
                       <div className="flex items-center justify-between">
-                        <span className="font-mono font-bold text-brand-navy">{lot.lotNumber}</span>
-                        <span className="rounded bg-blue-50 px-1.5 py-0.2 text-[10px] font-bold text-brand-navy">
-                          {lot.availableQty.toLocaleString()} {item.uom}
+                        <span className="font-mono font-bold text-brand-navy text-sm">{lot.lotNumber}</span>
+                        <span
+                          className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                            lot.lotStatus === "available"
+                              ? "bg-status-available/15 text-status-available"
+                              : lot.lotStatus === "hold"
+                              ? "bg-status-held/15 text-status-held"
+                              : "bg-status-pending/15 text-status-pending"
+                          }`}
+                        >
+                          {lot.lotStatus}
                         </span>
                       </div>
-                      <div className="flex justify-between text-[11px] text-text-grey">
-                        <span>Location: {lot.locationLabels.join(", ") || "—"}</span>
-                        <span>Exp: {lot.expiryDate || "—"}</span>
+                      <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 font-mono">
+                        <div>
+                          <span className="text-[10px] uppercase text-text-grey block">Location</span>
+                          <strong className="text-slate-800">{lot.locationLabels.join(", ") || "—"}</strong>
+                        </div>
+                        <div>
+                          <span className="text-[10px] uppercase text-text-grey block">Available Qty</span>
+                          <strong className="text-brand-navy">{lot.availableQty.toLocaleString()} {item.uom}</strong>
+                        </div>
+                      </div>
+                      {lot.expiryDate && (
+                        <div className="text-[11px] text-text-grey font-mono">
+                          Expires: {new Date(lot.expiryDate).toLocaleDateString()}
+                        </div>
+                      )}
+                      <div className="pt-2 border-t border-slate-200/60 flex justify-end">
+                        <LotQrViewer
+                          lotId={lot.lotId}
+                          lotNumber={lot.lotNumber}
+                          itemCode={item.itemCode}
+                          compact
+                        />
                       </div>
                     </div>
                   ))}
