@@ -109,7 +109,7 @@ export function AuthenticatedShellBoundary({
     // resolver failure is an application error. Only the unauthenticated
     // branch above represents an actual missing session.
     if (resolution.reason === "resolution_error") {
-      return <ShellStateView state={{ kind: "error" }} />;
+      return <ShellStateView state={{ kind: "error", correlationId: resolution.correlationId }} />;
     }
     return <ShellStateView state={{ kind: "empty_access" }} />;
   }
