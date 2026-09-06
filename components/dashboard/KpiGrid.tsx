@@ -37,14 +37,14 @@ export function KpiGrid({
       {/* 📱 MOBILE FLOOR EXECUTION (< 1024px)                                */}
       {/* ─────────────────────────────────────────────────────────────────── */}
       <div className="block lg:hidden space-y-3.5">
-        {/* Top Action Hero: Oversized Floor Queue Cards (Glove-Friendly) */}
+        {/* Top Action Hero: Active Operations Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* Active Pick Lists to Execute */}
           <div className="relative overflow-hidden rounded-2xl border-2 border-blue-500/80 bg-gradient-to-br from-blue-50 via-white to-blue-50/30 p-4 shadow-sm">
             <div className="flex items-center justify-between">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-2.5 py-0.5 font-label text-[11px] font-black uppercase tracking-wider text-white">
                 <ClipboardList size={13} />
-                Floor Outbound
+                Outbound
               </span>
               <span className="font-mono text-xs font-bold text-blue-900 bg-blue-100 px-2 py-0.5 rounded-md">
                 HIGH PRIORITY
@@ -64,7 +64,7 @@ export function KpiGrid({
               href="/outgoing"
               className="mt-3.5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 font-heading text-sm font-bold text-white shadow-md active:scale-[0.98] transition-transform"
             >
-              <span>Start Pick Run</span>
+              <span>View Outbound Queue</span>
               <ArrowRight size={17} />
             </Link>
           </div>
@@ -74,7 +74,7 @@ export function KpiGrid({
             <div className="flex items-center justify-between">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-600 px-2.5 py-0.5 font-label text-[11px] font-black uppercase tracking-wider text-white">
                 <PackageCheck size={13} />
-                Floor Inbound
+                Inbound
               </span>
               <span className="font-mono text-xs font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md">
                 12 WRRs READY
@@ -94,7 +94,7 @@ export function KpiGrid({
               href="/receiving"
               className="mt-3.5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-amber-600 hover:bg-amber-700 px-4 font-heading text-sm font-bold text-white shadow-md active:scale-[0.98] transition-transform"
             >
-              <span>Receive WRR Intake</span>
+              <span>View Inbound WRRs</span>
               <ArrowRight size={17} />
             </Link>
           </div>
@@ -238,12 +238,12 @@ export function KpiGrid({
           </div>
         </div>
 
-        {/* ── CARD 2: Open Floor Execution & Queue ──────────────────────────── */}
+        {/* ── CARD 2: Active Operations & Workflows ───────────────────────── */}
         <div className="relative overflow-hidden rounded-2xl border-2 border-blue-400/80 bg-gradient-to-b from-blue-50/50 via-white to-white p-5 shadow-sm transition-all hover:shadow-md flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
               <p className="font-label text-[11px] font-black uppercase tracking-wider text-blue-950">
-                Floor Execution Queue
+                Active Operations
               </p>
               <span className="inline-flex items-center rounded-full bg-blue-600 px-2 py-0.5 font-mono text-[10px] font-black text-white">
                 LIVE

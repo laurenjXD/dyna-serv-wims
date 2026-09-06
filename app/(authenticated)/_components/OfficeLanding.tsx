@@ -117,79 +117,23 @@ export function OfficeLanding({
 
   const totalStockQty = (ownership.trading + ownership.vmi + ownership.supplies) || 1;
 
-  const [viewMode, setViewMode] = useState<"dashboard" | "queues">("queues");
-
-  if (viewMode === "dashboard") {
-    return (
-      <div className="space-y-4">
-        <div className="mx-auto max-w-container px-4 sm:px-6 lg:px-8 pt-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-1.5 rounded-xl bg-slate-200/80 p-1 font-label text-xs font-semibold shadow-inner">
-            <button
-              type="button"
-              onClick={() => setViewMode("dashboard")}
-              className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 font-bold text-brand-navy shadow-xs transition-all"
-            >
-              <LayoutDashboard size={14} className="text-brand-navy" />
-              <span>Operations Dashboard</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("queues")}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-slate-600 hover:text-slate-900 transition-all"
-            >
-              <Layers size={14} className="text-slate-400" />
-              <span>Floor Action Queues</span>
-            </button>
-          </div>
-
-          <Link
-            href="/reports"
-            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 font-label text-xs font-bold text-brand-navy shadow-2xs hover:bg-slate-50 transition-colors"
-          >
-            <span>Analytics &amp; Reports Center</span>
-            <ArrowRight size={13} />
-          </Link>
-        </div>
-
-        <OperationsDashboard />
-      </div>
-    );
-  }
-
   return (
     <div className="mx-auto max-w-[1360px] space-y-6 px-4 py-6 md:px-6 lg:px-8">
-      {/* ── Page Header & View Switcher ─────────────────────────────────────── */}
+      {/* ── Page Header ─────────────────────────────────────────────────────── */}
       <header className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="font-heading text-2xl font-bold tracking-tight text-on-surface">
-            Operational Overview &amp; Queues
+            Operational Overview
           </h1>
           <p className="font-body text-xs text-text-grey">{dateString}</p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 rounded-xl bg-slate-200/80 p-1 font-label text-xs font-semibold shadow-inner">
-            <button
-              type="button"
-              onClick={() => setViewMode("dashboard")}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-slate-600 hover:text-slate-900 transition-all"
-            >
-              <LayoutDashboard size={14} className="text-slate-400" />
-              <span>Operations Dashboard</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("queues")}
-              className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 font-bold text-brand-navy shadow-xs transition-all"
-            >
-              <Layers size={14} className="text-brand-navy" />
-              <span>Floor Action Queues</span>
-            </button>
-          </div>
           <Link
             href="/reports"
             className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-outline-variant/30 bg-surface-white px-3.5 font-label text-xs font-semibold text-brand-navy shadow-sm transition-all hover:bg-slate-50 hover:shadow"
           >
             Reports Center
+            <ArrowRight size={14} />
           </Link>
         </div>
       </header>
@@ -482,91 +426,8 @@ export function OfficeLanding({
           )}
         </section>
 
-        {/* Right: Action Queues & Chronological Activity Feed */}
+        {/* Right: Chronological Activity Feed */}
         <div className="space-y-4">
-          {/* Action Queues (Oldest First with Direct Buttons) */}
-          <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">
-            <h3 className="mb-3 font-heading text-sm font-semibold text-on-surface">
-              Action Queues (Oldest First)
-            </h3>
-            <div className="space-y-2.5">
-              {/* WRR Action Item */}
-              {hasReceivingAccess && openWrrRows.length > 0 && (
-                <div className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50/60 p-3">
-                  <div className="min-w-0">
-                    <p className="font-mono text-xs font-bold text-on-surface">
-                      WRR: {openWrrRows[0].wrrNumber}
-                    </p>
-                    <p className="text-xs text-text-grey truncate">
-                      {openWrrRows[0].vendorPartyName ?? "Inbound Vendor"}
-                    </p>
-                  </div>
-                  <Link
-                    href={`/receiving/${openWrrRows[0].id}/receive`}
-                    className="inline-flex h-8 items-center rounded bg-primary px-3 text-xs font-bold text-white hover:bg-primary-hover"
-                  >
-                    Receive
-                  </Link>
-                </div>
-              )}
-
-              {/* Pick List Action Item */}
-              {hasPickListAccess && openPickListRows.length > 0 && (
-                <div className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50/60 p-3">
-                  <div className="min-w-0">
-                    <p className="font-mono text-xs font-bold text-on-surface">
-                      Pick: {openPickListRows[0].pickListNumber}
-                    </p>
-                    <p className="text-xs text-text-grey uppercase font-semibold">
-                      {openPickListRows[0].flowType}
-                    </p>
-                  </div>
-                  <Link
-                    href={`/outgoing/${openPickListRows[0].id}/pick`}
-                    className="inline-flex h-8 items-center rounded bg-primary px-3 text-xs font-bold text-white hover:bg-primary-hover"
-                  >
-                    Pick
-                  </Link>
-                </div>
-              )}
-
-              {/* Approval Action Item */}
-              {hasApprovalAccess && pendingApprovalRows.length > 0 && (
-                <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50/60 p-3">
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-amber-900">
-                      Approval: {pendingApprovalRows[0].approvalType.replace("_", " ")}
-                    </p>
-                    <p className="text-xs text-amber-700">FIFO Override / Exception</p>
-                  </div>
-                  <Link
-                    href={`/approvals/${pendingApprovalRows[0].id}`}
-                    className="inline-flex h-8 items-center rounded bg-amber-700 px-3 text-xs font-bold text-white hover:bg-amber-800"
-                  >
-                    Review
-                  </Link>
-                </div>
-              )}
-
-              {/* Inspection Action Item */}
-              {hasInspectionAccess && openInspectionRows.length > 0 && (
-                <div className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50/60 p-3">
-                  <div className="min-w-0">
-                    <p className="font-mono text-xs font-bold text-on-surface">
-                      Inspect: {openInspectionRows[0].itemCode}
-                    </p>
-                    <p className="text-xs text-text-grey">Lot {openInspectionRows[0].lotNumber}</p>
-                  </div>
-                  <Link
-                    href="/inspection"
-                    className="inline-flex h-8 items-center rounded bg-primary px-3 text-xs font-bold text-white hover:bg-primary-hover"
-                  >
-                    Inspect
-                  </Link>
-                </div>
-              )}
-            </div>
-          </div>
 
           {/* Chronological Recent Activity Feed */}
           <div

@@ -125,7 +125,7 @@ export function DashboardHeader({ onGenerateReport }: DashboardHeaderProps) {
             </span>
           </div>
           <p className="mt-1 font-body text-xs sm:text-sm text-text-grey">
-            Executive oversight, floor queue telemetry, location occupancy, and stock positions.
+            Executive oversight, operational telemetry, location occupancy, and stock positions.
           </p>
         </div>
 
