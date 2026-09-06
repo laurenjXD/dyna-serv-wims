@@ -77,17 +77,14 @@ export async function getDashboardKpis(): Promise<DashboardKpiData> {
     // C. Stock Health
     const [lowStockRow] = await db
       .select({
-        count: sql<number>`count(*)::int`,
+        count: sql<number>`count(distinct ${items.id})::int`,
       })
       .from(items)
-      .where(
-        sql`${items.minReorderLevel} > 0 AND (
-          SELECT coalesce(sum(bal.qty_remaining - bal.qty_committed), 0)
-          FROM ${lotLocationBalances} bal
-          JOIN ${lots} l ON l.id = bal.lot_id
-          WHERE l.item_id = ${items.id}
-        ) <= ${items.minReorderLevel}`
-      );
+      .leftJoin(lots, eq(items.id, lots.itemId))
+      .leftJoin(lotLocationBalances, eq(lots.id, lotLocationBalances.lotId))
+      .where(sql`${items.minReorderLevel} > 0`)
+      .groupBy(items.id, items.minReorderLevel)
+      .having(sql`coalesce(sum(${lotLocationBalances.qtyRemaining} - ${lotLocationBalances.qtyCommitted}), 0) <= ${items.minReorderLevel}`);
 
     const [heldLotsRow] = await db
       .select({
@@ -360,14 +357,17 @@ export async function getDashboardHeatmapData(): Promise<HeatmapCellDatum[][]> {
       return [];
     }
 
+    const locIds = locRows.map((l) => l.id);
+    const locMap = new Map(locRows.map((l) => [l.id, l.label]));
     const binRows = locRows.map((l) => l.label);
     const days = 31;
     const grid: HeatmapCellDatum[][] = [];
 
-    // Query actual transactions for these locations for the current month
-    const locationTxns = await db
+    // Query transactions efficiently with limit
+    const locationTxnsRaw = await db
       .select({
-        locationLabel: locations.label,
+        toLocationId: inventoryTransactions.toLocationId,
+        fromLocationId: inventoryTransactions.fromLocationId,
         dayNumber: sql<number>`extract(day from ${inventoryTransactions.createdAt})::int`,
         action: inventoryTransactions.movementType,
         qty: inventoryTransactions.qty,
@@ -378,10 +378,21 @@ export async function getDashboardHeatmapData(): Promise<HeatmapCellDatum[][]> {
         timestamp: sql<string>`to_char(${inventoryTransactions.createdAt}, 'YYYY-MM-DD HH24:MI:SS')`,
       })
       .from(inventoryTransactions)
-      .innerJoin(locations, sql`${inventoryTransactions.toLocationId} = ${locations.id} OR ${inventoryTransactions.fromLocationId} = ${locations.id}`)
       .leftJoin(items, eq(inventoryTransactions.itemId, items.id))
       .leftJoin(lots, eq(inventoryTransactions.lotId, lots.id))
-      .where(inArray(locations.label, binRows));
+      .where(
+        sql`${inventoryTransactions.toLocationId} IN (${sql.join(locIds.map((id) => sql`${id}`), sql`, `)}) OR ${inventoryTransactions.fromLocationId} IN (${sql.join(locIds.map((id) => sql`${id}`), sql`, `)})`
+      )
+      .limit(300);
+
+    const locationTxns = locationTxnsRaw.map((t) => {
+      const matchedId = locIds.find((id) => id === t.toLocationId || id === t.fromLocationId);
+      const label = matchedId ? locMap.get(matchedId) || "" : "";
+      return {
+        ...t,
+        locationLabel: label,
+      };
+    });
 
     for (let r = 0; r < binRows.length; r++) {
       const rowData: HeatmapCellDatum[] = [];
