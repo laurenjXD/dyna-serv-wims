@@ -249,7 +249,7 @@ export async function getDashboardLocationOccupancy(): Promise<LocationOccupancy
       .select({
         zone: locations.zone,
         totalCapacityCbm: sql<string>`coalesce(sum(${locations.maxCbmCapacity}), 0)`,
-        usedCbm: sql<string>`coalesce(sum(case when bal.qty_remaining > 0 then (bal.qty_remaining::numeric * coalesce(it.volume_cbm, 0.05)) else 0 end), 0)`,
+        usedCbm: sql<string>`coalesce(sum(case when ${lotLocationBalances.qtyRemaining} > 0 then (${lotLocationBalances.qtyRemaining}::numeric * coalesce(${items.volumeCbm}, 0.05)) else 0 end), 0)`,
       })
       .from(locations)
       .leftJoin(lotLocationBalances, eq(locations.id, lotLocationBalances.locationId))
@@ -460,14 +460,14 @@ export async function getDashboardMasterInventory(params?: {
         id: items.id,
         itemCode: items.code,
         description: items.name,
-        flowType: sql<string>`coalesce(min(l.flow_type), 'trading')`,
-        partyName: sql<string>`coalesce(min(p.name), 'Dyna-Serv General')`,
-        availableQty: sql<number>`coalesce(sum(bal.qty_remaining - bal.qty_committed), 0)::int`,
+        flowType: sql<string>`coalesce(min(${lots.flowType}), 'trading')`,
+        partyName: sql<string>`coalesce(min(${parties.name}), 'Dyna-Serv General')`,
+        availableQty: sql<number>`coalesce(sum(${lotLocationBalances.qtyRemaining} - ${lotLocationBalances.qtyCommitted}), 0)::int`,
         uom: items.uom,
         reorderLevel: items.minReorderLevel,
-        lotCount: sql<number>`count(distinct l.id)::int`,
-        primaryLocation: sql<string>`coalesce(min(loc.label), 'Unassigned')`,
-        heldQty: sql<number>`coalesce(sum(case when l.status IN ('quarantined') then (bal.qty_remaining - bal.qty_committed) else 0 end), 0)::int`,
+        lotCount: sql<number>`count(distinct ${lots.id})::int`,
+        primaryLocation: sql<string>`coalesce(min(${locations.label}), 'Unassigned')`,
+        heldQty: sql<number>`coalesce(sum(case when ${lots.status} IN ('quarantined') then (${lotLocationBalances.qtyRemaining} - ${lotLocationBalances.qtyCommitted}) else 0 end), 0)::int`,
       })
       .from(items)
       .leftJoin(lots, eq(items.id, lots.itemId))
