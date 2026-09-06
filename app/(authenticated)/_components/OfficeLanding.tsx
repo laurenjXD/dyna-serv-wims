@@ -117,7 +117,7 @@ export function OfficeLanding({
 
   const totalStockQty = (ownership.trading + ownership.vmi + ownership.supplies) || 1;
 
-  const [viewMode, setViewMode] = useState<"dashboard" | "queues">("dashboard");
+  const [viewMode, setViewMode] = useState<"dashboard" | "queues">("queues");
 
   if (viewMode === "dashboard") {
     return (

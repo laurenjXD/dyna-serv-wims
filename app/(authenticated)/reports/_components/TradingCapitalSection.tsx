@@ -1,6 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  flexRender,
+  type ColumnDef,
+  type SortingState,
+} from "@tanstack/react-table";
 import { TrendingUp, PackageX, DollarSign, Activity } from "lucide-react";
 import { WaterfallChart, type WaterfallDatum } from "@/components/analytics/WaterfallChart";
 import { ScatterPlot, type ScatterPlotDatum } from "@/components/analytics/ScatterPlot";
@@ -18,6 +26,7 @@ export function TradingCapitalSection({
   starsAndDogs,
 }: TradingCapitalSectionProps) {
   const [agingFilter, setAgingFilter] = useState<"all" | "90plus">("all");
+  const [sorting, setSorting] = useState<SortingState>([]);
 
   const sampleWaterfallData: WaterfallDatum[] = [
     { label: "Purchase Price", value: 12500, type: "base" },
@@ -27,9 +36,89 @@ export function TradingCapitalSection({
     { label: "Total Landed Cost", value: 0, type: "total" },
   ];
 
-  const filteredAging = agingFilter === "90plus"
-    ? agingRows.filter((r) => r.qty90PlusDays > 0)
-    : agingRows;
+  const filteredAging = useMemo(() => {
+    return agingFilter === "90plus"
+      ? agingRows.filter((r) => r.qty90PlusDays > 0)
+      : agingRows;
+  }, [agingRows, agingFilter]);
+
+  const columns = useMemo<ColumnDef<AgingInventoryBucketRow>[]>(
+    () => [
+      {
+        accessorKey: "itemCode",
+        header: "Item Code & Name",
+        cell: ({ row }) => (
+          <div>
+            <p className="font-mono text-sm font-bold text-on-surface">
+              {row.original.itemCode}
+            </p>
+            <p className="text-xs text-text-grey font-medium">
+              {row.original.itemName}
+            </p>
+          </div>
+        ),
+      },
+      {
+        accessorKey: "qty30Days",
+        header: "0–30 Days",
+        cell: ({ row }) => (
+          <span className="font-mono text-sm text-text-grey text-right block">
+            {row.original.qty30Days.toLocaleString()}{" "}
+            <span className="text-xs font-normal">{row.original.uom}</span>
+          </span>
+        ),
+      },
+      {
+        accessorKey: "qty60Days",
+        header: "31–60 Days",
+        cell: ({ row }) => (
+          <span className="font-mono text-sm font-semibold text-amber-700 text-right block">
+            {row.original.qty60Days.toLocaleString()}{" "}
+            <span className="text-xs font-normal">{row.original.uom}</span>
+          </span>
+        ),
+      },
+      {
+        accessorKey: "qty90PlusDays",
+        header: "90+ Days (Dead)",
+        cell: ({ row }) => (
+          <span className="font-mono text-sm font-bold text-status-held text-right block">
+            {row.original.qty90PlusDays.toLocaleString()}{" "}
+            <span className="text-xs font-normal">{row.original.uom}</span>
+          </span>
+        ),
+      },
+      {
+        accessorKey: "totalQty",
+        header: "Total Qty",
+        cell: ({ row }) => (
+          <span className="font-mono text-sm font-semibold text-on-surface text-right block">
+            {row.original.totalQty.toLocaleString()}{" "}
+            <span className="text-xs font-normal">{row.original.uom}</span>
+          </span>
+        ),
+      },
+      {
+        accessorKey: "totalValue",
+        header: "Tied Value (₱)",
+        cell: ({ row }) => (
+          <span className="font-mono text-sm font-bold text-brand-navy text-right block">
+            ₱{row.original.totalValue.toLocaleString()}
+          </span>
+        ),
+      },
+    ],
+    []
+  );
+
+  const table = useReactTable({
+    data: filteredAging,
+    columns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
 
   return (
     <div className="space-y-6">
@@ -99,44 +188,66 @@ export function TradingCapitalSection({
             ₱{agingRows.reduce((acc, r) => acc + (r.qty90PlusDays > 0 ? (r.totalValue * (r.qty90PlusDays / (r.totalQty || 1))) : 0), 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </p>
           <p className="mt-1 font-body text-xs text-text-grey">
-            Capital tied in 90+ day stagnant items
+            Inventory sitting &gt; 90 days with zero sales velocity
           </p>
         </div>
       </div>
 
-      {/* ── Visualizations: Landed Cost Waterfall & Stars and Dogs Plot ───────── */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <WaterfallChart
-          title="Landed Cost Waterfall (Trading Item Benchmark)"
-          yAxisLabel="Cost (₱)"
-          data={sampleWaterfallData}
-        />
-        <ScatterPlot
-          title="Product Velocity Matrix: Stars & Dogs"
-          data={starsAndDogs}
-          medianX={5}
-          medianY={25}
-        />
-      </div>
-
-      {/* ── Dead Stock & Aging Inventory Table ───────────────────────────────── */}
-      <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <div>
+      {/* ── Charts: Landed Cost Waterfall & Capital Portfolio Matrix ───────────── */}
+      <div className="grid gap-6 lg:grid-cols-12">
+        <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1 lg:col-span-6">
+          <div className="mb-4">
             <h3 className="font-heading text-headline-md font-semibold text-on-surface">
-              Dead Stock & Aging Inventory Report
+              Trading Landed Cost Build-Up
             </h3>
             <p className="font-body text-xs text-text-grey">
-              Owned inventory aging brackets based on confirmed receiving date.
+              Item buy cost + inbound freight + customs + handling + daily storage accrual.
             </p>
           </div>
+          <div className="h-72 w-full">
+            <WaterfallChart data={sampleWaterfallData} currency="₱" height={280} />
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1 lg:col-span-6">
+          <div className="mb-4">
+            <h3 className="font-heading text-headline-md font-semibold text-on-surface">
+              Capital Portfolio Matrix (Stars vs. Dogs)
+            </h3>
+            <p className="font-body text-xs text-text-grey">
+              Gross Margin % vs. Sales Velocity (Units/mo). Focus capital on high-margin high-velocity.
+            </p>
+          </div>
+          <div className="h-72 w-full">
+            <ScatterPlot
+              data={starsAndDogs}
+              xLabel="Sales Velocity (Units/Month)"
+              yLabel="Realized Margin %"
+              height={280}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Aging Inventory Breakdown Table (Powered by TanStack Table) ────────── */}
+      <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="font-heading text-headline-md font-semibold text-on-surface">
+              Aging Capital Inventory Buckets
+            </h3>
+            <p className="font-body text-xs text-text-grey">
+              Stock age analysis for owned trading items to prevent inventory write-offs.
+            </p>
+          </div>
+
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setAgingFilter("all")}
               className={`rounded-lg px-3 py-1.5 font-label text-xs font-medium transition-colors ${
                 agingFilter === "all"
-                  ? "bg-brand-navy text-white"
+                  ? "bg-brand-navy text-surface-white"
                   : "bg-slate-100 text-text-grey hover:bg-slate-200"
               }`}
             >
@@ -156,51 +267,50 @@ export function TradingCapitalSection({
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto rounded-xl border border-slate-200">
           <table className="w-full border-collapse text-left text-sm">
             <thead>
-              <tr className="border-b border-slate-200 bg-[#F4F6FB] font-heading text-xs font-bold uppercase tracking-wider text-slate-700">
-                <th className="px-4 py-3">Item Code & Name</th>
-                <th className="px-4 py-3 text-right">0–30 Days</th>
-                <th className="px-4 py-3 text-right">31–60 Days</th>
-                <th className="px-4 py-3 text-right text-rose-600">90+ Days (Dead)</th>
-                <th className="px-4 py-3 text-right">Total Qty</th>
-                <th className="px-4 py-3 text-right">Tied Value (₱)</th>
-              </tr>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id} className="border-b border-slate-200 bg-[#F4F6FB]">
+                  {headerGroup.headers.map((header) => (
+                    <th
+                      key={header.id}
+                      className="px-4 py-3 font-heading text-xs font-bold uppercase tracking-wider text-slate-700 select-none cursor-pointer"
+                      onClick={header.column.getToggleSortingHandler()}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                        {{
+                          asc: " ↑",
+                          desc: " ↓",
+                        }[header.column.getIsSorted() as string] ?? null}
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              ))}
             </thead>
             <tbody className="divide-y divide-slate-100 font-body text-sm">
-              {filteredAging.length === 0 ? (
+              {table.getRowModel().rows.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-6 text-center text-text-grey italic">
+                  <td colSpan={columns.length} className="py-6 text-center text-text-grey italic">
                     No stagnant inventory detected in this bracket.
                   </td>
                 </tr>
               ) : (
-                filteredAging.map((row) => (
-                  <tr key={row.itemId} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-4 py-3">
-                      <p className="font-mono text-sm font-bold text-on-surface">{row.itemCode}</p>
-                      <p className="text-xs text-text-grey font-medium">{row.itemName}</p>
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono text-sm text-text-grey">
-                      {row.qty30Days.toLocaleString()}{" "}
-                      <span className="text-xs font-normal">{row.uom}</span>
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono text-sm font-semibold text-amber-700">
-                      {row.qty60Days.toLocaleString()}{" "}
-                      <span className="text-xs font-normal">{row.uom}</span>
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono text-sm font-bold text-status-held">
-                      {row.qty90PlusDays.toLocaleString()}{" "}
-                      <span className="text-xs font-normal">{row.uom}</span>
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono text-sm font-semibold text-on-surface">
-                      {row.totalQty.toLocaleString()}{" "}
-                      <span className="text-xs font-normal">{row.uom}</span>
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono text-sm font-bold text-brand-navy">
-                      ₱{row.totalValue.toLocaleString()}
-                    </td>
+                table.getRowModel().rows.map((row) => (
+                  <tr key={row.id} className="hover:bg-slate-50 transition-colors">
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id} className="px-4 py-3 align-middle">
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </td>
+                    ))}
                   </tr>
                 ))
               )}

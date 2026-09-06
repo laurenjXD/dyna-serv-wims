@@ -1,6 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  getPaginationRowModel,
+  flexRender,
+  type ColumnDef,
+  type SortingState,
+} from "@tanstack/react-table";
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -54,15 +63,79 @@ export function TradingMarginSection({ initialData }: TradingMarginSectionProps)
   const categoryData: TradingCategoryPerformance[] = initialData?.categoryBreakdown || defaultCategoryData;
 
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
-  const [categoryPageIndex, setCategoryPageIndex] = useState(0);
-  const [categoryPageSize, setCategoryPageSize] = useState(5);
+  const [categorySorting, setCategorySorting] = useState<SortingState>([]);
 
-  const totalCategoryCount = categoryData.length;
-  const categoryPageCount = Math.ceil(totalCategoryCount / categoryPageSize) || 1;
-  const pagedCategoryData = categoryData.slice(
-    categoryPageIndex * categoryPageSize,
-    (categoryPageIndex + 1) * categoryPageSize
+  const categoryColumns = useMemo<ColumnDef<TradingCategoryPerformance>[]>(
+    () => [
+      {
+        accessorKey: "category",
+        header: "Category",
+        cell: ({ row }) => {
+          const cat = row.original;
+          return (
+            <div>
+              <span
+                className="font-bold text-slate-900 block truncate max-w-[140px] text-[11px]"
+                title={cat.category}
+              >
+                {cat.category}
+              </span>
+              <span className="font-mono text-[10px] text-text-secondary">
+                {cat.unitsSold.toLocaleString()} units sold
+              </span>
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: "grossRevenue",
+        header: "Revenue",
+        cell: ({ row }) => (
+          <span className="font-mono text-right text-slate-800 text-xs block">
+            ${row.original.grossRevenue.toLocaleString()}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "marginPct",
+        header: "Margin %",
+        cell: ({ row }) => {
+          const cat = row.original;
+          return (
+            <div className="text-right">
+              <span
+                className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold ${
+                  cat.marginPct >= 20
+                    ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                    : "bg-amber-50 text-amber-800 border border-amber-200"
+                }`}
+              >
+                {cat.marginPct}%
+              </span>
+            </div>
+          );
+        },
+      },
+    ],
+    []
   );
+
+  const categoryTable = useReactTable({
+    data: categoryData,
+    columns: categoryColumns,
+    state: {
+      sorting: categorySorting,
+    },
+    onSortingChange: setCategorySorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    initialState: {
+      pagination: {
+        pageSize: 5,
+      },
+    },
+  });
 
   const currentMonthData = marginData[marginData.length - 1];
   const totalRevenue = categoryData.reduce((acc, c) => acc + c.grossRevenue, 0);
@@ -234,39 +307,44 @@ export function TradingMarginSection({ initialData }: TradingMarginSectionProps)
               </div>
             </div>
 
-            {/* Desktop / Large Table */}
-            <div className="mt-3 overflow-x-auto">
+            {/* Desktop / Large Table Powered by TanStack Table */}
+            <div className="mt-3 overflow-x-auto rounded-xl border border-slate-200/80">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50/70 font-label text-[10px] font-bold uppercase tracking-wider text-text-grey">
-                    <th className="px-2.5 py-2">Category</th>
-                    <th className="px-2.5 py-2 text-right">Revenue</th>
-                    <th className="px-2.5 py-2 text-right">Margin %</th>
-                  </tr>
+                  {categoryTable.getHeaderGroups().map((headerGroup) => (
+                    <tr key={headerGroup.id} className="border-b border-slate-200 bg-slate-50/70">
+                      {headerGroup.headers.map((header) => (
+                        <th
+                          key={header.id}
+                          className="px-3 py-2 font-heading text-[10px] font-bold uppercase tracking-wider text-slate-700 select-none cursor-pointer"
+                          onClick={header.column.getToggleSortingHandler()}
+                        >
+                          <div className="flex items-center gap-1">
+                            {flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                            {{
+                              asc: " ↑",
+                              desc: " ↓",
+                            }[header.column.getIsSorted() as string] ?? null}
+                          </div>
+                        </th>
+                      ))}
+                    </tr>
+                  ))}
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-body text-xs">
-                  {pagedCategoryData.map((cat) => (
-                    <tr key={cat.category} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="px-2.5 py-2.5">
-                        <span className="font-bold text-slate-900 block truncate max-w-[140px] text-[11px]" title={cat.category}>
-                          {cat.category}
-                        </span>
-                        <span className="font-mono text-[10px] text-text-grey">{cat.unitsSold.toLocaleString()} units sold</span>
-                      </td>
-                      <td className="px-2.5 py-2.5 font-mono text-right text-slate-800 text-xs">
-                        ${cat.grossRevenue.toLocaleString()}
-                      </td>
-                      <td className="px-2.5 py-2.5 text-right font-mono font-bold text-xs">
-                        <span
-                          className={`inline-block px-1.5 py-0.5 rounded text-[10px] ${
-                            cat.marginPct >= 20
-                              ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                              : "bg-amber-50 text-amber-800 border border-amber-200"
-                          }`}
-                        >
-                          {cat.marginPct}%
-                        </span>
-                      </td>
+                  {categoryTable.getRowModel().rows.map((row) => (
+                    <tr key={row.id} className="hover:bg-slate-50/80 transition-colors">
+                      {row.getVisibleCells().map((cell) => (
+                        <td key={cell.id} className="px-3 py-2.5 align-middle">
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>
@@ -274,19 +352,18 @@ export function TradingMarginSection({ initialData }: TradingMarginSectionProps)
             </div>
           </div>
 
-          <TablePagination
-            currentPage={categoryPageIndex + 1}
-            totalPages={categoryPageCount}
-            pageSize={categoryPageSize}
-            totalItems={totalCategoryCount}
-            onPageChange={(page) => setCategoryPageIndex(page - 1)}
-            onPageSizeChange={(newSize) => {
-              setCategoryPageSize(newSize);
-              setCategoryPageIndex(0);
-            }}
-            pageSizeOptions={[5, 10]}
-            className="border-t border-slate-100 pt-2"
-          />
+          <div className="border-t border-slate-100 pt-2 mt-3">
+            <TablePagination
+              pageIndex={categoryTable.getState().pagination.pageIndex}
+              pageSize={categoryTable.getState().pagination.pageSize}
+              pageCount={categoryTable.getPageCount()}
+              totalCount={categoryData.length}
+              canPreviousPage={categoryTable.getCanPreviousPage()}
+              canNextPage={categoryTable.getCanNextPage()}
+              onPageChange={(p) => categoryTable.setPageIndex(p)}
+              onPageSizeChange={(newSize) => categoryTable.setPageSize(newSize)}
+            />
+          </div>
         </div>
       </div>
     </div>

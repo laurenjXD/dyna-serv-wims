@@ -201,6 +201,7 @@ export default async function ReceiveFloorPage({
     }
 
     try {
+      // suggestPutawayLocations returns candidates with remainingCbm capacity metadata
       primaryStoreCandidates = await suggestPutawayLocations(db, {
         itemUnitCbm: Number(primaryReadyLine.unitCbm ?? 0),
         requestedQty: 1,
@@ -558,7 +559,7 @@ export default async function ReceiveFloorPage({
                         Disposition:
                       </span>
                       <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-body-sm font-label uppercase ${item.disposition === "store"
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-body-md font-label uppercase ${item.disposition === "store"
                             ? "bg-status-available/10 text-emerald-800 border border-status-available/20"
                             : "bg-status-pending/10 text-amber-800 border border-status-pending/20"
                           }`}
@@ -643,7 +644,7 @@ export default async function ReceiveFloorPage({
               </span>
               <div>
                 <p className="font-label text-body-md font-bold text-on-surface">
-                  Pallet QR Verified
+                  Pallet verified
                 </p>
                 <p className="mt-1 font-body text-body-md text-text-grey">
                   Assign locations for declared boxes (Expected: {primaryReadyLine.expectedQty} Boxes / {((Number(primaryReadyLine.expectedQty) || 0) * (Number(primaryReadyLine.spq) || 1)).toLocaleString()} {primaryReadyLine.uom || "PCS"}).
