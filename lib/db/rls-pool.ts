@@ -35,7 +35,12 @@ const connectionString = process.env.DATABASE_URL ?? process.env.POSTGRES_URL ??
 
 // `prepare: false` matches lib/db/client.ts's existing rationale: required
 // for Supabase's connection pooler (pgbouncer, transaction mode).
-const sql: Sql = postgres(connectionString, { prepare: false });
+const sql: Sql = postgres(connectionString, {
+  prepare: false,
+  connect_timeout: 10,
+  idle_timeout: 20,
+  max: 10,
+});
 
 function buildConnection(): RlsConnection {
   let resolveBegun: (tx: unknown) => void;

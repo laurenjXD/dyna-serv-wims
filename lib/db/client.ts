@@ -36,7 +36,12 @@ function getDb(): Db {
     // `prepare: false` is required for Supabase's connection pooler
     // (pgbouncer, transaction mode) — see Supabase + Drizzle/postgres-js
     // integration docs.
-    const client = postgres(connectionString, { prepare: false });
+    const client = postgres(connectionString, {
+      prepare: false,
+      connect_timeout: 10,
+      idle_timeout: 20,
+      max: 10,
+    });
     realDb = drizzle(client, { schema });
   }
   return realDb;
