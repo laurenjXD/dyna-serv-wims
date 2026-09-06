@@ -83,17 +83,15 @@ export async function getOwnProfile(): Promise<OwnProfile | null> {
     .innerJoin(roles, eq(userRoles.roleId, roles.id))
     .where(eq(userRoles.userId, data.user.id));
 
-  // Fallback default role if none assigned
-  const activeRoles = assignedRoleRows.length > 0 
-    ? assignedRoleRows.map((r) => ({
-        key: r.key,
-        name: r.name,
-        color: r.key === "administrator" ? "bg-purple-100 text-purple-800 border-purple-200"
-          : r.key === "supervisor" ? "bg-blue-100 text-blue-800 border-blue-200"
-          : r.key === "warehouse_staff" ? "bg-emerald-100 text-emerald-800 border-emerald-200"
-          : "bg-slate-100 text-slate-800 border-slate-200",
-      }))
-    : [{ key: "warehouse_staff", name: "Floor Operator", color: "bg-emerald-100 text-emerald-800 border-emerald-200" }];
+  // Assigned dynamic roles from DB
+  const activeRoles = assignedRoleRows.map((r) => ({
+    key: r.key,
+    name: r.name,
+    color: r.key === "administrator" ? "bg-purple-100 text-purple-800 border-purple-200"
+      : r.key === "supervisor" ? "bg-blue-100 text-blue-800 border-blue-200"
+      : r.key === "warehouse_staff" ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+      : "bg-slate-100 text-slate-800 border-slate-200",
+  }));
 
   // Effective permissions
   const effectivePermissions: PermissionCapability[] = resolution.kind === "authorized"
@@ -112,7 +110,7 @@ export async function getOwnProfile(): Promise<OwnProfile | null> {
       }))
     : [];
 
-  // Recent personal activity
+  // Recent personal activity from auditLog
   let recentActivity: ActivityLogEntry[] = [];
   try {
     const rawAudit = await db
@@ -127,7 +125,7 @@ export async function getOwnProfile(): Promise<OwnProfile | null> {
       .from(auditLog)
       .where(eq(auditLog.actorUserId, data.user.id))
       .orderBy(desc(auditLog.createdAt))
-      .limit(8);
+      .limit(10);
 
     if (rawAudit.length > 0) {
       recentActivity = rawAudit.map((r) => ({
@@ -140,47 +138,18 @@ export async function getOwnProfile(): Promise<OwnProfile | null> {
       }));
     }
   } catch {
-    // fallback if no audit records yet
-  }
-
-  if (recentActivity.length === 0) {
-    recentActivity = [
-      {
-        id: "act-1",
-        action: "Completed WRR Intake",
-        entityType: "wrr",
-        entityId: "WRR-2026-00042",
-        timestamp: new Date(Date.now() - 35 * 60000).toISOString(),
-        details: "Scanned and verified 24 pallets into Staging Bay 01 (Zone A).",
-      },
-      {
-        id: "act-2",
-        action: "Executed Pick Run",
-        entityType: "pick_list",
-        entityId: "PL-2026-00109",
-        timestamp: new Date(Date.now() - 140 * 60000).toISOString(),
-        details: "Picked 4 packages from Location L1-A-02 (FIFO FEFO validated).",
-      },
-      {
-        id: "act-3",
-        action: "Daily Inspection Sign-off",
-        entityType: "inspection",
-        entityId: "INSP-2026-089",
-        timestamp: new Date(Date.now() - 380 * 60000).toISOString(),
-        details: "Inspected temperature & seal tags for Zone A Cold Rack.",
-      },
-    ];
+    // Database empty or initial state
   }
 
   const shortId = data.user.id.replace(/-/g, "").substring(0, 4).toUpperCase();
   const employeeId = (data.user.user_metadata?.employee_id as string) || `EMP-${shortId}`;
-  const phone = (data.user.user_metadata?.phone as string) || "+63 917 555 " + shortId;
+  const phone = (data.user.user_metadata?.phone as string) || (data.user.phone ?? "");
   const avatarUrl = (data.user.user_metadata?.avatar_url as string) || null;
 
   return {
     id: data.user.id,
     email: data.user.email ?? null,
-    displayName: profile?.displayName ?? data.user.user_metadata?.displayName ?? "Warehouse Operator",
+    displayName: profile?.displayName ?? data.user.user_metadata?.displayName ?? data.user.email?.split("@")[0] ?? "User",
     employeeId,
     phone,
     avatarUrl,
@@ -190,12 +159,12 @@ export async function getOwnProfile(): Promise<OwnProfile | null> {
     effectivePermissions,
     session: {
       sessionId: `SESS-${shortId}-${data.user.id.substring(data.user.id.length - 4).toUpperCase()}`,
-      deviceAlias: "Registered BYOD Mobile · Chrome Mobile / Android",
-      browserUserAgent: "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36",
-      shiftBinding: "Shift 1 · Zone A Intake (Badge QR Check-In)",
-      connectedZone: "Warehouse Main Floor — Zone A",
-      ipAddress: "192.168.10.142 (Warehouse Internal Wi-Fi)",
-      loginTime: data.user.last_sign_in_at ? new Date(data.user.last_sign_in_at).toLocaleTimeString() : "08:00 AM",
+      deviceAlias: "Active Connected BYOD Session",
+      browserUserAgent: "Browser Session",
+      shiftBinding: "Active Shift QR Binding",
+      connectedZone: "Warehouse Floor",
+      ipAddress: "Internal Network",
+      loginTime: data.user.last_sign_in_at ? new Date(data.user.last_sign_in_at).toLocaleTimeString() : "—",
     },
     recentActivity,
   };

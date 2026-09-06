@@ -15,17 +15,12 @@ interface LocationOccupancyChartProps {
 }
 
 export function LocationOccupancyChart({ initialData }: LocationOccupancyChartProps) {
-  const defaultOccupancy: LocationOccupancyDatum[] = [
-    { name: "Zone A (Pallet Racks)", value: 78, color: "#002B49", cbmUsed: 780, cbmTotal: 1000 },
-    { name: "Zone B (Mezzanine Bins)", value: 64, color: "#00A8B5", cbmUsed: 320, cbmTotal: 500 },
-    { name: "Zone C (Cold Chain)", value: 42, color: "#2563EB", cbmUsed: 126, cbmTotal: 300 },
-    { name: "Zone D (Staging Floor)", value: 85, color: "#F59E0B", cbmUsed: 340, cbmTotal: 400 },
-  ];
+  const defaultOccupancy: LocationOccupancyDatum[] = [];
 
   const data = initialData && initialData.length > 0 ? initialData : defaultOccupancy;
   const totalCbmUsed = data.reduce((sum, d) => sum + d.cbmUsed, 0);
-  const totalCbmCapacity = data.reduce((sum, d) => sum + (d.cbmTotal || 500), 0);
-  const overallPct = totalCbmCapacity > 0 ? Math.round((totalCbmUsed / totalCbmCapacity) * 100) : 76;
+  const totalCbmCapacity = data.reduce((sum, d) => sum + (d.cbmTotal || 0), 0);
+  const overallPct = totalCbmCapacity > 0 ? Math.round((totalCbmUsed / totalCbmCapacity) * 100) : 0;
 
   return (
     <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-5 shadow-sm flex flex-col justify-between">

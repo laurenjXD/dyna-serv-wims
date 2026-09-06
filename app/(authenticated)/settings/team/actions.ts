@@ -199,6 +199,28 @@ export async function listRoles(): Promise<ActionResult<DynamicRole[]>> {
   if (permission.kind !== "authorized") {
     return { ok: false, error: "Access denied." };
   }
+
+  try {
+    const dbRoles = await db.select().from(roles).where(eq(roles.isActive, true));
+    if (dbRoles.length > 0) {
+      const mapped: DynamicRole[] = dbRoles.map((r) => {
+        const matchingRuntime = runtimeCustomRoles.find((cr) => cr.key === r.key);
+        return {
+          id: r.id,
+          key: r.key,
+          name: r.name,
+          description: r.description ?? "",
+          color: matchingRuntime?.color || (r.key === "administrator" ? "bg-purple-100 text-purple-800 border-purple-200" : "bg-blue-100 text-blue-800 border-blue-200"),
+          isSystem: r.isSystem,
+          capabilities: matchingRuntime?.capabilities || DEFAULT_MODULE_CAPS,
+        };
+      });
+      return { ok: true, data: mapped };
+    }
+  } catch {
+    // fallback
+  }
+
   return { ok: true, data: runtimeCustomRoles };
 }
 
@@ -306,59 +328,23 @@ export async function getUserAuditTrail(userId: string): Promise<ActionResult<Us
       .from(auditLog)
       .where(eq(auditLog.actorUserId, userId))
       .orderBy(desc(auditLog.createdAt))
-      .limit(15);
+      .limit(20);
 
-    if (rows.length > 0) {
-      return {
-        ok: true,
-        data: rows.map((r) => ({
-          id: r.id,
-          action: r.action,
-          entityType: r.entityType,
-          entityId: r.entityId,
-          timestamp: r.createdAt.toISOString(),
-          deviceContext: "BYOD · Mobile Web · Zone A Wi-Fi",
-          details: typeof r.diffData === "string" ? r.diffData : JSON.stringify(r.diffData || {}),
-        })),
-      };
-    }
+    return {
+      ok: true,
+      data: rows.map((r) => ({
+        id: r.id,
+        action: r.action,
+        entityType: r.entityType,
+        entityId: r.entityId,
+        timestamp: r.createdAt.toISOString(),
+        deviceContext: "BYOD · Floor Session",
+        details: typeof r.diffData === "string" ? r.diffData : JSON.stringify(r.diffData || {}),
+      })),
+    };
   } catch {
-    // fallback
+    return { ok: true, data: [] };
   }
-
-  // Fallback realistic audit history for user
-  return {
-    ok: true,
-    data: [
-      {
-        id: "aud-1",
-        action: "WRR Intake Scan Confirmed",
-        entityType: "wrr",
-        entityId: "WRR-2026-00042",
-        timestamp: new Date(Date.now() - 25 * 60000).toISOString(),
-        deviceContext: "BYOD Mobile · Safari iOS (SESS-8140) · Zone A Intake",
-        details: "Confirmed 24 pallets of Item SAMPLE-ITEM-001 into Location L1-A-01.",
-      },
-      {
-        id: "aud-2",
-        action: "Pick Run Executed",
-        entityType: "pick_list",
-        entityId: "PL-2026-00109",
-        timestamp: new Date(Date.now() - 110 * 60000).toISOString(),
-        deviceContext: "BYOD Mobile · Safari iOS (SESS-8140) · Zone B Staging",
-        details: "Scanned and picked 4 packages from Lot LOT-2026-001.",
-      },
-      {
-        id: "aud-3",
-        action: "Daily Shift QR Check-In",
-        entityType: "shift",
-        entityId: "SHIFT-2026-09-06",
-        timestamp: new Date(Date.now() - 480 * 60000).toISOString(),
-        deviceContext: "BYOD Mobile · Safari iOS (SESS-8140) · Zone A Entrance",
-        details: "Operator badge QR authenticated for Shift 1 floor intake duty.",
-      },
-    ],
-  };
 }
 
 export async function revokeUserSession(userId: string): Promise<ActionResult> {

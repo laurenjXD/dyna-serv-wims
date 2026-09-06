@@ -20,16 +20,10 @@ export function FlowMovementChart({ initialData }: FlowMovementChartProps) {
   const [activeFlow, setActiveFlow] = useState<FlowTypeFilter>("all");
 
   const defaultDataset: Record<string, MonthlyFlowDatum[]> = {
-    all: [
-      { month: "Jan", inbound: 420, outbound: 380, flowType: "all" },
-      { month: "Feb", inbound: 460, outbound: 410, flowType: "all" },
-      { month: "Mar", inbound: 510, outbound: 480, flowType: "all" },
-      { month: "Apr", inbound: 490, outbound: 520, flowType: "all" },
-      { month: "May", inbound: 540, outbound: 510, flowType: "all" },
-      { month: "Jun", inbound: 580, outbound: 550, flowType: "all" },
-      { month: "Jul", inbound: 530, outbound: 570, flowType: "all" },
-      { month: "Aug", inbound: 590, outbound: 580, flowType: "all" },
-    ],
+    all: [],
+    vmi: [],
+    trading: [],
+    supplies: [],
   };
 
   const dataSource = initialData || defaultDataset;

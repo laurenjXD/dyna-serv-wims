@@ -22,27 +22,18 @@ interface DeliveryPerformanceChartProps {
 }
 
 export function DeliveryPerformanceChart({ initialData }: DeliveryPerformanceChartProps) {
-  const defaultChartData: DeliveryPerformanceDatum[] = [
-    { month: "Jan", otifRate: 94.2, otdRate: 96.1, inFullRate: 98.0 },
-    { month: "Feb", otifRate: 95.0, otdRate: 96.8, inFullRate: 98.1 },
-    { month: "Mar", otifRate: 96.4, otdRate: 97.5, inFullRate: 98.9 },
-    { month: "Apr", otifRate: 95.8, otdRate: 97.2, inFullRate: 98.6 },
-    { month: "May", otifRate: 97.1, otdRate: 98.4, inFullRate: 99.0 },
-    { month: "Jun", otifRate: 96.8, otdRate: 98.0, inFullRate: 98.8 },
-    { month: "Jul", otifRate: 97.9, otdRate: 98.9, inFullRate: 99.3 },
-    { month: "Aug", otifRate: 98.2, otdRate: 99.1, inFullRate: 99.5 },
-  ];
+  const defaultChartData: DeliveryPerformanceDatum[] = [];
 
   const defaultMiniMetrics: DeliveryPerformanceMiniMetrics = {
-    avgLeadTimeHours: 18.5,
-    firstAttemptDeliveryRatePct: 97.8,
-    freightDamageClaimsPct: 0.12,
+    avgLeadTimeHours: 0,
+    firstAttemptDeliveryRatePct: 0,
+    freightDamageClaimsPct: 0,
     slaTargetPct: 95.0,
   };
 
   const chartData = initialData?.chartData || defaultChartData;
   const miniMetrics = initialData?.miniMetrics || defaultMiniMetrics;
-  const currentOtif = chartData.length > 0 ? chartData[chartData.length - 1].otifRate : 98.2;
+  const currentOtif = chartData.length > 0 ? chartData[chartData.length - 1].otifRate : 0;
 
   return (
     <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-5 shadow-sm">

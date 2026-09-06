@@ -24,17 +24,8 @@ interface DeliveryPerformanceReportProps {
 }
 
 export function DeliveryPerformanceReport({ initialData }: DeliveryPerformanceReportProps) {
-  const defaultSlaData: DeliverySlaDatum[] = [
-    { period: "Mar 2026", otifRate: 96.4, otdRate: 97.5, fillRate: 98.9, targetOtif: 95.0 },
-    { period: "Apr 2026", otifRate: 95.8, otdRate: 97.2, fillRate: 98.6, targetOtif: 95.0 },
-    { period: "May 2026", otifRate: 97.1, otdRate: 98.4, fillRate: 99.0, targetOtif: 95.0 },
-    { period: "Jun 2026", otifRate: 96.8, otdRate: 98.0, fillRate: 98.8, targetOtif: 95.0 },
-    { period: "Jul 2026", otifRate: 97.9, otdRate: 98.9, fillRate: 99.3, targetOtif: 95.0 },
-    { period: "Aug 2026 (MTD)", otifRate: 98.2, otdRate: 99.1, fillRate: 99.5, targetOtif: 95.0 },
-  ];
-
-  const data: DeliverySlaDatum[] = initialData && initialData.length > 0 ? initialData : defaultSlaData;
-  const latest = data[data.length - 1];
+  const data: DeliverySlaDatum[] = initialData || [];
+  const latest = data.length > 0 ? data[data.length - 1] : undefined;
 
   return (
     <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-5 shadow-sm">
@@ -71,7 +62,7 @@ export function DeliveryPerformanceReport({ initialData }: DeliveryPerformanceRe
 
           <div className="flex items-center gap-2 bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-200">
             <span className="text-[11px] font-label text-brand-navy">Current OTIF:</span>
-            <span className="font-mono font-black text-xs text-brand-navy">{latest?.otifRate}%</span>
+            <span className="font-mono font-black text-xs text-brand-navy">{latest?.otifRate ?? 0}%</span>
           </div>
         </div>
       </div>

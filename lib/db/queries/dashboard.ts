@@ -132,11 +132,11 @@ export async function getDashboardKpis(): Promise<DashboardKpiData> {
 
     return {
       valuation: {
-        total: totalValuation || 2480500,
-        trendPct: 4.2,
-        trendDirection: "up",
-        vmiAmount: vmiValuation || 1600000,
-        tradingAmount: tradingValuation || 880500,
+        total: totalValuation,
+        trendPct: 0,
+        trendDirection: "flat" as const,
+        vmiAmount: vmiValuation,
+        tradingAmount: tradingValuation,
       },
       floorQueues: {
         pendingReceivingWrrs: wrrPendingRow?.count ?? 0,
@@ -149,21 +149,21 @@ export async function getDashboardKpis(): Promise<DashboardKpiData> {
         qcPassRatePct: passRate,
       },
       financialSummary: {
-        vmiDailyCbmRate: parseFloat(vmiAvgRateRow?.avgRate || "0.48"),
-        vmiClientCount: vmiAvgRateRow?.clientCount || 3,
-        tradingMarginPct: 18.4,
-        tradingMarginTargetPct: parseFloat(tradingMarginAgg?.avgTarget || "20.0"),
-        pendingBillingAmount: parseFloat(pendingBillingAgg?.totalAmount || "34200"),
-        pendingInvoicesCount: pendingBillingAgg?.openCount || 7,
+        vmiDailyCbmRate: parseFloat(vmiAvgRateRow?.avgRate || "0"),
+        vmiClientCount: vmiAvgRateRow?.clientCount || 0,
+        tradingMarginPct: 0,
+        tradingMarginTargetPct: parseFloat(tradingMarginAgg?.avgTarget || "0"),
+        pendingBillingAmount: parseFloat(pendingBillingAgg?.totalAmount || "0"),
+        pendingInvoicesCount: pendingBillingAgg?.openCount || 0,
       },
     };
   } catch (error) {
     console.error("Error fetching dashboard KPIs:", error);
     return {
-      valuation: { total: 2480500, trendPct: 4.2, trendDirection: "up", vmiAmount: 1600000, tradingAmount: 880500 },
+      valuation: { total: 0, trendPct: 0, trendDirection: "flat" as const, vmiAmount: 0, tradingAmount: 0 },
       floorQueues: { pendingReceivingWrrs: 0, activePickLists: 0, pendingQcInspections: 0 },
-      stockHealth: { lowStockCount: 0, heldLotsCount: 0, qcPassRatePct: 98.0 },
-      financialSummary: { vmiDailyCbmRate: 0.48, vmiClientCount: 3, tradingMarginPct: 18.4, tradingMarginTargetPct: 20.0, pendingBillingAmount: 34200, pendingInvoicesCount: 7 },
+      stockHealth: { lowStockCount: 0, heldLotsCount: 0, qcPassRatePct: 0 },
+      financialSummary: { vmiDailyCbmRate: 0, vmiClientCount: 0, tradingMarginPct: 0, tradingMarginTargetPct: 0, pendingBillingAmount: 0, pendingInvoicesCount: 0 },
     };
   }
 }
@@ -197,7 +197,7 @@ export async function getDashboardMonthlyFlow(): Promise<Record<string, MonthlyF
       supplies: [],
     };
 
-    // Baseline structure
+    // Baseline structure with real 0 starting counts
     const baselineMap: Record<string, { all: MonthlyFlowDatum; vmi: MonthlyFlowDatum; trading: MonthlyFlowDatum; supplies: MonthlyFlowDatum }> = {};
     for (const m of months) {
       baselineMap[m] = {
@@ -221,14 +221,7 @@ export async function getDashboardMonthlyFlow(): Promise<Record<string, MonthlyF
       }
     }
 
-    // Baseline defaults
     for (const m of months) {
-      if (baselineMap[m].all.inbound === 0 && baselineMap[m].all.outbound === 0) {
-        baselineMap[m].all = { month: m, inbound: 450 + Math.floor(Math.random() * 80), outbound: 420 + Math.floor(Math.random() * 90), flowType: "all" };
-        baselineMap[m].vmi = { month: m, inbound: 300, outbound: 280, flowType: "vmi" };
-        baselineMap[m].trading = { month: m, inbound: 120, outbound: 110, flowType: "trading" };
-        baselineMap[m].supplies = { month: m, inbound: 40, outbound: 40, flowType: "supplies" };
-      }
       flowResult.all.push(baselineMap[m].all);
       flowResult.vmi.push(baselineMap[m].vmi);
       flowResult.trading.push(baselineMap[m].trading);
@@ -239,10 +232,10 @@ export async function getDashboardMonthlyFlow(): Promise<Record<string, MonthlyF
   } catch (error) {
     console.error("Error fetching dashboard monthly flow:", error);
     return {
-      all: [{ month: "Aug", inbound: 590, outbound: 580, flowType: "all" }],
-      vmi: [{ month: "Aug", inbound: 380, outbound: 370, flowType: "vmi" }],
-      trading: [{ month: "Aug", inbound: 160, outbound: 160, flowType: "trading" }],
-      supplies: [{ month: "Aug", inbound: 50, outbound: 50, flowType: "supplies" }],
+      all: [],
+      vmi: [],
+      trading: [],
+      supplies: [],
     };
   }
 }
@@ -268,32 +261,23 @@ export async function getDashboardLocationOccupancy(): Promise<LocationOccupancy
 
     if (zoneRows.length > 0) {
       return zoneRows.map((z, idx) => {
-        const total = parseFloat(z.totalCapacityCbm) || 300;
-        const used = parseFloat(z.usedCbm) || 120;
+        const total = parseFloat(z.totalCapacityCbm) || 0;
+        const used = parseFloat(z.usedCbm) || 0;
         const pct = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
         return {
           name: z.zone.startsWith("Zone") ? z.zone : `Zone ${z.zone}`,
-          value: pct || 60,
+          value: pct,
           color: colors[idx % colors.length],
-          cbmUsed: Math.round(used) || 120,
-          cbmTotal: Math.round(total) || 300,
+          cbmUsed: Math.round(used),
+          cbmTotal: Math.round(total),
         };
       });
     }
 
-    return [
-      { name: "Zone A (High-Density Pallet Racks)", value: 78, color: "#002B49", cbmUsed: 780, cbmTotal: 1000 },
-      { name: "Zone B (Mezzanine Parts Bin)", value: 64, color: "#00A8B5", cbmUsed: 320, cbmTotal: 500 },
-      { name: "Zone C (Cold Chain / Clean Room)", value: 42, color: "#2563EB", cbmUsed: 126, cbmTotal: 300 },
-      { name: "Zone D (Staging & Marshalling)", value: 85, color: "#F59E0B", cbmUsed: 340, cbmTotal: 400 },
-      { name: "Zone E (Quarantine / Hold)", value: 15, color: "#10B981", cbmUsed: 30, cbmTotal: 200 },
-    ];
+    return [];
   } catch (error) {
     console.error("Error fetching location occupancy:", error);
-    return [
-      { name: "Zone A", value: 78, color: "#002B49", cbmUsed: 780, cbmTotal: 1000 },
-      { name: "Zone B", value: 64, color: "#00A8B5", cbmUsed: 320, cbmTotal: 500 },
-    ];
+    return [];
   }
 }
 
@@ -318,29 +302,41 @@ export async function getDashboardDeliveryPerformance(): Promise<{
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug"];
     const chartData: DeliveryPerformanceDatum[] = months.map((m) => {
       const found = rawDelivery.find((d) => d.monthStr === m);
-      const otif = found && found.totalPicks > 0 ? (found.completedPicks / found.totalPicks) * 100 : 96.0 + Math.random() * 3;
+      const otif = found && found.totalPicks > 0 ? (found.completedPicks / found.totalPicks) * 100 : 0.0;
       return {
         month: m,
         otifRate: Number(otif.toFixed(1)),
-        otdRate: Number((otif + 1.2).toFixed(1)),
-        inFullRate: Number((otif + 1.8).toFixed(1)),
+        otdRate: Number(otif.toFixed(1)),
+        inFullRate: Number(otif.toFixed(1)),
       };
     });
+
+    const [totalPicksRow] = await db
+      .select({
+        total: sql<number>`count(*)::int`,
+        dispatched: sql<number>`count(case when ${pickLists.status} = 'dispatched' then 1 end)::int`,
+      })
+      .from(pickLists);
+
+    const firstAttemptDeliveryRatePct =
+      totalPicksRow && totalPicksRow.total > 0
+        ? Number(((totalPicksRow.dispatched / totalPicksRow.total) * 100).toFixed(1))
+        : 0.0;
 
     return {
       chartData,
       miniMetrics: {
-        avgLeadTimeHours: 18.5,
-        firstAttemptDeliveryRatePct: 97.8,
-        freightDamageClaimsPct: 0.12,
+        avgLeadTimeHours: 0,
+        firstAttemptDeliveryRatePct,
+        freightDamageClaimsPct: 0,
         slaTargetPct: 95.0,
       },
     };
   } catch (error) {
     console.error("Error fetching delivery performance:", error);
     return {
-      chartData: [{ month: "Aug", otifRate: 98.2, otdRate: 99.1, inFullRate: 99.5 }],
-      miniMetrics: { avgLeadTimeHours: 18.5, firstAttemptDeliveryRatePct: 97.8, freightDamageClaimsPct: 0.12, slaTargetPct: 95.0 },
+      chartData: [],
+      miniMetrics: { avgLeadTimeHours: 0, firstAttemptDeliveryRatePct: 0, freightDamageClaimsPct: 0, slaTargetPct: 95.0 },
     };
   }
 }
@@ -360,9 +356,32 @@ export async function getDashboardHeatmapData(): Promise<HeatmapCellDatum[][]> {
       .where(eq(locations.isActive, true))
       .limit(6);
 
-    const binRows = locRows.length > 0 ? locRows.map((l) => l.label) : ["BIN-A1-01", "BIN-A1-02", "BIN-A2-01", "BIN-B1-01", "BIN-B1-02", "BIN-C1-01"];
+    if (locRows.length === 0) {
+      return [];
+    }
+
+    const binRows = locRows.map((l) => l.label);
     const days = 31;
     const grid: HeatmapCellDatum[][] = [];
+
+    // Query actual transactions for these locations for the current month
+    const locationTxns = await db
+      .select({
+        locationLabel: locations.label,
+        dayNumber: sql<number>`extract(day from ${inventoryTransactions.createdAt})::int`,
+        action: inventoryTransactions.movementType,
+        qty: inventoryTransactions.qty,
+        sku: items.code,
+        itemName: items.name,
+        uom: items.uom,
+        lotNumber: lots.lotNumber,
+        timestamp: sql<string>`to_char(${inventoryTransactions.createdAt}, 'YYYY-MM-DD HH24:MI:SS')`,
+      })
+      .from(inventoryTransactions)
+      .innerJoin(locations, sql`${inventoryTransactions.toLocationId} = ${locations.id} OR ${inventoryTransactions.fromLocationId} = ${locations.id}`)
+      .leftJoin(items, eq(inventoryTransactions.itemId, items.id))
+      .leftJoin(lots, eq(inventoryTransactions.lotId, lots.id))
+      .where(inArray(locations.label, binRows));
 
     for (let r = 0; r < binRows.length; r++) {
       const rowData: HeatmapCellDatum[] = [];
@@ -370,17 +389,16 @@ export async function getDashboardHeatmapData(): Promise<HeatmapCellDatum[][]> {
 
       for (let day = 1; day <= days; day++) {
         const isWeekend = (day % 7 === 1 || day % 7 === 2);
-        const basePick = isWeekend ? Math.floor(Math.random() * 4) : 10 + Math.floor(Math.random() * 35);
-        const agingDays = 5 + Math.floor(Math.random() * 45);
-        const variance = Math.random() < 0.1 ? Number((Math.random() * 4.5).toFixed(1)) : 0;
+        const dayTxns = locationTxns.filter((t) => t.locationLabel === binName && t.dayNumber === day);
+        const basePick = dayTxns.length;
 
         rowData.push({
           binRow: binName,
           day,
           isWeekend,
           pickActivityCount: basePick,
-          inventoryAgingDays: agingDays,
-          varianceRatePct: variance,
+          inventoryAgingDays: 0,
+          varianceRatePct: 0,
           auditRecord: {
             binId: binName,
             date: `2026-08-${String(day).padStart(2, "0")}`,
@@ -391,28 +409,28 @@ export async function getDashboardHeatmapData(): Promise<HeatmapCellDatum[][]> {
             metricValue: basePick,
             metricFormatted: `${basePick} Picks`,
             status: basePick > 35 ? "critical" : basePick > 20 ? "warning" : basePick > 0 ? "normal" : "idle",
-            activities: [
-              {
-                sku: "SKU-DSGC-8841",
-                itemName: "Industrial High-Torque Servo Drive 400W",
-                action: "PICK",
-                qty: Math.max(1, Math.floor(basePick / 3)),
-                uom: "piece",
-                lotNumber: `LOT-2026-08${String(day).padStart(2, "0")}-01`,
-                timestamp: `2026-08-${String(day).padStart(2, "0")} 09:14:22`,
-                operatorBadge: "OP-4819 (M. Santos)",
-              },
-              {
-                sku: "SKU-DSGC-1092",
-                itemName: "Linear Ball Bearing Carriage Block 25mm",
-                action: "PUTAWAY",
-                qty: Math.max(1, Math.floor(basePick / 2)),
-                uom: "box",
-                lotNumber: `LOT-2026-08${String(day).padStart(2, "0")}-02`,
-                timestamp: `2026-08-${String(day).padStart(2, "0")} 14:32:10`,
-                operatorBadge: "OP-3921 (R. Garcia)",
-              },
-            ],
+            activities: dayTxns.map((t) => {
+              const rawAction = (t.action || "PICK").toUpperCase();
+              const validAction: "PICK" | "PUTAWAY" | "INSPECTION" | "CYCLE_COUNT" =
+                rawAction === "PUTAWAY"
+                  ? "PUTAWAY"
+                  : rawAction === "INSPECTION"
+                  ? "INSPECTION"
+                  : rawAction === "CYCLE_COUNT"
+                  ? "CYCLE_COUNT"
+                  : "PICK";
+
+              return {
+                sku: t.sku || "N/A",
+                itemName: t.itemName || "Item",
+                action: validAction,
+                qty: t.qty || 0,
+                uom: t.uom || "piece",
+                lotNumber: t.lotNumber || "N/A",
+                timestamp: t.timestamp || `2026-08-${String(day).padStart(2, "0")}`,
+                operatorBadge: "System Floor Scan",
+              };
+            }),
           },
         });
       }

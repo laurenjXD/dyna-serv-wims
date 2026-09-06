@@ -42,25 +42,11 @@ interface TradingMarginSectionProps {
 }
 
 export function TradingMarginSection({ initialData }: TradingMarginSectionProps) {
-  const defaultMarginData: TradingMarginRow[] = [
-    { period: "Mar 2026", grossRevenue: 420000, cogs: 340200, marginPct: 19.0, targetMarginPct: 20.0 },
-    { period: "Apr 2026", grossRevenue: 460000, cogs: 368000, marginPct: 20.0, targetMarginPct: 20.0 },
-    { period: "May 2026", grossRevenue: 510000, cogs: 418200, marginPct: 18.0, targetMarginPct: 20.0 },
-    { period: "Jun 2026", grossRevenue: 540000, cogs: 432000, marginPct: 20.0, targetMarginPct: 20.0 },
-    { period: "Jul 2026", grossRevenue: 590000, cogs: 483800, marginPct: 18.0, targetMarginPct: 20.0 },
-    { period: "Aug 2026 (MTD)", grossRevenue: 640000, cogs: 522240, marginPct: 18.4, targetMarginPct: 20.0 },
-  ];
+  const defaultMarginData: TradingMarginRow[] = [];
+  const defaultCategoryData: TradingCategoryPerformance[] = [];
 
-  const defaultCategoryData: TradingCategoryPerformance[] = [
-    { category: "Bearings & Transmission", unitsSold: 3450, grossRevenue: 245000, cogs: 196000, netMargin: 49000, marginPct: 20.0, deltaVsSlaPct: 0.0 },
-    { category: "Automation & PLC Controllers", unitsSold: 820, grossRevenue: 185000, cogs: 144300, netMargin: 40700, marginPct: 22.0, deltaVsSlaPct: 2.0 },
-    { category: "Pneumatics & Actuators", unitsSold: 1240, grossRevenue: 98000, cogs: 82320, netMargin: 15680, marginPct: 16.0, deltaVsSlaPct: -4.0 },
-    { category: "Electrical Switchgear", unitsSold: 670, grossRevenue: 72000, cogs: 60480, netMargin: 11520, marginPct: 16.0, deltaVsSlaPct: -4.0 },
-    { category: "Industrial Fasteners & Hardware", unitsSold: 14200, grossRevenue: 40000, cogs: 31200, netMargin: 8800, marginPct: 22.0, deltaVsSlaPct: 2.0 },
-  ];
-
-  const marginData: TradingMarginRow[] = initialData?.marginHistory || defaultMarginData;
-  const categoryData: TradingCategoryPerformance[] = initialData?.categoryBreakdown || defaultCategoryData;
+  const marginData = initialData?.marginHistory && initialData.marginHistory.length > 0 ? initialData.marginHistory : defaultMarginData;
+  const categoryData = initialData?.categoryBreakdown && initialData.categoryBreakdown.length > 0 ? initialData.categoryBreakdown : defaultCategoryData;
 
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [categorySorting, setCategorySorting] = useState<SortingState>([]);

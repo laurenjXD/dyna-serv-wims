@@ -32,7 +32,7 @@ export function MonthlyHeatmap({ initialGrid }: MonthlyHeatmapProps) {
   const [showMonthMenu, setShowMonthMenu] = useState(false);
   const [mobileSelectedBin, setMobileSelectedBin] = useState("A1-01");
 
-  // Generate fallback grid if no server data
+  // Generate clean fallback grid if no server data
   const fallbackGrid = useMemo(() => {
     const grid: HeatmapCellDatum[][] = [];
     const days = 31;
@@ -41,14 +41,13 @@ export function MonthlyHeatmap({ initialGrid }: MonthlyHeatmapProps) {
       const binName = DEFAULT_BIN_ROWS[r];
       for (let day = 1; day <= days; day++) {
         const isWeekend = (day % 7 === 1 || day % 7 === 2);
-        const basePick = isWeekend ? Math.floor(Math.random() * 4) : 10 + Math.floor(Math.random() * 35);
         row.push({
           binRow: binName,
           day,
           isWeekend,
-          pickActivityCount: basePick,
-          inventoryAgingDays: 5 + Math.floor(Math.random() * 45),
-          varianceRatePct: Math.random() < 0.1 ? Number((Math.random() * 4.5).toFixed(1)) : 0,
+          pickActivityCount: 0,
+          inventoryAgingDays: 0,
+          varianceRatePct: 0,
           auditRecord: {
             binId: binName,
             date: `2026-08-${String(day).padStart(2, "0")}`,
@@ -56,21 +55,10 @@ export function MonthlyHeatmap({ initialGrid }: MonthlyHeatmapProps) {
             monthName: "August",
             year: 2026,
             metricType: "pickActivity",
-            metricValue: basePick,
-            metricFormatted: `${basePick} Picks`,
-            status: basePick > 35 ? "critical" : basePick > 20 ? "warning" : basePick > 0 ? "normal" : "idle",
-            activities: [
-              {
-                sku: "SKU-DSGC-8841",
-                itemName: "Industrial High-Torque Servo Drive 400W",
-                action: "PICK",
-                qty: Math.max(1, Math.floor(basePick / 3)),
-                uom: "piece",
-                lotNumber: `LOT-2026-08${String(day).padStart(2, "0")}-01`,
-                timestamp: `2026-08-${String(day).padStart(2, "0")} 09:14:22`,
-                operatorBadge: "OP-4819 (M. Santos)",
-              },
-            ],
+            metricValue: 0,
+            metricFormatted: "0 Picks",
+            status: "idle",
+            activities: [],
           },
         });
       }

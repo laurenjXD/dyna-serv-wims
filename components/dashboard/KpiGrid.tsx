@@ -77,7 +77,7 @@ export function KpiGrid({
                 Inbound
               </span>
               <span className="font-mono text-xs font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md">
-                12 WRRs READY
+                {floorQueues.pendingReceivingWrrs > 0 ? `${floorQueues.pendingReceivingWrrs} WRRs READY` : "QUEUE CLEAR"}
               </span>
             </div>
             <div className="mt-3 flex items-baseline justify-between">
@@ -118,7 +118,7 @@ export function KpiGrid({
                   Low Stock
                 </p>
                 <p className="font-mono text-xs font-extrabold text-amber-800">
-                  5 SKUs
+                  {stockHealth.lowStockCount} SKUs
                 </p>
               </div>
             </div>
@@ -143,7 +143,7 @@ export function KpiGrid({
                   Quarantine
                 </p>
                 <p className="font-mono text-xs font-extrabold text-rose-800">
-                  2 Lots
+                  {stockHealth.heldLotsCount} Lots
                 </p>
               </div>
             </div>
@@ -179,21 +179,21 @@ export function KpiGrid({
             </div>
           </div>
 
-          {/* Card 2: Warehouse Capacity */}
+          {/* Card 2: Stock Health */}
           <div className="min-w-[260px] flex-1 snap-start rounded-2xl border border-black/5 bg-white/90 p-4 shadow-sm backdrop-blur-md">
             <p className="font-label text-[11px] font-bold uppercase tracking-wider text-text-grey">
-              Capacity Utilization
+              Stock Health & QC Gate
             </p>
             <div className="mt-1 flex items-baseline justify-between">
               <p className="font-mono text-2xl font-black text-slate-900">
-                38% Full
+                {stockHealth.qcPassRatePct}% Pass
               </p>
               <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
-                Zone A Primary
+                Live QC
               </span>
             </div>
             <div className="mt-2.5 w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-              <div className="bg-brand-navy h-2 rounded-full" style={{ width: "38%" }}></div>
+              <div className="bg-brand-navy h-2 rounded-full" style={{ width: `${Math.min(100, stockHealth.qcPassRatePct)}%` }}></div>
             </div>
           </div>
         </div>
