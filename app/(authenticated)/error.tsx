@@ -29,7 +29,13 @@ export default function AuthenticatedError({
         <div className="flex flex-wrap justify-center gap-3">
           <button
             type="button"
-            onClick={() => reset()}
+            onClick={() => {
+              // A route-level server error can leave the App Router cache
+              // holding the failed RSC payload. A full reload requests a
+              // fresh server render; reset() alone can appear to do nothing
+              // when the same cached payload is returned.
+              window.location.reload();
+            }}
             className="min-h-11 rounded bg-brand-navy px-5 font-label text-label uppercase tracking-wide text-surface-white"
           >
             Try again
