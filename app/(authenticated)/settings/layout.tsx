@@ -29,9 +29,9 @@ const resolver: RequestAuthorizationResolver = { getContext: resolveShellAuthori
 export default function SettingsLayout({ children }: { children: ReactNode }) {
   return (
     <RouteGuard resolver={resolver} capability="users.read" existenceSafeToDisclose={true}>
-      <div className="flex min-h-[calc(100vh-3.5rem)] flex-col md:flex-row">
+      <div className="flex min-w-0 max-w-full min-h-[calc(100vh-3.5rem)] flex-col md:flex-row">
         <SettingsNav />
-        <div className="flex-1 p-4 md:p-office-margin">{children}</div>
+        <div className="min-w-0 max-w-full flex-1 overflow-x-hidden p-4 md:p-office-margin">{children}</div>
       </div>
     </RouteGuard>
   );
