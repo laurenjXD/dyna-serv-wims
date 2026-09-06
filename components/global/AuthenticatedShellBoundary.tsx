@@ -85,11 +85,8 @@ export function AuthenticatedShellBoundary({
   // Redirecting an already-authenticated-but-forbidden session back to
   // /login creates an infinite loop -- login keeps succeeding (the
   // credentials are genuinely valid), landing back on `/`, resolving
-  // forbidden again, redirecting again. `forbidden` still renders the
-  // identical `revoked_session` ShellStateView below (R2.3/R2.4: never
-  // leak *why* access was denied, same message either way) -- it just
-  // doesn't navigate anywhere, since re-login cannot fix a missing DB
-  // record and there is nowhere more correct to send this session yet.
+  // forbidden again, redirecting again. `forbidden` therefore stays in the
+  // authenticated shell and renders an access or error state below.
   useEffect(() => {
     if (resolution?.kind === "unauthenticated") {
       router.push(SIGN_IN_ROUTE);
@@ -107,10 +104,14 @@ export function AuthenticatedShellBoundary({
   }
 
   if (resolution.kind === "forbidden") {
-    // Inactive/missing profile or a resolution-time error: treat identically
-    // to a revoked session — never render protected content, never leak the
-    // internal denial reason.
-    return <ShellStateView state={{ kind: "revoked_session" }} />;
+    // A valid Supabase session must not be presented as a signed-out session.
+    // Missing/inactive authorization data is an account-access state; a
+    // resolver failure is an application error. Only the unauthenticated
+    // branch above represents an actual missing session.
+    if (resolution.reason === "resolution_error") {
+      return <ShellStateView state={{ kind: "error" }} />;
+    }
+    return <ShellStateView state={{ kind: "empty_access" }} />;
   }
 
   if (resolution.context.grants.length === 0) {

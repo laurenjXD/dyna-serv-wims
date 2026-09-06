@@ -134,7 +134,7 @@ describe("AuthenticatedShellBoundary (design.md §3.4, requirements.md R2.3/R2.4
     });
   });
 
-  it("renders the same revoked_session message for forbidden as for unauthenticated, but does NOT redirect (2026-08-08: redirecting forbidden to /login created an infinite loop, since a forbidden session is already validly authenticated — re-login just succeeds again and lands back on forbidden)", async () => {
+  it("renders an access-configuration state for a valid but unauthorized session and does NOT redirect", async () => {
     const resolver: RequestAuthorizationResolver = {
       getContext: async () => ({ kind: "forbidden", reason: "missing_profile" }),
     };
@@ -146,7 +146,7 @@ describe("AuthenticatedShellBoundary (design.md §3.4, requirements.md R2.3/R2.4
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId("shell-state-revoked_session")).toBeInTheDocument();
+      expect(screen.getByTestId("shell-state-empty_access")).toBeInTheDocument();
     });
     expect(screen.queryByTestId("protected-content")).not.toBeInTheDocument();
 
