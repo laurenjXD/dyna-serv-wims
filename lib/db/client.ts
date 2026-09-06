@@ -30,17 +30,19 @@ let realDb: Db | null = null;
 
 function getDb(): Db {
   if (!realDb) {
-    // `POSTGRES_URL` is the name supplied by Vercel's Supabase integration;
-    // local and CI configurations retain the documented DATABASE_URL name.
     const connectionString = process.env.DATABASE_URL ?? process.env.POSTGRES_URL ?? "";
-    // `prepare: false` is required for Supabase's connection pooler
-    // (pgbouncer, transaction mode) — see Supabase + Drizzle/postgres-js
-    // integration docs.
+    if (!connectionString) {
+      throw new Error(
+        "DATABASE_URL environment variable is missing. Please configure it in your Vercel Project Settings > Environment Variables."
+      );
+    }
+    const isServerless = process.env.VERCEL === "1" || process.env.NODE_ENV === "production";
     const client = postgres(connectionString, {
       prepare: false,
       connect_timeout: 10,
       idle_timeout: 20,
-      max: 10,
+      max: isServerless ? 2 : 10,
+      ssl: connectionString.includes("supabase") ? "require" : undefined,
     });
     realDb = drizzle(client, { schema });
   }
