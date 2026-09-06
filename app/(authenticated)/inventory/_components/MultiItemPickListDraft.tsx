@@ -293,40 +293,52 @@ export function MultiItemPickListDraft({
   }
 
   return (
-    <div className="space-y-6">
-      {/* DRA Excel / CSV / PDF Import Card */}
-      <section className="rounded-2xl border border-slate-200/80 bg-[#F8FAFC] p-5 shadow-xs md:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-navy text-surface-white shadow-xs">
-              <FileSpreadsheet className="h-5 w-5" />
+    <div className="space-y-4">
+      {/* Pick List Draft Builder Section */}
+      <section className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-xs space-y-4">
+        {/* Header with Integrated Compact DRA Import */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="font-heading text-base font-bold text-slate-900">Create Pick List</h2>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-600">
+                {lines.length} {lines.length === 1 ? "line" : "lines"}
+              </span>
             </div>
-            <div>
-              <h2 className="font-heading text-base font-bold text-slate-900">
-                Import Delivery Release Advice (DRA)
-              </h2>
-              <p className="mt-0.5 font-body text-xs text-slate-500">
-                Upload your client&apos;s DRA file (.xlsx, .csv, .pdf) to automatically map release items into the Pick List below.
-              </p>
-            </div>
+            <p className="mt-0.5 font-body text-xs text-slate-500">
+              Select organization and inventory model, or import a DRA file (.xlsx, .csv, .pdf) to auto-populate lines.
+            </p>
           </div>
 
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-brand-navy px-4 py-2.5 font-label text-xs font-bold text-white shadow-xs hover:bg-brand-navy/90 transition-colors">
-            <Upload className="h-4 w-4" />
-            {importingDra ? "Parsing DRA..." : "Import DRA (Excel/PDF)"}
-            <input
-              type="file"
-              accept=".xlsx,.xls,.csv,.pdf,application/pdf,text/csv"
-              className="sr-only"
-              onChange={handleDraImport}
-              disabled={importingDra}
-            />
-          </label>
+          <div className="flex items-center gap-2.5">
+            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-label text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors">
+              <Upload className="h-3.5 w-3.5 text-slate-500" />
+              {importingDra ? "Parsing DRA..." : "Import DRA (Excel/PDF)"}
+              <input
+                type="file"
+                accept=".xlsx,.xls,.csv,.pdf,application/pdf,text/csv"
+                className="sr-only"
+                onChange={handleDraImport}
+                disabled={importingDra}
+              />
+            </label>
+
+            {lines.length > 0 && (
+              <button
+                type="button"
+                onClick={resetDraft}
+                className="font-label text-xs font-semibold text-rose-600 hover:text-rose-700 hover:underline px-1.5"
+              >
+                Clear All
+              </button>
+            )}
+          </div>
         </div>
 
+        {/* DRA Import Feedback Banner */}
         {importSummary && (
           <div
-            className={`mt-4 flex items-center justify-between rounded-xl p-3.5 border font-body text-xs ${
+            className={`flex items-center justify-between rounded-lg px-3 py-2 border font-body text-xs ${
               importSummary.type === "success"
                 ? "bg-emerald-50 text-emerald-800 border-emerald-200"
                 : importSummary.type === "warning"
@@ -334,57 +346,31 @@ export function MultiItemPickListDraft({
                 : "bg-rose-50 text-rose-800 border-rose-200"
             }`}
           >
-            <div className="flex items-start gap-2">
+            <div className="flex items-center gap-2">
               {importSummary.type === "success" ? (
-                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
               ) : (
-                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
               )}
               <span>{importSummary.message}</span>
             </div>
             <button
               type="button"
               onClick={() => setImportSummary(null)}
-              className="ml-4 font-label text-xs font-semibold text-slate-500 hover:text-slate-800"
+              className="ml-3 font-label text-xs font-semibold text-slate-500 hover:text-slate-800"
             >
               Dismiss
             </button>
           </div>
         )}
-      </section>
 
-      {/* Pick List Draft Builder Section */}
-      <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-5">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h2 className="font-heading text-lg font-bold text-slate-900">Create Pick List</h2>
-              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 font-mono text-xs font-bold text-slate-700">
-                {lines.length} {lines.length === 1 ? "line" : "lines"}
-              </span>
-            </div>
-            <p className="mt-1 font-body text-xs text-slate-500">
-              Select an organization and inventory model to manually add pick lines, or use the DRA Import card above to auto-populate.
-            </p>
-          </div>
-          {lines.length > 0 && (
-            <button
-              type="button"
-              onClick={resetDraft}
-              className="font-label text-xs font-semibold text-rose-600 hover:text-rose-700 hover:underline"
-            >
-              Clear All Lines
-            </button>
-          )}
-        </div>
-
-        <div className="grid gap-5 md:grid-cols-2">
-          <label className="grid gap-1.5 font-label text-xs font-bold text-slate-700">
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="grid gap-1 font-label text-xs font-bold text-slate-700">
             Organization
             <select
               value={organizationId}
               onChange={(event) => handleOrganization(event.target.value)}
-              className="h-10 rounded-xl border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
+              className="h-9 rounded-lg border border-slate-200 bg-white px-3 font-body text-xs text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
             >
               <option value="">Select organization…</option>
               {organizations.map((organization) => (
@@ -395,11 +381,11 @@ export function MultiItemPickListDraft({
             </select>
           </label>
 
-          <div className="grid gap-1.5 font-label text-xs font-bold text-slate-700">
+          <div className="grid gap-1 font-label text-xs font-bold text-slate-700">
             <div className="flex items-center justify-between">
               <span>Inventory Model</span>
               {flowType && organizationId && (
-                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
                   Auto-assigned: {flowType.toUpperCase()}
                 </span>
               )}
@@ -408,7 +394,7 @@ export function MultiItemPickListDraft({
               value={flowType}
               onChange={(event) => handleFlow(event.target.value as typeof flowType)}
               disabled={!organizationId}
-              className="h-10 rounded-xl border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
+              className="h-9 rounded-lg border border-slate-200 bg-white px-3 font-body text-xs text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
             >
               <option value="">Select inventory model…</option>
               {(["vmi", "trading", "supplies"] as const)

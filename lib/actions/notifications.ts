@@ -15,7 +15,7 @@
 // write runs through the caller's own RLS-bound transaction so Postgres RLS
 // — not application logic — enforces "own row only."
 
-import { eq } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 import { notifications } from "@/lib/db/schema/notifications";
 import { withRlsTransaction } from "@/lib/db/rls-transaction";
 import type { RlsTransactionDeps } from "@/lib/db/rls-transaction";
@@ -73,3 +73,27 @@ export async function markNotificationReadAction(
   }
   return rlsResult.value;
 }
+
+/**
+ * Marks all unread notifications for the caller's session as read.
+ */
+export async function markAllNotificationsReadAction(
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+): Promise<NotificationActionResult> {
+  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
+
+    await db
+      .update(notifications)
+      .set({ readAt: new Date() })
+      .where(isNull(notifications.readAt));
+
+    return { ok: true } as const;
+  });
+
+  if (rlsResult.kind === "unauthenticated") {
+    return { ok: false, error: "Forbidden" };
+  }
+  return rlsResult.value;
+}
+
