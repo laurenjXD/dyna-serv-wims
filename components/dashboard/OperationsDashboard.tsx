@@ -65,11 +65,30 @@ export function OperationsDashboard({
   const [isScanning, setIsScanning] = useState(false);
   const [activeStockFilter, setActiveStockFilter] = useState<"all" | "low_stock" | "held">("all");
 
-  const handleGenerateReport = () => {
-    setReportSuccessMessage("Inventory Valuation & Live Performance Summary generated successfully.");
-    setTimeout(() => {
-      setReportSuccessMessage(null);
-    }, 4000);
+  const handleGenerateReport = async () => {
+    try {
+      setReportErrorMessage(null);
+      const res = await fetch("/api/dashboard/inventory-pdf");
+      if (!res.ok) {
+        throw new Error(`Failed to generate PDF (${res.statusText})`);
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `wms-operations-inventory-report-${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      setReportSuccessMessage("Inventory Valuation & Live Performance Summary PDF generated and downloaded successfully.");
+      setTimeout(() => {
+        setReportSuccessMessage(null);
+      }, 5000);
+    } catch (err) {
+      console.error(err);
+      setReportErrorMessage("Failed to generate and download PDF report.");
+    }
   };
 
   const handleExecuteScan = async (code: string) => {
@@ -210,7 +229,7 @@ export function OperationsDashboard({
       <MonthlyHeatmap initialGrid={heatmapGrid} />
 
       {/* ── 5. Master Inventory Live Positions ────────────────────────────── */}
-      <MasterInventoryTable initialData={masterInventory} />
+      <MasterInventoryTable initialData={masterInventory} statusFilter={activeStockFilter} />
 
       {/* ─────────────────────────────────────────────────────────────────── */}
       {/* 📱 FIXED FLOATING BOTTOM ACTION DOCK (< 1024px)                     */}

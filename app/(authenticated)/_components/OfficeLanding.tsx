@@ -8,6 +8,16 @@ import type { PickListRow } from "@/lib/db/queries/withdrawals";
 import type { InspectionCaseListRow } from "@/lib/db/queries/transfers";
 import type { ApprovalRequestRow } from "@/lib/db/queries/approvals";
 
+import type {
+  DashboardKpiData,
+  MonthlyFlowDatum,
+  DeliveryPerformanceDatum,
+  DeliveryPerformanceMiniMetrics,
+  LocationOccupancyDatum,
+  HeatmapCellDatum,
+  MasterInventoryItem,
+} from "@/components/dashboard/types";
+
 export type ItemPreviewRow = {
   itemId: string;
   itemCode: string;
@@ -59,6 +69,12 @@ export function OfficeLanding({
   dispatchRate,
   flowActivity,
   stockOwnershipSplit: _stockOwnershipSplit,
+  dashboardKpis,
+  dashboardMonthlyFlow,
+  dashboardLocationOccupancy,
+  dashboardDeliveryPerformance,
+  dashboardHeatmapData,
+  dashboardMasterInventory,
 }: {
   dateString: string;
   openWrrs: number;
@@ -87,11 +103,27 @@ export function OfficeLanding({
   dispatchRate: { dispatched: number; notDispatched: number } | null;
   flowActivity: Array<{ flowType: string; count: number }> | null;
   stockOwnershipSplit?: { trading: number; vmi: number; supplies: number };
+  dashboardKpis?: DashboardKpiData;
+  dashboardMonthlyFlow?: Record<string, MonthlyFlowDatum[]>;
+  dashboardLocationOccupancy?: LocationOccupancyDatum[];
+  dashboardDeliveryPerformance?: {
+    chartData: DeliveryPerformanceDatum[];
+    miniMetrics: DeliveryPerformanceMiniMetrics;
+  };
+  dashboardHeatmapData?: HeatmapCellDatum[][];
+  dashboardMasterInventory?: MasterInventoryItem[];
 }) {
   return (
     <div className="space-y-6">
       {/* ── Direct WMS Operations Dashboard Suite ─────────────────────────────── */}
-      <OperationsDashboard />
+      <OperationsDashboard
+        kpis={dashboardKpis}
+        flowData={dashboardMonthlyFlow}
+        occupancyData={dashboardLocationOccupancy}
+        deliveryPerformance={dashboardDeliveryPerformance}
+        heatmapGrid={dashboardHeatmapData}
+        masterInventory={dashboardMasterInventory}
+      />
 
       {/* ── Accessible Metadata for Tests (Screen Reader / Headless Assertions) ── */}
       <div className="sr-only" aria-hidden="true">

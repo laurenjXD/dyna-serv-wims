@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 interface DashboardHeaderProps {
-  onGenerateReport?: () => void;
+  onGenerateReport?: () => Promise<void> | void;
 }
 
 export function DashboardHeader({ onGenerateReport }: DashboardHeaderProps) {
@@ -46,14 +46,15 @@ export function DashboardHeader({ onGenerateReport }: DashboardHeaderProps) {
     }, 500);
   };
 
-  const handleReportClick = () => {
+  const handleReportClick = async () => {
     setIsGeneratingPdf(true);
-    if (onGenerateReport) {
-      onGenerateReport();
-    }
-    setTimeout(() => {
+    try {
+      if (onGenerateReport) {
+        await onGenerateReport();
+      }
+    } finally {
       setIsGeneratingPdf(false);
-    }, 1500);
+    }
   };
 
   return (

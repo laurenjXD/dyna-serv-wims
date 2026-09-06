@@ -30,10 +30,11 @@ import { TablePagination } from "@/components/ui/TablePagination";
 
 interface MasterInventoryTableProps {
   initialData?: MasterInventoryItem[];
+  statusFilter?: "all" | "low_stock" | "held";
 }
 
-export function MasterInventoryTable({ initialData }: MasterInventoryTableProps) {
-  const [data] = useState<MasterInventoryItem[]>(initialData || []);
+export function MasterInventoryTable({ initialData = [], statusFilter = "all" }: MasterInventoryTableProps) {
+  const data = initialData;
   const [globalFilter, setGlobalFilter] = useState("");
   const [flowFilter, setFlowFilter] = useState<FlowTypeFilter>("all");
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -47,15 +48,16 @@ export function MasterInventoryTable({ initialData }: MasterInventoryTableProps)
   const filteredData = useMemo(() => {
     return data.filter((item) => {
       const matchesFlow = flowFilter === "all" || item.flowType === flowFilter;
+      const matchesStatus = statusFilter === "all" || item.status === statusFilter;
       const matchesSearch =
         globalFilter === "" ||
         item.itemCode.toLowerCase().includes(globalFilter.toLowerCase()) ||
         item.description.toLowerCase().includes(globalFilter.toLowerCase()) ||
         item.partyName.toLowerCase().includes(globalFilter.toLowerCase());
 
-      return matchesFlow && matchesSearch;
+      return matchesFlow && matchesStatus && matchesSearch;
     });
-  }, [data, flowFilter, globalFilter]);
+  }, [data, flowFilter, statusFilter, globalFilter]);
 
   const columns = useMemo<ColumnDef<MasterInventoryItem>[]>(
     () => [
