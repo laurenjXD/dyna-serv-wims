@@ -62,6 +62,34 @@ html:not([data-theme="dark"]) .inspection-page [class~="bg-white/15"] {
 }
 
 /*
+ * Standard Base Typography Layer
+ * (specs/00-steering/design.md §7)
+ */
+@layer base {
+  h1 {
+    @apply font-heading text-headline-xl font-bold tracking-tight text-text-primary;
+  }
+  h2 {
+    @apply font-heading text-headline-lg font-bold tracking-tight text-text-primary;
+  }
+  h3 {
+    @apply font-heading text-headline-md font-semibold text-text-primary;
+  }
+  h4 {
+    @apply font-heading text-xl font-semibold leading-7 text-text-primary;
+  }
+  h5 {
+    @apply font-heading text-lg font-semibold leading-6 text-text-primary;
+  }
+  h6 {
+    @apply font-heading text-base font-semibold leading-5 text-text-primary;
+  }
+  p {
+    @apply font-body text-body-md text-text-primary leading-normal;
+  }
+}
+
+/*
  * Unified UI/UX Visual Design System Baseline
  * (specs/00-steering/design.md & ui-ux-design-plan.md)
  */

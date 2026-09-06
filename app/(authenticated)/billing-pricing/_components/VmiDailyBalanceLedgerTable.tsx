@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import type { VmiDailyBalanceRow, VmiCbmLedgerRow } from "@/lib/billing/queries/vmi-ledger";
 import { PeriodCloseModal } from "../vmi/periods/_components/PeriodCloseModal";
+import { TablePagination } from "@/components/ui/TablePagination";
 
 type Option = { id: string; name: string; code: string };
 
@@ -49,8 +50,11 @@ export function VmiDailyBalanceLedgerTable({
   const [activityFilter, setActivityFilter] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("ledgerDate");
   const [sortDir, setSortDir] = useState<SortDirection>("asc");
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
 
   const handleSort = (field: SortField) => {
+    setPageIndex(0);
     if (sortField === field) {
       setSortDir(sortDir === "asc" ? "desc" : "asc");
     } else {
@@ -95,6 +99,12 @@ export function VmiDailyBalanceLedgerTable({
   const totalFilteredStorageAmount = useMemo(() => {
     return filteredAndSortedRows.reduce((sum, r) => sum + r.storageAmountUsd, 0);
   }, [filteredAndSortedRows]);
+
+  const totalCount = filteredAndSortedRows.length;
+  const pageCount = Math.ceil(totalCount / pageSize) || 1;
+  const pagedRows = useMemo(() => {
+    return filteredAndSortedRows.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
+  }, [filteredAndSortedRows, pageIndex, pageSize]);
 
   const renderSortIcon = (field: SortField) => {
     if (sortField !== field) {
@@ -143,35 +153,35 @@ export function VmiDailyBalanceLedgerTable({
       </div>
 
       {/* Summary KPI Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
           <p className="font-label text-label font-bold uppercase tracking-wider text-text-grey">
-            Lots in Storage
+            Starting Period CBM
           </p>
           <p className="mt-2 font-mono text-title-lg font-bold text-on-surface">
-            {summary?.lotsInStorage ?? 0}
+            {dailyRows.length > 0 ? dailyRows[0].beginningCbm.toFixed(2) : "0.00"} m³
           </p>
         </div>
 
         <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
           <p className="font-label text-label font-bold uppercase tracking-wider text-text-grey">
-            Avg Daily CBM
+            Peak Consumed CBM
           </p>
           <p className="mt-2 font-mono text-title-lg font-bold text-on-surface">
-            {(summary?.avgDailyCbm ?? 0).toFixed(2)} m³
+            {dailyRows.reduce((max, r) => Math.max(max, r.endingCbm), 0).toFixed(2)} m³
           </p>
         </div>
 
         <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
           <p className="font-label text-label font-bold uppercase tracking-wider text-text-grey">
-            Contract Rate
+            Closing Period CBM
           </p>
           <p className="mt-2 font-mono text-title-lg font-bold text-on-surface">
-            ${(summary?.ratePerCbm ?? 0).toFixed(4)} <span className="font-body text-body-sm text-text-grey">/m³/day</span>
+            {dailyRows.length > 0 ? dailyRows[dailyRows.length - 1].endingCbm.toFixed(2) : "0.00"} m³
           </p>
         </div>
 
-        <div className="rounded-xl border border-brand-navy/30 bg-brand-navy/5 p-4 shadow-elevation-1">
+        <div className="rounded-xl border border-brand-navy/20 bg-brand-navy/5 p-4 shadow-elevation-1">
           <p className="font-label text-label font-bold uppercase tracking-wider text-brand-navy">
             Period Storage Subtotal
           </p>
@@ -193,14 +203,20 @@ export function VmiDailyBalanceLedgerTable({
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setPageIndex(0);
+            }}
             placeholder="Search by date (YYYY-MM-DD), CBM balance, amount…"
             className="h-11 w-full rounded-xl border border-outline-variant/40 bg-surface-light-grey/40 pl-10 pr-10 font-body text-body-sm text-on-surface placeholder:text-text-grey focus:border-brand-navy focus:bg-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
           />
           {searchQuery && (
             <button
               type="button"
-              onClick={() => setSearchQuery("")}
+              onClick={() => {
+                setSearchQuery("");
+                setPageIndex(0);
+              }}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-text-grey hover:text-on-surface"
               aria-label="Clear search"
             >
@@ -215,7 +231,10 @@ export function VmiDailyBalanceLedgerTable({
             <span className="font-label text-label-xs uppercase text-text-grey">Activity:</span>
             <select
               value={activityFilter}
-              onChange={(e) => setActivityFilter(e.target.value)}
+              onChange={(e) => {
+                setActivityFilter(e.target.value);
+                setPageIndex(0);
+              }}
               className="bg-transparent font-body text-body-sm font-semibold text-on-surface focus:outline-none cursor-pointer"
             >
               <option value="all">All Days</option>
@@ -231,6 +250,7 @@ export function VmiDailyBalanceLedgerTable({
               onClick={() => {
                 setSearchQuery("");
                 setActivityFilter("all");
+                setPageIndex(0);
               }}
               className="inline-flex h-9 items-center gap-1 rounded-lg px-2.5 font-label text-label-xs font-bold text-status-held hover:bg-status-held/10"
             >
@@ -273,7 +293,7 @@ export function VmiDailyBalanceLedgerTable({
                       onClick={() => handleSort("beginningCbm")}
                       className="inline-flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
                     >
-                      <span>Beginning CBM</span>
+                      <span>Beginning (m³)</span>
                       {renderSortIcon("beginningCbm")}
                     </button>
                   </th>
@@ -283,7 +303,7 @@ export function VmiDailyBalanceLedgerTable({
                       onClick={() => handleSort("inFgCbm")}
                       className="inline-flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
                     >
-                      <span>IN (FG)</span>
+                      <span>IN FG (m³)</span>
                       {renderSortIcon("inFgCbm")}
                     </button>
                   </th>
@@ -293,7 +313,7 @@ export function VmiDailyBalanceLedgerTable({
                       onClick={() => handleSort("inRawCbm")}
                       className="inline-flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
                     >
-                      <span>IN (Raw)</span>
+                      <span>IN Raw (m³)</span>
                       {renderSortIcon("inRawCbm")}
                     </button>
                   </th>
@@ -303,7 +323,7 @@ export function VmiDailyBalanceLedgerTable({
                       onClick={() => handleSort("outFgCbm")}
                       className="inline-flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
                     >
-                      <span>OUT (FG)</span>
+                      <span>OUT FG (m³)</span>
                       {renderSortIcon("outFgCbm")}
                     </button>
                   </th>
@@ -313,7 +333,7 @@ export function VmiDailyBalanceLedgerTable({
                       onClick={() => handleSort("outRawCbm")}
                       className="inline-flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
                     >
-                      <span>OUT (Raw)</span>
+                      <span>OUT Raw (m³)</span>
                       {renderSortIcon("outRawCbm")}
                     </button>
                   </th>
@@ -323,7 +343,7 @@ export function VmiDailyBalanceLedgerTable({
                       onClick={() => handleSort("endingCbm")}
                       className="inline-flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
                     >
-                      <span>Ending CBM</span>
+                      <span>Ending (m³)</span>
                       {renderSortIcon("endingCbm")}
                     </button>
                   </th>
@@ -350,7 +370,7 @@ export function VmiDailyBalanceLedgerTable({
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/30">
-                {filteredAndSortedRows.map((row) => (
+                {pagedRows.map((row) => (
                   <tr key={row.id} className="hover:bg-surface-light-grey/40">
                     <td className="px-4 py-3 font-mono text-mono-md font-bold text-on-surface">
                       {row.ledgerDate}
@@ -414,6 +434,24 @@ export function VmiDailyBalanceLedgerTable({
                 </tr>
               </tfoot>
             </table>
+
+            {/* Table Pagination */}
+            <div className="border-t border-outline-variant/30 p-3">
+              <TablePagination
+                pageIndex={pageIndex}
+                pageSize={pageSize}
+                totalCount={totalCount}
+                pageCount={pageCount}
+                canPreviousPage={pageIndex > 0}
+                canNextPage={pageIndex < pageCount - 1}
+                onPageChange={(newPageIndex) => setPageIndex(newPageIndex)}
+                onPageSizeChange={(newPageSize) => {
+                  setPageSize(newPageSize);
+                  setPageIndex(0);
+                }}
+                pageSizeOptions={[5, 10, 20, 50]}
+              />
+            </div>
           </div>
         )}
       </div>

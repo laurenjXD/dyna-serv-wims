@@ -21,7 +21,10 @@ import {
   signOutAction,
 } from "@/app/(authenticated)/actions";
 import type { ShellNotification } from "@/app/(authenticated)/actions";
-import { markNotificationReadAction } from "@/lib/actions/notifications";
+import {
+  markNotificationReadAction,
+  markAllNotificationsReadAction,
+} from "@/lib/actions/notifications";
 
 const CONNECTIVITY_LABEL: Record<
   ReturnType<typeof useConnectivityStatus>,
@@ -31,6 +34,19 @@ const CONNECTIVITY_LABEL: Record<
   offline: "Offline",
   checking: "Checking connection…",
 };
+
+function formatTimeAgo(isoString: string): string {
+  const diffMs = Date.now() - new Date(isoString).getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return new Date(isoString).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}
 
 function initials(name: string | null): string {
   if (!name) return "?";
@@ -107,38 +123,39 @@ export function ShellChrome({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  useEffect(() => {
-    let active = true;
-    resolveShellPendingApprovalCount().then((count) => {
-      if (active) setPendingApprovalCount(count);
-    }).catch(() => {
-      if (active) setPendingApprovalCount(0);
-    });
-    return () => { active = false; };
-  }, []);
+  const refreshApprovals = () => {
+    resolveShellPendingApprovalCount()
+      .then((count) => {
+        setPendingApprovalCount(count);
+      })
+      .catch(() => {});
+  };
 
-  useEffect(() => {
-    let active = true;
+  const refreshNotifications = () => {
     resolveShellNotifications()
       .then((result) => {
-        if (active) {
-          setUnreadCount(result.unreadCount);
-          setNotifications(result.notifications);
-        }
+        setUnreadCount(result.unreadCount);
+        setNotifications(result.notifications);
       })
-      .catch(() => {
-        if (active) {
-          setUnreadCount(0);
-          setNotifications([]);
-        }
-      });
-    return () => {
-      active = false;
-    };
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    refreshApprovals();
+    refreshNotifications();
+
+    // Periodic polling to keep alerts & unread badges synchronized
+    const interval = setInterval(() => {
+      refreshApprovals();
+      refreshNotifications();
+    }, 30000);
+
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
     if (!isNotificationPanelOpen) return;
+
     function handleClickOutside(event: MouseEvent) {
       const target = event.target as Node;
       if (
@@ -167,11 +184,6 @@ export function ShellChrome({ children }: { children: ReactNode }) {
   function handleNotificationClick(notification: ShellNotification) {
     if (notification.readAt) return;
 
-    // Optimistic UI: mark this notification read locally and drop the
-    // unread count immediately, then fire the real write. The write is
-    // RLS-enforced (markNotificationReadAction -> withRlsTransaction), so
-    // no local rollback/refetch is attempted on failure here -- worst case
-    // is a stale badge until the next resolveShellNotifications() load.
     setNotifications((current) =>
       current.map((item) =>
         item.id === notification.id
@@ -181,6 +193,14 @@ export function ShellChrome({ children }: { children: ReactNode }) {
     );
     setUnreadCount((count) => Math.max(0, count - 1));
     void markNotificationReadAction(notification.id);
+  }
+
+  function handleMarkAllRead() {
+    setNotifications((current) =>
+      current.map((item) => ({ ...item, readAt: new Date().toISOString() })),
+    );
+    setUnreadCount(0);
+    void markAllNotificationsReadAction();
   }
 
   const tier = resolveSessionPresentationTier(context?.activeRoleKeys ?? []);
@@ -465,32 +485,113 @@ export function ShellChrome({ children }: { children: ReactNode }) {
           ref={notificationPanelRef}
           data-testid="notification-panel"
           aria-labelledby="notification-bell"
-          className="fixed inset-x-4 top-14 z-40 max-h-[70vh] overflow-y-auto rounded-xl border border-border bg-surface p-2 shadow-elevation-2 lg:inset-x-auto lg:right-8 lg:top-[86px] lg:w-[320px]"
+          className="fixed inset-x-4 top-14 z-40 max-h-[75vh] w-auto overflow-hidden rounded-2xl border border-border bg-surface shadow-elevation-3 lg:inset-x-auto lg:right-8 lg:top-[86px] lg:w-[360px]"
         >
-          {notifications.length === 0 ? (
-            <p className="px-3 py-4 text-center text-body-sm text-text-secondary">
-              No notifications
-            </p>
-          ) : (
-            <ul>
-              {notifications.map((notification) => (
-                <li key={notification.id}>
-                  <button
-                    type="button"
-                    data-testid="notification-list-item"
-                    onClick={() => handleNotificationClick(notification)}
-                    className={`block w-full truncate rounded-xl px-3 py-2 text-left text-body-sm font-semibold hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                      notification.readAt
-                        ? "text-text-secondary"
-                        : "text-text-primary"
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-border px-4 py-3 bg-surface">
+            <div className="flex items-center gap-2">
+              <span className="font-heading text-body-md font-bold text-text-primary">
+                Notifications
+              </span>
+              {unreadCount > 0 && (
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono text-[11px] font-bold text-primary">
+                  {unreadCount} unread
+                </span>
+              )}
+            </div>
+            {unreadCount > 0 && (
+              <button
+                type="button"
+                onClick={handleMarkAllRead}
+                className="font-label text-xs font-semibold text-primary hover:underline"
+              >
+                Mark all as read
+              </button>
+            )}
+          </div>
+
+          {/* List */}
+          <div className="max-h-[60vh] overflow-y-auto divide-y divide-border/60">
+            {notifications.length === 0 ? (
+              <div className="px-4 py-8 text-center">
+                <Bell size={24} className="mx-auto mb-2 text-text-secondary/40" />
+                <p className="font-body text-body-sm font-medium text-text-secondary">
+                  No notifications yet
+                </p>
+                <p className="mt-0.5 text-xs text-text-secondary/70">
+                  Operational alerts and requests will appear here.
+                </p>
+              </div>
+            ) : (
+              notifications.map((notification) => {
+                const isUnread = !notification.readAt;
+                const content = (
+                  <div className="flex items-start gap-2.5">
+                    <span
+                      className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
+                        isUnread ? "bg-primary" : "bg-transparent"
+                      }`}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        {notification.category && (
+                          <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                            {notification.category}
+                          </span>
+                        )}
+                        <span className="font-mono text-[11px] text-text-secondary shrink-0">
+                          {formatTimeAgo(notification.createdAt)}
+                        </span>
+                      </div>
+                      <p
+                        className={`mt-1 font-body text-xs font-semibold leading-snug ${
+                          isUnread ? "text-text-primary" : "text-text-secondary"
+                        }`}
+                      >
+                        {notification.title}
+                      </p>
+                      {notification.body && (
+                        <p className="mt-0.5 font-body text-[11px] text-text-secondary/80 line-clamp-2">
+                          {notification.body}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+
+                return (
+                  <div
+                    key={notification.id}
+                    className={`transition-colors hover:bg-background ${
+                      isUnread ? "bg-primary/5" : "bg-surface"
                     }`}
                   >
-                    {notification.title}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+                    {notification.href ? (
+                      <Link
+                        href={notification.href}
+                        onClick={() => {
+                          handleNotificationClick(notification);
+                          setIsNotificationPanelOpen(false);
+                        }}
+                        className="block px-4 py-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      >
+                        {content}
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        data-testid="notification-list-item"
+                        onClick={() => handleNotificationClick(notification)}
+                        className="block w-full px-4 py-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      >
+                        {content}
+                      </button>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
       )}
 
@@ -552,6 +653,5 @@ function getPageTitle(pathname: string): string {
   if (pathname.startsWith("/portal")) return "Organization Portal";
   if (pathname.startsWith("/settings")) return "Settings";
   if (pathname.startsWith("/profile")) return "Profile";
-  if (pathname.startsWith("/sync")) return "Sync Center";
   return "Dyna-Serv WIMS";
 }

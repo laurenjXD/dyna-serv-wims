@@ -33,14 +33,65 @@ Across all user-facing document screens, forms, headers, previews, and PDFs:
 - **Office staff/supervisors** — generate, print, reprint, review, and manage documents at `/documents`.
 - **Organization users** — view authorized documents at `/portal/documents`.
 
-## 3. Document Archive & Sub-tabs
+## 3. Document Archive & Sub-tabs (`/documents`)
 
-The Documents page (`/documents`) provides an integrated document archive for:
-1. **WRRs** (Warehouse Receiving Reports)
-2. **Pick Lists**
-3. **Delivery Receipts / Acknowledgement Receipts**
-4. **Statements of Account** (SOAs)
-5. **PEZA Documents**
+The Documents page (`/documents`) provides an integrated, office-grade central document archive for internal office staff, supervisors, and administrators.
+
+### 3.1 Sub-tab structure
+The Documents surface is divided into five authoritative sub-tabs matching real warehouse operations:
+
+1. **WRRs (Warehouse Receiving Reports & Receipts)**:
+   - Archive of generated inbound receiving documents (`wrr_documents`) and inbound receipts.
+   - Sourced from inbound receiving workflows (`07-incoming-receiving`).
+   - Fields: WRR Document Number (`WRR-YYYY-NNNNNN`), Arrival/Receiving Date, Supplier/Client Organization, Inventory Model, Item Count, Total Quantity, Received By Staff, Status (`draft`, `pending_inspection`, `completed`, `cancelled`).
+   - Actions: Open Record Summary, Preview Printable WRR PDF, Download PDF Artifact, Direct Link to `/receiving/[wrr_id]`.
+
+2. **Inbound CI/PL & Invoices**:
+   - Archive of uploaded Commercial Invoices, Packing Lists, and attached supplier receipts.
+   - Sourced from inbound pre-receiving and receiving documentation (`07-incoming-receiving`).
+   - Fields: Commercial Invoice Number, Linked WRR Number, Vendor/Supplier Organization, Inventory Model, Item Count, Total Quantity, Upload Date, File Link / Storage URL.
+   - Actions: Open Linked WRR, View/Download Attached CI/PL PDF or Image.
+
+3. **Pick Lists & DRA / WRF**:
+   - Archive of generated outbound picking instructions (`generated_documents` WHERE `document_type = 'pick_list'`) and uploaded Delivery Request Authorizations (DRA) / Withdrawal Request Forms (WRF).
+   - Sourced from committed outbound allocations (`08-outgoing-withdrawal-and-two-stage-commitment`).
+   - Fields: Pick List Number (`PL-YYYY-NNNNNN`), Generation Date/Time, Customer Organization, Inventory Model, Line Item Count, Total Package/Box Count, Authorized By Staff, Status (`allocated`, `picked`, `dispatched`, `cancelled`).
+   - Actions: Open Snapshot Detail, View/Print Read-Only PDF, Trigger Reprint with Watermark, Download PDF Artifact.
+
+4. **Delivery Receipts & Proof of Delivery (DR / POD / AR)**:
+   - Archive of generated outbound Delivery Receipts / Acknowledgement Receipts (`generated_documents` WHERE `document_type = 'acknowledgement_receipt'`) and uploaded signed Proof of Delivery (POD / DR).
+   - Sourced from completed Stage 2 dispatches (`08`) with pricing snapshot from `12` (VMI reference) or `13` (Trading final).
+   - Fields: DR/AR Number (`AR-YYYY-NNNNNN`), Dispatch Date/Time, Customer Organization, Inventory Model, Currency, Total Amount (Trading final; VMI reference with disclaimer; Supplies omitted), Dispatched By Staff, Status (`pending`, `generating`, `ready`, `failed`, `voided`).
+   - Actions: Open Snapshot Detail, View/Print PDF, Reprint with Watermark, Download PDF Artifact, View Signed POD Uploads, View Supersession History.
+
+5. **Statements of Account (SOAs)**:
+   - Archive of monthly commercial billing statement bundles (`vmi_billing_periods` + `generated_documents`).
+   - Sourced from period-close billing calculations (`12-vmi-billing`).
+   - Gated by `reporting.financial_read` capability.
+   - Fields: Period Identifier (`SOA-YYYY-MM-NN`), Period Date Range (Month/Year), Organization, Total Storage Volume (CBM), Total Incurred Charges (PHP / USD), Issued Date, Closed By Staff, Status (`draft`, `issued`, `settled`, `superseded`).
+   - Actions: View Billing Period Breakdown, Download 4-Document PDF Bundle (Statement of Account, CBM Calculation Sheet, Itemized Movement / Storage Ledger, Letter of Authority), View Charge Adjustments.
+
+### 3.2 Global Controls & Filter Surface
+All sub-tabs share a unified office filtering and search interface:
+1. **Search Bar**: Debounced text search matching document numbers, external reference numbers (CIPL, Carrier BL, Client DR), organization names, item codes, and lot numbers.
+2. **Organization Selector**: Dropdown filter listing enrolled organizations.
+3. **Date Range Filter**: Standard "From" and "To" calendar pickers with quick presets (Today, Last 7 Days, Last 30 Days, This Month, All Time).
+4. **Status Filter**: Multi-select or pill toggle filter matching the active tab's document statuses.
+5. **Pagination**: Server-driven 25/50/100 items per page with URL search params persistence.
+
+### 3.3 Modal PDF Viewer & Metadata Inspector
+1. **Embedded PDF Preview**: Accessible dialog/modal displaying the rendered PDF without requiring local download.
+2. **Snapshot Metadata Panel**: Collapsible inspector displaying:
+   - SHA-256 Snapshot Hash
+   - Template Version and Generation Engine
+   - Generation Timestamp (Asia/Manila time)
+   - Generating Actor (or System Executor)
+   - Correlation ID for distributed tracing
+3. **Reprint Workflow**:
+   - Office Staff / Supervisor click "Reprint".
+   - System prompts for confirmation.
+   - Generates an append-only `document_events` entry (`event_type = 'reprinted'`, actor, timestamp).
+   - Serves artifact with mandatory diagonal watermark: `REPRINT — [ISO Timestamp Asia/Manila]` at 20% opacity.
 
 ## 4. Functional requirements
 
@@ -51,20 +102,40 @@ The Documents page (`/documents`) provides an integrated document archive for:
 3. Documents include Organization, Inventory Model, line items, quantities, UOMs, prices, and signature blocks. A pick list is read-only: its item, customer-item, lot, location, quantity, SPQ, and package values are selected from Master Inventory by the approved allocation/commitment flow and frozen in the pick-list snapshot; users do not CRUD those values on the pick-list document.
 4. Trading document prices are final (`13-trading-orders-and-pricing`). VMI prices are per-release reference values (`12-vmi-billing`).
 
-### R2. Permanent tiered retention policy
+### R2. Documents Archive Page (`/documents`)
+
+1. The office shell SHALL provide `/documents` under the **Reports** navigation group with `surface: "office"` and `capability: "documents.read"`.
+2. The page SHALL render five discrete tabs: WRRs & Inbound Receipts, Inbound CI/PL & Invoices, Pick Lists & DRA/WRF, Delivery Receipts & Proof of Delivery (DR / POD), and Statements of Account.
+3. Access to the Statements of Account tab SHALL additionally require the `reporting.financial_read` capability. If a user holds `documents.read` but lacks `reporting.financial_read`, the SOA tab is rendered in a disabled/restricted state with a clear explanation or omitted.
+4. All tab views SHALL support unified search, date-range filtering, organization filtering, and status filtering.
+5. Document status pills SHALL strictly use brand tokens:
+   - Ready / Completed / Dispatched / Signed: `status-available` (`#10B981` / green)
+   - Pending / Generating / Allocated / Draft: `status-pending` (`#F59E0B` / amber)
+   - Failed / Cancelled / Voided / Expired: `status-held` (`#EF4444` / red)
+   - Neutral / Archived: `status-neutral` (`#6B7280` / grey)
+
+### R3. Permanent tiered retention policy
 
 1. `generated_documents` entries and PDF files follow permanent retention.
-2. 3 years hot storage in Supabase Storage (`generated-documents` bucket); after 3 years, artifacts are archived off-platform with SHA-256 hash verification before deleting from Supabase.
+2. 3 years hot storage in Supabase Storage (`documents` bucket); after 3 years, artifacts are archived off-platform with SHA-256 hash verification before deleting from Supabase.
 
-### R3. Visual design & 3-component error feedback
+### R4. Visual design & 3-component error feedback
 
 1. Document previews and print templates follow exact design tokens (`#2563EB` primary, `#0F172A` text primary, `#64748B` text secondary, `#FFF7ED` background, `#FFFFFF` surface).
-2. All document errors display 3 components: **What happened**, **Why it failed**, and **Next Action / Solution**.
+2. All document errors (retrieval, generation, download, storage timeout) display 3 components:
+   - **What happened** (Plain-language description)
+   - **Why it failed** (Underlying cause / technical code)
+   - **Next Action / Solution** (Actionable resolution step for the user)
 
 ## 5. Acceptance criteria
 
 - [ ] Documents generate synchronously inline with nightly orphan cleanup.
 - [ ] User-facing UI labels use Organization, Inventory Model, Organization Portal, and Delivery Receipt / Acknowledgement Receipt exclusively.
+- [ ] Central Documents page (`/documents`) mounts all 5 sub-tabs (WRRs & Receipts, Inbound CI/PL, Pick Lists & DRA/WRF, Delivery Receipts & POD, Statements of Account) with real database queries.
+- [ ] Global search, organization filter, date-range picker, and status filters work across all sub-tabs.
+- [ ] PDF preview modal allows viewing, downloading, and printing generated artifacts.
+- [ ] Reprint action logs an append-only `document_events` record and displays the required watermark.
+- [ ] Statements of Account tab enforces `reporting.financial_read` permission guard.
 - [ ] Permanent tiered retention policy (3 years hot in Supabase, then archived off-platform) is enforced for all generated document artifacts.
 - [ ] 3-component error feedback is present on all document generation/download errors.
 - [ ] Pick-list detail and print views display Master Inventory-backed item/lot/location/package values without an editable line-data surface.

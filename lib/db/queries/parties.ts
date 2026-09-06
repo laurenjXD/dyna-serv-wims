@@ -165,3 +165,53 @@ export async function getPartyWithRoles(
     roles: roleRows as PartyRoleRow[],
   };
 }
+
+// ---------------------------------------------------------------------------
+// Serialization & Code Suggestion Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns all active party organization codes for collision prevention and next-serial calculation.
+ */
+export async function getAllPartyCodes(db: DbLike): Promise<string[]> {
+  const rows = await db
+    .select({ code: parties.code })
+    .from(parties);
+
+  return (rows as Array<{ code: string }>).map((r) => r.code);
+}
+
+export const PARTY_ROLE_CODE_PREFIXES: Record<string, string> = {
+  vendor: "VENDOR",
+  supplier: "SUPPLIER",
+  customer: "CUSTOMER",
+  end_customer: "ENDCUST",
+  internal_warehouse: "WH",
+};
+
+/**
+ * Computes the next serialized organization code for a given business role.
+ * e.g. VENDOR-001, VENDOR-002, SUPPLIER-001, CUSTOMER-001, etc.
+ */
+export function computeNextPartyCode(
+  role: string = "vendor",
+  existingCodes: string[] = []
+): string {
+  const prefix = PARTY_ROLE_CODE_PREFIXES[role] ?? "ORG";
+  const regex = new RegExp(`^${prefix}-(\\d+)$`, "i");
+
+  let maxNum = 0;
+  for (const code of existingCodes) {
+    if (!code) continue;
+    const match = code.trim().match(regex);
+    if (match && match[1]) {
+      const num = parseInt(match[1], 10);
+      if (!isNaN(num) && num > maxNum) {
+        maxNum = num;
+      }
+    }
+  }
+
+  const nextNum = maxNum + 1;
+  return `${prefix}-${String(nextNum).padStart(3, "0")}`;
+}

@@ -130,6 +130,9 @@ export function ItemForm({
       : initialCategory?.flowType) ?? "";
 
   const [inventoryModel, setInventoryModel] = useState(initialInventoryModel);
+  const [movementCategory, setMovementCategory] = useState<string>(
+    item?.vmiMovementCategory ?? "fg",
+  );
   const [parentCategoryId, setParentCategoryId] = useState(initialParentId);
   const [subcategoryId, setSubcategoryId] = useState(initialSubcategoryId);
 
@@ -155,6 +158,16 @@ export function ItemForm({
       (c) => c.flowType === inventoryModel || !c.flowType,
     )
     : parentCategories;
+
+  // Group parent categories by Finished Goods (FG) vs Raw Materials (RAW)
+  const rawMaterialKeywords = ["raw material", "raw", "resin", "polysheet", "chemical", "chemicals", "esd"];
+  const fgCategories = filteredParentCategories.filter(
+    (c) => !rawMaterialKeywords.some((kw) => c.name.toLowerCase().includes(kw)),
+  );
+  const rawCategories = filteredParentCategories.filter(
+    (c) => rawMaterialKeywords.some((kw) => c.name.toLowerCase().includes(kw)),
+  );
+
   const subcategoryOptions = parentCategoryId
     ? (childCategoriesByParent.get(parentCategoryId) ?? [])
     : [];
@@ -269,19 +282,41 @@ export function ItemForm({
         </div>
       )}
 
-      {/* Section: Classification — per page specs.md §8 mandatory flow:
-          Inventory Model -> Category -> Subcategory -> Item Code. Inventory
-          Model/Category/Subcategory are cascading UI filters; only the most
-          specific of Category/Subcategory is ever submitted, via the hidden
-          categoryId input below. */}
+      {/* Section: Classification — per workflow:
+          1. Inventory Model -> 2. Category (based on model) -> [Beside it] FG/RAW Classification -> 3. Subcategory (Last in Hierarchy). */}
       <section aria-labelledby="section-classification">
         <h2
           id="section-classification"
           className="mb-4 font-heading font-semibold text-data-display text-on-surface"
         >
-          Classification
+          Classification &amp; Hierarchy
         </h2>
         <input type="hidden" name="categoryId" value={categoryId} />
+        
+        {/* Real-time Category Hierarchy Breadcrumb Bar */}
+        <div className="mb-4 rounded-xl border border-slate-200/80 bg-slate-50/80 p-3 shadow-xs">
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="font-bold uppercase tracking-wider text-brand-navy text-[10px]">
+              Hierarchy Flow:
+            </span>
+            <span className="inline-flex items-center rounded-md bg-slate-200/90 px-2 py-0.5 text-[11px] font-bold text-slate-800">
+              Model: {inventoryModel ? INVENTORY_MODEL_LABELS[inventoryModel] || inventoryModel.toUpperCase() : "All Models"}
+            </span>
+            <span className="text-slate-400">➔</span>
+            <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${parentCategoryId ? "bg-emerald-100 text-emerald-900 border border-emerald-200" : "bg-slate-200/80 text-slate-500 italic"}`}>
+              Category: {localCategories.find((c) => c.id === parentCategoryId)?.name || "Not Selected"}
+            </span>
+            <span className="text-slate-400">➔</span>
+            <span className="inline-flex items-center rounded-md bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-900">
+              Type: {movementCategory === "fg" ? "Finished Goods (FG)" : movementCategory === "raw_material" ? "Raw Materials (RAW)" : movementCategory === "for_process" ? "Work in Process (WIP)" : movementCategory === "reject" ? "Rejects" : "Quality Hold"}
+            </span>
+            <span className="text-slate-400">➔</span>
+            <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-bold ${subcategoryId ? "bg-indigo-100 text-indigo-950 border border-indigo-200" : "bg-slate-200/80 text-slate-500 italic"}`}>
+              Subcategory (Last): {localCategories.find((c) => c.id === subcategoryId)?.name || (parentCategoryId ? "None (Category Level)" : "Not Selected")}
+            </span>
+          </div>
+        </div>
+
         <div className="grid gap-4 md:grid-cols-2">
           {/* Owner / Default Supplier Organization */}
           <div>
@@ -335,7 +370,7 @@ export function ItemForm({
               }}
               className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
             >
-              <option value="">All</option>
+              <option value="">All Models</option>
               {INVENTORY_MODEL_OPTIONS.map((m) => (
                 <option key={m} value={m}>
                   {INVENTORY_MODEL_LABELS[m]}
@@ -349,10 +384,10 @@ export function ItemForm({
             )}
           </div>
 
-          {/* Category with Add / Edit Actions */}
+          {/* Category (Filtered based on Inventory Model) */}
           <div>
             <div className="flex items-center justify-between">
-              <label htmlFor="parentCategoryId" className="block font-label text-label text-on-surface">
+              <label htmlFor="parentCategoryId" className="block font-label text-label text-on-surface font-bold">
                 Category
               </label>
               <button
@@ -389,12 +424,25 @@ export function ItemForm({
                 }}
                 className="block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
               >
-                <option value="">None</option>
-                {filteredParentCategories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
+                <option value="">None (Select Category)</option>
+                {fgCategories.length > 0 && (
+                  <optgroup label="Finished Goods (FG) Categories">
+                    {fgCategories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {rawCategories.length > 0 && (
+                  <optgroup label="Raw Materials (RAW) Categories">
+                    {rawCategories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
                 <option value="__NEW_CATEGORY__" className="text-brand-navy font-bold">
                   + Add New Category...
                 </option>
@@ -423,11 +471,33 @@ export function ItemForm({
             </div>
           </div>
 
-          {/* Subcategory with Add / Edit Actions */}
+          {/* FG or RAW Classification */}
           <div>
             <div className="flex items-center justify-between">
-              <label htmlFor="subcategoryId" className="block font-label text-label text-on-surface">
-                Subcategory
+              <label htmlFor="vmiMovementCategory" className="block font-label text-label text-on-surface font-bold">
+                FG / RAW Classification <span aria-hidden="true" className="text-brand-red">*</span>
+              </label>
+            </div>
+            <select
+              id="vmiMovementCategory"
+              name="vmiMovementCategory"
+              value={movementCategory}
+              onChange={(e) => setMovementCategory(e.target.value)}
+              className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            >
+              <option value="fg">Finished Goods (FG)</option>
+              <option value="raw_material">Raw Materials (RAW)</option>
+              <option value="for_process">Work in Process (WIP)</option>
+              <option value="reject">Rejects &amp; Scrap</option>
+              <option value="re_inspect">Quality Hold / Re-Inspection</option>
+            </select>
+          </div>
+
+          {/* Subcategory (Last in Hierarchy) */}
+          <div>
+            <div className="flex items-center justify-between">
+              <label htmlFor="subcategoryId" className="block font-label text-label text-on-surface font-bold">
+                Subcategory <span className="text-xs font-semibold text-brand-navy bg-brand-navy/10 px-1.5 py-0.5 rounded">Last in Hierarchy</span>
               </label>
               {parentCategoryId && (
                 <button
@@ -471,8 +541,8 @@ export function ItemForm({
                   {!parentCategoryId
                     ? "Select a category first"
                     : subcategoryOptions.length === 0
-                    ? "None (No subcategories)"
-                    : "None"}
+                    ? "None (No subcategories configured)"
+                    : "None (Keep parent category)"}
                 </option>
                 {subcategoryOptions.map((cat) => (
                   <option key={cat.id} value={cat.id}>
@@ -497,7 +567,7 @@ export function ItemForm({
                         targetId: cat.id,
                         name: cat.name,
                         flowType: cat.flowType || "",
-                        parentId: cat.parentId,
+                        parentId: parentCategoryId,
                         error: null,
                       });
                     }
@@ -662,27 +732,6 @@ export function ItemForm({
               />
             </div>
           )}
-
-          <div>
-            <label htmlFor="vmiMovementCategory" className="block font-label text-label text-on-surface">
-              Warehousing CBM Storage Classification
-            </label>
-            <select
-              id="vmiMovementCategory"
-              name="vmiMovementCategory"
-              defaultValue={item?.vmiMovementCategory ?? "fg"}
-              className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            >
-              <option value="fg">Finished Goods (FG) — Outbound Shipments / Assemblies</option>
-              <option value="raw_material">Raw Materials (RAW) — Inbound Components / Tapes / Reels</option>
-              <option value="for_process">Work in Process (WIP)</option>
-              <option value="reject">Rejects &amp; Scrap</option>
-              <option value="re_inspect">Quality Hold / Re-Inspection</option>
-            </select>
-            <p className="mt-1 font-body text-body-xs text-text-grey">
-              Determines whether item storage CBM reports under IN/OUT FG or IN/OUT RAW on SOA Page 4.
-            </p>
-          </div>
 
           <div className="md:col-span-2">
             <label htmlFor="description" className="block font-label text-label text-on-surface">

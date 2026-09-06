@@ -3,6 +3,48 @@
 ## One-QR receiving confirmation and per-line shortage placement approved (2026-09-02)
 
 Product Owner approved the clarified receiving workflow: the Work Queue/WRR owns expected lines and quantities; one QR scan identifies and confirms the matching receiving line; the operator assigns declared boxes to storage/Hold or marks individual boxes `Missing`; only assigned boxes enter inventory; missing boxes are excluded from location allocations and inventory; lines commit independently; and the WRR becomes `confirmed` after all lines resolve, with OS&D shown as a shortage summary rather than a new `partial` status. The receiving UI implementation is recorded in commit `ac4f5c0` and the approval is captured in `specs/07-incoming-receiving/{requirements,design,tasks}.md`.
+## Delivery Conformance KPI Dropdown & Trend Line Graph Dashboard Integration (`08`, `16`) (2026-09-05)
+
+**What changed**:
+1. **Delivery Conformance Analytics Layer (`16-reporting-and-analytics`)**:
+   - Created `lib/analytics/queries/conformance.ts` implementing `getDeliveryConformanceKpi` and `getDeliveryConformanceTrend`.
+   - Computes delivery conformance rate based on dispatched outbound transactions having uploaded/verified Proof of Delivery (POD/DR) documents:
+     $$\text{Conformance Rate (\%)} = \left(\frac{\text{Conforming Dispatches}}{\text{Total Dispatches}}\right) \times 100$$
+   - Added unit test suite `lib/analytics/queries/__tests__/conformance.test.ts` (3/3 passing).
+2. **Delivery Conformance Trend Line Graph (`components/reporting/DeliveryConformanceChart.tsx`)**:
+   - Built responsive Recharts Line Graph displaying conformance percentage over time alongside a 98.0% benchmark target reference line.
+   - Mounted directly in the **Operational & Heatmap** tab of the Reports dashboard (`/reports#conformance`) with live rate badge and navigation link to the Outgoing Ledger.
+3. **Outgoing Ledger Interactive KPI Dropdown (`08-outgoing-withdrawal-and-two-stage-commitment`)**:
+   - Enhanced `OutgoingLedgerClientTable.tsx` with a 4-card KPI summary grid featuring the **Delivery Conformance KPI Card**.
+   - Integrated an interactive filter dropdown allowing operators to isolate **All Dispatches**, **Conforming (Signed DR Attached)**, or **Pending Proof of Delivery (Missing DR)** in real-time.
+   - Linked directly to the Delivery Conformance Trend Line Graph (`/reports#conformance`).
+4. **Item Enrollment Layout Uniformity (`06-party-and-item-enrollment`)**:
+   - Removed redundant `"Warehousing CBM Storage Classification"` card and cleaned whitespace in `app/(authenticated)/master-data/items/_components/item-form.tsx`.
+   - Equalized field sizes into a clean, uniform 3-row $\times$ 2-column grid across Owner Organization, Inventory Model, Category, FG/RAW Classification, Subcategory, and Primary Item Code.
+
+## Removal of `/sync` Page, Central Documents Archive (`10-pick-list-and-acknowledgement-receipt`), & Item Classification Hierarchy (2026-09-05)
+
+**What changed**:
+1. **Removal of `/sync` Page**:
+   - Deleted `app/(authenticated)/sync` directory.
+   - Removed `/sync` route entry from `ROUTE_REGISTRY` in [`lib/shell/registry.ts`](file:///d:/School-related%20docus/dyna-serv%20wims/lib/shell/registry.ts).
+   - Removed `/sync` mapping from [`components/global/ShellChrome.tsx`](file:///d:/School-related%20docus/dyna-serv%20wims/components/global/ShellChrome.tsx).
+   - Updated shell navigation and registry tests (`lib/shell/__tests__/navigation.test.ts`, `lib/shell/__tests__/registry.test.ts`, `components/global/__tests__/ShellNavigation.test.tsx`).
+   - Verified 16/16 test suites (250 tests) green.
+2. **Documents Center Real Warehouse Taxonomy (`10-pick-list-and-acknowledgement-receipt`)**:
+   - Updated [`specs/10-pick-list-and-acknowledgement-receipt/requirements.md`](file:///d:/School-related%20docus/dyna-serv%20wims/specs/10-pick-list-and-acknowledgement-receipt/requirements.md), [`design.md`](file:///d:/School-related%20docus/dyna-serv%20wims/specs/10-pick-list-and-acknowledgement-receipt/design.md), and [`tasks.md`](file:///d:/School-related%20docus/dyna-serv%20wims/specs/10-pick-list-and-acknowledgement-receipt/tasks.md) to reflect actual warehouse document workflows:
+     - **WRRs & Inbound Receipts**: Generated WRR PDFs & Inbound Receipts (`wrr_documents`).
+     - **Inbound CI/PL & Invoices**: Uploaded Commercial Invoices, Packing Lists & Attached Supplier Receipts (`wrr_documents.cipl_file_url`).
+     - **Pick Lists & DRA/WRF**: Generated Pick Lists (`generated_documents` `pick_list`) & Uploaded Withdrawal Request Forms (WRF) / Delivery Request Authorizations (DRA).
+     - **Delivery Receipts & Proof of Delivery (DR / POD)**: Generated Delivery Receipts / Acknowledgement Receipts (`generated_documents` `acknowledgement_receipt`) & Uploaded Signed Proof of Delivery (POD).
+     - **Statements of Account (SOA)**: Monthly Billing Statements (`vmi_billing_periods` gated by `reporting.financial_read`).
+   - **PEZA Logistics Permits Removed**: Removed PEZA logistics permit documents from active taxonomy per operational confirmation that Dyna-Serv WIMS does not process PEZA logistics permit documents.
+   - Implemented `listCiplArchiveDocuments` in `lib/db/queries/documents.ts` and `CiplDocumentsTable.tsx` in `app/(authenticated)/documents/_components/`.
+   - Wired Server Action `requestDocumentReprintAction` via `app/(authenticated)/documents/_actions.ts` with `"use server"`, preventing client-side `next/headers` leaks.
+3. **Item Enrollment Classification Hierarchy (`06-party-and-item-enrollment`)**:
+   - Updated `app/(authenticated)/master-data/items/_components/item-form.tsx` classification hierarchy:
+     - Hierarchy: Inventory Model ➔ Category (grouped into Finished Goods & Raw Materials optgroups) ➔ FG/RAW Classification (beside category) ➔ Subcategory (last in hierarchy).
+     - Live breadcrumb and visual badge helper guide user through the selection flow.
 
 ## Organization Billing & 3-Year Monthly Statements Archive Integration (2026-08-31)
 
@@ -292,7 +334,6 @@ Both specs' prior `Status: Approved` versions (2026-08-06) are superseded in ful
 **`13-trading-orders-and-pricing`**: retires the `trading_orders` → `trading_order_items` → `trading_price_snapshots` order lifecycle entirely — no order entity exists in the new model. Replaced with a pre-configured `trading_policies` rate card keyed by `(party_id, item_id)`; a missing rate card blocks pick-list generation for that line rather than silently defaulting to `items.selling_price`. Price freezes into an immutable, hashed `trading_invoice_lines` row at pick-list generation, before `08` Stage 1 commitment.
 
 **Approved with one item explicitly still open**: `13`'s Task 1 — taxes, discounts, returns, and post-dispatch corrections for the new pricing model — was not carried over from the prior order-based design and has not been resolved. Product Owner decision: approve now rather than block on it; resolve as part of completing Task 4 (price resolution and freeze) during implementation, not before. Both specs' `tasks.md` sign-off lines completed 2026-08-19; `specs/00-steering/gantt-mapping.md` rows 3.6/3.6a updated to reflect the rewrite and re-approval.
-=======
 ## Multi-item Pick Lists-tab workflow (2026-08-25) — approved
 
 The Product Owner approved a change from direct, single-item Stock View generation to a table-like draft in Master Inventory's **Pick Lists** tab:
@@ -323,7 +364,6 @@ The Product Owner clarified the field ownership for the supplied Warehouse Recei
 - **Delivery-only template fields are not invented.** Client D.R. No., DGC D.R. No., delivery date, and delivery instructions cannot be derived from Master Inventory and remain unavailable in v1 until an approved owning workflow exists; `19-dispatch-scheduling-and-delivery-tracking` remains deferred. The pick-list number must not be misrepresented as a delivery-receipt number.
 
 This affects `01-core-data-model` (new WRR-line persistence), `07-incoming-receiving` (WRR form/read-only/print contract), and `10-pick-list-and-acknowledgement-receipt` (document field/source contract). Both approvals were granted in conversation on 2026-08-24; all three specifications are **Approved** and implementation is authorized.
->>>>>>> origin/fix-it-felix
 
 ## Track B Milestone 2 scope calls: Logistics tab deferred, bulk location generator in scope (2026-08-17)
 

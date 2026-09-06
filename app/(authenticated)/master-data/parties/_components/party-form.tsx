@@ -8,10 +8,11 @@
 //   specs/06-party-and-item-enrollment/design.md §5
 //   specs/00-steering/brand-design-system.md §2, §3, §9, §11
 
-import { useActionState } from "react";
+import { useActionState, useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import type { PartyFormState } from "../_actions";
 import type { PartyDetail } from "@/lib/db/queries/parties";
+import { computeNextPartyCode } from "@/lib/db/queries/parties";
 
 const PARTY_ROLES = [
   { value: "vendor", label: "Vendor" },
@@ -30,14 +31,45 @@ interface PartyFormProps {
   action: PartyFormAction;
   party?: PartyDetail;
   initialCode?: string;
+  existingCodes?: string[];
   cancelHref: string;
 }
 
-export function PartyForm({ action, party, initialCode, cancelHref }: PartyFormProps) {
+export function PartyForm({ action, party, initialCode, existingCodes = [], cancelHref }: PartyFormProps) {
   const [state, formAction, isPending] = useActionState(action, {});
 
   const isEdit = !!party;
-  const assignedRoleValues = new Set(party?.roles.map((r) => r.role) ?? []);
+  const assignedRoleValues = useMemo(() => new Set(party?.roles.map((r) => r.role) ?? []), [party]);
+
+  // Selected business roles state
+  const [selectedRoles, setSelectedRoles] = useState<string[]>(() => {
+    if (party && party.roles.length > 0) {
+      return party.roles.map((r) => r.role);
+    }
+    return ["vendor"];
+  });
+
+  // Primary active role for code serialization
+  const primaryRole = selectedRoles[0] || "vendor";
+
+  // Dynamic suggested serialized code based on the selected role and existing party codes
+  const suggestedCode = useMemo(() => {
+    return computeNextPartyCode(primaryRole, existingCodes);
+  }, [primaryRole, existingCodes]);
+
+  // Code input state
+  const [codeValue, setCodeValue] = useState<string>(party?.code ?? initialCode ?? "");
+
+  const handleRoleToggle = (roleVal: string, isChecked: boolean) => {
+    setSelectedRoles((prev) => {
+      if (isChecked) {
+        return prev.includes(roleVal) ? prev : [...prev, roleVal];
+      } else {
+        const filtered = prev.filter((r) => r !== roleVal);
+        return filtered.length > 0 ? filtered : ["vendor"];
+      }
+    });
+  };
 
   const fieldError = (name: string) =>
     state.fieldErrors?.[name] ? (
@@ -93,24 +125,22 @@ export function PartyForm({ action, party, initialCode, cancelHref }: PartyFormP
             <fieldset>
               <legend className="font-label text-label text-on-surface">
                 Business Roles
-                <span className="ml-2 font-body text-body-sm text-text-grey">
-                  (Business classifications only — not application access)
-                </span>
               </legend>
               <div className="mt-2 flex flex-wrap gap-4">
                 {PARTY_ROLES.map(({ value, label }) => (
                   <label
                     key={value}
-                    className="flex cursor-pointer items-center gap-2 font-label text-label text-on-surface"
+                    className="flex cursor-pointer items-center gap-2 font-body text-body-md text-on-surface"
                   >
                     <input
                       type="checkbox"
                       name="roles"
                       value={value}
-                      defaultChecked={assignedRoleValues.has(value)}
-                      className="h-5 w-5 rounded border-outline-variant/30 text-brand-navy focus:ring-2 focus:ring-brand-navy"
+                      checked={selectedRoles.includes(value)}
+                      onChange={(e) => handleRoleToggle(value, e.target.checked)}
+                      className="h-4 w-4 rounded border-outline-variant/30 text-brand-navy focus:ring-2 focus:ring-brand-navy"
                     />
-                    {label}
+                    <span>{label}</span>
                   </label>
                 ))}
               </div>
@@ -135,8 +165,14 @@ export function PartyForm({ action, party, initialCode, cancelHref }: PartyFormP
             type="text"
             required
             maxLength={50}
-            defaultValue={party?.code ?? initialCode ?? ""}
-            placeholder="e.g. VENDOR-001"
+            value={codeValue}
+            onChange={(e) => setCodeValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Tab" && !e.shiftKey && !codeValue.trim()) {
+                setCodeValue(suggestedCode);
+              }
+            }}
+            placeholder={isEdit ? "e.g. VENDOR-001" : `e.g. ${suggestedCode}`}
             className={inputClass("code")}
             {...ariaProps("code")}
           />

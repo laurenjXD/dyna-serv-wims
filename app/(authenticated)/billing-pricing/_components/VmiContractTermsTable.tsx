@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import type { VmiContractTermsRow } from "@/lib/db/queries/vmi-contracts";
 import { VmiContractTermsModal } from "../vmi/contracts/_components/VmiContractTermsModal";
+import { TablePagination } from "@/components/ui/TablePagination";
 
 type Option = { id: string; name: string; code: string };
 
@@ -38,6 +39,8 @@ export function VmiContractTermsTable({ rows, parties }: Props) {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("partyName");
   const [sortDir, setSortDir] = useState<SortDirection>("asc");
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -85,6 +88,12 @@ export function VmiContractTermsTable({ rows, parties }: Props) {
       });
   }, [rows, searchQuery, statusFilter, sortField, sortDir]);
 
+  const totalCount = filteredAndSortedRows.length;
+  const pageCount = Math.ceil(totalCount / pageSize) || 1;
+  const pagedRows = useMemo(() => {
+    return filteredAndSortedRows.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
+  }, [filteredAndSortedRows, pageIndex, pageSize]);
+
   const renderSortIcon = (field: SortField) => {
     if (sortField !== field) {
       return <ArrowUpDown size={14} className="opacity-40" />;
@@ -131,14 +140,20 @@ export function VmiContractTermsTable({ rows, parties }: Props) {
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setPageIndex(0);
+            }}
             placeholder="Search by organization code, name, timing…"
             className="h-11 w-full rounded-xl border border-outline-variant/40 bg-surface-light-grey/40 pl-10 pr-10 font-body text-body-sm text-on-surface placeholder:text-text-grey focus:border-brand-navy focus:bg-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
           />
           {searchQuery && (
             <button
               type="button"
-              onClick={() => setSearchQuery("")}
+              onClick={() => {
+                setSearchQuery("");
+                setPageIndex(0);
+              }}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-text-grey hover:text-on-surface"
               aria-label="Clear search"
             >
@@ -153,7 +168,10 @@ export function VmiContractTermsTable({ rows, parties }: Props) {
             <span className="font-label text-label-xs uppercase text-text-grey">Status:</span>
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPageIndex(0);
+              }}
               className="bg-transparent font-body text-body-sm font-semibold text-on-surface focus:outline-none cursor-pointer"
             >
               <option value="all">All Statuses</option>
@@ -168,6 +186,7 @@ export function VmiContractTermsTable({ rows, parties }: Props) {
               onClick={() => {
                 setSearchQuery("");
                 setStatusFilter("all");
+                setPageIndex(0);
               }}
               className="inline-flex h-9 items-center gap-1 rounded-lg px-2.5 font-label text-label-xs font-bold text-status-held hover:bg-status-held/10"
             >
@@ -194,133 +213,150 @@ export function VmiContractTermsTable({ rows, parties }: Props) {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left">
-              <thead>
-                <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                  <th className="px-4 py-3 font-label text-label uppercase tracking-wider text-text-grey">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("partyName")}
-                      className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>Organization</span>
-                      {renderSortIcon("partyName")}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 font-label text-label uppercase tracking-wider text-text-grey text-right">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("storageRatePerCbmDay")}
-                      className="inline-flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>Storage Rate ($/m³/day)</span>
-                      {renderSortIcon("storageRatePerCbmDay")}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 font-label text-label uppercase tracking-wider text-text-grey text-right">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("handlingInRatePerCbm")}
-                      className="inline-flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>Handling IN ($/m³)</span>
-                      {renderSortIcon("handlingInRatePerCbm")}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 font-label text-label uppercase tracking-wider text-text-grey text-right">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("handlingOutRatePerCbm")}
-                      className="inline-flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>Handling OUT ($/m³)</span>
-                      {renderSortIcon("handlingOutRatePerCbm")}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 font-label text-label uppercase tracking-wider text-text-grey text-right">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("documentationDefaultRateUsd")}
-                      className="inline-flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>Doc Fee ($/AR)</span>
-                      {renderSortIcon("documentationDefaultRateUsd")}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 font-label text-label uppercase tracking-wider text-text-grey">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("billingTiming")}
-                      className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>Timing</span>
-                      {renderSortIcon("billingTiming")}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 font-label text-label uppercase tracking-wider text-text-grey">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("isActive")}
-                      className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>Status</span>
-                      {renderSortIcon("isActive")}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 font-label text-label uppercase tracking-wider text-text-grey">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("effectiveFrom")}
-                      className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>Effective Range</span>
-                      {renderSortIcon("effectiveFrom")}
-                    </button>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/30">
-                {filteredAndSortedRows.map((row) => (
-                  <tr key={row.id} className="hover:bg-surface-light-grey/40">
-                    <td className="px-4 py-3 font-body text-body-md text-on-surface font-semibold">
-                      {row.partyCode} — {row.partyName}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-mono-md font-bold text-on-surface text-right">
-                      ${parseFloat(row.storageRatePerCbmDay).toFixed(4)}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface text-right">
-                      ${parseFloat(row.handlingInRatePerCbm).toFixed(2)}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface text-right">
-                      ${parseFloat(row.handlingOutRatePerCbm).toFixed(2)}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface text-right">
-                      ${parseFloat(row.documentationDefaultRateUsd).toFixed(2)}
-                    </td>
-                    <td className="px-4 py-3 font-body text-body-md text-text-grey capitalize">
-                      {row.billingTiming.replace(/_/g, " ")}
-                    </td>
-                    <td className="px-4 py-3 font-body text-body-md">
-                      {row.isActive ? (
-                        <span className="inline-flex items-center rounded-full bg-status-available/10 px-2 py-0.5 font-label text-label font-bold text-status-available">
-                          Active
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center rounded-full bg-status-neutral/10 px-2 py-0.5 font-label text-label font-bold text-text-grey">
-                          Superseded
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-mono-md text-text-grey">
-                      {new Date(row.effectiveFrom).toLocaleDateString()}
-                      {row.effectiveTo ? ` — ${new Date(row.effectiveTo).toLocaleDateString()}` : " — Present"}
-                    </td>
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
+                    <th className="px-4 py-3 font-label text-label uppercase tracking-wider text-text-grey">
+                      <button
+                        type="button"
+                        onClick={() => handleSort("partyName")}
+                        className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
+                      >
+                        <span>Organization</span>
+                        {renderSortIcon("partyName")}
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 font-label text-label uppercase tracking-wider text-text-grey text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleSort("storageRatePerCbmDay")}
+                        className="inline-flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
+                      >
+                        <span>Storage Rate ($/m³/day)</span>
+                        {renderSortIcon("storageRatePerCbmDay")}
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 font-label text-label uppercase tracking-wider text-text-grey text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleSort("handlingInRatePerCbm")}
+                        className="inline-flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
+                      >
+                        <span>Handling IN ($/m³)</span>
+                        {renderSortIcon("handlingInRatePerCbm")}
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 font-label text-label uppercase tracking-wider text-text-grey text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleSort("handlingOutRatePerCbm")}
+                        className="inline-flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
+                      >
+                        <span>Handling OUT ($/m³)</span>
+                        {renderSortIcon("handlingOutRatePerCbm")}
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 font-label text-label uppercase tracking-wider text-text-grey text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleSort("documentationDefaultRateUsd")}
+                        className="inline-flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
+                      >
+                        <span>Doc Fee ($/AR)</span>
+                        {renderSortIcon("documentationDefaultRateUsd")}
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 font-label text-label uppercase tracking-wider text-text-grey">
+                      <button
+                        type="button"
+                        onClick={() => handleSort("billingTiming")}
+                        className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
+                      >
+                        <span>Timing</span>
+                        {renderSortIcon("billingTiming")}
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 font-label text-label uppercase tracking-wider text-text-grey">
+                      <button
+                        type="button"
+                        onClick={() => handleSort("isActive")}
+                        className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
+                      >
+                        <span>Status</span>
+                        {renderSortIcon("isActive")}
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 font-label text-label uppercase tracking-wider text-text-grey">
+                      <button
+                        type="button"
+                        onClick={() => handleSort("effectiveFrom")}
+                        className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
+                      >
+                        <span>Effective Range</span>
+                        {renderSortIcon("effectiveFrom")}
+                      </button>
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-outline-variant/30">
+                  {pagedRows.map((row) => (
+                    <tr key={row.id} className="hover:bg-surface-light-grey/40">
+                      <td className="px-4 py-3 font-body text-body-md text-on-surface font-semibold">
+                        {row.partyCode} — {row.partyName}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-mono-md font-bold text-on-surface text-right">
+                        ${parseFloat(row.storageRatePerCbmDay).toFixed(4)}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-mono-md text-on-surface text-right">
+                        ${parseFloat(row.handlingInRatePerCbm).toFixed(2)}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-mono-md text-on-surface text-right">
+                        ${parseFloat(row.handlingOutRatePerCbm).toFixed(2)}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-mono-md text-on-surface text-right">
+                        ${parseFloat(row.documentationDefaultRateUsd).toFixed(2)}
+                      </td>
+                      <td className="px-4 py-3 font-body text-body-md text-text-grey capitalize">
+                        {row.billingTiming.replace(/_/g, " ")}
+                      </td>
+                      <td className="px-4 py-3 font-body text-body-md">
+                        {row.isActive ? (
+                          <span className="inline-flex items-center rounded-full bg-status-available/10 px-2 py-0.5 font-label text-label font-bold text-status-available">
+                            Active
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-full bg-status-neutral/10 px-2 py-0.5 font-label text-label font-bold text-text-grey">
+                            Superseded
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-mono-md text-text-grey">
+                        {new Date(row.effectiveFrom).toLocaleDateString()}
+                        {row.effectiveTo ? ` — ${new Date(row.effectiveTo).toLocaleDateString()}` : " — Present"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <TablePagination
+              pageIndex={pageIndex}
+              pageSize={pageSize}
+              totalCount={totalCount}
+              pageCount={pageCount}
+              canPreviousPage={pageIndex > 0}
+              canNextPage={pageIndex < pageCount - 1}
+              onPageChange={(newPageIndex) => setPageIndex(newPageIndex)}
+              onPageSizeChange={(newPageSize) => {
+                setPageSize(newPageSize);
+                setPageIndex(0);
+              }}
+              pageSizeOptions={[5, 10, 20, 50]}
+            />
+          </>
         )}
       </div>
 

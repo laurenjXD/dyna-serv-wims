@@ -74,6 +74,16 @@ The Outgoing page (`/outgoing`) features 2 primary sub-tabs:
 4. The Outgoing page header SHALL omit a generic Filter button when the active view exposes no corresponding filter panel; only contextual, functioning controls SHALL be displayed.
 5. The active work surface SHALL present allocated documents in a distinct **To Pick** queue and picked documents in a distinct **To Dispatch** queue. Each queue SHALL retain its own count, empty state, status treatment, and phase-correct action.
 
+### R5. Outgoing Ledger & Delivery Conformance KPI
+
+1. The Outgoing Ledger (`/outgoing?tab=ledger`) SHALL present an interactive KPI card computing overall Delivery Conformance Rate:
+   $$\text{Conformance Rate (\%)} = \left(\frac{\text{Conforming Dispatches (Signed POD Uploaded)}}{\text{Total Dispatched Shipments}}\right) \times 100$$
+2. The KPI card SHALL feature an interactive dropdown filter allowing operators to toggle the transaction view between:
+   - **All Dispatches**: displays all completed outgoing transactions.
+   - **Conforming — Signed DR Attached**: filters transactions to only dispatches with confirmed uploaded/approved PODs.
+   - **Pending POD / Missing DR**: isolates dispatches lacking physical proof-of-delivery documents for priority follow-up.
+3. The KPI card SHALL provide a direct navigation link to the Delivery Conformance Trend Line Graph on the Reports page (`/reports#conformance`).
+
 ## 5. Acceptance criteria
 
 - [ ] Pick list generation initiates directly from Stock View (`/inventory`).
@@ -89,3 +99,4 @@ The Outgoing page (`/outgoing`) features 2 primary sub-tabs:
 - [ ] The Outgoing header contains no non-functional or redundant generic Filter action.
 - [ ] Allocated and picked documents are visually separated into To Pick and To Dispatch queues and cannot expose the wrong phase action.
 - [ ] Generation creates an allocated list in To Pick; only the explicit non-scan Mark as Picked action moves it to To Dispatch and enables Dispatch.
+- [ ] Outgoing Ledger displays Delivery Conformance KPI card, live status filter dropdown, and direct link to dashboard conformance line graph.

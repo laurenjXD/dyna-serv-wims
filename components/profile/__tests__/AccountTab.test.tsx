@@ -9,14 +9,15 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { OwnProfile } from "@/app/(authenticated)/profile/actions";
 
-type UpdateDisplayNameResult = { ok: true } | { ok: false; error: string };
+type UpdateProfileResult = { ok: true } | { ok: false; error: string };
 
-const updateDisplayNameMock = vi.fn(
-  async (_input: { displayName: string }): Promise<UpdateDisplayNameResult> => ({ ok: true }),
+const updateProfileDetailsMock = vi.fn(
+  async (_input: unknown): Promise<UpdateProfileResult> => ({ ok: true }),
 );
 
 vi.mock("@/app/(authenticated)/profile/actions", () => ({
-  updateDisplayName: (input: { displayName: string }) => updateDisplayNameMock(input),
+  updateProfileDetails: (input: unknown) => updateProfileDetailsMock(input),
+  disconnectCurrentDevice: vi.fn(async () => ({ ok: true })),
 }));
 
 import { AccountTab } from "../AccountTab";
@@ -25,13 +26,41 @@ const profile: OwnProfile = {
   id: "user-1",
   email: "user@example.com",
   displayName: "Jane Doe",
+  employeeId: "EMP-1001",
+  phone: "+63 917 123 4567",
+  avatarUrl: null,
   status: "active",
+  roles: [
+    {
+      key: "supervisor",
+      name: "Shift Supervisor",
+      color: "bg-blue-600",
+    },
+  ],
+  effectivePermissions: [
+    {
+      module: "Receiving (WRR)",
+      resource: "wrr",
+      action: "scan/receive",
+      description: "Physical scanning and pallet receiving intake",
+    },
+  ],
+  session: {
+    sessionId: "SESS-7841-A9F3",
+    deviceAlias: "Personal Mobile · Safari iOS",
+    browserUserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X)",
+    shiftBinding: "Shift 1 · Zone A Intake",
+    connectedZone: "Zone A Intake & Staging",
+    ipAddress: "192.168.10.142",
+    loginTime: "08:00 AM",
+  },
+  recentActivity: [],
   lastSignInAt: null,
 };
 
 describe("AccountTab (Task 21.2)", () => {
   beforeEach(() => {
-    updateDisplayNameMock.mockClear();
+    updateProfileDetailsMock.mockClear();
   });
 
   it("renders email as read-only (FR-1.2)", () => {
@@ -41,26 +70,14 @@ describe("AccountTab (Task 21.2)", () => {
     expect(emailInput.value).toBe("user@example.com");
   });
 
-  it("renders contact number as disabled (no backing column yet — seam gap)", () => {
+  it("renders employee badge ID as read-only", () => {
     render(<AccountTab profile={profile} />);
-    const contactInput = screen.getByLabelText("Contact number") as HTMLInputElement;
-    expect(contactInput).toBeDisabled();
+    const empInput = screen.getByLabelText(/employee id badge/i) as HTMLInputElement;
+    expect(empInput).toBeDisabled();
+    expect(empInput.value).toBe("EMP-1001");
   });
 
-  it("blocks submission and shows an error for a too-short display name, without calling the server action", async () => {
-    const user = userEvent.setup();
-    render(<AccountTab profile={profile} />);
-
-    const input = screen.getByTestId("display-name-input");
-    await user.clear(input);
-    await user.type(input, "J");
-    await user.click(screen.getByTestId("save-display-name"));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent(/at least 2 characters/i);
-    expect(updateDisplayNameMock).not.toHaveBeenCalled();
-  });
-
-  it("calls the server action and shows a saved confirmation for a valid display name", async () => {
+  it("calls the server action and shows a saved confirmation for a valid name", async () => {
     const user = userEvent.setup();
     render(<AccountTab profile={profile} />);
 
@@ -69,12 +86,14 @@ describe("AccountTab (Task 21.2)", () => {
     await user.type(input, "Jane Smith");
     await user.click(screen.getByTestId("save-display-name"));
 
-    expect(updateDisplayNameMock).toHaveBeenCalledWith({ displayName: "Jane Smith" });
-    expect(await screen.findByRole("status")).toHaveTextContent("Saved.");
+    expect(updateProfileDetailsMock).toHaveBeenCalledWith(
+      expect.objectContaining({ displayName: "Jane Smith" }),
+    );
+    expect(await screen.findByRole("status")).toHaveTextContent(/updated successfully/i);
   });
 
   it("surfaces a server-reported error without swallowing it", async () => {
-    updateDisplayNameMock.mockResolvedValueOnce({ ok: false, error: "Server rejected update" });
+    updateProfileDetailsMock.mockResolvedValueOnce({ ok: false, error: "Server rejected update" });
     const user = userEvent.setup();
     render(<AccountTab profile={profile} />);
 

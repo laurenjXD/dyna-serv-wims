@@ -1,6 +1,14 @@
 "use client";
 
-import React from "react";
+import React, { useMemo, useState } from "react";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  flexRender,
+  type ColumnDef,
+  type SortingState,
+} from "@tanstack/react-table";
 import {
   ResponsiveContainer,
   BarChart,
@@ -33,6 +41,167 @@ export function VmiConsignmentSection({
   stockoutRisks,
 }: VmiConsignmentSectionProps) {
   const totalLiability = liabilityAging.reduce((acc, r) => acc + r.totalUnbilledLiability, 0);
+
+  const [liabilitySorting, setLiabilitySorting] = useState<SortingState>([]);
+  const [scorecardSorting, setScorecardSorting] = useState<SortingState>([]);
+
+  const liabilityColumns = useMemo<ColumnDef<ConsignmentLiabilityAgingRow>[]>(
+    () => [
+      {
+        accessorKey: "vendorName",
+        header: "Vendor / Supplier",
+        cell: ({ row }) => (
+          <span className="font-semibold text-on-surface">
+            {row.original.vendorName}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "current0To30Days",
+        header: "0–30 Days",
+        cell: ({ row }) => (
+          <span className="font-mono text-sm text-text-grey text-right block">
+            ₱{row.original.current0To30Days.toLocaleString()}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "aging31To60Days",
+        header: "31–60 Days",
+        cell: ({ row }) => (
+          <span className="font-mono text-sm text-text-grey text-right block">
+            ₱{row.original.aging31To60Days.toLocaleString()}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "aging61To90Days",
+        header: "61–90 Days",
+        cell: ({ row }) => (
+          <span className="font-mono text-sm text-amber-700 font-semibold text-right block">
+            ₱{row.original.aging61To90Days.toLocaleString()}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "aging90PlusDays",
+        header: "90+ Days",
+        cell: ({ row }) => (
+          <span className="font-mono text-sm font-bold text-status-held text-right block">
+            ₱{row.original.aging90PlusDays.toLocaleString()}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "totalUnbilledLiability",
+        header: "Total Liability (₱)",
+        cell: ({ row }) => (
+          <span className="font-mono text-sm font-bold text-brand-navy text-right block">
+            ₱{row.original.totalUnbilledLiability.toLocaleString()}
+          </span>
+        ),
+      },
+    ],
+    []
+  );
+
+  const scorecardColumns = useMemo<ColumnDef<VendorScorecardRow>[]>(
+    () => [
+      {
+        accessorKey: "vendorName",
+        header: "Vendor",
+        cell: ({ row }) => (
+          <span className="font-semibold text-on-surface">
+            {row.original.vendorName}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "wrrCount",
+        header: "WRR Batches",
+        cell: ({ row }) => (
+          <span className="font-mono text-sm font-semibold text-center block">
+            {row.original.wrrCount}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "totalReceivedQty",
+        header: "Received Qty",
+        cell: ({ row }) => (
+          <span className="font-mono text-sm font-semibold text-right block">
+            {row.original.totalReceivedQty.toLocaleString()}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "fillRatePct",
+        header: "Fill Rate",
+        cell: ({ row }) => {
+          const rate = row.original.fillRatePct;
+          return (
+            <div className="text-center">
+              <span
+                className={`inline-block rounded px-2.5 py-0.5 font-mono text-xs font-bold ${
+                  rate >= 98
+                    ? "bg-emerald-100 text-emerald-800"
+                    : rate >= 95
+                    ? "bg-amber-100 text-amber-800"
+                    : "bg-rose-100 text-rose-800"
+                }`}
+              >
+                {rate}%
+              </span>
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: "onTimeDeliveryPct",
+        header: "On-Time %",
+        cell: ({ row }) => (
+          <span className="font-mono text-xs text-text-grey text-center block">
+            {row.original.onTimeDeliveryPct}%
+          </span>
+        ),
+      },
+      {
+        accessorKey: "discrepancyCount",
+        header: "Discrepancies",
+        cell: ({ row }) => {
+          const count = row.original.discrepancyCount;
+          return (
+            <div className="text-center font-mono text-xs">
+              {count > 0 ? (
+                <span className="font-semibold text-status-held">{count}</span>
+              ) : (
+                <span className="text-status-available">0</span>
+              )}
+            </div>
+          );
+        },
+      },
+    ],
+    []
+  );
+
+  const liabilityTable = useReactTable({
+    data: liabilityAging,
+    columns: liabilityColumns,
+    state: { sorting: liabilitySorting },
+    onSortingChange: setLiabilitySorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
+
+  const scorecardTable = useReactTable({
+    data: vendorScorecards,
+    columns: scorecardColumns,
+    state: { sorting: scorecardSorting },
+    onSortingChange: setScorecardSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
 
   return (
     <div className="space-y-6">
@@ -155,41 +324,53 @@ export function VmiConsignmentSection({
             Unbilled consumed VMI stock grouped by aging since withdrawal date.
           </p>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto rounded-xl border border-slate-200">
           <table className="w-full border-collapse text-left text-sm">
             <thead>
-              <tr className="border-b border-slate-200 bg-[#F4F6FB] font-heading text-xs font-bold uppercase tracking-wider text-slate-700">
-                <th className="px-4 py-3">Vendor / Supplier</th>
-                <th className="px-4 py-3 text-right">0–30 Days</th>
-                <th className="px-4 py-3 text-right">31–60 Days</th>
-                <th className="px-4 py-3 text-right">61–90 Days</th>
-                <th className="px-4 py-3 text-right text-rose-600">90+ Days</th>
-                <th className="px-4 py-3 text-right">Total Liability (₱)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-body text-sm">
-              {liabilityAging.map((row) => (
-                <tr key={row.vendorPartyId} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-4 py-3 font-semibold text-on-surface">
-                    {row.vendorName}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-sm text-text-grey">
-                    ₱{row.current0To30Days.toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-sm text-text-grey">
-                    ₱{row.aging31To60Days.toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-sm text-amber-700 font-semibold">
-                    ₱{row.aging61To90Days.toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-sm font-bold text-status-held">
-                    ₱{row.aging90PlusDays.toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-sm font-bold text-brand-navy">
-                    ₱{row.totalUnbilledLiability.toLocaleString()}
-                  </td>
+              {liabilityTable.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id} className="border-b border-slate-200 bg-[#F4F6FB]">
+                  {headerGroup.headers.map((header) => (
+                    <th
+                      key={header.id}
+                      className="px-4 py-3 font-heading text-xs font-bold uppercase tracking-wider text-slate-700 select-none cursor-pointer"
+                      onClick={header.column.getToggleSortingHandler()}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                        {{
+                          asc: " ↑",
+                          desc: " ↓",
+                        }[header.column.getIsSorted() as string] ?? null}
+                      </div>
+                    </th>
+                  ))}
                 </tr>
               ))}
+            </thead>
+            <tbody className="divide-y divide-slate-100 font-body text-sm">
+              {liabilityTable.getRowModel().rows.length === 0 ? (
+                <tr>
+                  <td colSpan={liabilityColumns.length} className="py-6 text-center text-text-grey italic">
+                    No active consignment liabilities recorded.
+                  </td>
+                </tr>
+              ) : (
+                liabilityTable.getRowModel().rows.map((row) => (
+                  <tr key={row.id} className="hover:bg-slate-50 transition-colors">
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id} className="px-4 py-3 align-middle">
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -205,57 +386,53 @@ export function VmiConsignmentSection({
             Supplier ranking evaluated on quantity conformance and receipt discrepancy frequency.
           </p>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto rounded-xl border border-slate-200">
           <table className="w-full border-collapse text-left text-sm">
             <thead>
-              <tr className="border-b border-slate-200 bg-[#F4F6FB] font-heading text-xs font-bold uppercase tracking-wider text-slate-700">
-                <th className="px-4 py-3">Vendor</th>
-                <th className="px-4 py-3 text-center">WRR Batches</th>
-                <th className="px-4 py-3 text-right">Received Qty</th>
-                <th className="px-4 py-3 text-center">Fill Rate</th>
-                <th className="px-4 py-3 text-center">On-Time %</th>
-                <th className="px-4 py-3 text-center">Discrepancies</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-body text-sm">
-              {vendorScorecards.map((vendor) => (
-                <tr key={vendor.partyId} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-4 py-3 font-semibold text-on-surface">
-                    {vendor.vendorName}
-                  </td>
-                  <td className="px-4 py-3 text-center font-mono text-sm font-semibold">
-                    {vendor.wrrCount}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-sm font-semibold">
-                    {vendor.totalReceivedQty.toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span
-                      className={`inline-block rounded px-2.5 py-0.5 font-mono text-xs font-bold ${
-                        vendor.fillRatePct >= 98
-                          ? "bg-emerald-100 text-emerald-800"
-                          : vendor.fillRatePct >= 95
-                          ? "bg-amber-100 text-amber-800"
-                          : "bg-rose-100 text-rose-800"
-                      }`}
+              {scorecardTable.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id} className="border-b border-slate-200 bg-[#F4F6FB]">
+                  {headerGroup.headers.map((header) => (
+                    <th
+                      key={header.id}
+                      className="px-4 py-3 font-heading text-xs font-bold uppercase tracking-wider text-slate-700 select-none cursor-pointer"
+                      onClick={header.column.getToggleSortingHandler()}
                     >
-                      {vendor.fillRatePct}%
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-center font-mono text-xs text-text-grey">
-                    {vendor.onTimeDeliveryPct}%
-                  </td>
-                  <td className="px-4 py-3 text-center font-mono text-xs">
-                    {vendor.discrepancyCount > 0 ? (
-                      <span className="font-semibold text-status-held">
-                        {vendor.discrepancyCount}
-                      </span>
-                    ) : (
-                      <span className="text-status-available">0</span>
-                    )}
-                  </td>
+                      <div className="flex items-center gap-1.5">
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                        {{
+                          asc: " ↑",
+                          desc: " ↓",
+                        }[header.column.getIsSorted() as string] ?? null}
+                      </div>
+                    </th>
+                  ))}
                 </tr>
               ))}
+            </thead>
+            <tbody className="divide-y divide-slate-100 font-body text-sm">
+              {scorecardTable.getRowModel().rows.length === 0 ? (
+                <tr>
+                  <td colSpan={scorecardColumns.length} className="py-6 text-center text-text-grey italic">
+                    No vendor scorecard data available.
+                  </td>
+                </tr>
+              ) : (
+                scorecardTable.getRowModel().rows.map((row) => (
+                  <tr key={row.id} className="hover:bg-slate-50 transition-colors">
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id} className="px-4 py-3 align-middle">
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

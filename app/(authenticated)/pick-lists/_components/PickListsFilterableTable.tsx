@@ -10,6 +10,7 @@ import {
   X,
 } from "lucide-react";
 import type { PickListRow } from "@/lib/db/queries/withdrawals";
+import { TablePagination } from "@/components/ui/TablePagination";
 
 const STATUS_CLASSES: Record<string, string> = {
   allocated: "bg-status-pending/15 text-status-pending",
@@ -77,6 +78,8 @@ export function PickListsFilterableTable({
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("createdAt");
   const [sortDir, setSortDir] = useState<SortDirection>("desc");
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -119,6 +122,12 @@ export function PickListsFilterableTable({
       });
   }, [rows, searchQuery, selectedFlow, selectedStatus, sortField, sortDir]);
 
+  const totalCount = filteredAndSortedRows.length;
+  const pageCount = Math.ceil(totalCount / pageSize) || 1;
+  const pagedRows = useMemo(() => {
+    return filteredAndSortedRows.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
+  }, [filteredAndSortedRows, pageIndex, pageSize]);
+
   const renderSortIcon = (field: SortField) => {
     if (sortField !== field) {
       return <ArrowUpDown size={14} className="opacity-40" />;
@@ -144,14 +153,20 @@ export function PickListsFilterableTable({
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setPageIndex(0);
+            }}
             placeholder="Search by pick list #, organization, flow, status…"
             className="h-11 w-full rounded-xl border border-outline-variant/40 bg-surface-light-grey/40 pl-10 pr-10 font-body text-body-sm text-on-surface placeholder:text-text-grey focus:border-brand-navy focus:bg-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
           />
           {searchQuery && (
             <button
               type="button"
-              onClick={() => setSearchQuery("")}
+              onClick={() => {
+                setSearchQuery("");
+                setPageIndex(0);
+              }}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-text-grey hover:text-on-surface"
               aria-label="Clear search"
             >
@@ -167,7 +182,10 @@ export function PickListsFilterableTable({
             <span className="font-label text-label-xs uppercase text-text-grey">Model:</span>
             <select
               value={selectedFlow}
-              onChange={(e) => setSelectedFlow(e.target.value)}
+              onChange={(e) => {
+                setSelectedFlow(e.target.value);
+                setPageIndex(0);
+              }}
               className="bg-transparent font-body text-body-sm font-semibold text-on-surface focus:outline-none cursor-pointer"
             >
               <option value="all">All Models</option>
@@ -182,7 +200,10 @@ export function PickListsFilterableTable({
             <span className="font-label text-label-xs uppercase text-text-grey">Status:</span>
             <select
               value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
+              onChange={(e) => {
+                setSelectedStatus(e.target.value);
+                setPageIndex(0);
+              }}
               className="bg-transparent font-body text-body-sm font-semibold text-on-surface focus:outline-none cursor-pointer"
             >
               <option value="all">All Statuses</option>
@@ -199,6 +220,7 @@ export function PickListsFilterableTable({
                 setSearchQuery("");
                 setSelectedFlow("all");
                 setSelectedStatus("all");
+                setPageIndex(0);
               }}
               className="inline-flex h-9 items-center gap-1 rounded-lg px-2.5 font-label text-label-xs font-bold text-status-held hover:bg-status-held/10"
             >
@@ -210,7 +232,7 @@ export function PickListsFilterableTable({
 
       {/* ── Summary Count Strip ────────────────────────────────────────── */}
       <div className="flex items-center gap-2 text-body-sm text-text-grey px-1">
-        <span>Showing <strong className="text-on-surface">{filteredAndSortedRows.length}</strong> pick lists</span>
+        <span>Showing <strong className="text-on-surface">{filteredAndSortedRows.length}</strong> of {total} pick lists</span>
       </div>
 
       {/* ── Table & Cards Section ──────────────────────────────────────── */}
@@ -228,7 +250,7 @@ export function PickListsFilterableTable({
           <>
             {/* Mobile card view */}
             <div className="divide-y divide-outline-variant/30 md:hidden">
-              {filteredAndSortedRows.map((row) => (
+              {pagedRows.map((row) => (
                 <article key={row.id} className="space-y-4 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -317,7 +339,7 @@ export function PickListsFilterableTable({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/30">
-                  {filteredAndSortedRows.map((row) => (
+                  {pagedRows.map((row) => (
                     <tr key={row.id} className="hover:bg-surface-light-grey/50">
                       <td className="px-5 py-4 font-mono text-mono-md font-bold text-on-surface">{row.pickListNumber}</td>
                       <td className="px-5 py-4">
@@ -334,9 +356,21 @@ export function PickListsFilterableTable({
                 </tbody>
               </table>
             </div>
-            <p className="border-t border-outline-variant/30 px-5 py-3 font-body text-body-sm text-text-grey">
-              Showing {filteredAndSortedRows.length} of {total} pick lists. Dispatched stock movements are available in the Outgoing Ledger.
-            </p>
+
+            <TablePagination
+              pageIndex={pageIndex}
+              pageSize={pageSize}
+              totalCount={totalCount}
+              pageCount={pageCount}
+              canPreviousPage={pageIndex > 0}
+              canNextPage={pageIndex < pageCount - 1}
+              onPageChange={(newPageIndex) => setPageIndex(newPageIndex)}
+              onPageSizeChange={(newPageSize) => {
+                setPageSize(newPageSize);
+                setPageIndex(0);
+              }}
+              pageSizeOptions={[5, 10, 20, 50]}
+            />
           </>
         )}
       </div>

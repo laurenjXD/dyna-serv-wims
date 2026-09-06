@@ -48,6 +48,14 @@ import type { StockViewRow } from "@/lib/db/queries/inventory";
 import { FloorLanding } from "./_components/FloorLanding";
 import { OfficeLanding, type RecentActivityItem } from "./_components/OfficeLanding";
 import type { WeeklyTrendDatum } from "@/components/analytics/WeeklyTrendChart";
+import {
+  getDashboardKpis,
+  getDashboardMonthlyFlow,
+  getDashboardLocationOccupancy,
+  getDashboardDeliveryPerformance,
+  getDashboardHeatmapData,
+  getDashboardMasterInventory,
+} from "@/lib/db/queries/dashboard";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -265,6 +273,12 @@ export default async function Home() {
     recentPickListRows,
     dispatchRateRow,
     flowActivityRows,
+    dashboardKpis,
+    dashboardMonthlyFlow,
+    dashboardLocationOccupancy,
+    dashboardDeliveryPerformance,
+    dashboardHeatmapData,
+    dashboardMasterInventory,
   ] = await Promise.all([
     // Low Stock Items KPI — operational stock-count metric, gated
     // reporting.read (NOT reporting.financial_read — that gate was wrong
@@ -313,6 +327,13 @@ export default async function Home() {
     hasPickListAccess
       ? getPickListCountByFlow({ startDate: weekStart, endDate: now })
       : Promise.resolve([] as Array<{ flow_type: string; count: string }>),
+    // Real-time WMS Operations Dashboard queries
+    getDashboardKpis(),
+    getDashboardMonthlyFlow(),
+    getDashboardLocationOccupancy(),
+    getDashboardDeliveryPerformance(),
+    getDashboardHeatmapData(),
+    getDashboardMasterInventory({ limit: 100 }),
   ]);
 
   // Build top-5 inventory preview from stock rows.
@@ -441,6 +462,12 @@ export default async function Home() {
       dispatchRate={dispatchRate}
       flowActivity={flowActivity}
       stockOwnershipSplit={stockOwnershipSplit}
+      dashboardKpis={dashboardKpis}
+      dashboardMonthlyFlow={dashboardMonthlyFlow}
+      dashboardLocationOccupancy={dashboardLocationOccupancy}
+      dashboardDeliveryPerformance={dashboardDeliveryPerformance}
+      dashboardHeatmapData={dashboardHeatmapData}
+      dashboardMasterInventory={dashboardMasterInventory.items}
     />
   );
 }

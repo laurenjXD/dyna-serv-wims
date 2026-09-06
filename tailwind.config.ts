@@ -98,6 +98,9 @@ const config: Config = {
         "elevation-1": "0 1px 2px rgba(15,23,42,0.08)",
         "elevation-2": "0 4px 16px rgba(15,23,42,0.12)",
       },
+      gridTemplateColumns: {
+        "31": "repeat(31, minmax(0, 1fr))",
+      },
     },
   },
   plugins: [],

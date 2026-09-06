@@ -80,12 +80,12 @@ const ROUTE_ICON_MAP: Record<string, LucideIcon> = {
 
 const SHORT_LABEL_OVERRIDES: Record<string, string> = {
   root: "Dashboard",
-  // Sidebar nav entry label. "Stock View" is one of the tabs INSIDE this
-  // page (Stock View / Pick Lists / Inspection), not the page's own name —
-  // per multi-agent-work-division.md's confirmed sidebar target ("Master
-  // Inventory (/inventory — Stock View, Pick Lists, Inspection tabs...)").
-  // See specs/00-steering/revision-log.md's matching entry.
+  receiving: "Receiving",
   inventory: "Master Inventory",
+  outgoing: "Outgoing",
+  approvals: "Approvals",
+  reports: "Reports & Analytics",
+  documents: "Documents",
   enrollment: "Enrollment",
   portal: "Organization Portal",
   "billing-pricing": "Billing & Pricing",
@@ -132,7 +132,46 @@ function shortcutLabel(index: number): string {
  */
 function resolveNavigationActiveId(currentPath: string, activeId: string | null): string | null {
   const path = currentPath.split("?")[0].split("#")[0].replace(/\/$/, "");
+  if (path === "" || path === "/" || path === "/dashboard") return "root";
   if (path === "/receiving" || path.startsWith("/receiving/")) return "receiving";
+  if (
+    path === "/inventory" ||
+    path.startsWith("/inventory/") ||
+    path === "/transfers" ||
+    path.startsWith("/transfers/") ||
+    path === "/inspection" ||
+    path.startsWith("/inspection/")
+  ) {
+    return "inventory";
+  }
+  if (
+    path === "/outgoing" ||
+    path.startsWith("/outgoing/") ||
+    path.startsWith("/pick-lists/")
+  ) {
+    return "outgoing";
+  }
+  if (path === "/approvals" || path.startsWith("/approvals/")) return "approvals";
+  if (path === "/reports" || path.startsWith("/reports/")) return "reports";
+  if (path === "/documents" || path.startsWith("/documents/")) return "documents";
+  if (
+    path === "/enrollment" ||
+    path.startsWith("/enrollment/") ||
+    path.startsWith("/master-data/")
+  ) {
+    return "enrollment";
+  }
+  if (path === "/billing-pricing" || path.startsWith("/billing-pricing/")) return "billing-pricing";
+  if (path === "/settings" || path.startsWith("/settings/")) return "settings";
+  if (path === "/profile" || path.startsWith("/profile/")) return "profile";
+  if (path === "/portal" || path.startsWith("/portal/")) {
+    if (path === "/portal/inventory" || path.startsWith("/portal/inventory/")) return "portal-inventory";
+    if (path === "/portal/orders" || path.startsWith("/portal/orders/")) return "portal-orders";
+    if (path === "/portal/documents" || path.startsWith("/portal/documents/")) return "portal-documents";
+    if (path === "/portal/notifications" || path.startsWith("/portal/notifications/")) return "portal-notifications";
+    if (path === "/portal/labels" || path.startsWith("/portal/labels/")) return "portal-labels";
+    return "portal";
+  }
   return activeId;
 }
 
@@ -496,7 +535,7 @@ export function ShellNavigation({
         </div>
 
         {/* Navigation Section List */}
-        <div className={`min-h-0 flex-1 overflow-hidden py-1 ${desktopOpen ? "px-3" : "px-1.5"}`}>
+        <div className={`min-h-0 flex-1 py-1 ${desktopOpen ? "px-3" : "px-1.5"}`}>
           <GroupedSections
             sections={sections}
             activeId={activeId}
@@ -563,38 +602,74 @@ function MoreOverlay({
   onClose: () => void;
 }) {
   const floorText = tier === "floor";
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Navigation menu">
+    <div
+      className="fixed inset-0 z-50 flex flex-col justify-end"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Navigation menu"
+    >
+      {/* Backdrop */}
       <button
         type="button"
         aria-hidden="true"
         tabIndex={-1}
-        className="absolute inset-0 bg-black/50"
+        className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
-      <div className="absolute inset-y-0 left-0 flex w-[88%] max-w-sm flex-col overflow-y-auto rounded-r-lg bg-surface pb-20 shadow-elevation-2">
-        <div className="relative flex items-center justify-between border-b border-border bg-background px-4 py-4">
-          <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1 bg-primary" />
+
+      {/* Bottom Sheet rising from bottom to up */}
+      <div className="relative z-10 flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-[28px] border-t border-slate-200/80 bg-surface shadow-2xl transition-transform duration-300 ease-out animate-in slide-in-from-bottom">
+        {/* Grab Handle */}
+        <div className="flex justify-center pt-3 pb-1 bg-surface shrink-0">
+          <div className="h-1.5 w-12 rounded-full bg-slate-300" aria-hidden="true" />
+        </div>
+
+        {/* Header with User Profile & Close Button */}
+        <div className="flex items-center justify-between border-b border-border bg-background px-5 py-3.5 shrink-0">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary font-label text-label font-bold text-surface">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary font-label text-label font-bold text-surface shadow-sm">
               {initials(displayName)}
             </span>
             <div className="min-w-0">
-              <p className="truncate font-heading text-body-md font-bold text-text-primary">{displayName ?? "Loading..."}</p>
-              <p className={`truncate font-body text-text-secondary ${floorText ? "text-body-md" : "text-body-sm"}`}>{roleLabel}</p>
+              <p className="truncate font-heading text-body-md font-bold text-text-primary">
+                {displayName ?? "Navigation Menu"}
+              </p>
+              <p className={`truncate font-body text-text-secondary ${floorText ? "text-body-md" : "text-body-sm"}`}>
+                {roleLabel}
+              </p>
             </div>
           </div>
           <button
             type="button"
             aria-label="Close navigation menu"
             onClick={onClose}
-            className="flex h-11 w-11 items-center justify-center rounded-full text-text-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary active:bg-background"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-text-secondary hover:bg-slate-100 hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95 transition-all"
           >
-            <X size={22} aria-hidden="true" />
+            <X size={20} aria-hidden="true" />
           </button>
         </div>
-        <div className="flex-1 px-2 py-2">
-          <GroupedSections sections={sections} activeId={activeId} tier={tier} onNavigate={onClose} pendingApprovalCount={pendingApprovalCount} />
+
+        {/* Scrollable Navigation List */}
+        <div className="flex-1 overflow-y-auto px-4 py-3 pb-10 space-y-2">
+          <GroupedSections
+            sections={sections}
+            activeId={activeId}
+            tier={tier}
+            onNavigate={onClose}
+            pendingApprovalCount={pendingApprovalCount}
+          />
         </div>
       </div>
     </div>

@@ -15,6 +15,7 @@ import {
   PartyDetailActions,
   DeactivatePartySection,
 } from "../_components/party-detail-actions";
+import { UrlTablePagination } from "@/components/ui/UrlTablePagination";
 
 const LEDGER_PAGE_SIZE = 20;
 
@@ -398,32 +399,14 @@ export default async function PartyDetailPage({
 
         {/* Ledger pagination */}
         {totalLedgerPages > 1 && (
-          <nav
-            aria-label="Transaction ledger pagination"
-            className="mt-4 flex items-center justify-between"
-          >
-            <p className="font-body text-body-md text-text-grey">
-              Page {currentLedgerPage} of {totalLedgerPages}
-            </p>
-            <div className="flex gap-2">
-              {currentLedgerPage > 1 && (
-                <Link
-                  href={`/master-data/parties/${partyId}?ledgerPage=${currentLedgerPage - 1}`}
-                  className="flex h-11 items-center rounded border border-outline-variant/30 px-3 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                >
-                  Previous
-                </Link>
-              )}
-              {currentLedgerPage < totalLedgerPages && (
-                <Link
-                  href={`/master-data/parties/${partyId}?ledgerPage=${currentLedgerPage + 1}`}
-                  className="flex h-11 items-center rounded border border-outline-variant/30 px-3 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                >
-                  Next
-                </Link>
-              )}
-            </div>
-          </nav>
+          <UrlTablePagination
+            currentPage={currentLedgerPage}
+            totalPages={totalLedgerPages}
+            totalItems={ledger.total}
+            pageSize={LEDGER_PAGE_SIZE}
+            pageParamName="ledgerPage"
+            className="mt-4 border-t border-outline-variant/30 pt-4"
+          />
         )}
       </div>
     </div>

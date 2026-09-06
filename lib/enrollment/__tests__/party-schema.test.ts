@@ -306,3 +306,36 @@ describe("parsePartyInput — valid full input passes and is returned as structu
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// Role-based Code Serialization Helper Tests
+// ---------------------------------------------------------------------------
+
+import { computeNextPartyCode } from "@/lib/db/queries/parties";
+
+describe("computeNextPartyCode — dynamic serialization by role", () => {
+  it("defaults to VENDOR-001 when no existing codes present", () => {
+    const code = computeNextPartyCode("vendor", []);
+    expect(code).toBe("VENDOR-001");
+  });
+
+  it("increments vendor sequence given existing vendor codes", () => {
+    const code = computeNextPartyCode("vendor", ["VENDOR-001", "VENDOR-002", "SUPPLIER-001"]);
+    expect(code).toBe("VENDOR-003");
+  });
+
+  it("handles supplier role prefix correctly", () => {
+    const code = computeNextPartyCode("supplier", ["SUPPLIER-001", "VENDOR-005"]);
+    expect(code).toBe("SUPPLIER-002");
+  });
+
+  it("handles customer role prefix correctly", () => {
+    const code = computeNextPartyCode("customer", ["CUSTOMER-001", "CUSTOMER-012"]);
+    expect(code).toBe("CUSTOMER-013");
+  });
+
+  it("handles end_customer and internal_warehouse role prefixes", () => {
+    expect(computeNextPartyCode("end_customer", [])).toBe("ENDCUST-001");
+    expect(computeNextPartyCode("internal_warehouse", ["WH-001"])).toBe("WH-002");
+  });
+});

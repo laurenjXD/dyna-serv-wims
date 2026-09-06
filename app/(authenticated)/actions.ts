@@ -119,14 +119,12 @@ export type ShellNotification = Pick<NotificationRow, "id" | "title"> & {
   flowType?: NotificationRow["flowType"];
   readAt?: string | null;
   expiresAt?: string | null;
+  href?: string;
 };
 
 // Backs the shared shell header's notification bell (specs/14-notifications-
-// and-alerts P1 MVP slice). Mirrors resolveShellUserDisplay's pattern: same
-// createPageResolver() resolution, same early-return-on-unauthorized shape.
-// Resolves the current session's unread count and 5 most recent
-// notifications — the bell dropdown's realistic scope, not the full
-// notification center list view.
+// and-alerts P1 MVP slice). Resolves user-specific notifications and live
+// operational event alerts matching the session's active grants.
 export async function resolveShellNotifications(): Promise<{
   unreadCount: number;
   notifications: ShellNotification[];
@@ -141,9 +139,9 @@ export async function resolveShellNotifications(): Promise<{
     "@/lib/db/queries/notifications"
   );
 
-  const [unreadCount, rows] = await Promise.all([
-    getUnreadNotificationCount(resolution.context.userId),
-    listRecentNotifications(resolution.context.userId, 5),
+  const [, rows] = await Promise.all([
+    getUnreadNotificationCount(resolution.context.userId).catch(() => 0),
+    listRecentNotifications(resolution.context.userId, 10).catch(() => []),
   ]);
 
   const notifications: ShellNotification[] = rows.map((row) => ({
@@ -151,7 +149,93 @@ export async function resolveShellNotifications(): Promise<{
     createdAt: row.createdAt.toISOString(),
     readAt: row.readAt ? row.readAt.toISOString() : null,
     expiresAt: row.expiresAt ? row.expiresAt.toISOString() : null,
+    href:
+      row.sourceType === "approval"
+        ? "/approvals"
+        : row.sourceType === "receiving"
+        ? "/receiving"
+        : row.sourceType === "inventory"
+        ? "/inventory"
+        : undefined,
   }));
+
+  // Synthesize live operational alerts based on user permissions
+  const operationalNotifications: ShellNotification[] = [];
+
+  // 1. Pending Approvals
+  const canApprove = resolution.context.grants.some(
+    (g) => g.resource === "fifo_override" && g.action === "approve",
+  );
+  if (canApprove) {
+    try {
+      const pendingApprovals = await listPendingApprovalRequests(db, {
+        limit: 5,
+        offset: 0,
+      });
+      if (pendingApprovals.total > 0) {
+        operationalNotifications.push({
+          id: "operational-pending-approvals",
+          title: `${pendingApprovals.total} pending override approval${
+            pendingApprovals.total === 1 ? "" : "s"
+          }`,
+          body: "Warehouse FIFO/FEFO override requests require review.",
+          category: "Approvals",
+          sourceType: "approval",
+          createdAt: new Date().toISOString(),
+          readAt: null,
+          href: "/approvals",
+        });
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // 2. Open Receiving Reports
+  const canReceive = resolution.context.grants.some(
+    (g) => g.resource === "wrr" && g.action === "read",
+  );
+  if (canReceive) {
+    try {
+      const { wrrDocuments } = await import("@/lib/db/schema/wrr");
+      const { sql, inArray } = await import("drizzle-orm");
+      const [wrrRow] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(wrrDocuments)
+        .where(
+          inArray(wrrDocuments.status, [
+            "staged_pending_arrival",
+            "receiving_in_progress",
+          ]),
+        );
+      if (wrrRow && wrrRow.count > 0) {
+        operationalNotifications.push({
+          id: "operational-open-wrrs",
+          title: `${wrrRow.count} open Receiving Report${
+            wrrRow.count === 1 ? "" : "s"
+          } in progress`,
+          body: "Awaiting physical intake and receiving verification.",
+          category: "Receiving",
+          sourceType: "receiving",
+          createdAt: new Date().toISOString(),
+          readAt: null,
+          href: "/receiving",
+        });
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // Merge and deduplicate
+  const existingIds = new Set(notifications.map((n) => n.id));
+  for (const opNotif of operationalNotifications) {
+    if (!existingIds.has(opNotif.id)) {
+      notifications.unshift(opNotif);
+    }
+  }
+
+  const unreadCount = notifications.filter((n) => !n.readAt).length;
 
   return { unreadCount, notifications };
 }

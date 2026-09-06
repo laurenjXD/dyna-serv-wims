@@ -38,7 +38,35 @@ const profile: OwnProfile = {
   id: "user-1",
   email: "user@example.com",
   displayName: "Jane Doe",
+  employeeId: "EMP-1001",
+  phone: "+63 917 123 4567",
+  avatarUrl: null,
   status: "active",
+  roles: [
+    {
+      key: "supervisor",
+      name: "Shift Supervisor",
+      color: "bg-blue-600",
+    },
+  ],
+  effectivePermissions: [
+    {
+      module: "Receiving (WRR)",
+      resource: "wrr",
+      action: "scan/receive",
+      description: "Physical scanning and pallet receiving intake",
+    },
+  ],
+  session: {
+    sessionId: "SESS-7841-A9F3",
+    deviceAlias: "Personal Mobile · Safari iOS",
+    browserUserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X)",
+    shiftBinding: "Shift 1 · Zone A Intake",
+    connectedZone: "Zone A Intake & Staging",
+    ipAddress: "192.168.10.142",
+    loginTime: "08:00 AM",
+  },
+  recentActivity: [],
   lastSignInAt: null,
 };
 

@@ -110,7 +110,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     surface: "office",
     capability: "documents.read",
     featureSpecs: ["10-pick-list-and-acknowledgement-receipt"],
-    launchStatus: "planned",
+    launchStatus: "launch",
     group: "Reports",
   },
   {
@@ -121,16 +121,6 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     featureSpecs: ["09-approval-queue"],
     launchStatus: "launch",
     group: "Main",
-  },
-  {
-    id: "sync",
-    path: "/sync",
-    surface: "shared",
-    capability: "none",
-    featureSpecs: ["03-offline-mode-and-client-storage"],
-    launchStatus: "launch",
-    offlineFeatureGated: true,
-    group: "System",
   },
   {
     id: "enrollment",

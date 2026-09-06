@@ -19,15 +19,9 @@ export interface WRRUnitLabelGeneratorProps {
 }
 
 interface UnitLabelData {
-  // No ordinal/sequence field on the label itself by design: labels are
-  // printed as a sheet and stuck onto whichever carton is at hand, in no
-  // particular order — nothing on the physical label may imply otherwise.
-  // unitId is still derived deterministically from (wrrItemId, generation
-  // index) via deriveWrrUnitId — that index is an internal stability detail
-  // (reprinting must reproduce the same ids for the same boxes), not
-  // something shown to a human as "Box N of M".
   unitId: string;
   cartonId: string;
+  unitIndex: number;
   payload: string; // JSON includes the unique carton_id and legacy unit_id matcher fields.
 }
 
@@ -53,6 +47,7 @@ export function WRRUnitLabelGenerator({
       labels.push({
         unitId,
         cartonId: unitPayload.carton_id,
+        unitIndex: i,
         payload,
       });
     }
@@ -131,10 +126,15 @@ export function WRRUnitLabelGenerator({
                   >
                     {/* Header info */}
                     <div className="mb-2 w-full">
-                      <p className="font-heading text-body-sm uppercase font-bold text-brand-navy">
-                        Dyna-Serv WIMS
-                      </p>
-                      <p className="font-mono text-mono-md font-bold text-on-surface">
+                      <div className="flex items-center justify-between">
+                        <p className="font-heading text-body-sm uppercase font-bold text-brand-navy">
+                          Dyna-Serv WIMS
+                        </p>
+                        <span className="rounded bg-brand-navy px-1.5 py-0.5 font-mono text-label-xs font-bold text-surface-white">
+                          CTN-{String(unit.unitIndex).padStart(2, "0")}
+                        </span>
+                      </div>
+                      <p className="font-mono text-mono-md font-bold text-on-surface text-left mt-1">
                         {itemCode}
                       </p>
                     </div>
@@ -149,13 +149,13 @@ export function WRRUnitLabelGenerator({
                       />
                     </div>
 
-                    {/* Footer info & unique per-unit identifier */}
-                    <div className="mt-2 w-full text-center">
+                    {/* Footer info & hierarchical carton tag (Option 3) */}
+                    <div className="mt-2 w-full text-center border-t border-outline-variant/30 pt-1.5">
                       <p className="font-mono text-mono-sm font-semibold text-on-surface">
                         Lot: {lotNumber}
                       </p>
-                      <p className="font-mono text-mono-xs text-status-neutral">
-                        Carton ID: {unit.cartonId}
+                      <p className="font-mono text-mono-xs font-bold text-brand-navy mt-0.5">
+                        Carton: {lotNumber} · CTN-{String(unit.unitIndex).padStart(2, "0")} ({unit.unitIndex} of {expectedQty})
                       </p>
                     </div>
                   </div>

@@ -1,8 +1,8 @@
-// Party create page — requires parties.manage.
-
 import { notFound } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
+import { db } from "@/lib/db/client";
+import { getAllPartyCodes } from "@/lib/db/queries/parties";
 import { PartyForm } from "../_components/party-form";
 import { createPartyAction } from "../_actions";
 
@@ -13,6 +13,8 @@ export default async function NewPartyPage({ searchParams }: { searchParams: Pro
   if (perm.kind !== "authorized") {
     notFound();
   }
+
+  const existingCodes = await getAllPartyCodes(db);
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -29,6 +31,7 @@ export default async function NewPartyPage({ searchParams }: { searchParams: Pro
         <PartyForm
           action={createPartyAction}
           initialCode={(await searchParams).code}
+          existingCodes={existingCodes}
           cancelHref="/enrollment?tab=parties"
         />
       </div>

@@ -302,12 +302,12 @@ export default async function WrrPrintPage({ params }: PageProps) {
                         return (
                           <tr key={item.id} className="border-b border-outline-variant/30">
                             <td className="border border-outline-variant/30 px-3 py-2 font-mono text-mono-md text-on-surface">
-                              <span className="block font-bold">Dyna-Serv: {item.itemCode ?? "—"}</span>
+                              <span className="block font-bold">Dyna-Serv: {item.itemCode ?? item.supplierItemCode ?? "—"}</span>
                               <span className="block text-text-grey text-body-xs">Supplier: {item.supplierItemCode ?? "—"}</span>
                               <span className="block font-label text-label-xs text-text-grey">SPQ: {spq} {item.uom || "PCS"}/Box</span>
                             </td>
                             <td className="border border-outline-variant/30 px-3 py-2 font-body text-body-sm text-on-surface">
-                              {item.itemName ?? "—"}
+                              {item.itemName ?? item.itemCode ?? item.supplierItemCode ?? "—"}
                             </td>
                             <td className="border border-outline-variant/30 px-3 py-2 font-mono text-mono-md text-on-surface">{item.customerItemCode ?? "—"}</td>
                             <td className="border border-outline-variant/30 px-3 py-2 font-mono text-mono-md text-on-surface">

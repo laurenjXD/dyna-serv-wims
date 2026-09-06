@@ -9,6 +9,7 @@ import {
   X,
 } from "lucide-react";
 import type { TradingMarginRow } from "@/lib/billing/queries/trading-margin";
+import { TablePagination } from "@/components/ui/TablePagination";
 
 interface Props {
   rows: TradingMarginRow[];
@@ -33,8 +34,11 @@ export function TradingMarginLedgerTable({ rows, hasMarginView }: Props) {
   const [marginFilter, setMarginFilter] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("orderNumber");
   const [sortDir, setSortDir] = useState<SortDirection>("asc");
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
 
   const handleSort = (field: SortField) => {
+    setPageIndex(0);
     if (sortField === field) {
       setSortDir(sortDir === "asc" ? "desc" : "asc");
     } else {
@@ -95,6 +99,13 @@ export function TradingMarginLedgerTable({ rows, hasMarginView }: Props) {
       });
   }, [rows, searchQuery, marginFilter, sortField, sortDir]);
 
+  const totalCount = filteredAndSortedRows.length;
+  const pageCount = Math.ceil(totalCount / pageSize) || 1;
+  const pagedRows = filteredAndSortedRows.slice(
+    pageIndex * pageSize,
+    (pageIndex + 1) * pageSize
+  );
+
   const totalFilteredSalesAmount = useMemo(() => {
     return filteredAndSortedRows.reduce((sum, r) => sum + r.qty * r.sellPrice, 0);
   }, [filteredAndSortedRows]);
@@ -134,12 +145,12 @@ export function TradingMarginLedgerTable({ rows, hasMarginView }: Props) {
   return (
     <div className="space-y-4">
       {/* Summary KPI cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
           <p className="font-label text-label font-bold uppercase tracking-wider text-text-grey">
-            Total Trading Revenue
+            Total Sales Revenue
           </p>
-          <p className="mt-2 font-mono text-title-lg font-bold text-on-surface">
+          <p className="mt-2 font-mono text-title-lg font-bold text-brand-navy">
             ₱{totalFilteredSalesAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
         </div>
@@ -182,14 +193,20 @@ export function TradingMarginLedgerTable({ rows, hasMarginView }: Props) {
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setPageIndex(0);
+            }}
             placeholder="Search by order #, customer, item code, lot #…"
             className="h-11 w-full rounded-xl border border-outline-variant/40 bg-surface-light-grey/40 pl-10 pr-10 font-body text-body-sm text-on-surface placeholder:text-text-grey focus:border-brand-navy focus:bg-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
           />
           {searchQuery && (
             <button
               type="button"
-              onClick={() => setSearchQuery("")}
+              onClick={() => {
+                setSearchQuery("");
+                setPageIndex(0);
+              }}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-text-grey hover:text-on-surface"
               aria-label="Clear search"
             >
@@ -205,7 +222,10 @@ export function TradingMarginLedgerTable({ rows, hasMarginView }: Props) {
               <span className="font-label text-label-xs uppercase text-text-grey">Margin:</span>
               <select
                 value={marginFilter}
-                onChange={(e) => setMarginFilter(e.target.value)}
+                onChange={(e) => {
+                  setMarginFilter(e.target.value);
+                  setPageIndex(0);
+                }}
                 className="bg-transparent font-body text-body-sm font-semibold text-on-surface focus:outline-none cursor-pointer"
               >
                 <option value="all">All Tiers</option>
@@ -222,10 +242,11 @@ export function TradingMarginLedgerTable({ rows, hasMarginView }: Props) {
               onClick={() => {
                 setSearchQuery("");
                 setMarginFilter("all");
+                setPageIndex(0);
               }}
               className="inline-flex h-9 items-center gap-1 rounded-lg px-2.5 font-label text-label-xs font-bold text-status-held hover:bg-status-held/10"
             >
-              Reset
+              Reset Filters
             </button>
           )}
         </div>
@@ -346,7 +367,7 @@ export function TradingMarginLedgerTable({ rows, hasMarginView }: Props) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/30">
-                {filteredAndSortedRows.map((row) => {
+                {pagedRows.map((row) => {
                   const revenue = row.qty * row.sellPrice;
                   const cogs = row.qty * (row.cogs ?? 0);
                   const margin = revenue - cogs;
@@ -420,6 +441,24 @@ export function TradingMarginLedgerTable({ rows, hasMarginView }: Props) {
                 </tr>
               </tfoot>
             </table>
+
+            {/* Table Pagination */}
+            <div className="border-t border-outline-variant/30 p-3">
+              <TablePagination
+                pageIndex={pageIndex}
+                pageSize={pageSize}
+                totalCount={totalCount}
+                pageCount={pageCount}
+                canPreviousPage={pageIndex > 0}
+                canNextPage={pageIndex < pageCount - 1}
+                onPageChange={(newPageIndex) => setPageIndex(newPageIndex)}
+                onPageSizeChange={(newPageSize) => {
+                  setPageSize(newPageSize);
+                  setPageIndex(0);
+                }}
+                pageSizeOptions={[5, 10, 20, 50]}
+              />
+            </div>
           </div>
         )}
       </div>

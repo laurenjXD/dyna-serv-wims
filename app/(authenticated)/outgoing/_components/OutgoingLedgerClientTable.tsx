@@ -33,6 +33,7 @@ export function OutgoingLedgerClientTable({
 }: OutgoingLedgerClientTableProps) {
   const [selectedDrNumber, setSelectedDrNumber] = useState<string | null>(null);
   const [selectedReceipt, setSelectedReceipt] = useState<OutgoingLedgerRow | null>(null);
+  const [conformanceFilter, setConformanceFilter] = useState<"all" | "conforming" | "pending_pod">("all");
 
   // Group rows by Delivery Receipt (or Pick List #)
   const drGroups = useMemo(() => {
@@ -53,11 +54,46 @@ export function OutgoingLedgerClientTable({
   const missingDrCount = useMemo(() => {
     const missingDrs = new Set(
       rows
-        .filter((row) => row.deliveryReceiptStatus !== "uploaded")
+        .filter((row) => row.deliveryReceiptStatus !== "uploaded" && !row.deliveryReceiptPath)
         .map((row) => row.pickListNumber ?? row.transactionId),
     );
     return missingDrs.size;
   }, [rows]);
+
+  const conformanceStats = useMemo(() => {
+    const totalDrs = Object.keys(drGroups).length;
+    let conformingDrs = 0;
+    let pendingPodDrs = 0;
+
+    Object.values(drGroups).forEach((groupRows) => {
+      const isConforming = groupRows.some(
+        (r) => r.deliveryReceiptStatus === "uploaded" || Boolean(r.deliveryReceiptPath)
+      );
+      if (isConforming) {
+        conformingDrs++;
+      } else {
+        pendingPodDrs++;
+      }
+    });
+
+    const rate = totalDrs > 0 ? ((conformingDrs / totalDrs) * 100).toFixed(1) : "100.0";
+    return {
+      totalDrs,
+      conformingDrs,
+      pendingPodDrs,
+      rate: Number(rate),
+    };
+  }, [drGroups]);
+
+  const filteredRows = useMemo(() => {
+    if (conformanceFilter === "all") return rows;
+    return rows.filter((row) => {
+      const isUploaded = row.deliveryReceiptStatus === "uploaded" || Boolean(row.deliveryReceiptPath);
+      if (conformanceFilter === "conforming") return isUploaded;
+      if (conformanceFilter === "pending_pod") return !isUploaded;
+      return true;
+    });
+  }, [rows, conformanceFilter]);
 
   const selectedRows = selectedDrNumber ? drGroups[selectedDrNumber] ?? [] : [];
   const activeDrMeta = selectedRows[0];
@@ -354,10 +390,10 @@ export function OutgoingLedgerClientTable({
   return (
     <div className="space-y-4">
       {/* ── KPI Summary Cards ──────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-4 shadow-sm">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-4 shadow-sm flex flex-col justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-brand-navy border border-blue-200">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-brand-navy border border-blue-200 shrink-0">
               <Package size={20} />
             </div>
             <div>
@@ -369,11 +405,14 @@ export function OutgoingLedgerClientTable({
               </p>
             </div>
           </div>
+          <p className="mt-2 text-[11px] font-body text-text-grey">
+            Physical stock released across all outbound channels
+          </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-4 shadow-sm flex flex-col justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-700 border border-slate-200">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-700 border border-slate-200 shrink-0">
               <Layers size={20} />
             </div>
             <div>
@@ -385,11 +424,14 @@ export function OutgoingLedgerClientTable({
               </p>
             </div>
           </div>
+          <p className="mt-2 text-[11px] font-body text-text-grey">
+            Grouped by Pick List &amp; Delivery Run
+          </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-4 shadow-sm flex flex-col justify-between">
           <div className="flex items-center gap-3">
-            <div className={`flex h-10 w-10 items-center justify-center rounded-xl border ${
+            <div className={`flex h-10 w-10 items-center justify-center rounded-xl border shrink-0 ${
               missingDrCount > 0
                 ? "bg-amber-50 text-amber-700 border-amber-200"
                 : "bg-emerald-50 text-emerald-700 border-emerald-200"
@@ -405,18 +447,72 @@ export function OutgoingLedgerClientTable({
               </p>
             </div>
           </div>
+          <p className="mt-2 text-[11px] font-body text-text-grey">
+            Proof of delivery documents requiring physical audit
+          </p>
+        </div>
+
+        {/* 4. Delivery Conformance KPI & Filter Dropdown */}
+        <div className="rounded-2xl border border-blue-200/80 bg-gradient-to-br from-blue-50/50 via-surface-white to-surface-white p-4 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-label text-[11px] font-bold uppercase tracking-wider text-brand-navy">
+                Delivery Conformance KPI
+              </p>
+              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold font-mono ${
+                conformanceStats.rate >= 98
+                  ? "bg-emerald-100 text-emerald-800"
+                  : conformanceStats.rate >= 90
+                  ? "bg-amber-100 text-amber-800"
+                  : "bg-rose-100 text-rose-800"
+              }`}>
+                {conformanceStats.rate}%
+              </span>
+            </div>
+
+            <div className="mt-2">
+              <label htmlFor="conformance-filter" className="sr-only">
+                Filter Ledger by Delivery Conformance
+              </label>
+              <select
+                id="conformance-filter"
+                value={conformanceFilter}
+                onChange={(e) => setConformanceFilter(e.target.value as "all" | "conforming" | "pending_pod")}
+                className="w-full rounded-lg border border-blue-200 bg-white px-2.5 py-1.5 font-label text-xs font-bold text-brand-navy shadow-xs hover:border-blue-300 focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy transition-colors"
+                aria-label="Filter Outgoing Ledger by Delivery Conformance"
+              >
+                <option value="all">All Dispatches ({rows.length} rows / {conformanceStats.totalDrs} DRs)</option>
+                <option value="conforming">✓ Conforming — Signed DR Attached ({conformanceStats.conformingDrs} DRs)</option>
+                <option value="pending_pod">⚠ Pending POD / Missing DR ({conformanceStats.pendingPodDrs} DRs)</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="mt-2.5 pt-2 border-t border-blue-100/80 flex items-center justify-between">
+            <Link
+              href="/reports#conformance"
+              className="inline-flex items-center gap-1 font-label text-[11px] font-bold text-brand-navy hover:text-blue-700 hover:underline transition-colors"
+            >
+              <span>View Conformance Trend Graph</span>
+              <ExternalLink size={11} />
+            </Link>
+          </div>
         </div>
       </div>
 
       {/* ── TanStack DataTable ─────────────────────────────────────────── */}
       <DataTable
         columns={columns}
-        data={rows}
+        data={filteredRows}
         title="Outgoing Dispatch Ledger"
         subtitle="Immutable transaction audit log of released shipments with multi-field filtering, date ranges, and POD proof-of-delivery tracking."
         icon={<FileSpreadsheet size={18} />}
         initialSorting={[{ id: "createdAt", desc: true }]}
-        emptyMessage="No outgoing transactions recorded."
+        emptyMessage={
+          conformanceFilter !== "all"
+            ? `No outgoing transactions match the "${conformanceFilter === "conforming" ? "Conforming" : "Pending POD"}" filter.`
+            : "No outgoing transactions recorded."
+        }
       />
 
       {/* ── PDF / Image Receipt Viewer Modal ───────────────────────────── */}

@@ -13,6 +13,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { parseOpeningStockFile, commitOpeningStockMigration, type ValidatedOpeningStockRow } from "@/lib/actions/inventory-migration";
+import { TablePagination } from "@/components/ui/TablePagination";
 
 export function OpeningStockImportModal({
   onClose,
@@ -29,6 +30,8 @@ export function OpeningStockImportModal({
   const [rows, setRows] = useState<ValidatedOpeningStockRow[]>([]);
   const [totalBoxes, setTotalBoxes] = useState(0);
   const [totalPcs, setTotalPcs] = useState(0);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
@@ -239,7 +242,7 @@ export function OpeningStockImportModal({
               </div>
 
               {/* Data Preview Table */}
-              <div className="max-h-60 overflow-x-auto overflow-y-auto rounded-xl border border-slate-200 bg-white text-xs">
+              <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white text-xs">
                 <table className="w-full border-collapse text-left">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50 font-bold text-slate-700">
@@ -254,7 +257,7 @@ export function OpeningStockImportModal({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-mono">
-                    {rows.map((row, idx) => (
+                    {rows.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize).map((row, idx) => (
                       <tr key={idx} className={row.isValid ? "hover:bg-slate-50" : "bg-rose-50/40"}>
                         <td className="px-3 py-2">
                           {row.isValid ? (
@@ -282,6 +285,21 @@ export function OpeningStockImportModal({
                     ))}
                   </tbody>
                 </table>
+
+                <TablePagination
+                  pageIndex={pageIndex}
+                  pageSize={pageSize}
+                  totalCount={rows.length}
+                  pageCount={Math.ceil(rows.length / pageSize) || 1}
+                  canPreviousPage={pageIndex > 0}
+                  canNextPage={pageIndex < (Math.ceil(rows.length / pageSize) || 1) - 1}
+                  onPageChange={(newPageIndex) => setPageIndex(newPageIndex)}
+                  onPageSizeChange={(newPageSize) => {
+                    setPageSize(newPageSize);
+                    setPageIndex(0);
+                  }}
+                  pageSizeOptions={[5, 10, 20, 50]}
+                />
               </div>
 
               {invalidCount > 0 && (

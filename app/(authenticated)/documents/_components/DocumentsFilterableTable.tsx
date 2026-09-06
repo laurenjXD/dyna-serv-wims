@@ -12,6 +12,7 @@ import {
   Package,
   CheckCircle2,
 } from "lucide-react";
+import { TablePagination } from "@/components/ui/TablePagination";
 
 type FlowType = "VMI" | "Trading" | "Supplies";
 type PickListStatus = "committed" | "dispatched" | "cancelled";
@@ -77,6 +78,8 @@ export function FilterablePickListsTable({ rows, initialSearch = "" }: { rows: M
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [sortField, setSortField] = useState<keyof MockPickListDoc>("createdAt");
   const [sortDir, setSortDir] = useState<SortDirection>("desc");
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
 
   const handleSort = (field: keyof MockPickListDoc) => {
     if (sortField === field) {
@@ -107,6 +110,12 @@ export function FilterablePickListsTable({ rows, initialSearch = "" }: { rows: M
       });
   }, [rows, searchQuery, selectedFlow, selectedStatus, sortField, sortDir]);
 
+  const totalCount = filteredAndSorted.length;
+  const pageCount = Math.ceil(totalCount / pageSize) || 1;
+  const pagedRows = useMemo(() => {
+    return filteredAndSorted.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
+  }, [filteredAndSorted, pageIndex, pageSize]);
+
   const renderSortIcon = (field: keyof MockPickListDoc) => {
     if (sortField !== field) return <ArrowUpDown size={14} className="opacity-40" />;
     return sortDir === "asc" ? (
@@ -125,14 +134,20 @@ export function FilterablePickListsTable({ rows, initialSearch = "" }: { rows: M
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setPageIndex(0);
+            }}
             placeholder="Search by pick list #, organization, flow…"
             className="h-11 w-full rounded-xl border border-outline-variant/40 bg-surface-light-grey/40 pl-10 pr-10 font-body text-body-sm text-on-surface placeholder:text-text-grey focus:border-brand-navy focus:bg-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
           />
           {searchQuery && (
             <button
               type="button"
-              onClick={() => setSearchQuery("")}
+              onClick={() => {
+                setSearchQuery("");
+                setPageIndex(0);
+              }}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-text-grey hover:text-on-surface"
               aria-label="Clear search"
             >
@@ -146,7 +161,10 @@ export function FilterablePickListsTable({ rows, initialSearch = "" }: { rows: M
             <span className="font-label text-label-xs uppercase text-text-grey">Model:</span>
             <select
               value={selectedFlow}
-              onChange={(e) => setSelectedFlow(e.target.value)}
+              onChange={(e) => {
+                setSelectedFlow(e.target.value);
+                setPageIndex(0);
+              }}
               className="bg-transparent font-body text-body-sm font-semibold text-on-surface focus:outline-none cursor-pointer"
             >
               <option value="all">All Models</option>
@@ -160,7 +178,10 @@ export function FilterablePickListsTable({ rows, initialSearch = "" }: { rows: M
             <span className="font-label text-label-xs uppercase text-text-grey">Status:</span>
             <select
               value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
+              onChange={(e) => {
+                setSelectedStatus(e.target.value);
+                setPageIndex(0);
+              }}
               className="bg-transparent font-body text-body-sm font-semibold text-on-surface focus:outline-none cursor-pointer"
             >
               <option value="all">All Statuses</option>
@@ -177,6 +198,7 @@ export function FilterablePickListsTable({ rows, initialSearch = "" }: { rows: M
                 setSearchQuery("");
                 setSelectedFlow("all");
                 setSelectedStatus("all");
+                setPageIndex(0);
               }}
               className="inline-flex h-9 items-center gap-1 rounded-lg px-2.5 font-label text-label-xs font-bold text-status-held hover:bg-status-held/10"
             >
@@ -197,124 +219,141 @@ export function FilterablePickListsTable({ rows, initialSearch = "" }: { rows: M
             <p className="font-body text-body-md text-text-grey">No pick lists match your filter.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("number")}
-                      className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>Pick List #</span>
-                      {renderSortIcon("number")}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("party")}
-                      className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>Organization</span>
-                      {renderSortIcon("party")}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("itemsCount")}
-                      className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>Items</span>
-                      {renderSortIcon("itemsCount")}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("flow")}
-                      className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>Flow</span>
-                      {renderSortIcon("flow")}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("status")}
-                      className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>Status</span>
-                      {renderSortIcon("status")}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("createdAt")}
-                      className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>Created</span>
-                      {renderSortIcon("createdAt")}
-                    </button>
-                  </th>
-                  <th className="sr-only px-4 py-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/30">
-                {filteredAndSorted.map((pl) => (
-                  <tr key={pl.id} className="hover:bg-surface-light-grey/50">
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface font-bold">
-                      {pl.number}
-                    </td>
-                    <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                      {pl.party}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {pl.itemsCount}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase tracking-[0.05em] ${FLOW_CLASSES[pl.flow]}`}
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
+                    <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                      <button
+                        type="button"
+                        onClick={() => handleSort("number")}
+                        className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
                       >
-                        {pl.flow}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase tracking-[0.05em] ${PICK_STATUS_CLASSES[pl.status]}`}
+                        <span>Pick List #</span>
+                        {renderSortIcon("number")}
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                      <button
+                        type="button"
+                        onClick={() => handleSort("party")}
+                        className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
                       >
-                        {PICK_STATUS_LABELS[pl.status]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 font-body text-body-md text-text-grey">
-                      {pl.createdAt}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          type="button"
-                          aria-label={`Print pick list ${pl.number}`}
-                          className="flex h-11 w-11 items-center justify-center rounded border border-outline-variant/30 text-text-grey hover:border-brand-navy hover:text-brand-navy"
-                        >
-                          <Printer size={16} aria-hidden="true" />
-                        </button>
-                        <Link
-                          href={`/documents/pick-lists/${pl.id}`}
-                          className="inline-flex h-11 items-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90"
-                        >
-                          View
-                        </Link>
-                      </div>
-                    </td>
+                        <span>Organization</span>
+                        {renderSortIcon("party")}
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                      <button
+                        type="button"
+                        onClick={() => handleSort("itemsCount")}
+                        className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
+                      >
+                        <span>Items</span>
+                        {renderSortIcon("itemsCount")}
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                      <button
+                        type="button"
+                        onClick={() => handleSort("flow")}
+                        className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
+                      >
+                        <span>Flow</span>
+                        {renderSortIcon("flow")}
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                      <button
+                        type="button"
+                        onClick={() => handleSort("status")}
+                        className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
+                      >
+                        <span>Status</span>
+                        {renderSortIcon("status")}
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                      <button
+                        type="button"
+                        onClick={() => handleSort("createdAt")}
+                        className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
+                      >
+                        <span>Created</span>
+                        {renderSortIcon("createdAt")}
+                      </button>
+                    </th>
+                    <th className="sr-only px-4 py-3">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-outline-variant/30">
+                  {pagedRows.map((pl) => (
+                    <tr key={pl.id} className="hover:bg-surface-light-grey/50">
+                      <td className="px-4 py-3 font-mono text-mono-md text-on-surface font-bold">
+                        {pl.number}
+                      </td>
+                      <td className="px-4 py-3 font-body text-body-md text-on-surface">
+                        {pl.party}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
+                        {pl.itemsCount}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase tracking-[0.05em] ${FLOW_CLASSES[pl.flow]}`}
+                        >
+                          {pl.flow}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase tracking-[0.05em] ${PICK_STATUS_CLASSES[pl.status]}`}
+                        >
+                          {PICK_STATUS_LABELS[pl.status]}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 font-body text-body-md text-text-grey">
+                        {pl.createdAt}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            aria-label={`Print pick list ${pl.number}`}
+                            className="flex h-11 w-11 items-center justify-center rounded border border-outline-variant/30 text-text-grey hover:border-brand-navy hover:text-brand-navy"
+                          >
+                            <Printer size={16} aria-hidden="true" />
+                          </button>
+                          <Link
+                            href={`/documents/pick-lists/${pl.id}`}
+                            className="inline-flex h-11 items-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90"
+                          >
+                            View
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <TablePagination
+              pageIndex={pageIndex}
+              pageSize={pageSize}
+              totalCount={totalCount}
+              pageCount={pageCount}
+              canPreviousPage={pageIndex > 0}
+              canNextPage={pageIndex < pageCount - 1}
+              onPageChange={(newPageIndex) => setPageIndex(newPageIndex)}
+              onPageSizeChange={(newPageSize) => {
+                setPageSize(newPageSize);
+                setPageIndex(0);
+              }}
+              pageSizeOptions={[5, 10, 20, 50]}
+            />
+          </>
         )}
       </div>
     </div>
@@ -328,6 +367,8 @@ export function FilterableARTable({ rows, initialSearch = "" }: { rows: MockARDo
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [sortField, setSortField] = useState<keyof MockARDoc>("date");
   const [sortDir, setSortDir] = useState<SortDirection>("desc");
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
 
   const handleSort = (field: keyof MockARDoc) => {
     if (sortField === field) {
@@ -357,6 +398,12 @@ export function FilterableARTable({ rows, initialSearch = "" }: { rows: MockARDo
       });
   }, [rows, searchQuery, selectedStatus, sortField, sortDir]);
 
+  const totalCount = filteredAndSorted.length;
+  const pageCount = Math.ceil(totalCount / pageSize) || 1;
+  const pagedRows = useMemo(() => {
+    return filteredAndSorted.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
+  }, [filteredAndSorted, pageIndex, pageSize]);
+
   const renderSortIcon = (field: keyof MockARDoc) => {
     if (sortField !== field) return <ArrowUpDown size={14} className="opacity-40" />;
     return sortDir === "asc" ? (
@@ -375,14 +422,20 @@ export function FilterableARTable({ rows, initialSearch = "" }: { rows: MockARDo
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setPageIndex(0);
+            }}
             placeholder="Search by AR #, organization, pick list #…"
             className="h-11 w-full rounded-xl border border-outline-variant/40 bg-surface-light-grey/40 pl-10 pr-10 font-body text-body-sm text-on-surface placeholder:text-text-grey focus:border-brand-navy focus:bg-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
           />
           {searchQuery && (
             <button
               type="button"
-              onClick={() => setSearchQuery("")}
+              onClick={() => {
+                setSearchQuery("");
+                setPageIndex(0);
+              }}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-text-grey hover:text-on-surface"
               aria-label="Clear search"
             >
@@ -396,7 +449,10 @@ export function FilterableARTable({ rows, initialSearch = "" }: { rows: MockARDo
             <span className="font-label text-label-xs uppercase text-text-grey">Status:</span>
             <select
               value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
+              onChange={(e) => {
+                setSelectedStatus(e.target.value);
+                setPageIndex(0);
+              }}
               className="bg-transparent font-body text-body-sm font-semibold text-on-surface focus:outline-none cursor-pointer"
             >
               <option value="all">All Statuses</option>
@@ -412,6 +468,7 @@ export function FilterableARTable({ rows, initialSearch = "" }: { rows: MockARDo
               onClick={() => {
                 setSearchQuery("");
                 setSelectedStatus("all");
+                setPageIndex(0);
               }}
               className="inline-flex h-9 items-center gap-1 rounded-lg px-2.5 font-label text-label-xs font-bold text-status-held hover:bg-status-held/10"
             >
@@ -432,111 +489,128 @@ export function FilterableARTable({ rows, initialSearch = "" }: { rows: MockARDo
             <p className="font-body text-body-md text-text-grey">No acknowledgement receipts match your filter.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("number")}
-                      className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>AR #</span>
-                      {renderSortIcon("number")}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("party")}
-                      className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>Organization</span>
-                      {renderSortIcon("party")}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("pickListNumber")}
-                      className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>Pick List #</span>
-                      {renderSortIcon("pickListNumber")}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("itemsCount")}
-                      className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>Items</span>
-                      {renderSortIcon("itemsCount")}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("status")}
-                      className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>Status</span>
-                      {renderSortIcon("status")}
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("date")}
-                      className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
-                    >
-                      <span>Date</span>
-                      {renderSortIcon("date")}
-                    </button>
-                  </th>
-                  <th className="sr-only px-4 py-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/30">
-                {filteredAndSorted.map((ar) => (
-                  <tr key={ar.id} className="hover:bg-surface-light-grey/50">
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface font-bold">
-                      {ar.number}
-                    </td>
-                    <td className="px-4 py-3 font-body text-body-md text-on-surface">
-                      {ar.party}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {ar.pickListNumber}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {ar.itemsCount}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase tracking-[0.05em] ${AR_STATUS_CLASSES[ar.status]}`}
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
+                    <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                      <button
+                        type="button"
+                        onClick={() => handleSort("number")}
+                        className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
                       >
-                        {AR_STATUS_LABELS[ar.status]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 font-body text-body-md text-text-grey">
-                      {ar.date}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Link
-                        href={`/documents/acknowledgement-receipts/${ar.id}`}
-                        className="inline-flex h-11 items-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90"
+                        <span>AR #</span>
+                        {renderSortIcon("number")}
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                      <button
+                        type="button"
+                        onClick={() => handleSort("party")}
+                        className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
                       >
-                        View
-                      </Link>
-                    </td>
+                        <span>Organization</span>
+                        {renderSortIcon("party")}
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                      <button
+                        type="button"
+                        onClick={() => handleSort("pickListNumber")}
+                        className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
+                      >
+                        <span>Pick List #</span>
+                        {renderSortIcon("pickListNumber")}
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                      <button
+                        type="button"
+                        onClick={() => handleSort("itemsCount")}
+                        className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
+                      >
+                        <span>Items</span>
+                        {renderSortIcon("itemsCount")}
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                      <button
+                        type="button"
+                        onClick={() => handleSort("status")}
+                        className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
+                      >
+                        <span>Status</span>
+                        {renderSortIcon("status")}
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                      <button
+                        type="button"
+                        onClick={() => handleSort("date")}
+                        className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
+                      >
+                        <span>Date</span>
+                        {renderSortIcon("date")}
+                      </button>
+                    </th>
+                    <th className="sr-only px-4 py-3">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-outline-variant/30">
+                  {pagedRows.map((ar) => (
+                    <tr key={ar.id} className="hover:bg-surface-light-grey/50">
+                      <td className="px-4 py-3 font-mono text-mono-md text-on-surface font-bold">
+                        {ar.number}
+                      </td>
+                      <td className="px-4 py-3 font-body text-body-md text-on-surface">
+                        {ar.party}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
+                        {ar.pickListNumber}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
+                        {ar.itemsCount}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase tracking-[0.05em] ${AR_STATUS_CLASSES[ar.status]}`}
+                        >
+                          {AR_STATUS_LABELS[ar.status]}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 font-body text-body-md text-text-grey">
+                        {ar.date}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Link
+                          href={`/documents/acknowledgement-receipts/${ar.id}`}
+                          className="inline-flex h-11 items-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90"
+                        >
+                          View
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <TablePagination
+              pageIndex={pageIndex}
+              pageSize={pageSize}
+              totalCount={totalCount}
+              pageCount={pageCount}
+              canPreviousPage={pageIndex > 0}
+              canNextPage={pageIndex < pageCount - 1}
+              onPageChange={(newPageIndex) => setPageIndex(newPageIndex)}
+              onPageSizeChange={(newPageSize) => {
+                setPageSize(newPageSize);
+                setPageIndex(0);
+              }}
+              pageSizeOptions={[5, 10, 20, 50]}
+            />
+          </>
         )}
       </div>
     </div>
