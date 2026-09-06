@@ -63,55 +63,53 @@ export function PickQueueSection({
 
       <div className="mt-4 space-y-3">
         {rows.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-outline-variant bg-surface-white px-6 py-9 text-center shadow-elevation-1">
-            <Icon className="mx-auto text-status-neutral" size={30} aria-hidden="true" />
-            <p className="mt-3 font-body text-body-md text-text-grey">{emptyMessage}</p>
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-surface-white px-6 py-12 text-center shadow-xs">
+            <Icon className="mx-auto text-slate-400" size={32} aria-hidden="true" />
+            <p className="mt-3 font-heading text-sm font-bold text-text-primary">{emptyMessage}</p>
           </div>
         ) : (
           rows.map((row) => (
             <article
               key={row.id}
-              className={`rounded-lg border bg-surface-white p-4 shadow-elevation-2 transition-[box-shadow,transform] duration-150 hover:-translate-y-0.5 ${
-                isDispatch ? "border-status-available/30" : "border-outline-variant"
-              }`}
+              className="rounded-2xl border border-slate-200/80 bg-surface-white p-4 shadow-xs transition-all duration-150 hover:border-slate-300 hover:shadow-sm"
             >
               <div className="grid items-center gap-4 md:grid-cols-[auto_minmax(0,1fr)_auto_auto]">
                 <div
-                  className={`flex h-12 w-12 items-center justify-center rounded-lg ${
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${
                     isDispatch
-                      ? "bg-status-available/15 text-status-available"
-                      : "bg-[#E4ECFF] text-brand-navy"
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200/60"
+                      : "bg-blue-50 text-brand-navy border-blue-200/60"
                   }`}
                 >
-                  <Icon size={24} aria-hidden="true" />
+                  <Icon size={20} aria-hidden="true" />
                 </div>
 
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-mono text-mono-md font-bold text-on-surface">
+                    <p className="font-mono text-sm font-bold text-brand-navy">
                       {row.pickListNumber}
                     </p>
                     <span
-                      className={`inline-flex rounded-full px-2 py-1 font-label text-label font-bold uppercase ${
+                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-mono text-[10px] font-bold uppercase ${
                         isDispatch
-                          ? "bg-status-available/15 text-status-available"
-                          : "bg-status-pending text-on-surface"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                          : "bg-amber-50 text-amber-700 border border-amber-200"
                       }`}
                     >
                       {isDispatch ? "PICKED" : "ALLOCATED"}
                     </span>
                   </div>
-                  <p className="mt-1 truncate font-body text-body-md font-bold text-on-surface">
+                  <p className="mt-1 truncate font-body text-xs font-semibold text-text-primary">
                     {row.customerPartyName ?? row.customerPartyId}
                   </p>
-                  <p className="mt-1 font-body text-body-sm text-text-grey">
-                    {FLOW_LABELS[row.flowType] ?? row.flowType} · Created {row.createdAt.toLocaleString()}
+                  <p className="mt-0.5 font-body text-xs text-text-grey">
+                    <span className="font-mono">{FLOW_LABELS[row.flowType] ?? row.flowType}</span> · Created {row.createdAt.toLocaleString()}
                   </p>
                 </div>
 
                 <div className="md:text-right">
-                  <p className="font-label text-label font-bold uppercase text-text-grey">Next step</p>
-                  <p className="mt-1 font-body text-body-md font-bold text-on-surface">
+                  <p className="font-label text-[10px] font-bold uppercase tracking-wider text-text-grey">Next step</p>
+                  <p className="mt-0.5 font-body text-xs font-semibold text-text-primary">
                     {isDispatch ? "Confirm dispatch" : "Pick & verify"}
                   </p>
                 </div>
@@ -123,17 +121,13 @@ export function PickQueueSection({
                         ? `/pick-lists/${row.id}/dispatch`
                         : `/pick-lists/${row.id}/pick`
                     }
-                    className={`inline-flex h-12 items-center justify-center gap-2 rounded px-4 font-label text-body-md font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
-                      isDispatch
-                        ? "bg-brand-navy text-surface-white"
-                        : "border border-brand-navy bg-surface-white text-brand-navy"
-                    }`}
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand-navy px-4 font-label text-xs font-bold text-white shadow-2xs hover:bg-brand-navy/90 active:scale-98 transition-all"
                   >
-                    {isDispatch ? "Dispatch" : "Start Pick"}
-                    <ArrowRight size={18} aria-hidden="true" />
+                    <span>{isDispatch ? "Dispatch" : "Start Pick"}</span>
+                    <ArrowRight size={14} aria-hidden="true" />
                   </Link>
                 ) : (
-                  <span className="font-label text-label text-text-grey">View only</span>
+                  <span className="font-label text-xs text-text-grey">View only</span>
                 )}
               </div>
             </article>

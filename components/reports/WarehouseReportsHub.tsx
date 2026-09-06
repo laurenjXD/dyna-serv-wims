@@ -33,6 +33,7 @@ import { TemplateCardGrid } from "./TemplateCardGrid";
 import { ReportArchiveTable } from "./ReportArchiveTable";
 import { PdfPreviewModal } from "./PdfPreviewModal";
 import { CustomReportBuilderModal } from "./CustomReportBuilderModal";
+import { VmiAuditModal } from "./VmiAuditModal";
 import { exportRawTransactionsCsvAction, generateCustomReportAction } from "@/lib/actions/reports";
 
 export interface WarehouseReportsHubProps {
@@ -68,6 +69,9 @@ export function WarehouseReportsHub({
   const [pdfModalTitle, setPdfModalTitle] = useState("Master Stock Position & Financial Valuation Summary");
   const [pdfModalSubtitle, setPdfModalSubtitle] = useState("Official Consolidated WMS Balance Sheet & CBM Space Reconciliation");
   const [pdfModalRef, setPdfModalRef] = useState("DS-RPT-2026-0831-VAL");
+
+  const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
+  const [auditRow, setAuditRow] = useState<VmiBillingRow | null>(null);
 
   const [isBuilderOpen, setIsBuilderOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -106,7 +110,8 @@ export function WarehouseReportsHub({
   };
 
   const handleAuditDwellTime = (row: VmiBillingRow) => {
-    showToast(`Dwell Time Audit opened for ${row.clientName} (${row.occupiedCbm} m³ consumed).`);
+    setAuditRow(row);
+    setIsAuditModalOpen(true);
   };
 
   const handleRunTemplate = (template: PreBuiltTemplate, format: ReportFormat) => {
@@ -380,6 +385,13 @@ export function WarehouseReportsHub({
         isOpen={isBuilderOpen}
         onClose={() => setIsBuilderOpen(false)}
         onBuildComplete={handleCustomBuildComplete}
+      />
+
+      {/* ── 10. VMI Daily CBM & Dwell Time Audit Modal ────────────────────── */}
+      <VmiAuditModal
+        isOpen={isAuditModalOpen}
+        onClose={() => setIsAuditModalOpen(false)}
+        row={auditRow}
       />
     </div>
   );

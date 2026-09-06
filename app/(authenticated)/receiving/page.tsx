@@ -269,117 +269,151 @@ async function ReceiveTab({
   });
 
   const totalPages = Math.ceil(total / QUEUE_PAGE_SIZE);
+  const inProgressCount = rows.filter((r) => r.status === "receiving_in_progress").length;
+  const stagedCount = rows.filter((r) => r.status === "staged_pending_arrival").length;
 
   return (
-    <div className="mt-7 grid gap-7 lg:grid-cols-[minmax(0,1fr)_360px]">
+    <div className="mt-6 space-y-6">
+      {/* Top Telemetry Summary Pills */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-4 shadow-2xs">
+          <div className="flex items-center justify-between">
+            <span className="font-label text-xs font-bold uppercase tracking-wider text-text-grey">
+              Active Inbound Shipments
+            </span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-brand-navy">
+              <Truck size={16} />
+            </span>
+          </div>
+          <p className="mt-2 font-mono text-2xl font-bold text-brand-navy">{total}</p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-4 shadow-2xs">
+          <div className="flex items-center justify-between">
+            <span className="font-label text-xs font-bold uppercase tracking-wider text-text-grey">
+              Intake In Progress
+            </span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
+              <Warehouse size={16} />
+            </span>
+          </div>
+          <p className="mt-2 font-mono text-2xl font-bold text-amber-700">{inProgressCount}</p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-4 shadow-2xs">
+          <div className="flex items-center justify-between">
+            <span className="font-label text-xs font-bold uppercase tracking-wider text-text-grey">
+              Staged Pending Arrival
+            </span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+              <ClipboardList size={16} />
+            </span>
+          </div>
+          <p className="mt-2 font-mono text-2xl font-bold text-emerald-700">{stagedCount}</p>
+        </div>
+      </div>
+
       <section className="min-w-0">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="font-heading text-headline-md font-bold text-on-surface">
-            Active Warehouse Receipt Requests
-          </h2>
-          <span className="shrink-0 rounded-full bg-[#DCE6FF] px-3 py-1 font-label text-label font-bold text-brand-navy">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 className="font-heading text-title-md font-bold text-on-surface">
+              Active Warehouse Receipt Requests
+            </h2>
+            <p className="text-xs font-body text-text-grey">
+              Operational intake work queue for scanning, pallet verification, and physical receiving.
+            </p>
+          </div>
+          <span className="shrink-0 rounded-full bg-blue-50 border border-blue-200/80 px-3 py-1 font-mono text-xs font-bold text-brand-navy">
             {total} active
           </span>
         </div>
 
-      {/* WRR cards — floor-first layout. No dense table here; floor workers
-          need one large CTA per row at 64px (min-h-16), not a multi-column table.
-          brand-design-system.md §3: floor primary actions full-width bottom-of-screen;
-          §9: floor tables are a fail case — card list is correct here. */}
-      <div className="mt-4 space-y-3">
-        {rows.length === 0 ? (
-          <div className="rounded-lg border border-outline-variant bg-surface-white px-6 py-12 text-center shadow-elevation-2">
-            <ClipboardList className="mx-auto text-status-neutral" size={30} aria-hidden="true" />
-            <p className="font-body text-body-md text-text-grey">
-              No WRRs currently in progress.
-            </p>
-            <p className="mt-2 font-body text-body-md text-text-grey">
-              New WRRs staged for your shift will appear here.
-            </p>
-          </div>
-        ) : (
-          rows.map((row: WrrDocumentRow) => (
-            <article
-              key={row.id}
-              className="rounded-lg border border-outline-variant bg-surface-white p-4 shadow-elevation-2 transition-[box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:shadow-elevation-2"
-            >
-              <div className="grid items-center gap-4 md:grid-cols-[auto_minmax(0,1fr)_auto_auto]">
-                <div className="flex h-12 w-12 items-center justify-center rounded bg-[#E4ECFF] text-brand-navy">
-                  <Truck size={24} aria-hidden="true" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-mono text-mono-md font-bold text-on-surface">{row.wrrNumber}</p>
-                    <span
-                      className={`inline-flex items-center rounded border border-outline-variant px-2 py-1 font-label text-label uppercase ${STATUS_CLASSES[row.status] ?? "bg-status-neutral/10 text-status-neutral"}`}
-                    >
-                      {STATUS_LABELS[row.status] ?? row.status.toUpperCase()}
-                    </span>
+        {/* WRR cards — consistent modern card list */}
+        <div className="space-y-3">
+          {rows.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-surface-white px-6 py-12 text-center shadow-xs">
+              <ClipboardList className="mx-auto text-slate-400" size={32} aria-hidden="true" />
+              <p className="mt-3 font-heading text-sm font-bold text-text-primary">
+                No WRRs currently in progress
+              </p>
+              <p className="mt-1 font-body text-xs text-text-grey">
+                New WRRs staged for your shift will appear here automatically.
+              </p>
+            </div>
+          ) : (
+            rows.map((row: WrrDocumentRow) => (
+              <article
+                key={row.id}
+                className="rounded-2xl border border-slate-200/80 bg-surface-white p-4 shadow-xs transition-all duration-150 hover:border-slate-300 hover:shadow-sm"
+              >
+                <div className="grid items-center gap-4 md:grid-cols-[auto_minmax(0,1fr)_auto_auto]">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-brand-navy border border-blue-200/60">
+                    <Truck size={20} aria-hidden="true" />
                   </div>
-                  <p className="mt-1 truncate font-body text-body-md text-on-surface">
-                    {row.vendorPartyName ?? row.vendorPartyId} · {FLOW_LABELS[row.flowType] ?? row.flowType}
-                  </p>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-mono text-sm font-bold text-brand-navy">{row.wrrNumber}</p>
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-mono text-[10px] font-bold uppercase ${
+                          row.status === "confirmed"
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            : row.status === "receiving_in_progress"
+                            ? "bg-amber-50 text-amber-700 border border-amber-200"
+                            : "bg-slate-100 text-slate-700 border border-slate-200"
+                        }`}
+                      >
+                        {STATUS_LABELS[row.status] ?? row.status.toUpperCase()}
+                      </span>
+                    </div>
+                    <p className="mt-1 truncate font-body text-xs font-semibold text-text-primary">
+                      {row.vendorPartyName ?? row.vendorPartyId} · <span className="font-mono font-normal text-text-secondary">{FLOW_LABELS[row.flowType] ?? row.flowType}</span>
+                    </p>
+                  </div>
+                  <div className="md:text-right">
+                    <p className="font-label text-[10px] font-bold uppercase tracking-wider text-text-grey">Created</p>
+                    <p className="mt-0.5 font-mono text-xs font-semibold text-text-primary">
+                      {row.createdAt.toLocaleDateString()}
+                    </p>
+                  </div>
+                  <Link
+                    href={`/receiving/${row.id}/receive`}
+                    className="inline-flex h-10 items-center justify-center rounded-xl bg-brand-navy px-4 font-label text-xs font-bold text-white shadow-2xs hover:bg-brand-navy/90 active:scale-98 transition-all"
+                  >
+                    Begin Receiving →
+                  </Link>
                 </div>
-                <div className="md:text-right">
-                  <p className="font-label text-label font-bold uppercase tracking-wide text-text-grey">Created</p>
-                  <p className="mt-1 font-body text-body-md font-bold text-on-surface">
-                    {row.createdAt.toLocaleDateString()}
-                  </p>
-                </div>
-                <Link
-                  href={`/receiving/${row.id}/receive`}
-                  className="flex h-12 items-center justify-center rounded border border-brand-navy bg-surface-white px-4 font-label text-body-md font-bold text-brand-navy active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                >
-                  Begin Receiving
-                </Link>
-              </div>
-            </article>
-          ))
-        )}
-      </div>
-
-      {/* Pagination controls */}
-      {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between font-body text-body-sm text-text-grey">
-          <span>
-            Page {currentPage} of {totalPages} ({total} total)
-          </span>
-          <div className="flex gap-2">
-            {currentPage > 1 && (
-              <Link
-                href={`/receiving?page=${currentPage - 1}`}
-                className="inline-flex h-14 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-body-md text-on-surface active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy md:h-11 md:text-label md:hover:bg-surface-light-grey"
-              >
-                Previous
-              </Link>
-            )}
-            {currentPage < totalPages && (
-              <Link
-                href={`/receiving?page=${currentPage + 1}`}
-                className="inline-flex h-14 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-body-md text-on-surface active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy md:h-11 md:text-label md:hover:bg-surface-light-grey"
-              >
-                Next
-              </Link>
-            )}
-          </div>
+              </article>
+            ))
+          )}
         </div>
-      )}
-      </section>
 
-      <aside className="space-y-6">
-        <section className="rounded-lg border border-outline-variant bg-surface-white p-5 shadow-elevation-2">
-          <div className="flex items-center gap-2">
-            <Warehouse size={24} className="text-brand-navy" aria-hidden="true" />
-            <h2 className="font-heading text-headline-md font-bold text-on-surface">Queue Overview</h2>
-          </div>
-          <div className="mt-5">
-            <div className="rounded bg-brand-navy p-4 text-surface-white">
-              <p className="font-label text-label font-bold uppercase tracking-wide text-[#AFC5FF]">Showing</p>
-              <p className="mt-2 font-heading text-headline-lg font-bold">{rows.length}</p>
+        {/* Pagination controls */}
+        {totalPages > 1 && (
+          <div className="mt-4 flex items-center justify-between font-body text-xs text-text-grey">
+            <span>
+              Page {currentPage} of {totalPages} ({total} total)
+            </span>
+            <div className="flex gap-2">
+              {currentPage > 1 && (
+                <Link
+                  href={`/receiving?page=${currentPage - 1}`}
+                  className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-surface-white px-3 font-label text-xs font-semibold text-on-surface hover:bg-slate-50 transition-colors"
+                >
+                  Previous
+                </Link>
+              )}
+              {currentPage < totalPages && (
+                <Link
+                  href={`/receiving?page=${currentPage + 1}`}
+                  className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-surface-white px-3 font-label text-xs font-semibold text-on-surface hover:bg-slate-50 transition-colors"
+                >
+                  Next
+                </Link>
+              )}
             </div>
           </div>
-        </section>
-      </aside>
+        )}
+      </section>
     </div>
   );
 }

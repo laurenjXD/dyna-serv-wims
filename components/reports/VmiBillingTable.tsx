@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import Link from "next/link";
 import {
   useReactTable,
   getCoreRowModel,
@@ -151,23 +152,24 @@ export function VmiBillingTable({
         cell: ({ row }) => {
           const item = row.original;
           return (
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex items-center justify-center gap-1.5">
               <button
                 type="button"
                 onClick={() => onAuditDwellTime(item)}
-                className="inline-flex items-center gap-1 rounded-lg border border-border bg-surface px-2.5 py-1 font-label text-xs font-semibold text-text-primary hover:bg-slate-50 transition-colors shadow-2xs"
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-surface-white px-2.5 py-1 font-label text-xs font-semibold text-brand-navy hover:bg-blue-50/60 hover:border-blue-200 transition-colors shadow-2xs cursor-pointer"
+                title={`Open itemized day-by-day CBM & dwell audit for ${item.clientName}`}
               >
-                <Clock size={13} className="text-slate-500" />
+                <Clock size={12} className="text-brand-navy/70" />
                 <span>Audit</span>
               </button>
-              <button
-                type="button"
-                onClick={() => onGenerateInvoicePdf(item)}
-                className="inline-flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1 font-label text-xs font-bold text-white hover:bg-primary-hover transition-colors shadow-2xs"
+              <Link
+                href={`/billing-pricing/soa/${item.id || item.clientCode}?partyId=${item.id}`}
+                className="inline-flex items-center gap-1 rounded-lg bg-brand-navy px-2.5 py-1 font-label text-xs font-bold text-white hover:bg-brand-navy/90 transition-colors shadow-2xs"
+                title={`View canonical Statement of Account (SOA) for ${item.clientName}`}
               >
-                <FileText size={13} />
+                <FileText size={12} />
                 <span>SOA</span>
-              </button>
+              </Link>
             </div>
           );
         },

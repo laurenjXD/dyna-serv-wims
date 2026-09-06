@@ -178,150 +178,45 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
         activeTabLabel={tabLabelMap[activeTab]}
       />
 
-      {/* Workflow Grouped Tab Navigation */}
-      <div className="mb-6">
-        <div className="grid grid-cols-1 gap-3.5 md:grid-cols-3">
-          {/* Group 1: Inbound Receiving Workflow */}
-          <div
-            className={`rounded-2xl border p-3.5 transition-all ${
-              activeTab === "wrr" || activeTab === "cipl"
-                ? "border-brand-navy/60 bg-brand-navy/[0.02] ring-1 ring-brand-navy/30 shadow-elevation-1"
-                : "border-outline-variant/30 bg-surface-white"
-            }`}
-          >
-            <div className="mb-2.5 flex items-center justify-between">
-              <span className="inline-flex items-center gap-1.5 font-label text-body-xs font-extrabold uppercase tracking-wider text-brand-navy">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-navy/10 text-brand-navy font-bold">1</span>
-                Inbound Receiving
+      {/* Office Tab Navigation */}
+      <div
+        role="tablist"
+        aria-label="Document archive sections"
+        className="mb-6 flex gap-2 overflow-x-auto border-b border-outline-variant/30 pb-px"
+      >
+        {[
+          { key: "wrr", label: "WRRs & Receipts", count: wrrRows.length },
+          { key: "cipl", label: "Inbound CI/PL & Invoices", count: ciplRows.length },
+          { key: "pick-lists", label: "Pick Lists & DRA", count: pickListRows.length },
+          { key: "acknowledgement-receipts", label: "Delivery Receipts (POD / AR)", count: arRows.length },
+          { key: "soa", label: "Statements of Account (SOA)", count: soaRows.length },
+        ].map((tab) => {
+          const isActive = activeTab === tab.key;
+          return (
+            <Link
+              key={tab.key}
+              href={`/documents?tab=${tab.key}`}
+              role="tab"
+              aria-selected={isActive}
+              className={`flex h-11 shrink-0 items-center gap-2 border-b-2 px-3 font-label text-xs font-bold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
+                isActive
+                  ? "border-brand-navy text-brand-navy font-extrabold"
+                  : "border-transparent text-text-grey hover:border-slate-300 hover:text-on-surface"
+              }`}
+            >
+              <span>{tab.label}</span>
+              <span
+                className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-bold ${
+                  isActive
+                    ? "bg-brand-navy text-white"
+                    : "bg-slate-100 text-slate-600"
+                }`}
+              >
+                {tab.count}
               </span>
-              <Link
-                href="/receiving"
-                className="font-label text-body-xs font-semibold text-text-grey transition-colors hover:text-brand-navy hover:underline"
-              >
-                /receiving ↗
-              </Link>
-            </div>
-            <div className="flex gap-2">
-              <Link
-                href="/documents?tab=wrr"
-                role="tab"
-                aria-selected={activeTab === "wrr"}
-                className={`flex-1 rounded-xl px-3 py-2 text-center font-label text-label transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
-                  activeTab === "wrr"
-                    ? "bg-brand-navy text-surface-white font-bold shadow-sm"
-                    : "bg-surface-light-grey text-on-surface hover:bg-outline-variant/30 font-medium"
-                }`}
-              >
-                WRRs &amp; Receipts
-              </Link>
-              <Link
-                href="/documents?tab=cipl"
-                role="tab"
-                aria-selected={activeTab === "cipl"}
-                className={`flex-1 rounded-xl px-3 py-2 text-center font-label text-label transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
-                  activeTab === "cipl"
-                    ? "bg-brand-navy text-surface-white font-bold shadow-sm"
-                    : "bg-surface-light-grey text-on-surface hover:bg-outline-variant/30 font-medium"
-                }`}
-              >
-                Inbound CI/PL
-              </Link>
-            </div>
-          </div>
-
-          {/* Group 2: Outbound Dispatch Workflow */}
-          <div
-            className={`rounded-2xl border p-3.5 transition-all ${
-              activeTab === "pick-lists" || activeTab === "acknowledgement-receipts"
-                ? "border-brand-navy/60 bg-brand-navy/[0.02] ring-1 ring-brand-navy/30 shadow-elevation-1"
-                : "border-outline-variant/30 bg-surface-white"
-            }`}
-          >
-            <div className="mb-2.5 flex items-center justify-between">
-              <span className="inline-flex items-center gap-1.5 font-label text-body-xs font-extrabold uppercase tracking-wider text-brand-navy">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-navy/10 text-brand-navy font-bold">2</span>
-                Outbound Dispatch
-              </span>
-              <div className="flex items-center gap-2">
-                <Link
-                  href="/pick-lists"
-                  className="font-label text-body-xs font-semibold text-text-grey transition-colors hover:text-brand-navy hover:underline"
-                >
-                  /pick-lists ↗
-                </Link>
-                <span className="text-text-grey/40">·</span>
-                <Link
-                  href="/outgoing"
-                  className="font-label text-body-xs font-semibold text-text-grey transition-colors hover:text-brand-navy hover:underline"
-                >
-                  /outgoing ↗
-                </Link>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Link
-                href="/documents?tab=pick-lists"
-                role="tab"
-                aria-selected={activeTab === "pick-lists"}
-                className={`flex-1 rounded-xl px-3 py-2 text-center font-label text-label transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
-                  activeTab === "pick-lists"
-                    ? "bg-brand-navy text-surface-white font-bold shadow-sm"
-                    : "bg-surface-light-grey text-on-surface hover:bg-outline-variant/30 font-medium"
-                }`}
-              >
-                Pick Lists &amp; DRA
-              </Link>
-              <Link
-                href="/documents?tab=acknowledgement-receipts"
-                role="tab"
-                aria-selected={activeTab === "acknowledgement-receipts"}
-                className={`flex-1 rounded-xl px-3 py-2 text-center font-label text-label transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
-                  activeTab === "acknowledgement-receipts"
-                    ? "bg-brand-navy text-surface-white font-bold shadow-sm"
-                    : "bg-surface-light-grey text-on-surface hover:bg-outline-variant/30 font-medium"
-                }`}
-              >
-                Delivery Receipts / POD
-              </Link>
-            </div>
-          </div>
-
-          {/* Group 3: Financial Billing Workflow */}
-          <div
-            className={`rounded-2xl border p-3.5 transition-all ${
-              activeTab === "soa"
-                ? "border-brand-navy/60 bg-brand-navy/[0.02] ring-1 ring-brand-navy/30 shadow-elevation-1"
-                : "border-outline-variant/30 bg-surface-white"
-            }`}
-          >
-            <div className="mb-2.5 flex items-center justify-between">
-              <span className="inline-flex items-center gap-1.5 font-label text-body-xs font-extrabold uppercase tracking-wider text-brand-navy">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-navy/10 text-brand-navy font-bold">3</span>
-                Financial &amp; Billing
-              </span>
-              <Link
-                href="/billing-pricing/soa"
-                className="font-label text-body-xs font-semibold text-text-grey transition-colors hover:text-brand-navy hover:underline"
-              >
-                /billing-pricing ↗
-              </Link>
-            </div>
-            <div className="flex gap-2">
-              <Link
-                href="/documents?tab=soa"
-                role="tab"
-                aria-selected={activeTab === "soa"}
-                className={`w-full rounded-xl px-3 py-2 text-center font-label text-label transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
-                  activeTab === "soa"
-                    ? "bg-brand-navy text-surface-white font-bold shadow-sm"
-                    : "bg-surface-light-grey text-on-surface hover:bg-outline-variant/30 font-medium"
-                }`}
-              >
-                Statements of Account (SOA)
-              </Link>
-            </div>
-          </div>
-        </div>
+            </Link>
+          );
+        })}
       </div>
 
       {/* Unified Search & Filters */}
