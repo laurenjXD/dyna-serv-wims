@@ -240,9 +240,9 @@ export function UserManagementGrid({
   });
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 max-w-full space-y-6">
       {/* Top Header Card */}
-      <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs space-y-5">
+      <section className="min-w-0 max-w-full rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-5">
           <div>
             <div className="flex items-center gap-2.5">
@@ -307,7 +307,7 @@ export function UserManagementGrid({
         </div>
 
         {/* TanStack Data Table */}
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
+        <div className="min-w-0 max-w-full overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
           <table className="w-full text-left border-collapse min-w-[900px]">
             <thead>
               <tr className="border-b border-slate-200 bg-[#F8FAFC] text-[11px] font-bold uppercase tracking-wider text-slate-600">

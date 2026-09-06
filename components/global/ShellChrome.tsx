@@ -615,7 +615,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
       <main
         id="main-content"
         data-surface={tier}
-        className={`min-h-screen pt-14 transition-[padding-left] duration-200 motion-reduce:transition-none lg:pr-6 lg:pt-[106px] print:!min-h-0 print:!p-0 print:!m-0 ${
+        className={`min-w-0 max-w-full min-h-screen pt-14 transition-[padding-left] duration-200 motion-reduce:transition-none lg:pr-6 lg:pt-[106px] print:!min-h-0 print:!p-0 print:!m-0 ${
           isDesktopOpen ? "lg:pl-[312px]" : "lg:pl-[96px]"
         } ${showFloorTabBar ? "pb-20" : "lg:pb-6"} ${
           tier === "floor" ? "bg-surface" : "bg-background"
@@ -624,8 +624,8 @@ export function ShellChrome({ children }: { children: ReactNode }) {
         <div
           className={
             tier === "floor"
-              ? "px-floor-padding py-5 lg:px-office-margin lg:py-6 print:!p-0 print:!m-0"
-              : "px-4 py-5 md:px-6 lg:px-office-margin lg:py-6 print:!p-0 print:!m-0"
+              ? "min-w-0 max-w-full px-floor-padding py-5 lg:px-office-margin lg:py-6 print:!p-0 print:!m-0"
+              : "min-w-0 max-w-full px-4 py-5 md:px-6 lg:px-office-margin lg:py-6 print:!p-0 print:!m-0"
           }
         >
           {children}

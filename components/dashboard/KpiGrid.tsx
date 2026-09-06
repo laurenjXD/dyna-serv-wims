@@ -204,14 +204,14 @@ export function KpiGrid({
       {/* ─────────────────────────────────────────────────────────────────── */}
       <div className="hidden lg:grid grid-cols-4 gap-4">
         {/* ── CARD 1: Total Inventory Valuation ────────────────────────────── */}
-        <div className="relative overflow-hidden rounded-2xl border border-black/5 bg-white/80 dark:bg-zinc-900/80 p-5 shadow-sm backdrop-blur-md transition-all hover:shadow-md">
-          <div className="flex items-start justify-between">
-            <div>
+        <div className="relative min-w-0 overflow-hidden rounded-2xl border border-black/5 bg-white/80 dark:bg-zinc-900/80 p-5 shadow-sm backdrop-blur-md transition-all hover:shadow-md">
+          <div className="flex min-w-0 items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
               <p className="font-label text-[11px] font-bold uppercase tracking-wider text-text-grey">
                 Total Inventory Valuation
               </p>
-              <div className="mt-1.5 flex items-baseline gap-2">
-                <h2 className="font-mono text-2xl font-black text-brand-navy tracking-tight">
+              <div className="mt-1.5 flex flex-wrap items-baseline gap-2">
+                <h2 className="min-w-0 break-words font-mono text-2xl font-black text-brand-navy tracking-tight">
                   ${valuation.total.toLocaleString()}
                 </h2>
                 <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-2 py-0.5 font-mono text-xs font-bold text-emerald-700 border border-emerald-200/60">
@@ -220,7 +220,7 @@ export function KpiGrid({
                 </span>
               </div>
             </div>
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-50 text-brand-navy border border-blue-200/80 shrink-0">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-brand-navy border border-blue-200/80">
               <DollarSign size={20} />
             </div>
           </div>
@@ -356,4 +356,3 @@ export function KpiGrid({
     </div>
   );
 }
-

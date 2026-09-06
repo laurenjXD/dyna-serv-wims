@@ -108,35 +108,35 @@ export function ReportKpis({ kpis }: ReportKpisProps) {
       {/* ─────────────────────────────────────────────────────────────────── */}
       <div className="hidden lg:grid grid-cols-4 gap-4">
         {/* ── CARD 1: Total Inventory Valuation Report Summary ──────────────── */}
-        <div className="relative overflow-hidden rounded-2xl border border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-900/80 p-5 shadow-sm backdrop-blur-md transition-all hover:shadow-md flex flex-col justify-between">
+        <div className="relative min-w-0 overflow-hidden rounded-2xl border border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-900/80 p-5 shadow-sm backdrop-blur-md transition-all hover:shadow-md flex flex-col justify-between">
           <div>
-            <div className="flex items-start justify-between">
-              <div>
+            <div className="flex min-w-0 items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
                 <p className="font-label text-[11px] font-bold uppercase tracking-wider text-text-grey">
                   Total Inventory Valuation
                 </p>
-                <div className="mt-1.5 flex items-baseline gap-2">
-                  <h2 className="font-mono text-2xl sm:text-3xl font-black text-brand-navy tracking-tight">
+                <div className="mt-1.5 flex flex-wrap items-baseline gap-2">
+                  <h2 className="min-w-0 break-words font-mono text-2xl font-black text-brand-navy tracking-tight sm:text-3xl">
                     ${valuation.toLocaleString()}
                   </h2>
-                  <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-2 py-0.5 font-mono text-xs font-bold text-emerald-700 border border-emerald-200/60">
+                  <span className="inline-flex max-w-full items-center gap-0.5 rounded-full bg-emerald-50 px-2 py-0.5 font-mono text-xs font-bold text-emerald-700 border border-emerald-200/60">
                     <TrendingUp size={12} />
                     +4.2% MTD
                   </span>
                 </div>
               </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-brand-navy border border-blue-200/80 shrink-0">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-brand-navy border border-blue-200/80">
                 <DollarSign size={22} />
               </div>
             </div>
 
             {/* Secondary breakdown pills */}
             <div className="mt-4 pt-3.5 border-t border-slate-100 flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1 font-mono text-xs font-bold text-slate-800 border border-slate-200/60">
+                <span className="inline-flex max-w-full items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1 font-mono text-xs font-bold text-slate-800 border border-slate-200/60 break-words">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand-navy"></span>
                 VMI Consignment: ${(valuation * 0.65 / 1000000).toFixed(1)}M
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1 font-mono text-xs font-bold text-blue-900 border border-blue-200/60">
+                <span className="inline-flex max-w-full items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1 font-mono text-xs font-bold text-blue-900 border border-blue-200/60 break-words">
                 <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
                 Owned Trading: ${(valuation * 0.35 / 1000).toFixed(0)}K
               </span>
