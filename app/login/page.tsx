@@ -14,7 +14,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { signInAction } from "./actions";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -28,14 +28,10 @@ export default function LoginPage() {
     setPending(true);
 
     try {
-      const supabase = createClient();
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const result = await signInAction({ email, password });
 
-      if (authError) {
-        setError(authError.message);
+      if (!result.ok) {
+        setError(result.error);
         return;
       }
 
