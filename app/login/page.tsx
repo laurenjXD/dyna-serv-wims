@@ -35,11 +35,10 @@ export default function LoginPage() {
         return;
       }
 
-      // Force a document navigation after Supabase has written the auth
-      // cookie. Client-side App Router navigation may otherwise reuse the
-      // anonymous RSC payload and make a successful login look like a
-      // redirect loop or a permanently blank session-checking screen.
-      window.location.assign("/");
+      // Go directly to the authenticated dashboard. Routing through `/`
+      // causes a second server authorization hop before the dashboard and
+      // can make a successful sign-in look like it needs to be repeated.
+      window.location.replace("/dashboard");
     } catch {
       setError("An unexpected error occurred. Please try again.");
     } finally {
