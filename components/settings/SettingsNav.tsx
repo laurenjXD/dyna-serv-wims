@@ -21,9 +21,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const SETTINGS_NAV_ITEMS = [
-  { id: "team", label: "Team Members", href: "/settings/team" },
-  { id: "security", label: "Security", href: "/settings/security" },
   { id: "general", label: "General", href: "/settings/general" },
+  { id: "team", label: "Team & Dynamic RBAC", href: "/settings/team" },
+  { id: "security", label: "Security", href: "/settings/security" },
 ] as const;
 
 export function SettingsNav() {
