@@ -175,16 +175,24 @@ export function ShellStateView({ state }: { state: ShellState }) {
       data-testid={`shell-state-${state.kind}`}
       role={roleFor(state)}
       aria-live={roleFor(state) === "alert" ? "assertive" : "polite"}
-      className="flex min-h-[160px] w-full flex-col items-center justify-center gap-2 p-floor-padding text-center font-body text-body-md text-on-surface"
+      className="flex min-h-[220px] w-full flex-col items-center justify-center gap-3 p-floor-padding text-center font-body text-body-md text-on-surface"
     >
       {threePart ? (
         <>
-          <threePart.Icon aria-hidden="true" className="h-8 w-8" />
-          <p data-testid="shell-state-what" className="font-heading font-semibold">
+          <threePart.Icon aria-hidden="true" className="h-8 w-8 text-brand-navy" />
+          <p data-testid="shell-state-what" className="font-heading text-headline-sm font-semibold text-brand-navy">
             {threePart.what}
           </p>
-          <p data-testid="shell-state-why">{threePart.why}</p>
-          <p data-testid="shell-state-next">{threePart.next}</p>
+          <p data-testid="shell-state-why" className="text-text-grey">{threePart.why}</p>
+          <p data-testid="shell-state-next" className="text-text-primary">{threePart.next}</p>
+          {state.kind === "revoked_session" && (
+            <a
+              href="/login"
+              className="mt-3 inline-flex min-h-11 items-center justify-center rounded bg-brand-navy px-6 font-label text-label uppercase tracking-wide text-surface-white hover:bg-brand-royal-blue transition-colors"
+            >
+              Sign In
+            </a>
+          )}
         </>
       ) : (
         <p>{messageFor(state)}</p>
