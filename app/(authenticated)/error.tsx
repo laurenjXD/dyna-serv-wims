@@ -23,8 +23,8 @@ export default function AuthenticatedError({
           We couldn&apos;t load your workspace
         </h1>
         <p className="font-body text-body-md text-text-grey">
-          Your sign-in succeeded, but the workspace data did not finish loading.
-          Try again, or return to the sign-in page if the problem continues.
+          You are still signed in, but this page&apos;s data did not finish
+          loading. Try again or continue to the dashboard.
         </p>
         <div className="flex flex-wrap justify-center gap-3">
           <button
@@ -41,10 +41,10 @@ export default function AuthenticatedError({
             Try again
           </button>
           <a
-            href="/login"
+            href="/dashboard"
             className="inline-flex min-h-11 items-center rounded border border-brand-navy px-5 font-label text-label uppercase tracking-wide text-brand-navy"
           >
-            Return to sign in
+            Go to dashboard
           </a>
         </div>
       </div>
