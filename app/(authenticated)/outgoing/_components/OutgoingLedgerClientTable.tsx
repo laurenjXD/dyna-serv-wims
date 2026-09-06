@@ -163,32 +163,25 @@ export function OutgoingLedgerClientTable({
       },
     },
 
-    // 2. DR Status
+    // 3. Customer Organization
     {
-      accessorKey: "deliveryReceiptStatus",
-      header: "DR Status",
+      accessorKey: "customerPartyName",
+      header: "Customer Organization",
       meta: {
-        filterVariant: "status-pill",
-        filterLabel: "DR Status",
+        filterVariant: "text",
+        filterLabel: "Customer",
       },
-      cell: (info) => {
-        const isUploaded = info.getValue() === "uploaded";
-        return (
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold ${
-              isUploaded
-                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                : "bg-amber-50 text-amber-700 border border-amber-200"
-            }`}
-          >
-            {isUploaded ? <CheckCircle2 size={11} className="text-emerald-600" /> : <AlertCircle size={11} className="text-amber-600" />}
-            {isUploaded ? "Uploaded" : "Missing POD"}
+      cell: (info) => (
+        <div className="flex items-center gap-1.5 min-w-0 max-w-[180px]">
+          <Building2 size={13} className="text-slate-400 shrink-0" />
+          <span className="font-medium text-sm text-slate-800 truncate">
+            {String(info.getValue() || "—")}
           </span>
-        );
-      },
+        </div>
+      ),
     },
 
-    // 2. Flow Type
+    // 4. Flow Type
     {
       accessorKey: "flowType",
       header: "Flow",
@@ -217,55 +210,91 @@ export function OutgoingLedgerClientTable({
       },
     },
 
-    // 3. Delivery Conformance (TDC Selector per Row)
+    // 5. Item Code
     {
-      id: "deliveryConformance",
-      header: "Delivery Conformance (TDC)",
+      accessorKey: "itemCode",
+      header: "Item Code",
       meta: {
-        filterVariant: "multi-select",
-        filterLabel: "Conformance Status",
-        filterOptions: [
-          { label: "✓ Conforming (No Mismatch)", value: "conforming" },
-          { label: "⚠ Quantity Mismatch", value: "qty_mismatch" },
-          { label: "❌ Damaged / QC Issue", value: "damaged" },
-          { label: "⏰ Late / SLA Breach", value: "sla_breach" },
-          { label: "⏳ Pending POD / In-Transit", value: "pending" },
-        ],
+        filterVariant: "text",
+        filterLabel: "Item Code",
       },
-      cell: ({ row }) => {
-        const pickListId = row.original.pickListId ?? row.original.transactionId;
-        const currentStatus = rowConformance[pickListId] ?? (row.original.deliveryReceiptPath ? "conforming" : "pending");
+      cell: (info) => (
+        <span className="font-mono font-bold text-sm text-brand-navy">{String(info.getValue())}</span>
+      ),
+    },
+
+    // 6. Item Name
+    {
+      accessorKey: "itemName",
+      header: "Item Name",
+      meta: {
+        filterVariant: "text",
+        filterLabel: "Item Name",
+      },
+      cell: (info) => (
+        <div className="max-w-[200px] font-medium text-sm text-slate-800 truncate" title={String(info.getValue())}>
+          {String(info.getValue())}
+        </div>
+      ),
+    },
+
+    // 7. Dispatched Qty
+    {
+      accessorKey: "qty",
+      header: "Dispatched Qty",
+      meta: {
+        filterVariant: "numeric-range",
+        filterLabel: "Qty Range",
+        align: "right",
+      },
+      cell: (info) => (
+        <span className="font-mono font-bold text-sm text-slate-900">
+          {Number(info.getValue()).toLocaleString()}
+        </span>
+      ),
+    },
+
+    // 8. From Location
+    {
+      accessorKey: "fromLocationLabel",
+      header: "From Location",
+      meta: {
+        filterVariant: "text",
+        filterLabel: "Location",
+      },
+      cell: (info) => (
+        <span className="inline-flex rounded bg-slate-100 px-2 py-0.5 font-mono text-xs font-bold text-slate-700 border border-slate-200">
+          {String(info.getValue())}
+        </span>
+      ),
+    },
+
+    // 9. DR Status
+    {
+      accessorKey: "deliveryReceiptStatus",
+      header: "DR Status",
+      meta: {
+        filterVariant: "status-pill",
+        filterLabel: "DR Status",
+      },
+      cell: (info) => {
+        const isUploaded = info.getValue() === "uploaded";
         return (
-          <select
-            value={currentStatus}
-            onChange={(e) => {
-              const val = e.target.value as "conforming" | "qty_mismatch" | "damaged" | "sla_breach" | "pending";
-              setRowConformance((prev) => ({ ...prev, [pickListId]: val }));
-            }}
-            aria-label={`Delivery conformance status for ${row.original.pickListNumber || row.original.itemCode}`}
-            className={`rounded-lg px-2 py-1 font-mono text-[11px] font-bold border transition-colors cursor-pointer ${
-              currentStatus === "conforming"
-                ? "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100/70"
-                : currentStatus === "qty_mismatch"
-                ? "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100/70"
-                : currentStatus === "damaged"
-                ? "bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100/70"
-                : currentStatus === "sla_breach"
-                ? "bg-purple-50 text-purple-800 border-purple-200 hover:bg-purple-100/70"
-                : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold ${
+              isUploaded
+                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                : "bg-amber-50 text-amber-700 border border-amber-200"
             }`}
           >
-            <option value="conforming">✓ Conforming (No Mismatch)</option>
-            <option value="qty_mismatch">⚠ Quantity Mismatch</option>
-            <option value="damaged">❌ Damaged / QC Issue</option>
-            <option value="sla_breach">⏰ Late / SLA Breach</option>
-            <option value="pending">⏳ Pending POD / In-Transit</option>
-          </select>
+            {isUploaded ? <CheckCircle2 size={11} className="text-emerald-600" /> : <AlertCircle size={11} className="text-amber-600" />}
+            {isUploaded ? "Uploaded" : "Missing POD"}
+          </span>
         );
       },
     },
 
-    // 4. Proof of Delivery (POD)
+    // 10. Proof of Delivery (POD)
     {
       id: "deliveryReceipt",
       header: "Proof of Delivery",
@@ -330,83 +359,54 @@ export function OutgoingLedgerClientTable({
       },
     },
 
-    // 5. Item Code
+    // 11. Delivery Conformance (TDC Selector - Far Right)
     {
-      accessorKey: "itemCode",
-      header: "Item Code",
+      id: "deliveryConformance",
+      header: "Delivery Conformance (TDC)",
       meta: {
-        filterVariant: "text",
-        filterLabel: "Item Code",
+        filterVariant: "multi-select",
+        filterLabel: "Conformance (TDC)",
+        filterOptions: [
+          { label: "✓ Conforming", value: "conforming" },
+          { label: "⚠ Qty Mismatch", value: "qty_mismatch" },
+          { label: "❌ Damaged / QC", value: "damaged" },
+          { label: "⏰ Late / SLA", value: "sla_breach" },
+          { label: "⏳ Pending POD", value: "pending" },
+        ],
       },
-      cell: (info) => (
-        <span className="font-mono font-bold text-sm text-brand-navy">{String(info.getValue())}</span>
-      ),
-    },
-
-    // 6. Item Name
-    {
-      accessorKey: "itemName",
-      header: "Item Name",
-      meta: {
-        filterVariant: "text",
-        filterLabel: "Item Name",
+      cell: ({ row }) => {
+        const pickListId = row.original.pickListId ?? row.original.transactionId;
+        const currentStatus = rowConformance[pickListId] ?? (row.original.deliveryReceiptPath ? "conforming" : "pending");
+        return (
+          <select
+            value={currentStatus}
+            onChange={(e) => {
+              const val = e.target.value as "conforming" | "qty_mismatch" | "damaged" | "sla_breach" | "pending";
+              setRowConformance((prev) => ({ ...prev, [pickListId]: val }));
+            }}
+            aria-label={`Delivery conformance status for ${row.original.pickListNumber || row.original.itemCode}`}
+            className={`h-7 rounded-lg px-2 py-0 font-mono text-[11px] font-bold border transition-colors cursor-pointer min-w-[140px] ${
+              currentStatus === "conforming"
+                ? "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100/70"
+                : currentStatus === "qty_mismatch"
+                ? "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100/70"
+                : currentStatus === "damaged"
+                ? "bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100/70"
+                : currentStatus === "sla_breach"
+                ? "bg-purple-50 text-purple-800 border-purple-200 hover:bg-purple-100/70"
+                : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+            }`}
+          >
+            <option value="conforming">✓ Conforming</option>
+            <option value="qty_mismatch">⚠ Qty Mismatch</option>
+            <option value="damaged">❌ Damaged / QC</option>
+            <option value="sla_breach">⏰ Late / SLA</option>
+            <option value="pending">⏳ Pending POD</option>
+          </select>
+        );
       },
-      cell: (info) => (
-        <div className="max-w-[200px] font-medium text-sm text-slate-800 truncate" title={String(info.getValue())}>
-          {String(info.getValue())}
-        </div>
-      ),
     },
-
-    // 7. Dispatched Qty
-    {
-      accessorKey: "qty",
-      header: "Dispatched Qty",
-      meta: {
-        filterVariant: "numeric-range",
-        filterLabel: "Qty Range",
-        align: "right",
-      },
-      cell: (info) => (
-        <span className="font-mono font-bold text-sm text-slate-900">
-          {Number(info.getValue()).toLocaleString()}
-        </span>
-      ),
-    },
-
-    // 8. From Location
-    {
-      accessorKey: "fromLocationLabel",
-      header: "From Location",
-      meta: {
-        filterVariant: "text",
-        filterLabel: "Location",
-      },
-      cell: (info) => (
-        <span className="inline-flex rounded bg-slate-100 px-2 py-0.5 font-mono text-xs font-bold text-slate-700 border border-slate-200">
-          {String(info.getValue())}
-        </span>
-      ),
-    },
-
-    // 9. Customer Organization
-    {
-      accessorKey: "customerPartyName",
-      header: "Customer Organization",
-      meta: {
-        filterVariant: "text",
-        filterLabel: "Customer",
-      },
-      cell: (info) => (
-        <div className="flex items-center gap-1.5 min-w-0 max-w-[180px]">
-          <Building2 size={13} className="text-slate-400 shrink-0" />
-          <span className="font-medium text-sm text-slate-800 truncate">
-            {String(info.getValue() || "—")}
-          </span>
-        </div>
-      ),
-    },
-  ], [rowConformance, removeDeliveryReceiptAction, uploadDeliveryReceiptAction]);
+  ], [rowConformance, removeDeliveryReceiptAction, uploadDeliveryReceiptAction, drGroups]);
 
   return (
     <div className="space-y-4">
