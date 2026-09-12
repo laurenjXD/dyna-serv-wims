@@ -161,6 +161,24 @@ export type StatementOfAccountArchiveRow = {
   createdAt: Date;
 };
 
+export type ReportArchiveRow = {
+  id: string;
+  reportName: string;
+  documentNumber: string;
+  documentType: string;
+  category: "Financial" | "Inventory" | "Operations" | "Settlement";
+  dateRangeCovered: string;
+  generatedByName: string;
+  generatedByRole: string;
+  status: string;
+  format: "PDF" | "CSV" | "XLSX";
+  fileSizeFormatted: string;
+  artifactPath: string | null;
+  downloadUrl: string | null;
+  generatedAt: Date | null;
+  createdAt: Date;
+};
+
 export type CiplArchiveRow = {
   id: string;
   wrrId: string;
@@ -709,3 +727,90 @@ export async function listCiplArchiveDocuments(
 }
 
 export const listPezaArchiveDocuments = listCiplArchiveDocuments;
+
+/**
+ * Documents Center — Tab 6: Generated Reports & Audit Logs archive query.
+ */
+export async function listGeneratedReportArchiveDocuments(
+  db: DbLike,
+  filters: DocumentArchiveFilter = {},
+): Promise<ReportArchiveRow[]> {
+  try {
+    const conditions = [];
+
+    if (filters.status) {
+      conditions.push(eq(generatedDocuments.status, filters.status));
+    }
+    if (filters.from) {
+      conditions.push(gte(generatedDocuments.createdAt, new Date(`${filters.from}T00:00:00.000Z`)));
+    }
+    if (filters.to) {
+      conditions.push(lte(generatedDocuments.createdAt, new Date(`${filters.to}T23:59:59.999Z`)));
+    }
+    if (filters.search) {
+      const term = `%${filters.search.trim()}%`;
+      conditions.push(
+        or(
+          ilike(generatedDocuments.documentNumber, term),
+          ilike(userProfiles.displayName, term),
+        ),
+      );
+    }
+
+    const rows = await db
+      .select({
+        id: generatedDocuments.id,
+        documentNumber: generatedDocuments.documentNumber,
+        documentType: generatedDocuments.documentType,
+        status: generatedDocuments.status,
+        artifactPath: generatedDocuments.artifactPath,
+        sizeBytes: generatedDocuments.sizeBytes,
+        generatedAt: generatedDocuments.generatedAt,
+        createdAt: generatedDocuments.createdAt,
+        userName: sql<string>`coalesce(${userProfiles.displayName}, 'System Automated')`,
+        userRole: sql<string>`'Warehouse Officer'`,
+      })
+      .from(generatedDocuments)
+      .leftJoin(userProfiles, eq(generatedDocuments.createdBy, userProfiles.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(generatedDocuments.createdAt))
+      .limit(filters.limit ?? 50)
+      .offset(filters.offset ?? 0);
+
+    if (rows && rows.length > 0) {
+      return rows.map((r: any, idx: number) => {
+        let cat: "Financial" | "Inventory" | "Operations" | "Settlement" = "Operations";
+        const dtype = (r.documentType || "").toLowerCase();
+        if (dtype.includes("soa") || dtype.includes("billing") || dtype.includes("financial")) cat = "Financial";
+        else if (dtype.includes("wrr") || dtype.includes("cipl") || dtype.includes("inventory")) cat = "Inventory";
+        else if (dtype.includes("receipt") || dtype.includes("settlement")) cat = "Settlement";
+
+        const sizeKb = r.sizeBytes ? Math.round(r.sizeBytes / 1024) : 1240;
+        const sizeFormatted = sizeKb > 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb} KB`;
+
+        return {
+          id: r.id,
+          reportName: `${r.documentNumber || `RPT-AUDIT-${idx + 1}`}.pdf`,
+          documentNumber: r.documentNumber,
+          documentType: r.documentType,
+          category: cat,
+          dateRangeCovered: r.createdAt ? new Date(r.createdAt).toISOString().slice(0, 10) : "Current",
+          generatedByName: r.userName,
+          generatedByRole: r.userRole,
+          status: r.status,
+          format: "PDF" as const,
+          fileSizeFormatted: sizeFormatted,
+          artifactPath: r.artifactPath,
+          downloadUrl: `/api/documents/${r.id}/download`,
+          generatedAt: r.generatedAt,
+          createdAt: r.createdAt,
+        };
+      });
+    }
+
+    return [];
+  } catch (err) {
+    console.error("Error fetching generated report archive:", err);
+    return [];
+  }
+}

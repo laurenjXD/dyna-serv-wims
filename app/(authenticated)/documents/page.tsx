@@ -21,6 +21,7 @@ import {
   listPickListArchiveDocuments,
   listAcknowledgementReceiptArchiveDocuments,
   listStatementOfAccountArchiveDocuments,
+  listGeneratedReportArchiveDocuments,
 } from "@/lib/db/queries/documents";
 
 import { DocumentsHeader } from "./_components/DocumentsHeader";
@@ -30,6 +31,7 @@ import { CiplDocumentsTable } from "./_components/CiplDocumentsTable";
 import { PickListsTable } from "./_components/PickListsTable";
 import { AcknowledgementReceiptsTable } from "./_components/AcknowledgementReceiptsTable";
 import { StatementsOfAccountTable } from "./_components/StatementsOfAccountTable";
+import { ReportDocumentsTable } from "./_components/ReportDocumentsTable";
 
 interface PageProps {
   searchParams: Promise<{
@@ -86,8 +88,8 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
   const canReadFinancial = financialPerm.kind === "authorized";
 
   // Active tab resolution — Real warehouse document categories:
-  // WRR (PDFs) | CI/PL (Uploaded invoices & packing lists) | Pick Lists & DRA/WRF | Delivery Receipts & POD | SOAs
-  const validTabs = ["wrr", "cipl", "pick-lists", "acknowledgement-receipts", "soa"] as const;
+  // WRR | CI/PL | Pick Lists | Delivery Receipts | SOAs | Reports & Audits
+  const validTabs = ["wrr", "cipl", "pick-lists", "acknowledgement-receipts", "soa", "reports"] as const;
   type DocTab = typeof validTabs[number];
   const activeTab: DocTab = validTabs.includes(tabParam as DocTab) ? (tabParam as DocTab) : "wrr";
 
@@ -102,13 +104,14 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
   };
 
   // Parallel loading of organization options & active tab data
-  const [partiesResult, wrrRows, ciplRows, pickListRows, arRows, soaRows] = await Promise.all([
+  const [partiesResult, wrrRows, ciplRows, pickListRows, arRows, soaRows, reportRows] = await Promise.all([
     listParties(db, { limit: 100 }),
     activeTab === "wrr" ? listWrrArchiveDocuments(db, filters) : Promise.resolve([]),
     activeTab === "cipl" ? listCiplArchiveDocuments(db, filters) : Promise.resolve([]),
     activeTab === "pick-lists" ? listPickListArchiveDocuments(db, filters) : Promise.resolve([]),
     activeTab === "acknowledgement-receipts" ? listAcknowledgementReceiptArchiveDocuments(db, filters) : Promise.resolve([]),
     activeTab === "soa" && canReadFinancial ? listStatementOfAccountArchiveDocuments(db, filters) : Promise.resolve([]),
+    activeTab === "reports" ? listGeneratedReportArchiveDocuments(db, filters) : Promise.resolve([]),
   ]);
 
   const organizationOptions: FilterPartyOption[] = partiesResult.rows.map((p) => ({
@@ -149,6 +152,12 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
       { label: "Issued", value: "issued" },
       { label: "Voided", value: "voided" },
     ],
+    reports: [
+      { label: "Ready", value: "ready" },
+      { label: "Pending", value: "pending" },
+      { label: "Generating", value: "generating" },
+      { label: "Failed", value: "failed" },
+    ],
   };
 
   const tabLabelMap: Record<DocTab, string> = {
@@ -157,6 +166,7 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
     "pick-lists": "Pick List & DRA/WRF",
     "acknowledgement-receipts": "Delivery Receipt & POD",
     soa: "Statement of Account",
+    reports: "Generated Reports & Audit Logs",
   };
 
   const currentCount =
@@ -168,7 +178,9 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
       ? pickListRows.length
       : activeTab === "acknowledgement-receipts"
       ? arRows.length
-      : soaRows.length;
+      : activeTab === "soa"
+      ? soaRows.length
+      : reportRows.length;
 
   return (
     <div className="mx-auto max-w-container">
@@ -190,6 +202,7 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
           { key: "pick-lists", label: "Pick Lists & DRA", count: pickListRows.length },
           { key: "acknowledgement-receipts", label: "Delivery Receipts (POD / AR)", count: arRows.length },
           { key: "soa", label: "Statements of Account (SOA)", count: soaRows.length },
+          { key: "reports", label: "Reports & Audit Logs", count: reportRows.length },
         ].map((tab) => {
           const isActive = activeTab === tab.key;
           return (
@@ -240,6 +253,7 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
             canReadFinancial={canReadFinancial}
           />
         )}
+        {activeTab === "reports" && <ReportDocumentsTable rows={reportRows} />}
       </div>
     </div>
   );
