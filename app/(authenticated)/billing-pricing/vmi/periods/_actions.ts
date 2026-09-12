@@ -11,6 +11,7 @@ import { createVmiChargeLine } from "@/lib/actions/vmi-charge-lines";
 import { ensureVmiDocumentArtifacts } from "@/lib/billing/vmi-document-artifacts";
 import { issueVmiPeriodDocuments } from "@/lib/billing/vmi-period-issuance";
 import { getStorageClient } from "@/lib/supabase/storage";
+import { correctVmiPeriod } from "@/lib/billing/vmi-period-correction";
 
 export type PeriodCloseState = {
   ok?: boolean;
@@ -103,6 +104,28 @@ export type VmiPaymentState = {
 };
 
 export type VmiPeriodIssueState = { ok?: boolean; error?: string };
+export type VmiPeriodCorrectionState = { ok?: boolean; replacementId?: string; error?: string };
+
+export async function correctVmiPeriodAction(_prev: VmiPeriodCorrectionState, formData: FormData): Promise<VmiPeriodCorrectionState> {
+  const resolver = await createPageResolver();
+  const permission = await requirePermission(resolver, "reporting.financial_read");
+  if (permission.kind !== "authorized" || !permission.context.activeRoleKeys.includes("administrator")) return { ok: false, error: "Only an Administrator can correct an issued VMI period." };
+  const periodId = String(formData.get("periodId") ?? "");
+  try {
+    const replacement = await correctVmiPeriod(db, { periodId, actorId: permission.context.userId, generationDate: new Date().toISOString().slice(0, 10) });
+    await ensureVmiDocumentArtifacts(db, {
+      id: replacement.id, periodNumber: replacement.periodNumber, partyId: replacement.partyId,
+      periodStartDate: replacement.periodStartDate, periodEndDate: replacement.periodEndDate,
+      billingStatementTotalUsd: replacement.billingStatementTotalUsd,
+      soaOpeningBalanceUsd: replacement.soaOpeningBalanceUsd, soaClosingBalanceUsd: replacement.soaClosingBalanceUsd,
+      billingCurrency: replacement.billingCurrency,
+    });
+    revalidatePath("/billing-pricing");
+    revalidatePath(`/billing-pricing/vmi/periods/${periodId}`);
+    revalidatePath(`/billing-pricing/vmi/periods/${replacement.id}`);
+    return { ok: true, replacementId: replacement.id };
+  } catch (cause) { return { ok: false, error: cause instanceof Error ? cause.message : "Unable to create correction." }; }
+}
 
 /** Issue is deliberately separate from draft close: it writes all four PDF
  * artifacts to private Storage before making the period immutable. */

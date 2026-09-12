@@ -51,6 +51,10 @@ export type VmiPeriodCloseRequest = {
   periodStartDate: string; // 'YYYY-MM-DD'
   periodEndDate: string; // 'YYYY-MM-DD'
   generationDate: string; // 'YYYY-MM-DD' — passed through to D.5 unchanged
+  /** Used only by the correction command; never caller-controlled UI data. */
+  isCorrection?: boolean;
+  /** The issued source period that is allowed to coexist while its revision is prepared. */
+  correctionOfPeriodId?: string;
 };
 
 export type VmiPeriodCloseResult = {
@@ -179,6 +183,7 @@ export async function closeVmiPeriod(
       row.partyId === request.partyId &&
       row.periodStartDate === request.periodStartDate &&
       row.periodEndDate === request.periodEndDate &&
+      row.id !== request.correctionOfPeriodId &&
       row.status !== "voided",
   );
 
@@ -276,7 +281,7 @@ export async function closeVmiPeriod(
     partyCode: request.partyCode,
     year: request.year,
     month: request.month,
-    isCorrection: false,
+    isCorrection: request.isCorrection ?? false,
   });
 
   // 11. SOA balance (D.6), using the just-computed billingStatementTotalUsd.

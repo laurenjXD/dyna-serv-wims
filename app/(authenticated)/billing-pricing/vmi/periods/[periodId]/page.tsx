@@ -13,6 +13,7 @@ import { pickLists } from "@/lib/db/schema/pick_lists";
 import { PaymentForm } from "./_components/PaymentForm";
 import { ChargeLineForm } from "./_components/ChargeLineForm";
 import { IssuePeriodForm } from "./_components/IssuePeriodForm";
+import { CorrectPeriodForm } from "./_components/CorrectPeriodForm";
 
 interface Props {
   params: Promise<{ periodId: string }>;
@@ -174,6 +175,7 @@ export default async function VmiPeriodDetailPage({ params }: Props) {
           })}
         </div>
         {period.status === "draft" && <IssuePeriodForm periodId={period.id} />}
+        {period.status === "issued" && <CorrectPeriodForm periodId={period.id} />}
       </section>
 
       <ChargeLineForm
