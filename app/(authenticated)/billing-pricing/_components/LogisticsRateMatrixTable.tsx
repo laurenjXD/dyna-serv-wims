@@ -187,8 +187,16 @@ export function LogisticsRateMatrixTable() {
             <tbody className="divide-y divide-slate-100 font-body">
               {pagedEntries.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-text-grey">
-                    No destinations match &quot;{searchQuery}&quot;.
+                  <td colSpan={8} className="p-10 text-center">
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="mb-3.5 flex h-12 w-12 items-center justify-center rounded-2xl border border-brand-navy/20 bg-brand-navy/10 text-brand-navy shadow-2xs">
+                        <Truck size={24} aria-hidden="true" />
+                      </div>
+                      <h4 className="font-heading text-title-sm font-bold text-on-surface">No Destinations Match Filter</h4>
+                      <p className="mt-1 max-w-sm font-body text-body-sm text-text-grey">
+                        No delivery destinations match &quot;{searchQuery}&quot;. Try clearing the search box to view all freight routes.
+                      </p>
+                    </div>
                   </td>
                 </tr>
               ) : (

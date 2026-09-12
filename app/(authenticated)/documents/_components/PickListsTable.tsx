@@ -47,9 +47,14 @@ export function PickListsTable({ rows }: PickListsTableProps) {
 
   if (rows.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-1">
-        <Package size={40} className="text-text-grey" aria-hidden="true" />
-        <p className="font-body text-body-md text-text-grey">No pick list documents match the selected filters.</p>
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-outline-variant/60 bg-surface-white p-10 text-center shadow-2xs">
+        <div className="mb-3.5 flex h-12 w-12 items-center justify-center rounded-2xl border border-brand-navy/20 bg-brand-navy/10 text-brand-navy shadow-2xs">
+          <Package size={24} aria-hidden="true" />
+        </div>
+        <h3 className="font-heading text-title-sm font-bold text-on-surface">No Pick Lists or DRA Documents</h3>
+        <p className="mt-1 max-w-md font-body text-body-sm text-text-grey">
+          No outbound pick lists or delivery receipts match your active filters. Generate new pick lists in Outgoing Withdrawal to view them here.
+        </p>
       </div>
     );
   }

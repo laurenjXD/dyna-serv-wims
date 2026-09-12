@@ -47,10 +47,13 @@ export function AcknowledgementReceiptsTable({ rows }: AcknowledgementReceiptsTa
 
   if (rows.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-1">
-        <CheckCircle2 size={40} className="text-text-grey" aria-hidden="true" />
-        <p className="font-body text-body-md text-text-grey">
-          No delivery receipts or acknowledgement receipts match the selected filters.
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-outline-variant/60 bg-surface-white p-10 text-center shadow-2xs">
+        <div className="mb-3.5 flex h-12 w-12 items-center justify-center rounded-2xl border border-brand-navy/20 bg-brand-navy/10 text-brand-navy shadow-2xs">
+          <CheckCircle2 size={24} aria-hidden="true" />
+        </div>
+        <h3 className="font-heading text-title-sm font-bold text-on-surface">No Delivery Receipts or ARs</h3>
+        <p className="mt-1 max-w-md font-body text-body-sm text-text-grey">
+          No signed acknowledgement receipts or proof of delivery records match your filters. Dispatched releases will appear here automatically.
         </p>
       </div>
     );

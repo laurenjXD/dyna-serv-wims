@@ -202,12 +202,13 @@ export function VmiContractTermsTable({ rows, parties: _parties }: Props) {
       {/* Main Table */}
       <div className="overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
         {filteredAndSortedRows.length === 0 ? (
-          <div className="p-12 text-center">
-            <p className="font-body text-body-md text-text-grey">
-              No VMI Contract Terms match your search/filter.
-            </p>
-            <p className="mt-1 font-body text-body-sm text-text-grey">
-              Click <strong>&quot;Configure VMI Contract&quot;</strong> above to define storage and handling rates for a VMI Organization.
+          <div className="flex flex-col items-center justify-center p-10 text-center">
+            <div className="mb-3.5 flex h-12 w-12 items-center justify-center rounded-2xl border border-brand-navy/20 bg-brand-navy/10 text-brand-navy shadow-2xs">
+              <FileText size={24} aria-hidden="true" />
+            </div>
+            <h3 className="font-heading text-title-sm font-bold text-on-surface">No VMI Contract Terms Found</h3>
+            <p className="mt-1 max-w-md font-body text-body-sm text-text-grey">
+              No organization contract terms match your search or filter criteria. Click <strong>&quot;Manage Contracts &amp; Rate Cards&quot;</strong> to configure client pricing rules.
             </p>
           </div>
         ) : (
