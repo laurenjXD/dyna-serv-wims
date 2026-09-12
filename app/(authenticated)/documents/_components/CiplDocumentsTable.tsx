@@ -139,16 +139,14 @@ export function CiplDocumentsTable({ rows }: CiplDocumentsTableProps) {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
+                      <div className="flex items-center justify-end gap-2">
                         {row.ciplFileUrl ? (
                           <a
                             href={row.ciplFileUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex h-8 items-center gap-1 rounded border border-outline-variant/40 bg-surface-white px-2.5 font-label text-body-xs font-bold text-brand-navy hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                            download
+                            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 font-label text-label font-bold text-brand-navy hover:bg-background transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
                           >
-                            <Download size={13} />
-                            Download
+                            <Download size={14} /> Download
                           </a>
                         ) : (
                           <button
@@ -158,22 +156,27 @@ export function CiplDocumentsTable({ rows }: CiplDocumentsTableProps) {
                                 id: row.id,
                                 documentNumber: displayInvoice,
                                 title: `Commercial Invoice / Packing List — ${displayInvoice}`,
-                                documentType: "Inbound CI/PL / Invoice",
+                                documentType: "cipl",
                                 status: row.status,
                                 organizationName: row.vendorPartyName,
-                                previewUrl: row.ciplFileUrl,
-                                downloadUrl: row.ciplFileUrl,
+                                previewUrl: `/receiving/${row.id}/print`,
+                                downloadUrl: `/receiving/${row.id}/print`,
                                 snapshotHash: null,
                                 generatedAt: row.confirmedAt ?? row.createdAt,
                                 actorName: null,
                               });
                             }}
-                            className="inline-flex h-8 items-center gap-1 rounded border border-outline-variant/40 bg-surface-white px-2.5 font-label text-body-xs font-bold text-brand-navy hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 font-label text-label font-bold text-brand-navy hover:bg-background transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
                           >
-                            <Eye size={13} />
-                            Preview
+                            <Eye size={14} /> Preview PDF
                           </button>
                         )}
+                        <Link
+                          href={`/receiving/${row.id}`}
+                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-outline-variant/40 bg-surface-white px-3 font-label text-label font-medium text-text-grey hover:text-on-surface hover:bg-surface-light-grey transition-colors focus:outline-none"
+                        >
+                          <ExternalLink size={14} /> WRR Ref
+                        </Link>
                       </div>
                     </td>
                   </tr>

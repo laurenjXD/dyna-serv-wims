@@ -129,7 +129,7 @@ export function WrrDocumentsTable({ rows }: WrrDocumentsTableProps) {
                             setPreviewDoc({
                               id: r.id,
                               documentNumber: r.wrrNumber,
-                              title: "Warehouse Receiving Report",
+                              title: "Warehouse Receiving Report (WRR)",
                               documentType: "wrr",
                               status: r.status,
                               generatedAt: r.confirmedAt ?? r.createdAt,
@@ -139,16 +139,38 @@ export function WrrDocumentsTable({ rows }: WrrDocumentsTableProps) {
                               downloadUrl: `/receiving/${r.id}/print`,
                             })
                           }
-                          className="inline-flex h-9 items-center gap-1 rounded-lg border border-outline-variant/40 bg-surface-white px-2.5 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 font-label text-label font-bold text-brand-navy hover:bg-background transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
                         >
-                          <Eye size={14} /> Preview
+                          <Eye size={14} /> Preview WRR
                         </button>
-                        <Link
-                          href={`/receiving/${r.id}`}
-                          className="inline-flex h-9 items-center gap-1 rounded-lg bg-surface-light-grey px-2.5 font-label text-label font-medium text-on-surface hover:bg-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPreviewDoc({
+                              id: r.id,
+                              documentNumber: `IGR-${r.wrrNumber.replace(/^WRR-/, "")}`,
+                              title: "Inbound Goods Turnover Receipt",
+                              documentType: "inbound_receipt",
+                              status: r.status,
+                              generatedAt: r.confirmedAt ?? r.createdAt,
+                              organizationName: r.vendorPartyName,
+                              actorName: r.stagedByUserName,
+                              previewUrl: `/receiving/${r.id}/receipt`,
+                              downloadUrl: `/receiving/${r.id}/receipt`,
+                            })
+                          }
+                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-outline-variant/40 bg-surface-white px-3 font-label text-label font-bold text-on-surface hover:bg-surface-light-grey transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
                         >
-                          <ExternalLink size={14} /> View WRR
-                        </Link>
+                          <FileText size={14} /> Inbound Receipt
+                        </button>
+                        <a
+                          href={`/receiving/${r.id}/print`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-outline-variant/40 bg-surface-white px-3 font-label text-label font-medium text-text-grey hover:text-on-surface hover:bg-surface-light-grey transition-colors focus:outline-none"
+                        >
+                          <ExternalLink size={14} /> Print View
+                        </a>
                       </div>
                     </td>
                   </tr>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Lock, FileText, Download, ShieldAlert, Eye, Building } from "lucide-react";
+import { Lock, FileText, Download, ShieldAlert, Eye, Building, ExternalLink } from "lucide-react";
 import type { StatementOfAccountArchiveRow } from "@/lib/db/queries/documents";
 import { DocumentPreviewModal, type PreviewDocData } from "./DocumentPreviewModal";
 import { TablePagination } from "@/components/ui/TablePagination";
@@ -141,25 +141,27 @@ export function StatementsOfAccountTable({
                             setPreviewDoc({
                               id: r.id,
                               documentNumber: r.periodNumber,
-                              title: "Statement of Account (SOA Bundle)",
+                              title: "Statement of Account (SOA Package)",
                               documentType: "soa",
                               status: r.status,
                               organizationName: r.partyName,
                               actorName: r.closedByUserName,
                               generatedAt: r.closedAt ?? r.createdAt,
-                              previewUrl: `/billing-pricing/soa/${r.id}`,
-                              downloadUrl: `/billing-pricing/soa/${r.id}`,
+                              previewUrl: `/billing-pricing/soa/${r.partyId.slice(0, 8)}?partyId=${r.partyId}`,
+                              downloadUrl: `/billing-pricing/soa/${r.partyId.slice(0, 8)}?partyId=${r.partyId}`,
                             })
                           }
-                          className="inline-flex h-9 items-center gap-1 rounded-lg border border-outline-variant/40 bg-surface-white px-2.5 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 font-label text-label font-bold text-brand-navy hover:bg-background transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
                         >
-                          <Eye size={14} /> Preview
+                          <Eye size={14} /> Preview PDF
                         </button>
                         <a
-                          href={`/billing-pricing?partyId=${r.partyId}`}
-                          className="inline-flex h-9 items-center gap-1 rounded-lg bg-surface-light-grey px-2.5 font-label text-label font-medium text-on-surface hover:bg-outline-variant/30"
+                          href={`/billing-pricing/soa/${r.partyId.slice(0, 8)}?partyId=${r.partyId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-outline-variant/40 bg-surface-white px-3 font-label text-label font-medium text-text-grey hover:text-on-surface hover:bg-surface-light-grey transition-colors focus:outline-none"
                         >
-                          <Building size={14} /> Ledger
+                          <ExternalLink size={14} /> Print View
                         </a>
                       </div>
                     </td>

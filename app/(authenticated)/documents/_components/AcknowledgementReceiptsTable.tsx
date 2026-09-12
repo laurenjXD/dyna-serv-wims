@@ -139,7 +139,7 @@ export function AcknowledgementReceiptsTable({ rows }: AcknowledgementReceiptsTa
                             setPreviewDoc({
                               id: r.id,
                               documentNumber: r.documentNumber,
-                              title: "Delivery Receipt / Acknowledgement Receipt",
+                              title: "Delivery Receipt & Acknowledgement (DRA)",
                               documentType: "acknowledgement_receipt",
                               status: r.status,
                               snapshotHash: r.snapshotHash,
@@ -150,24 +150,26 @@ export function AcknowledgementReceiptsTable({ rows }: AcknowledgementReceiptsTa
                               downloadUrl: `/pick-lists/${r.pickListId}/receipt`,
                             })
                           }
-                          className="inline-flex h-9 items-center gap-1 rounded-lg border border-outline-variant/40 bg-surface-white px-2.5 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 font-label text-label font-bold text-brand-navy hover:bg-background transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
                         >
-                          <Eye size={14} /> Preview
+                          <Eye size={14} /> Preview PDF
                         </button>
                         <button
                           type="button"
                           onClick={() => setReprintTarget({ id: r.id, number: r.documentNumber })}
                           disabled={r.status !== "ready"}
-                          className="inline-flex h-9 items-center gap-1 rounded-lg border border-status-pending/40 bg-status-pending/10 px-2.5 font-label text-label font-bold text-status-pending hover:bg-status-pending/20 focus:outline-none focus:ring-2 focus:ring-status-pending disabled:opacity-40"
+                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-status-pending/40 bg-status-pending/10 px-3 font-label text-label font-bold text-status-pending hover:bg-status-pending/20 focus:outline-none focus:ring-2 focus:ring-status-pending disabled:opacity-40 transition-colors"
                         >
                           <RotateCw size={14} /> Reprint
                         </button>
-                        <Link
+                        <a
                           href={`/pick-lists/${r.pickListId}/receipt`}
-                          className="inline-flex h-9 items-center gap-1 rounded-lg bg-surface-light-grey px-2.5 font-label text-label font-medium text-on-surface hover:bg-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-outline-variant/40 bg-surface-white px-3 font-label text-label font-medium text-text-grey hover:text-on-surface hover:bg-surface-light-grey transition-colors focus:outline-none"
                         >
-                          <ExternalLink size={14} /> View Receipt
-                        </Link>
+                          <ExternalLink size={14} /> Print View
+                        </a>
                       </div>
                     </td>
                   </tr>

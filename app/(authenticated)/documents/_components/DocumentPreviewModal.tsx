@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   X,
   Printer,
@@ -44,6 +44,19 @@ export function DocumentPreviewModal({
   onReprint,
 }: DocumentPreviewModalProps) {
   const [showMetadata, setShowMetadata] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState<number>(100);
+
+  // Close on Escape key
+  useEffect(() => {
+    if (!doc) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [doc, onClose]);
 
   if (!doc) return null;
 
@@ -61,75 +74,107 @@ export function DocumentPreviewModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="preview-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-2 sm:p-4 backdrop-blur-md"
     >
-      <div className="relative flex max-h-[92vh] w-full max-w-5xl flex-col rounded-3xl border border-outline-variant/30 bg-surface-white shadow-elevation-3">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-outline-variant/30 px-6 py-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-navy/10 text-brand-navy">
+      <div className="relative flex h-[94vh] w-full max-w-6xl flex-col rounded-3xl border border-outline-variant/30 bg-surface-white shadow-elevation-3 overflow-hidden">
+        {/* Header Bar */}
+        <div className="flex flex-wrap items-center justify-between border-b border-outline-variant/30 bg-surface px-6 py-3.5 gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-navy/10 text-brand-navy">
               <FileText size={20} />
             </div>
-            <div>
-              <h2
-                id="preview-modal-title"
-                className="font-heading text-headline-md font-bold text-on-surface"
-              >
-                {doc.title} — {doc.documentNumber}
-              </h2>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h2
+                  id="preview-modal-title"
+                  className="truncate font-heading text-headline-sm font-extrabold text-on-surface"
+                >
+                  {doc.title}
+                </h2>
+                <span className="rounded bg-brand-navy/10 px-2 py-0.5 font-mono text-[11px] font-bold text-brand-navy">
+                  {doc.documentNumber}
+                </span>
+              </div>
               {doc.organizationName && (
-                <p className="font-body text-body-sm text-text-grey">
-                  Organization: {doc.organizationName}
+                <p className="truncate font-body text-body-xs text-text-grey">
+                  Organization: <strong className="text-on-surface">{doc.organizationName}</strong>
                 </p>
               )}
             </div>
           </div>
 
+          {/* Action Toolbar */}
           <div className="flex items-center gap-2">
+            {/* Zoom Controls */}
+            <div className="hidden sm:flex items-center rounded-xl border border-outline-variant/30 bg-surface-light-grey/40 px-1 py-0.5">
+              <button
+                type="button"
+                onClick={() => setZoomLevel((z) => Math.max(70, z - 10))}
+                className="h-8 w-8 rounded-lg font-bold text-text-grey hover:bg-surface-white hover:text-on-surface"
+                title="Zoom Out"
+              >
+                -
+              </button>
+              <span className="px-2 font-mono text-mono-xs text-text-grey font-bold">
+                {zoomLevel}%
+              </span>
+              <button
+                type="button"
+                onClick={() => setZoomLevel((z) => Math.min(130, z + 10))}
+                className="h-8 w-8 rounded-lg font-bold text-text-grey hover:bg-surface-white hover:text-on-surface"
+                title="Zoom In"
+              >
+                +
+              </button>
+            </div>
+
             {onReprint && doc.status === "ready" && (
               <button
                 type="button"
                 onClick={() => onReprint(doc)}
-                className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-status-pending/40 bg-status-pending/10 px-3 font-label text-label font-bold text-status-pending hover:bg-status-pending/20 focus:outline-none focus:ring-2 focus:ring-status-pending"
+                className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-status-pending/40 bg-status-pending/10 px-3 font-label text-label font-bold text-status-pending hover:bg-status-pending/20 focus:outline-none focus:ring-2 focus:ring-status-pending transition-colors"
               >
-                <RotateCw size={16} />
+                <RotateCw size={15} />
                 Reprint
               </button>
             )}
+
             <button
               type="button"
               onClick={handlePrint}
-              className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-outline-variant/40 bg-surface-white px-3 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-outline-variant/40 bg-surface-white px-3 font-label text-label font-bold text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy transition-colors"
             >
-              <Printer size={16} />
+              <Printer size={15} />
               Print
             </button>
+
             {doc.downloadUrl && (
               <a
                 href={doc.downloadUrl}
                 download
-                className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-brand-navy px-4 font-label text-label font-bold text-surface-white hover:bg-brand-navy/90 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-brand-navy px-3.5 font-label text-label font-bold text-surface-white hover:bg-brand-navy/90 focus:outline-none focus:ring-2 focus:ring-brand-navy transition-colors"
               >
-                <Download size={16} />
+                <Download size={15} />
                 Download PDF
               </a>
             )}
+
             <button
               type="button"
               onClick={onClose}
-              className="ml-2 inline-flex h-10 w-10 items-center justify-center rounded-xl text-text-grey hover:bg-surface-light-grey hover:text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="ml-1 inline-flex h-9 w-9 items-center justify-center rounded-xl text-text-grey hover:bg-surface-light-grey hover:text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
               aria-label="Close preview modal"
             >
-              <X size={20} />
+              <X size={18} />
             </button>
           </div>
         </div>
 
         {/* Content Body */}
-        <div className="flex flex-1 flex-col overflow-y-auto p-6">
-          {/* 3-Component Error state if preview failed */}
+        <div className="flex flex-1 flex-col overflow-y-auto bg-slate-200/70 p-4 sm:p-6">
+          {/* Error State */}
           {doc.error ? (
-            <div className="my-auto rounded-2xl border border-status-held/30 bg-status-held/10 p-6 text-left">
+            <div className="my-auto mx-auto max-w-2xl rounded-2xl border border-status-held/30 bg-surface-white p-6 shadow-elevation-2">
               <div className="flex items-start gap-3">
                 <AlertTriangle className="mt-0.5 shrink-0 text-status-held" size={24} />
                 <div className="space-y-3">
@@ -141,33 +186,38 @@ export function DocumentPreviewModal({
                       <strong>Why it failed:</strong> {doc.error.whyItFailed}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-3 font-body text-body-sm text-text-grey">
+                  <div className="rounded-xl border border-outline-variant/30 bg-surface-light-grey/40 p-3 font-body text-body-sm text-text-grey">
                     <strong>Next Action / Solution:</strong> {doc.error.nextAction}
                   </div>
                 </div>
               </div>
             </div>
           ) : doc.previewUrl ? (
-            <div className="relative min-h-[480px] flex-1 overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-light-grey/40">
-              <iframe
-                src={doc.previewUrl}
-                title={`Preview ${doc.documentNumber}`}
-                className="h-full min-h-[500px] w-full border-0"
-              />
+            <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-start transition-all">
+              <div
+                className="w-full rounded-xl bg-surface-white shadow-elevation-3 transition-transform duration-150 origin-top overflow-hidden border border-outline-variant/30"
+                style={{ transform: `scale(${zoomLevel / 100})` }}
+              >
+                <iframe
+                  src={doc.previewUrl}
+                  title={`Preview ${doc.documentNumber}`}
+                  className="h-[75vh] w-full border-0 bg-surface-white"
+                />
+              </div>
             </div>
           ) : (
-            <div className="flex min-h-[360px] flex-col items-center justify-center rounded-2xl border border-dashed border-outline-variant/40 bg-surface-light-grey/20 p-8 text-center">
-              <FileText size={48} className="text-text-grey" />
-              <p className="mt-3 font-body text-body-md text-text-grey">
+            <div className="mx-auto my-auto flex max-w-md flex-col items-center justify-center rounded-2xl border border-dashed border-outline-variant/40 bg-surface-white p-8 text-center shadow-elevation-1">
+              <FileText size={48} className="text-brand-navy" />
+              <p className="mt-3 font-body text-body-md text-on-surface font-semibold">
                 Digital document preview rendered inline from authoritative snapshot.
               </p>
-              <p className="mt-1 font-mono text-mono-md text-on-surface font-bold">
+              <p className="mt-1 font-mono text-mono-md font-bold text-brand-navy">
                 {doc.documentNumber}
               </p>
               <button
                 type="button"
                 onClick={handlePrint}
-                className="mt-4 inline-flex h-11 items-center gap-2 rounded-xl bg-brand-navy px-5 font-label text-label font-bold text-surface-white hover:bg-brand-navy/90"
+                className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl bg-brand-navy px-5 font-label text-label font-bold text-surface-white hover:bg-brand-navy/90"
               >
                 <Printer size={16} /> Print Document
               </button>

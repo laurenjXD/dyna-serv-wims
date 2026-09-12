@@ -203,6 +203,30 @@ export function ShellChrome({ children }: { children: ReactNode }) {
     void markAllNotificationsReadAction();
   }
 
+  const isStandaloneDocRoute =
+    pathname?.endsWith("/print") ||
+    pathname?.endsWith("/receipt");
+
+  const [isIframe, setIsIframe] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (window.self !== window.top) {
+        setIsIframe(true);
+      }
+    } catch {
+      setIsIframe(true);
+    }
+  }, []);
+
+  if (isIframe || isStandaloneDocRoute) {
+    return (
+      <main id="main-content" className="min-h-screen bg-slate-100 p-2 sm:p-4 print:p-0 print:bg-white">
+        {children}
+      </main>
+    );
+  }
+
   const tier = resolveSessionPresentationTier(context?.activeRoleKeys ?? []);
   const showFloorTabBar = tier === "floor" && !isScanLoopRoute(pathname);
   const pageTitle = getPageTitle(pathname);
