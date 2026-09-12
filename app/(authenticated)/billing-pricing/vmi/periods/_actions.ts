@@ -26,6 +26,10 @@ export async function closeVmiPeriodAction(
     return { ok: false, error: "You do not have permission to close VMI billing periods." };
   }
 
+  if (!permResult.context.activeRoleKeys.includes("administrator")) {
+    return { ok: false, error: "Only an Administrator can create VMI billing drafts." };
+  }
+
   const partyId = String(formData.get("partyId") ?? "");
   const monthStr = String(formData.get("month") ?? "");
   const yearStr = String(formData.get("year") ?? "");
