@@ -1733,10 +1733,16 @@ receipt selection scoped to the organization. The form is unavailable after
 the period is issued and reuses the existing charge-line validation/action
 boundary.
 
+SOA carry-forward was also completed for post-issue payments: when a payment
+is recorded against an issued period, the issued closing snapshot stays
+unchanged and the payment is subtracted from that period's balance when the
+next period opening balance is calculated. Regression coverage proves the
+issued-period immutability and next-period application rule together.
+
 Migration `0047_vmi_billing_remaining_rls.sql` completes the missing RLS
 coverage for recurring fees, daily ledger, charge lines, billing periods,
 payments, and manpower hours, while widening contract/permit SELECT access for
 assigned VMI parties. The direct workspace and payment-detail slices pass
 targeted tests, typecheck, production build, and diff validation. Issued-period
-payment carry-forward into the next SOA, the four-document artifact pipeline,
-Resend delivery, corrections, and live Postgres RLS verification remain open.
+the four-document artifact pipeline, Resend delivery, corrections, and live
+Postgres RLS verification remain open.

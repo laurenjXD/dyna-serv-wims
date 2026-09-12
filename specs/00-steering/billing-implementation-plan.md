@@ -68,7 +68,9 @@ Remaining completion work:
 - D.9 four-document generation;
 - D.10 Resend delivery;
 - D.11 correction and void/reissue flow;
-- D.12 payment creation completion for issued-period carry-forward semantics;
+- D.9-D.12 document generation/delivery/correction completion; payment
+  recording now carries post-issue payments into the next period's opening SOA
+  balance without rewriting the issued snapshot;
 - E.2-E.6 VMI ledger/charge/configuration/close-flow completion;
 - F.6 live RLS verification and administrator-only capability finalization;
 - fixture-backed integration, E2E, and manual document QA.
