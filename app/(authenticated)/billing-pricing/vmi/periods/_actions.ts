@@ -8,10 +8,12 @@ import { closeVmiPeriod, type VmiPeriodCloseResult } from "@/lib/billing/vmi-per
 import { recordVmiPayment, type VmiPaymentType } from "@/lib/billing/vmi-payments";
 import { listParties } from "@/lib/db/queries/parties";
 import { createVmiChargeLine } from "@/lib/actions/vmi-charge-lines";
+import { ensureVmiDocumentArtifacts } from "@/lib/billing/vmi-document-artifacts";
 
 export type PeriodCloseState = {
   ok?: boolean;
   result?: VmiPeriodCloseResult;
+  documentWarning?: string;
   error?: string;
 };
 
@@ -66,8 +68,26 @@ export async function closeVmiPeriodAction(
       generationDate,
     });
 
+    let documentWarning: string | undefined;
+    try {
+      await ensureVmiDocumentArtifacts(db, {
+        id: result.id,
+        periodNumber: result.periodNumber,
+        partyId: result.partyId,
+        periodStartDate: result.periodStartDate,
+        periodEndDate: result.periodEndDate,
+        billingStatementTotalUsd: result.billingStatementTotalUsd,
+        soaOpeningBalanceUsd: result.soaOpeningBalanceUsd,
+        soaClosingBalanceUsd: result.soaClosingBalanceUsd,
+        billingCurrency: result.billingCurrency,
+      });
+    } catch {
+      documentWarning = "The draft was created, but document records could not be prepared. Open the draft and retry document preparation before issue.";
+    }
+
     revalidatePath("/billing-pricing");
-    return { ok: true, result };
+    revalidatePath(`/billing-pricing/vmi/periods/${result.id}`);
+    return { ok: true, result, documentWarning };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Period close failed.";
     return { ok: false, error: message };

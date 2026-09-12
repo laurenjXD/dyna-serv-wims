@@ -79,6 +79,7 @@ export function PeriodCloseModal({
               <p className="mt-1 font-body text-body-sm">
                 Status: <span className="font-bold">Draft</span>. Review charge lines and totals before document generation and issue.
               </p>
+              {state.documentWarning && <p className="mt-2 rounded bg-status-held/10 p-2 font-body text-body-sm text-status-held">{state.documentWarning}</p>}
             </div>
 
             {/* Generated Statement Breakdown */}
