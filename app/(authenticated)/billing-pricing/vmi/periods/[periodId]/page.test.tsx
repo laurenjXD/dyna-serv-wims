@@ -8,5 +8,7 @@ describe("VMI period detail", () => {
     expect(source).toContain("reporting.financial_read");
     expect(source).toContain("PaymentForm");
     expect(source).toContain("vmiPayments");
+    expect(source).toContain("Required financial documents");
+    expect(source).toContain("billingStatementArtifactId");
   });
 });

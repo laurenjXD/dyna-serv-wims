@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, FileText } from "lucide-react";
-import { eq } from "drizzle-orm";
+import { and, between, eq, inArray } from "drizzle-orm";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
@@ -10,7 +10,6 @@ import { vmiBillingPeriods, vmiChargeLines, vmiPayments } from "@/lib/db/schema/
 import { generatedDocuments } from "@/lib/db/schema/documents";
 import { inventoryCommitments } from "@/lib/db/schema/commitments";
 import { pickLists } from "@/lib/db/schema/pick_lists";
-import { and, between } from "drizzle-orm";
 import { PaymentForm } from "./_components/PaymentForm";
 import { ChargeLineForm } from "./_components/ChargeLineForm";
 
@@ -43,6 +42,10 @@ export default async function VmiPeriodDetailPage({ params }: Props) {
       soaPaymentsAppliedUsd: vmiBillingPeriods.soaPaymentsAppliedUsd,
       soaClosingBalanceUsd: vmiBillingPeriods.soaClosingBalanceUsd,
       lockedExchangeRatePhp: vmiBillingPeriods.lockedExchangeRatePhp,
+      billingStatementArtifactId: vmiBillingPeriods.billingStatementArtifactId,
+      warehousingChargesArtifactId: vmiBillingPeriods.warehousingChargesArtifactId,
+      soaArtifactId: vmiBillingPeriods.soaArtifactId,
+      loaArtifactId: vmiBillingPeriods.loaArtifactId,
       status: vmiBillingPeriods.status,
     })
     .from(vmiBillingPeriods)
@@ -51,6 +54,21 @@ export default async function VmiPeriodDetailPage({ params }: Props) {
     .limit(1);
 
   if (!period) notFound();
+
+  const artifactReferences = [
+    ["Billing Statement", period.billingStatementArtifactId],
+    ["Warehousing Charges", period.warehousingChargesArtifactId],
+    ["Statement of Account", period.soaArtifactId],
+    ["Letter of Authority", period.loaArtifactId],
+  ] as const;
+  const artifactIds = artifactReferences
+    .map(([, artifactId]) => artifactId)
+    .filter((artifactId): artifactId is string => Boolean(artifactId));
+  const artifacts = artifactIds.length === 0 ? [] : await db
+    .select({ id: generatedDocuments.id, documentNumber: generatedDocuments.documentNumber, status: generatedDocuments.status })
+    .from(generatedDocuments)
+    .where(inArray(generatedDocuments.id, artifactIds));
+  const artifactsById = new Map(artifacts.map((artifact) => [artifact.id, artifact]));
 
   const payments = await db
     .select({
@@ -131,6 +149,29 @@ export default async function VmiPeriodDetailPage({ params }: Props) {
           )}
         </div>
       </div>
+
+      <section className="rounded-2xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="font-heading text-title-md font-bold text-on-surface">Required financial documents</h2>
+            <p className="mt-1 font-body text-body-sm text-text-grey">All four documents must be ready before the period can be issued.</p>
+          </div>
+          <Link href="/documents?tab=soa" className="inline-flex w-fit items-center gap-1 font-label text-label font-bold text-brand-blue hover:underline"><FileText size={15} /> Documents Center</Link>
+        </div>
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {artifactReferences.map(([label, artifactId]) => {
+            const artifact = artifactId ? artifactsById.get(artifactId) : undefined;
+            const state = artifact?.status ?? "not generated";
+            return (
+              <div key={label} className="rounded-xl border border-outline-variant/20 bg-surface-light-grey/40 p-4">
+                <p className="font-label text-label font-bold text-on-surface">{label}</p>
+                <p className={`mt-2 font-body text-body-sm font-bold ${artifact?.status === "ready" ? "text-status-available" : artifact?.status === "failed" ? "text-status-held" : "text-text-grey"}`}>{state}</p>
+                <p className="mt-1 truncate font-mono text-mono-sm text-text-grey">{artifact?.documentNumber ?? "Awaiting document pipeline"}</p>
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
       <ChargeLineForm
         partyId={period.partyId}
