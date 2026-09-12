@@ -9,6 +9,8 @@ import { recordVmiPayment, type VmiPaymentType } from "@/lib/billing/vmi-payment
 import { listParties } from "@/lib/db/queries/parties";
 import { createVmiChargeLine } from "@/lib/actions/vmi-charge-lines";
 import { ensureVmiDocumentArtifacts } from "@/lib/billing/vmi-document-artifacts";
+import { issueVmiPeriodDocuments } from "@/lib/billing/vmi-period-issuance";
+import { getStorageClient } from "@/lib/supabase/storage";
 
 export type PeriodCloseState = {
   ok?: boolean;
@@ -99,6 +101,34 @@ export type VmiPaymentState = {
   paymentId?: string;
   error?: string;
 };
+
+export type VmiPeriodIssueState = { ok?: boolean; error?: string };
+
+/** Issue is deliberately separate from draft close: it writes all four PDF
+ * artifacts to private Storage before making the period immutable. */
+export async function issueVmiPeriodAction(
+  _prevState: VmiPeriodIssueState,
+  formData: FormData,
+): Promise<VmiPeriodIssueState> {
+  const resolver = await createPageResolver();
+  const permission = await requirePermission(resolver, "reporting.financial_read");
+  if (permission.kind !== "authorized") return { ok: false, error: "You do not have permission to issue VMI billing periods." };
+  if (!permission.context.activeRoleKeys.includes("administrator")) return { ok: false, error: "Only an Administrator can issue VMI billing documents." };
+
+  const periodId = String(formData.get("periodId") ?? "");
+  if (!periodId) return { ok: false, error: "Billing period is required." };
+
+  try {
+    const result = await issueVmiPeriodDocuments(db, await getStorageClient(), { periodId, actorId: permission.context.userId });
+    if (!result.ok) return { ok: false, error: result.error };
+    revalidatePath("/billing-pricing");
+    revalidatePath(`/billing-pricing/vmi/periods/${periodId}`);
+    revalidatePath("/documents");
+    return { ok: true };
+  } catch (cause) {
+    return { ok: false, error: cause instanceof Error ? cause.message : "Unable to issue the billing period." };
+  }
+}
 
 export async function recordVmiPaymentAction(
   _prevState: VmiPaymentState,

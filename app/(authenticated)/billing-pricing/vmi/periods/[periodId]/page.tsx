@@ -12,6 +12,7 @@ import { inventoryCommitments } from "@/lib/db/schema/commitments";
 import { pickLists } from "@/lib/db/schema/pick_lists";
 import { PaymentForm } from "./_components/PaymentForm";
 import { ChargeLineForm } from "./_components/ChargeLineForm";
+import { IssuePeriodForm } from "./_components/IssuePeriodForm";
 
 interface Props {
   params: Promise<{ periodId: string }>;
@@ -167,11 +168,12 @@ export default async function VmiPeriodDetailPage({ params }: Props) {
                 <p className="font-label text-label font-bold text-on-surface">{label}</p>
                 <p className={`mt-2 font-body text-body-sm font-bold ${artifact?.status === "ready" ? "text-status-available" : artifact?.status === "failed" ? "text-status-held" : "text-text-grey"}`}>{state}</p>
                 <p className="mt-1 truncate font-mono text-mono-sm text-text-grey">{artifact?.documentNumber ?? "Awaiting document pipeline"}</p>
-                <Link href={`/api/billing/vmi/${period.id}/documents/${type}`} target="_blank" className="mt-3 inline-flex font-label text-label font-bold text-brand-blue hover:underline">Preview draft PDF</Link>
+                <Link href={artifact?.status === "ready" ? `/api/documents/${artifact.id}/download` : `/api/billing/vmi/${period.id}/documents/${type}`} target="_blank" className="mt-3 inline-flex font-label text-label font-bold text-brand-blue hover:underline">{artifact?.status === "ready" ? "Open issued PDF" : "Preview draft PDF"}</Link>
               </div>
             );
           })}
         </div>
+        {period.status === "draft" && <IssuePeriodForm periodId={period.id} />}
       </section>
 
       <ChargeLineForm
