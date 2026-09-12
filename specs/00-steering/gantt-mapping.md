@@ -1,6 +1,6 @@
 # Gantt-to-Spec Mapping — Delivery Tracking Layer
 Status: Active
-Last Updated: 2026-08-06
+Last Updated: 2026-09-12
 
 This sits above the spec folders, not inside them. Because we follow **Spec-Driven Development** (no implementation code is written until `tasks.md` is Approved), the traditional Gantt chart tasks are split to reflect our actual flow. 
 
@@ -77,3 +77,33 @@ The current Gantt timeline tracks the **Spec Definition Phase** (Drafting Requir
 
 ## Standing Rule
 Every time a new spec is drafted or changes status, check this table for rows that reference it and update the status column. This table is only useful if it stays current — treat a stale row here as a bug the same way an undocumented design token is a bug (per `ui-ux-design-plan.md` §13's governance principle).
+
+## Billing & Pricing Completion Plan — 2026-09-12 Rebaseline
+
+The original milestone percentages mixed specification progress, backend
+implementation, UI completion, and end-to-end readiness. The billing rows are
+now tracked by shippable exit gates. The detailed plan is in
+`specs/00-steering/billing-implementation-plan.md`.
+
+| Billing Gantt row | Current baseline | Next delivery gate | Complete when |
+|---|---:|---|---|
+| VMI daily CBM tracking and monthly billing engine | 60% | Regression and RLS verification | Daily replay, effective-dated rates, UI, close path, and fixture checks pass |
+| VMI period close and financial documents | 35% | Shared PDF artifact pipeline | Four documents, Resend, payments, corrections, and E2E pass |
+| Billing Overview / VMI workspace | 10% | Overview plus organization review | E.1-E.8 are usable through the office UI |
+| Trading cost, price freezing, and margin | 45% | Purchase import and `08`/`10` integration | Purchase evidence, rate cards, frozen documents, and margin ledger pass |
+| Shared PDF/artifact generation | 15% | Pick-list PDF vertical slice | Private artifacts, hashes, signed access, retry, and events pass |
+| Billing release verification | 20% | Fixture and reviewer sign-off | Unit, real-Postgres, Playwright, document, security, and manual QA pass |
+
+The completion order is:
+
+```text
+Shared PDF pipeline
+  → VMI four-document period close
+  → Billing Overview and VMI workspace
+  → Trading purchase/pricing integration
+  → Full verification and Gantt release update
+```
+
+These percentages are planning baselines and must be replaced with the next
+verified percentage after each exit gate. They are not claims that the
+corresponding feature is already production-ready.
