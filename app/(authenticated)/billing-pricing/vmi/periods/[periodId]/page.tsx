@@ -14,6 +14,7 @@ import { PaymentForm } from "./_components/PaymentForm";
 import { ChargeLineForm } from "./_components/ChargeLineForm";
 import { IssuePeriodForm } from "./_components/IssuePeriodForm";
 import { CorrectPeriodForm } from "./_components/CorrectPeriodForm";
+import { RedeliverDocumentsForm } from "./_components/RedeliverDocumentsForm";
 
 interface Props {
   params: Promise<{ periodId: string }>;
@@ -176,6 +177,7 @@ export default async function VmiPeriodDetailPage({ params }: Props) {
         </div>
         {period.status === "draft" && <IssuePeriodForm periodId={period.id} />}
         {period.status === "issued" && <CorrectPeriodForm periodId={period.id} />}
+        {period.status === "issued" && <RedeliverDocumentsForm periodId={period.id} />}
       </section>
 
       <ChargeLineForm

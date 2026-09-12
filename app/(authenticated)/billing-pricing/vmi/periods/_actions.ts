@@ -12,6 +12,10 @@ import { ensureVmiDocumentArtifacts } from "@/lib/billing/vmi-document-artifacts
 import { issueVmiPeriodDocuments } from "@/lib/billing/vmi-period-issuance";
 import { getStorageClient } from "@/lib/supabase/storage";
 import { correctVmiPeriod } from "@/lib/billing/vmi-period-correction";
+import { eq, inArray } from "drizzle-orm";
+import { parties } from "@/lib/db/schema/parties";
+import { generatedDocuments } from "@/lib/db/schema/documents";
+import { vmiBillingPeriods } from "@/lib/db/schema/vmi_billing";
 
 export type PeriodCloseState = {
   ok?: boolean;
@@ -105,6 +109,33 @@ export type VmiPaymentState = {
 
 export type VmiPeriodIssueState = { ok?: boolean; error?: string };
 export type VmiPeriodCorrectionState = { ok?: boolean; replacementId?: string; error?: string };
+export type VmiRedeliveryState = { ok?: boolean; error?: string };
+
+export async function redeliverVmiDocumentsAction(_prev: VmiRedeliveryState, formData: FormData): Promise<VmiRedeliveryState> {
+  const resolver = await createPageResolver();
+  const permission = await requirePermission(resolver, "reporting.financial_read");
+  if (permission.kind !== "authorized" || !permission.context.activeRoleKeys.includes("administrator")) return { ok: false, error: "Only an Administrator can redeliver VMI documents." };
+  const periodId = String(formData.get("periodId") ?? "");
+  try {
+    const [period] = await db.select({ periodNumber: vmiBillingPeriods.periodNumber, status: vmiBillingPeriods.status, email: parties.email, partyName: parties.name, billingStatementArtifactId: vmiBillingPeriods.billingStatementArtifactId, warehousingChargesArtifactId: vmiBillingPeriods.warehousingChargesArtifactId, soaArtifactId: vmiBillingPeriods.soaArtifactId, loaArtifactId: vmiBillingPeriods.loaArtifactId }).from(vmiBillingPeriods).innerJoin(parties, eq(parties.id, vmiBillingPeriods.partyId)).where(eq(vmiBillingPeriods.id, periodId)).limit(1);
+    if (!period || period.status !== "issued") return { ok: false, error: "Only an issued billing period can be redelivered." };
+    if (!period.email) return { ok: false, error: "The Organization has no billing email on record." };
+    const ids = [period.billingStatementArtifactId, period.warehousingChargesArtifactId, period.soaArtifactId, period.loaArtifactId].filter((id): id is string => Boolean(id));
+    const docs = await db.select({ id: generatedDocuments.id, documentNumber: generatedDocuments.documentNumber, artifactPath: generatedDocuments.artifactPath, status: generatedDocuments.status }).from(generatedDocuments).where(inArray(generatedDocuments.id, ids));
+    if (docs.length !== 4 || docs.some((doc) => doc.status !== "ready" || !doc.artifactPath)) return { ok: false, error: "All four issued PDF artifacts must be ready before delivery." };
+    const storage = await getStorageClient();
+    const attachments = await Promise.all(docs.map(async (doc) => {
+      const result = await storage.from("generated-documents").download(doc.artifactPath!);
+      if (result.error) throw new Error(`Could not retrieve ${doc.documentNumber}.`);
+      return { filename: `${doc.documentNumber}.pdf`, content: Buffer.from(await result.data.arrayBuffer()) };
+    }));
+    if (!process.env.RESEND_API_KEY) return { ok: false, error: "RESEND_API_KEY is not configured." };
+    const { Resend } = await import("resend");
+    const sent = await new Resend(process.env.RESEND_API_KEY).emails.send({ from: process.env.RESEND_FROM_OPERATIONS ?? "noreply@example.com", to: [period.email], subject: `VMI billing documents — ${period.periodNumber}`, html: `<p>Dear ${period.partyName},</p><p>Your issued VMI billing documents for <strong>${period.periodNumber}</strong> are attached.</p><p>Regards,<br/>Dyna-Serv Operations Team</p>`, attachments: attachments as any });
+    if (sent.error) return { ok: false, error: sent.error.message };
+    return { ok: true };
+  } catch (cause) { return { ok: false, error: cause instanceof Error ? cause.message : "Unable to redeliver documents." }; }
+}
 
 export async function correctVmiPeriodAction(_prev: VmiPeriodCorrectionState, formData: FormData): Promise<VmiPeriodCorrectionState> {
   const resolver = await createPageResolver();

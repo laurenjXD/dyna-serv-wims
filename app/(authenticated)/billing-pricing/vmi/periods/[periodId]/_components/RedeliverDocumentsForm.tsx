@@ -1,0 +1,4 @@
+"use client";
+import { useActionState } from "react";
+import { redeliverVmiDocumentsAction, type VmiRedeliveryState } from "../../_actions";
+export function RedeliverDocumentsForm({ periodId }: { periodId: string }) { const [state, action, pending] = useActionState(redeliverVmiDocumentsAction, {} as VmiRedeliveryState); return <div className="mt-3">{state.error && <p className="mb-2 font-body text-body-sm text-status-held">{state.error}</p>}{state.ok && <p className="mb-2 font-body text-body-sm text-status-available">All four issued PDFs were sent to the Organization email on record.</p>}<form action={action}><input type="hidden" name="periodId" value={periodId}/><button disabled={pending} className="h-11 rounded border border-brand-navy px-4 font-label text-label font-bold text-brand-navy disabled:opacity-50">{pending ? "Sending…" : "Redeliver by email"}</button></form></div>; }
