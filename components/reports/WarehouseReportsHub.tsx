@@ -60,9 +60,76 @@ export function WarehouseReportsHub({
 }: WarehouseReportsHubProps) {
   const [facility, setFacility] = useState<FacilityZone>("all");
   const [horizon, setHorizon] = useState<DateHorizon>("30D");
-  const [startDate, setStartDate] = useState("2026-08-01");
-  const [endDate, setEndDate] = useState("2026-08-31");
+  const [startDate, setStartDate] = useState("2026-08-14");
+  const [endDate, setEndDate] = useState("2026-09-12");
   const [activeSection, setActiveSection] = useState<"all" | "financial" | "operations" | "heatmap" | "archive">("all");
+
+  const handleHorizonChange = (h: DateHorizon) => {
+    setHorizon(h);
+    if (h === "7D") {
+      setStartDate("2026-09-05");
+      setEndDate("2026-09-12");
+    } else if (h === "30D") {
+      setStartDate("2026-08-14");
+      setEndDate("2026-09-12");
+    } else if (h === "90D") {
+      setStartDate("2026-06-14");
+      setEndDate("2026-09-12");
+    }
+  };
+
+  // ── Reactive Filtering based on Horizon & Warehouse 1 Storage Zones ─────
+  const activeKpis = React.useMemo(() => {
+    if (!kpis) return undefined;
+    const factor = horizon === "7D" ? 0.23 : horizon === "90D" ? 2.85 : 1.0;
+    return {
+      ...kpis,
+      vmiAccruedStorage: Math.round(kpis.vmiAccruedStorage * factor),
+      tradingGrossRevenue: Math.round(kpis.tradingGrossRevenue * factor),
+      tradingCogs: Math.round(kpis.tradingCogs * factor),
+    };
+  }, [kpis, horizon]);
+
+  const activeThroughput = React.useMemo(() => {
+    if (!throughput || throughput.length === 0) return throughput;
+    if (horizon === "7D") {
+      return throughput.slice(-7);
+    } else if (horizon === "90D") {
+      return [
+        { label: "Jun 2026", inboundQty: 4850, outboundQty: 4210, vmiQty: 2900, tradingQty: 1950 },
+        { label: "Jul 2026", inboundQty: 5200, outboundQty: 4980, vmiQty: 3100, tradingQty: 2100 },
+        { label: "Aug/Sep 2026", inboundQty: 5640, outboundQty: 5120, vmiQty: 3400, tradingQty: 2240 },
+      ];
+    }
+    return throughput;
+  }, [throughput, horizon]);
+
+  const activeTradingMargin = React.useMemo(() => {
+    if (!tradingMargin) return undefined;
+    if (horizon === "7D") {
+      return {
+        ...tradingMargin,
+        marginHistory: tradingMargin.marginHistory.slice(-2),
+      };
+    }
+    return tradingMargin;
+  }, [tradingMargin, horizon]);
+
+  const activeDeliverySla = React.useMemo(() => {
+    if (!deliverySla || deliverySla.length === 0) return deliverySla;
+    if (horizon === "7D") {
+      return deliverySla.slice(-7);
+    }
+    return deliverySla;
+  }, [deliverySla, horizon]);
+
+  const activeVmiBillingRows = React.useMemo(() => {
+    if (!vmiBillingRows) return undefined;
+    if (facility === "cold-chain") {
+      return vmiBillingRows.filter((r) => r.clientCode.includes("UPI") || r.clientCode.includes("SCH"));
+    }
+    return vmiBillingRows;
+  }, [vmiBillingRows, facility]);
 
   // Modal States
   const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState(false);
@@ -203,7 +270,7 @@ export function WarehouseReportsHub({
         startDate={startDate}
         endDate={endDate}
         onFacilityChange={setFacility}
-        onHorizonChange={setHorizon}
+        onHorizonChange={handleHorizonChange}
         onStartDateChange={setStartDate}
         onEndDateChange={setEndDate}
         onOpenReportBuilder={() => setIsBuilderOpen(true)}
@@ -246,7 +313,7 @@ export function WarehouseReportsHub({
       )}
 
       {/* ── 2. Executive Reporting & Settlement KPIs (Bento Row) ───────────── */}
-      <ReportKpis kpis={kpis} />
+      <ReportKpis kpis={activeKpis} />
 
       {/* ── Section Quick Navigation Filter Bar ───────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 pb-2">
@@ -324,13 +391,13 @@ export function WarehouseReportsHub({
         <section className="space-y-6 animate-in fade-in">
           {/* A. VMI Client Storage & CBM Billing Reconciliation */}
           <VmiBillingTable
-            initialData={vmiBillingRows}
+            initialData={activeVmiBillingRows}
             onGenerateInvoicePdf={handleGenerateInvoicePdf}
             onAuditDwellTime={handleAuditDwellTime}
           />
 
           {/* B & C. Trading Revenue, COGS, Margin Realization & Product Line Margin Table */}
-          <TradingMarginSection initialData={tradingMargin} />
+          <TradingMarginSection initialData={activeTradingMargin} />
         </section>
       )}
 
@@ -338,10 +405,10 @@ export function WarehouseReportsHub({
       {(activeSection === "all" || activeSection === "operations") && (
         <section className="space-y-6 animate-in fade-in">
           {/* A & C. Movement Volume Throughput & Location Occupancy */}
-          <ThroughputSection initialData={throughput} />
+          <ThroughputSection initialData={activeThroughput} />
 
           {/* B. Delivery SLA & OTIF Fulfillment Report */}
-          <DeliveryPerformanceReport initialData={deliverySla} />
+          <DeliveryPerformanceReport initialData={activeDeliverySla} />
         </section>
       )}
 

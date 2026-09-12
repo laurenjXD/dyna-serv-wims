@@ -13,6 +13,7 @@ import {
   Search,
   BadgePercent,
   SlidersHorizontal,
+  Warehouse,
 } from "lucide-react";
 import type { DateHorizon, FacilityZone } from "./types";
 
@@ -57,11 +58,17 @@ export function ReportsHeader({
             <h1 className="font-heading text-xl font-black text-brand-navy">
               Reports &amp; Settlement
             </h1>
-            <div className="mt-0.5 flex items-center gap-1.5">
+            <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
               <span className="rounded-md bg-blue-50 px-2 py-0.5 font-mono text-[10px] font-bold text-brand-navy border border-blue-200">
-                Aug 2026 MTD
+                {horizon === "7D"
+                  ? "Sep 05 – Sep 12 (7D)"
+                  : horizon === "30D"
+                  ? "Aug 14 – Sep 12 (30D)"
+                  : horizon === "90D"
+                  ? "Jun 14 – Sep 12 (90D)"
+                  : `${startDate} to ${endDate}`}
               </span>
-              <span className="text-[11px] text-text-grey">All Facilities</span>
+              <span className="text-[11px] text-text-grey">Warehouse 1 (Single Hub)</span>
             </div>
           </div>
 
@@ -99,7 +106,7 @@ export function ReportsHeader({
               Warehouse Reports &amp; Financial Settlement Hub
             </h1>
             <span className="rounded-full bg-blue-50 px-2.5 py-0.5 font-mono text-[10px] font-bold text-brand-navy border border-blue-200">
-              AUDITED VMI &amp; TRADING
+              WAREHOUSE 1 · SINGLE HUB
             </span>
           </div>
           <p className="mt-1 font-body text-xs sm:text-sm text-text-grey">
@@ -170,11 +177,11 @@ export function ReportsHeader({
       {/* ── Global Filters Toolbar ────────────────────────────────────────── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-900/80 p-3 shadow-2xs backdrop-blur-md">
         <div className="flex flex-wrap items-center gap-3">
-          {/* Facility & Zone Selector */}
+          {/* Storage Zone Selector (Warehouse 1 Single Facility) */}
           <div className="flex items-center gap-1.5">
-            <Building2 size={15} className="text-brand-navy/70 shrink-0 ml-1" />
+            <Warehouse size={15} className="text-brand-navy/70 shrink-0 ml-1" />
             <label htmlFor="facility-select" className="font-label text-xs font-bold text-text-grey sr-only">
-              Facility &amp; Zone
+              Storage Zone
             </label>
             <select
               id="facility-select"
@@ -182,10 +189,10 @@ export function ReportsHeader({
               onChange={(e) => onFacilityChange(e.target.value as FacilityZone)}
               className="h-8 rounded-lg border border-slate-200 bg-slate-50 px-2.5 font-label text-xs font-bold text-brand-navy focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
             >
-              <option value="all">All Facilities &amp; Zones</option>
-              <option value="main-dc-a">Main DC – High-Bay Zone A</option>
-              <option value="main-dc-b">Main DC – Racks Zone B</option>
-              <option value="cold-chain">Cold Chain Storage</option>
+              <option value="all">Warehouse 1 — All Storage Zones</option>
+              <option value="main-dc-a">Zone A — High-Bay Pallet Racks</option>
+              <option value="main-dc-b">Zone B — Bulk Floor Stacks</option>
+              <option value="cold-chain">Zone C — Cold Chain Cleanroom</option>
             </select>
           </div>
 
@@ -230,6 +237,17 @@ export function ReportsHeader({
               Custom
             </button>
           </div>
+
+          {/* Active Date Span Pill */}
+          <span className="hidden md:inline-flex items-center rounded-lg bg-slate-50 border border-slate-200 px-2.5 py-1 font-mono text-[11px] font-semibold text-slate-700">
+            {horizon === "7D"
+              ? "Sep 05 – Sep 12, 2026"
+              : horizon === "30D"
+              ? "Aug 14 – Sep 12, 2026"
+              : horizon === "90D"
+              ? "Jun 14 – Sep 12, 2026"
+              : `${startDate} to ${endDate}`}
+          </span>
         </div>
 
         {/* Inline Date Range Picker for Custom Horizon */}
