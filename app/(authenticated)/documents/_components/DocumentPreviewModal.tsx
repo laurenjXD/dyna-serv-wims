@@ -45,6 +45,12 @@ export function DocumentPreviewModal({
 }: DocumentPreviewModalProps) {
   const [showMetadata, setShowMetadata] = useState(false);
   const [zoomLevel, setZoomLevel] = useState<number>(100);
+  const [activeTab, setActiveTab] = useState<"primary" | "secondary">("primary");
+
+  // Reset tab when doc changes
+  useEffect(() => {
+    setActiveTab("primary");
+  }, [doc?.id, doc?.documentType]);
 
   // Close on Escape key
   useEffect(() => {
@@ -60,9 +66,44 @@ export function DocumentPreviewModal({
 
   if (!doc) return null;
 
+  // Resolve active document URLs and titles based on switcher
+  const isWrrGroup = doc.documentType === "wrr" || doc.documentType === "inbound_receipt";
+  const isPickGroup = doc.documentType === "pick_list" || doc.documentType === "acknowledgement_receipt";
+
+  let activeTitle = doc.title;
+  let activeNumber = doc.documentNumber;
+  let activePreviewUrl = doc.previewUrl;
+  let activeDownloadUrl = doc.downloadUrl;
+
+  if (isWrrGroup) {
+    if (activeTab === "primary") {
+      activeTitle = "Warehouse Receiving Report (WRR)";
+      activeNumber = doc.documentNumber.startsWith("IGR-") ? `WRR-${doc.documentNumber.replace(/^IGR-/, "")}` : doc.documentNumber;
+      activePreviewUrl = `/receiving/${doc.id}/print`;
+      activeDownloadUrl = `/receiving/${doc.id}/print`;
+    } else {
+      activeTitle = "Inbound Goods Turnover Receipt";
+      activeNumber = `IGR-${doc.documentNumber.replace(/^WRR-/, "").replace(/^IGR-/, "")}`;
+      activePreviewUrl = `/receiving/${doc.id}/receipt`;
+      activeDownloadUrl = `/receiving/${doc.id}/receipt`;
+    }
+  } else if (isPickGroup) {
+    if (activeTab === "primary") {
+      activeTitle = "Pick List Work Order";
+      activeNumber = doc.documentNumber;
+      activePreviewUrl = `/pick-lists/${doc.id}/print`;
+      activeDownloadUrl = `/pick-lists/${doc.id}/print`;
+    } else {
+      activeTitle = "Delivery Receipt & Acknowledgement (DRA / POD)";
+      activeNumber = `DRA-${doc.documentNumber.replace(/^PL-/, "")}`;
+      activePreviewUrl = doc.downloadUrl?.startsWith("http") ? doc.downloadUrl : `/pick-lists/${doc.id}/receipt`;
+      activeDownloadUrl = activePreviewUrl;
+    }
+  }
+
   const handlePrint = () => {
-    if (doc.previewUrl) {
-      const printWindow = window.open(doc.previewUrl, "_blank");
+    if (activePreviewUrl) {
+      const printWindow = window.open(activePreviewUrl, "_blank");
       printWindow?.focus();
     } else {
       window.print();
@@ -84,19 +125,75 @@ export function DocumentPreviewModal({
               <FileText size={20} />
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h2
                   id="preview-modal-title"
                   className="truncate font-heading text-headline-sm font-extrabold text-on-surface"
                 >
-                  {doc.title}
+                  {activeTitle}
                 </h2>
                 <span className="rounded bg-brand-navy/10 px-2 py-0.5 font-mono text-[11px] font-bold text-brand-navy">
-                  {doc.documentNumber}
+                  {activeNumber}
                 </span>
+
+                {/* In-Modal Document Switcher for WRR / Inbound Receipt */}
+                {isWrrGroup && (
+                  <div className="ml-2 flex items-center rounded-xl border border-brand-navy/20 bg-brand-navy/5 p-0.5 text-xs font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("primary")}
+                      className={`rounded-lg px-2.5 py-1 transition-all ${
+                        activeTab === "primary"
+                          ? "bg-brand-navy text-white shadow-sm"
+                          : "text-brand-navy hover:bg-brand-navy/10"
+                      }`}
+                    >
+                      WRR Report
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("secondary")}
+                      className={`rounded-lg px-2.5 py-1 transition-all ${
+                        activeTab === "secondary"
+                          ? "bg-brand-navy text-white shadow-sm"
+                          : "text-brand-navy hover:bg-brand-navy/10"
+                      }`}
+                    >
+                      Turnover Receipt
+                    </button>
+                  </div>
+                )}
+
+                {/* In-Modal Document Switcher for Pick List / DRA */}
+                {isPickGroup && (
+                  <div className="ml-2 flex items-center rounded-xl border border-brand-navy/20 bg-brand-navy/5 p-0.5 text-xs font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("primary")}
+                      className={`rounded-lg px-2.5 py-1 transition-all ${
+                        activeTab === "primary"
+                          ? "bg-brand-navy text-white shadow-sm"
+                          : "text-brand-navy hover:bg-brand-navy/10"
+                      }`}
+                    >
+                      Pick List
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("secondary")}
+                      className={`rounded-lg px-2.5 py-1 transition-all ${
+                        activeTab === "secondary"
+                          ? "bg-brand-navy text-white shadow-sm"
+                          : "text-brand-navy hover:bg-brand-navy/10"
+                      }`}
+                    >
+                      DRA / Receipt
+                    </button>
+                  </div>
+                )}
               </div>
               {doc.organizationName && (
-                <p className="truncate font-body text-body-xs text-text-grey">
+                <p className="truncate font-body text-body-xs text-text-grey mt-0.5">
                   Organization: <strong className="text-on-surface">{doc.organizationName}</strong>
                 </p>
               )}

@@ -41,7 +41,7 @@
 // below — the join below is the data-access-side half of that boundary,
 // not a substitute for it.
 
-import { and, desc, eq, gte, lte, or, sql, ilike } from "drizzle-orm";
+import { and, desc, eq, gte, lte, or, sql, ilike, isNotNull, ne } from "drizzle-orm";
 import { generatedDocuments } from "@/lib/db/schema/documents";
 import { inventoryCommitments } from "@/lib/db/schema/commitments";
 import { pickLists, pickListItems } from "@/lib/db/schema/pick_lists";
@@ -114,6 +114,8 @@ export type PickListArchiveRow = {
   createdByName: string | null;
   generatedAt: Date | null;
   createdAt: Date;
+  deliveryReceiptPath: string | null;
+  deliveryReceiptStatus: string;
 };
 
 export type AcknowledgementReceiptArchiveRow = {
@@ -135,6 +137,8 @@ export type AcknowledgementReceiptArchiveRow = {
   dispatchedByName: string | null;
   generatedAt: Date | null;
   createdAt: Date;
+  deliveryReceiptPath: string | null;
+  deliveryReceiptStatus: string;
 };
 
 export type StatementOfAccountArchiveRow = {
@@ -417,6 +421,8 @@ export async function listPickListArchiveDocuments(
       itemCount: sql<number>`coalesce((select count(*)::int from ${pickListItems} where ${pickListItems.pickListId} = ${pickLists.id}), 0)`,
       packageCount: sql<number>`coalesce((select sum(${pickListItems.numberOfBoxes})::int from ${pickListItems} where ${pickListItems.pickListId} = ${pickLists.id}), 0)`,
       totalQuantity: sql<number>`coalesce((select sum(${pickListItems.qty})::int from ${pickListItems} where ${pickListItems.pickListId} = ${pickLists.id}), 0)`,
+      deliveryReceiptPath: pickLists.deliveryReceiptPath,
+      deliveryReceiptStatus: pickLists.deliveryReceiptStatus,
     })
     .from(generatedDocuments)
     .innerJoin(
@@ -450,11 +456,13 @@ export async function listPickListArchiveDocuments(
     createdByName: r.createdByName,
     generatedAt: r.generatedAt,
     createdAt: r.createdAt,
+    deliveryReceiptPath: r.deliveryReceiptPath ?? null,
+    deliveryReceiptStatus: r.deliveryReceiptStatus ?? "missing",
   }));
 }
 
 /**
- * Documents Center — Tab 3: Delivery Receipts / Acknowledgement Receipts archive query.
+ * Documents Center — Tab 3: Delivery Receipts (POD / AR) archive query.
  */
 export async function listAcknowledgementReceiptArchiveDocuments(
   db: DbLike,
@@ -513,6 +521,8 @@ export async function listAcknowledgementReceiptArchiveDocuments(
       itemCount: sql<number>`coalesce((select count(*)::int from ${pickListItems} where ${pickListItems.pickListId} = ${pickLists.id}), 0)`,
       totalQuantity: sql<number>`coalesce((select sum(${pickListItems.qty})::int from ${pickListItems} where ${pickListItems.pickListId} = ${pickLists.id}), 0)`,
       totalAmount: sql<number>`coalesce((select sum(coalesce(${pickListItems.unitPrice}, 0) * ${pickListItems.qty})::numeric from ${pickListItems} where ${pickListItems.pickListId} = ${pickLists.id}), 0)`,
+      deliveryReceiptPath: pickLists.deliveryReceiptPath,
+      deliveryReceiptStatus: pickLists.deliveryReceiptStatus,
     })
     .from(generatedDocuments)
     .innerJoin(
@@ -546,6 +556,8 @@ export async function listAcknowledgementReceiptArchiveDocuments(
     dispatchedByName: r.dispatchedByName,
     generatedAt: r.generatedAt,
     createdAt: r.createdAt,
+    deliveryReceiptPath: r.deliveryReceiptPath ?? null,
+    deliveryReceiptStatus: r.deliveryReceiptStatus ?? "missing",
   }));
 }
 
@@ -641,12 +653,16 @@ export async function listStatementOfAccountArchiveDocuments(
 
 /**
  * Documents Center — Tab 2: Commercial Invoices & Packing Lists (CI/PL) archive query.
+ * Only returns WRRs that have an attached, uploaded/imported CIPL document.
  */
 export async function listCiplArchiveDocuments(
   db: DbLike,
   filters: DocumentArchiveFilter = {},
 ): Promise<CiplArchiveRow[]> {
-  const conditions = [];
+  const conditions = [
+    isNotNull(wrrDocuments.ciplFileUrl),
+    ne(wrrDocuments.ciplFileUrl, ""),
+  ];
 
   if (filters.partyId) {
     conditions.push(eq(wrrDocuments.vendorPartyId, filters.partyId));

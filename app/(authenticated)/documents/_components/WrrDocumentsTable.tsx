@@ -152,10 +152,31 @@ export function WrrDocumentsTable({ rows }: WrrDocumentsTableProps) {
                               downloadUrl: `/receiving/${r.id}/print`,
                             })
                           }
-                          title="Preview Document Sheet"
-                          className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border bg-surface px-3 font-label text-label font-bold text-brand-navy hover:bg-background transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                          title="Preview Warehouse Receiving Report"
+                          className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border bg-surface px-2.5 sm:px-3 font-label text-label font-bold text-brand-navy hover:bg-background transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
                         >
-                          <Eye size={14} /> Preview
+                          <Eye size={14} /> <span>WRR</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPreviewDoc({
+                              id: r.id,
+                              documentNumber: `IGR-${r.wrrNumber.replace(/^WRR-/, "")}`,
+                              title: "Inbound Goods Turnover Receipt",
+                              documentType: "inbound_receipt",
+                              status: r.status,
+                              generatedAt: r.confirmedAt ?? r.createdAt,
+                              organizationName: r.vendorPartyName,
+                              actorName: r.stagedByUserName,
+                              previewUrl: `/receiving/${r.id}/receipt`,
+                              downloadUrl: `/receiving/${r.id}/receipt`,
+                            })
+                          }
+                          title="Preview Inbound Turnover Receipt"
+                          className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-outline-variant/40 bg-surface-white px-2.5 sm:px-3 font-label text-label font-bold text-on-surface hover:bg-surface-light-grey transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                        >
+                          <FileText size={14} /> <span>Receipt</span>
                         </button>
                         <button
                           type="button"

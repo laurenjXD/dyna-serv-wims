@@ -3,7 +3,6 @@
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import {
-  Plus,
   FileText,
   Search,
   ArrowUpDown,
@@ -13,7 +12,6 @@ import {
   X,
 } from "lucide-react";
 import type { VmiContractTermsRow } from "@/lib/db/queries/vmi-contracts";
-import { VmiContractTermsModal } from "../vmi/contracts/_components/VmiContractTermsModal";
 import { TablePagination } from "@/components/ui/TablePagination";
 
 type Option = { id: string; name: string; code: string };
@@ -35,8 +33,7 @@ type SortField =
 
 type SortDirection = "asc" | "desc";
 
-export function VmiContractTermsTable({ rows, parties }: Props) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+export function VmiContractTermsTable({ rows, parties: _parties }: Props) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("partyName");
@@ -120,23 +117,13 @@ export function VmiContractTermsTable({ rows, parties }: Props) {
             Configured storage rates ($/CBM/day), handling IN/OUT rates, doc fees, and billing currency per VMI Organization.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setIsModalOpen(true)}
-            className="inline-flex h-9.5 items-center gap-1.5 rounded-xl bg-primary px-3.5 font-label text-xs font-bold text-white shadow-2xs hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy transition-colors"
-          >
-            <Plus size={15} />
-            <span>Configure Contract Terms</span>
-          </button>
           <Link
             href="/billing-pricing/contracts"
-            className="inline-flex h-9.5 items-center gap-1.5 rounded-xl border border-slate-200 bg-surface-white px-3.5 font-label text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors"
+            className="inline-flex h-9.5 items-center gap-1.5 rounded-xl border border-brand-navy/20 bg-brand-navy/5 px-3.5 font-label text-xs font-bold text-brand-navy hover:bg-brand-navy/10 shadow-2xs transition-colors"
           >
-            <span>Contract Archive</span>
+            <span>Manage Contracts &amp; Rate Cards</span>
             <ArrowRight size={13} />
           </Link>
-        </div>
       </div>
 
       {/* ── Search & Filter Toolbar ────────────────────────────────────── */}
@@ -370,12 +357,6 @@ export function VmiContractTermsTable({ rows, parties }: Props) {
           </>
         )}
       </div>
-
-      <VmiContractTermsModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        parties={parties}
-      />
     </div>
   );
 }
