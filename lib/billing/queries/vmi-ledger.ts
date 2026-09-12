@@ -25,9 +25,16 @@
 // Postgres connection (this codebase's established convention — see
 // lib/db/queries/ledgers.ts, lib/billing/vmi-movement-query.ts).
 
-import { and, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lt, lte, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { vmiContractTerms, vmiDailyBalanceLedger } from "@/lib/db/schema/vmi_billing";
+import {
+  vmiBillingPeriods,
+  vmiChargeLines,
+  vmiContractTerms,
+  vmiDailyBalanceLedger,
+  vmiManpowerHoursLog,
+  vmiRecurringFeeLines,
+} from "@/lib/db/schema/vmi_billing";
 import { parties } from "@/lib/db/schema/parties";
 import { lots } from "@/lib/db/schema/lots";
 
@@ -218,6 +225,187 @@ export async function getVmiDailyBalanceRows(
   } catch (error) {
     console.error("Error in getVmiDailyBalanceRows:", error);
     return [];
+  }
+}
+
+export type VmiBillingPeriodRow = {
+  id: string;
+  periodNumber: string;
+  partyId: string;
+  partyName: string;
+  partyCode: string;
+  periodStartDate: string;
+  periodEndDate: string;
+  status: string;
+  billingStatementTotalUsd: number;
+  soaClosingBalanceUsd: number;
+  lockedExchangeRatePhp: number | null;
+  createdAt: string;
+};
+
+export async function listVmiBillingPeriods(
+  partyId?: string,
+  limit = 50,
+  database: DbLike = db,
+): Promise<VmiBillingPeriodRow[]> {
+  try {
+    const query = database
+      .select({
+        id: vmiBillingPeriods.id,
+        periodNumber: vmiBillingPeriods.periodNumber,
+        partyId: vmiBillingPeriods.partyId,
+        partyName: parties.name,
+        partyCode: parties.code,
+        periodStartDate: vmiBillingPeriods.periodStartDate,
+        periodEndDate: vmiBillingPeriods.periodEndDate,
+        status: vmiBillingPeriods.status,
+        billingStatementTotalUsd: vmiBillingPeriods.billingStatementTotalUsd,
+        soaClosingBalanceUsd: vmiBillingPeriods.soaClosingBalanceUsd,
+        lockedExchangeRatePhp: vmiBillingPeriods.lockedExchangeRatePhp,
+        createdAt: vmiBillingPeriods.createdAt,
+      })
+      .from(vmiBillingPeriods)
+      .innerJoin(parties, eq(parties.id, vmiBillingPeriods.partyId))
+      .orderBy(desc(vmiBillingPeriods.createdAt))
+      .limit(limit);
+
+    if (partyId) {
+      query.where(eq(vmiBillingPeriods.partyId, partyId));
+    }
+
+    const rawRows = (await query) as Record<string, any>[];
+
+    return rawRows.map((r) => ({
+      id: r.id,
+      periodNumber: r.periodNumber,
+      partyId: r.partyId,
+      partyName: r.partyName,
+      partyCode: r.partyCode,
+      periodStartDate: r.periodStartDate,
+      periodEndDate: r.periodEndDate,
+      status: r.status,
+      billingStatementTotalUsd: Number(r.billingStatementTotalUsd ?? 0),
+      soaClosingBalanceUsd: Number(r.soaClosingBalanceUsd ?? 0),
+      lockedExchangeRatePhp: r.lockedExchangeRatePhp ? Number(r.lockedExchangeRatePhp) : null,
+      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+    }));
+  } catch (error) {
+    console.error("Error in listVmiBillingPeriods:", error);
+    return [];
+  }
+}
+
+export type VmiChargeLineRow = {
+  id: string;
+  partyId: string;
+  chargeType: string;
+  amount: number;
+  currency: string;
+  source: string;
+  notes: string | null;
+  createdAt: string;
+};
+
+export async function getVmiChargeLinesForPeriod(
+  partyId: string,
+  startDate: string,
+  endDate: string,
+  database: DbLike = db,
+): Promise<VmiChargeLineRow[]> {
+  try {
+    const rawRows = (await database
+      .select({
+        id: vmiChargeLines.id,
+        partyId: vmiChargeLines.partyId,
+        chargeType: vmiChargeLines.chargeType,
+        amount: vmiChargeLines.amount,
+        currency: vmiChargeLines.currency,
+        source: vmiChargeLines.source,
+        notes: vmiChargeLines.notes,
+        createdAt: vmiChargeLines.createdAt,
+      })
+      .from(vmiChargeLines)
+      .where(
+        and(
+          eq(vmiChargeLines.partyId, partyId),
+          gte(vmiChargeLines.createdAt, new Date(startDate)),
+          lte(vmiChargeLines.createdAt, new Date(endDate + "T23:59:59.999Z")),
+        ),
+      )
+      .orderBy(vmiChargeLines.createdAt)) as Record<string, any>[];
+
+    return rawRows.map((r) => ({
+      id: r.id,
+      partyId: r.partyId,
+      chargeType: r.chargeType,
+      amount: Number(r.amount ?? 0),
+      currency: r.currency,
+      source: r.source,
+      notes: r.notes,
+      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+    }));
+  } catch (error) {
+    console.error("Error in getVmiChargeLinesForPeriod:", error);
+    return [];
+  }
+}
+
+export type VmiManpowerSummary = {
+  hours: number;
+  ratePerHour: number;
+  totalAmountUsd: number;
+  notes: string | null;
+};
+
+export async function getVmiManpowerForPeriod(
+  partyId: string,
+  startDate: string,
+  endDate: string,
+  database: DbLike = db,
+): Promise<VmiManpowerSummary> {
+  try {
+    const logs = (await database
+      .select({
+        hours: vmiManpowerHoursLog.hours,
+        notes: vmiManpowerHoursLog.notes,
+        recurringFeeLineId: vmiManpowerHoursLog.recurringFeeLineId,
+      })
+      .from(vmiManpowerHoursLog)
+      .where(
+        and(
+          eq(vmiManpowerHoursLog.partyId, partyId),
+          eq(vmiManpowerHoursLog.periodStartDate, startDate),
+          eq(vmiManpowerHoursLog.periodEndDate, endDate),
+        ),
+      )
+      .limit(1)) as Record<string, any>[];
+
+    if (logs.length === 0) {
+      return { hours: 0, ratePerHour: 10, totalAmountUsd: 0, notes: null };
+    }
+
+    const log = logs[0];
+    const hours = Number(log.hours ?? 0);
+
+    // Get rate from recurring fee line
+    const feeLine = (await database
+      .select({ rate: vmiRecurringFeeLines.manpowerRatePerHour })
+      .from(vmiRecurringFeeLines)
+      .where(eq(vmiRecurringFeeLines.id, log.recurringFeeLineId))
+      .limit(1)) as Record<string, any>[];
+
+    const ratePerHour = feeLine.length > 0 && feeLine[0].rate ? Number(feeLine[0].rate) : 10;
+    const totalAmountUsd = hours * ratePerHour;
+
+    return {
+      hours,
+      ratePerHour,
+      totalAmountUsd,
+      notes: log.notes ?? null,
+    };
+  } catch (error) {
+    console.error("Error in getVmiManpowerForPeriod:", error);
+    return { hours: 0, ratePerHour: 10, totalAmountUsd: 0, notes: null };
   }
 }
 
