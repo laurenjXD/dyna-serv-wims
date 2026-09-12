@@ -1718,3 +1718,19 @@ This changes the approved execution boundary in `08` requirements R3, design §7
 ## Allocated-to-picked Pick List queue (2026-08-25) — approved
 
 The Product Owner clarified that Pick List generation must not mean that warehouse picking is complete. Generation reserves stock and creates an `allocated` list in **To Pick**, with **View / PDF** and **Mark as Picked**. After staff physically pick the PDF’s lines, an authorized user explicitly marks that one list as picked. Only then does it move to **To Dispatch** and expose **Dispatch**. This remains non-scan picking; QR reconciliation remains exclusively at Dispatch. Both amendment sign-offs were granted in conversation; `08` and `10` remain Approved.
+
+## Billing implementation continuation (2026-09-12)
+
+The approved Billing & Pricing workstream now has a direct `/billing-pricing/vmi`
+entry point and a `/billing-pricing/vmi/periods/[periodId]` detail route. The
+period detail exposes locked FX, SOA opening/payments/closing balances, payment
+history, and an Administrator-only payment/credit-memo/adjustment form. VMI
+payment recording remains append-only and does not rewrite an issued period.
+
+Migration `0047_vmi_billing_remaining_rls.sql` completes the missing RLS
+coverage for recurring fees, daily ledger, charge lines, billing periods,
+payments, and manpower hours, while widening contract/permit SELECT access for
+assigned VMI parties. The direct workspace and payment-detail slices pass
+targeted tests, typecheck, production build, and diff validation. Issued-period
+payment carry-forward into the next SOA, the four-document artifact pipeline,
+Resend delivery, corrections, and live Postgres RLS verification remain open.

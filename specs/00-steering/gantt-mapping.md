@@ -87,9 +87,9 @@ now tracked by shippable exit gates. The detailed plan is in
 
 | Billing Gantt row | Current baseline | Next delivery gate | Complete when |
 |---|---:|---|---|
-| VMI daily CBM tracking and monthly billing engine | 60% | Regression and RLS verification | Daily replay, effective-dated rates, UI, close path, and fixture checks pass |
-| VMI period close and financial documents | 35% | Shared PDF artifact pipeline | Four documents, Resend, payments, corrections, and E2E pass |
-| Billing Overview / VMI workspace | 40% | Overview plus organization review | Existing ledger/contracts/SOA surfaces are reorganized into the office workflow and E.1-E.8 are usable |
+| VMI daily CBM tracking and monthly billing engine | 65% | Regression and RLS verification | Daily replay, effective-dated rates, UI, close path, and fixture checks pass |
+| VMI period close and financial documents | 40% | Shared PDF artifact pipeline | Four documents, Resend, payments, corrections, and E2E pass |
+| Billing Overview / VMI workspace | 50% | Overview plus organization review | Existing ledger/contracts/SOA surfaces are reorganized into the office workflow and E.1-E.8 are usable |
 | Trading cost, price freezing, and margin | 55% | Purchase import and `08`/`10` integration | Existing policy/rate-card/margin surfaces plus purchase evidence, frozen documents, and margin ledger pass |
 | Shared PDF/artifact generation | 25% | Pick-list PDF vertical slice | Existing Documents Center/SOA generator are unified with private artifacts, hashes, signed access, retry, and events |
 | Billing release verification | 20% | Fixture and reviewer sign-off | Unit, real-Postgres, Playwright, document, security, and manual QA pass |

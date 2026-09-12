@@ -68,9 +68,9 @@ Remaining completion work:
 - D.9 four-document generation;
 - D.10 Resend delivery;
 - D.11 correction and void/reissue flow;
-- D.12 payment creation;
-- E.1-E.8 VMI UI and dashboard;
-- F.1-F.6 RLS and authorization verification;
+- D.12 payment creation completion for issued-period carry-forward semantics;
+- E.2-E.6 VMI ledger/charge/configuration/close-flow completion;
+- F.6 live RLS verification and administrator-only capability finalization;
 - fixture-backed integration, E2E, and manual document QA.
 
 ### Trading (`13-trading-orders-and-pricing`)
@@ -168,6 +168,12 @@ Trading Margin Ledger, Logistics Rate Matrix, Commercial Contracts, SOA
 directory/detail, VMI contract screens, Trading policy/rate-card controls,
 and supporting table components. This phase is therefore an information
 architecture and workflow-completion phase, not a page-from-scratch build.
+
+The direct `/billing-pricing/vmi` route and `/billing-pricing/vmi/periods/[periodId]`
+detail route are now available. The detail route includes SOA balances,
+payment history, and the Administrator-only payment form; remaining work is
+the four-document links/actions, charge-line editing, and period correction/
+redelivery controls.
 
 Build the page in this order:
 
