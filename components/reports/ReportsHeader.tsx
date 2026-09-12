@@ -22,6 +22,7 @@ interface ReportsHeaderProps {
   horizon: DateHorizon;
   startDate: string;
   endDate: string;
+  availableZones?: string[];
   onFacilityChange: (f: FacilityZone) => void;
   onHorizonChange: (h: DateHorizon) => void;
   onStartDateChange: (d: string) => void;
@@ -36,6 +37,7 @@ export function ReportsHeader({
   horizon,
   startDate,
   endDate,
+  availableZones,
   onFacilityChange,
   onHorizonChange,
   onStartDateChange,
@@ -190,9 +192,19 @@ export function ReportsHeader({
               className="h-8 rounded-lg border border-slate-200 bg-slate-50 px-2.5 font-label text-xs font-bold text-brand-navy focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
             >
               <option value="all">Warehouse 1 — All Storage Zones</option>
-              <option value="main-dc-a">Zone A — High-Bay Pallet Racks</option>
-              <option value="main-dc-b">Zone B — Bulk Floor Stacks</option>
-              <option value="cold-chain">Zone C — Cold Chain Cleanroom</option>
+              {availableZones && availableZones.length > 0 ? (
+                availableZones.map((z) => (
+                  <option key={z} value={z}>
+                    {z.startsWith("ZONE-") || z.startsWith("Zone ") ? `${z}` : `Zone ${z}`}
+                  </option>
+                ))
+              ) : (
+                <>
+                  <option value="ZONE-A">Zone A — High-Bay Pallet Racks</option>
+                  <option value="ZONE-B">Zone B — Bulk Floor Stacks</option>
+                  <option value="ZONE-C">Zone C — Cold Chain Cleanroom</option>
+                </>
+              )}
             </select>
           </div>
 

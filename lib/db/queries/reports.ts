@@ -15,6 +15,7 @@ import { inventoryTransactions } from "@/lib/db/schema/transactions";
 import { vmiContractTerms, vmiDailyBalanceLedger } from "@/lib/db/schema/vmi_billing";
 import { generatedDocuments } from "@/lib/db/schema/documents";
 import { userProfiles } from "@/lib/db/schema/rbac";
+import { locations } from "@/lib/db/schema/locations";
 import type {
   VmiBillingRow,
   TradingMarginRow,
@@ -442,3 +443,28 @@ export async function getReportArchiveList(): Promise<ReportArchiveItem[]> {
     return [];
   }
 }
+
+/**
+ * 7. Live Warehouse Storage Zones Query (Single Warehouse)
+ */
+export async function getWarehouseZonesList(): Promise<string[]> {
+  try {
+    const rows = await db
+      .select({
+        zone: locations.zone,
+      })
+      .from(locations)
+      .where(eq(locations.isActive, true))
+      .groupBy(locations.zone)
+      .orderBy(locations.zone);
+
+    if (rows && rows.length > 0) {
+      return (rows as Array<{ zone: string }>).map((r) => r.zone).filter(Boolean);
+    }
+    return ["ZONE-A", "ZONE-B", "ZONE-C", "ZONE-D"];
+  } catch (error) {
+    console.error("Error fetching warehouse zones:", error);
+    return ["ZONE-A", "ZONE-B", "ZONE-C", "ZONE-D"];
+  }
+}
+

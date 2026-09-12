@@ -46,6 +46,7 @@ export interface WarehouseReportsHubProps {
   throughput?: MovementThroughputDatum[];
   deliverySla?: DeliverySlaDatum[];
   archiveItems?: ReportArchiveItem[];
+  availableZones?: string[];
   canReadFinancial?: boolean;
 }
 
@@ -56,6 +57,7 @@ export function WarehouseReportsHub({
   throughput,
   deliverySla,
   archiveItems,
+  availableZones,
   canReadFinancial = true,
 }: WarehouseReportsHubProps) {
   const [facility, setFacility] = useState<FacilityZone>("all");
@@ -269,6 +271,7 @@ export function WarehouseReportsHub({
         horizon={horizon}
         startDate={startDate}
         endDate={endDate}
+        availableZones={availableZones}
         onFacilityChange={setFacility}
         onHorizonChange={handleHorizonChange}
         onStartDateChange={setStartDate}

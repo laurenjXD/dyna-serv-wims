@@ -24,6 +24,7 @@ import {
   getThroughputReport,
   getDeliveryPerformanceReport,
   getReportArchiveList,
+  getWarehouseZonesList,
 } from "@/lib/db/queries/reports";
 
 export default async function ReportsPage() {
@@ -57,6 +58,7 @@ export default async function ReportsPage() {
     throughput,
     deliverySla,
     archiveItems,
+    availableZones,
   ] = await Promise.all([
     getReportsExecutiveKpis(),
     canReadFinancial ? getVmiBillingReconciliationReport() : Promise.resolve([]),
@@ -64,6 +66,7 @@ export default async function ReportsPage() {
     getThroughputReport("daily"),
     getDeliveryPerformanceReport(),
     getReportArchiveList(),
+    getWarehouseZonesList(),
   ]);
 
   return (
@@ -75,6 +78,7 @@ export default async function ReportsPage() {
         throughput={throughput}
         deliverySla={deliverySla}
         archiveItems={archiveItems}
+        availableZones={availableZones}
         canReadFinancial={canReadFinancial}
       />
     </div>
