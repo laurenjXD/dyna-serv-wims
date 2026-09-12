@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import Link from "next/link";
 import {
   Plus,
   FileText,
@@ -8,6 +9,7 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  ArrowRight,
   X,
 } from "lucide-react";
 import type { VmiContractTermsRow } from "@/lib/db/queries/vmi-contracts";
@@ -112,20 +114,29 @@ export function VmiContractTermsTable({ rows, parties }: Props) {
         <div>
           <h2 className="font-heading text-title-md font-bold text-on-surface flex items-center gap-2">
             <FileText size={20} className="text-brand-navy" />
-            VMI Contract Terms (vmi_contract_terms)
+            Commercial Storage &amp; Handling Contract Terms
           </h2>
           <p className="mt-1 font-body text-body-sm text-text-grey">
             Configured storage rates ($/CBM/day), handling IN/OUT rates, doc fees, and billing currency per VMI Organization.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setIsModalOpen(true)}
-          className="inline-flex h-11 items-center gap-2 rounded bg-primary px-4 font-label text-label font-bold text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy"
-        >
-          <Plus size={18} />
-          Configure VMI Contract
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            className="inline-flex h-9.5 items-center gap-1.5 rounded-xl bg-primary px-3.5 font-label text-xs font-bold text-white shadow-2xs hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy transition-colors"
+          >
+            <Plus size={15} />
+            <span>Configure Contract Terms</span>
+          </button>
+          <Link
+            href="/billing-pricing/contracts"
+            className="inline-flex h-9.5 items-center gap-1.5 rounded-xl border border-slate-200 bg-surface-white px-3.5 font-label text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors"
+          >
+            <span>Contract Archive</span>
+            <ArrowRight size={13} />
+          </Link>
+        </div>
       </div>
 
       {/* ── Search & Filter Toolbar ────────────────────────────────────── */}

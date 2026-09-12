@@ -18,7 +18,8 @@ export default async function InboundTurnoverReceiptPage({ params }: PageProps) 
   const resolver = await createPageResolver();
 
   const permResult = await requirePermission(resolver, "receiving.view");
-  if (permResult.kind !== "authorized") {
+  const docPermResult = await requirePermission(resolver, "documents.read");
+  if (permResult.kind !== "authorized" && docPermResult.kind !== "authorized") {
     notFound();
   }
 
@@ -27,11 +28,12 @@ export default async function InboundTurnoverReceiptPage({ params }: PageProps) 
     notFound();
   }
 
-  const receiptNumber = `IGR-${wrr.wrrNumber.replace(/^WRR-/, "")}`;
-  const totalBoxes = wrr.items.reduce((sum, item) => sum + (item.scannedQty > 0 ? item.scannedQty : item.expectedQty), 0);
-  const totalPieces = wrr.items.reduce((sum, item) => {
+  const items = wrr.items || [];
+  const receiptNumber = `IGR-${(wrr.wrrNumber || "00000").replace(/^WRR-/, "")}`;
+  const totalBoxes = items.reduce((sum, item) => sum + (Number(item.scannedQty) > 0 ? Number(item.scannedQty) : Number(item.expectedQty) || 0), 0);
+  const totalPieces = items.reduce((sum, item) => {
     const spq = Number(item.spq) || 1;
-    const count = item.scannedQty > 0 ? item.scannedQty : item.expectedQty;
+    const count = Number(item.scannedQty) > 0 ? Number(item.scannedQty) : Number(item.expectedQty) || 0;
     return sum + (count * spq);
   }, 0);
 

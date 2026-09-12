@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Lock, FileText, Download, ShieldAlert, Eye, Building, ExternalLink } from "lucide-react";
+import { Lock, FileText, Download, Share2, Eye } from "lucide-react";
 import type { StatementOfAccountArchiveRow } from "@/lib/db/queries/documents";
 import { DocumentPreviewModal, type PreviewDocData } from "./DocumentPreviewModal";
 import { TablePagination } from "@/components/ui/TablePagination";
@@ -31,6 +31,19 @@ export function StatementsOfAccountTable({
   const pagedRows = useMemo(() => {
     return rows.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
   }, [rows, pageIndex, pageSize]);
+
+  const handleShare = (r: StatementOfAccountArchiveRow) => {
+    if (typeof window !== "undefined" && typeof navigator !== "undefined") {
+      navigator.clipboard?.writeText?.(`${window.location.origin}/billing-pricing/soa/${r.partyId.slice(0, 8)}?partyId=${r.partyId}`);
+      alert(`Document link for SOA ${r.periodNumber} copied to clipboard!`);
+    }
+  };
+
+  const handleDownload = (r: StatementOfAccountArchiveRow) => {
+    if (typeof window !== "undefined") {
+      window.open(`/billing-pricing/soa/${r.partyId.slice(0, 8)}?partyId=${r.partyId}`, "_blank");
+    }
+  };
 
   if (!canReadFinancial) {
     return (
@@ -97,7 +110,7 @@ export function StatementsOfAccountTable({
                 const totalPhp = r.billingStatementTotalUsd * r.lockedExchangeRatePhp;
 
                 return (
-                  <tr key={r.id} className="hover:bg-surface-light-grey/40">
+                  <tr key={r.id} className="hover:bg-surface-light-grey/40 transition-colors">
                     <td className="px-4 py-3">
                       <div className="font-mono text-mono-md font-bold text-on-surface">
                         {r.periodNumber}
@@ -134,7 +147,7 @@ export function StatementsOfAccountTable({
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1.5">
                         <button
                           type="button"
                           onClick={() =>
@@ -151,18 +164,27 @@ export function StatementsOfAccountTable({
                               downloadUrl: `/billing-pricing/soa/${r.partyId.slice(0, 8)}?partyId=${r.partyId}`,
                             })
                           }
-                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 font-label text-label font-bold text-brand-navy hover:bg-background transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                          title="Preview SOA Package"
+                          className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border bg-surface px-3 font-label text-label font-bold text-brand-navy hover:bg-background transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
                         >
-                          <Eye size={14} /> Preview PDF
+                          <Eye size={14} /> Preview
                         </button>
-                        <a
-                          href={`/billing-pricing/soa/${r.partyId.slice(0, 8)}?partyId=${r.partyId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-outline-variant/40 bg-surface-white px-3 font-label text-label font-medium text-text-grey hover:text-on-surface hover:bg-surface-light-grey transition-colors focus:outline-none"
+                        <button
+                          type="button"
+                          onClick={() => handleShare(r)}
+                          title="Copy Link"
+                          className="inline-flex h-9 items-center justify-center rounded-xl border border-outline-variant/40 bg-surface-white px-2.5 text-text-grey hover:bg-surface-light-grey hover:text-on-surface focus:outline-none transition-colors"
                         >
-                          <ExternalLink size={14} /> Print View
-                        </a>
+                          <Share2 size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDownload(r)}
+                          title="Download Document"
+                          className="inline-flex h-9 items-center justify-center rounded-xl bg-brand-navy px-2.5 text-surface-white hover:bg-brand-navy/90 focus:outline-none transition-colors"
+                        >
+                          <Download size={14} />
+                        </button>
                       </div>
                     </td>
                   </tr>

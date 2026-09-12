@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { FileText, Eye, ExternalLink, Package } from "lucide-react";
+import { FileText, Eye, Download, Share2, Package } from "lucide-react";
 import type { WrrArchiveRow } from "@/lib/db/queries/documents";
 import { DocumentPreviewModal, type PreviewDocData } from "./DocumentPreviewModal";
 import { TablePagination } from "@/components/ui/TablePagination";
@@ -39,6 +39,19 @@ export function WrrDocumentsTable({ rows }: WrrDocumentsTableProps) {
   const pagedRows = useMemo(() => {
     return rows.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
   }, [rows, pageIndex, pageSize]);
+
+  const handleShare = (r: WrrArchiveRow) => {
+    if (typeof window !== "undefined" && typeof navigator !== "undefined") {
+      navigator.clipboard?.writeText?.(`${window.location.origin}/receiving/${r.id}/print`);
+      alert(`Document link for ${r.wrrNumber} copied to clipboard!`);
+    }
+  };
+
+  const handleDownload = (r: WrrArchiveRow) => {
+    if (typeof window !== "undefined") {
+      window.open(`/receiving/${r.id}/print`, "_blank");
+    }
+  };
 
   if (rows.length === 0) {
     return (
@@ -86,7 +99,7 @@ export function WrrDocumentsTable({ rows }: WrrDocumentsTableProps) {
                 const formattedDate = new Date(r.createdAt).toISOString().slice(0, 10);
 
                 return (
-                  <tr key={r.id} className="hover:bg-surface-light-grey/40">
+                  <tr key={r.id} className="hover:bg-surface-light-grey/40 transition-colors">
                     <td className="px-4 py-3">
                       <div className="font-mono text-mono-md font-bold text-on-surface">
                         {r.wrrNumber}
@@ -122,7 +135,7 @@ export function WrrDocumentsTable({ rows }: WrrDocumentsTableProps) {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1.5">
                         <button
                           type="button"
                           onClick={() =>
@@ -139,38 +152,27 @@ export function WrrDocumentsTable({ rows }: WrrDocumentsTableProps) {
                               downloadUrl: `/receiving/${r.id}/print`,
                             })
                           }
-                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 font-label text-label font-bold text-brand-navy hover:bg-background transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                          title="Preview Document Sheet"
+                          className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border bg-surface px-3 font-label text-label font-bold text-brand-navy hover:bg-background transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
                         >
-                          <Eye size={14} /> Preview WRR
+                          <Eye size={14} /> Preview
                         </button>
                         <button
                           type="button"
-                          onClick={() =>
-                            setPreviewDoc({
-                              id: r.id,
-                              documentNumber: `IGR-${r.wrrNumber.replace(/^WRR-/, "")}`,
-                              title: "Inbound Goods Turnover Receipt",
-                              documentType: "inbound_receipt",
-                              status: r.status,
-                              generatedAt: r.confirmedAt ?? r.createdAt,
-                              organizationName: r.vendorPartyName,
-                              actorName: r.stagedByUserName,
-                              previewUrl: `/receiving/${r.id}/receipt`,
-                              downloadUrl: `/receiving/${r.id}/receipt`,
-                            })
-                          }
-                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-outline-variant/40 bg-surface-white px-3 font-label text-label font-bold text-on-surface hover:bg-surface-light-grey transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                          onClick={() => handleShare(r)}
+                          title="Copy Link"
+                          className="inline-flex h-9 items-center justify-center rounded-xl border border-outline-variant/40 bg-surface-white px-2.5 text-text-grey hover:bg-surface-light-grey hover:text-on-surface focus:outline-none transition-colors"
                         >
-                          <FileText size={14} /> Inbound Receipt
+                          <Share2 size={14} />
                         </button>
-                        <a
-                          href={`/receiving/${r.id}/print`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-outline-variant/40 bg-surface-white px-3 font-label text-label font-medium text-text-grey hover:text-on-surface hover:bg-surface-light-grey transition-colors focus:outline-none"
+                        <button
+                          type="button"
+                          onClick={() => handleDownload(r)}
+                          title="Download PDF"
+                          className="inline-flex h-9 items-center justify-center rounded-xl bg-brand-navy px-2.5 text-surface-white hover:bg-brand-navy/90 focus:outline-none transition-colors"
                         >
-                          <ExternalLink size={14} /> Print View
-                        </a>
+                          <Download size={14} />
+                        </button>
                       </div>
                     </td>
                   </tr>

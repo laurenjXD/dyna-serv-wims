@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import Link from "next/link";
-import { FileText, Truck, Plus, ArrowRight } from "lucide-react";
+import { FileText, Truck } from "lucide-react";
 import { VmiContractTermsTable } from "./VmiContractTermsTable";
 import { LogisticsRateMatrixTable } from "./LogisticsRateMatrixTable";
 import type { VmiContractTermsRow } from "@/lib/db/queries/vmi-contracts";
@@ -47,43 +46,15 @@ export function ConfigurationTab({ contractRows, parties }: ConfigurationTabProp
             </span>
           </button>
         </div>
-
-        {subTab === "contracts" && (
-          <div className="flex items-center gap-2">
-            <Link
-              href="/billing-pricing/contracts/new"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 font-label text-label font-bold text-white shadow hover:bg-primary-hover transition-colors text-sm"
-            >
-              <Plus size={15} /> + New Commercial Contract
-            </Link>
-            <Link
-              href="/billing-pricing/contracts"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3.5 py-2 font-label text-label font-bold text-text-primary hover:bg-background shadow-sm transition-colors text-sm"
-            >
-              Contract Archive <ArrowRight size={14} />
-            </Link>
-          </div>
-        )}
       </div>
 
       {/* Sub-tab content */}
       {subTab === "contracts" ? (
-        <div className="space-y-4">
-          <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">
-            <h3 className="font-heading text-heading-sm font-bold text-on-surface">
-              Active Storage &amp; Handling Contract Terms
-            </h3>
-            <p className="mt-1 font-body text-body-sm text-text-grey">
-              Effective-dated rates governing daily CBM storage occupancy and handling volume fees.
-            </p>
-          </div>
-          <VmiContractTermsTable rows={contractRows} parties={parties} />
-        </div>
+        <VmiContractTermsTable rows={contractRows} parties={parties} />
       ) : (
-        <div className="space-y-4">
-          <LogisticsRateMatrixTable />
-        </div>
+        <LogisticsRateMatrixTable />
       )}
     </div>
   );
 }
+

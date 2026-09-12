@@ -137,21 +137,20 @@ export function ReportDocumentsTable({ rows }: ReportDocumentsTableProps) {
                       {formattedDate}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1.5">
                         <button
                           type="button"
                           onClick={() => setSelectedReport(r)}
-                          title="Preview PDF"
-                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 font-label text-label font-bold text-brand-navy hover:bg-background transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                          title="Preview Report Document"
+                          className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border bg-surface px-3 font-label text-label font-bold text-brand-navy hover:bg-background transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
                         >
-                          <Eye size={14} />
-                          <span>Preview PDF</span>
+                          <Eye size={14} /> Preview
                         </button>
                         <button
                           type="button"
                           onClick={() => handleShare(r)}
-                          title="Share Link"
-                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-outline-variant/40 bg-surface-white px-2.5 font-label text-label font-bold text-text-grey hover:text-on-surface hover:bg-surface-light-grey transition-colors focus:outline-none"
+                          title="Copy Link"
+                          className="inline-flex h-9 items-center justify-center rounded-xl border border-outline-variant/40 bg-surface-white px-2.5 text-text-grey hover:bg-surface-light-grey hover:text-on-surface focus:outline-none transition-colors"
                         >
                           <Share2 size={14} />
                         </button>
@@ -159,7 +158,7 @@ export function ReportDocumentsTable({ rows }: ReportDocumentsTableProps) {
                           type="button"
                           onClick={() => handleDownload(r)}
                           title="Download Document"
-                          className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-brand-navy px-3 font-label text-label font-bold text-surface-white hover:bg-brand-navy/90 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                          className="inline-flex h-9 items-center justify-center rounded-xl bg-brand-navy px-2.5 text-surface-white hover:bg-brand-navy/90 focus:outline-none transition-colors"
                         >
                           <Download size={14} />
                         </button>
