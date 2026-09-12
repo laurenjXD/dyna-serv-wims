@@ -130,9 +130,6 @@ export async function listPickLists(
       customerPartyName: parties.name,
       flowType: pickLists.flowType,
       createdAt: pickLists.createdAt,
-      deliveryReceiptPath: pickLists.deliveryReceiptPath,
-      deliveryReceiptStatus: pickLists.deliveryReceiptStatus,
-      deliveryReceiptUploadedAt: pickLists.deliveryReceiptUploadedAt,
       deletedAt: pickLists.deletedAt,
     })
     .from(pickLists)
