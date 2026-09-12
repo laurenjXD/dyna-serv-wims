@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Settings, FileText, Truck, Plus, ArrowRight } from "lucide-react";
+import { FileText, Truck, Plus, ArrowRight } from "lucide-react";
 import { VmiContractTermsTable } from "./VmiContractTermsTable";
 import { LogisticsRateMatrixTable } from "./LogisticsRateMatrixTable";
 import type { VmiContractTermsRow } from "@/lib/db/queries/vmi-contracts";
@@ -49,12 +49,20 @@ export function ConfigurationTab({ contractRows, parties }: ConfigurationTabProp
         </div>
 
         {subTab === "contracts" && (
-          <Link
-            href="/billing-pricing/contracts"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 font-label text-label font-bold text-white shadow hover:bg-primary-hover transition-colors text-sm"
-          >
-            Full Contract Directory <ArrowRight size={14} />
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/billing-pricing/contracts/new"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 font-label text-label font-bold text-white shadow hover:bg-primary-hover transition-colors text-sm"
+            >
+              <Plus size={15} /> + New Commercial Contract
+            </Link>
+            <Link
+              href="/billing-pricing/contracts"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3.5 py-2 font-label text-label font-bold text-text-primary hover:bg-background shadow-sm transition-colors text-sm"
+            >
+              Contract Archive <ArrowRight size={14} />
+            </Link>
+          </div>
         )}
       </div>
 
