@@ -56,13 +56,13 @@ export default async function VmiPeriodDetailPage({ params }: Props) {
   if (!period) notFound();
 
   const artifactReferences = [
-    ["Billing Statement", period.billingStatementArtifactId],
-    ["Warehousing Charges", period.warehousingChargesArtifactId],
-    ["Statement of Account", period.soaArtifactId],
-    ["Letter of Authority", period.loaArtifactId],
+    ["Billing Statement", "vmi_billing_statement", period.billingStatementArtifactId],
+    ["Warehousing Charges", "vmi_warehousing_charges", period.warehousingChargesArtifactId],
+    ["Statement of Account", "vmi_statement_of_account", period.soaArtifactId],
+    ["Letter of Authority", "vmi_letter_of_authority", period.loaArtifactId],
   ] as const;
   const artifactIds = artifactReferences
-    .map(([, artifactId]) => artifactId)
+    .map(([, , artifactId]) => artifactId)
     .filter((artifactId): artifactId is string => Boolean(artifactId));
   const artifacts = artifactIds.length === 0 ? [] : await db
     .select({ id: generatedDocuments.id, documentNumber: generatedDocuments.documentNumber, status: generatedDocuments.status })
@@ -159,7 +159,7 @@ export default async function VmiPeriodDetailPage({ params }: Props) {
           <Link href="/documents?tab=soa" className="inline-flex w-fit items-center gap-1 font-label text-label font-bold text-brand-blue hover:underline"><FileText size={15} /> Documents Center</Link>
         </div>
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {artifactReferences.map(([label, artifactId]) => {
+          {artifactReferences.map(([label, type, artifactId]) => {
             const artifact = artifactId ? artifactsById.get(artifactId) : undefined;
             const state = artifact?.status ?? "not generated";
             return (
@@ -167,6 +167,7 @@ export default async function VmiPeriodDetailPage({ params }: Props) {
                 <p className="font-label text-label font-bold text-on-surface">{label}</p>
                 <p className={`mt-2 font-body text-body-sm font-bold ${artifact?.status === "ready" ? "text-status-available" : artifact?.status === "failed" ? "text-status-held" : "text-text-grey"}`}>{state}</p>
                 <p className="mt-1 truncate font-mono text-mono-sm text-text-grey">{artifact?.documentNumber ?? "Awaiting document pipeline"}</p>
+                <Link href={`/api/billing/vmi/${period.id}/documents/${type}`} target="_blank" className="mt-3 inline-flex font-label text-label font-bold text-brand-blue hover:underline">Preview draft PDF</Link>
               </div>
             );
           })}
