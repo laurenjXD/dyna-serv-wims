@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState, useEffect } from "react";
+import Link from "next/link";
+import { useActionState } from "react";
 import { X, CheckCircle, Calculator, FileCheck, AlertCircle } from "lucide-react";
 import { closeVmiPeriodAction, recordVmiPaymentAction } from "../_actions";
 
@@ -43,10 +44,10 @@ export function PeriodCloseModal({
           <div>
             <h3 className="font-heading text-title-md font-bold text-on-surface flex items-center gap-2">
               <Calculator className="text-brand-navy" size={20} />
-              Generate VMI Billing Period &amp; SOA
+              Create VMI Billing Draft
             </h3>
             <p className="font-body text-body-sm text-text-grey">
-              Calculate Storage, Handling, Fees, FX Rate, and Statement of Account (SOA) running balance.
+              Calculate and save a draft with Storage, Handling, Fees, locked FX, and the SOA running balance. Documents are not issued from this step.
             </p>
           </div>
           <button
@@ -70,10 +71,13 @@ export function PeriodCloseModal({
             <div className="rounded-lg bg-status-available/10 p-4 text-status-available">
               <div className="flex items-center gap-2 font-bold text-title-sm">
                 <CheckCircle size={20} />
-                Period Statement &amp; SOA Generated Successfully!
+                Billing Draft Created Successfully
               </div>
               <p className="mt-1 font-body text-body-sm">
                 Period Number: <span className="font-mono font-bold">{state.result.periodNumber}</span>
+              </p>
+              <p className="mt-1 font-body text-body-sm">
+                Status: <span className="font-bold">Draft</span>. Review charge lines and totals before document generation and issue.
               </p>
             </div>
 
@@ -190,6 +194,12 @@ export function PeriodCloseModal({
             </div>
 
             <div className="flex justify-end pt-2">
+              <Link
+                href={`/billing-pricing/vmi/periods/${state.result.id}`}
+                className="mr-3 inline-flex h-11 items-center rounded border border-brand-navy px-5 font-label text-label font-bold text-brand-navy hover:bg-brand-navy/5"
+              >
+                Review Draft
+              </Link>
               <button
                 type="button"
                 onClick={onClose}
@@ -259,7 +269,7 @@ export function PeriodCloseModal({
             </div>
 
             <div className="rounded-lg bg-surface-light-grey/60 p-4 font-body text-body-sm text-text-grey space-y-1">
-              <p className="font-bold text-on-surface">Four-Document Generation Package:</p>
+              <p className="font-bold text-on-surface">Documents planned after review:</p>
               <ul className="list-disc pl-5 space-y-0.5">
                 <li>Billing Statement (Charge components + Grand Total)</li>
                 <li>Warehousing Charges (Daily balance CBM ledger)</li>
@@ -282,7 +292,7 @@ export function PeriodCloseModal({
                 className="inline-flex h-11 items-center gap-2 rounded bg-primary px-5 font-label text-label font-bold text-surface-white hover:bg-primary-hover disabled:opacity-50"
               >
                 <Calculator size={18} />
-                {isPending ? "Generating Period Statement & SOA..." : "Generate Billing Period & SOA"}
+                {isPending ? "Creating Billing Draft..." : "Create Billing Draft"}
               </button>
             </div>
           </form>
