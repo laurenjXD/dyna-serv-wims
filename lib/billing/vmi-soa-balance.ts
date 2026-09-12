@@ -41,10 +41,12 @@ import { vmiBillingPeriods, vmiPayments } from "@/lib/db/schema/vmi_billing";
 // ---------------------------------------------------------------------------
 
 export type VmiPriorPeriodForSoa = {
+  id?: string;
   partyId: string;
   periodEndDate: string; // 'YYYY-MM-DD'
   status: string; // 'draft' | 'issued' | 'voided'
   soaClosingBalanceUsd: number;
+  closedAt?: string | Date | null;
 };
 
 export type VmiPaymentForSoa = {
@@ -52,6 +54,7 @@ export type VmiPaymentForSoa = {
   appliedToPeriodId: string;
   type: string; // 'payment' | 'credit_memo' | 'adjustment'
   amountUsd: number;
+  createdAt?: string | Date | null;
 };
 
 export type VmiSoaBalanceScope = {
@@ -95,6 +98,33 @@ export function resolveSoaOpeningBalance(
   );
 
   return mostRecent.soaClosingBalanceUsd;
+}
+
+/**
+ * Payments recorded after an issued period was closed are intentionally not
+ * included in that period's immutable closing snapshot. They reduce the
+ * balance carried into the next period instead.
+ */
+export function sumPostIssuePaymentsForPriorPeriod(
+  priorPeriod: VmiPriorPeriodForSoa | undefined,
+  payments: VmiPaymentForSoa[],
+): number {
+  if (!priorPeriod?.id || !priorPeriod.closedAt) return 0;
+  const closedAt = new Date(priorPeriod.closedAt).getTime();
+  if (Number.isNaN(closedAt)) return 0;
+
+  return payments
+    .filter((payment) => {
+      if (
+        payment.appliedToPeriodId !== priorPeriod.id ||
+        payment.partyId !== priorPeriod.partyId ||
+        payment.type !== "payment" ||
+        !payment.createdAt
+      ) return false;
+      const createdAt = new Date(payment.createdAt).getTime();
+      return !Number.isNaN(createdAt) && createdAt > closedAt;
+    })
+    .reduce((sum, payment) => sum + payment.amountUsd, 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -144,10 +174,21 @@ export function computeVmiSoaBalance(
   payments: VmiPaymentForSoa[],
   scope: VmiSoaBalanceScope,
 ): VmiSoaBalanceResult {
-  const soaOpeningBalanceUsd = resolveSoaOpeningBalance(priorPeriods, {
+  const soaOpeningBalanceBeforePostIssuePayments = resolveSoaOpeningBalance(priorPeriods, {
     partyId: scope.partyId,
     newPeriodStartDate: scope.newPeriodStartDate,
   });
+
+  const priorPeriod = priorPeriods
+    .filter(
+      (period) =>
+        period.partyId === scope.partyId &&
+        period.status !== "voided" &&
+        period.periodEndDate < scope.newPeriodStartDate,
+    )
+    .sort((a, b) => b.periodEndDate.localeCompare(a.periodEndDate))[0];
+  const postIssuePayments = sumPostIssuePaymentsForPriorPeriod(priorPeriod, payments);
+  const soaOpeningBalanceUsd = soaOpeningBalanceBeforePostIssuePayments - postIssuePayments;
 
   const soaPaymentsAppliedUsd = sumSoaPaymentsApplied(payments, {
     partyId: scope.partyId,
@@ -175,10 +216,12 @@ export function computeVmiSoaBalance(
 export type VmiSoaBalanceDbLike = { select: (...args: any[]) => any };
 
 type RawPriorPeriodRow = {
+  id: string;
   partyId: string;
   periodEndDate: string;
   status: string;
   soaClosingBalanceUsd: string;
+  closedAt: Date | string | null;
 };
 
 type RawPaymentRow = {
@@ -186,14 +229,17 @@ type RawPaymentRow = {
   appliedToPeriodId: string;
   type: string;
   amountUsd: string;
+  createdAt: Date | string | null;
 };
 
 function mapPriorPeriodRow(raw: RawPriorPeriodRow): VmiPriorPeriodForSoa {
   return {
+    id: raw.id,
     partyId: raw.partyId,
     periodEndDate: raw.periodEndDate,
     status: raw.status,
     soaClosingBalanceUsd: Number(raw.soaClosingBalanceUsd),
+    closedAt: raw.closedAt,
   };
 }
 
@@ -203,6 +249,7 @@ function mapPaymentRow(raw: RawPaymentRow): VmiPaymentForSoa {
     appliedToPeriodId: raw.appliedToPeriodId,
     type: raw.type,
     amountUsd: Number(raw.amountUsd),
+    createdAt: raw.createdAt,
   };
 }
 
@@ -212,10 +259,12 @@ export async function getVmiSoaBalanceForClose(
 ): Promise<VmiSoaBalanceResult> {
   const rawPriorPeriodRows: RawPriorPeriodRow[] = await db
     .select({
+      id: vmiBillingPeriods.id,
       partyId: vmiBillingPeriods.partyId,
       periodEndDate: vmiBillingPeriods.periodEndDate,
       status: vmiBillingPeriods.status,
       soaClosingBalanceUsd: vmiBillingPeriods.soaClosingBalanceUsd,
+      closedAt: vmiBillingPeriods.closedAt,
     })
     .from(vmiBillingPeriods)
     .where(
@@ -233,12 +282,12 @@ export async function getVmiSoaBalanceForClose(
       appliedToPeriodId: vmiPayments.appliedToPeriodId,
       type: vmiPayments.type,
       amountUsd: vmiPayments.amountUsd,
+      createdAt: vmiPayments.createdAt,
     })
     .from(vmiPayments)
     .where(
       and(
         eq(vmiPayments.partyId, scope.partyId),
-        eq(vmiPayments.appliedToPeriodId, scope.periodId),
       ),
     );
 

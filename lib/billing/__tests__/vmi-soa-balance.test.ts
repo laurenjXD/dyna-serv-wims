@@ -197,6 +197,7 @@ import {
   computeVmiSoaClosingBalance,
   computeVmiSoaBalance,
   getVmiSoaBalanceForClose,
+  sumPostIssuePaymentsForPriorPeriod,
   type VmiPriorPeriodForSoa,
   type VmiPaymentForSoa,
 } from "../vmi-soa-balance";
@@ -547,6 +548,28 @@ describe("computeVmiSoaClosingBalance (D.6, pure formula)", () => {
 // ---------------------------------------------------------------------------
 
 describe("computeVmiSoaBalance (D.6, pure combination)", () => {
+  it("carries payments recorded after an issued period into the next opening balance", () => {
+    const result = computeVmiSoaBalance(
+      [priorPeriod({ id: "prior-period", closedAt: "2026-07-05T10:00:00.000Z" })],
+      [
+        payment({
+          appliedToPeriodId: "prior-period",
+          amountUsd: 500,
+          createdAt: "2026-07-06T10:00:00.000Z",
+        }),
+      ],
+      {
+        partyId: PARTY_A,
+        periodId: PERIOD_JULY_ID,
+        newPeriodStartDate: "2026-07-01",
+        billingStatementTotalUsd: 1000,
+      },
+    );
+
+    expect(result.soaOpeningBalanceUsd).toBe(2523.8);
+    expect(result.soaClosingBalanceUsd).toBe(3523.8);
+  });
+
   it(
     "(AC: full design.md §2.6 step 5, first period, no payments yet) " +
       "returns opening=0, paymentsApplied=0, closing=billing_statement_total",
