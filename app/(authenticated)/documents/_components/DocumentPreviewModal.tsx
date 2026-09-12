@@ -94,9 +94,9 @@ export function DocumentPreviewModal({
       activePreviewUrl = `/pick-lists/${doc.id}/print`;
       activeDownloadUrl = `/pick-lists/${doc.id}/print`;
     } else {
-      activeTitle = "Delivery Receipt & Acknowledgement (DRA / POD)";
+      activeTitle = "Imported Delivery Request Authorization (DRA)";
       activeNumber = `DRA-${doc.documentNumber.replace(/^PL-/, "")}`;
-      activePreviewUrl = doc.downloadUrl?.startsWith("http") ? doc.downloadUrl : `/pick-lists/${doc.id}/receipt`;
+      activePreviewUrl = doc.downloadUrl?.startsWith("http") ? doc.downloadUrl : doc.previewUrl;
       activeDownloadUrl = activePreviewUrl;
     }
   }
@@ -164,8 +164,8 @@ export function DocumentPreviewModal({
                   </div>
                 )}
 
-                {/* In-Modal Document Switcher for Pick List / DRA */}
-                {isPickGroup && (
+                {/* In-Modal Document Switcher for Pick List / DRA (only if DRA attached) */}
+                {isPickGroup && doc.downloadUrl && doc.downloadUrl.startsWith("http") && (
                   <div className="ml-2 flex items-center rounded-xl border border-brand-navy/20 bg-brand-navy/5 p-0.5 text-xs font-bold">
                     <button
                       type="button"
@@ -187,7 +187,7 @@ export function DocumentPreviewModal({
                           : "text-brand-navy hover:bg-brand-navy/10"
                       }`}
                     >
-                      DRA / Receipt
+                      Attached DRA
                     </button>
                   </div>
                 )}

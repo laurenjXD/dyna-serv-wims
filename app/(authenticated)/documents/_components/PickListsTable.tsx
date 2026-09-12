@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Eye, Download, Share2, Package, FileText } from "lucide-react";
+import { Eye, Download, Share2, Package, FileText, Paperclip } from "lucide-react";
 import type { PickListArchiveRow } from "@/lib/db/queries/documents";
 import { DocumentPreviewModal, type PreviewDocData } from "./DocumentPreviewModal";
 import { DocumentReprintDialog } from "./DocumentReprintDialog";
@@ -144,36 +144,38 @@ export function PickListsTable({ rows }: PickListsTableProps) {
                               organizationName: r.customerPartyName,
                               actorName: r.createdByName,
                               previewUrl: `/pick-lists/${r.pickListId}/print`,
-                              downloadUrl: `/pick-lists/${r.pickListId}/print`,
+                              downloadUrl: r.deliveryReceiptPath ?? `/pick-lists/${r.pickListId}/print`,
                             })
                           }
                           title="Preview Pick List Work Order"
                           className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border bg-surface px-2.5 sm:px-3 font-label text-label font-bold text-brand-navy hover:bg-background transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
                         >
-                          <Eye size={14} /> <span>PL</span>
+                          <Eye size={14} /> <span>{r.deliveryReceiptPath ? "PL" : "Preview"}</span>
                         </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setPreviewDoc({
-                              id: r.pickListId,
-                              documentNumber: `DRA-${r.documentNumber.replace(/^PL-/, "")}`,
-                              title: "Delivery Receipt & Acknowledgement (DRA / POD)",
-                              documentType: "acknowledgement_receipt",
-                              status: r.status,
-                              snapshotHash: r.snapshotHash,
-                              generatedAt: r.generatedAt ?? r.createdAt,
-                              organizationName: r.customerPartyName,
-                              actorName: r.createdByName,
-                              previewUrl: r.deliveryReceiptPath || `/pick-lists/${r.pickListId}/receipt`,
-                              downloadUrl: r.deliveryReceiptPath || `/pick-lists/${r.pickListId}/receipt`,
-                            })
-                          }
-                          title="Preview DRA / Delivery Receipt"
-                          className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-outline-variant/40 bg-surface-white px-2.5 sm:px-3 font-label text-label font-bold text-on-surface hover:bg-surface-light-grey transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                        >
-                          <FileText size={14} /> <span>DRA</span>
-                        </button>
+                        {r.deliveryReceiptPath && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPreviewDoc({
+                                id: r.pickListId,
+                                documentNumber: `DRA-${r.documentNumber.replace(/^PL-/, "")}`,
+                                title: "Imported Delivery Request Authorization (DRA)",
+                                documentType: "pick_list",
+                                status: r.status,
+                                snapshotHash: r.snapshotHash,
+                                generatedAt: r.generatedAt ?? r.createdAt,
+                                organizationName: r.customerPartyName,
+                                actorName: r.createdByName,
+                                previewUrl: r.deliveryReceiptPath,
+                                downloadUrl: r.deliveryReceiptPath,
+                              })
+                            }
+                            title="Preview Imported Customer DRA"
+                            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-outline-variant/40 bg-surface-white px-2.5 sm:px-3 font-label text-label font-bold text-on-surface hover:bg-surface-light-grey transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                          >
+                            <Paperclip size={14} /> <span>DRA</span>
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => handleShare(r)}

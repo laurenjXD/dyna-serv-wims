@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Eye, Download, Share2, CheckCircle2, Info } from "lucide-react";
+import { Eye, Download, Share2, CheckCircle2, Info, Paperclip } from "lucide-react";
 import type { AcknowledgementReceiptArchiveRow } from "@/lib/db/queries/documents";
 import { DocumentPreviewModal, type PreviewDocData } from "./DocumentPreviewModal";
 import { DocumentReprintDialog } from "./DocumentReprintDialog";
@@ -155,7 +155,7 @@ export function AcknowledgementReceiptsTable({ rows }: AcknowledgementReceiptsTa
                             setPreviewDoc({
                               id: r.id,
                               documentNumber: r.documentNumber,
-                              title: "Delivery Receipt & Acknowledgement (DRA)",
+                              title: "Delivery Receipt & Acknowledgement Receipt (DR / AR)",
                               documentType: "acknowledgement_receipt",
                               status: r.status,
                               snapshotHash: r.snapshotHash,
@@ -171,6 +171,30 @@ export function AcknowledgementReceiptsTable({ rows }: AcknowledgementReceiptsTa
                         >
                           <Eye size={14} /> Preview
                         </button>
+                        {r.deliveryReceiptPath && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPreviewDoc({
+                                id: r.id,
+                                documentNumber: `POD-${r.documentNumber.replace(/^AR-/, "")}`,
+                                title: "Signed Proof of Delivery (POD)",
+                                documentType: "acknowledgement_receipt",
+                                status: r.status,
+                                snapshotHash: r.snapshotHash,
+                                generatedAt: r.generatedAt ?? r.createdAt,
+                                organizationName: r.customerPartyName,
+                                actorName: r.dispatchedByName,
+                                previewUrl: r.deliveryReceiptPath,
+                                downloadUrl: r.deliveryReceiptPath,
+                              })
+                            }
+                            title="Preview Signed Proof of Delivery"
+                            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-outline-variant/40 bg-surface-white px-2.5 sm:px-3 font-label text-label font-bold text-on-surface hover:bg-surface-light-grey transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                          >
+                            <Paperclip size={14} /> <span>POD</span>
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => handleShare(r)}
