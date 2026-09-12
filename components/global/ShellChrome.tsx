@@ -5,8 +5,8 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Bell, ChevronDown, Keyboard, PanelLeftClose, PanelLeftOpen, Settings, Wifi, WifiOff } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Bell, ChevronDown, ChevronLeft, Keyboard, PanelLeftClose, PanelLeftOpen, Settings, Wifi, WifiOff } from "lucide-react";
 import { resolveSessionPresentationTier } from "@/lib/shell/surface";
 import { isScanLoopRoute } from "@/lib/shell/scan-loop";
 import { useShellSidebar, useDesktopSidebar } from "@/lib/shell/state";
@@ -59,6 +59,7 @@ function initials(name: string | null): string {
 export function ShellChrome({ children }: { children: ReactNode }) {
   const context = useShellAuthorizationContext();
   const pathname = usePathname();
+  const router = useRouter();
   const { isOpen, toggle, close } = useShellSidebar();
   const { isOpen: isDesktopOpen, toggle: toggleDesktop } = useDesktopSidebar();
   const connectivityStatus = useConnectivityStatus();
@@ -76,6 +77,49 @@ export function ShellChrome({ children }: { children: ReactNode }) {
   const notificationPanelRef = useRef<HTMLDivElement | null>(null);
   const desktopBellRef = useRef<HTMLButtonElement | null>(null);
   const mobileBellRef = useRef<HTMLButtonElement | null>(null);
+
+  // ── Mobile Touch Swipe-Right Gesture Navigation ────────────────────────────
+  useEffect(() => {
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchStartTime = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      touchStartTime = Date.now();
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (e.changedTouches.length !== 1) return;
+      const touchEndX = e.changedTouches[0].clientX;
+      const touchEndY = e.changedTouches[0].clientY;
+      const deltaX = touchEndX - touchStartX;
+      const deltaY = touchEndY - touchStartY;
+      const elapsedTime = Date.now() - touchStartTime;
+
+      // Left-to-right edge swipe (starts in leftmost 80px, horizontal movement > 75px, low vertical drift, < 600ms)
+      if (
+        touchStartX < 80 &&
+        deltaX > 75 &&
+        Math.abs(deltaY) < 60 &&
+        elapsedTime < 600
+      ) {
+        if (pathname !== "/" && typeof window !== "undefined" && window.history.length > 1) {
+          router.back();
+        }
+      }
+    };
+
+    window.addEventListener("touchstart", handleTouchStart, { passive: true });
+    window.addEventListener("touchend", handleTouchEnd, { passive: true });
+
+    return () => {
+      window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [pathname, router]);
 
   useEffect(() => {
     if (!isAccountMenuOpen) return;
@@ -298,10 +342,21 @@ export function ShellChrome({ children }: { children: ReactNode }) {
           </button>
         )}
 
-        <div className="flex flex-1 items-center gap-3 lg:hidden">
-          <img src="/logo.svg" alt="Dyna-Serv WIMS" className="h-8 w-8" />
-          <span className="font-label text-body-md font-semibold uppercase tracking-wide text-text-primary">
-            Dyna-Serv WIMS
+        <div className="flex flex-1 items-center gap-2.5 lg:hidden">
+          {pathname !== "/" && (
+            <button
+              type="button"
+              aria-label="Go back to previous page"
+              data-testid="mobile-back-button"
+              onClick={() => router.back()}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-text-primary hover:bg-slate-200 active:scale-95 transition-all"
+            >
+              <ChevronLeft size={22} />
+            </button>
+          )}
+          <img src="/logo.svg" alt="Dyna-Serv WIMS" className="h-8 w-8 shrink-0" />
+          <span className="font-label text-body-md font-semibold uppercase tracking-wide text-text-primary truncate">
+            {pathname !== "/" ? pageTitle : "Dyna-Serv WIMS"}
           </span>
           <span
             data-testid="connectivity-indicator-mobile"

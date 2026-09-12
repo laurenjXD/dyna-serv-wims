@@ -48,6 +48,14 @@ import userEvent from "@testing-library/user-event";
 // active-route logic is deterministic.
 vi.mock("next/navigation", () => ({
   usePathname: () => "/",
+  useRouter: () => ({
+    back: vi.fn(),
+    push: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+  }),
 }));
 
 // Mock ShellNavigation — its rendering is covered in depth by
