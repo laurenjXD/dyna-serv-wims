@@ -171,9 +171,9 @@ architecture and workflow-completion phase, not a page-from-scratch build.
 
 The direct `/billing-pricing/vmi` route and `/billing-pricing/vmi/periods/[periodId]`
 detail route are now available. The detail route includes SOA balances,
-payment history, and the Administrator-only payment form; remaining work is
-the four-document links/actions, charge-line editing, and period correction/
-redelivery controls.
+payment history, Administrator-only payment entry, and pre-issue charge-line
+entry tied to acknowledgement receipts; remaining work is the four-document
+links/actions, charge-line editing, and period correction/redelivery controls.
 
 Build the page in this order:
 

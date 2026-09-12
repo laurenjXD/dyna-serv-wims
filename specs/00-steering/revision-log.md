@@ -1727,6 +1727,12 @@ period detail exposes locked FX, SOA opening/payments/closing balances, payment
 history, and an Administrator-only payment/credit-memo/adjustment form. VMI
 payment recording remains append-only and does not rewrite an issued period.
 
+The period detail now also lists VMI charge lines and provides pre-issue entry
+for Documentation, Delivery, and approved ad-hoc types, with acknowledgement
+receipt selection scoped to the organization. The form is unavailable after
+the period is issued and reuses the existing charge-line validation/action
+boundary.
+
 Migration `0047_vmi_billing_remaining_rls.sql` completes the missing RLS
 coverage for recurring fees, daily ledger, charge lines, billing periods,
 payments, and manpower hours, while widening contract/permit SELECT access for

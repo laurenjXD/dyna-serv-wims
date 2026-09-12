@@ -7,6 +7,7 @@ import { db } from "@/lib/db/client";
 import { closeVmiPeriod, type VmiPeriodCloseResult } from "@/lib/billing/vmi-period-close";
 import { recordVmiPayment, type VmiPaymentType } from "@/lib/billing/vmi-payments";
 import { listParties } from "@/lib/db/queries/parties";
+import { createVmiChargeLine } from "@/lib/actions/vmi-charge-lines";
 
 export type PeriodCloseState = {
   ok?: boolean;
@@ -119,4 +120,34 @@ export async function recordVmiPaymentAction(
     const message = err instanceof Error ? err.message : "Payment recording failed.";
     return { ok: false, error: message };
   }
+}
+
+export type VmiChargeLineState = {
+  ok?: boolean;
+  chargeLineId?: string;
+  error?: string;
+};
+
+export async function createVmiChargeLineAction(
+  _prevState: VmiChargeLineState,
+  formData: FormData,
+): Promise<VmiChargeLineState> {
+  const resolver = await createPageResolver();
+  const partyId = String(formData.get("partyId") ?? "");
+  const result = await createVmiChargeLine(resolver, {
+    partyId,
+    acknowledgementReceiptId: String(formData.get("acknowledgementReceiptId") ?? ""),
+    chargeType: String(formData.get("chargeType") ?? ""),
+    chargeDate: String(formData.get("chargeDate") ?? ""),
+    amount: String(formData.get("amount") ?? ""),
+    notes: String(formData.get("notes") ?? ""),
+  });
+
+  if (!result.ok) {
+    return { ok: false, error: result.errors.join(", ") };
+  }
+
+  revalidatePath(`/billing-pricing/vmi/periods/${formData.get("periodId") ?? ""}`);
+  revalidatePath("/billing-pricing");
+  return { ok: true, chargeLineId: result.chargeLine.id };
 }

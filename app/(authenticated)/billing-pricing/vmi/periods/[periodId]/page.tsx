@@ -6,8 +6,13 @@ import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { parties } from "@/lib/db/schema/parties";
-import { vmiBillingPeriods, vmiPayments } from "@/lib/db/schema/vmi_billing";
+import { vmiBillingPeriods, vmiChargeLines, vmiPayments } from "@/lib/db/schema/vmi_billing";
+import { generatedDocuments } from "@/lib/db/schema/documents";
+import { inventoryCommitments } from "@/lib/db/schema/commitments";
+import { pickLists } from "@/lib/db/schema/pick_lists";
+import { and, between } from "drizzle-orm";
 import { PaymentForm } from "./_components/PaymentForm";
+import { ChargeLineForm } from "./_components/ChargeLineForm";
 
 interface Props {
   params: Promise<{ periodId: string }>;
@@ -58,6 +63,27 @@ export default async function VmiPeriodDetailPage({ params }: Props) {
     .from(vmiPayments)
     .where(eq(vmiPayments.appliedToPeriodId, period.id));
 
+  const lines = await db
+    .select({
+      id: vmiChargeLines.id,
+      chargeType: vmiChargeLines.chargeType,
+      amount: vmiChargeLines.amount,
+      currency: vmiChargeLines.currency,
+      chargeDate: vmiChargeLines.chargeDate,
+      receiptNumber: generatedDocuments.documentNumber,
+      notes: vmiChargeLines.notes,
+    })
+    .from(vmiChargeLines)
+    .innerJoin(generatedDocuments, eq(generatedDocuments.id, vmiChargeLines.acknowledgementReceiptId))
+    .where(and(eq(vmiChargeLines.partyId, period.partyId), between(vmiChargeLines.chargeDate, period.periodStartDate, period.periodEndDate)));
+
+  const receipts = await db
+    .select({ id: generatedDocuments.id, documentNumber: generatedDocuments.documentNumber })
+    .from(generatedDocuments)
+    .innerJoin(inventoryCommitments, eq(inventoryCommitments.id, generatedDocuments.sourceId))
+    .innerJoin(pickLists, eq(pickLists.id, inventoryCommitments.pickListId))
+    .where(and(eq(generatedDocuments.documentType, "acknowledgement_receipt"), eq(generatedDocuments.sourceType, "inventory_commitment"), eq(pickLists.customerPartyId, period.partyId), eq(generatedDocuments.status, "ready")));
+
   return (
     <div className="mx-auto max-w-container space-y-6 px-4 py-6 sm:px-6 lg:px-8">
       <div>
@@ -105,6 +131,16 @@ export default async function VmiPeriodDetailPage({ params }: Props) {
           )}
         </div>
       </div>
+
+      <ChargeLineForm
+        partyId={period.partyId}
+        periodId={period.id}
+        periodStartDate={period.periodStartDate}
+        periodEndDate={period.periodEndDate}
+        receipts={receipts}
+        lines={lines}
+        editable={period.status === "draft"}
+      />
 
       {period.status !== "voided" && <PaymentForm partyId={period.partyId} periodId={period.id} />}
     </div>
