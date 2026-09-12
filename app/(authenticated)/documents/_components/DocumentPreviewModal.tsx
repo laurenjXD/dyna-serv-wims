@@ -239,14 +239,14 @@ export function DocumentPreviewModal({
             <button
               type="button"
               onClick={() => {
-                const linkToCopy = doc.downloadUrl?.startsWith("http")
-                  ? doc.downloadUrl
+                const linkToCopy = activeDownloadUrl?.startsWith("http")
+                  ? activeDownloadUrl
                   : typeof window !== "undefined"
-                  ? `${window.location.origin}${doc.previewUrl || ""}`
+                  ? `${window.location.origin}${activePreviewUrl || ""}`
                   : "";
                 if (linkToCopy && typeof navigator !== "undefined") {
                   navigator.clipboard.writeText(linkToCopy);
-                  alert(`Document link for ${doc.documentNumber} copied to clipboard!`);
+                  alert(`Document link for ${activeNumber} copied to clipboard!`);
                 }
               }}
               className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-outline-variant/40 bg-surface-white px-3 font-label text-label font-bold text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy transition-colors"
@@ -264,12 +264,12 @@ export function DocumentPreviewModal({
               Print
             </button>
 
-            {doc.downloadUrl && (
+            {activeDownloadUrl && (
               <a
-                href={doc.downloadUrl}
+                href={activeDownloadUrl}
                 download
-                target={doc.downloadUrl.startsWith("http") ? "_blank" : undefined}
-                rel={doc.downloadUrl.startsWith("http") ? "noopener noreferrer" : undefined}
+                target={activeDownloadUrl.startsWith("http") ? "_blank" : undefined}
+                rel={activeDownloadUrl.startsWith("http") ? "noopener noreferrer" : undefined}
                 className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-brand-navy px-3.5 font-label text-label font-bold text-surface-white hover:bg-brand-navy/90 focus:outline-none focus:ring-2 focus:ring-brand-navy transition-colors"
               >
                 <Download size={15} />
@@ -310,23 +310,24 @@ export function DocumentPreviewModal({
                 </div>
               </div>
             </div>
-          ) : doc.previewUrl ? (
+          ) : activePreviewUrl ? (
             <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-start transition-all">
               <div
                 className="w-full rounded-xl bg-surface-white shadow-elevation-3 transition-transform duration-150 origin-top overflow-hidden border border-outline-variant/30 min-h-[75vh]"
                 style={{ transform: `scale(${zoomLevel / 100})` }}
               >
-                {doc.previewUrl.match(/\.(jpeg|jpg|png|webp|gif)(\?.*)?$/i) ? (
+                {activePreviewUrl.match(/\.(jpeg|jpg|png|webp|gif)(\?.*)?$/i) ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={doc.previewUrl}
-                    alt={`Preview ${doc.documentNumber}`}
+                    src={activePreviewUrl}
+                    alt={`Preview ${activeNumber}`}
                     className="max-h-[75vh] w-auto mx-auto object-contain p-4"
                   />
                 ) : (
                   <iframe
-                    src={doc.previewUrl}
-                    title={`Preview ${doc.documentNumber}`}
+                    key={activePreviewUrl}
+                    src={activePreviewUrl}
+                    title={`Preview ${activeNumber}`}
                     className="h-[75vh] w-full border-0 bg-surface-white"
                   />
                 )}
@@ -339,7 +340,7 @@ export function DocumentPreviewModal({
                 Digital document preview rendered inline from authoritative snapshot.
               </p>
               <p className="mt-1 font-mono text-mono-md font-bold text-brand-navy">
-                {doc.documentNumber}
+                {activeNumber}
               </p>
               <button
                 type="button"
