@@ -5,6 +5,7 @@ import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { closeVmiPeriod, type VmiPeriodCloseResult } from "@/lib/billing/vmi-period-close";
+import { recordVmiPayment, type VmiPaymentType } from "@/lib/billing/vmi-payments";
 import { listParties } from "@/lib/db/queries/parties";
 
 export type PeriodCloseState = {
@@ -64,6 +65,58 @@ export async function closeVmiPeriodAction(
     return { ok: true, result };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Period close failed.";
+    return { ok: false, error: message };
+  }
+}
+
+export type VmiPaymentState = {
+  ok?: boolean;
+  paymentId?: string;
+  error?: string;
+};
+
+export async function recordVmiPaymentAction(
+  _prevState: VmiPaymentState,
+  formData: FormData,
+): Promise<VmiPaymentState> {
+  const resolver = await createPageResolver();
+  const permResult = await requirePermission(resolver, "reporting.financial_read");
+
+  if (permResult.kind !== "authorized") {
+    return { ok: false, error: "You do not have permission to record billing payments." };
+  }
+
+  if (!permResult.context.activeRoleKeys.includes("administrator")) {
+    return { ok: false, error: "Only an Administrator can record billing payments." };
+  }
+
+  const partyId = String(formData.get("partyId") ?? "");
+  const periodId = String(formData.get("periodId") ?? "");
+  const amountUsd = String(formData.get("amountUsd") ?? "");
+  const paymentDate = String(formData.get("paymentDate") ?? "");
+  const type = String(formData.get("type") ?? "payment") as VmiPaymentType;
+  const notes = String(formData.get("notes") ?? "");
+
+  try {
+    const result = await recordVmiPayment(db, {
+      partyId,
+      periodId,
+      amountUsd,
+      paymentDate,
+      type,
+      notes,
+      recordedByUserId: permResult.context.userId,
+    });
+
+    if (!result.ok) {
+      return { ok: false, error: result.errors.join(", ") };
+    }
+
+    revalidatePath("/billing-pricing");
+    revalidatePath("/billing-pricing/soa");
+    return { ok: true, paymentId: result.paymentId };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Payment recording failed.";
     return { ok: false, error: message };
   }
 }

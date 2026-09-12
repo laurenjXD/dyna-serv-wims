@@ -2,7 +2,7 @@
 
 import { useActionState, useState, useEffect } from "react";
 import { X, CheckCircle, Calculator, FileCheck, AlertCircle } from "lucide-react";
-import { closeVmiPeriodAction } from "../_actions";
+import { closeVmiPeriodAction, recordVmiPaymentAction } from "../_actions";
 
 type Option = { id: string; name: string; code: string };
 
@@ -29,6 +29,10 @@ export function PeriodCloseModal({
   selectedYear,
 }: Props) {
   const [state, formAction, isPending] = useActionState(closeVmiPeriodAction, {});
+  const [paymentState, paymentFormAction, isPaymentPending] = useActionState(
+    recordVmiPaymentAction,
+    {},
+  );
 
   if (!isOpen) return null;
 
@@ -130,6 +134,59 @@ export function PeriodCloseModal({
               <div className="mt-2 text-xs text-text-grey">
                 Locked FX Rate: <span className="font-mono font-bold">1 USD = ₱{state.result.lockedExchangeRatePhp} PHP</span> ({state.result.lockedExchangeRateDate})
               </div>
+            </div>
+
+            <div className="space-y-3 rounded-lg border border-outline-variant/30 bg-surface-white p-4">
+              <div>
+                <h4 className="font-heading text-body-md font-bold text-on-surface">
+                  Record Payment or Adjustment
+                </h4>
+                <p className="mt-1 font-body text-body-sm text-text-grey">
+                  Administrator-only. Issued periods remain immutable; payments recorded after issue are carried into the next period&apos;s balance.
+                </p>
+              </div>
+
+              {paymentState.error && (
+                <div className="rounded-lg bg-status-held/10 p-3 font-body text-body-sm text-status-held">
+                  What happened: Payment was not recorded. Why it failed: {paymentState.error}. Next action: Correct the fields and try again.
+                </div>
+              )}
+
+              {paymentState.ok && (
+                <div className="rounded-lg bg-status-available/10 p-3 font-body text-body-sm text-status-available">
+                  Payment recorded successfully. The SOA balance will refresh when this period is reopened.
+                </div>
+              )}
+
+              <form action={paymentFormAction} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <input type="hidden" name="partyId" value={selectedPartyId} />
+                <input type="hidden" name="periodId" value={state.result.id} />
+                <div>
+                  <label htmlFor="payment-amount" className="block font-label text-label font-bold text-on-surface">Amount (USD)</label>
+                  <input id="payment-amount" name="amountUsd" required inputMode="decimal" placeholder="0.00" className="mt-1 h-11 w-full rounded border border-outline-variant/30 px-3 font-body text-body-md" />
+                </div>
+                <div>
+                  <label htmlFor="payment-date" className="block font-label text-label font-bold text-on-surface">Date</label>
+                  <input id="payment-date" name="paymentDate" required type="date" className="mt-1 h-11 w-full rounded border border-outline-variant/30 px-3 font-body text-body-md" />
+                </div>
+                <div>
+                  <label htmlFor="payment-type" className="block font-label text-label font-bold text-on-surface">Type</label>
+                  <select id="payment-type" name="type" defaultValue="payment" className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md">
+                    <option value="payment">Payment</option>
+                    <option value="credit_memo">Credit memo</option>
+                    <option value="adjustment">Adjustment</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="payment-notes" className="block font-label text-label font-bold text-on-surface">Notes</label>
+                  <input id="payment-notes" name="notes" placeholder="Reference or explanation" className="mt-1 h-11 w-full rounded border border-outline-variant/30 px-3 font-body text-body-md" />
+                </div>
+                <div className="sm:col-span-2 flex justify-end">
+                  <button type="submit" disabled={isPaymentPending} className="h-11 rounded bg-brand-navy px-5 font-label text-label font-bold text-surface-white hover:bg-brand-navy/90 disabled:opacity-50">
+                    {isPaymentPending ? "Recording..." : "Record Payment"}
+                  </button>
+                </div>
+              </form>
             </div>
 
             <div className="flex justify-end pt-2">
