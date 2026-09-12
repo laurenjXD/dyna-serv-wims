@@ -9,8 +9,8 @@
 // function and carries no RLS, no Drizzle-level access, and no application FK.
 //
 // status values:   'pending' | 'generating' | 'ready' | 'failed' | 'voided'
-// document_type:   'pick_list' | 'acknowledgement_receipt'
-// source_type:     'inventory_commitment' | 'inventory_transaction'
+// document_type:   pick-list/receipt types plus the four VMI financial types
+// source_type:     inventory commitment/transaction or vmi_billing_period
 // event_type:      'generated' | 'printed' | 'reprinted' | 'failed' | 'superseded'
 //
 // document_type -> source_type mapping (2026-08-20 correction — see
@@ -80,11 +80,15 @@ export const generatedDocuments = pgTable(
   (table) => ({
     documentTypeCheck: check(
       "generated_documents_type_check",
-      sql`${table.documentType} IN ('pick_list', 'acknowledgement_receipt')`,
+      sql`${table.documentType} IN (
+        'pick_list', 'acknowledgement_receipt',
+        'vmi_billing_statement', 'vmi_warehousing_charges',
+        'vmi_statement_of_account', 'vmi_letter_of_authority'
+      )`,
     ),
     sourceTypeCheck: check(
       "generated_documents_source_type_check",
-      sql`${table.sourceType} IN ('inventory_commitment', 'inventory_transaction')`,
+      sql`${table.sourceType} IN ('inventory_commitment', 'inventory_transaction', 'vmi_billing_period')`,
     ),
     statusCheck: check(
       "generated_documents_status_check",
