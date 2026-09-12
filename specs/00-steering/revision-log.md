@@ -1,5 +1,46 @@
 # Revision Log — Hyperion 3PL / Dyna-Serv
 
+## Billing & Pricing implementation rebaseline and navigation direction (2026-09-12)
+
+**Decision:** Continue Billing & Pricing as one office financial workspace,
+reorganized into four intent-based sections:
+
+```text
+Billing & Pricing
+├── Overview
+├── VMI Billing
+├── Trading Pricing
+└── Configuration
+```
+
+Existing capabilities are retained and regrouped: the VMI Storage Ledger and
+SOA belong under VMI Billing; the Trading Margin Ledger and Trading rate cards
+belong under Trading Pricing; Logistics Rate Matrix and Commercial Contracts
+belong under Configuration. Overview is the starting point for billing-period
+status, organizations needing attention, accrual visibility, and ready-to-close
+periods.
+
+**Current implementation correction:** the Billing UI is not a from-scratch
+feature. The repository already contains the VMI ledger, contract screens,
+SOA directory/detail, Trading policy/rate-card screens, Trading margin ledger,
+Logistics Rate Matrix, Documents Center, and supporting backend services. The
+remaining work is to connect these surfaces into the guided workflow, complete
+VMI period close/payment/correction behavior, finish the shared PDF artifact
+pipeline, and complete Trading purchase/import plus `08`/`10` integration.
+
+**Document boundary:** the UBoT Commercial Invoice `PR260026P`, Packing List,
+and Weight Information are receiving/import evidence. The supplier invoice's
+`$8,608.76` is Trading purchase-cost evidence, not a customer invoice, VMI
+charge, or SOA amount. Mixed line UOMs (`PC` and `M`) must remain line-level
+and be flagged for review rather than silently summed as one unit type.
+
+**Delivery plan:** the canonical implementation sequence is the shared PDF and
+artifact pipeline → VMI four-document period close → Billing Overview and VMI
+workspace → Trading purchase/pricing integration → full verification. The
+detailed plan and Gantt baselines are maintained in
+`specs/00-steering/billing-implementation-plan.md` and
+`specs/00-steering/gantt-mapping.md`.
+
 ## One-QR receiving confirmation and per-line shortage placement approved (2026-09-02)
 
 Product Owner approved the clarified receiving workflow: the Work Queue/WRR owns expected lines and quantities; one QR scan identifies and confirms the matching receiving line; the operator assigns declared boxes to storage/Hold or marks individual boxes `Missing`; only assigned boxes enter inventory; missing boxes are excluded from location allocations and inventory; lines commit independently; and the WRR becomes `confirmed` after all lines resolve, with OS&D shown as a shortage summary rather than a new `partial` status. The receiving UI implementation is recorded in commit `ac4f5c0` and the approval is captured in `specs/07-incoming-receiving/{requirements,design,tasks}.md`.
