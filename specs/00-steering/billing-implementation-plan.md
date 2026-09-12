@@ -95,10 +95,13 @@ Remaining completion work:
 
 ### Shared dependency
 
-The highest-leverage dependency is the approved `04`/`10` document artifact
-pipeline. It is required by both floor documents and VMI financial
-documents. It must provide private Storage, metadata, hash/version tracking,
-retry and attention states, signed access, and append-only generation events.
+The highest-leverage dependency is completing the approved `04`/`10` document
+artifact pipeline. The repository already has a Documents Center,
+document-specific tables/actions, private download routes, and a SOA PDF
+generator. The remaining work is to make those pieces one consistent pipeline
+for floor and financial documents, with shared private Storage metadata,
+hash/version tracking, retry and attention states, signed access, and
+append-only generation events.
 
 ## 3. Delivery sequence
 
@@ -159,6 +162,12 @@ the next period.
 ### Phase 3 — Billing workspace UI
 
 **Goal:** expose the workflow without overwhelming the user.
+
+The current `/billing-pricing` page already contains the VMI Storage Ledger,
+Trading Margin Ledger, Logistics Rate Matrix, Commercial Contracts, SOA
+directory/detail, VMI contract screens, Trading policy/rate-card controls,
+and supporting table components. This phase is therefore an information
+architecture and workflow-completion phase, not a page-from-scratch build.
 
 Build the page in this order:
 
@@ -255,9 +264,9 @@ percentages, not raw checkbox counts.
 |---|---:|---:|---|
 | VMI daily CBM engine | 60% | 100% | Existing calculation engine plus regression, RLS, UI, and close-path verification |
 | VMI period close and four documents | 35% | 100% | D.9-D.12 complete; four PDFs, payments, correction, delivery, and E2E pass |
-| Billing Overview / VMI workspace | 10% | 100% | E.1-E.8 complete with progressive-disclosure workflow |
-| Trading cost, pricing, and margin | 45% | 100% | Purchase import, rate-card UI, `08`/`10` integration, margin ledger, policy decisions |
-| Shared PDF and artifact pipeline | 15% | 100% | `04`/`10` renderer, private Storage, retry, hash, signed access, events |
+| Billing Overview / VMI workspace | 40% | 100% | Existing ledger/contracts/SOA surfaces reorganized into the Overview → organization → review → close workflow; E.1-E.8 complete |
+| Trading cost, pricing, and margin | 55% | 100% | Existing policy/rate-card/margin surfaces plus purchase import, `08`/`10` integration, and remaining policy decisions |
+| Shared PDF and artifact pipeline | 25% | 100% | Existing Documents Center/SOA generator unified with `04`/`10` renderer, private Storage, retry, hash, signed access, and events |
 | Gantt and release verification | 20% | 100% | Full test matrix, reviewer sign-offs, fixture QA, updated status evidence |
 
 Recommended status sequence:
