@@ -101,8 +101,6 @@ export function AcknowledgementReceiptsTable({ rows }: AcknowledgementReceiptsTa
               {pagedRows.map((r) => {
                 const statusClass = AR_STATUS_CLASSES[r.status] ?? "bg-status-neutral/10 text-status-neutral";
                 const formattedDate = new Date(r.createdAt).toISOString().slice(0, 10);
-                const isVmi = r.flowType.toLowerCase() === "vmi";
-                const isSupplies = r.flowType.toLowerCase() === "supplies";
 
                 return (
                   <tr key={r.id} className="hover:bg-surface-light-grey/40 transition-colors">
@@ -132,14 +130,10 @@ export function AcknowledgementReceiptsTable({ rows }: AcknowledgementReceiptsTa
                     </td>
                     <td className="px-4 py-3">
                       <div className="font-mono text-mono-md text-on-surface font-bold">
-                        {r.totalQuantity.toLocaleString()} pcs
+                        {r.packageCount.toLocaleString()} ctns
                       </div>
                       <div className="font-mono text-mono-sm text-text-grey">
-                        {isSupplies
-                          ? "No charge (Supplies)"
-                          : isVmi
-                          ? `₱${r.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })} (Ref)`
-                          : `₱${r.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+                        {r.totalQuantity.toLocaleString()} pcs total
                       </div>
                     </td>
                     <td className="px-4 py-3">

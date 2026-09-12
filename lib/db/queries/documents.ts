@@ -130,6 +130,7 @@ export type AcknowledgementReceiptArchiveRow = {
   currency: string;
   status: string;
   itemCount: number;
+  packageCount: number;
   totalQuantity: number;
   totalAmount: number;
   snapshotHash: string;
@@ -519,6 +520,7 @@ export async function listAcknowledgementReceiptArchiveDocuments(
       generatedAt: generatedDocuments.generatedAt,
       createdAt: generatedDocuments.createdAt,
       itemCount: sql<number>`coalesce((select count(*)::int from ${pickListItems} where ${pickListItems.pickListId} = ${pickLists.id}), 0)`,
+      packageCount: sql<number>`coalesce((select sum(${pickListItems.numberOfBoxes})::int from ${pickListItems} where ${pickListItems.pickListId} = ${pickLists.id}), 0)`,
       totalQuantity: sql<number>`coalesce((select sum(${pickListItems.qty})::int from ${pickListItems} where ${pickListItems.pickListId} = ${pickLists.id}), 0)`,
       totalAmount: sql<number>`coalesce((select sum(coalesce(${pickListItems.unitPrice}, 0) * ${pickListItems.qty})::numeric from ${pickListItems} where ${pickListItems.pickListId} = ${pickLists.id}), 0)`,
       deliveryReceiptPath: pickLists.deliveryReceiptPath,
@@ -549,6 +551,7 @@ export async function listAcknowledgementReceiptArchiveDocuments(
     currency: r.currency ?? "PHP",
     status: r.status,
     itemCount: Number(r.itemCount ?? 0),
+    packageCount: Number(r.packageCount ?? 0),
     totalQuantity: Number(r.totalQuantity ?? 0),
     totalAmount: Number(r.totalAmount ?? 0),
     snapshotHash: r.snapshotHash,

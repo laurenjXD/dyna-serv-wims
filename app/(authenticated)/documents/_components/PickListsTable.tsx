@@ -79,7 +79,7 @@ export function PickListsTable({ rows }: PickListsTableProps) {
                   Model
                 </th>
                 <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                  Items / Boxes
+                  Qty / Total
                 </th>
                 <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                   Status
@@ -120,8 +120,13 @@ export function PickListsTable({ rows }: PickListsTableProps) {
                         {r.flowType}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {r.itemCount} items / {r.packageCount} boxes
+                    <td className="px-4 py-3">
+                      <div className="font-mono text-mono-md font-bold text-on-surface">
+                        {r.packageCount.toLocaleString()} ctns
+                      </div>
+                      <div className="font-mono text-mono-sm text-text-grey">
+                        {r.totalQuantity.toLocaleString()} pcs total
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex rounded-full px-2.5 py-0.5 font-label text-label uppercase tracking-wider ${statusClass}`}>
