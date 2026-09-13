@@ -308,6 +308,9 @@ export function SoaDetailClient({
           .soa-main-header th { background: #1e293b !important; color: #ffffff !important; font-size: 8pt !important; padding: 4px 6px !important; }
           .soa-grand-total td { background: #e2e8f0 !important; font-weight: 800 !important; font-size: 8.5pt !important; }
           .soa-total-row td { background: #f1f5f9 !important; font-weight: 700 !important; font-size: 8pt !important; }
+          .soa-document-meta td:last-child {
+            border-right: 1px solid #cbd5e1 !important;
+          }
         }
       `}</style>
 
@@ -374,7 +377,7 @@ export function SoaDetailClient({
             <p className="text-xl font-extrabold text-slate-900 uppercase tracking-wide">
               Statement of Account
             </p>
-            <table className="mt-2 ml-auto text-xs" style={{borderCollapse:"collapse"}}>
+            <table className="soa-document-meta mt-2 ml-auto text-xs" style={{borderCollapse:"collapse"}}>
               <tbody>
                 {[
                   ["SOA No.", soaData.soaNumber],
@@ -403,7 +406,7 @@ export function SoaDetailClient({
           </div>
           <div>
             <p className="font-bold uppercase tracking-widest text-slate-400 text-[9px] mb-1.5">Document Details</p>
-            <table className="w-full text-xs" style={{borderCollapse:"collapse"}}>
+            <table className="soa-document-meta w-full text-xs" style={{borderCollapse:"collapse"}}>
               <tbody>
                 {[
                   ["Billing Period", `${soaData.billingPeriodStart} – ${soaData.billingPeriodEnd}`],
