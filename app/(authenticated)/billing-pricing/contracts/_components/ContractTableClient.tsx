@@ -64,32 +64,28 @@ export function ContractTableClient({ initialContracts }: ContractTableClientPro
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-          <div className="flex items-center gap-2">
-            <Filter size={16} className="text-text-grey" />
-            <span className="font-body text-body-sm text-text-grey">Filter:</span>
-            <select
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
-                setPageIndex(0);
-              }}
-              className="rounded-btn border border-border-medium bg-surface-white px-3 py-1.5 font-body text-body-sm"
-            >
-              <option value="">All Statuses</option>
-              <option value="active">Active</option>
-              <option value="draft">Draft</option>
-              <option value="pending_approval">Pending Approval</option>
-              <option value="suspended">Suspended</option>
-            </select>
-          </div>
-
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <Filter size={16} className="text-text-grey" />
+          <span className="font-body text-body-sm text-text-grey">Filter:</span>
+          <select
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPageIndex(0);
+            }}
+            className="rounded-btn border border-border-medium bg-surface-white px-3 py-1.5 font-body text-body-sm"
+          >
+            <option value="">All Statuses</option>
+            <option value="active">Active</option>
+            <option value="draft">Draft</option>
+            <option value="pending_approval">Pending Approval</option>
+            <option value="suspended">Suspended</option>
+          </select>
           <Link
             href="/billing-pricing/contracts/new"
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3.5 font-label text-label font-bold text-white shadow-2xs hover:bg-primary-hover transition-colors whitespace-nowrap"
+            className="ml-auto inline-flex h-11 shrink-0 items-center gap-2 rounded-full bg-primary px-4 font-label text-label font-bold text-white shadow-sm transition-colors hover:bg-primary-hover"
           >
-            <Plus size={15} />
-            <span>New Contract</span>
+            <Plus size={18} /> New Contract
           </Link>
         </div>
       </div>

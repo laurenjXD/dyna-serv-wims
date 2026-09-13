@@ -129,7 +129,7 @@ export function WRRUnitLabelGenerator({
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src="/logo.svg" alt="Dyna-Serv" className="h-5 w-auto object-contain" />
+                          <img src="/api/brand/logo" alt="Dyna-Serv" className="h-5 w-auto object-contain" />
                           <p className="font-heading text-body-sm uppercase font-bold text-brand-navy">
                             Dyna-Serv WIMS
                           </p>

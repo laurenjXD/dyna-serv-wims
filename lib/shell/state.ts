@@ -116,12 +116,12 @@ export interface DesktopSidebarState {
 /**
  * Manages the DESKTOP (lg+) sidebar's collapsed/expanded state — distinct
  * from useShellSidebar above, which is the mobile drawer's open/close state
- * and only ever applies below the lg breakpoint. Defaults open (true), since
- * the desktop sidebar was always-visible before this toggle existed. Same
- * intentionally-simple useState-only pattern as useShellSidebar.
+ * and only ever applies below the lg breakpoint. Defaults collapsed so the
+ * content workspace receives the maximum width until the user expands it.
+ * Same intentionally-simple useState-only pattern as useShellSidebar.
  */
 export function useDesktopSidebar(): DesktopSidebarState {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
 
   return {
     isOpen,

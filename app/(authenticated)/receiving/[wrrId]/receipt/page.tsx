@@ -83,7 +83,7 @@ export default async function InboundTurnoverReceiptPage({ params }: PageProps) 
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.svg" alt="Dyna-Serv" className="h-8 w-auto" />
+              <img src="/api/brand/logo" alt="Dyna-Serv" className="h-8 w-auto" />
               <span className="font-heading text-headline-sm font-extrabold text-on-surface">
                 Dyna-Serv WIMS
               </span>

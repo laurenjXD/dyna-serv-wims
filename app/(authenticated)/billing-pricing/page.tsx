@@ -7,7 +7,7 @@
 //     §2 (typography — font-mono for numeric columns per §9)
 
 import Link from "next/link";
-import { Receipt } from "lucide-react";
+import { BookOpen, FileText, LayoutDashboard, Receipt, Settings } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
@@ -30,9 +30,9 @@ import {
   listVmiContractTerms,
   type VmiContractTermsRow,
 } from "@/lib/db/queries/vmi-contracts";
-import { listContracts } from "@/lib/actions/contracts";
 import { listParties } from "@/lib/db/queries/parties";
 import { listItems } from "@/lib/db/queries/items";
+import { listContracts } from "@/lib/actions/contracts";
 import { hasTradingPriceInternalVisibility } from "@/lib/rbac/trading-visibility";
 import { BillingOverviewTab } from "./_components/BillingOverviewTab";
 import { StatementOfAccountTab } from "./_components/StatementOfAccountTab";
@@ -128,11 +128,11 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
   let vmiSummaryRows: VmiCbmLedgerRow[] = [];
   let vmiSummary: VmiCbmLedgerRow | null = null;
   let vmiDailyRows: Awaited<ReturnType<typeof getVmiDailyBalanceRows>> = [];
-  let vmiContractRows: VmiContractTermsRow[] = [];
-  let contractsList: Awaited<ReturnType<typeof listContracts>> = [];
   let tradingRows: TradingMarginRow[] = [];
-  let policyRows: TradingPolicyRow[] = [];
   let billingPeriods: VmiBillingPeriodRow[] = [];
+  let contracts: Awaited<ReturnType<typeof listContracts>> = [];
+  let vmiContractRows: VmiContractTermsRow[] = [];
+  let policyRows: TradingPolicyRow[] = [];
   let itemOptions: { id: string; name: string; code: string }[] = [];
 
   if (activeSection === "overview") {
@@ -158,16 +158,30 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
   } else if (activeSection === "soa") {
     billingPeriods = await listVmiBillingPeriods(selectedSoaPartyId || undefined);
   } else if (activeSection === "configuration") {
-    contractsList = await listContracts(resolver);
-    vmiContractRows = await listVmiContractTerms(db);
-    const result = await listTradingPolicies(db, { activeOnly: false });
-    policyRows = result.rows;
-    const itemsResult = await listItems(db, { limit: 100 });
-    itemOptions = itemsResult.rows.map((i) => ({
-      id: i.id,
-      name: i.name,
-      code: i.code,
-    }));
+    // Configuration contains independent datasets. Keep one unavailable or
+    // not-yet-migrated table from taking down the entire Billing workspace.
+    const [contractsResult, vmiResult, policiesResult, itemsResult] =
+      await Promise.allSettled([
+        listContracts(resolver),
+        listVmiContractTerms(db),
+        listTradingPolicies(db, { activeOnly: false }),
+        listItems(db, { limit: 100 }),
+      ]);
+
+    if (contractsResult.status === "fulfilled") {
+      contracts = contractsResult.value;
+    } else {
+      console.warn("Billing configuration: contracts unavailable", contractsResult.reason);
+    }
+    if (vmiResult.status === "fulfilled") vmiContractRows = vmiResult.value;
+    if (policiesResult.status === "fulfilled") policyRows = policiesResult.value.rows;
+    if (itemsResult.status === "fulfilled") {
+      itemOptions = itemsResult.value.rows.map((item) => ({
+        id: item.id,
+        name: item.name,
+        code: item.code,
+      }));
+    }
   }
 
   const canSeeMargin = hasTradingPriceInternalVisibility(permResult.context);
@@ -192,22 +206,23 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
         className="mt-6 flex flex-wrap gap-1 border-b border-outline-variant/30"
       >
         {([
-          ["overview", "Overview", `/billing-pricing?tab=overview${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`],
-          ["ledger", "Ledger", `/billing-pricing?tab=ledger${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`],
-          ["soa", "Statement of Account (SOA)", `/billing-pricing?tab=soa${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`],
-          ["configuration", "Configuration", `/billing-pricing?tab=configuration${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`],
-        ] as const).map(([section, label, href]) => (
+          ["overview", "Overview", `/billing-pricing?tab=overview${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`, LayoutDashboard],
+          ["ledger", "Ledger", `/billing-pricing?tab=ledger${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`, BookOpen],
+          ["soa", "Statement of Account (SOA)", `/billing-pricing?tab=soa${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`, FileText],
+          ["configuration", "Configuration", `/billing-pricing?tab=configuration${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`, Settings],
+        ] as const).map(([section, label, href, Icon]) => (
           <Link
             key={section}
             href={href}
             role="tab"
             aria-selected={activeSection === section}
-            className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
+            className={`flex h-11 items-center gap-2 px-4 font-label text-label transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
               activeSection === section
                 ? "border-b-2 border-on-surface text-on-surface font-bold"
                 : "text-text-grey hover:text-on-surface"
             }`}
           >
+            <Icon size={16} strokeWidth={2.2} aria-hidden="true" />
             {label}
           </Link>
         ))}
@@ -398,8 +413,8 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
       {activeSection === "configuration" && (
         <div className="mt-6">
           <ConfigurationTab
-            contracts={contractsList}
-            contractRows={vmiContractRows}
+            contracts={contracts}
+            vmiContractRows={vmiContractRows}
             parties={partyOptions}
             policyRows={policyRows}
             items={itemOptions}

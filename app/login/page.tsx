@@ -14,11 +14,13 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { signInAction } from "./actions";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -28,7 +30,12 @@ export default function LoginPage() {
     setPending(true);
 
     try {
-      const result = await signInAction({ email, password });
+      const result = await Promise.race([
+        signInAction({ email, password }),
+        new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error("Sign-in timed out")), 12_000);
+        }),
+      ]);
 
       if (!result.ok) {
         setError(result.error);
@@ -86,15 +93,25 @@ export default function LoginPage() {
             >
               Password
             </label>
-            <input
-              id="login-password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
-            />
+            <div className="relative">
+              <input
+                id="login-password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 pr-11 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+              />
+              <button
+                type="button"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                onClick={() => setShowPassword((visible) => !visible)}
+                className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-on-surface/60 hover:text-brand-navy focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
 
           {/* Inline error — shown only when auth fails. */}

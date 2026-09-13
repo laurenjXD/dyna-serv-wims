@@ -16,6 +16,15 @@ export const metadata = {
   description: "Real-time warehouse operations telemetry, inventory valuation, location heatmap, and performance metrics.",
 };
 
+function withDashboardTimeout<T>(promise: Promise<T>, timeoutMs = 8_000): Promise<T | undefined> {
+  return Promise.race([
+    promise,
+    new Promise<undefined>((resolve) => {
+      setTimeout(() => resolve(undefined), timeoutMs);
+    }),
+  ]);
+}
+
 export default async function DashboardPage() {
   await createPageResolver();
 
@@ -28,12 +37,12 @@ export default async function DashboardPage() {
     heatmapGrid,
     masterInventoryResult,
   ] = await Promise.all([
-    getDashboardKpis(),
-    getDashboardMonthlyFlow(),
-    getDashboardLocationOccupancy(),
-    getDashboardDeliveryPerformance(),
-    getDashboardHeatmapData(),
-    getDashboardMasterInventory({ limit: 50 }),
+    withDashboardTimeout(getDashboardKpis()),
+    withDashboardTimeout(getDashboardMonthlyFlow()),
+    withDashboardTimeout(getDashboardLocationOccupancy()),
+    withDashboardTimeout(getDashboardDeliveryPerformance()),
+    withDashboardTimeout(getDashboardHeatmapData()),
+    withDashboardTimeout(getDashboardMasterInventory({ limit: 50 })),
   ]);
 
   return (
@@ -44,7 +53,7 @@ export default async function DashboardPage() {
         occupancyData={occupancyData}
         deliveryPerformance={deliveryPerformance}
         heatmapGrid={heatmapGrid}
-        masterInventory={masterInventoryResult.items}
+        masterInventory={masterInventoryResult?.items}
       />
     </div>
   );

@@ -237,7 +237,7 @@ export function PdfPreviewModal({
               <div>
                 <div className="flex items-center gap-2.5">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/logo.svg" alt="Dyna-Serv" className="h-9 w-auto" />
+                  <img src="/api/brand/logo" alt="Dyna-Serv" className="h-9 w-auto" />
                   <div>
                     <h2 className="font-heading text-headline-sm font-extrabold text-brand-navy leading-none">
                       DYNA-SERV ENTERPRISES

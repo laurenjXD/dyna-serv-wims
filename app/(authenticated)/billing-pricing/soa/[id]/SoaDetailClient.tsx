@@ -230,6 +230,7 @@ export function SoaDetailClient({
           html, body {
             background: #fff !important;
             color: #000 !important;
+            color-scheme: light !important;
             font-family: system-ui, -apple-system, sans-serif !important;
             font-size: 9pt !important;
             line-height: 1.3 !important;
@@ -238,6 +239,23 @@ export function SoaDetailClient({
             padding: 0 !important;
           }
           .no-print { display: none !important; }
+          /* The application can be viewed in dark mode, but financial PDFs
+             are always a stable, light document. */
+          html[data-theme="dark"], html[data-theme="dark"] body,
+          html[data-theme="dark"] [data-print-document] {
+            background: #fff !important;
+            color: #000 !important;
+            color-scheme: light !important;
+          }
+          .soa-letterhead-logo {
+            background: #fff !important;
+            isolation: isolate;
+          }
+          .soa-letterhead-logo img {
+            display: block !important;
+            background: #fff !important;
+            image-rendering: auto;
+          }
           [data-testid="desktop-sidebar"], [data-testid="floor-tab-bar"] {
             display: none !important;
             visibility: hidden !important;
@@ -286,13 +304,13 @@ export function SoaDetailClient({
             color: #000 !important;
             font-size: 7.5pt !important;
           }
-          th[style], td[style] {
-            border: 1px solid #475569 !important;
-          }
           .soa-main-header { background: #1e293b !important; }
           .soa-main-header th { background: #1e293b !important; color: #ffffff !important; font-size: 8pt !important; padding: 4px 6px !important; }
           .soa-grand-total td { background: #e2e8f0 !important; font-weight: 800 !important; font-size: 8.5pt !important; }
           .soa-total-row td { background: #f1f5f9 !important; font-weight: 700 !important; font-size: 8pt !important; }
+          .soa-document-meta td:last-child {
+            border-right: 1px solid #cbd5e1 !important;
+          }
         }
       `}</style>
 
@@ -338,8 +356,10 @@ export function SoaDetailClient({
         <div className="flex items-start justify-between gap-4 pb-5 border-b-2 border-slate-800 print-avoid-break">
           <div className="flex items-start gap-3">
             {/* The browser print template uses the same logo as generated PDFs. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.svg" alt="Dyna-Serv" className="h-10 w-auto shrink-0 object-contain print:h-9" />
+            <span className="soa-letterhead-logo inline-flex shrink-0 bg-white p-0.5 print:p-0" aria-hidden="true">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/api/brand/logo" alt="" className="h-14 w-auto object-contain print:h-12" />
+            </span>
             <div>
               <p className="text-xl font-extrabold tracking-tight text-slate-900 leading-tight">
                 DYNA-SERV GLOBAL CORPORATION
@@ -357,7 +377,7 @@ export function SoaDetailClient({
             <p className="text-xl font-extrabold text-slate-900 uppercase tracking-wide">
               Statement of Account
             </p>
-            <table className="mt-2 ml-auto text-xs" style={{borderCollapse:"collapse"}}>
+            <table className="soa-document-meta mt-2 ml-auto text-xs" style={{borderCollapse:"collapse"}}>
               <tbody>
                 {[
                   ["SOA No.", soaData.soaNumber],
@@ -386,11 +406,11 @@ export function SoaDetailClient({
           </div>
           <div>
             <p className="font-bold uppercase tracking-widest text-slate-400 text-[9px] mb-1.5">Document Details</p>
-            <table className="w-full text-xs" style={{borderCollapse:"collapse"}}>
+            <table className="soa-document-meta w-full text-xs" style={{borderCollapse:"collapse"}}>
               <tbody>
                 {[
                   ["Billing Period", `${soaData.billingPeriodStart} – ${soaData.billingPeriodEnd}`],
-                  ["Reference", soaData.contractNumber],
+                  ["Customer", soaData.contractNumber],
                   ["Terms", "Net 30 Days"],
                   ["Currency", "USD"],
                   ["Forex Rate", `1 USD = ₱${soaData.exchangeRate.toFixed(2)} PHP`],
@@ -431,30 +451,19 @@ export function SoaDetailClient({
           </table>
         </div>
 
-        {/* Payment + Signatories */}
-        <div className="mt-7 grid grid-cols-2 gap-5 text-xs print-avoid-break">
-          <div className="border border-slate-300 p-4">
-            <p className="font-bold uppercase tracking-widest text-slate-400 text-[9px] mb-2">Payment / Remittance Instructions</p>
-            <p className="text-slate-600">Please make check or wire transfers payable to:</p>
-            <p className="font-bold text-slate-900 mt-1">DYNA-SERV GLOBAL CORPORATION</p>
-            <p className="text-slate-600 mt-2">Bank: <span className="font-bold text-slate-900">Bank of the Philippine Islands (BPI)</span></p>
-            <p className="font-mono text-slate-600 mt-0.5">
-              USD Account: <span className="font-bold">9812-4091-22</span> &nbsp;&bull;&nbsp; SWIFT: <span className="font-bold">BOPIPHMM</span>
-            </p>
-          </div>
-          <div className="border border-slate-300 p-4">
-            <p className="font-bold uppercase tracking-widest text-slate-400 text-[9px] mb-3">Acknowledgement and Signatories</p>
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <p className="text-slate-400 mb-6">Prepared By:</p>
-                <div className="border-b border-slate-900 pb-0.5 font-bold text-slate-900 text-xs">MARIA LOURDES REYES</div>
-                <p className="text-slate-400 text-[9px] mt-0.5">Billing and Finance Specialist</p>
-              </div>
-              <div>
-                <p className="text-slate-400 mb-6">Approved By:</p>
-                <div className="border-b border-slate-900 pb-0.5 font-bold text-slate-900 text-xs">JOSEPHINE TAN</div>
-                <p className="text-slate-400 text-[9px] mt-0.5">Warehouse Operations Manager</p>
-              </div>
+        {/* Signatories — remittance details are intentionally excluded from SOAs. */}
+        <div className="mt-7 border border-slate-300 p-4 text-xs print-avoid-break">
+          <p className="font-bold uppercase tracking-widest text-slate-400 text-[9px] mb-3">Acknowledgement and Signatories</p>
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <p className="text-slate-400 mb-6">Prepared By:</p>
+              <div className="border-b border-slate-900 pb-0.5 font-bold text-slate-900 text-xs">MARIA LOURDES REYES</div>
+              <p className="text-slate-400 text-[9px] mt-0.5">Billing and Finance Specialist</p>
+            </div>
+            <div>
+              <p className="text-slate-400 mb-6">Approved By:</p>
+              <div className="border-b border-slate-900 pb-0.5 font-bold text-slate-900 text-xs">JOSEPHINE TAN</div>
+              <p className="text-slate-400 text-[9px] mt-0.5">Warehouse Operations Manager</p>
             </div>
           </div>
         </div>
