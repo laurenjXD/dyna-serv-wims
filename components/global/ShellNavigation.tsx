@@ -506,7 +506,7 @@ export function ShellNavigation({
         data-testid="desktop-sidebar"
         aria-label="Primary navigation"
         aria-hidden={false}
-        className={`hidden h-[calc(100vh-1.5rem)] flex-col overflow-hidden bg-surface lg:fixed lg:bottom-3 lg:left-3 lg:top-3 lg:z-40 lg:flex lg:rounded-2xl lg:border lg:border-border lg:shadow-elevation-2 transition-all duration-200 motion-reduce:transition-none ${
+        className={`print:hidden hidden h-[calc(100vh-1.5rem)] flex-col overflow-hidden bg-surface lg:fixed lg:bottom-3 lg:left-3 lg:top-3 lg:z-40 lg:flex lg:rounded-2xl lg:border lg:border-border lg:shadow-elevation-2 transition-all duration-200 motion-reduce:transition-none ${
           desktopOpen ? "lg:w-[286px]" : "lg:w-[72px]"
         }`}
       >

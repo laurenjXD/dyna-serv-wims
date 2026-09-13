@@ -238,6 +238,16 @@ export function SoaDetailClient({
             padding: 0 !important;
           }
           .no-print { display: none !important; }
+          [data-testid="desktop-sidebar"], header, nav, aside, [role="navigation"] {
+            display: none !important;
+            visibility: hidden !important;
+          }
+          #main-content {
+            width: 100% !important;
+            max-width: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
           .print-page-break {
             break-before: page !important;
             page-break-before: always !important;
@@ -318,7 +328,7 @@ export function SoaDetailClient({
       {/* ════════════════════════════════════════════════════════════════════
           PRINTABLE DOCUMENT
       ═══════════════════════════════════════════════════════════════════ */}
-      <div className="bg-white border border-slate-300 p-10 print:p-0 print:border-none shadow-sm print-avoid-break">
+      <div data-print-document className="bg-white border border-slate-300 p-10 print:p-0 print:border-none shadow-sm print-avoid-break">
 
         {/* Letterhead */}
         <div className="flex items-start justify-between gap-4 pb-5 border-b-2 border-slate-800 print-avoid-break">
