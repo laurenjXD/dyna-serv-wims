@@ -122,6 +122,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
     code: p.code,
   }));
   const selectedPartyId = partyIdParam ?? partyOptions[0]?.id ?? "";
+  const selectedSoaPartyId = partyIdParam ?? "";
 
   // Fetch data conditionally based on active section
   let vmiSummaryRows: VmiCbmLedgerRow[] = [];
@@ -154,8 +155,9 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
       );
     }
   } else if (activeSection === "soa") {
-    billingPeriods = await listVmiBillingPeriods(selectedPartyId || undefined);
+    billingPeriods = await listVmiBillingPeriods(selectedSoaPartyId || undefined);
   } else if (activeSection === "configuration") {
+
     vmiContractRows = await listVmiContractTerms(db);
     const result = await listTradingPolicies(db, { activeOnly: false });
     policyRows = result.rows;
@@ -383,12 +385,13 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
           <StatementOfAccountTab
             periods={billingPeriods}
             parties={partyOptions}
-            selectedPartyId={selectedPartyId}
+            selectedPartyId={selectedSoaPartyId}
             selectedMonth={selectedMonth}
             selectedYear={selectedYear}
           />
         </div>
       )}
+
 
       {/* Tab 4: Configuration (Contract Terms, Trading Rate Cards & Logistics Rate Matrix) */}
       {activeSection === "configuration" && (
