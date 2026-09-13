@@ -33,9 +33,6 @@ export function OutgoingLedgerClientTable({
 }: OutgoingLedgerClientTableProps) {
   const [selectedDrNumber, setSelectedDrNumber] = useState<string | null>(null);
   const [selectedReceipt, setSelectedReceipt] = useState<OutgoingLedgerRow | null>(null);
-  const [conformanceFilter, setConformanceFilter] = useState<
-    "all" | "conforming" | "pending_pod" | "qty_mismatch" | "damaged" | "sla_breach"
-  >("all");
 
   // Group rows by Delivery Receipt (or Pick List #)
   const drGroups = useMemo(() => {
@@ -86,17 +83,6 @@ export function OutgoingLedgerClientTable({
   }, [rows, rowConformance]);
 
   const conformanceStats = dynamicConformanceStats;
-
-  const filteredRows = useMemo(() => {
-    if (conformanceFilter === "all") return rows;
-    return rows.filter((row) => {
-      const isUploaded = row.deliveryReceiptStatus === "uploaded" || Boolean(row.deliveryReceiptPath);
-      if (conformanceFilter === "conforming") return isUploaded;
-      if (conformanceFilter === "pending_pod") return !isUploaded;
-      const rowId = row.pickListId ?? row.transactionId;
-      return rowConformance[rowId] === conformanceFilter;
-    });
-  }, [rows, conformanceFilter, rowConformance]);
 
   const selectedRows = selectedDrNumber ? drGroups[selectedDrNumber] ?? [] : [];
   const activeDrMeta = selectedRows[0];
@@ -300,7 +286,16 @@ export function OutgoingLedgerClientTable({
     // 10. Proof of Delivery (POD)
     {
       id: "deliveryReceipt",
+      accessorFn: (row) => (row.deliveryReceiptStatus === "uploaded" || row.deliveryReceiptPath ? "uploaded" : "pending"),
       header: "Proof of Delivery",
+      meta: {
+        filterVariant: "multi-select",
+        filterLabel: "Proof of Delivery",
+        filterOptions: [
+          { label: "✓ POD uploaded", value: "uploaded" },
+          { label: "⏳ Pending POD", value: "pending" },
+        ],
+      },
       cell: (info) => {
         const row = info.row.original;
 
@@ -365,6 +360,10 @@ export function OutgoingLedgerClientTable({
     // 11. Delivery Conformance (TDC Selector - Far Right)
     {
       id: "deliveryConformance",
+      accessorFn: (row) => {
+        const rowId = row.pickListId ?? row.transactionId;
+        return rowConformance[rowId] ?? (row.deliveryReceiptPath ? "conforming" : "pending");
+      },
       header: "Delivery Conformance (TDC)",
       meta: {
         filterVariant: "multi-select",
@@ -520,37 +519,14 @@ export function OutgoingLedgerClientTable({
       </div>
 
       {/* ── TanStack DataTable ─────────────────────────────────────────── */}
-      <div className="flex flex-col gap-2 rounded-xl border border-outline-variant/30 bg-surface-white px-4 py-3 shadow-xs sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="font-label text-label font-bold text-on-surface">Delivery filter</p>
-          <p className="font-body text-body-sm text-text-grey">Show dispatches by POD availability or delivery conformance.</p>
-        </div>
-        <select
-          aria-label="Filter outgoing dispatches by proof of delivery or delivery conformance"
-          value={conformanceFilter}
-          onChange={(event) => setConformanceFilter(event.target.value as typeof conformanceFilter)}
-          className="h-11 min-w-[220px] rounded-lg border border-outline-variant/40 bg-surface-white px-3 font-label text-label font-bold text-on-surface"
-        >
-          <option value="all">All deliveries</option>
-          <option value="pending_pod">⏳ Pending POD upload</option>
-          <option value="conforming">✓ POD uploaded / conforming</option>
-          <option value="qty_mismatch">⚠ Quantity mismatch</option>
-          <option value="damaged">❌ Damaged / QC issue</option>
-          <option value="sla_breach">⏰ Late / SLA breach</option>
-        </select>
-      </div>
       <DataTable
         columns={columns}
-        data={filteredRows}
+        data={rows}
         title="Outgoing Dispatch Ledger"
         subtitle="Immutable transaction audit log of released shipments with multi-field filtering, date ranges, and POD proof-of-delivery tracking."
         icon={<FileSpreadsheet size={18} />}
         initialSorting={[{ id: "createdAt", desc: true }]}
-        emptyMessage={
-          conformanceFilter !== "all"
-            ? "No outgoing transactions match the selected delivery filter."
-            : "No outgoing transactions recorded."
-        }
+        emptyMessage="No outgoing transactions match the selected filters."
       />
 
       {/* ── PDF / Image Receipt Viewer Modal ───────────────────────────── */}
