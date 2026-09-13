@@ -110,7 +110,7 @@ export function PdfPreviewModal({
         dangerouslySetInnerHTML={{
           __html: `
             @media print {
-              aside, header, nav, .print-hide, .modal-toolbar {
+              [data-testid="desktop-sidebar"], [data-testid="floor-tab-bar"], .print-hide, .modal-toolbar {
                 display: none !important;
               }
               body {

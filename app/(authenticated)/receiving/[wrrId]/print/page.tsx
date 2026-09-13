@@ -80,7 +80,7 @@ export default async function WrrPrintPage({ params }: PageProps) {
         dangerouslySetInnerHTML={{
           __html: `
             @media print {
-              aside, header, nav[aria-label="Breadcrumb"], .print-hide {
+              [data-testid="desktop-sidebar"], [data-testid="floor-tab-bar"], nav[aria-label="Breadcrumb"], .print-hide {
                 display: none !important;
               }
               body {

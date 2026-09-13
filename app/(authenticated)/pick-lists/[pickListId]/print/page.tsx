@@ -49,7 +49,7 @@ export default async function PickListPrintPage({
         dangerouslySetInnerHTML={{
           __html: `
             @media print {
-              aside, header, nav, .print-hide {
+              [data-testid="desktop-sidebar"], [data-testid="floor-tab-bar"], .print-hide {
                 display: none !important;
               }
               body {

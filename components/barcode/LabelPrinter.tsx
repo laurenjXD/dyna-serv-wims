@@ -25,7 +25,17 @@ export function LabelPrinter({
 }: LabelPrinterProps) {
   return (
     // brand-design-system.md §6: floor cards use solid surface-white, shadow-elevation-2.
-    <div className="bg-surface-white shadow-elevation-2 rounded p-4 flex flex-col items-center gap-4 w-full max-w-sm mx-auto">
+    <div data-print-label className="bg-surface-white shadow-elevation-2 rounded p-4 flex flex-col items-center gap-4 w-full max-w-sm mx-auto">
+      <style>{`
+        @media print {
+          body * { visibility: hidden !important; }
+          [data-print-label], [data-print-label] * { visibility: visible !important; }
+          [data-print-label] { position: fixed; inset: 0; width: 100%; max-width: none; padding: 12mm; box-shadow: none; }
+          [data-print-label] button { display: none !important; }
+        }
+      `}</style>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/logo.svg" alt="Dyna-Serv" className="h-7 w-auto object-contain" />
       {/*
         FR-3.2: QR payload is exactly the UUID string — "a UUID lookup, not a data blob"
         (design.md §2). No prefix, no JSON wrapping, no transformation.

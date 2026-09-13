@@ -238,7 +238,7 @@ export function SoaDetailClient({
             padding: 0 !important;
           }
           .no-print { display: none !important; }
-          [data-testid="desktop-sidebar"], header, nav, aside, [role="navigation"] {
+          [data-testid="desktop-sidebar"], [data-testid="floor-tab-bar"] {
             display: none !important;
             visibility: hidden !important;
           }
@@ -336,17 +336,22 @@ export function SoaDetailClient({
 
         {/* Letterhead */}
         <div className="flex items-start justify-between gap-4 pb-5 border-b-2 border-slate-800 print-avoid-break">
-          <div>
-            <p className="text-xl font-extrabold tracking-tight text-slate-900 leading-tight">
-              DYNA-SERV GLOBAL CORPORATION
-            </p>
-            <p className="text-xs text-slate-500 mt-1">
-              Unit 7, Orient Goldcrest Building 6A, 149 East Main Avenue Loop, Phase 6C<br />
-              Laguna Technopark SEZ, Biñan City, Laguna, Philippines 4024
-            </p>
-            <p className="text-xs text-blue-700 font-semibold mt-0.5">
-              www.dyna-serv.com.ph
-            </p>
+          <div className="flex items-start gap-3">
+            {/* The browser print template uses the same logo as generated PDFs. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.svg" alt="Dyna-Serv" className="h-10 w-auto shrink-0 object-contain print:h-9" />
+            <div>
+              <p className="text-xl font-extrabold tracking-tight text-slate-900 leading-tight">
+                DYNA-SERV GLOBAL CORPORATION
+              </p>
+              <p className="text-xs text-slate-500 mt-1">
+                Unit 7, Orient Goldcrest Building 6A, 149 East Main Avenue Loop, Phase 6C<br />
+                Laguna Technopark SEZ, Biñan City, Laguna, Philippines 4024
+              </p>
+              <p className="text-xs text-blue-700 font-semibold mt-0.5">
+                www.dyna-serv.com.ph
+              </p>
+            </div>
           </div>
           <div className="text-right shrink-0">
             <p className="text-xl font-extrabold text-slate-900 uppercase tracking-wide">

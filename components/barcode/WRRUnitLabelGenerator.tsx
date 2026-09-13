@@ -127,9 +127,13 @@ export function WRRUnitLabelGenerator({
                     {/* Header info */}
                     <div className="mb-2 w-full">
                       <div className="flex items-center justify-between">
-                        <p className="font-heading text-body-sm uppercase font-bold text-brand-navy">
-                          Dyna-Serv WIMS
-                        </p>
+                        <div className="flex items-center gap-1.5">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src="/logo.svg" alt="Dyna-Serv" className="h-5 w-auto object-contain" />
+                          <p className="font-heading text-body-sm uppercase font-bold text-brand-navy">
+                            Dyna-Serv WIMS
+                          </p>
+                        </div>
                         <span className="rounded bg-brand-navy px-1.5 py-0.5 font-mono text-label-xs font-bold text-surface-white">
                           CTN-{String(unit.unitIndex).padStart(2, "0")}
                         </span>

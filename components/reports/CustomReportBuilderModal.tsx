@@ -8,7 +8,6 @@ import {
   Printer,
   Download,
   Check,
-  Building2,
   FileText,
   ShieldCheck,
   Calendar,
@@ -213,7 +212,7 @@ export function CustomReportBuilderModal({
         dangerouslySetInnerHTML={{
           __html: `
             @media print {
-              aside, header, nav, .print-hide, .builder-sidebar, .builder-toolbar, .modal-header-bar {
+              [data-testid="desktop-sidebar"], [data-testid="floor-tab-bar"], .print-hide, .builder-sidebar, .builder-toolbar, .modal-header-bar {
                 display: none !important;
               }
               body {
@@ -570,9 +569,8 @@ export function CustomReportBuilderModal({
               <div className="border-b-2 border-slate-900 pb-5">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-navy text-white shadow-xs">
-                      <Building2 size={24} />
-                    </div>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/logo.svg" alt="Dyna-Serv" className="h-12 w-auto shrink-0 object-contain" />
                     <div>
                       <h1 className="font-heading text-lg font-black tracking-tight text-brand-navy uppercase">
                         Dyna-Serv Logistics &amp; Warehouse Management System
