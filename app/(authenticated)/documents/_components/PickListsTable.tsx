@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Eye, RotateCw, Download, Package, ExternalLink } from "lucide-react";
+import { Eye, Download, Share2, Package, FileText, Paperclip } from "lucide-react";
 import type { PickListArchiveRow } from "@/lib/db/queries/documents";
 import { DocumentPreviewModal, type PreviewDocData } from "./DocumentPreviewModal";
 import { DocumentReprintDialog } from "./DocumentReprintDialog";
@@ -32,11 +32,29 @@ export function PickListsTable({ rows }: PickListsTableProps) {
     return rows.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
   }, [rows, pageIndex, pageSize]);
 
+  const handleShare = (r: PickListArchiveRow) => {
+    if (typeof window !== "undefined" && typeof navigator !== "undefined") {
+      navigator.clipboard?.writeText?.(`${window.location.origin}/pick-lists/${r.pickListId}/print`);
+      alert(`Document link for ${r.documentNumber} copied to clipboard!`);
+    }
+  };
+
+  const handleDownload = (r: PickListArchiveRow) => {
+    if (typeof window !== "undefined") {
+      window.open(`/pick-lists/${r.pickListId}/print`, "_blank");
+    }
+  };
+
   if (rows.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-1">
-        <Package size={40} className="text-text-grey" aria-hidden="true" />
-        <p className="font-body text-body-md text-text-grey">No pick list documents match the selected filters.</p>
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-outline-variant/60 bg-surface-white p-10 text-center shadow-2xs">
+        <div className="mb-3.5 flex h-12 w-12 items-center justify-center rounded-2xl border border-brand-navy/20 bg-brand-navy/10 text-brand-navy shadow-2xs">
+          <Package size={24} aria-hidden="true" />
+        </div>
+        <h3 className="font-heading text-title-sm font-bold text-on-surface">No Pick Lists or DRA Documents</h3>
+        <p className="mt-1 max-w-md font-body text-body-sm text-text-grey">
+          No outbound pick lists or delivery receipts match your active filters. Generate new pick lists in Outgoing Withdrawal to view them here.
+        </p>
       </div>
     );
   }
@@ -61,7 +79,7 @@ export function PickListsTable({ rows }: PickListsTableProps) {
                   Model
                 </th>
                 <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                  Items / Boxes
+                  Qty / Total
                 </th>
                 <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                   Status
@@ -77,7 +95,7 @@ export function PickListsTable({ rows }: PickListsTableProps) {
                 const formattedDate = new Date(r.createdAt).toISOString().slice(0, 10);
 
                 return (
-                  <tr key={r.id} className="hover:bg-surface-light-grey/40">
+                  <tr key={r.id} className="hover:bg-surface-light-grey/40 transition-colors">
                     <td className="px-4 py-3">
                       <div className="font-mono text-mono-md font-bold text-on-surface">
                         {r.documentNumber}
@@ -102,8 +120,13 @@ export function PickListsTable({ rows }: PickListsTableProps) {
                         {r.flowType}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
-                      {r.itemCount} items / {r.packageCount} boxes
+                    <td className="px-4 py-3">
+                      <div className="font-mono text-mono-md font-bold text-on-surface">
+                        {r.packageCount.toLocaleString()} ctns
+                      </div>
+                      <div className="font-mono text-mono-sm text-text-grey">
+                        {r.totalQuantity.toLocaleString()} pcs total
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex rounded-full px-2.5 py-0.5 font-label text-label uppercase tracking-wider ${statusClass}`}>
@@ -111,14 +134,14 @@ export function PickListsTable({ rows }: PickListsTableProps) {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1.5">
                         <button
                           type="button"
                           onClick={() =>
                             setPreviewDoc({
-                              id: r.id,
+                              id: r.pickListId,
                               documentNumber: r.documentNumber,
-                              title: "Pick List Picking Instruction",
+                              title: "Pick List Work Order",
                               documentType: "pick_list",
                               status: r.status,
                               snapshotHash: r.snapshotHash,
@@ -126,27 +149,54 @@ export function PickListsTable({ rows }: PickListsTableProps) {
                               organizationName: r.customerPartyName,
                               actorName: r.createdByName,
                               previewUrl: `/pick-lists/${r.pickListId}/print`,
-                              downloadUrl: `/pick-lists/${r.pickListId}/print`,
+                              downloadUrl: r.deliveryReceiptPath ?? `/pick-lists/${r.pickListId}/print`,
                             })
                           }
-                          className="inline-flex h-9 items-center gap-1 rounded-lg border border-outline-variant/40 bg-surface-white px-2.5 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                          title="Preview Pick List Work Order"
+                          className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border bg-surface px-2.5 sm:px-3 font-label text-label font-bold text-brand-navy hover:bg-background transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
                         >
-                          <Eye size={14} /> Preview
+                          <Eye size={14} /> <span>{r.deliveryReceiptPath ? "PL" : "Preview"}</span>
+                        </button>
+                        {r.deliveryReceiptPath && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPreviewDoc({
+                                id: r.pickListId,
+                                documentNumber: `DRA-${r.documentNumber.replace(/^PL-/, "")}`,
+                                title: "Imported Delivery Request Authorization (DRA)",
+                                documentType: "pick_list",
+                                status: r.status,
+                                snapshotHash: r.snapshotHash,
+                                generatedAt: r.generatedAt ?? r.createdAt,
+                                organizationName: r.customerPartyName,
+                                actorName: r.createdByName,
+                                previewUrl: r.deliveryReceiptPath,
+                                downloadUrl: r.deliveryReceiptPath,
+                              })
+                            }
+                            title="Preview Imported Customer DRA"
+                            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-outline-variant/40 bg-surface-white px-2.5 sm:px-3 font-label text-label font-bold text-on-surface hover:bg-surface-light-grey transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                          >
+                            <Paperclip size={14} /> <span>DRA</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleShare(r)}
+                          title="Copy Link"
+                          className="inline-flex h-9 items-center justify-center rounded-xl border border-outline-variant/40 bg-surface-white px-2.5 text-text-grey hover:bg-surface-light-grey hover:text-on-surface focus:outline-none transition-colors"
+                        >
+                          <Share2 size={14} />
                         </button>
                         <button
                           type="button"
-                          onClick={() => setReprintTarget({ id: r.id, number: r.documentNumber })}
-                          disabled={r.status !== "ready"}
-                          className="inline-flex h-9 items-center gap-1 rounded-lg border border-status-pending/40 bg-status-pending/10 px-2.5 font-label text-label font-bold text-status-pending hover:bg-status-pending/20 focus:outline-none focus:ring-2 focus:ring-status-pending disabled:opacity-40"
+                          onClick={() => handleDownload(r)}
+                          title="Download Document"
+                          className="inline-flex h-9 items-center justify-center rounded-xl bg-brand-navy px-2.5 text-surface-white hover:bg-brand-navy/90 focus:outline-none transition-colors"
                         >
-                          <RotateCw size={14} /> Reprint
+                          <Download size={14} />
                         </button>
-                        <Link
-                          href={`/pick-lists/${r.pickListId}`}
-                          className="inline-flex h-9 items-center gap-1 rounded-lg bg-surface-light-grey px-2.5 font-label text-label font-medium text-on-surface hover:bg-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                        >
-                          <ExternalLink size={14} /> View Order
-                        </Link>
                       </div>
                     </td>
                   </tr>

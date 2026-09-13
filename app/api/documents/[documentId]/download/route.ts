@@ -4,6 +4,7 @@ import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { generatedDocuments } from "@/lib/db/schema/documents";
+import { getStorageClient } from "@/lib/supabase/storage";
 
 interface RouteParams {
   params: Promise<{
@@ -42,21 +43,18 @@ export async function GET(request: Request, { params }: RouteParams) {
     return NextResponse.redirect(`${origin}/api/pick-lists/${doc.sourceId}/receipt`);
   }
 
-  // Fallback PDF stream or content response
-  return NextResponse.json(
-    {
-      id: doc.id,
-      documentNumber: doc.documentNumber,
-      documentType: doc.documentType,
-      status: doc.status,
-      artifactPath: doc.artifactPath,
-      snapshotHash: doc.snapshotHash,
-      mimeType: doc.mimeType ?? "application/pdf",
+  if (doc.status !== "ready" || !doc.artifactPath) {
+    return NextResponse.json({ error: "This document is not ready for download." }, { status: 409 });
+  }
+
+  const download = await (await getStorageClient()).from("generated-documents").download(doc.artifactPath);
+  if (download.error) return NextResponse.json({ error: "The stored document could not be downloaded." }, { status: 502 });
+  const body = await download.data.arrayBuffer();
+  return new NextResponse(body, {
+    headers: {
+      "Content-Type": doc.mimeType ?? "application/pdf",
+      "Content-Disposition": `inline; filename="${doc.documentNumber}.pdf"`,
+      "Cache-Control": "private, no-store",
     },
-    {
-      headers: {
-        "Content-Type": "application/json",
-      },
-    },
-  );
+  });
 }

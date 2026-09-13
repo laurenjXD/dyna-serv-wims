@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Lock, FileText, Download, ShieldAlert, Eye, Building } from "lucide-react";
+import { Lock, FileText, Download, Share2, Eye } from "lucide-react";
 import type { StatementOfAccountArchiveRow } from "@/lib/db/queries/documents";
 import { DocumentPreviewModal, type PreviewDocData } from "./DocumentPreviewModal";
 import { TablePagination } from "@/components/ui/TablePagination";
@@ -32,6 +32,19 @@ export function StatementsOfAccountTable({
     return rows.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
   }, [rows, pageIndex, pageSize]);
 
+  const handleShare = (r: StatementOfAccountArchiveRow) => {
+    if (typeof window !== "undefined" && typeof navigator !== "undefined") {
+      navigator.clipboard?.writeText?.(`${window.location.origin}/billing-pricing/soa/${r.partyId.slice(0, 8)}?partyId=${r.partyId}`);
+      alert(`Document link for SOA ${r.periodNumber} copied to clipboard!`);
+    }
+  };
+
+  const handleDownload = (r: StatementOfAccountArchiveRow) => {
+    if (typeof window !== "undefined") {
+      window.open(`/billing-pricing/soa/${r.partyId.slice(0, 8)}?partyId=${r.partyId}`, "_blank");
+    }
+  };
+
   if (!canReadFinancial) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-2xl border border-status-held/30 bg-status-held/10 px-6 py-12 text-center shadow-elevation-1">
@@ -52,10 +65,13 @@ export function StatementsOfAccountTable({
 
   if (rows.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-1">
-        <FileText size={40} className="text-text-grey" aria-hidden="true" />
-        <p className="font-body text-body-md text-text-grey">
-          No Statements of Account match the selected filters.
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-outline-variant/60 bg-surface-white p-10 text-center shadow-2xs">
+        <div className="mb-3.5 flex h-12 w-12 items-center justify-center rounded-2xl border border-brand-navy/20 bg-brand-navy/10 text-brand-navy shadow-2xs">
+          <FileText size={24} aria-hidden="true" />
+        </div>
+        <h3 className="font-heading text-title-sm font-bold text-on-surface">No Statements of Account</h3>
+        <p className="mt-1 max-w-md font-body text-body-sm text-text-grey">
+          No monthly or periodic billing statements match the active filters. Generated statements from Billing &amp; Pricing will populate here.
         </p>
       </div>
     );
@@ -97,7 +113,7 @@ export function StatementsOfAccountTable({
                 const totalPhp = r.billingStatementTotalUsd * r.lockedExchangeRatePhp;
 
                 return (
-                  <tr key={r.id} className="hover:bg-surface-light-grey/40">
+                  <tr key={r.id} className="hover:bg-surface-light-grey/40 transition-colors">
                     <td className="px-4 py-3">
                       <div className="font-mono text-mono-md font-bold text-on-surface">
                         {r.periodNumber}
@@ -134,33 +150,44 @@ export function StatementsOfAccountTable({
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1.5">
                         <button
                           type="button"
                           onClick={() =>
                             setPreviewDoc({
                               id: r.id,
                               documentNumber: r.periodNumber,
-                              title: "Statement of Account (SOA Bundle)",
+                              title: "Statement of Account (SOA Package)",
                               documentType: "soa",
                               status: r.status,
                               organizationName: r.partyName,
                               actorName: r.closedByUserName,
                               generatedAt: r.closedAt ?? r.createdAt,
-                              previewUrl: `/billing-pricing/soa/${r.id}`,
-                              downloadUrl: `/billing-pricing/soa/${r.id}`,
+                              previewUrl: `/billing-pricing/soa/${r.partyId.slice(0, 8)}?partyId=${r.partyId}`,
+                              downloadUrl: `/billing-pricing/soa/${r.partyId.slice(0, 8)}?partyId=${r.partyId}`,
                             })
                           }
-                          className="inline-flex h-9 items-center gap-1 rounded-lg border border-outline-variant/40 bg-surface-white px-2.5 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                          title="Preview SOA Package"
+                          className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border bg-surface px-3 font-label text-label font-bold text-brand-navy hover:bg-background transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
                         >
                           <Eye size={14} /> Preview
                         </button>
-                        <a
-                          href={`/billing-pricing?partyId=${r.partyId}`}
-                          className="inline-flex h-9 items-center gap-1 rounded-lg bg-surface-light-grey px-2.5 font-label text-label font-medium text-on-surface hover:bg-outline-variant/30"
+                        <button
+                          type="button"
+                          onClick={() => handleShare(r)}
+                          title="Copy Link"
+                          className="inline-flex h-9 items-center justify-center rounded-xl border border-outline-variant/40 bg-surface-white px-2.5 text-text-grey hover:bg-surface-light-grey hover:text-on-surface focus:outline-none transition-colors"
                         >
-                          <Building size={14} /> Ledger
-                        </a>
+                          <Share2 size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDownload(r)}
+                          title="Download Document"
+                          className="inline-flex h-9 items-center justify-center rounded-xl bg-brand-navy px-2.5 text-surface-white hover:bg-brand-navy/90 focus:outline-none transition-colors"
+                        >
+                          <Download size={14} />
+                        </button>
                       </div>
                     </td>
                   </tr>

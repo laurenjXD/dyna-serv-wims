@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Search, Filter } from "lucide-react";
+import { Search, Filter, FileText } from "lucide-react";
 import { TablePagination } from "@/components/ui/TablePagination";
 
 export interface ContractItem {
@@ -101,10 +101,18 @@ export function ContractTableClient({ initialContracts }: ContractTableClientPro
           <tbody className="divide-y divide-border-light font-body text-body-sm text-text-dark">
             {filteredContracts.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-8 text-center text-text-grey">
-                  {initialContracts.length === 0
-                    ? "No commercial contracts configured yet. Click \"New Contract\" to define your first rate-card contract."
-                    : "No contracts match your search or filter criteria."}
+                <td colSpan={8} className="py-10 px-4 text-center">
+                  <div className="flex flex-col items-center justify-center">
+                    <div className="mb-3.5 flex h-12 w-12 items-center justify-center rounded-2xl border border-brand-blue/20 bg-brand-blue/10 text-brand-blue shadow-2xs">
+                      <FileText size={24} aria-hidden="true" />
+                    </div>
+                    <h4 className="font-heading text-title-sm font-bold text-text-dark">No Commercial Contracts Found</h4>
+                    <p className="mt-1 max-w-sm font-body text-body-sm text-text-grey">
+                      {initialContracts.length === 0
+                        ? "No commercial contracts configured yet. Click \"New Contract\" to define your first rate-card contract."
+                        : "No contracts match your search query or filter criteria."}
+                    </p>
+                  </div>
                 </td>
               </tr>
             ) : (

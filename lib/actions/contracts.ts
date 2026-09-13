@@ -652,3 +652,4 @@ export async function getContractDetail(
   return null;
 }
 
+export type ContractDetailResult = NonNullable<Awaited<ReturnType<typeof getContractDetail>>>;

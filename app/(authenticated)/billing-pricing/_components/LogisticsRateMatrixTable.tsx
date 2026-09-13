@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import Link from "next/link";
 import {
   Truck,
   Edit3,
@@ -9,7 +8,6 @@ import {
   Plus,
   RefreshCw,
   Building2,
-  ExternalLink,
   ShieldCheck,
   Trash2,
   Power,
@@ -240,7 +238,7 @@ export function LogisticsRateMatrixTable() {
               Standard Freight Rate Matrix (PHP / Run)
             </h4>
             <p className="font-body text-xs text-text-grey">
-              Effective rates apply automatically across all Outgoing shipments based on vehicle type selected.
+              Effective rates apply automatically across Outgoing shipments based on vehicle type and destination.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -282,15 +280,6 @@ export function LogisticsRateMatrixTable() {
               <Plus size={13} />
               <span>Add Destination / Plant</span>
             </button>
-
-            {/* Outgoing Logistics Link */}
-            <Link
-              href="/outgoing?tab=logistics"
-              className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 font-label text-xs font-bold text-brand-navy hover:bg-slate-50 transition-colors shadow-2xs"
-            >
-              <span>View Outgoing Logistics</span>
-              <ExternalLink size={12} />
-            </Link>
           </div>
         </div>
 

@@ -214,9 +214,14 @@ export function FilterablePickListsTable({ rows, initialSearch = "" }: { rows: M
 
       <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
         {filteredAndSorted.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
-            <Package size={40} className="text-text-grey" aria-hidden="true" />
-            <p className="font-body text-body-md text-text-grey">No pick lists match your filter.</p>
+          <div className="flex flex-col items-center justify-center p-10 text-center">
+            <div className="mb-3.5 flex h-12 w-12 items-center justify-center rounded-2xl border border-brand-navy/20 bg-brand-navy/10 text-brand-navy shadow-2xs">
+              <Package size={24} aria-hidden="true" />
+            </div>
+            <h3 className="font-heading text-title-sm font-bold text-on-surface">No Matching Pick Lists</h3>
+            <p className="mt-1 max-w-md font-body text-body-sm text-text-grey">
+              No pick lists match your filter or search keywords. Try adjusting your filters or resetting the search field.
+            </p>
           </div>
         ) : (
           <>
@@ -484,9 +489,14 @@ export function FilterableARTable({ rows, initialSearch = "" }: { rows: MockARDo
 
       <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
         {filteredAndSorted.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
-            <CheckCircle2 size={40} className="text-text-grey" aria-hidden="true" />
-            <p className="font-body text-body-md text-text-grey">No acknowledgement receipts match your filter.</p>
+          <div className="flex flex-col items-center justify-center p-10 text-center">
+            <div className="mb-3.5 flex h-12 w-12 items-center justify-center rounded-2xl border border-brand-navy/20 bg-brand-navy/10 text-brand-navy shadow-2xs">
+              <CheckCircle2 size={24} aria-hidden="true" />
+            </div>
+            <h3 className="font-heading text-title-sm font-bold text-on-surface">No Matching Acknowledgement Receipts</h3>
+            <p className="mt-1 max-w-md font-body text-body-sm text-text-grey">
+              No acknowledgement receipts match your filter. Try adjusting your query or date range.
+            </p>
           </div>
         ) : (
           <>

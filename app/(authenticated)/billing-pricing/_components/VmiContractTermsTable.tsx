@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import Link from "next/link";
 import {
   Plus,
   FileText,
@@ -298,6 +299,7 @@ export function VmiContractTermsTable({ rows, parties }: Props) {
                         {renderSortIcon("effectiveFrom")}
                       </button>
                     </th>
+                    <th className="px-4 py-3 font-label text-label uppercase tracking-wider text-text-grey">Configuration</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/30">
@@ -335,6 +337,9 @@ export function VmiContractTermsTable({ rows, parties }: Props) {
                       <td className="px-4 py-3 font-mono text-mono-md text-text-grey">
                         {new Date(row.effectiveFrom).toLocaleDateString()}
                         {row.effectiveTo ? ` — ${new Date(row.effectiveTo).toLocaleDateString()}` : " — Present"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Link href={`/billing-pricing/vmi/permits/${row.partyId}`} className="font-label text-label font-bold text-brand-blue hover:underline">Permits &amp; LOA</Link>
                       </td>
                     </tr>
                   ))}

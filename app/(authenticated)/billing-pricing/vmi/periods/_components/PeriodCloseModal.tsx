@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState, useState, useEffect } from "react";
+import Link from "next/link";
+import { useActionState } from "react";
 import { X, CheckCircle, Calculator, FileCheck, AlertCircle } from "lucide-react";
-import { closeVmiPeriodAction } from "../_actions";
+import { closeVmiPeriodAction, recordVmiPaymentAction } from "../_actions";
 
 type Option = { id: string; name: string; code: string };
 
@@ -29,6 +30,10 @@ export function PeriodCloseModal({
   selectedYear,
 }: Props) {
   const [state, formAction, isPending] = useActionState(closeVmiPeriodAction, {});
+  const [paymentState, paymentFormAction, isPaymentPending] = useActionState(
+    recordVmiPaymentAction,
+    {},
+  );
 
   if (!isOpen) return null;
 
@@ -39,10 +44,10 @@ export function PeriodCloseModal({
           <div>
             <h3 className="font-heading text-title-md font-bold text-on-surface flex items-center gap-2">
               <Calculator className="text-brand-navy" size={20} />
-              Generate VMI Billing Period &amp; SOA
+              Create VMI Billing Draft
             </h3>
             <p className="font-body text-body-sm text-text-grey">
-              Calculate Storage, Handling, Fees, FX Rate, and Statement of Account (SOA) running balance.
+              Calculate and save a draft with Storage, Handling, Fees, locked FX, and the SOA running balance. Documents are not issued from this step.
             </p>
           </div>
           <button
@@ -66,11 +71,15 @@ export function PeriodCloseModal({
             <div className="rounded-lg bg-status-available/10 p-4 text-status-available">
               <div className="flex items-center gap-2 font-bold text-title-sm">
                 <CheckCircle size={20} />
-                Period Statement &amp; SOA Generated Successfully!
+                Billing Draft Created Successfully
               </div>
               <p className="mt-1 font-body text-body-sm">
                 Period Number: <span className="font-mono font-bold">{state.result.periodNumber}</span>
               </p>
+              <p className="mt-1 font-body text-body-sm">
+                Status: <span className="font-bold">Draft</span>. Review charge lines and totals before document generation and issue.
+              </p>
+              {state.documentWarning && <p className="mt-2 rounded bg-status-held/10 p-2 font-body text-body-sm text-status-held">{state.documentWarning}</p>}
             </div>
 
             {/* Generated Statement Breakdown */}
@@ -132,7 +141,66 @@ export function PeriodCloseModal({
               </div>
             </div>
 
+            <div className="space-y-3 rounded-lg border border-outline-variant/30 bg-surface-white p-4">
+              <div>
+                <h4 className="font-heading text-body-md font-bold text-on-surface">
+                  Record Payment or Adjustment
+                </h4>
+                <p className="mt-1 font-body text-body-sm text-text-grey">
+                  Administrator-only. Issued periods remain immutable; payments recorded after issue are carried into the next period&apos;s balance.
+                </p>
+              </div>
+
+              {paymentState.error && (
+                <div className="rounded-lg bg-status-held/10 p-3 font-body text-body-sm text-status-held">
+                  What happened: Payment was not recorded. Why it failed: {paymentState.error}. Next action: Correct the fields and try again.
+                </div>
+              )}
+
+              {paymentState.ok && (
+                <div className="rounded-lg bg-status-available/10 p-3 font-body text-body-sm text-status-available">
+                  Payment recorded successfully. The SOA balance will refresh when this period is reopened.
+                </div>
+              )}
+
+              <form action={paymentFormAction} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <input type="hidden" name="partyId" value={selectedPartyId} />
+                <input type="hidden" name="periodId" value={state.result.id} />
+                <div>
+                  <label htmlFor="payment-amount" className="block font-label text-label font-bold text-on-surface">Amount (USD)</label>
+                  <input id="payment-amount" name="amountUsd" required inputMode="decimal" placeholder="0.00" className="mt-1 h-11 w-full rounded border border-outline-variant/30 px-3 font-body text-body-md" />
+                </div>
+                <div>
+                  <label htmlFor="payment-date" className="block font-label text-label font-bold text-on-surface">Date</label>
+                  <input id="payment-date" name="paymentDate" required type="date" className="mt-1 h-11 w-full rounded border border-outline-variant/30 px-3 font-body text-body-md" />
+                </div>
+                <div>
+                  <label htmlFor="payment-type" className="block font-label text-label font-bold text-on-surface">Type</label>
+                  <select id="payment-type" name="type" defaultValue="payment" className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md">
+                    <option value="payment">Payment</option>
+                    <option value="credit_memo">Credit memo</option>
+                    <option value="adjustment">Adjustment</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="payment-notes" className="block font-label text-label font-bold text-on-surface">Notes</label>
+                  <input id="payment-notes" name="notes" placeholder="Reference or explanation" className="mt-1 h-11 w-full rounded border border-outline-variant/30 px-3 font-body text-body-md" />
+                </div>
+                <div className="sm:col-span-2 flex justify-end">
+                  <button type="submit" disabled={isPaymentPending} className="h-11 rounded bg-brand-navy px-5 font-label text-label font-bold text-surface-white hover:bg-brand-navy/90 disabled:opacity-50">
+                    {isPaymentPending ? "Recording..." : "Record Payment"}
+                  </button>
+                </div>
+              </form>
+            </div>
+
             <div className="flex justify-end pt-2">
+              <Link
+                href={`/billing-pricing/vmi/periods/${state.result.id}`}
+                className="mr-3 inline-flex h-11 items-center rounded border border-brand-navy px-5 font-label text-label font-bold text-brand-navy hover:bg-brand-navy/5"
+              >
+                Review Draft
+              </Link>
               <button
                 type="button"
                 onClick={onClose}
@@ -202,7 +270,7 @@ export function PeriodCloseModal({
             </div>
 
             <div className="rounded-lg bg-surface-light-grey/60 p-4 font-body text-body-sm text-text-grey space-y-1">
-              <p className="font-bold text-on-surface">Four-Document Generation Package:</p>
+              <p className="font-bold text-on-surface">Documents planned after review:</p>
               <ul className="list-disc pl-5 space-y-0.5">
                 <li>Billing Statement (Charge components + Grand Total)</li>
                 <li>Warehousing Charges (Daily balance CBM ledger)</li>
@@ -225,7 +293,7 @@ export function PeriodCloseModal({
                 className="inline-flex h-11 items-center gap-2 rounded bg-primary px-5 font-label text-label font-bold text-surface-white hover:bg-primary-hover disabled:opacity-50"
               >
                 <Calculator size={18} />
-                {isPending ? "Generating Period Statement & SOA..." : "Generate Billing Period & SOA"}
+                {isPending ? "Creating Billing Draft..." : "Create Billing Draft"}
               </button>
             </div>
           </form>
