@@ -22,16 +22,7 @@ import {
   getTradingMarginLedger,
   type TradingMarginRow,
 } from "@/lib/billing/queries/trading-margin";
-import {
-  listTradingPolicies,
-  type TradingPolicyRow,
-} from "@/lib/db/queries/trading-policies";
-import {
-  listVmiContractTerms,
-  type VmiContractTermsRow,
-} from "@/lib/db/queries/vmi-contracts";
 import { listParties } from "@/lib/db/queries/parties";
-import { listItems } from "@/lib/db/queries/items";
 import { listContracts } from "@/lib/actions/contracts";
 import { hasTradingPriceInternalVisibility } from "@/lib/rbac/trading-visibility";
 import { BillingOverviewTab } from "./_components/BillingOverviewTab";
@@ -128,11 +119,8 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
   let vmiSummaryRows: VmiCbmLedgerRow[] = [];
   let vmiSummary: VmiCbmLedgerRow | null = null;
   let vmiDailyRows: Awaited<ReturnType<typeof getVmiDailyBalanceRows>> = [];
-  let vmiContractRows: VmiContractTermsRow[] = [];
   let tradingRows: TradingMarginRow[] = [];
-  let policyRows: TradingPolicyRow[] = [];
   let billingPeriods: VmiBillingPeriodRow[] = [];
-  let itemOptions: { id: string; name: string; code: string }[] = [];
   let contracts: Awaited<ReturnType<typeof listContracts>> = [];
 
   if (activeSection === "overview") {
@@ -160,37 +148,15 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
   } else if (activeSection === "configuration") {
     // Configuration contains independent datasets. Keep one unavailable or
     // not-yet-migrated table from taking down the entire Billing workspace.
-    const [vmiResult, contractsResult, policiesResult, itemsResult] =
+    const [contractsResult] =
       await Promise.allSettled([
-        listVmiContractTerms(db),
         listContracts(resolver),
-        listTradingPolicies(db, { activeOnly: false }),
-        listItems(db, { limit: 100 }),
       ]);
 
-    if (vmiResult.status === "fulfilled") {
-      vmiContractRows = vmiResult.value;
-    } else {
-      console.warn("Billing configuration: VMI terms unavailable", vmiResult.reason);
-    }
     if (contractsResult.status === "fulfilled") {
       contracts = contractsResult.value;
     } else {
       console.warn("Billing configuration: contracts unavailable", contractsResult.reason);
-    }
-    if (policiesResult.status === "fulfilled") {
-      policyRows = policiesResult.value.rows;
-    } else {
-      console.warn("Billing configuration: trading policies unavailable", policiesResult.reason);
-    }
-    if (itemsResult.status === "fulfilled") {
-      itemOptions = itemsResult.value.rows.map((item) => ({
-        id: item.id,
-        name: item.name,
-        code: item.code,
-      }));
-    } else {
-      console.warn("Billing configuration: items unavailable", itemsResult.reason);
     }
   }
 
@@ -423,11 +389,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
       {activeSection === "configuration" && (
         <div className="mt-6">
           <ConfigurationTab
-            contractRows={vmiContractRows}
-            parties={partyOptions}
             contracts={contracts}
-            policyRows={policyRows}
-            items={itemOptions}
           />
         </div>
       )}

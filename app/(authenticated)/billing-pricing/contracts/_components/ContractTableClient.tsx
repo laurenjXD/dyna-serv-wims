@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Search, Filter, FileText } from "lucide-react";
+import { Search, Filter, FileText, Plus } from "lucide-react";
 import { TablePagination } from "@/components/ui/TablePagination";
 
 export interface ContractItem {
@@ -64,7 +64,7 @@ export function ContractTableClient({ initialContracts }: ContractTableClientPro
           />
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex w-full items-center gap-2 sm:w-auto">
           <Filter size={16} className="text-text-grey" />
           <span className="font-body text-body-sm text-text-grey">Filter:</span>
           <select
@@ -81,6 +81,12 @@ export function ContractTableClient({ initialContracts }: ContractTableClientPro
             <option value="pending_approval">Pending Approval</option>
             <option value="suspended">Suspended</option>
           </select>
+          <Link
+            href="/billing-pricing/contracts/new"
+            className="ml-auto inline-flex h-11 shrink-0 items-center gap-2 rounded-full bg-primary px-4 font-label text-label font-bold text-white shadow-sm transition-colors hover:bg-primary-hover"
+          >
+            <Plus size={18} /> New Contract
+          </Link>
         </div>
       </div>
 
