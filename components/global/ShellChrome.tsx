@@ -306,7 +306,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
   return (
     <>
       <header
-        className="print:hidden fixed inset-x-0 top-0 z-50 isolate flex h-14 items-center gap-4 overflow-visible border-b border-border bg-surface px-4 lg:h-[76px] lg:px-4"
+        className="print:hidden fixed inset-x-0 top-0 z-50 isolate flex h-14 items-center gap-4 overflow-visible bg-surface px-4 lg:h-[76px] lg:px-4"
       >
         {tier !== "floor" && (
           <button
@@ -317,19 +317,6 @@ export function ShellChrome({ children }: { children: ReactNode }) {
             className="flex h-16 w-16 items-center justify-center text-text-primary active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:hidden"
           >
             <PanelLeftOpen size={25} strokeWidth={2} aria-hidden="true" />
-          </button>
-        )}
-
-        {tier !== "floor" && (
-          <button
-            type="button"
-            aria-label={isDesktopOpen ? "Collapse navigation" : "Expand navigation"}
-            aria-expanded={isDesktopOpen}
-            onClick={toggleDesktop}
-            title={isDesktopOpen ? "Collapse sidebar to icons" : "Expand sidebar"}
-            className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-background text-text-secondary transition-colors hover:bg-slate-100 hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:flex"
-          >
-            {isDesktopOpen ? <PanelLeftClose size={22} strokeWidth={2.2} aria-hidden="true" /> : <PanelLeftOpen size={22} strokeWidth={2.2} aria-hidden="true" />}
           </button>
         )}
 
@@ -399,10 +386,24 @@ export function ShellChrome({ children }: { children: ReactNode }) {
             <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface shadow-elevation-1">
               <Image src="/logo.svg" alt="" width={30} height={30} priority />
             </span>
-            <span className="font-heading text-title-lg font-bold tracking-tight text-text-primary">
-              Dyna-Serv WIMS
-            </span>
+            {isDesktopOpen && (
+              <span className="font-heading text-title-lg font-bold tracking-tight text-text-primary">
+                Dyna-Serv WIMS
+              </span>
+            )}
           </Link>
+          {tier !== "floor" && (
+            <button
+              type="button"
+              aria-label={isDesktopOpen ? "Collapse navigation" : "Expand navigation"}
+              aria-expanded={isDesktopOpen}
+              onClick={toggleDesktop}
+              title={isDesktopOpen ? "Collapse sidebar to icons" : "Expand sidebar"}
+              className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-background text-text-secondary transition-colors hover:bg-slate-100 hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:flex"
+            >
+              {isDesktopOpen ? <PanelLeftClose size={22} strokeWidth={2.2} aria-hidden="true" /> : <PanelLeftOpen size={22} strokeWidth={2.2} aria-hidden="true" />}
+            </button>
+          )}
           <span aria-hidden="true" className="h-8 w-px bg-border" />
           <div className="min-w-0 shrink-0">
             <p
