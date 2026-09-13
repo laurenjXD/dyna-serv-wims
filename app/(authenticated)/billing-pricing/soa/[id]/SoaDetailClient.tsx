@@ -358,7 +358,7 @@ export function SoaDetailClient({
             {/* The browser print template uses the same logo as generated PDFs. */}
             <span className="soa-letterhead-logo inline-flex shrink-0 bg-white p-0.5 print:p-0" aria-hidden="true">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/api/brand/logo" alt="" className="h-10 w-auto object-contain print:h-9" />
+              <img src="/api/brand/logo" alt="" className="h-14 w-auto object-contain print:h-12" />
             </span>
             <div>
               <p className="text-xl font-extrabold tracking-tight text-slate-900 leading-tight">
