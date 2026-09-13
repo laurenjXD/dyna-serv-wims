@@ -32,16 +32,6 @@ export async function middleware(request: NextRequest) {
     return redirectResponse;
   }
 
-  // Redirect already authenticated users visiting /login to /dashboard
-  if (user && isAuthRoute) {
-    const dashboardUrl = request.nextUrl.clone();
-    dashboardUrl.pathname = "/dashboard";
-    const redirectResponse = NextResponse.redirect(dashboardUrl);
-    response.cookies.getAll().forEach((cookie) => {
-      redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
-    });
-    return redirectResponse;
-  }
 
   return response;
 }

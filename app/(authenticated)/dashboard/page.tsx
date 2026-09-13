@@ -16,13 +16,16 @@ export const metadata = {
   description: "Real-time warehouse operations telemetry, inventory valuation, location heatmap, and performance metrics.",
 };
 
-function withDashboardTimeout<T>(promise: Promise<T>, timeoutMs = 8_000): Promise<T | undefined> {
+function withDashboardTimeout<T>(promise: Promise<T>, timeoutMs = 2_500): Promise<T | undefined> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
   return Promise.race([
     promise,
     new Promise<undefined>((resolve) => {
-      setTimeout(() => resolve(undefined), timeoutMs);
+      timer = setTimeout(() => resolve(undefined), timeoutMs);
     }),
-  ]);
+  ]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
 }
 
 export default async function DashboardPage() {

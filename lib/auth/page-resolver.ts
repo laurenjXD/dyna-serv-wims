@@ -105,11 +105,19 @@ export async function createPageResolver() {
     ): Promise<RawAuthorizationRecord | null> {
       try {
       // Check user profile exists and is active
-      const profileRows = await db
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+      const queryPromise = db
         .select({ status: userProfiles.status })
         .from(userProfiles)
         .where(eq(userProfiles.id, userId))
         .limit(1);
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error("Database profile query timed out")), 2500);
+      });
+
+      const profileRows = await Promise.race([queryPromise, timeoutPromise]).finally(() => {
+        if (timeoutId) clearTimeout(timeoutId);
+      });
 
       const profile = profileRows[0];
       if (!profile) return null;
