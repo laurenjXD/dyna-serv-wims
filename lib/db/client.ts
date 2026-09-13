@@ -51,9 +51,9 @@ function getDb(): Db {
     );
     const client = postgres(connectionString, {
       prepare: false,
-      connect_timeout: 10,
+      connect_timeout: 4,
       idle_timeout: 20,
-      max: isServerless ? 1 : 10,
+      max: isServerless ? 5 : 10,
       ssl: connectionString.includes("supabase") ? "require" : undefined,
     });
     realDb = drizzle(client, { schema });

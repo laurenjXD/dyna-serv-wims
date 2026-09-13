@@ -41,8 +41,21 @@ export async function updateSession(request: NextRequest): Promise<UpdateSession
     });
 
     // Required to keep the session alive — do not remove this call.
-    const { data } = await supabase.auth.getUser();
-    user = data.user ?? null;
+    // Wrap with timeout to prevent edge middleware from hanging on network stalls
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const authPromise = supabase.auth.getUser();
+    const timeoutPromise = new Promise<{ data: { user: User | null }; error: Error | null }>((resolve) => {
+      timeoutId = setTimeout(() => {
+        resolve({ data: { user: null }, error: new Error("Middleware auth timed out") });
+      }, 3000);
+    });
+
+    try {
+      const { data } = await Promise.race([authPromise, timeoutPromise]);
+      user = data.user ?? null;
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
   } catch (err) {
     // Fail-safe — do not crash middleware with 500 if Supabase is unreachable or env var is invalid
     console.error("[middleware] updateSession error:", err);

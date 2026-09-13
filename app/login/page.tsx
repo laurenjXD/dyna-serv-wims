@@ -30,25 +30,27 @@ export default function LoginPage() {
     setPending(true);
 
     try {
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
       const result = await Promise.race([
         signInAction({ email, password }),
         new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error("Sign-in timed out")), 12_000);
+          timeoutId = setTimeout(() => reject(new Error("Sign-in timed out")), 8_000);
         }),
-      ]);
+      ]).finally(() => {
+        if (timeoutId) clearTimeout(timeoutId);
+      });
 
       if (!result.ok) {
         setError(result.error);
+        setPending(false);
         return;
       }
 
-      // Go directly to the authenticated dashboard. Routing through `/`
-      // causes a second server authorization hop before the dashboard and
-      // can make a successful sign-in look like it needs to be repeated.
+      // Go directly to the authenticated dashboard. Keep pending true so
+      // button shows feedback while the browser executes the navigation.
       window.location.replace("/dashboard");
     } catch {
       setError("An unexpected error occurred. Please try again.");
-    } finally {
       setPending(false);
     }
   }
