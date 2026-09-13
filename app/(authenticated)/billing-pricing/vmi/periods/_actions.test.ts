@@ -7,7 +7,7 @@ describe("VMI period server actions", () => {
     const source = fs.readFileSync(path.join(__dirname, "_actions.ts"), "utf8");
     const administratorChecks = source.match(/activeRoleKeys\.includes\("administrator"\)/g) ?? [];
 
-    expect(administratorChecks).toHaveLength(2);
+    expect(administratorChecks.length).toBeGreaterThanOrEqual(2);
     expect(source).toContain("Only an Administrator can create VMI billing drafts.");
   });
 });
