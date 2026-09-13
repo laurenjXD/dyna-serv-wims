@@ -231,18 +231,18 @@ function NavLink({
         onClick={onNavigate}
         title={`${label}${shortcutNumber ? ` (${shortcutLabel(shortcutNumber - 1)})` : ""}`}
         data-active={isActive ? "true" : "false"}
-        className={`group relative mx-auto flex h-11 w-12 items-center justify-center rounded-xl
-          motion-safe:transition-all motion-safe:duration-150
-          focus:outline-none focus-visible:ring-2 focus-visible:ring-primary
+        className={`group relative mx-auto flex h-11 w-11 items-center justify-center rounded-full
+          motion-safe:transition-all motion-safe:duration-200
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80
           ${isActive
-            ? "scale-110 text-primary drop-shadow-[0_4px_7px_rgba(37,99,235,0.28)]"
-            : "text-text-secondary hover:-translate-y-0.5 hover:bg-primary/[0.07] hover:text-primary"}`}
+            ? "bg-[#dbe4f0] text-[#0a4d94] shadow-[0_4px_14px_rgba(0,0,0,0.18)] scale-105"
+            : "text-white/75 hover:text-white hover:bg-white/15 hover:scale-105 active:scale-95"}`}
       >
-        <Icon size={25} strokeWidth={2.2} aria-hidden="true" />
+        <Icon size={23} strokeWidth={2.2} aria-hidden="true" />
         {entry.id === "approvals" && pendingApprovalCount > 0 && (
           <span
             data-testid="approval-count-badge"
-            className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full border border-surface bg-red-500 text-[10px] font-bold text-surface"
+            className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-[#0b4d94] bg-red-500 text-[10px] font-bold text-white shadow-sm"
           >
             {pendingApprovalCount > 9 ? "9+" : pendingApprovalCount}
           </span>
@@ -261,26 +261,26 @@ function NavLink({
       className={`group relative flex ${compact ? "h-11 gap-3 rounded-xl px-2.5" : "h-12 gap-3 rounded-xl px-3"} items-center overflow-hidden font-label font-semibold
         ${floorText ? "text-mono-md" : "text-label"}
         motion-safe:transition-[background-color,color,box-shadow,transform] motion-safe:duration-150
-        focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1
+        focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-1
         ${isActive
-          ? "bg-primary/[0.08] text-brand-navy shadow-[inset_0_0_0_1px_rgba(37,99,235,0.1),0_6px_18px_-13px_rgba(37,99,235,0.8)] before:absolute before:inset-y-2 before:left-0 before:w-1 before:rounded-r-full before:bg-primary before:content-['']"
-          : "text-text-secondary hover:translate-x-0.5 hover:bg-primary/[0.05] hover:text-brand-navy hover:shadow-sm"}`}
+          ? "bg-white text-[#0b4d94] shadow-[0_4px_14px_rgba(0,0,0,0.15)] bg-primary/[0.08] before:absolute before:inset-y-2 before:left-0 before:w-1.5 before:rounded-r-full before:bg-primary before:content-['']"
+          : "text-white/85 hover:translate-x-0.5 hover:bg-white/15 hover:text-white hover:bg-primary/[0.05] hover:shadow-sm"}`}
     >
-      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg motion-safe:transition-colors motion-safe:duration-150 ${isActive ? "text-primary" : "bg-background text-text-secondary group-hover:bg-primary/10 group-hover:text-primary"}`}>
+      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg motion-safe:transition-colors motion-safe:duration-150 ${isActive ? "bg-[#0b4d94]/10 text-primary" : "bg-white/10 text-white/90 group-hover:bg-white/20 group-hover:text-white"}`}>
         <Icon size={22} strokeWidth={2.2} aria-hidden="true" />
       </span>
-      <span className={`min-w-0 flex-1 truncate ${floorText ? "text-mono-md" : "text-label"}`}>{label}</span>
+      <span className={`min-w-0 flex-1 truncate ${floorText ? "text-mono-md" : "text-label"} ${isActive ? "text-[#0b4d94] font-bold" : "text-white/90"}`}>{label}</span>
       {entry.id === "approvals" && pendingApprovalCount > 0 && (
-        <span data-testid="approval-count-badge" className="inline-flex min-w-6 items-center justify-center rounded-full border-2 border-red-500 bg-red-500 px-1.5 py-0.5 font-mono text-mono-sm font-bold leading-none text-surface">
+        <span data-testid="approval-count-badge" className="inline-flex min-w-6 items-center justify-center rounded-full border-2 border-red-500 bg-red-500 px-1.5 py-0.5 font-mono text-mono-sm font-bold leading-none text-white">
           {pendingApprovalCount > 99 ? "99+" : pendingApprovalCount}
         </span>
       )}
       {shortcutNumber && (
-        <kbd className="pointer-events-none absolute right-8 top-1/2 hidden -translate-y-1/2 rounded border border-border bg-surface px-1.5 py-1 font-mono text-[11px] font-semibold leading-none text-text-secondary opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 xl:inline-flex">
+        <kbd className="pointer-events-none absolute right-8 top-1/2 hidden -translate-y-1/2 rounded border border-white/20 bg-white/15 px-1.5 py-1 font-mono text-[11px] font-semibold leading-none text-white opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 xl:inline-flex">
           {shortcutLabel(shortcutNumber - 1)}
         </kbd>
       )}
-      <ChevronRight size={16} aria-hidden="true" className={`shrink-0 motion-safe:transition-transform motion-safe:duration-150 ${isActive ? "translate-x-0 text-primary" : "-translate-x-1 text-text-secondary/40 opacity-0 group-hover:translate-x-0 group-hover:opacity-100"}`} />
+      <ChevronRight size={16} aria-hidden="true" className={`shrink-0 motion-safe:transition-transform motion-safe:duration-150 ${isActive ? "translate-x-0 text-primary text-[#0b4d94]" : "-translate-x-1 text-white/40 opacity-0 group-hover:translate-x-0 group-hover:opacity-100"}`} />
     </Link>
   );
 }
@@ -308,10 +308,10 @@ function GroupedSections({
 
   if (isMini) {
     return (
-      <div className="flex flex-col gap-1.5 py-1">
+      <div className="flex flex-col gap-2 py-1">
         {sections.map((section, sIdx) => (
-          <div key={section.group} className="flex flex-col items-center gap-1">
-            {sIdx > 0 && <div className="my-1 h-px w-6 bg-border/60" aria-hidden="true" />}
+          <div key={section.group} className="flex flex-col items-center gap-1.5">
+            {sIdx > 0 && <div className="my-1.5 h-px w-6 bg-white/20" aria-hidden="true" />}
             {section.entries.map((entry) => (
               <NavLink
                 key={entry.id}
@@ -337,13 +337,13 @@ function GroupedSections({
         <div key={section.group} className={compact ? "mb-0" : "mb-4"}>
           <div
             data-testid={`nav-group-${groupTestId(section.group)}`}
-            className={`${compact ? "px-2.5 pb-0.5 pt-0.5" : "px-3 pb-2 pt-3"} flex items-center gap-3 font-label font-bold uppercase tracking-[0.14em] text-text-secondary/70
+            className={`${compact ? "px-2.5 pb-0.5 pt-0.5" : "px-3 pb-2 pt-3"} flex items-center gap-3 font-label font-bold uppercase tracking-[0.14em] text-blue-200/80
               ${floorText ? "text-mono-md" : "text-mono-sm"}`}
           >
             <span>{section.group}</span>
-            <span aria-hidden="true" className="h-px flex-1 bg-border" />
+            <span aria-hidden="true" className="h-px flex-1 bg-white/20" />
           </div>
-          <div className={`flex flex-col ${compact ? "gap-0" : "gap-1"}`}>
+          <div className={`flex flex-col ${compact ? "gap-0.5" : "gap-1"}`}>
             {section.entries.map((entry) => (
               <NavLink
                 key={entry.id}
@@ -503,14 +503,14 @@ export function ShellNavigation({
         data-testid="desktop-sidebar"
         aria-label="Primary navigation"
         aria-hidden={false}
-        className={`print:hidden hidden flex-col overflow-hidden border-r border-primary/10 bg-surface shadow-[10px_0_30px_-28px_rgba(15,23,42,0.75)] transition-[width] duration-200 motion-reduce:transition-none lg:fixed lg:bottom-0 lg:left-0 lg:top-[76px] lg:z-40 lg:flex ${
+        className={`print:hidden hidden flex-col overflow-hidden border-r border-[#083c77]/60 bg-gradient-to-b from-[#0e549e] via-[#0b4d94] to-[#083c77] shadow-[4px_0_24px_rgba(11,77,148,0.18)] transition-[width] duration-200 motion-reduce:transition-none lg:fixed lg:bottom-0 lg:left-0 lg:top-[76px] lg:z-40 lg:flex ${
           desktopOpen ? "lg:w-[286px]" : "lg:w-[76px]"
         }`}
       >
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50
-                     focus:rounded focus:bg-primary focus:px-4 focus:py-2 focus:text-surface
+                     focus:rounded focus:bg-white focus:px-4 focus:py-2 focus:text-primary
                      focus:font-label focus:text-body-md focus:shadow-lg"
         >
           Skip to content
@@ -530,19 +530,19 @@ export function ShellNavigation({
         </div>
 
         {/* User Footer Card */}
-        <div className={`border-t border-primary/10 bg-primary/[0.025] ${desktopOpen ? "p-2" : "p-2 text-center"}`}>
-          <div className={`flex items-center rounded-2xl border border-primary/10 bg-surface shadow-[0_8px_24px_-18px_rgba(15,23,42,0.65)] ${desktopOpen ? "gap-3 p-2.5" : "justify-center p-2"}`}>
+        <div className={`border-t border-white/15 bg-black/10 ${desktopOpen ? "p-3" : "p-2 text-center"}`}>
+          <div className={`flex items-center ${desktopOpen ? "gap-3 rounded-2xl border border-white/15 bg-white/10 p-2.5 backdrop-blur-sm shadow-[0_4px_16px_rgba(0,0,0,0.15)]" : "justify-center p-1"}`}>
             <span
-              className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-navy font-heading text-label font-bold text-surface"
+              className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20 font-heading text-label font-bold text-white border border-white/30 shadow-sm transition-transform hover:scale-105"
               title={`${displayName ?? "Signed-in user"} (${roleLabel})`}
             >
               {initials(displayName)}
-              <span aria-hidden="true" className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-surface bg-status-available" />
+              <span aria-hidden="true" className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#0b4d94] bg-status-available" />
             </span>
             {desktopOpen && (
               <div className="min-w-0 flex-1">
-                <p className="truncate font-label text-label font-bold text-text-primary">{displayName ?? "Signed-in user"}</p>
-                <p className="mt-0.5 truncate font-body text-mono-sm text-text-secondary">{roleLabel}</p>
+                <p className="truncate font-label text-label font-bold text-white">{displayName ?? "Signed-in user"}</p>
+                <p className="mt-0.5 truncate font-body text-mono-sm text-blue-100/80">{roleLabel}</p>
               </div>
             )}
           </div>
@@ -607,28 +607,28 @@ function MoreOverlay({
         type="button"
         aria-hidden="true"
         tabIndex={-1}
-        className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
 
       {/* Bottom Sheet rising from bottom to up */}
-      <div className="relative z-10 flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-[28px] border-t border-slate-200/80 bg-surface shadow-2xl transition-transform duration-300 ease-out animate-in slide-in-from-bottom">
+      <div className="relative z-10 flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-[28px] border-t border-[#083c77]/60 bg-gradient-to-b from-[#0e549e] via-[#0b4d94] to-[#083c77] shadow-2xl transition-transform duration-300 ease-out animate-in slide-in-from-bottom">
         {/* Grab Handle */}
-        <div className="flex justify-center pt-3 pb-1 bg-surface shrink-0">
-          <div className="h-1.5 w-12 rounded-full bg-slate-300" aria-hidden="true" />
+        <div className="flex justify-center pt-3 pb-1 shrink-0">
+          <div className="h-1.5 w-12 rounded-full bg-white/30" aria-hidden="true" />
         </div>
 
         {/* Header with User Profile & Close Button */}
-        <div className="flex items-center justify-between border-b border-border bg-background px-5 py-3.5 shrink-0">
+        <div className="flex items-center justify-between border-b border-white/15 bg-black/10 px-5 py-3.5 shrink-0">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary font-label text-label font-bold text-surface shadow-sm">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/20 font-label text-label font-bold text-white border border-white/30 shadow-sm">
               {initials(displayName)}
             </span>
             <div className="min-w-0">
-              <p className="truncate font-heading text-body-md font-bold text-text-primary">
+              <p className="truncate font-heading text-body-md font-bold text-white">
                 {displayName ?? "Navigation Menu"}
               </p>
-              <p className={`truncate font-body text-text-secondary ${floorText ? "text-body-md" : "text-body-sm"}`}>
+              <p className={`truncate font-body text-blue-100/80 ${floorText ? "text-body-md" : "text-body-sm"}`}>
                 {roleLabel}
               </p>
             </div>
@@ -637,7 +637,7 @@ function MoreOverlay({
             type="button"
             aria-label="Close navigation menu"
             onClick={onClose}
-            className="flex h-10 w-10 items-center justify-center rounded-full text-text-secondary hover:bg-slate-100 hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95 transition-all"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-white/80 hover:bg-white/15 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white active:scale-95 transition-all"
           >
             <X size={20} aria-hidden="true" />
           </button>
