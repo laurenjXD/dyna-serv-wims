@@ -247,6 +247,26 @@ function NavLink({
             {pendingApprovalCount > 9 ? "9+" : pendingApprovalCount}
           </span>
         )}
+
+        {/* Floating Tooltip displaying current tab name on hover */}
+        <div
+          role="tooltip"
+          className="pointer-events-none absolute left-[calc(100%+14px)] top-1/2 z-50 -translate-y-1/2 hidden group-hover:flex items-center gap-2 rounded-xl bg-slate-900/95 px-3 py-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.35)] backdrop-blur-md border border-white/10 opacity-0 group-hover:opacity-100 group-hover:scale-100 scale-95 transition-all duration-150 motion-reduce:transition-none whitespace-nowrap"
+        >
+          {/* Arrow */}
+          <span className="absolute -left-1 top-1/2 -translate-y-1/2 h-2 w-2 rotate-45 bg-slate-900 border-b border-l border-white/10" aria-hidden="true" />
+          <span className="font-heading text-xs font-bold text-white tracking-wide">{label}</span>
+          {isActive && (
+            <span className="rounded-full bg-blue-500/20 border border-blue-400/40 px-1.5 py-0.5 text-[10px] font-bold text-blue-300">
+              Active
+            </span>
+          )}
+          {shortcutNumber && (
+            <kbd className="rounded border border-white/20 bg-white/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-slate-300">
+              {shortcutLabel(shortcutNumber - 1)}
+            </kbd>
+          )}
+        </div>
       </Link>
     );
   }
@@ -503,7 +523,7 @@ export function ShellNavigation({
         data-testid="desktop-sidebar"
         aria-label="Primary navigation"
         aria-hidden={false}
-        className={`print:hidden hidden flex-col overflow-hidden border-r border-[#083c77]/60 bg-gradient-to-b from-[#0e549e] via-[#0b4d94] to-[#083c77] shadow-[4px_0_24px_rgba(11,77,148,0.18)] transition-[width] duration-200 motion-reduce:transition-none lg:fixed lg:bottom-0 lg:left-0 lg:top-[76px] lg:z-40 lg:flex ${
+        className={`print:hidden hidden flex-col overflow-visible border-r border-[#083c77]/60 bg-gradient-to-b from-[#0e549e] via-[#0b4d94] to-[#083c77] shadow-[4px_0_24px_rgba(11,77,148,0.18)] transition-[width] duration-200 motion-reduce:transition-none lg:fixed lg:bottom-0 lg:left-0 lg:top-[76px] lg:z-40 lg:flex ${
           desktopOpen ? "lg:w-[286px]" : "lg:w-[76px]"
         }`}
       >
