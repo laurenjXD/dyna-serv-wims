@@ -1,16 +1,10 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import sharp from "sharp";
 
-// PDF engines do not consistently support the filters embedded in logo.svg.
-// Serve one opaque, high-resolution PNG for printable documents instead.
+// Serve the verified transparent high-resolution brand asset directly so
+// browser previews and generated documents use the same source pixels.
 export async function GET(): Promise<Response> {
-  const logoSvg = await readFile(path.join(process.cwd(), "public", "logo.svg"));
-  const logoPng = await sharp(logoSvg, { density: 288 })
-    .flatten({ background: "#ffffff" })
-    .resize(768, 768, { fit: "contain", background: "#ffffff" })
-    .png()
-    .toBuffer();
+  const logoPng = await readFile(path.join(process.cwd(), "public", "logo-hd.png"));
 
   return new Response(new Uint8Array(logoPng), {
     headers: {

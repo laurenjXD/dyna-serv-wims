@@ -1,6 +1,5 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import sharp from "sharp";
 import { PDFDocument, StandardFonts, rgb, type PDFImage, type PDFFont, type PDFPage } from "pdf-lib";
 import type { VmiDocumentType } from "./vmi-artifacts";
 
@@ -41,12 +40,7 @@ function line(page: PDFPage, y: number): void { page.drawLine({ start: { x: LEFT
 function text(page: PDFPage, content: string, x: number, y: number, font: PDFFont, size = 9, bold = false): void { page.drawText(content, { x, y, font, size, color: bold ? rgb(0.06, 0.12, 0.24) : rgb(0.12, 0.15, 0.2) }); }
 
 async function embedDynaServLogo(pdf: PDFDocument): Promise<PDFImage> {
-  const logoSvg = await readFile(path.join(process.cwd(), "public", "logo.svg"));
-  const logoPng = await sharp(logoSvg, { density: 288 })
-    .flatten({ background: "#ffffff" })
-    .resize(768, 768, { fit: "contain", background: "#ffffff" })
-    .png()
-    .toBuffer();
+  const logoPng = await readFile(path.join(process.cwd(), "public", "logo-hd.png"));
   return pdf.embedPng(logoPng);
 }
 

@@ -2,7 +2,6 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import { PDFDocument, StandardFonts, rgb, type PDFPage, type PDFFont } from "pdf-lib";
-import sharp from "sharp";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { getDashboardKpis, getDashboardMasterInventory } from "@/lib/db/queries/dashboard";
@@ -102,12 +101,7 @@ export async function GET() {
 
   // Logo insertion if available
   try {
-    const logoSvg = await readFile(path.join(process.cwd(), "public", "logo.svg"), "utf8");
-    const logoPng = await sharp(Buffer.from(logoSvg), { density: 288 })
-      .flatten({ background: "#ffffff" })
-      .resize(768, 768, { fit: "contain", background: "#ffffff" })
-      .png()
-      .toBuffer();
+    const logoPng = await readFile(path.join(process.cwd(), "public", "logo-hd.png"));
     const logo = await pdf.embedPng(logoPng);
     page.drawImage(logo, { x: MARGIN, y: 520, width: 34, height: 34 });
   } catch {

@@ -332,7 +332,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
               <ChevronLeft size={22} />
             </button>
           )}
-          <img src="/logo.svg" alt="Dyna-Serv WIMS" className="h-8 w-8 shrink-0" />
+          <img src="/logo-hd.png" alt="Dyna-Serv WIMS" className="h-8 w-8 shrink-0 object-contain" />
           <span className="font-label text-body-md font-semibold uppercase tracking-wide text-text-primary truncate">
             {pathname !== "/" ? pageTitle : "Dyna-Serv WIMS"}
           </span>
@@ -384,7 +384,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
             className="flex shrink-0 items-center gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <span className="flex h-11 w-11 items-center justify-center rounded-full border border-primary/15 bg-surface shadow-[0_7px_18px_-8px_rgba(37,99,235,0.55)] ring-4 ring-primary/[0.04] transition-shadow hover:shadow-[0_9px_22px_-8px_rgba(37,99,235,0.7)]">
-              <Image src="/logo.svg" alt="" width={30} height={30} priority />
+              <Image src="/logo-hd.png" alt="" width={36} height={36} priority />
             </span>
             {isDesktopOpen && (
               <span className="font-heading text-title-lg font-bold tracking-tight text-text-primary">

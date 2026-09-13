@@ -3,7 +3,6 @@ import path from "node:path";
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { PDFDocument, StandardFonts, rgb, type PDFPage, type PDFFont } from "pdf-lib";
-import sharp from "sharp";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
@@ -88,12 +87,7 @@ export async function GET(
   const party = partyRows[0];
   const drNumber = `DR-${pickList.pickListNumber.replace(/^PL-/, "")}`;
 
-  const logoSvg = await readFile(path.join(process.cwd(), "public", "logo.svg"), "utf8");
-  const logoPng = await sharp(Buffer.from(logoSvg), { density: 288 })
-    .flatten({ background: "#ffffff" })
-    .resize(768, 768, { fit: "contain", background: "#ffffff" })
-    .png()
-    .toBuffer();
+  const logoPng = await readFile(path.join(process.cwd(), "public", "logo-hd.png"));
   const logo = await pdf.embedPng(logoPng);
   page.drawImage(logo, { x: MARGIN, y: 512, width: 38, height: 38 });
   const headerX = MARGIN + 50;
