@@ -23,10 +23,16 @@ import {
   type TradingMarginRow,
 } from "@/lib/billing/queries/trading-margin";
 import {
+  listTradingPolicies,
+  type TradingPolicyRow,
+} from "@/lib/db/queries/trading-policies";
+import {
   listVmiContractTerms,
   type VmiContractTermsRow,
 } from "@/lib/db/queries/vmi-contracts";
 import { listParties } from "@/lib/db/queries/parties";
+import { listItems } from "@/lib/db/queries/items";
+import { listContracts } from "@/lib/actions/contracts";
 import { hasTradingPriceInternalVisibility } from "@/lib/rbac/trading-visibility";
 import { BillingOverviewTab } from "./_components/BillingOverviewTab";
 import { StatementOfAccountTab } from "./_components/StatementOfAccountTab";
@@ -124,7 +130,10 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
   let vmiDailyRows: Awaited<ReturnType<typeof getVmiDailyBalanceRows>> = [];
   let vmiContractRows: VmiContractTermsRow[] = [];
   let tradingRows: TradingMarginRow[] = [];
+  let policyRows: TradingPolicyRow[] = [];
   let billingPeriods: VmiBillingPeriodRow[] = [];
+  let itemOptions: { id: string; name: string; code: string }[] = [];
+  let contracts: Awaited<ReturnType<typeof listContracts>> = [];
 
   if (activeSection === "overview") {
     vmiSummaryRows = await getVmiCbmLedgerSummary(selectedMonth, selectedYear);
@@ -150,6 +159,15 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
     billingPeriods = await listVmiBillingPeriods(selectedSoaPartyId || undefined);
   } else if (activeSection === "configuration") {
     vmiContractRows = await listVmiContractTerms(db);
+    contracts = await listContracts(resolver);
+    const result = await listTradingPolicies(db, { activeOnly: false });
+    policyRows = result.rows;
+    const itemsResult = await listItems(db, { limit: 100 });
+    itemOptions = itemsResult.rows.map((item) => ({
+      id: item.id,
+      name: item.name,
+      code: item.code,
+    }));
   }
 
   const canSeeMargin = hasTradingPriceInternalVisibility(permResult.context);
@@ -383,6 +401,9 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
           <ConfigurationTab
             contractRows={vmiContractRows}
             parties={partyOptions}
+            contracts={contracts}
+            policyRows={policyRows}
+            items={itemOptions}
           />
         </div>
       )}
