@@ -306,7 +306,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
   return (
     <>
       <header
-        className="print:hidden fixed inset-x-0 top-0 z-50 isolate flex h-14 items-center gap-4 overflow-visible bg-surface px-4 lg:h-[76px] lg:px-4"
+        className="print:hidden fixed inset-x-0 top-0 z-50 isolate flex h-14 items-center gap-4 overflow-visible bg-surface/95 px-4 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.55)] backdrop-blur-xl lg:h-[76px] lg:px-4"
       >
         {tier !== "floor" && (
           <button
@@ -314,7 +314,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
             aria-label="Open navigation"
             aria-expanded={isOpen}
             onClick={toggle}
-            className="flex h-16 w-16 items-center justify-center text-text-primary active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:hidden"
+            className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/5 text-primary transition-colors hover:bg-primary/10 active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:hidden"
           >
             <PanelLeftOpen size={25} strokeWidth={2} aria-hidden="true" />
           </button>
@@ -383,7 +383,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
             aria-label="Dyna-Serv WIMS home"
             className="flex shrink-0 items-center gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
-            <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface shadow-elevation-1">
+            <span className="flex h-11 w-11 items-center justify-center rounded-full border border-primary/15 bg-surface shadow-[0_7px_18px_-8px_rgba(37,99,235,0.55)] ring-4 ring-primary/[0.04] transition-shadow hover:shadow-[0_9px_22px_-8px_rgba(37,99,235,0.7)]">
               <Image src="/logo.svg" alt="" width={30} height={30} priority />
             </span>
             {isDesktopOpen && (
@@ -399,12 +399,12 @@ export function ShellChrome({ children }: { children: ReactNode }) {
               aria-expanded={isDesktopOpen}
               onClick={toggleDesktop}
               title={isDesktopOpen ? "Collapse sidebar to icons" : "Expand sidebar"}
-              className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-background text-text-secondary transition-colors hover:bg-slate-100 hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:flex"
+              className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-primary/[0.04] text-text-secondary shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/10 hover:text-primary hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:flex"
             >
               {isDesktopOpen ? <PanelLeftClose size={22} strokeWidth={2.2} aria-hidden="true" /> : <PanelLeftOpen size={22} strokeWidth={2.2} aria-hidden="true" />}
             </button>
           )}
-          <span aria-hidden="true" className="h-8 w-px bg-border" />
+          <span aria-hidden="true" className="h-8 w-px bg-primary/15" />
           <div className="min-w-0 shrink-0">
             <p
               className="truncate font-heading text-[23px] font-bold leading-tight tracking-[-0.02em] text-text-primary"
@@ -417,7 +417,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
           <div className="ml-auto flex min-w-0 items-center gap-3.5">
             <span
               data-testid="connectivity-indicator"
-              className="flex shrink-0 items-center gap-1.5 text-body-md font-bold text-text-primary"
+              className="flex shrink-0 items-center gap-1.5 rounded-full border border-status-available/20 bg-status-available/[0.06] px-3 py-1.5 text-body-md font-bold text-text-primary shadow-sm"
             >
               {connectivityStatus === "offline" ? (
                 <WifiOff size={18} aria-hidden="true" className="text-warning" />
@@ -442,7 +442,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
               aria-haspopup="dialog"
               aria-expanded={isNotificationPanelOpen}
               onClick={() => setIsNotificationPanelOpen((open) => !open)}
-              className="relative flex h-11 w-11 shrink-0 items-center justify-center text-text-secondary hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-text-secondary transition-colors hover:bg-primary/[0.06] hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <Bell size={22} aria-hidden="true" />
               {unreadCount > 0 && (
@@ -458,7 +458,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
               <Link
                 href="/settings"
                 aria-label="Settings"
-                className="flex h-11 w-11 shrink-0 items-center justify-center text-text-secondary hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-text-secondary transition-colors hover:bg-primary/[0.06] hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <Settings size={21} aria-hidden="true" />
               </Link>
@@ -469,7 +469,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
                 aria-label="Keyboard shortcuts"
                 aria-expanded={isShortcutPanelOpen}
                 onClick={() => setIsShortcutPanelOpen((open) => !open)}
-                className="flex h-11 w-11 items-center justify-center text-text-secondary hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="flex h-11 w-11 items-center justify-center rounded-xl text-text-secondary transition-colors hover:bg-primary/[0.06] hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <Keyboard size={21} aria-hidden="true" />
               </button>
@@ -504,7 +504,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
                 aria-haspopup="dialog"
                 aria-expanded={isAccountMenuOpen}
                 onClick={() => setIsAccountMenuOpen((open) => !open)}
-                className="flex h-11 items-center gap-2 px-1 font-label text-body-md text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="flex h-11 items-center gap-2 rounded-xl px-1.5 font-label text-body-md text-text-primary transition-colors hover:bg-primary/[0.05] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-surface">
                   {initials(displayName)}

@@ -235,8 +235,8 @@ function NavLink({
           motion-safe:transition-all motion-safe:duration-150
           focus:outline-none focus-visible:ring-2 focus-visible:ring-primary
           ${isActive
-            ? "bg-primary text-surface shadow-elevation-1"
-            : "text-text-secondary hover:bg-accent-indigo-50 hover:text-brand-navy"}`}
+            ? "bg-primary text-surface shadow-[0_8px_20px_-9px_rgba(37,99,235,0.8)] ring-4 ring-primary/10"
+            : "text-text-secondary hover:-translate-y-0.5 hover:bg-primary/[0.07] hover:text-primary"}`}
       >
         <Icon size={20} strokeWidth={2.1} aria-hidden="true" />
         {entry.id === "approvals" && pendingApprovalCount > 0 && (
@@ -258,13 +258,13 @@ function NavLink({
       aria-current={isActive ? "page" : undefined}
       onClick={onNavigate}
       data-active={isActive ? "true" : "false"}
-      className={`group relative flex ${compact ? "h-11 gap-3 rounded-md px-2.5" : "h-12 gap-3 rounded-md px-3"} items-center overflow-hidden font-label font-semibold
+      className={`group relative flex ${compact ? "h-11 gap-3 rounded-xl px-2.5" : "h-12 gap-3 rounded-xl px-3"} items-center overflow-hidden font-label font-semibold
         ${floorText ? "text-mono-md" : "text-label"}
         motion-safe:transition-[background-color,color,box-shadow,transform] motion-safe:duration-150
         focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1
         ${isActive
-          ? "bg-accent-indigo-50 text-brand-navy shadow-elevation-1 before:absolute before:inset-y-2 before:left-0 before:w-1 before:rounded-r-full before:bg-primary before:content-['']"
-          : "text-text-secondary hover:translate-x-0.5 hover:bg-accent-indigo-50 hover:text-brand-navy hover:shadow-elevation-1"}`}
+          ? "bg-primary/[0.08] text-brand-navy shadow-[inset_0_0_0_1px_rgba(37,99,235,0.1),0_6px_18px_-13px_rgba(37,99,235,0.8)] before:absolute before:inset-y-2 before:left-0 before:w-1 before:rounded-r-full before:bg-primary before:content-['']"
+          : "text-text-secondary hover:translate-x-0.5 hover:bg-primary/[0.05] hover:text-brand-navy hover:shadow-sm"}`}
     >
       <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md motion-safe:transition-colors motion-safe:duration-150 ${isActive ? "bg-primary text-surface" : "bg-background text-text-secondary group-hover:bg-primary/10 group-hover:text-primary"}`}>
         <Icon size={19} strokeWidth={2.1} aria-hidden="true" />
@@ -503,7 +503,7 @@ export function ShellNavigation({
         data-testid="desktop-sidebar"
         aria-label="Primary navigation"
         aria-hidden={false}
-        className={`print:hidden hidden flex-col overflow-hidden border-r border-border bg-surface transition-[width] duration-200 motion-reduce:transition-none lg:fixed lg:bottom-0 lg:left-0 lg:top-[76px] lg:z-40 lg:flex ${
+        className={`print:hidden hidden flex-col overflow-hidden border-r border-primary/10 bg-surface shadow-[10px_0_30px_-28px_rgba(15,23,42,0.75)] transition-[width] duration-200 motion-reduce:transition-none lg:fixed lg:bottom-0 lg:left-0 lg:top-[76px] lg:z-40 lg:flex ${
           desktopOpen ? "lg:w-[286px]" : "lg:w-[72px]"
         }`}
       >
@@ -530,8 +530,8 @@ export function ShellNavigation({
         </div>
 
         {/* User Footer Card */}
-        <div className={`border-t border-border bg-background ${desktopOpen ? "p-2" : "p-2 text-center"}`}>
-          <div className={`flex items-center rounded-xl border border-border bg-surface shadow-elevation-1 ${desktopOpen ? "gap-3 p-2.5" : "justify-center p-2"}`}>
+        <div className={`border-t border-primary/10 bg-primary/[0.025] ${desktopOpen ? "p-2" : "p-2 text-center"}`}>
+          <div className={`flex items-center rounded-2xl border border-primary/10 bg-surface shadow-[0_8px_24px_-18px_rgba(15,23,42,0.65)] ${desktopOpen ? "gap-3 p-2.5" : "justify-center p-2"}`}>
             <span
               className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-navy font-heading text-label font-bold text-surface"
               title={`${displayName ?? "Signed-in user"} (${roleLabel})`}

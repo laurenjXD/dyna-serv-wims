@@ -176,13 +176,13 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
 
     expect(active).toHaveAttribute("aria-current", "page");
     expect(active).toHaveAttribute("data-active", "true");
-    expect(active.className).toContain("bg-accent-indigo-50");
+    expect(active.className).toContain("bg-primary/[0.08]");
     expect(active.className).toContain("before:bg-primary");
     expect(within(active).getByText("Master Inventory").previousElementSibling?.className).toContain("bg-primary");
 
     expect(inactive).not.toHaveAttribute("aria-current");
     expect(inactive).toHaveAttribute("data-active", "false");
-    expect(inactive.className).toContain("hover:bg-accent-indigo-50");
+    expect(inactive.className).toContain("hover:bg-primary/[0.05]");
   });
 
   it("keeps compact desktop navigation rows at the approved 44px office target", () => {
