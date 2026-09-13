@@ -448,30 +448,19 @@ export function SoaDetailClient({
           </table>
         </div>
 
-        {/* Payment + Signatories */}
-        <div className="mt-7 grid grid-cols-2 gap-5 text-xs print-avoid-break">
-          <div className="border border-slate-300 p-4">
-            <p className="font-bold uppercase tracking-widest text-slate-400 text-[9px] mb-2">Payment / Remittance Instructions</p>
-            <p className="text-slate-600">Please make check or wire transfers payable to:</p>
-            <p className="font-bold text-slate-900 mt-1">DYNA-SERV GLOBAL CORPORATION</p>
-            <p className="text-slate-600 mt-2">Bank: <span className="font-bold text-slate-900">Bank of the Philippine Islands (BPI)</span></p>
-            <p className="font-mono text-slate-600 mt-0.5">
-              USD Account: <span className="font-bold">9812-4091-22</span> &nbsp;&bull;&nbsp; SWIFT: <span className="font-bold">BOPIPHMM</span>
-            </p>
-          </div>
-          <div className="border border-slate-300 p-4">
-            <p className="font-bold uppercase tracking-widest text-slate-400 text-[9px] mb-3">Acknowledgement and Signatories</p>
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <p className="text-slate-400 mb-6">Prepared By:</p>
-                <div className="border-b border-slate-900 pb-0.5 font-bold text-slate-900 text-xs">MARIA LOURDES REYES</div>
-                <p className="text-slate-400 text-[9px] mt-0.5">Billing and Finance Specialist</p>
-              </div>
-              <div>
-                <p className="text-slate-400 mb-6">Approved By:</p>
-                <div className="border-b border-slate-900 pb-0.5 font-bold text-slate-900 text-xs">JOSEPHINE TAN</div>
-                <p className="text-slate-400 text-[9px] mt-0.5">Warehouse Operations Manager</p>
-              </div>
+        {/* Signatories — remittance details are intentionally excluded from SOAs. */}
+        <div className="mt-7 border border-slate-300 p-4 text-xs print-avoid-break">
+          <p className="font-bold uppercase tracking-widest text-slate-400 text-[9px] mb-3">Acknowledgement and Signatories</p>
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <p className="text-slate-400 mb-6">Prepared By:</p>
+              <div className="border-b border-slate-900 pb-0.5 font-bold text-slate-900 text-xs">MARIA LOURDES REYES</div>
+              <p className="text-slate-400 text-[9px] mt-0.5">Billing and Finance Specialist</p>
+            </div>
+            <div>
+              <p className="text-slate-400 mb-6">Approved By:</p>
+              <div className="border-b border-slate-900 pb-0.5 font-bold text-slate-900 text-xs">JOSEPHINE TAN</div>
+              <p className="text-slate-400 text-[9px] mt-0.5">Warehouse Operations Manager</p>
             </div>
           </div>
         </div>
