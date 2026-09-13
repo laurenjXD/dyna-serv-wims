@@ -299,8 +299,12 @@ export function SoaDetailClient({
       {/* ── Screen action bar ────────────────────────────────────────────── */}
       <div className="no-print mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-5">
         <div>
-          <Link href="/billing-pricing" className="inline-flex items-center text-sm text-slate-500 hover:text-blue-600">
-            <ArrowLeft size={14} className="mr-1" /> Back to Billing
+          <Link
+            href="/billing-pricing"
+            className="inline-flex min-h-12 items-center gap-3 rounded-full border border-slate-200 bg-surface-white px-6 font-heading text-body-md font-bold text-brand-navy shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-royal-blue/40 hover:shadow-elevation-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-royal-blue"
+          >
+            <ArrowLeft size={20} strokeWidth={2.4} aria-hidden="true" />
+            Back to Billing
           </Link>
           <h1 className="mt-1 text-xl font-bold text-slate-900">
             Statement of Account &mdash; {soaData.soaNumber}
