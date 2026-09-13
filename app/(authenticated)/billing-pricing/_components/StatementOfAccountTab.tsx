@@ -246,7 +246,7 @@ export function StatementOfAccountTab({
                       <div className="inline-flex items-center gap-2">
                         <Link
                           href={`/billing-pricing/soa/${p.partyId.slice(0, 8)}?partyId=${p.partyId}&month=${selectedMonth}&year=${selectedYear}`}
-                          className="inline-flex items-center gap-1 rounded-lg border border-border bg-surface px-3 py-1.5 font-label text-label font-bold text-brand-navy hover:bg-background transition-colors"
+                          className="inline-flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-brand-royal-blue/25 bg-surface px-4 font-label text-label font-bold text-brand-navy shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-royal-blue/50 hover:bg-background hover:shadow-elevation-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-royal-blue"
                         >
                           <Eye size={14} /> View SOA Schedule
                         </Link>
@@ -262,4 +262,3 @@ export function StatementOfAccountTab({
     </div>
   );
 }
-
