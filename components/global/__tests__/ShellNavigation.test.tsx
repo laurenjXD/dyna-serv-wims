@@ -79,7 +79,7 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
 
   it("renders the desktop sidebar, never the floor tab bar, for tier='office'", () => {
     render(
-      <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" />,
+      <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" desktopOpen />,
     );
     expect(screen.getByTestId("desktop-sidebar")).toBeInTheDocument();
     expect(screen.queryByTestId("floor-tab-bar")).not.toBeInTheDocument();
@@ -87,7 +87,7 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
 
   it("keeps the desktop sidebar navigation fixed without an internal scroll region", () => {
     render(
-      <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" />,
+      <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" desktopOpen />,
     );
 
     const sidebar = screen.getByTestId("desktop-sidebar");
@@ -107,12 +107,13 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
     expect(screen.queryByTestId("floor-tab-bar")).not.toBeInTheDocument();
   });
 
-  it("desktop sidebar defaults to expanded (lg:flex) when desktopOpen is omitted", () => {
+  it("desktop sidebar defaults to collapsed icon mode when desktopOpen is omitted", () => {
     render(
       <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" />,
     );
     const sidebar = screen.getByTestId("desktop-sidebar");
     expect(sidebar.className).toContain("lg:flex");
+    expect(sidebar.className).toContain("lg:w-[72px]");
     expect(sidebar.className).not.toContain("lg:hidden");
     expect(sidebar).not.toHaveAttribute("aria-hidden", "true");
   });
@@ -167,7 +168,7 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
 
   it("gives the active office destination a persistent rail/icon treatment and inactive rows a hover affordance", () => {
     render(
-      <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" />,
+      <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" desktopOpen />,
     );
 
     const active = screen.getByTestId("nav-entry-inventory");
@@ -228,7 +229,7 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
 
   it("renders the office sidebar in grouped sections with a header per group (2026-08-09, sidebar reorganization)", () => {
     render(
-      <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" />,
+      <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" desktopOpen />,
     );
     // officeContext holds pick_list.read (-> "Main" group, per the
     // 2026-08-17 sidebar/IA restructure) and documents.read (-> "Reports" group,
@@ -448,7 +449,7 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
 
   it("still allows the office desktop sidebar's grouped section text at 14px (office-only, not floor-reachable)", () => {
     render(
-      <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" />,
+      <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" desktopOpen />,
     );
     const groupHeader = screen.getByTestId("nav-group-main");
     expect(groupHeader.className).toContain("text-mono-sm");
@@ -521,32 +522,18 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
 // tasks.md §4 ("Implement desktop sidebar using ... and real letter-mark
 // logo asset (no diagonal cut).").
 //
-// A real logo file now exists at `public/logo.svg` (spec gap this cycle:
-// only a text brand label "Dyna-Serv WIMS" is rendered in the sidebar
-// today -- no image/logo mark at all, confirmed via read of
-// ShellNavigation.tsx lines 317-319). This RED test targets the desktop
-// sidebar (`data-testid="desktop-sidebar"`) rendering a real image element
-// referencing the real asset, alongside (not instead of) the existing
-// "Dyna-Serv WIMS" text label -- additive, not a replacement.
+// Branding now lives once in the connected full-width header. The sidebar
+// begins directly below it and must not duplicate the logo or brand label.
 // -----------------------------------------------------------------------
-describe("ShellNavigation desktop sidebar logo (requirements.md R4.1, tasks.md §4 real letter-mark logo asset)", () => {
-  it("renders a real logo asset referencing /logo.svg inside the desktop sidebar, alongside the 'Dyna-Serv WIMS' brand text (R4.1)", () => {
+describe("ShellNavigation connected desktop frame", () => {
+  it("starts below the header without duplicating header branding", () => {
     render(
       <ShellNavigation tier="office" context={officeContext} currentPath="/inventory" />,
     );
 
     const sidebar = screen.getByTestId("desktop-sidebar");
-
-    // EXPECTED FAILURE (RED): ShellNavigation.tsx currently renders only a
-    // <p> text brand label in the sidebar header block -- no image/logo
-    // element exists at all today, so this query finds nothing.
-    const logo = within(sidebar).getByRole("img", { name: /dyna-serv wims/i });
-    expect(logo).toBeInTheDocument();
-    expect(logo.tagName).toBe("IMG");
-    expect(logo).toHaveAttribute("src", expect.stringContaining("/logo.svg"));
-
-    // Additive, not a replacement: the existing text brand label must still
-    // be present alongside the new logo image.
-    expect(within(sidebar).getByText("Dyna-Serv WIMS")).toBeInTheDocument();
+    expect(sidebar.className).toContain("lg:top-[76px]");
+    expect(within(sidebar).queryByRole("img", { name: /dyna-serv wims/i })).not.toBeInTheDocument();
+    expect(within(sidebar).queryByText("Dyna-Serv WIMS")).not.toBeInTheDocument();
   });
 });

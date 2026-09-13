@@ -9,7 +9,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import type { LucideIcon } from "lucide-react";
 import {
   Layers,
@@ -371,7 +370,7 @@ export function ShellNavigation({
   currentPath,
   mobileNavOpen = false,
   onCloseMobileNav,
-  desktopOpen = true,
+  desktopOpen = false,
   pendingApprovalCount = 0,
 }: {
   tier: SessionPresentationTier;
@@ -380,9 +379,7 @@ export function ShellNavigation({
   mobileNavOpen?: boolean;
   onCloseMobileNav?: () => void;
   // Desktop (lg+) sidebar collapsed/expanded state — distinct from
-  // mobileNavOpen, which only ever applies below lg. Defaults true (open)
-  // so every existing caller that doesn't pass this keeps today's
-  // always-visible desktop sidebar behavior unchanged.
+  // mobileNavOpen, which only ever applies below lg. Defaults collapsed.
   desktopOpen?: boolean;
   pendingApprovalCount?: number;
 }) {
@@ -506,7 +503,7 @@ export function ShellNavigation({
         data-testid="desktop-sidebar"
         aria-label="Primary navigation"
         aria-hidden={false}
-        className={`print:hidden hidden h-[calc(100vh-1.5rem)] flex-col overflow-hidden bg-surface lg:fixed lg:bottom-3 lg:left-3 lg:top-3 lg:z-40 lg:flex lg:rounded-2xl lg:border lg:border-border lg:shadow-elevation-2 transition-all duration-200 motion-reduce:transition-none ${
+        className={`print:hidden hidden flex-col overflow-hidden border-r border-border bg-surface transition-[width] duration-200 motion-reduce:transition-none lg:fixed lg:bottom-0 lg:left-0 lg:top-[76px] lg:z-40 lg:flex ${
           desktopOpen ? "lg:w-[286px]" : "lg:w-[72px]"
         }`}
       >
@@ -519,23 +516,8 @@ export function ShellNavigation({
           Skip to content
         </a>
 
-        {/* Logo / Header */}
-        <div className={`relative border-b border-border bg-background py-2.5 ${desktopOpen ? "px-4" : "px-2 text-center"}`}>
-          {desktopOpen && <div aria-hidden="true" className="absolute inset-y-0 left-0 w-1 bg-primary" />}
-          <div className={`flex items-center ${desktopOpen ? "gap-3" : "justify-center"}`}>
-            <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-surface shadow-elevation-1">
-              <Image src="/logo.svg" alt="Dyna-Serv WIMS" width={28} height={28} priority />
-            </span>
-            {desktopOpen && (
-              <div className="min-w-0">
-                <p className="truncate font-heading text-title-lg font-bold tracking-tight text-text-primary">Dyna-Serv WIMS</p>
-              </div>
-            )}
-          </div>
-        </div>
-
         {/* Navigation Section List */}
-        <div className={`min-h-0 flex-1 py-1 ${desktopOpen ? "px-3" : "px-1.5"}`}>
+        <div className={`min-h-0 flex-1 py-3 ${desktopOpen ? "px-3" : "px-1.5"}`}>
           <GroupedSections
             sections={sections}
             activeId={activeId}
