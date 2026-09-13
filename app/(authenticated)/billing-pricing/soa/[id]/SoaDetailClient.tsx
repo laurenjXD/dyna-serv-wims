@@ -407,7 +407,7 @@ export function SoaDetailClient({
               <tbody>
                 {[
                   ["Billing Period", `${soaData.billingPeriodStart} – ${soaData.billingPeriodEnd}`],
-                  ["Reference", soaData.contractNumber],
+                  ["Customer", soaData.contractNumber],
                   ["Terms", "Net 30 Days"],
                   ["Currency", "USD"],
                   ["Forex Rate", `1 USD = ₱${soaData.exchangeRate.toFixed(2)} PHP`],
