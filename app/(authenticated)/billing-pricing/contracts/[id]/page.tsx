@@ -39,7 +39,7 @@ export default async function ContractDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  const { contract, activeVersion, rules, vmiConfig } = detail;
+  const { contract, activeVersion, rules, vmiConfig, permit, tradingPolicies, recurringFeeLines } = detail;
 
   return (
     <div className="mx-auto max-w-container space-y-6 px-4 py-6 sm:px-6 lg:px-8">
@@ -52,6 +52,9 @@ export default async function ContractDetailPage({ params }: PageProps) {
         activeVersion={activeVersion}
         rules={rules}
         vmiConfig={vmiConfig}
+        permit={permit}
+        tradingPolicies={tradingPolicies}
+        recurringFeeLines={recurringFeeLines}
       />
 
       {/* 3. Dynamic Pricing Rules Engine */}

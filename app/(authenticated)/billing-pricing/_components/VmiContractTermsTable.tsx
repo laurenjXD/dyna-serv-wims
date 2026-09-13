@@ -339,7 +339,21 @@ export function VmiContractTermsTable({ rows, parties }: Props) {
                         {row.effectiveTo ? ` — ${new Date(row.effectiveTo).toLocaleDateString()}` : " — Present"}
                       </td>
                       <td className="px-4 py-3">
-                        <Link href={`/billing-pricing/vmi/permits/${row.partyId}`} className="font-label text-label font-bold text-brand-blue hover:underline">Permits &amp; LOA</Link>
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/billing-pricing/contracts/${row.partyId}`}
+                            className="font-label text-label font-bold text-brand-navy hover:underline"
+                          >
+                            Master Sheet
+                          </Link>
+                          <span className="text-outline-variant/40">|</span>
+                          <Link
+                            href={`/billing-pricing/vmi/permits/${row.partyId}`}
+                            className="font-label text-label font-bold text-brand-blue hover:underline"
+                          >
+                            Permits &amp; LOA
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   ))}
