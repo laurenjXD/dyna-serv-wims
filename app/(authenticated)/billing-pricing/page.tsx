@@ -158,16 +158,40 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
   } else if (activeSection === "soa") {
     billingPeriods = await listVmiBillingPeriods(selectedSoaPartyId || undefined);
   } else if (activeSection === "configuration") {
-    vmiContractRows = await listVmiContractTerms(db);
-    contracts = await listContracts(resolver);
-    const result = await listTradingPolicies(db, { activeOnly: false });
-    policyRows = result.rows;
-    const itemsResult = await listItems(db, { limit: 100 });
-    itemOptions = itemsResult.rows.map((item) => ({
-      id: item.id,
-      name: item.name,
-      code: item.code,
-    }));
+    // Configuration contains independent datasets. Keep one unavailable or
+    // not-yet-migrated table from taking down the entire Billing workspace.
+    const [vmiResult, contractsResult, policiesResult, itemsResult] =
+      await Promise.allSettled([
+        listVmiContractTerms(db),
+        listContracts(resolver),
+        listTradingPolicies(db, { activeOnly: false }),
+        listItems(db, { limit: 100 }),
+      ]);
+
+    if (vmiResult.status === "fulfilled") {
+      vmiContractRows = vmiResult.value;
+    } else {
+      console.warn("Billing configuration: VMI terms unavailable", vmiResult.reason);
+    }
+    if (contractsResult.status === "fulfilled") {
+      contracts = contractsResult.value;
+    } else {
+      console.warn("Billing configuration: contracts unavailable", contractsResult.reason);
+    }
+    if (policiesResult.status === "fulfilled") {
+      policyRows = policiesResult.value.rows;
+    } else {
+      console.warn("Billing configuration: trading policies unavailable", policiesResult.reason);
+    }
+    if (itemsResult.status === "fulfilled") {
+      itemOptions = itemsResult.value.rows.map((item) => ({
+        id: item.id,
+        name: item.name,
+        code: item.code,
+      }));
+    } else {
+      console.warn("Billing configuration: items unavailable", itemsResult.reason);
+    }
   }
 
   const canSeeMargin = hasTradingPriceInternalVisibility(permResult.context);
