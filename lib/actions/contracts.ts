@@ -464,6 +464,40 @@ export async function listContracts(resolver: PageResolver) {
 }
 
 /**
+ * Fetches configured active recurring fee lines for an organization (party)
+ * based on specs/12-vmi-billing (surety_bond, trucking_admin_fee, manpower, loa, other).
+ */
+export async function getPartyRecurringFeeLines(partyId: string) {
+  try {
+    const rRows = await db
+      .select({
+        id: vmiRecurringFeeLines.id,
+        feeType: vmiRecurringFeeLines.feeType,
+        label: vmiRecurringFeeLines.label,
+        flatAmountUsd: vmiRecurringFeeLines.flatAmountUsd,
+        manpowerRatePerHour: vmiRecurringFeeLines.manpowerRatePerHour,
+        manpowerCurrency: vmiRecurringFeeLines.manpowerCurrency,
+        isActive: vmiRecurringFeeLines.isActive,
+      })
+      .from(vmiRecurringFeeLines)
+      .where(and(eq(vmiRecurringFeeLines.partyId, partyId), eq(vmiRecurringFeeLines.isActive, true)));
+
+    return rRows.map((r) => ({
+      id: r.id,
+      feeType: String(r.feeType),
+      label: r.label,
+      flatAmountUsd: r.flatAmountUsd ? String(r.flatAmountUsd) : null,
+      manpowerRatePerHour: r.manpowerRatePerHour ? String(r.manpowerRatePerHour) : null,
+      manpowerCurrency: r.manpowerCurrency,
+      isActive: r.isActive,
+    }));
+  } catch (err) {
+    console.warn("Recurring fees lookup note:", err);
+    return [];
+  }
+}
+
+/**
  * Fetches full detail for a single contract, including its active version and pricing rules.
  */
 export async function getContractDetail(
@@ -572,6 +606,8 @@ export async function getContractDetail(
         console.warn("Trading policies lookup note:", tpErr);
       }
 
+      const recurringFeeLines = await getPartyRecurringFeeLines(contract.partyId);
+
       return {
         contract,
         versions,
@@ -580,6 +616,7 @@ export async function getContractDetail(
         vmiConfig,
         permit,
         tradingPolicies: tradingPoliciesList,
+        recurringFeeLines,
       };
     }
   } catch (contractErr) {
@@ -761,6 +798,66 @@ export async function getContractDetail(
         });
       }
 
+      const recurringFeeLines = await getPartyRecurringFeeLines(terms.partyId);
+
+      for (const rf of recurringFeeLines) {
+        if (rf.feeType === "surety_bond") {
+          tierRules.push({
+            id: `r-${rf.id}`,
+            contractVersionId: terms.id,
+            chargeName: rf.label || "Customs Surety Bond",
+            chargeCode: "MSC-SURETY-BOND",
+            chargeCategory: "other" as const,
+            billingBasis: "flat" as const,
+            rate: rf.flatAmountUsd || "100.00",
+            currency: terms.currency,
+            minCharge: null,
+            maxCharge: null,
+            priority: 5,
+            isTaxable: false,
+            conditionsJson: null,
+            calculationFormula: null,
+            createdAt: new Date(),
+          });
+        } else if (rf.feeType === "trucking_admin_fee") {
+          tierRules.push({
+            id: `r-${rf.id}`,
+            contractVersionId: terms.id,
+            chargeName: rf.label || "Trucking Administrative Fee",
+            chargeCode: "MSC-TRK-ADMIN",
+            chargeCategory: "delivery" as const,
+            billingBasis: "flat" as const,
+            rate: rf.flatAmountUsd || "50.00",
+            currency: terms.currency,
+            minCharge: null,
+            maxCharge: null,
+            priority: 5,
+            isTaxable: true,
+            conditionsJson: null,
+            calculationFormula: null,
+            createdAt: new Date(),
+          });
+        } else if (rf.feeType === "manpower") {
+          tierRules.push({
+            id: `r-${rf.id}`,
+            contractVersionId: terms.id,
+            chargeName: rf.label || "Warehouse Manpower / Overtime",
+            chargeCode: "MSC-MANPOWER-HR",
+            chargeCategory: "manpower" as const,
+            billingBasis: "hour" as const,
+            rate: rf.manpowerRatePerHour || "120.00",
+            currency: rf.manpowerCurrency || "PHP",
+            minCharge: null,
+            maxCharge: null,
+            priority: 5,
+            isTaxable: true,
+            conditionsJson: null,
+            calculationFormula: null,
+            createdAt: new Date(),
+          });
+        }
+      }
+
       return {
         contract: {
           id: terms.partyId,
@@ -794,6 +891,7 @@ export async function getContractDetail(
         },
         permit,
         tradingPolicies: [],
+        recurringFeeLines,
       };
     }
   } catch (termsErr) {
@@ -951,6 +1049,7 @@ export async function getContractDetail(
         },
         permit,
         tradingPolicies: [],
+        recurringFeeLines: await getPartyRecurringFeeLines(party.id),
       };
     }
   } catch (partyErr) {

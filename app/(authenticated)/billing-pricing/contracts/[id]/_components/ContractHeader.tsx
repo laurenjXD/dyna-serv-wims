@@ -25,24 +25,14 @@ export function ContractHeader({ contract }: ContractHeaderProps) {
 
   return (
     <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1 space-y-4">
-      {/* Top row with Back navigation and Action buttons */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      {/* Top row with Back navigation */}
+      <div className="flex items-center justify-between">
         <Link
           href="/billing-pricing?tab=configuration"
           className="inline-flex items-center gap-1.5 font-label text-label-md font-bold text-text-grey hover:text-brand-navy transition-colors"
         >
           <ArrowLeft size={16} /> Back to Commercial Contracts
         </Link>
-
-        <div className="flex flex-wrap items-center gap-2.5">
-          <Link
-            href={`/billing-pricing/contracts/${contract.id}/rules/new`}
-            className="inline-flex h-9.5 items-center gap-1.5 rounded-xl bg-brand-navy px-4 font-label text-label font-bold text-white shadow-2xs hover:bg-brand-navy/90 transition-colors"
-          >
-            <Plus size={15} />
-            <span>Add Pricing Rule</span>
-          </Link>
-        </div>
       </div>
 
       {/* Contract Title, Badges, and Metadata Summary */}

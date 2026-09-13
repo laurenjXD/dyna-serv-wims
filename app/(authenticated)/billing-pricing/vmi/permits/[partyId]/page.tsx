@@ -25,7 +25,7 @@ export default async function VmiPermitsPage({ params }: Props) {
   return (
     <main className="mx-auto max-w-container space-y-6 px-4 py-6 sm:px-6 lg:px-8">
       <div>
-        <Link href="/billing-pricing?section=configuration&tab=vmi-contracts" className="inline-flex items-center font-body text-body-sm text-text-grey hover:text-brand-navy"><ArrowLeft size={16} className="mr-1" /> Back to Configuration</Link>
+        <Link href="/billing-pricing?tab=configuration" className="inline-flex items-center font-body text-body-sm text-text-grey hover:text-brand-navy"><ArrowLeft size={16} className="mr-1" /> Back to Configuration</Link>
         <p className="mt-4 font-label text-label font-bold uppercase tracking-wider text-text-grey">VMI permits and LOA</p>
         <h1 className="mt-1 font-heading text-headline-lg font-bold text-on-surface">{party.code} · {party.name}</h1>
       </div>

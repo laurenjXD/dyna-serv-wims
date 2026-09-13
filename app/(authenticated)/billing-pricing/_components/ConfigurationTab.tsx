@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { FileText, Truck } from "lucide-react";
 import { LogisticsRateMatrixTable } from "./LogisticsRateMatrixTable";
 import { ContractTableClient, type ContractItem } from "../contracts/_components/ContractTableClient";
@@ -18,7 +19,17 @@ interface ConfigurationTabProps {
 export function ConfigurationTab({
   contracts = [],
 }: ConfigurationTabProps) {
-  const [subTab, setSubTab] = useState<"contracts" | "logistics">("contracts");
+  const searchParams = useSearchParams();
+  const urlSubtab = searchParams?.get("subtab");
+  const [subTab, setSubTab] = useState<"contracts" | "logistics">(
+    urlSubtab === "logistics" ? "logistics" : "contracts"
+  );
+
+  useEffect(() => {
+    if (urlSubtab === "logistics" || urlSubtab === "contracts") {
+      setSubTab(urlSubtab);
+    }
+  }, [urlSubtab]);
 
   return (
     <div className="space-y-6">

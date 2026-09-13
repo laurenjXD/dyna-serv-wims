@@ -39,7 +39,6 @@ import { StatementOfAccountTab } from "./_components/StatementOfAccountTab";
 import { ConfigurationTab } from "./_components/ConfigurationTab";
 import { VmiDailyBalanceLedgerTable } from "./_components/VmiDailyBalanceLedgerTable";
 import { TradingMarginLedgerTable } from "./_components/TradingMarginLedgerTable";
-import { TradingRateCardsTable } from "./_components/TradingRateCardsTable";
 import {
   resolveBillingSection,
 } from "./_lib/navigation";

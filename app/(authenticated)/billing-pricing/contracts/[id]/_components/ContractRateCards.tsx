@@ -62,6 +62,15 @@ interface ContractRateCardsProps {
     sellPrice: string;
     sellCurrency: string;
   }[];
+  recurringFeeLines?: {
+    id: string;
+    feeType: string;
+    label: string;
+    flatAmountUsd: string | null;
+    manpowerRatePerHour: string | null;
+    manpowerCurrency: string | null;
+    isActive: boolean;
+  }[];
 }
 
 export function ContractRateCards({
@@ -70,6 +79,7 @@ export function ContractRateCards({
   vmiConfig,
   permit,
   tradingPolicies = [],
+  recurringFeeLines = [],
 }: ContractRateCardsProps) {
   const allRules = rules || [];
   const warehousingRules = allRules.filter((r) => r.chargeCategory === "warehousing");
@@ -90,6 +100,20 @@ export function ContractRateCards({
 
   const handlingInRate = handlingInRules[0] ? Number(handlingInRules[0].rate) : 2.0;
   const handlingOutRate = handlingOutRules[0] ? Number(handlingOutRules[0].rate) : 2.0;
+
+  // Existing recurring misc fees from vmi_recurring_fee_lines and pricing_rules
+  const suretyBondLine = recurringFeeLines.find((r) => r.feeType === "surety_bond");
+  const suretyBondRule = allRules.find((r) => r.chargeCode === "MSC-SURETY-BOND" || r.chargeName.toLowerCase().includes("surety"));
+  const suretyBondRate = suretyBondLine?.flatAmountUsd ? Number(suretyBondLine.flatAmountUsd) : suretyBondRule ? Number(suretyBondRule.rate) : 100.0;
+
+  const truckingAdminLine = recurringFeeLines.find((r) => r.feeType === "trucking_admin_fee");
+  const truckingAdminRule = allRules.find((r) => r.chargeCode === "MSC-TRK-ADMIN" || r.chargeName.toLowerCase().includes("trucking admin"));
+  const truckingAdminRate = truckingAdminLine?.flatAmountUsd ? Number(truckingAdminLine.flatAmountUsd) : truckingAdminRule ? Number(truckingAdminRule.rate) : 50.0;
+
+  const manpowerLine = recurringFeeLines.find((r) => r.feeType === "manpower");
+  const manpowerRule = manpowerRules[0];
+  const manpowerRate = manpowerLine?.manpowerRatePerHour ? Number(manpowerLine.manpowerRatePerHour) : manpowerRule ? Number(manpowerRule.rate) : 120.0;
+  const manpowerCurrency = manpowerLine?.manpowerCurrency || "PHP";
 
   // Key real destinations from canonical system logistics matrix
   const matrixEntries = Object.values(LOGISTICS_RATE_MATRIX).slice(0, 2);
@@ -228,19 +252,32 @@ export function ContractRateCards({
                       ? `$${Number(permit.monthlyFeeUsd).toFixed(2)}`
                       : loaRules[0]
                       ? `$${Number(loaRules[0].rate).toFixed(2)}`
-                      : "None"}{" "}
-                    <span className="text-body-xs font-normal text-text-grey">
-                      {permit || loaRules[0] ? "/ mo" : ""}
-                    </span>
+                      : "$50.00"}{" "}
+                    <span className="text-body-xs font-normal text-text-grey">/ mo</span>
+                  </span>
+                </div>
+                <div className="rounded-xl border border-outline-variant/20 bg-surface-light-grey/40 p-3">
+                  <span className="text-body-xs text-text-grey block">Customs Surety Bond:</span>
+                  <span className="font-mono text-mono-md font-bold text-on-surface">
+                    ${suretyBondRate.toFixed(2)}{" "}
+                    <span className="text-body-xs font-normal text-text-grey">/ mo</span>
+                  </span>
+                </div>
+                <div className="rounded-xl border border-outline-variant/20 bg-surface-light-grey/40 p-3">
+                  <span className="text-body-xs text-text-grey block">Trucking Admin Fee:</span>
+                  <span className="font-mono text-mono-md font-bold text-on-surface">
+                    ${truckingAdminRate.toFixed(2)}{" "}
+                    <span className="text-body-xs font-normal text-text-grey">/ mo</span>
                   </span>
                 </div>
               </div>
             </div>
 
             <div className="mt-4 flex items-center justify-between rounded-xl border border-outline-variant/20 bg-surface-light-grey/40 px-3.5 py-2.5 font-body text-body-xs">
-              <span className="text-text-grey">Overtime / Ad-hoc Manpower:</span>
+              <span className="text-text-grey">Dedicated Warehouse Manpower:</span>
               <span className="font-mono font-bold text-brand-navy">
-                {manpowerRules[0] ? `$${Number(manpowerRules[0].rate).toFixed(2)} / man-hour` : "Per approved rate"}
+                {manpowerCurrency === "PHP" ? "₱" : "$"}{manpowerRate.toFixed(2)} / hour{" "}
+                <span className="font-normal text-text-grey text-body-xs">(billed per actual log)</span>
               </span>
             </div>
           </div>
@@ -399,13 +436,7 @@ export function ContractRateCards({
 
             <div className="mt-4 flex items-center justify-between text-body-xs text-text-grey border-t border-outline-variant/20 pt-3">
               <span>Valid: <strong className="text-on-surface">{permit ? `${permit.validFrom} → ${permit.validTo}` : "Current Term"}</strong></span>
-              <Link
-                href={`/billing-pricing/vmi/permits/${contract.partyId}`}
-                className="inline-flex items-center gap-1 font-label text-label-xs font-bold text-brand-navy hover:underline"
-              >
-                <span>Manage LOA &amp; Permits</span>
-                <ExternalLink size={12} />
-              </Link>
+              <span className="font-mono text-mono-xs text-text-grey font-semibold">PEZA Bonded Facility</span>
             </div>
           </div>
         )}
