@@ -379,7 +379,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
 
         <div className="hidden min-w-0 flex-1 items-center gap-5 lg:flex">
           <div
-            className={`-ml-4 box-border flex h-[76px] shrink-0 items-center bg-gradient-to-b from-[#0e549e] via-[#0b4d94] to-[#083c77] px-4 shadow-[4px_0_18px_rgba(11,77,148,0.18)] transition-[width,padding,gap] duration-300 ease-out ${isDesktopOpen ? "w-[304px] gap-3" : "w-[88px] justify-center gap-2"}`}
+            className={`-ml-4 box-border flex h-[76px] shrink-0 items-center bg-surface px-4 transition-[width,padding,gap] duration-300 ease-out ${isDesktopOpen ? "w-[304px] gap-3" : "w-[88px] justify-center gap-2"}`}
             data-testid="brand-zone"
           >
             <Link
@@ -391,7 +391,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
                 <Image src="/logo-hd.png" alt="" width={36} height={36} priority />
               </span>
               {isDesktopOpen && (
-                <span className="truncate font-heading text-title-lg font-bold tracking-tight text-white">
+                <span className="truncate font-heading text-title-lg font-bold tracking-tight text-text-primary">
                   Dyna-Serv WIMS
                 </span>
               )}
@@ -403,7 +403,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
                 aria-expanded={isDesktopOpen}
                 onClick={toggleDesktop}
                 title={isDesktopOpen ? "Collapse sidebar to icons" : "Expand sidebar"}
-                className={`hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/35 bg-white/10 text-white shadow-sm transition-all hover:-translate-y-0.5 hover:border-white/60 hover:bg-white/20 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-white lg:flex ${isDesktopOpen ? "" : "translate-x-1"}`}
+                className={`hidden h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-surface text-text-secondary shadow-[0_4px_12px_rgba(11,77,148,0.12)] transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/[0.04] hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 lg:flex ${isDesktopOpen ? "" : "translate-x-1"}`}
               >
                 {isDesktopOpen ? <PanelLeftClose size={22} strokeWidth={2.2} aria-hidden="true" /> : <PanelLeftOpen size={22} strokeWidth={2.2} aria-hidden="true" />}
               </button>
