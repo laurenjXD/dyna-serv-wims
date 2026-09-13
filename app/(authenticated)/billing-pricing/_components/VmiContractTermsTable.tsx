@@ -3,15 +3,16 @@
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import {
+  Plus,
   FileText,
   Search,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  ArrowRight,
   X,
 } from "lucide-react";
 import type { VmiContractTermsRow } from "@/lib/db/queries/vmi-contracts";
+import { VmiContractTermsModal } from "../vmi/contracts/_components/VmiContractTermsModal";
 import { TablePagination } from "@/components/ui/TablePagination";
 
 type Option = { id: string; name: string; code: string };
@@ -33,7 +34,8 @@ type SortField =
 
 type SortDirection = "asc" | "desc";
 
-export function VmiContractTermsTable({ rows, parties: _parties }: Props) {
+export function VmiContractTermsTable({ rows, parties }: Props) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("partyName");
@@ -111,19 +113,20 @@ export function VmiContractTermsTable({ rows, parties: _parties }: Props) {
         <div>
           <h2 className="font-heading text-title-md font-bold text-on-surface flex items-center gap-2">
             <FileText size={20} className="text-brand-navy" />
-            Commercial Storage &amp; Handling Contract Terms
+            VMI Contract Terms (vmi_contract_terms)
           </h2>
           <p className="mt-1 font-body text-body-sm text-text-grey">
             Configured storage rates ($/CBM/day), handling IN/OUT rates, doc fees, and billing currency per VMI Organization.
           </p>
         </div>
-          <Link
-            href="/billing-pricing/contracts"
-            className="inline-flex h-9.5 items-center gap-1.5 rounded-xl border border-brand-navy/20 bg-brand-navy/5 px-3.5 font-label text-xs font-bold text-brand-navy hover:bg-brand-navy/10 shadow-2xs transition-colors"
-          >
-            <span>Manage Contracts &amp; Rate Cards</span>
-            <ArrowRight size={13} />
-          </Link>
+        <button
+          type="button"
+          onClick={() => setIsModalOpen(true)}
+          className="inline-flex h-11 items-center gap-2 rounded bg-primary px-4 font-label text-label font-bold text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy"
+        >
+          <Plus size={18} />
+          Configure VMI Contract
+        </button>
       </div>
 
       {/* ── Search & Filter Toolbar ────────────────────────────────────── */}
@@ -202,13 +205,12 @@ export function VmiContractTermsTable({ rows, parties: _parties }: Props) {
       {/* Main Table */}
       <div className="overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
         {filteredAndSortedRows.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-10 text-center">
-            <div className="mb-3.5 flex h-12 w-12 items-center justify-center rounded-2xl border border-brand-navy/20 bg-brand-navy/10 text-brand-navy shadow-2xs">
-              <FileText size={24} aria-hidden="true" />
-            </div>
-            <h3 className="font-heading text-title-sm font-bold text-on-surface">No VMI Contract Terms Found</h3>
-            <p className="mt-1 max-w-md font-body text-body-sm text-text-grey">
-              No organization contract terms match your search or filter criteria. Click <strong>&quot;Manage Contracts &amp; Rate Cards&quot;</strong> to configure client pricing rules.
+          <div className="p-12 text-center">
+            <p className="font-body text-body-md text-text-grey">
+              No VMI Contract Terms match your search/filter.
+            </p>
+            <p className="mt-1 font-body text-body-sm text-text-grey">
+              Click <strong>&quot;Configure VMI Contract&quot;</strong> above to define storage and handling rates for a VMI Organization.
             </p>
           </div>
         ) : (
@@ -297,6 +299,7 @@ export function VmiContractTermsTable({ rows, parties: _parties }: Props) {
                         {renderSortIcon("effectiveFrom")}
                       </button>
                     </th>
+                    <th className="px-4 py-3 font-label text-label uppercase tracking-wider text-text-grey">Configuration</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/30">
@@ -335,6 +338,9 @@ export function VmiContractTermsTable({ rows, parties: _parties }: Props) {
                         {new Date(row.effectiveFrom).toLocaleDateString()}
                         {row.effectiveTo ? ` — ${new Date(row.effectiveTo).toLocaleDateString()}` : " — Present"}
                       </td>
+                      <td className="px-4 py-3">
+                        <Link href={`/billing-pricing/vmi/permits/${row.partyId}`} className="font-label text-label font-bold text-brand-blue hover:underline">Permits &amp; LOA</Link>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -358,6 +364,12 @@ export function VmiContractTermsTable({ rows, parties: _parties }: Props) {
           </>
         )}
       </div>
+
+      <VmiContractTermsModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        parties={parties}
+      />
     </div>
   );
 }
