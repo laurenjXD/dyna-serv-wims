@@ -383,7 +383,9 @@ export function ShellChrome({ children }: { children: ReactNode }) {
             aria-label="Dyna-Serv WIMS home"
             className="flex shrink-0 items-center gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
-            <span className="flex h-11 w-11 items-center justify-center rounded-full border border-primary/15 bg-surface shadow-[0_7px_18px_-8px_rgba(37,99,235,0.55)] ring-4 ring-primary/[0.04] transition-shadow hover:shadow-[0_9px_22px_-8px_rgba(37,99,235,0.7)]">
+            <span className="flex h-11 w-11 items-center justify-center rounded-full border border-[#72b7ff]/70 bg-gradient-to-br from-[#0e549e] via-[#0b4d94] to-[#083c77] shadow-[0_8px_20px_-8px_rgba(11,77,148,0.7)] ring-4 ring-[#0b4d94]/10 transition-[box-shadow,transform] duration-300 hover:-translate-y-0.5 hover:shadow-[0_11px_24px_-8px_rgba(11,77,148,0.85)]"
+              data-testid="brand-logo"
+            >
               <Image src="/logo-hd.png" alt="" width={36} height={36} priority />
             </span>
             {isDesktopOpen && (

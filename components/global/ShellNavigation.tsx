@@ -231,12 +231,12 @@ function NavLink({
         onClick={onNavigate}
         title={label}
         data-active={isActive ? "true" : "false"}
-        className={`group relative mx-auto flex h-11 w-11 items-center justify-center rounded-full
-          motion-safe:transition-all motion-safe:duration-200
+        className={`group relative mx-auto flex h-11 w-11 items-center justify-center rounded-xl
+          motion-safe:transition-[transform,background-color,color,box-shadow,ring] motion-safe:duration-300 motion-safe:ease-out
           focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80
           ${isActive
-            ? "bg-[#dbe4f0] text-[#0a4d94] shadow-[0_4px_14px_rgba(0,0,0,0.18)] scale-105"
-            : "text-white/75 hover:text-white hover:bg-white/15 hover:scale-105 active:scale-95"}`}
+            ? "bg-white text-[#0b4d94] shadow-[0_8px_22px_rgba(0,0,0,0.22)] ring-2 ring-[#72b7ff]/60 scale-105"
+            : "text-white/75 hover:text-white hover:bg-white/15 hover:shadow-[0_5px_16px_rgba(0,0,0,0.14)] hover:scale-105 active:scale-95"}`}
       >
         <Icon size={23} strokeWidth={2.2} aria-hidden="true" />
         {entry.id === "approvals" && pendingApprovalCount > 0 && (
@@ -275,10 +275,10 @@ function NavLink({
       data-active={isActive ? "true" : "false"}
       className={`group relative flex ${compact ? "h-11 gap-3 rounded-xl px-2.5" : "h-12 gap-3 rounded-xl px-3"} items-center overflow-hidden font-label font-semibold
         ${floorText ? "text-mono-md" : "text-label"}
-        motion-safe:transition-[background-color,color,box-shadow,transform] motion-safe:duration-150
+        motion-safe:transition-[background-color,color,box-shadow,transform] motion-safe:duration-300 motion-safe:ease-out
         focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-1
         ${isActive
-          ? "bg-white text-[#0b4d94] shadow-[0_4px_14px_rgba(0,0,0,0.15)] bg-primary/[0.08] before:absolute before:inset-y-2 before:left-0 before:w-1.5 before:rounded-r-full before:bg-primary before:content-['']"
+          ? "translate-x-1 bg-white text-[#0b4d94] shadow-[0_8px_22px_rgba(0,0,0,0.18)] ring-1 ring-[#72b7ff]/45 bg-primary/[0.08] before:absolute before:inset-y-2 before:left-0 before:w-1.5 before:rounded-r-full before:bg-primary before:content-['']"
           : "text-white/85 hover:translate-x-0.5 hover:bg-white/15 hover:text-white hover:bg-primary/[0.05] hover:shadow-sm"}`}
     >
       <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg motion-safe:transition-colors motion-safe:duration-150 ${isActive ? "bg-[#0b4d94]/10 text-primary" : "bg-white/10 text-white/90 group-hover:bg-white/20 group-hover:text-white"}`}>
