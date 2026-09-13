@@ -1,6 +1,7 @@
 import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
+import { normalizeDatabaseConnectionString } from "./connection-string";
 
 // Connection string only, never hardcoded — see .env.example.
 // Supabase Postgres connection (session/transaction pooler URL in production,
@@ -33,22 +34,26 @@ function getDb(): Db {
     // DATABASE_URL_RUNTIME is the canonical serverless connection setting
     // (specs/04-services-and-infrastructure). Keep legacy/integration names
     // as fallbacks so existing local and Vercel environments remain valid.
-    const connectionString =
+    const configuredConnectionString =
       process.env.DATABASE_URL_RUNTIME ??
       process.env.DATABASE_URL ??
       process.env.POSTGRES_URL ??
       "";
-    if (!connectionString) {
+    if (!configuredConnectionString) {
       throw new Error(
         "DATABASE_URL environment variable is missing. Please configure it in your Vercel Project Settings > Environment Variables."
       );
     }
     const isServerless = process.env.VERCEL === "1" || process.env.NODE_ENV === "production";
+    const connectionString = normalizeDatabaseConnectionString(
+      configuredConnectionString,
+      isServerless,
+    );
     const client = postgres(connectionString, {
       prepare: false,
       connect_timeout: 10,
       idle_timeout: 20,
-      max: isServerless ? 2 : 10,
+      max: isServerless ? 1 : 10,
       ssl: connectionString.includes("supabase") ? "require" : undefined,
     });
     realDb = drizzle(client, { schema });
