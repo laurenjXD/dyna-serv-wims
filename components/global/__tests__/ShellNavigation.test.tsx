@@ -113,12 +113,12 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
     );
     const sidebar = screen.getByTestId("desktop-sidebar");
     expect(sidebar.className).toContain("lg:flex");
-    expect(sidebar.className).toContain("lg:w-[76px]");
+    expect(sidebar.className).toContain("lg:w-[88px]");
     expect(sidebar.className).not.toContain("lg:hidden");
     expect(sidebar).not.toHaveAttribute("aria-hidden", "true");
   });
 
-  it("desktop sidebar switches to mini icon-rail (lg:w-[76px]) when desktopOpen=false (collapsed icon mode)", () => {
+  it("desktop sidebar switches to mini icon-rail (lg:w-[88px]) when desktopOpen=false (collapsed icon mode)", () => {
     render(
       <ShellNavigation
         tier="office"
@@ -128,7 +128,7 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
       />,
     );
     const sidebar = screen.getByTestId("desktop-sidebar");
-    expect(sidebar.className).toContain("lg:w-[76px]");
+    expect(sidebar.className).toContain("lg:w-[88px]");
   });
 
   it("omits nav entries the context has no grant for (R3.4 — hidden, not disabled)", () => {
