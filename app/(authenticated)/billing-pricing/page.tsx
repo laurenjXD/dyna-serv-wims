@@ -7,7 +7,7 @@
 //     §2 (typography — font-mono for numeric columns per §9)
 
 import Link from "next/link";
-import { Receipt } from "lucide-react";
+import { BookOpen, FileText, LayoutDashboard, Receipt, Settings } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
@@ -191,22 +191,23 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
         className="mt-6 flex flex-wrap gap-1 border-b border-outline-variant/30"
       >
         {([
-          ["overview", "Overview", `/billing-pricing?tab=overview${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`],
-          ["ledger", "Ledger", `/billing-pricing?tab=ledger${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`],
-          ["soa", "Statement of Account (SOA)", `/billing-pricing?tab=soa${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`],
-          ["configuration", "Configuration", `/billing-pricing?tab=configuration${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`],
-        ] as const).map(([section, label, href]) => (
+          ["overview", "Overview", `/billing-pricing?tab=overview${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`, LayoutDashboard],
+          ["ledger", "Ledger", `/billing-pricing?tab=ledger${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`, BookOpen],
+          ["soa", "Statement of Account (SOA)", `/billing-pricing?tab=soa${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`, FileText],
+          ["configuration", "Configuration", `/billing-pricing?tab=configuration${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`, Settings],
+        ] as const).map(([section, label, href, Icon]) => (
           <Link
             key={section}
             href={href}
             role="tab"
             aria-selected={activeSection === section}
-            className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
+            className={`flex h-11 items-center gap-2 px-4 font-label text-label transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
               activeSection === section
                 ? "border-b-2 border-on-surface text-on-surface font-bold"
                 : "text-text-grey hover:text-on-surface"
             }`}
           >
+            <Icon size={16} strokeWidth={2.2} aria-hidden="true" />
             {label}
           </Link>
         ))}
