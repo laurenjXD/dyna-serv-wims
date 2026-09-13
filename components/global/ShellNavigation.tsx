@@ -229,7 +229,7 @@ function NavLink({
         data-testid={`nav-entry-${entry.id}`}
         aria-current={isActive ? "page" : undefined}
         onClick={onNavigate}
-        title={`${label}${shortcutNumber ? ` (${shortcutLabel(shortcutNumber - 1)})` : ""}`}
+        title={label}
         data-active={isActive ? "true" : "false"}
         className={`group relative mx-auto flex h-11 w-11 items-center justify-center rounded-full
           motion-safe:transition-all motion-safe:duration-200
@@ -260,11 +260,6 @@ function NavLink({
             <span className="rounded-full bg-blue-500/20 border border-blue-400/40 px-1.5 py-0.5 text-[10px] font-bold text-blue-300">
               Active
             </span>
-          )}
-          {shortcutNumber && (
-            <kbd className="rounded border border-white/20 bg-white/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-slate-300">
-              {shortcutLabel(shortcutNumber - 1)}
-            </kbd>
           )}
         </div>
       </Link>
