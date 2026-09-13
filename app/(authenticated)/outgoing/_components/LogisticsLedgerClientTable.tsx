@@ -152,29 +152,29 @@ export function LogisticsLedgerClientTable() {
 
   return (
     <div className="space-y-6">
-      {/* Daily Forex Rate Banner */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl border border-brand-navy/30 bg-[#F0F4FF] p-4 shadow-sm">
-        <div>
-          <h4 className="font-heading text-body-md font-bold text-brand-navy flex items-center gap-2">
-            Bangko Sentral ng Pilipinas (BSP) Live Forex Integration
-          </h4>
-          <p className="font-body text-body-xs text-text-grey">
-            Source: <strong className="text-brand-navy">{fxSourceLabel}</strong> &bull; Converts daily peso delivery charges into USD for SOA invoicing.
-          </p>
+      {/* Compact Daily Forex Rate Toolbar Strip */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-surface-white px-3.5 py-2 shadow-2xs">
+        <div className="flex items-center gap-2">
+          <span className="flex h-2 w-2 rounded-full bg-emerald-500" />
+          <span className="font-heading text-xs font-bold text-brand-navy">
+            Bangko Sentral ng Pilipinas (BSP) Live FX:
+          </span>
+          <span className="font-body text-xs text-text-grey">
+            Source: <strong className="text-brand-navy">{fxSourceLabel}</strong> (Peso to USD SOA Invoicing)
+          </span>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <label className="font-label text-label-xs font-bold text-brand-navy">
-              1 USD =
-            </label>
-            <div className="relative">
-              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 font-mono text-mono-sm text-text-grey">₱</span>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 font-mono text-xs">
+            <span className="font-label font-bold text-text-secondary">1 USD =</span>
+            <div className="relative flex items-center">
+              <span className="absolute left-2 text-text-grey font-bold">₱</span>
               <input
                 type="number"
                 step="0.0001"
                 value={fxRate}
                 onChange={(e) => setFxRate(parseFloat(e.target.value) || 0)}
-                className="w-28 rounded border border-brand-navy bg-surface-white pl-6 pr-2 py-1 font-mono text-mono-sm font-bold text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy/30"
+                className="h-8 w-24 rounded-lg border border-slate-200 bg-slate-50 pl-5 pr-2 font-mono text-xs font-bold text-brand-navy focus:bg-white focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy transition-all"
+                aria-label="USD to PHP exchange rate"
               />
             </div>
           </div>
@@ -182,10 +182,10 @@ export function LogisticsLedgerClientTable() {
             type="button"
             disabled={isSyncingFx}
             onClick={handleSyncLiveBspRate}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-navy px-3 py-1.5 font-label text-label-xs font-bold text-white shadow-sm hover:bg-brand-navy/90 disabled:opacity-50 transition-colors"
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 font-label text-xs font-semibold text-brand-navy hover:bg-slate-100 hover:border-slate-300 disabled:opacity-50 transition-colors cursor-pointer"
           >
-            <RefreshCw size={14} className={isSyncingFx ? "animate-spin" : ""} />
-            {isSyncingFx ? "Syncing..." : "Sync Live BSP Rate"}
+            <RefreshCw size={12} className={isSyncingFx ? "animate-spin text-primary" : "text-slate-500"} />
+            <span>{isSyncingFx ? "Syncing..." : "Sync Rate"}</span>
           </button>
         </div>
       </div>

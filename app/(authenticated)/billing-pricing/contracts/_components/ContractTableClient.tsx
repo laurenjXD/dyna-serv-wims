@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Search, Filter } from "lucide-react";
+import { Search, Filter, FileText, Plus } from "lucide-react";
 import { TablePagination } from "@/components/ui/TablePagination";
 
 export interface ContractItem {
@@ -64,7 +64,7 @@ export function ContractTableClient({ initialContracts }: ContractTableClientPro
           />
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex w-full items-center gap-2 sm:w-auto">
           <Filter size={16} className="text-text-grey" />
           <span className="font-body text-body-sm text-text-grey">Filter:</span>
           <select
@@ -81,6 +81,12 @@ export function ContractTableClient({ initialContracts }: ContractTableClientPro
             <option value="pending_approval">Pending Approval</option>
             <option value="suspended">Suspended</option>
           </select>
+          <Link
+            href="/billing-pricing/contracts/new"
+            className="ml-auto inline-flex h-11 shrink-0 items-center gap-2 rounded-full bg-primary px-4 font-label text-label font-bold text-white shadow-sm transition-colors hover:bg-primary-hover"
+          >
+            <Plus size={18} /> New Contract
+          </Link>
         </div>
       </div>
 
@@ -101,10 +107,18 @@ export function ContractTableClient({ initialContracts }: ContractTableClientPro
           <tbody className="divide-y divide-border-light font-body text-body-sm text-text-dark">
             {filteredContracts.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-8 text-center text-text-grey">
-                  {initialContracts.length === 0
-                    ? "No commercial contracts configured yet. Click \"New Contract\" to define your first rate-card contract."
-                    : "No contracts match your search or filter criteria."}
+                <td colSpan={8} className="py-10 px-4 text-center">
+                  <div className="flex flex-col items-center justify-center">
+                    <div className="mb-3.5 flex h-12 w-12 items-center justify-center rounded-2xl border border-brand-blue/20 bg-brand-blue/10 text-brand-blue shadow-2xs">
+                      <FileText size={24} aria-hidden="true" />
+                    </div>
+                    <h4 className="font-heading text-title-sm font-bold text-text-dark">No Commercial Contracts Found</h4>
+                    <p className="mt-1 max-w-sm font-body text-body-sm text-text-grey">
+                      {initialContracts.length === 0
+                        ? "No commercial contracts configured yet. Click \"New Contract\" to define your first rate-card contract."
+                        : "No contracts match your search query or filter criteria."}
+                    </p>
+                  </div>
                 </td>
               </tr>
             ) : (

@@ -118,7 +118,7 @@ export function OperationsDashboard({
   };
 
   return (
-    <div className="mx-auto max-w-container px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-24 lg:pb-8">
+    <div className="mx-auto max-w-container bg-background px-4 py-6 pb-24 sm:px-6 lg:px-8 lg:pb-8 space-y-6">
       {/* ── 1. Header & Global Toolbar ────────────────────────────────────── */}
       <DashboardHeader onGenerateReport={handleGenerateReport} />
 

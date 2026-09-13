@@ -19,6 +19,8 @@ export interface LogisticsRateEntry {
   destination: string;
   rates: Partial<Record<VehicleType, number>>;
   defaultVehicle: VehicleType;
+  isActive?: boolean;
+  isCustom?: boolean;
 }
 
 // Predefined Effective Contract Rate Matrix (PHP)

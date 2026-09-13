@@ -147,29 +147,36 @@ export function DashboardHeader({ onGenerateReport }: DashboardHeaderProps) {
             </button>
 
             {showFacilityMenu && (
-              <div className="absolute right-0 z-30 mt-1.5 w-64 rounded-xl border border-slate-200 bg-surface-white p-1.5 shadow-elevation-3 animate-in fade-in zoom-in-95">
-                <p className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-text-grey">
-                  Warehouse Facility &amp; Zone
-                </p>
-                {facilities.map((fac) => (
-                  <button
-                    key={fac}
-                    type="button"
-                    onClick={() => {
-                      setFacility(fac);
-                      setShowFacilityMenu(false);
-                    }}
-                    className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left font-label text-xs font-medium transition-colors ${
-                      facility === fac
-                        ? "bg-blue-50 text-brand-navy font-bold"
-                        : "text-slate-700 hover:bg-slate-100"
-                    }`}
-                  >
-                    <span className="truncate">{fac}</span>
-                    {facility === fac && <Check size={14} className="text-brand-navy shrink-0" />}
-                  </button>
-                ))}
-              </div>
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  aria-hidden="true"
+                  onClick={() => setShowFacilityMenu(false)}
+                />
+                <div className="absolute right-0 z-50 mt-1.5 w-64 rounded-xl border border-slate-200 bg-surface-white p-1.5 shadow-elevation-3 animate-in fade-in zoom-in-95">
+                  <p className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-text-grey">
+                    Warehouse Facility &amp; Zone
+                  </p>
+                  {facilities.map((fac) => (
+                    <button
+                      key={fac}
+                      type="button"
+                      onClick={() => {
+                        setFacility(fac);
+                        setShowFacilityMenu(false);
+                      }}
+                      className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left font-label text-xs font-medium transition-colors ${
+                        facility === fac
+                          ? "bg-blue-50 text-brand-navy font-bold"
+                          : "text-slate-700 hover:bg-slate-100"
+                      }`}
+                    >
+                      <span className="truncate">{fac}</span>
+                      {facility === fac && <Check size={14} className="text-brand-navy shrink-0" />}
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
           </div>
 

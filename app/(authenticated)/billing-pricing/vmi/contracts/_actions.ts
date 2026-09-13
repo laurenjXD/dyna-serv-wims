@@ -129,5 +129,6 @@ export async function createVmiPermitAction(
   }
 
   revalidatePath("/billing-pricing");
+  revalidatePath(`/billing-pricing/vmi/permits/${partyId}`);
   return { ok: true };
 }

@@ -2,7 +2,7 @@
 
 export type DateHorizon = "7D" | "30D" | "90D" | "custom";
 
-export type FacilityZone = "all" | "main-dc-a" | "main-dc-b" | "cold-chain";
+export type FacilityZone = "all" | string;
 
 export type FlowSegment = "all" | "vmi" | "trading" | "supplies";
 

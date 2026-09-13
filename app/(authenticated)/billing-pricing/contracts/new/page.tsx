@@ -67,6 +67,9 @@ export default async function NewContractPage() {
     const handlingOutRatePerCbm = numOrUndef("handlingOutRatePerCbm");
     const loaPermitNumber = formData.get("loaPermitNumber") ? String(formData.get("loaPermitNumber")).trim() : undefined;
     const loaMonthlyRate = numOrUndef("loaMonthlyRate");
+    const suretyBondMonthlyFee = numOrUndef("suretyBondMonthlyFee");
+    const truckingAdminFee = numOrUndef("truckingAdminFee");
+    const manpowerRatePerHour = numOrUndef("manpowerRatePerHour");
     const minStock = numOrUndef("minStock");
     const maxStock = numOrUndef("maxStock");
     const reorderPoint = numOrUndef("reorderPoint");
@@ -96,6 +99,9 @@ export default async function NewContractPage() {
       handlingOutRatePerCbm,
       loaPermitNumber,
       loaMonthlyRate,
+      suretyBondMonthlyFee,
+      truckingAdminFee,
+      manpowerRatePerHour,
       minStock,
       maxStock,
       reorderPoint,
@@ -117,10 +123,10 @@ export default async function NewContractPage() {
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-6 sm:px-6">
       <div>
         <Link
-          href="/billing-pricing/contracts"
+          href="/billing-pricing?tab=configuration"
           className="inline-flex items-center text-body-sm text-text-grey hover:text-brand-blue"
         >
-          <ArrowLeft size={16} className="mr-1" /> Back to Contracts
+          <ArrowLeft size={16} className="mr-1" /> Back to Commercial Contracts
         </Link>
         <h1 className="mt-2 font-heading text-heading-lg font-bold text-text-dark">
           New Commercial Contract

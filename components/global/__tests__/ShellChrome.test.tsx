@@ -48,6 +48,14 @@ import userEvent from "@testing-library/user-event";
 // active-route logic is deterministic.
 vi.mock("next/navigation", () => ({
   usePathname: () => "/",
+  useRouter: () => ({
+    back: vi.fn(),
+    push: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+  }),
 }));
 
 // Mock ShellNavigation — its rendering is covered in depth by
@@ -957,7 +965,7 @@ describe("ShellChrome notification bell (specs/14-notifications-and-alerts R3.1,
 //
 // requirements.md R4.1 ("...real letter-mark logo asset (no diagonal-cut
 // motif)."), tasks.md §4 ("...real letter-mark logo asset (no diagonal
-// cut)."). A real logo file now exists at `public/logo.svg` (confirmed
+// cut)."). A real logo file now exists at `public/logo-hd.png` (confirmed
 // present, an actual SVG). Today ShellChrome.tsx's `lg:hidden` mobile
 // header block (lines 196-201) renders a text `<span aria-hidden="true">
 // DS</span>` initials badge as a placeholder, not a real asset. This RED
@@ -966,7 +974,7 @@ describe("ShellChrome notification bell (specs/14-notifications-and-alerts R3.1,
 // present anywhere in the rendered header.
 // -----------------------------------------------------------------------
 describe("ShellChrome mobile header logo (requirements.md R4.1, tasks.md §4 real letter-mark logo asset)", () => {
-  it("renders a real logo asset referencing /logo.svg in the mobile header, not the placeholder 'DS' text badge (R4.1)", () => {
+  it("renders a real logo asset referencing /logo-hd.png in the mobile header, not the placeholder 'DS' text badge (R4.1)", () => {
     render(
       <ShellChrome>
         <div>page</div>
@@ -979,7 +987,7 @@ describe("ShellChrome mobile header logo (requirements.md R4.1, tasks.md §4 rea
     const logo = screen.getByRole("img", { name: /dyna-serv wims/i });
     expect(logo).toBeInTheDocument();
     expect(logo.tagName).toBe("IMG");
-    expect(logo).toHaveAttribute("src", expect.stringContaining("/logo.svg"));
+    expect(logo).toHaveAttribute("src", expect.stringContaining("/logo-hd.png"));
   });
 
   it("does not render the literal placeholder text 'DS' anywhere once the real logo asset is in place (R4.1 no diagonal-cut/placeholder motif)", () => {
@@ -1001,68 +1009,68 @@ describe("ShellChrome mobile header logo (requirements.md R4.1, tasks.md §4 rea
 // the pre-existing mobile hamburger button above (that one only ever
 // applies below lg, via useShellSidebar's isOpen/toggle/close). This is a
 // new, separate piece of state (useDesktopSidebar, lib/shell/state.ts),
-// defaulting open so existing behavior (desktop sidebar always visible) is
-// unchanged until a user actually collapses it. See revision-log.md.
+// defaulting collapsed so the workspace uses the available width until a
+// user explicitly expands navigation. See revision-log.md.
 // ---------------------------------------------------------------------------
 
 describe("ShellChrome desktop sidebar toggle (2026-08-17)", () => {
-  it("renders a desktop navigation toggle button, expanded by default", () => {
+  it("renders a desktop navigation toggle button, collapsed by default", () => {
     render(
       <ShellChrome>
         <div>page</div>
       </ShellChrome>,
     );
-    const toggle = screen.getByRole("button", { name: /collapse navigation/i });
+    const toggle = screen.getByRole("button", { name: /expand navigation/i });
     expect(toggle).toBeInTheDocument();
-    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
   });
 
-  it("ShellNavigation receives desktopOpen: true by default", () => {
+  it("ShellNavigation receives desktopOpen: false by default", () => {
     render(
       <ShellChrome>
         <div>page</div>
       </ShellChrome>,
     );
-    expect(screen.getByTestId("shell-navigation")).toHaveAttribute(
-      "data-desktop-open",
-      "true",
-    );
-  });
-
-  it("clicking the toggle collapses the sidebar: aria-expanded flips, label swaps to 'Expand navigation', and ShellNavigation receives desktopOpen: false", async () => {
-    const user = userEvent.setup();
-    render(
-      <ShellChrome>
-        <div>page</div>
-      </ShellChrome>,
-    );
-    const toggle = screen.getByRole("button", { name: /collapse navigation/i });
-    await user.click(toggle);
-
-    const collapsedToggle = screen.getByRole("button", { name: /expand navigation/i });
-    expect(collapsedToggle).toHaveAttribute("aria-expanded", "false");
     expect(screen.getByTestId("shell-navigation")).toHaveAttribute(
       "data-desktop-open",
       "false",
     );
   });
 
-  it("clicking the toggle twice returns to the expanded state", async () => {
+  it("clicking the toggle expands the sidebar and forwards desktopOpen: true", async () => {
     const user = userEvent.setup();
     render(
       <ShellChrome>
         <div>page</div>
       </ShellChrome>,
     );
-    const toggle = screen.getByRole("button", { name: /collapse navigation/i });
+    const toggle = screen.getByRole("button", { name: /expand navigation/i });
     await user.click(toggle);
-    await user.click(screen.getByRole("button", { name: /expand navigation/i }));
 
-    const reopenedToggle = screen.getByRole("button", { name: /collapse navigation/i });
-    expect(reopenedToggle).toHaveAttribute("aria-expanded", "true");
+    const expandedToggle = screen.getByRole("button", { name: /collapse navigation/i });
+    expect(expandedToggle).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByTestId("shell-navigation")).toHaveAttribute(
       "data-desktop-open",
       "true",
+    );
+  });
+
+  it("clicking the toggle twice returns to the collapsed state", async () => {
+    const user = userEvent.setup();
+    render(
+      <ShellChrome>
+        <div>page</div>
+      </ShellChrome>,
+    );
+    const toggle = screen.getByRole("button", { name: /expand navigation/i });
+    await user.click(toggle);
+    await user.click(screen.getByRole("button", { name: /collapse navigation/i }));
+
+    const collapsedToggle = screen.getByRole("button", { name: /expand navigation/i });
+    expect(collapsedToggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByTestId("shell-navigation")).toHaveAttribute(
+      "data-desktop-open",
+      "false",
     );
   });
 });

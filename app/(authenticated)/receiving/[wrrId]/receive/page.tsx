@@ -604,26 +604,25 @@ export default async function ReceiveFloorPage({
               </div>
             );
           })}
-         </div>
-
-         {isReceivable && hasShortage && !hasUncommittedReceivedLines && (
-           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-outline-variant/30 pt-4">
-             <p className="font-body text-body-sm text-text-grey">
-               Missing boxes will be recorded in the WRR&apos;s OS&amp;D summary.
-             </p>
-             <form action={handleCloseShortage}>
-               <button
-                 type="submit"
-                 className="inline-flex h-11 items-center justify-center rounded-lg border border-status-held/40 bg-surface-white px-4 font-label text-label font-bold text-status-held hover:bg-status-held/10 focus:outline-none focus:ring-2 focus:ring-brand-navy"
-               >
-                 Finalize WRR with Shortage
-               </button>
-             </form>
-           </div>
-         )}
-       </div>
+        </div>
+      </div>
 
       {/* Primary action — bottom third of screen, full-width */}
+      {isReceivable && hasShortage && !hasUncommittedReceivedLines && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-outline-variant/30 pt-4">
+          <p className="font-body text-body-sm text-text-grey">
+            Missing boxes will be recorded in the WRR&apos;s OS&amp;D summary.
+          </p>
+          <form action={handleCloseShortage}>
+            <button
+              type="submit"
+              className="inline-flex h-11 items-center justify-center rounded-lg border border-status-held/40 bg-surface-white px-4 font-label text-label font-bold text-status-held hover:bg-status-held/10 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            >
+              Finalize WRR with Shortage
+            </button>
+          </form>
+        </div>
+      )}
       {isReceivable && primaryReadyLine && (
         <div className="sticky bottom-0 z-10 -mx-4 mt-2 border-t border-outline-variant/40 bg-surface-white px-4 pb-6 pt-4 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] sm:-mx-6 sm:rounded-t-2xl sm:border-x">
           <form action={handleCommitLine} className="flex flex-col gap-3">

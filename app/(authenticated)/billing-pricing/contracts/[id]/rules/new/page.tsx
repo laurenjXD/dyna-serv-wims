@@ -72,14 +72,14 @@ export default async function PricingRuleBuilderPage({ params }: PageProps) {
       conditionsJson,
     });
 
-    redirect(`/billing-pricing/contracts/${id}?tab=billing-rules`);
+    redirect(`/billing-pricing/contracts/${id}`);
   }
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-6 sm:px-6">
       <div>
         <Link
-          href={`/billing-pricing/contracts/${id}?tab=billing-rules`}
+          href={`/billing-pricing/contracts/${id}`}
           className="inline-flex items-center text-body-sm text-text-grey hover:text-brand-blue"
         >
           <ArrowLeft size={16} className="mr-1" /> Back to Contract Rules
@@ -258,7 +258,7 @@ export default async function PricingRuleBuilderPage({ params }: PageProps) {
 
         <div className="flex justify-end gap-3 pt-2">
           <Link
-            href={`/billing-pricing/contracts/${id}?tab=billing-rules`}
+            href={`/billing-pricing/contracts/${id}`}
             className="rounded-btn border border-border-medium px-4 py-2 font-body text-body-sm font-semibold text-text-grey hover:bg-surface-background"
           >
             Cancel

@@ -65,7 +65,7 @@ export default async function DeliveryReceiptPage({
           <div className="flex items-start justify-between gap-8">
             <div>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.svg" alt="Dyna-Serv" className="mb-2 h-10 w-auto" />
+              <img src="/api/brand/logo" alt="Dyna-Serv" className="mb-2 h-10 w-auto" />
               <h1 className="text-lg font-bold uppercase tracking-wide">Acknowledgement Receipt</h1>
               <p className="mt-1 text-xs text-slate-600">Dyna-Serv Global Corporation</p>
             </div>

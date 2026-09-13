@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Eye, RotateCw, CheckCircle2, Info, ExternalLink } from "lucide-react";
+import { Eye, Download, Share2, CheckCircle2, Info, Paperclip } from "lucide-react";
 import type { AcknowledgementReceiptArchiveRow } from "@/lib/db/queries/documents";
 import { DocumentPreviewModal, type PreviewDocData } from "./DocumentPreviewModal";
 import { DocumentReprintDialog } from "./DocumentReprintDialog";
@@ -32,12 +32,28 @@ export function AcknowledgementReceiptsTable({ rows }: AcknowledgementReceiptsTa
     return rows.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
   }, [rows, pageIndex, pageSize]);
 
+  const handleShare = (r: AcknowledgementReceiptArchiveRow) => {
+    if (typeof window !== "undefined" && typeof navigator !== "undefined") {
+      navigator.clipboard?.writeText?.(`${window.location.origin}/pick-lists/${r.pickListId}/receipt`);
+      alert(`Document link for ${r.documentNumber} copied to clipboard!`);
+    }
+  };
+
+  const handleDownload = (r: AcknowledgementReceiptArchiveRow) => {
+    if (typeof window !== "undefined") {
+      window.open(`/pick-lists/${r.pickListId}/receipt`, "_blank");
+    }
+  };
+
   if (rows.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-1">
-        <CheckCircle2 size={40} className="text-text-grey" aria-hidden="true" />
-        <p className="font-body text-body-md text-text-grey">
-          No delivery receipts or acknowledgement receipts match the selected filters.
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-outline-variant/60 bg-surface-white p-10 text-center shadow-2xs">
+        <div className="mb-3.5 flex h-12 w-12 items-center justify-center rounded-2xl border border-brand-navy/20 bg-brand-navy/10 text-brand-navy shadow-2xs">
+          <CheckCircle2 size={24} aria-hidden="true" />
+        </div>
+        <h3 className="font-heading text-title-sm font-bold text-on-surface">No Delivery Receipts or ARs</h3>
+        <p className="mt-1 max-w-md font-body text-body-sm text-text-grey">
+          No signed acknowledgement receipts or proof of delivery records match your filters. Dispatched releases will appear here automatically.
         </p>
       </div>
     );
@@ -85,11 +101,9 @@ export function AcknowledgementReceiptsTable({ rows }: AcknowledgementReceiptsTa
               {pagedRows.map((r) => {
                 const statusClass = AR_STATUS_CLASSES[r.status] ?? "bg-status-neutral/10 text-status-neutral";
                 const formattedDate = new Date(r.createdAt).toISOString().slice(0, 10);
-                const isVmi = r.flowType.toLowerCase() === "vmi";
-                const isSupplies = r.flowType.toLowerCase() === "supplies";
 
                 return (
-                  <tr key={r.id} className="hover:bg-surface-light-grey/40">
+                  <tr key={r.id} className="hover:bg-surface-light-grey/40 transition-colors">
                     <td className="px-4 py-3">
                       <div className="font-mono text-mono-md font-bold text-on-surface">
                         {r.documentNumber}
@@ -116,14 +130,10 @@ export function AcknowledgementReceiptsTable({ rows }: AcknowledgementReceiptsTa
                     </td>
                     <td className="px-4 py-3">
                       <div className="font-mono text-mono-md text-on-surface font-bold">
-                        {r.totalQuantity.toLocaleString()} pcs
+                        {r.packageCount.toLocaleString()} ctns
                       </div>
                       <div className="font-mono text-mono-sm text-text-grey">
-                        {isSupplies
-                          ? "No charge (Supplies)"
-                          : isVmi
-                          ? `₱${r.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })} (Ref)`
-                          : `₱${r.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+                        {r.totalQuantity.toLocaleString()} pcs total
                       </div>
                     </td>
                     <td className="px-4 py-3">
@@ -132,14 +142,14 @@ export function AcknowledgementReceiptsTable({ rows }: AcknowledgementReceiptsTa
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1.5">
                         <button
                           type="button"
                           onClick={() =>
                             setPreviewDoc({
                               id: r.id,
                               documentNumber: r.documentNumber,
-                              title: "Delivery Receipt / Acknowledgement Receipt",
+                              title: "Delivery Receipt & Acknowledgement Receipt (DR / AR)",
                               documentType: "acknowledgement_receipt",
                               status: r.status,
                               snapshotHash: r.snapshotHash,
@@ -150,24 +160,51 @@ export function AcknowledgementReceiptsTable({ rows }: AcknowledgementReceiptsTa
                               downloadUrl: `/pick-lists/${r.pickListId}/receipt`,
                             })
                           }
-                          className="inline-flex h-9 items-center gap-1 rounded-lg border border-outline-variant/40 bg-surface-white px-2.5 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                          title="Preview Delivery Receipt"
+                          className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border bg-surface px-3 font-label text-label font-bold text-brand-navy hover:bg-background transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
                         >
                           <Eye size={14} /> Preview
                         </button>
+                        {r.deliveryReceiptPath && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPreviewDoc({
+                                id: r.id,
+                                documentNumber: `POD-${r.documentNumber.replace(/^AR-/, "")}`,
+                                title: "Signed Proof of Delivery (POD)",
+                                documentType: "acknowledgement_receipt",
+                                status: r.status,
+                                snapshotHash: r.snapshotHash,
+                                generatedAt: r.generatedAt ?? r.createdAt,
+                                organizationName: r.customerPartyName,
+                                actorName: r.dispatchedByName,
+                                previewUrl: r.deliveryReceiptPath,
+                                downloadUrl: r.deliveryReceiptPath,
+                              })
+                            }
+                            title="Preview Signed Proof of Delivery"
+                            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-outline-variant/40 bg-surface-white px-2.5 sm:px-3 font-label text-label font-bold text-on-surface hover:bg-surface-light-grey transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                          >
+                            <Paperclip size={14} /> <span>POD</span>
+                          </button>
+                        )}
                         <button
                           type="button"
-                          onClick={() => setReprintTarget({ id: r.id, number: r.documentNumber })}
-                          disabled={r.status !== "ready"}
-                          className="inline-flex h-9 items-center gap-1 rounded-lg border border-status-pending/40 bg-status-pending/10 px-2.5 font-label text-label font-bold text-status-pending hover:bg-status-pending/20 focus:outline-none focus:ring-2 focus:ring-status-pending disabled:opacity-40"
+                          onClick={() => handleShare(r)}
+                          title="Copy Link"
+                          className="inline-flex h-9 items-center justify-center rounded-xl border border-outline-variant/40 bg-surface-white px-2.5 text-text-grey hover:bg-surface-light-grey hover:text-on-surface focus:outline-none transition-colors"
                         >
-                          <RotateCw size={14} /> Reprint
+                          <Share2 size={14} />
                         </button>
-                        <Link
-                          href={`/pick-lists/${r.pickListId}/receipt`}
-                          className="inline-flex h-9 items-center gap-1 rounded-lg bg-surface-light-grey px-2.5 font-label text-label font-medium text-on-surface hover:bg-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                        <button
+                          type="button"
+                          onClick={() => handleDownload(r)}
+                          title="Download Document"
+                          className="inline-flex h-9 items-center justify-center rounded-xl bg-brand-navy px-2.5 text-surface-white hover:bg-brand-navy/90 focus:outline-none transition-colors"
                         >
-                          <ExternalLink size={14} /> View Receipt
-                        </Link>
+                          <Download size={14} />
+                        </button>
                       </div>
                     </td>
                   </tr>

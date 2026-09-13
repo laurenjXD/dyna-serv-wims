@@ -330,6 +330,50 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
+                Customs Surety Bond ($ / Mo)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                name="suretyBondMonthlyFee"
+                defaultValue="100.00"
+                placeholder="100.00"
+                className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
+                Trucking Admin Fee ($ / Mo)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                name="truckingAdminFee"
+                defaultValue="50.00"
+                placeholder="50.00"
+                className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
+                Manpower Rate (₱ / Hour)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                name="manpowerRatePerHour"
+                defaultValue="120.00"
+                placeholder="120.00"
+                className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm font-mono"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
                 Min Stock Level
               </label>
               <input
@@ -474,7 +518,7 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
 
       <div className="flex justify-end gap-3 pt-2">
         <Link
-          href="/billing-pricing/contracts"
+          href="/billing-pricing?tab=configuration"
           className="rounded-btn border border-border-medium px-4 py-2 font-body text-body-sm font-semibold text-text-grey hover:bg-surface-background"
         >
           Cancel

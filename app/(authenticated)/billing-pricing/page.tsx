@@ -7,13 +7,15 @@
 //     §2 (typography — font-mono for numeric columns per §9)
 
 import Link from "next/link";
-import { Receipt } from "lucide-react";
+import { BookOpen, FileText, LayoutDashboard, Receipt, Settings } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import {
   getVmiCbmLedgerSummary,
   getVmiDailyBalanceRows,
+  listVmiBillingPeriods,
+  type VmiBillingPeriodRow,
   type VmiCbmLedgerRow,
 } from "@/lib/billing/queries/vmi-ledger";
 import {
@@ -30,12 +32,16 @@ import {
 } from "@/lib/db/queries/vmi-contracts";
 import { listParties } from "@/lib/db/queries/parties";
 import { listItems } from "@/lib/db/queries/items";
+import { listContracts } from "@/lib/actions/contracts";
 import { hasTradingPriceInternalVisibility } from "@/lib/rbac/trading-visibility";
+import { BillingOverviewTab } from "./_components/BillingOverviewTab";
+import { StatementOfAccountTab } from "./_components/StatementOfAccountTab";
+import { ConfigurationTab } from "./_components/ConfigurationTab";
 import { VmiDailyBalanceLedgerTable } from "./_components/VmiDailyBalanceLedgerTable";
-import { VmiContractTermsTable } from "./_components/VmiContractTermsTable";
 import { TradingMarginLedgerTable } from "./_components/TradingMarginLedgerTable";
-import { TradingRateCardsTable } from "./_components/TradingRateCardsTable";
-import { LogisticsRateMatrixTable } from "./_components/LogisticsRateMatrixTable";
+import {
+  resolveBillingSection,
+} from "./_lib/navigation";
 
 const MONTHS = [
   "January",
@@ -54,7 +60,9 @@ const MONTHS = [
 
 interface PageProps {
   searchParams: Promise<{
+    section?: string;
     tab?: string;
+    subtab?: string;
     month?: string;
     year?: string;
     partyId?: string;
@@ -63,7 +71,9 @@ interface PageProps {
 
 export default async function BillingPricingPage({ searchParams }: PageProps) {
   const {
+    section: sectionParam,
     tab: tabParam,
+    subtab: subtabParam,
     month: monthParam,
     year: yearParam,
     partyId: partyIdParam,
@@ -97,16 +107,8 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
     );
   }
 
-  const activeTab =
-    tabParam === "trading"
-      ? "trading"
-      : tabParam === "policies"
-      ? "policies"
-      : tabParam === "vmi-contracts"
-      ? "vmi-contracts"
-      : tabParam === "logistics-rates"
-      ? "logistics-rates"
-      : "vmi";
+  const activeSection = resolveBillingSection(sectionParam, tabParam);
+  const ledgerSubtab = subtabParam === "trading" || tabParam === "trading" ? "trading" : "vmi";
 
   const currentYear = new Date().getFullYear();
   const selectedMonth = monthParam ? parseInt(monthParam, 10) : new Date().getMonth();
@@ -120,43 +122,66 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
     code: p.code,
   }));
   const selectedPartyId = partyIdParam ?? partyOptions[0]?.id ?? "";
+  const selectedSoaPartyId = partyIdParam ?? "";
 
-  // Fetch data for active tab
+  // Fetch data conditionally based on active section
   let vmiSummaryRows: VmiCbmLedgerRow[] = [];
   let vmiSummary: VmiCbmLedgerRow | null = null;
   let vmiDailyRows: Awaited<ReturnType<typeof getVmiDailyBalanceRows>> = [];
-  let vmiContractRows: VmiContractTermsRow[] = [];
   let tradingRows: TradingMarginRow[] = [];
+  let billingPeriods: VmiBillingPeriodRow[] = [];
+  let contracts: Awaited<ReturnType<typeof listContracts>> = [];
+  let vmiContractRows: VmiContractTermsRow[] = [];
   let policyRows: TradingPolicyRow[] = [];
   let itemOptions: { id: string; name: string; code: string }[] = [];
 
-  if (activeTab === "vmi") {
+  if (activeSection === "overview") {
     vmiSummaryRows = await getVmiCbmLedgerSummary(selectedMonth, selectedYear);
-    vmiSummary = vmiSummaryRows.find((s) => s.id === selectedPartyId) ?? vmiSummaryRows[0] ?? null;
-    if (selectedPartyId) {
-      vmiDailyRows = await getVmiDailyBalanceRows(
-        selectedPartyId,
+  } else if (activeSection === "ledger") {
+    if (ledgerSubtab === "vmi") {
+      vmiSummaryRows = await getVmiCbmLedgerSummary(selectedMonth, selectedYear);
+      vmiSummary = vmiSummaryRows.find((s) => s.id === selectedPartyId) ?? vmiSummaryRows[0] ?? null;
+      if (selectedPartyId) {
+        vmiDailyRows = await getVmiDailyBalanceRows(
+          selectedPartyId,
+          selectedMonth,
+          selectedYear,
+        );
+      }
+    } else {
+      tradingRows = await getTradingMarginLedger(
         selectedMonth,
         selectedYear,
+        permResult.context,
       );
     }
-  } else if (activeTab === "vmi-contracts") {
-    vmiContractRows = await listVmiContractTerms(db);
-  } else if (activeTab === "trading") {
-    tradingRows = await getTradingMarginLedger(
-      selectedMonth,
-      selectedYear,
-      permResult.context,
-    );
-  } else if (activeTab === "policies") {
-    const result = await listTradingPolicies(db, { activeOnly: false });
-    policyRows = result.rows;
-    const itemsResult = await listItems(db, { limit: 100 });
-    itemOptions = itemsResult.rows.map((i) => ({
-      id: i.id,
-      name: i.name,
-      code: i.code,
-    }));
+  } else if (activeSection === "soa") {
+    billingPeriods = await listVmiBillingPeriods(selectedSoaPartyId || undefined);
+  } else if (activeSection === "configuration") {
+    // Configuration contains independent datasets. Keep one unavailable or
+    // not-yet-migrated table from taking down the entire Billing workspace.
+    const [contractsResult, vmiResult, policiesResult, itemsResult] =
+      await Promise.allSettled([
+        listContracts(resolver),
+        listVmiContractTerms(db),
+        listTradingPolicies(db, { activeOnly: false }),
+        listItems(db, { limit: 100 }),
+      ]);
+
+    if (contractsResult.status === "fulfilled") {
+      contracts = contractsResult.value;
+    } else {
+      console.warn("Billing configuration: contracts unavailable", contractsResult.reason);
+    }
+    if (vmiResult.status === "fulfilled") vmiContractRows = vmiResult.value;
+    if (policiesResult.status === "fulfilled") policyRows = policiesResult.value.rows;
+    if (itemsResult.status === "fulfilled") {
+      itemOptions = itemsResult.value.rows.map((item) => ({
+        id: item.id,
+        name: item.name,
+        code: item.code,
+      }));
+    }
   }
 
   const canSeeMargin = hasTradingPriceInternalVisibility(permResult.context);
@@ -165,102 +190,90 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
   return (
     <div className="mx-auto max-w-container">
       {/* Page Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
-            Billing &amp; Pricing Hub
-          </h1>
-          <p className="mt-1 font-body text-body-md text-text-grey">
-            Contract-driven pricing rule engine, double-entry billing ledger, VMI daily storage, Trading rate cards, and SOA statements.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <Link
-            href={selectedPartyId ? `/billing-pricing/soa/${selectedPartyId.slice(0, 8)}?partyId=${selectedPartyId}` : "/billing-pricing/soa/sample"}
-            className="inline-flex items-center justify-center rounded-lg border border-border bg-surface px-4 py-2.5 font-body text-body-sm font-bold text-text-primary hover:bg-background shadow-sm transition-colors"
-          >
-            Statement of Account (SOA)
-          </Link>
-          <Link
-            href="/billing-pricing/contracts"
-            className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2.5 font-body text-body-sm font-bold text-white shadow-md hover:bg-primary-hover transition-colors"
-          >
-            Commercial Contracts (14-Tab Rate Cards)
-          </Link>
-        </div>
+      <div className="flex flex-col gap-1">
+        <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
+          Billing &amp; Pricing Hub
+        </h1>
+        <p className="font-body text-body-md text-text-grey">
+          Contract-driven pricing rule engine, double-entry billing ledger, VMI daily storage, and Statement of Account archives.
+        </p>
       </div>
 
-      {/* Primary Navigation Tabs */}
+      {/* Primary Navigation: 4 Core Tabs */}
       <div
         role="tablist"
         aria-label="Billing sections"
         className="mt-6 flex flex-wrap gap-1 border-b border-outline-variant/30"
       >
-        <Link
-          href={`/billing-pricing?tab=vmi${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`}
-          role="tab"
-          aria-selected={activeTab === "vmi"}
-          className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
-            activeTab === "vmi"
-              ? "border-b-2 border-on-surface text-on-surface font-bold"
-              : "text-text-grey hover:text-on-surface"
-          }`}
-        >
-          VMI Storage Ledger
-        </Link>
-        <Link
-          href={`/billing-pricing?tab=trading${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`}
-          role="tab"
-          aria-selected={activeTab === "trading"}
-          className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
-            activeTab === "trading"
-              ? "border-b-2 border-on-surface text-on-surface font-bold"
-              : "text-text-grey hover:text-on-surface"
-          }`}
-        >
-          Trading Margin Ledger
-        </Link>
-        <Link
-          href={`/billing-pricing?tab=logistics-rates${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`}
-          role="tab"
-          aria-selected={activeTab === "logistics-rates"}
-          className={`flex h-11 items-center px-4 font-label text-label transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
-            activeTab === "logistics-rates"
-              ? "border-b-2 border-on-surface text-on-surface font-bold"
-              : "text-text-grey hover:text-on-surface"
-          }`}
-        >
-          Logistics Rate Matrix
-        </Link>
-        <Link
-          href="/billing-pricing/contracts"
-          role="tab"
-          aria-selected={false}
-          className="flex h-11 items-center px-4 font-label text-label text-brand-blue font-bold hover:text-brand-blue-dark transition-colors duration-150"
-        >
-          Commercial Contracts (14-Tab Rate Cards) &rarr;
-        </Link>
-        <Link
-          href={selectedPartyId ? `/billing-pricing/soa/${selectedPartyId.slice(0, 8)}?partyId=${selectedPartyId}` : "/billing-pricing/soa/sample"}
-          role="tab"
-          aria-selected={false}
-          className="flex h-11 items-center px-4 font-label text-label text-text-grey hover:text-on-surface transition-colors duration-150"
-        >
-          Statement of Account (SOA)
-        </Link>
+        {([
+          ["overview", "Overview", `/billing-pricing?tab=overview${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`, LayoutDashboard],
+          ["ledger", "Ledger", `/billing-pricing?tab=ledger${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`, BookOpen],
+          ["soa", "Statement of Account (SOA)", `/billing-pricing?tab=soa${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`, FileText],
+          ["configuration", "Configuration", `/billing-pricing?tab=configuration${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`, Settings],
+        ] as const).map(([section, label, href, Icon]) => (
+          <Link
+            key={section}
+            href={href}
+            role="tab"
+            aria-selected={activeSection === section}
+            className={`flex h-11 items-center gap-2 px-4 font-label text-label transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
+              activeSection === section
+                ? "border-b-2 border-on-surface text-on-surface font-bold"
+                : "text-text-grey hover:text-on-surface"
+            }`}
+          >
+            <Icon size={16} strokeWidth={2.2} aria-hidden="true" />
+            {label}
+          </Link>
+        ))}
       </div>
 
+      {/* Tab 1: Overview */}
+      {activeSection === "overview" && (
+        <div className="mt-6">
+          <BillingOverviewTab
+            summaryRows={vmiSummaryRows}
+            selectedMonthName={MONTHS[selectedMonth]}
+            selectedYear={selectedYear}
+            selectedMonth={selectedMonth}
+          />
+        </div>
+      )}
 
-      {/* Main Content Area */}
-      <div className="mt-5 space-y-5">
-        {/* Controls / Period filters for VMI and Trading */}
-        {(activeTab === "vmi" || activeTab === "trading") && (
-          <form method="GET" className="flex flex-wrap items-end gap-3 rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
-            <input type="hidden" name="tab" value={activeTab} />
-            
-            {activeTab === "vmi" && (
-              <div className="flex flex-col gap-1 min-w-[200px]">
+      {/* Tab 2: Ledger (Storage Ledger & Trading Margin Ledger) */}
+      {activeSection === "ledger" && (
+        <div className="mt-6 space-y-6">
+          {/* Sub-navigation for Ledger */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={`/billing-pricing?tab=ledger&subtab=vmi${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}&month=${selectedMonth}&year=${selectedYear}`}
+              className={`rounded-full px-4 py-1.5 font-label text-body-sm font-semibold transition-colors ${
+                ledgerSubtab === "vmi"
+                  ? "bg-brand-navy text-surface-white"
+                  : "bg-surface-light-grey text-text-grey hover:text-on-surface"
+              }`}
+            >
+              VMI Storage Ledger
+            </Link>
+            <Link
+              href={`/billing-pricing?tab=ledger&subtab=trading${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}&month=${selectedMonth}&year=${selectedYear}`}
+              className={`rounded-full px-4 py-1.5 font-label text-body-sm font-semibold transition-colors ${
+                ledgerSubtab === "trading"
+                  ? "bg-brand-navy text-surface-white"
+                  : "bg-surface-light-grey text-text-grey hover:text-on-surface"
+              }`}
+            >
+              Trading Margin Ledger
+            </Link>
+          </div>
+
+          {/* Period & Customer Filters */}
+          <form method="GET" className="flex flex-wrap items-end gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
+            <input type="hidden" name="tab" value="ledger" />
+            <input type="hidden" name="subtab" value={ledgerSubtab} />
+
+            {ledgerSubtab === "vmi" && (
+              <div className="flex flex-col gap-1 min-w-[220px]">
                 <label htmlFor="partyId" className="font-label text-label font-bold text-text-grey">
                   Organization (Customer)
                 </label>
@@ -268,7 +281,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
                   id="partyId"
                   name="partyId"
                   defaultValue={selectedPartyId}
-                  className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  className="h-11 rounded-lg border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 >
                   {partyOptions.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -287,7 +300,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
                 id="month"
                 name="month"
                 defaultValue={selectedMonth}
-                className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="h-11 rounded-lg border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
               >
                 {MONTHS.map((m, i) => (
                   <option key={m} value={i}>
@@ -305,7 +318,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
                 id="year"
                 name="year"
                 defaultValue={selectedYear}
-                className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="h-11 rounded-lg border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
               >
                 {[selectedYear - 1, selectedYear, selectedYear + 1].map((y) => (
                   <option key={y} value={y}>
@@ -317,98 +330,98 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
 
             <button
               type="submit"
-              className="flex h-11 items-center justify-center rounded bg-brand-navy px-5 font-label text-label font-bold text-surface-white hover:bg-brand-navy/90"
+              className="flex h-11 items-center justify-center rounded-lg bg-brand-navy px-5 font-label text-label font-bold text-surface-white hover:bg-brand-navy/90 transition-colors"
             >
               Filter
             </button>
           </form>
-        )}
 
-        {/* VMI Tab: Read-Only Reference Summary Card & CBM Ledger Table */}
-        {activeTab === "vmi" && (
-          <>
-            <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
-              <h2 className="font-heading font-semibold text-headline-md text-on-surface">
-                {MONTHS[selectedMonth]} {selectedYear} — Summary
-              </h2>
-              <p className="mt-1 font-body text-body-sm text-text-grey">
-                VMI amounts are period averages — reference only, not your final bill.
-                The real VMI invoice is the period average from{" "}
-                <span className="font-mono text-mono-md">vmi_cbm_ledger</span>.
-              </p>
+          {ledgerSubtab === "vmi" ? (
+            <>
+              <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
+                <h2 className="font-heading font-semibold text-headline-md text-on-surface">
+                  {MONTHS[selectedMonth]} {selectedYear} — Storage Summary
+                </h2>
+                <p className="mt-1 font-body text-body-sm text-text-grey">
+                  Storage accrual is summed from the immutable daily balance ledger.
+                </p>
 
-              <div className="mt-4 flex flex-wrap gap-6">
-                <div>
-                  <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    CBM Usage (avg/day)
-                  </p>
-                  <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
-                    {vmiSummaryRows.reduce((s, r) => s + r.avgDailyCbm, 0).toFixed(1)} m³
-                  </p>
-                </div>
-                <div>
-                  <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Parties Billed
-                  </p>
-                  <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
-                    {vmiSummaryRows.length}
-                  </p>
-                </div>
-                <div>
-                  <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                    Projected Billing Total
-                  </p>
-                  <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
-                    ${vmiTotal.toFixed(2)}
-                  </p>
-                  <p className="mt-0.5 font-body text-body-sm text-text-grey">
-                    Reference amount, not your final bill
-                  </p>
+                <div className="mt-4 flex flex-wrap gap-6">
+                  <div>
+                    <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                      CBM Usage (avg/day)
+                    </p>
+                    <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
+                      {vmiSummaryRows.reduce((s, r) => s + r.avgDailyCbm, 0).toFixed(1)} m³
+                    </p>
+                  </div>
+                  <div>
+                    <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                      Parties Billed
+                    </p>
+                    <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
+                      {vmiSummaryRows.length}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                      Storage Accrual Reference
+                    </p>
+                    <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
+                      ${vmiTotal.toFixed(2)}
+                    </p>
+                    <p className="mt-0.5 font-body text-body-sm text-text-grey">
+                      Official total is fixed at period close
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <VmiDailyBalanceLedgerTable
-              summary={vmiSummary}
-              dailyRows={vmiDailyRows}
-              parties={partyOptions}
-              selectedPartyId={selectedPartyId}
-              selectedMonth={selectedMonth}
-              selectedYear={selectedYear}
+              <VmiDailyBalanceLedgerTable
+                summary={vmiSummary}
+                dailyRows={vmiDailyRows}
+                parties={partyOptions}
+                selectedPartyId={selectedPartyId}
+                selectedMonth={selectedMonth}
+                selectedYear={selectedYear}
+              />
+            </>
+          ) : (
+            <TradingMarginLedgerTable
+              rows={tradingRows}
+              hasMarginView={canSeeMargin}
             />
-          </>
-        )}
+          )}
+        </div>
+      )}
 
-        {/* VMI Contract Terms Tab */}
-        {activeTab === "vmi-contracts" && (
-          <VmiContractTermsTable
-            rows={vmiContractRows}
+      {/* Tab 3: SOA (Statement of Account Archives & Close Period) */}
+      {activeSection === "soa" && (
+        <div className="mt-6">
+          <StatementOfAccountTab
+            periods={billingPeriods}
             parties={partyOptions}
+            selectedPartyId={selectedSoaPartyId}
+            selectedMonth={selectedMonth}
+            selectedYear={selectedYear}
           />
-        )}
+        </div>
+      )}
 
-        {/* Trading Margin Ledger Tab */}
-        {activeTab === "trading" && (
-          <TradingMarginLedgerTable
-            rows={tradingRows}
-            hasMarginView={canSeeMargin}
-          />
-        )}
 
-        {/* Trading Rate Cards Tab */}
-        {activeTab === "policies" && (
-          <TradingRateCardsTable
-            rows={policyRows}
+      {/* Tab 4: Configuration (Contract Terms, Trading Rate Cards & Logistics Rate Matrix) */}
+      {activeSection === "configuration" && (
+        <div className="mt-6">
+          <ConfigurationTab
+            contracts={contracts}
+            vmiContractRows={vmiContractRows}
             parties={partyOptions}
+            policyRows={policyRows}
             items={itemOptions}
           />
-        )}
+        </div>
+      )}
 
-        {/* Logistics Rate Matrix Tab */}
-        {activeTab === "logistics-rates" && (
-          <LogisticsRateMatrixTable />
-        )}
-      </div>
     </div>
   );
 }

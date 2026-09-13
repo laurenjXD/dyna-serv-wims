@@ -33,7 +33,6 @@ export function OutgoingLedgerClientTable({
 }: OutgoingLedgerClientTableProps) {
   const [selectedDrNumber, setSelectedDrNumber] = useState<string | null>(null);
   const [selectedReceipt, setSelectedReceipt] = useState<OutgoingLedgerRow | null>(null);
-  const [conformanceFilter, setConformanceFilter] = useState<"all" | "conforming" | "pending_pod">("all");
 
   // Group rows by Delivery Receipt (or Pick List #)
   const drGroups = useMemo(() => {
@@ -60,40 +59,30 @@ export function OutgoingLedgerClientTable({
     return missingDrs.size;
   }, [rows]);
 
-  const conformanceStats = useMemo(() => {
-    const totalDrs = Object.keys(drGroups).length;
-    let conformingDrs = 0;
-    let pendingPodDrs = 0;
+  // Row-level TDC (Total Delivery Conformance) state
+  const [rowConformance, setRowConformance] = useState<Record<string, "conforming" | "qty_mismatch" | "damaged" | "sla_breach" | "pending">>({});
 
-    Object.values(drGroups).forEach((groupRows) => {
-      const isConforming = groupRows.some(
-        (r) => r.deliveryReceiptStatus === "uploaded" || Boolean(r.deliveryReceiptPath)
-      );
-      if (isConforming) {
-        conformingDrs++;
-      } else {
-        pendingPodDrs++;
-      }
-    });
+  // Dynamic conformance stats computed from row status
+  const dynamicConformanceStats = useMemo(() => {
+    let conformingCount = 0;
+    let nonConformingCount = 0;
+    let pendingCount = 0;
 
-    const rate = totalDrs > 0 ? ((conformingDrs / totalDrs) * 100).toFixed(1) : "100.0";
-    return {
-      totalDrs,
-      conformingDrs,
-      pendingPodDrs,
-      rate: Number(rate),
-    };
-  }, [drGroups]);
+    for (const row of rows) {
+      const id = row.pickListId ?? row.transactionId;
+      const status = rowConformance[id] ?? (row.deliveryReceiptPath ? "conforming" : "pending");
+      if (status === "conforming") conformingCount++;
+      else if (status === "pending") pendingCount++;
+      else nonConformingCount++;
+    }
 
-  const filteredRows = useMemo(() => {
-    if (conformanceFilter === "all") return rows;
-    return rows.filter((row) => {
-      const isUploaded = row.deliveryReceiptStatus === "uploaded" || Boolean(row.deliveryReceiptPath);
-      if (conformanceFilter === "conforming") return isUploaded;
-      if (conformanceFilter === "pending_pod") return !isUploaded;
-      return true;
-    });
-  }, [rows, conformanceFilter]);
+    const totalEvaluated = conformingCount + nonConformingCount;
+    const rate = totalEvaluated > 0 ? Math.round((conformingCount / totalEvaluated) * 100) : (conformingCount > 0 ? 100 : 0);
+
+    return { conformingCount, nonConformingCount, pendingCount, rate, total: rows.length };
+  }, [rows, rowConformance]);
+
+  const conformanceStats = dynamicConformanceStats;
 
   const selectedRows = selectedDrNumber ? drGroups[selectedDrNumber] ?? [] : [];
   const activeDrMeta = selectedRows[0];
@@ -163,7 +152,113 @@ export function OutgoingLedgerClientTable({
       },
     },
 
-    // 3. DR Status
+    // 3. Customer Organization
+    {
+      accessorKey: "customerPartyName",
+      header: "Customer Organization",
+      meta: {
+        filterVariant: "text",
+        filterLabel: "Customer",
+      },
+      cell: (info) => (
+        <div className="flex items-center gap-1.5 min-w-0 max-w-[180px]">
+          <Building2 size={13} className="text-slate-400 shrink-0" />
+          <span className="font-medium text-sm text-slate-800 truncate">
+            {String(info.getValue() || "—")}
+          </span>
+        </div>
+      ),
+    },
+
+    // 4. Flow Type
+    {
+      accessorKey: "flowType",
+      header: "Flow",
+      meta: {
+        filterVariant: "multi-select",
+        filterLabel: "Inventory Flow",
+        filterOptions: [
+          { label: "VMI Consignment", value: "vmi" },
+          { label: "Trading Orders", value: "trading" },
+          { label: "Internal Supplies", value: "supplies" },
+        ],
+      },
+      cell: (info) => {
+        const val = String(info.getValue() ?? "trading");
+        const variant =
+          val === "vmi"
+            ? "bg-blue-50 text-brand-navy border-blue-200"
+            : val === "trading"
+            ? "bg-purple-50 text-purple-700 border-purple-200"
+            : "bg-slate-100 text-slate-700 border-slate-200";
+        return (
+          <span className={`inline-flex rounded-full px-2.5 py-0.5 font-mono text-[10px] font-bold uppercase border ${variant}`}>
+            {val}
+          </span>
+        );
+      },
+    },
+
+    // 5. Item Code
+    {
+      accessorKey: "itemCode",
+      header: "Item Code",
+      meta: {
+        filterVariant: "text",
+        filterLabel: "Item Code",
+      },
+      cell: (info) => (
+        <span className="font-mono font-bold text-sm text-brand-navy">{String(info.getValue())}</span>
+      ),
+    },
+
+    // 6. Item Name
+    {
+      accessorKey: "itemName",
+      header: "Item Name",
+      meta: {
+        filterVariant: "text",
+        filterLabel: "Item Name",
+      },
+      cell: (info) => (
+        <div className="max-w-[200px] font-medium text-sm text-slate-800 truncate" title={String(info.getValue())}>
+          {String(info.getValue())}
+        </div>
+      ),
+    },
+
+    // 7. Dispatched Qty
+    {
+      accessorKey: "qty",
+      header: "Dispatched Qty",
+      meta: {
+        filterVariant: "numeric-range",
+        filterLabel: "Qty Range",
+        align: "right",
+      },
+      cell: (info) => (
+        <span className="font-mono font-bold text-sm text-slate-900">
+          {Number(info.getValue()).toLocaleString()}
+        </span>
+      ),
+    },
+
+    // 8. From Location
+    {
+      accessorKey: "fromLocationLabel",
+      header: "From Location",
+      meta: {
+        filterVariant: "text",
+        filterLabel: "Location",
+      },
+      cell: (info) => (
+        <span className="inline-flex rounded bg-slate-100 px-2 py-0.5 font-mono text-xs font-bold text-slate-700 border border-slate-200">
+          {String(info.getValue())}
+        </span>
+      ),
+    },
+
+    // 9. DR Status
     {
       accessorKey: "deliveryReceiptStatus",
       header: "DR Status",
@@ -188,15 +283,22 @@ export function OutgoingLedgerClientTable({
       },
     },
 
-    // 4. Signed POD Document Actions
+    // 10. Proof of Delivery (POD)
     {
-      id: "podDocument",
-      header: "Signed POD",
+      id: "deliveryReceipt",
+      accessorFn: (row) => (row.deliveryReceiptStatus === "uploaded" || row.deliveryReceiptPath ? "uploaded" : "pending"),
+      header: "Proof of Delivery",
       meta: {
-        align: "center",
+        filterVariant: "multi-select",
+        filterLabel: "Proof of Delivery",
+        filterOptions: [
+          { label: "✓ POD uploaded", value: "uploaded" },
+          { label: "⏳ Pending POD", value: "pending" },
+        ],
       },
       cell: (info) => {
         const row = info.row.original;
+
         if (row.deliveryReceiptPath) {
           return (
             <div className="flex items-center gap-1.5">
@@ -204,7 +306,7 @@ export function OutgoingLedgerClientTable({
                 <button
                   type="button"
                   onClick={() => setSelectedReceipt(row)}
-                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-200 bg-surface-white px-2.5 font-label text-xs font-bold text-brand-navy hover:bg-slate-50 transition-colors shadow-sm"
+                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-200 bg-surface-white px-2.5 font-label text-xs font-bold text-brand-navy hover:bg-slate-50 transition-colors shadow-2xs"
                   title="View uploaded delivery receipt document"
                 >
                   <FileText size={12} />
@@ -217,7 +319,7 @@ export function OutgoingLedgerClientTable({
                 <input type="hidden" name="pickListId" value={row.pickListId ?? ""} />
                 <button
                   type="submit"
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 transition-colors"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 transition-colors cursor-pointer"
                   title="Remove uploaded document"
                 >
                   <Trash2 size={13} />
@@ -255,143 +357,64 @@ export function OutgoingLedgerClientTable({
       },
     },
 
-    // 5. Item Code
+    // 11. Delivery Conformance (TDC Selector - Far Right)
     {
-      accessorKey: "itemCode",
-      header: "Item Code",
-      meta: {
-        filterVariant: "text",
-        filterLabel: "Item Code",
+      id: "deliveryConformance",
+      accessorFn: (row) => {
+        const rowId = row.pickListId ?? row.transactionId;
+        return rowConformance[rowId] ?? (row.deliveryReceiptPath ? "conforming" : "pending");
       },
-      cell: (info) => (
-        <span className="font-mono font-bold text-sm text-brand-navy">{String(info.getValue())}</span>
-      ),
-    },
-
-    // 6. Item Name
-    {
-      accessorKey: "itemName",
-      header: "Item Name",
+      header: "Delivery Conformance (TDC)",
       meta: {
-        filterVariant: "text",
-        filterLabel: "Item Name",
+        filterVariant: "multi-select",
+        filterLabel: "Conformance (TDC)",
+        filterOptions: [
+          { label: "✓ Conforming", value: "conforming" },
+          { label: "⚠ Qty Mismatch", value: "qty_mismatch" },
+          { label: "❌ Damaged / QC", value: "damaged" },
+          { label: "⏰ Late / SLA", value: "sla_breach" },
+          { label: "⏳ Pending POD", value: "pending" },
+        ],
       },
-      cell: (info) => (
-        <div className="max-w-[200px] font-medium text-sm text-slate-800 truncate" title={String(info.getValue())}>
-          {String(info.getValue())}
-        </div>
-      ),
-    },
-
-    // 7. Lot Number
-    {
-      accessorKey: "lotNumber",
-      header: "Lot Number",
-      meta: {
-        filterVariant: "text",
-        filterLabel: "Lot Number",
-      },
-      cell: (info) => (
-        <span className="font-mono text-sm text-slate-700 font-semibold">{String(info.getValue())}</span>
-      ),
-    },
-
-    // 8. Dispatched Qty
-    {
-      accessorKey: "qty",
-      header: "Dispatched Qty",
-      meta: {
-        filterVariant: "numeric-range",
-        filterLabel: "Qty Range",
-        align: "right",
-      },
-      cell: (info) => (
-        <span className="font-mono font-bold text-sm text-slate-900">
-          {Number(info.getValue()).toLocaleString()}
-        </span>
-      ),
-    },
-
-    // 9. From Location
-    {
-      accessorKey: "fromLocationLabel",
-      header: "From Location",
-      meta: {
-        filterVariant: "text",
-        filterLabel: "Location",
-      },
-      cell: (info) => (
-        <span className="inline-flex rounded bg-slate-100 px-2 py-0.5 font-mono text-xs font-bold text-slate-700 border border-slate-200">
-          {String(info.getValue())}
-        </span>
-      ),
-    },
-
-    // 10. Pick List #
-    {
-      accessorKey: "pickListNumber",
-      header: "Pick List #",
-      meta: {
-        filterVariant: "text",
-        filterLabel: "Pick List #",
-      },
-      cell: (info) => {
-        const val = String(info.getValue() || "—");
-        const row = info.row.original;
-        if (!row.pickListId) return <span className="font-mono text-sm text-text-grey">{val}</span>;
+      cell: ({ row }) => {
+        const pickListId = row.original.pickListId ?? row.original.transactionId;
+        const currentStatus = rowConformance[pickListId] ?? (row.original.deliveryReceiptPath ? "conforming" : "pending");
         return (
-          <Link
-            href={`/pick-lists/${row.pickListId}/dispatch`}
-            className="font-mono text-sm font-bold text-brand-navy hover:underline"
+          <select
+            value={currentStatus}
+            onChange={(e) => {
+              const val = e.target.value as "conforming" | "qty_mismatch" | "damaged" | "sla_breach" | "pending";
+              setRowConformance((prev) => ({ ...prev, [pickListId]: val }));
+            }}
+            aria-label={`Delivery conformance status for ${row.original.pickListNumber || row.original.itemCode}`}
+            className={`h-7 rounded-lg px-2 py-0 font-mono text-[11px] font-bold border transition-colors cursor-pointer min-w-[140px] ${
+              currentStatus === "conforming"
+                ? "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100/70"
+                : currentStatus === "qty_mismatch"
+                ? "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100/70"
+                : currentStatus === "damaged"
+                ? "bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100/70"
+                : currentStatus === "sla_breach"
+                ? "bg-purple-50 text-purple-800 border-purple-200 hover:bg-purple-100/70"
+                : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+            }`}
           >
-            {val}
-          </Link>
+            <option value="conforming">✓ Conforming</option>
+            <option value="qty_mismatch">⚠ Qty Mismatch</option>
+            <option value="damaged">❌ Damaged / QC</option>
+            <option value="sla_breach">⏰ Late / SLA</option>
+            <option value="pending">⏳ Pending POD</option>
+          </select>
         );
       },
     },
-
-    // 11. Customer Organization
-    {
-      accessorKey: "customerPartyName",
-      header: "Customer Organization",
-      meta: {
-        filterVariant: "text",
-        filterLabel: "Customer",
-      },
-      cell: (info) => (
-        <div className="flex items-center gap-1.5 min-w-0 max-w-[180px]">
-          <Building2 size={13} className="text-slate-400 shrink-0" />
-          <span className="font-medium text-sm text-slate-800 truncate">
-            {String(info.getValue() || "—")}
-          </span>
-        </div>
-      ),
-    },
-
-    // 12. Performed By
-    {
-      accessorKey: "performedByDisplayName",
-      header: "Dispatched By",
-      meta: {
-        filterVariant: "text",
-        filterLabel: "Dispatched By",
-      },
-      cell: (info) => {
-        const row = info.row.original;
-        return (
-          <span className="text-xs text-text-grey truncate max-w-[140px]" title={row.performedByUserId}>
-            {String(info.getValue() || row.performedByUserId)}
-          </span>
-        );
-      },
-    },
-  ], [drGroups, removeDeliveryReceiptAction, uploadDeliveryReceiptAction]);
+  ], [rowConformance, removeDeliveryReceiptAction, uploadDeliveryReceiptAction, drGroups]);
 
   return (
     <div className="space-y-4">
       {/* ── KPI Summary Cards ──────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-4 shadow-sm flex flex-col justify-between">
+        <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-4 shadow-xs flex flex-col justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-brand-navy border border-blue-200 shrink-0">
               <Package size={20} />
@@ -410,7 +433,7 @@ export function OutgoingLedgerClientTable({
           </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-4 shadow-sm flex flex-col justify-between">
+        <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-4 shadow-xs flex flex-col justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-700 border border-slate-200 shrink-0">
               <Layers size={20} />
@@ -429,7 +452,7 @@ export function OutgoingLedgerClientTable({
           </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-4 shadow-sm flex flex-col justify-between">
+        <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-4 shadow-xs flex flex-col justify-between">
           <div className="flex items-center gap-3">
             <div className={`flex h-10 w-10 items-center justify-center rounded-xl border shrink-0 ${
               missingDrCount > 0
@@ -452,48 +475,43 @@ export function OutgoingLedgerClientTable({
           </p>
         </div>
 
-        {/* 4. Delivery Conformance KPI & Filter Dropdown */}
-        <div className="rounded-2xl border border-blue-200/80 bg-gradient-to-br from-blue-50/50 via-surface-white to-surface-white p-4 shadow-sm flex flex-col justify-between">
+        {/* 4. Delivery Conformance KPI Summary */}
+        <div className="rounded-2xl border border-blue-200/80 bg-gradient-to-br from-blue-50/50 via-surface-white to-surface-white p-4 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between gap-2">
               <p className="font-label text-[11px] font-bold uppercase tracking-wider text-brand-navy">
-                Delivery Conformance KPI
+                Delivery Conformance &amp; OTIF
               </p>
-              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold font-mono ${
-                conformanceStats.rate >= 98
-                  ? "bg-emerald-100 text-emerald-800"
-                  : conformanceStats.rate >= 90
-                  ? "bg-amber-100 text-amber-800"
-                  : "bg-rose-100 text-rose-800"
+              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold font-mono ${
+                dynamicConformanceStats.rate >= 90
+                  ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                  : dynamicConformanceStats.rate >= 75
+                  ? "bg-amber-100 text-amber-800 border border-amber-200"
+                  : "bg-rose-100 text-rose-800 border border-rose-200"
               }`}>
-                {conformanceStats.rate}%
+                {dynamicConformanceStats.rate}%
               </span>
             </div>
 
-            <div className="mt-2">
-              <label htmlFor="conformance-filter" className="sr-only">
-                Filter Ledger by Delivery Conformance
-              </label>
-              <select
-                id="conformance-filter"
-                value={conformanceFilter}
-                onChange={(e) => setConformanceFilter(e.target.value as "all" | "conforming" | "pending_pod")}
-                className="w-full rounded-lg border border-blue-200 bg-white px-2.5 py-1.5 font-label text-xs font-bold text-brand-navy shadow-xs hover:border-blue-300 focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy transition-colors"
-                aria-label="Filter Outgoing Ledger by Delivery Conformance"
-              >
-                <option value="all">All Dispatches ({rows.length} rows / {conformanceStats.totalDrs} DRs)</option>
-                <option value="conforming">✓ Conforming — Signed DR Attached ({conformanceStats.conformingDrs} DRs)</option>
-                <option value="pending_pod">⚠ Pending POD / Missing DR ({conformanceStats.pendingPodDrs} DRs)</option>
-              </select>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="font-mono text-2xl font-black text-brand-navy">
+                {dynamicConformanceStats.conformingCount} / {dynamicConformanceStats.conformingCount + dynamicConformanceStats.nonConformingCount}
+              </span>
+              <span className="text-xs font-body text-text-grey">
+                conforming dispatches
+              </span>
             </div>
           </div>
 
           <div className="mt-2.5 pt-2 border-t border-blue-100/80 flex items-center justify-between">
+            <span className="text-[11px] font-body text-text-grey">
+              {dynamicConformanceStats.pendingCount} pending verification
+            </span>
             <Link
               href="/reports#conformance"
               className="inline-flex items-center gap-1 font-label text-[11px] font-bold text-brand-navy hover:text-blue-700 hover:underline transition-colors"
             >
-              <span>View Conformance Trend Graph</span>
+              <span>View Trend</span>
               <ExternalLink size={11} />
             </Link>
           </div>
@@ -503,16 +521,12 @@ export function OutgoingLedgerClientTable({
       {/* ── TanStack DataTable ─────────────────────────────────────────── */}
       <DataTable
         columns={columns}
-        data={filteredRows}
+        data={rows}
         title="Outgoing Dispatch Ledger"
         subtitle="Immutable transaction audit log of released shipments with multi-field filtering, date ranges, and POD proof-of-delivery tracking."
         icon={<FileSpreadsheet size={18} />}
         initialSorting={[{ id: "createdAt", desc: true }]}
-        emptyMessage={
-          conformanceFilter !== "all"
-            ? `No outgoing transactions match the "${conformanceFilter === "conforming" ? "Conforming" : "Pending POD"}" filter.`
-            : "No outgoing transactions recorded."
-        }
+        emptyMessage="No outgoing transactions match the selected filters."
       />
 
       {/* ── PDF / Image Receipt Viewer Modal ───────────────────────────── */}

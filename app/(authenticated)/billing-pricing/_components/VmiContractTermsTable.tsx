@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import Link from "next/link";
 import {
   Plus,
   FileText,
@@ -112,7 +113,7 @@ export function VmiContractTermsTable({ rows, parties }: Props) {
         <div>
           <h2 className="font-heading text-title-md font-bold text-on-surface flex items-center gap-2">
             <FileText size={20} className="text-brand-navy" />
-            VMI Contract Terms (vmi_contract_terms)
+            Commercial Storage &amp; Handling Contract Terms
           </h2>
           <p className="mt-1 font-body text-body-sm text-text-grey">
             Configured storage rates ($/CBM/day), handling IN/OUT rates, doc fees, and billing currency per VMI Organization.
@@ -124,7 +125,7 @@ export function VmiContractTermsTable({ rows, parties }: Props) {
           className="inline-flex h-11 items-center gap-2 rounded bg-primary px-4 font-label text-label font-bold text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy"
         >
           <Plus size={18} />
-          Configure VMI Contract
+          Manage Contracts &amp; Rate Cards
         </button>
       </div>
 
@@ -298,6 +299,7 @@ export function VmiContractTermsTable({ rows, parties }: Props) {
                         {renderSortIcon("effectiveFrom")}
                       </button>
                     </th>
+                    <th className="px-4 py-3 font-label text-label uppercase tracking-wider text-text-grey">Configuration</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/30">
@@ -335,6 +337,23 @@ export function VmiContractTermsTable({ rows, parties }: Props) {
                       <td className="px-4 py-3 font-mono text-mono-md text-text-grey">
                         {new Date(row.effectiveFrom).toLocaleDateString()}
                         {row.effectiveTo ? ` — ${new Date(row.effectiveTo).toLocaleDateString()}` : " — Present"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/billing-pricing/contracts/${row.partyId}`}
+                            className="font-label text-label font-bold text-brand-navy hover:underline"
+                          >
+                            Master Sheet
+                          </Link>
+                          <span className="text-outline-variant/40">|</span>
+                          <Link
+                            href={`/billing-pricing/vmi/permits/${row.partyId}`}
+                            className="font-label text-label font-bold text-brand-blue hover:underline"
+                          >
+                            Permits &amp; LOA
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   ))}

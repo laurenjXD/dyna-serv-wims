@@ -125,28 +125,29 @@ export function ReportArchiveTable({
         cell: ({ row }) => {
           const item = row.original;
           return (
-            <div className="flex items-center justify-center gap-1.5">
+            <div className="flex items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={() => onPreviewReport(item)}
-                title="Preview Report"
-                className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-slate-100 transition-colors"
+                title="Preview PDF"
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 font-label text-label font-bold text-brand-navy hover:bg-background transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
               >
                 <ExternalLink size={14} />
+                <span>View</span>
               </button>
               <button
                 type="button"
                 onClick={() => onShareReport(item)}
-                title="Share Report"
-                className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-slate-100 transition-colors"
+                title="Share Link"
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-outline-variant/40 bg-surface-white px-2.5 font-label text-label font-bold text-text-grey hover:text-on-surface hover:bg-surface-light-grey transition-colors focus:outline-none"
               >
                 <Share2 size={14} />
               </button>
               <button
                 type="button"
                 onClick={() => onDownloadReport(item)}
-                title="Download Report"
-                className="p-1.5 rounded-lg text-primary hover:bg-blue-50 transition-colors"
+                title="Download Document"
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-brand-navy px-3 font-label text-label font-bold text-surface-white hover:bg-brand-navy/90 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
               >
                 <Download size={14} />
               </button>

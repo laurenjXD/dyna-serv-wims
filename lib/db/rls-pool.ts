@@ -31,7 +31,11 @@ import * as schema from "./schema";
 // This pool is used exclusively by protected writes, so accepting only the
 // latter made every party/item creation fail in the deployed environment
 // even though server-rendered reads could connect successfully.
-const connectionString = process.env.DATABASE_URL ?? process.env.POSTGRES_URL ?? "";
+const connectionString =
+  process.env.DATABASE_URL_RUNTIME ??
+  process.env.DATABASE_URL ??
+  process.env.POSTGRES_URL ??
+  "";
 
 // `prepare: false` matches lib/db/client.ts's existing rationale: required
 // for Supabase's connection pooler (pgbouncer, transaction mode).

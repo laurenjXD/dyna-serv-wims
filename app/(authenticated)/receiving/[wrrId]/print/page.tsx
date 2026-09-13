@@ -80,7 +80,7 @@ export default async function WrrPrintPage({ params }: PageProps) {
         dangerouslySetInnerHTML={{
           __html: `
             @media print {
-              aside, header, nav[aria-label="Breadcrumb"], .print-hide {
+              [data-testid="desktop-sidebar"], [data-testid="floor-tab-bar"], nav[aria-label="Breadcrumb"], .print-hide {
                 display: none !important;
               }
               body {
@@ -148,7 +148,7 @@ export default async function WrrPrintPage({ params }: PageProps) {
             <div className="flex items-start justify-between gap-4">
               <div>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/logo.svg" alt="Dyna-Serv" className="mb-2 h-10 w-auto" />
+                <img src="/api/brand/logo" alt="Dyna-Serv" className="mb-2 h-10 w-auto" />
                 <h1 className="font-heading font-extrabold text-headline-lg text-on-surface">
                   Dyna-Serv WIMS
                 </h1>

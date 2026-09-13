@@ -61,13 +61,13 @@ export function DocumentsFilterBar({
   );
 
   return (
-    <div className="mb-6 space-y-3 rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
-      <div className="flex flex-wrap items-center gap-3">
+    <div className="mb-4 space-y-2.5 rounded-xl border border-slate-200/80 bg-surface-white p-3 shadow-2xs">
+      <div className="flex flex-wrap items-center gap-2">
         {/* Search input */}
-        <div className="relative min-w-[240px] flex-1">
+        <div className="relative min-w-[200px] flex-1">
           <Search
-            size={18}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-text-grey"
+            size={15}
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-grey"
             aria-hidden="true"
           />
           <input
@@ -75,31 +75,31 @@ export function DocumentsFilterBar({
             placeholder="Search document #, reference, lot, organization..."
             value={currentSearch}
             onChange={(e) => updateParam("q", e.target.value)}
-            className="h-11 w-full rounded-xl border border-outline-variant/40 bg-surface-white pl-10 pr-9 font-body text-body-md text-on-surface placeholder:text-text-grey/60 focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
+            className="h-8 w-full rounded-lg border border-slate-200 bg-surface-white pl-8 pr-7 font-body text-xs text-on-surface placeholder:text-text-grey/60 focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
           />
           {currentSearch && (
             <button
               type="button"
               onClick={() => updateParam("q", null)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-grey hover:text-on-surface"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-text-grey hover:text-on-surface"
               aria-label="Clear search"
             >
-              <X size={16} />
+              <X size={13} />
             </button>
           )}
         </div>
 
         {/* Organization dropdown */}
-        <div className="relative min-w-[200px]">
+        <div className="relative min-w-[160px] max-w-[220px]">
           <Building2
-            size={18}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-grey"
+            size={15}
+            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-text-grey"
             aria-hidden="true"
           />
           <select
             value={currentParty}
             onChange={(e) => updateParam("partyId", e.target.value)}
-            className="h-11 w-full appearance-none rounded-xl border border-outline-variant/40 bg-surface-white pl-10 pr-8 font-body text-body-md text-on-surface focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
+            className="h-8 w-full appearance-none rounded-lg border border-slate-200 bg-surface-white pl-8 pr-7 font-body text-xs text-on-surface focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy truncate"
           >
             <option value="">All Organizations</option>
             {organizations.map((org) => (
@@ -110,36 +110,37 @@ export function DocumentsFilterBar({
           </select>
         </div>
 
-        {/* Date From */}
-        <div className="relative min-w-[150px]">
-          <Calendar
-            size={16}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-grey"
-            aria-hidden="true"
-          />
-          <input
-            type="date"
-            value={currentFrom}
-            onChange={(e) => updateParam("from", e.target.value)}
-            className="h-11 w-full rounded-xl border border-outline-variant/40 bg-surface-white pl-9 pr-3 font-body text-body-md text-on-surface focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
-            aria-label="Filter from date"
-          />
-        </div>
-
-        {/* Date To */}
-        <div className="relative min-w-[150px]">
-          <Calendar
-            size={16}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-grey"
-            aria-hidden="true"
-          />
-          <input
-            type="date"
-            value={currentTo}
-            onChange={(e) => updateParam("to", e.target.value)}
-            className="h-11 w-full rounded-xl border border-outline-variant/40 bg-surface-white pl-9 pr-3 font-body text-body-md text-on-surface focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
-            aria-label="Filter to date"
-          />
+        {/* Date Range Inputs */}
+        <div className="flex items-center gap-1.5">
+          <div className="relative w-[130px]">
+            <Calendar
+              size={13}
+              className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-text-grey"
+              aria-hidden="true"
+            />
+            <input
+              type="date"
+              value={currentFrom}
+              onChange={(e) => updateParam("from", e.target.value)}
+              className="h-8 w-full rounded-lg border border-slate-200 bg-surface-white pl-6 pr-2 font-mono text-[11px] text-on-surface focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
+              aria-label="Filter from date"
+            />
+          </div>
+          <span className="text-xs text-text-grey font-mono">-</span>
+          <div className="relative w-[130px]">
+            <Calendar
+              size={13}
+              className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-text-grey"
+              aria-hidden="true"
+            />
+            <input
+              type="date"
+              value={currentTo}
+              onChange={(e) => updateParam("to", e.target.value)}
+              className="h-8 w-full rounded-lg border border-slate-200 bg-surface-white pl-6 pr-2 font-mono text-[11px] text-on-surface focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
+              aria-label="Filter to date"
+            />
+          </div>
         </div>
 
         {/* Clear Filters CTA */}
@@ -147,27 +148,27 @@ export function DocumentsFilterBar({
           <button
             type="button"
             onClick={clearAllFilters}
-            className="inline-flex h-11 items-center gap-1.5 rounded-xl border border-outline-variant/40 px-3 font-label text-label text-text-grey hover:bg-surface-light-grey hover:text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-200 px-2.5 font-label text-xs text-text-grey hover:bg-slate-50 hover:text-on-surface focus:outline-none focus:ring-1 focus:ring-brand-navy cursor-pointer transition-colors"
           >
-            <X size={16} />
-            Reset Filters
+            <X size={13} />
+            Reset
           </button>
         )}
       </div>
 
       {/* Status filter pills */}
       {statusOptions.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 pt-1">
-          <span className="mr-1 inline-flex items-center gap-1 font-label text-label uppercase tracking-wider text-text-grey">
-            <Filter size={14} /> Status:
+        <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-slate-100">
+          <span className="mr-1 inline-flex items-center gap-1 font-label text-[10px] font-bold uppercase tracking-wider text-text-grey">
+            <Filter size={11} /> STATUS:
           </span>
           <button
             type="button"
             onClick={() => updateParam("status", null)}
-            className={`h-8 rounded-full px-3 font-label text-label transition-colors ${
+            className={`h-6 rounded-full px-2.5 font-label text-[11px] transition-colors cursor-pointer ${
               !currentStatus
-                ? "bg-on-surface text-surface-white font-bold"
-                : "border border-outline-variant/40 bg-surface-white text-text-grey hover:bg-surface-light-grey"
+                ? "bg-slate-900 text-surface-white font-bold"
+                : "border border-slate-200 bg-surface-white text-text-grey hover:bg-slate-50"
             }`}
           >
             All
@@ -179,10 +180,10 @@ export function DocumentsFilterBar({
                 key={opt.value}
                 type="button"
                 onClick={() => updateParam("status", isSelected ? null : opt.value)}
-                className={`h-8 rounded-full px-3 font-label text-label transition-colors ${
+                className={`h-6 rounded-full px-2.5 font-label text-[11px] transition-colors cursor-pointer ${
                   isSelected
                     ? "bg-brand-navy text-surface-white font-bold"
-                    : "border border-outline-variant/40 bg-surface-white text-text-grey hover:bg-surface-light-grey"
+                    : "border border-slate-200 bg-surface-white text-text-grey hover:bg-slate-50"
                 }`}
               >
                 {opt.label}

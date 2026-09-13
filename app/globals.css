@@ -199,10 +199,8 @@ html:not([data-theme="dark"]) .inspection-page [class~="bg-white/15"] {
  * are completely omitted from browser printouts and generated PDFs.
  */
 @media print {
-  header,
-  nav,
-  aside,
-  [role="navigation"],
+  [data-testid="desktop-sidebar"],
+  [data-testid="floor-tab-bar"],
   [role="status"],
   .no-print,
   .print-hidden,
@@ -249,4 +247,3 @@ html:not([data-theme="dark"]) .inspection-page [class~="bg-white/15"] {
     display: table-header-group !important;
   }
 }
-
