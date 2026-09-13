@@ -11,7 +11,8 @@ import {
   vmiConfigurations,
 } from "@/lib/db/schema/contracts";
 import { parties } from "@/lib/db/schema/parties";
-import { vmiContractTerms, vmiPermits } from "@/lib/db/schema/vmi_billing";
+import { vmiContractTerms, vmiPermits, vmiRecurringFeeLines } from "@/lib/db/schema/vmi_billing";
+import { listTradingPolicies, type TradingPolicyRow } from "@/lib/db/queries/trading-policies";
 import { eq, desc, or, and, isNull } from "drizzle-orm";
 import { requirePermission } from "@/lib/rbac/guard";
 import { createPageResolver } from "@/lib/auth/page-resolver";
@@ -41,6 +42,11 @@ export interface CreateContractInput {
   minStock?: number;
   maxStock?: number;
   reorderPoint?: number;
+
+  // Existing recurring fees (specs/12-vmi-billing)
+  suretyBondMonthlyFee?: number;
+  truckingAdminFee?: number;
+  manpowerRatePerHour?: number;
 
   // Optional Trading Pricing Policies
   supplierCost?: number;
@@ -131,6 +137,38 @@ export async function createContract(
           monthlyFeeUsd: String(input.loaMonthlyRate),
         });
       }
+
+      // Existing recurring fee lines (specs/12-vmi-billing)
+      if (input.suretyBondMonthlyFee && input.suretyBondMonthlyFee > 0) {
+        await db.insert(vmiRecurringFeeLines).values({
+          partyId: input.partyId,
+          feeType: "surety_bond",
+          label: "Customs Surety Bond",
+          flatAmountUsd: String(input.suretyBondMonthlyFee),
+          isActive: true,
+        });
+      }
+
+      if (input.truckingAdminFee && input.truckingAdminFee > 0) {
+        await db.insert(vmiRecurringFeeLines).values({
+          partyId: input.partyId,
+          feeType: "trucking_admin_fee",
+          label: "Trucking Administrative Fee",
+          flatAmountUsd: String(input.truckingAdminFee),
+          isActive: true,
+        });
+      }
+
+      if (input.manpowerRatePerHour && input.manpowerRatePerHour > 0) {
+        await db.insert(vmiRecurringFeeLines).values({
+          partyId: input.partyId,
+          feeType: "manpower",
+          label: "Dedicated Warehouse Manpower",
+          manpowerRatePerHour: String(input.manpowerRatePerHour),
+          manpowerCurrency: "PHP",
+          isActive: true,
+        });
+      }
     } catch (vmiErr) {
       console.warn("Direct VMI terms write note:", vmiErr);
     }
@@ -216,6 +254,48 @@ export async function createContract(
           rate: String(input.handlingOutRatePerCbm),
           currency: input.currency ?? "USD",
           priority: 10,
+          createdByUserId: userId,
+        });
+      }
+
+      if (input.suretyBondMonthlyFee && input.suretyBondMonthlyFee > 0) {
+        await db.insert(pricingRules).values({
+          contractVersionId: version.id,
+          chargeName: "Customs Surety Bond",
+          chargeCode: "MSC-SURETY-BOND",
+          chargeCategory: "other",
+          billingBasis: "flat",
+          rate: String(input.suretyBondMonthlyFee),
+          currency: input.currency ?? "USD",
+          priority: 5,
+          createdByUserId: userId,
+        });
+      }
+
+      if (input.truckingAdminFee && input.truckingAdminFee > 0) {
+        await db.insert(pricingRules).values({
+          contractVersionId: version.id,
+          chargeName: "Trucking Administrative Fee",
+          chargeCode: "MSC-TRK-ADMIN",
+          chargeCategory: "delivery",
+          billingBasis: "flat",
+          rate: String(input.truckingAdminFee),
+          currency: input.currency ?? "USD",
+          priority: 5,
+          createdByUserId: userId,
+        });
+      }
+
+      if (input.manpowerRatePerHour && input.manpowerRatePerHour > 0) {
+        await db.insert(pricingRules).values({
+          contractVersionId: version.id,
+          chargeName: "Warehouse Manpower / Overtime",
+          chargeCode: "MSC-MANPOWER-HR",
+          chargeCategory: "manpower",
+          billingBasis: "hour",
+          rate: String(input.manpowerRatePerHour),
+          currency: "PHP",
+          priority: 5,
           createdByUserId: userId,
         });
       }
@@ -484,6 +564,14 @@ export async function getContractDetail(
         console.warn("Permit lookup note:", permitErr);
       }
 
+      let tradingPoliciesList: TradingPolicyRow[] = [];
+      try {
+        const { rows } = await listTradingPolicies(db, { partyId: contract.partyId, activeOnly: false });
+        tradingPoliciesList = rows;
+      } catch (tpErr) {
+        console.warn("Trading policies lookup note:", tpErr);
+      }
+
       return {
         contract,
         versions,
@@ -491,6 +579,7 @@ export async function getContractDetail(
         rules,
         vmiConfig,
         permit,
+        tradingPolicies: tradingPoliciesList,
       };
     }
   } catch (contractErr) {
@@ -704,6 +793,7 @@ export async function getContractDetail(
           createdAt: terms.createdAt,
         },
         permit,
+        tradingPolicies: [],
       };
     }
   } catch (termsErr) {
@@ -860,6 +950,7 @@ export async function getContractDetail(
           createdAt: party.createdAt,
         },
         permit,
+        tradingPolicies: [],
       };
     }
   } catch (partyErr) {
