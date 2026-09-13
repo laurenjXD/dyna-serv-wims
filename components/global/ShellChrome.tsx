@@ -378,34 +378,37 @@ export function ShellChrome({ children }: { children: ReactNode }) {
         </div>
 
         <div className="hidden min-w-0 flex-1 items-center gap-5 lg:flex">
-          <Link
-            href="/"
-            aria-label="Dyna-Serv WIMS home"
-            className="flex shrink-0 items-center gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          <div
+            className={`-ml-4 box-border flex h-[76px] shrink-0 items-center bg-gradient-to-b from-[#0e549e] via-[#0b4d94] to-[#083c77] px-4 shadow-[4px_0_18px_rgba(11,77,148,0.18)] transition-[width,padding,gap] duration-300 ease-out ${isDesktopOpen ? "w-[304px] gap-3" : "w-[88px] justify-center gap-2"}`}
+            data-testid="brand-zone"
           >
-            <span className="flex h-11 w-11 items-center justify-center rounded-full border border-[#72b7ff]/70 bg-gradient-to-br from-[#0e549e] via-[#0b4d94] to-[#083c77] shadow-[0_8px_20px_-8px_rgba(11,77,148,0.7)] ring-4 ring-[#0b4d94]/10 transition-[box-shadow,transform] duration-300 hover:-translate-y-0.5 hover:shadow-[0_11px_24px_-8px_rgba(11,77,148,0.85)]"
-              data-testid="brand-logo"
+            <Link
+              href="/"
+              aria-label="Dyna-Serv WIMS home"
+              className="flex min-w-0 shrink-0 items-center gap-3 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
-              <Image src="/logo-hd.png" alt="" width={36} height={36} priority />
-            </span>
-            {isDesktopOpen && (
-              <span className="font-heading text-title-lg font-bold tracking-tight text-text-primary">
-                Dyna-Serv WIMS
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/80 bg-white shadow-[0_6px_16px_rgba(0,0,0,0.22)] transition-[box-shadow,transform] duration-300 hover:-translate-y-0.5 hover:shadow-[0_9px_20px_rgba(0,0,0,0.28)]" data-testid="brand-logo">
+                <Image src="/logo-hd.png" alt="" width={36} height={36} priority />
               </span>
+              {isDesktopOpen && (
+                <span className="truncate font-heading text-title-lg font-bold tracking-tight text-white">
+                  Dyna-Serv WIMS
+                </span>
+              )}
+            </Link>
+            {tier !== "floor" && (
+              <button
+                type="button"
+                aria-label={isDesktopOpen ? "Collapse navigation" : "Expand navigation"}
+                aria-expanded={isDesktopOpen}
+                onClick={toggleDesktop}
+                title={isDesktopOpen ? "Collapse sidebar to icons" : "Expand sidebar"}
+                className={`hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/35 bg-white/10 text-white shadow-sm transition-all hover:-translate-y-0.5 hover:border-white/60 hover:bg-white/20 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-white lg:flex ${isDesktopOpen ? "" : "translate-x-1"}`}
+              >
+                {isDesktopOpen ? <PanelLeftClose size={22} strokeWidth={2.2} aria-hidden="true" /> : <PanelLeftOpen size={22} strokeWidth={2.2} aria-hidden="true" />}
+              </button>
             )}
-          </Link>
-          {tier !== "floor" && (
-            <button
-              type="button"
-              aria-label={isDesktopOpen ? "Collapse navigation" : "Expand navigation"}
-              aria-expanded={isDesktopOpen}
-              onClick={toggleDesktop}
-              title={isDesktopOpen ? "Collapse sidebar to icons" : "Expand sidebar"}
-              className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-primary/[0.04] text-text-secondary shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/10 hover:text-primary hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:flex"
-            >
-              {isDesktopOpen ? <PanelLeftClose size={22} strokeWidth={2.2} aria-hidden="true" /> : <PanelLeftOpen size={22} strokeWidth={2.2} aria-hidden="true" />}
-            </button>
-          )}
+          </div>
           <span aria-hidden="true" className="h-8 w-px bg-primary/15" />
           <div className="min-w-0 shrink-0">
             <p
