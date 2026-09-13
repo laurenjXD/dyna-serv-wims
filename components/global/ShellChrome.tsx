@@ -700,7 +700,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
         id="main-content"
         data-surface={tier}
         className={`min-w-0 max-w-full min-h-screen pt-14 transition-[padding-left] duration-200 motion-reduce:transition-none lg:pt-[76px] print:!min-h-0 print:!p-0 print:!m-0 ${
-          isDesktopOpen ? "lg:pl-[286px]" : "lg:pl-[72px]"
+          isDesktopOpen ? "lg:pl-[286px]" : "lg:pl-[76px]"
         } ${showFloorTabBar ? "pb-20" : "lg:pb-6"} ${
           tier === "floor" ? "bg-surface" : "bg-background"
         }`}

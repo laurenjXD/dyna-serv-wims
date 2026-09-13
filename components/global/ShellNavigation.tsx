@@ -231,14 +231,14 @@ function NavLink({
         onClick={onNavigate}
         title={`${label}${shortcutNumber ? ` (${shortcutLabel(shortcutNumber - 1)})` : ""}`}
         data-active={isActive ? "true" : "false"}
-        className={`group relative flex h-11 w-11 items-center justify-center rounded-xl mx-auto
+        className={`group relative mx-auto flex h-11 w-12 items-center justify-center rounded-xl
           motion-safe:transition-all motion-safe:duration-150
           focus:outline-none focus-visible:ring-2 focus-visible:ring-primary
           ${isActive
-            ? "bg-primary text-surface shadow-[0_8px_20px_-9px_rgba(37,99,235,0.8)] ring-4 ring-primary/10"
+            ? "scale-110 text-primary drop-shadow-[0_4px_7px_rgba(37,99,235,0.28)]"
             : "text-text-secondary hover:-translate-y-0.5 hover:bg-primary/[0.07] hover:text-primary"}`}
       >
-        <Icon size={20} strokeWidth={2.1} aria-hidden="true" />
+        <Icon size={25} strokeWidth={2.2} aria-hidden="true" />
         {entry.id === "approvals" && pendingApprovalCount > 0 && (
           <span
             data-testid="approval-count-badge"
@@ -266,8 +266,8 @@ function NavLink({
           ? "bg-primary/[0.08] text-brand-navy shadow-[inset_0_0_0_1px_rgba(37,99,235,0.1),0_6px_18px_-13px_rgba(37,99,235,0.8)] before:absolute before:inset-y-2 before:left-0 before:w-1 before:rounded-r-full before:bg-primary before:content-['']"
           : "text-text-secondary hover:translate-x-0.5 hover:bg-primary/[0.05] hover:text-brand-navy hover:shadow-sm"}`}
     >
-      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md motion-safe:transition-colors motion-safe:duration-150 ${isActive ? "bg-primary text-surface" : "bg-background text-text-secondary group-hover:bg-primary/10 group-hover:text-primary"}`}>
-        <Icon size={19} strokeWidth={2.1} aria-hidden="true" />
+      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg motion-safe:transition-colors motion-safe:duration-150 ${isActive ? "text-primary" : "bg-background text-text-secondary group-hover:bg-primary/10 group-hover:text-primary"}`}>
+        <Icon size={22} strokeWidth={2.2} aria-hidden="true" />
       </span>
       <span className={`min-w-0 flex-1 truncate ${floorText ? "text-mono-md" : "text-label"}`}>{label}</span>
       {entry.id === "approvals" && pendingApprovalCount > 0 && (
@@ -504,7 +504,7 @@ export function ShellNavigation({
         aria-label="Primary navigation"
         aria-hidden={false}
         className={`print:hidden hidden flex-col overflow-hidden border-r border-primary/10 bg-surface shadow-[10px_0_30px_-28px_rgba(15,23,42,0.75)] transition-[width] duration-200 motion-reduce:transition-none lg:fixed lg:bottom-0 lg:left-0 lg:top-[76px] lg:z-40 lg:flex ${
-          desktopOpen ? "lg:w-[286px]" : "lg:w-[72px]"
+          desktopOpen ? "lg:w-[286px]" : "lg:w-[76px]"
         }`}
       >
         <a

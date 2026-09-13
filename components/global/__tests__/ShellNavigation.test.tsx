@@ -113,12 +113,12 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
     );
     const sidebar = screen.getByTestId("desktop-sidebar");
     expect(sidebar.className).toContain("lg:flex");
-    expect(sidebar.className).toContain("lg:w-[72px]");
+    expect(sidebar.className).toContain("lg:w-[76px]");
     expect(sidebar.className).not.toContain("lg:hidden");
     expect(sidebar).not.toHaveAttribute("aria-hidden", "true");
   });
 
-  it("desktop sidebar switches to mini icon-rail (lg:w-[72px]) when desktopOpen=false (collapsed icon mode)", () => {
+  it("desktop sidebar switches to mini icon-rail (lg:w-[76px]) when desktopOpen=false (collapsed icon mode)", () => {
     render(
       <ShellNavigation
         tier="office"
@@ -128,7 +128,7 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
       />,
     );
     const sidebar = screen.getByTestId("desktop-sidebar");
-    expect(sidebar.className).toContain("lg:w-[72px]");
+    expect(sidebar.className).toContain("lg:w-[76px]");
   });
 
   it("omits nav entries the context has no grant for (R3.4 — hidden, not disabled)", () => {
@@ -178,7 +178,7 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
     expect(active).toHaveAttribute("data-active", "true");
     expect(active.className).toContain("bg-primary/[0.08]");
     expect(active.className).toContain("before:bg-primary");
-    expect(within(active).getByText("Master Inventory").previousElementSibling?.className).toContain("bg-primary");
+    expect(within(active).getByText("Master Inventory").previousElementSibling?.className).toContain("text-primary");
 
     expect(inactive).not.toHaveAttribute("aria-current");
     expect(inactive).toHaveAttribute("data-active", "false");
