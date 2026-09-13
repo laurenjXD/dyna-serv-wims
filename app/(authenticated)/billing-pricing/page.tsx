@@ -22,7 +22,16 @@ import {
   getTradingMarginLedger,
   type TradingMarginRow,
 } from "@/lib/billing/queries/trading-margin";
+import {
+  listTradingPolicies,
+  type TradingPolicyRow,
+} from "@/lib/db/queries/trading-policies";
+import {
+  listVmiContractTerms,
+  type VmiContractTermsRow,
+} from "@/lib/db/queries/vmi-contracts";
 import { listParties } from "@/lib/db/queries/parties";
+import { listItems } from "@/lib/db/queries/items";
 import { listContracts } from "@/lib/actions/contracts";
 import { hasTradingPriceInternalVisibility } from "@/lib/rbac/trading-visibility";
 import { BillingOverviewTab } from "./_components/BillingOverviewTab";
@@ -122,6 +131,9 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
   let tradingRows: TradingMarginRow[] = [];
   let billingPeriods: VmiBillingPeriodRow[] = [];
   let contracts: Awaited<ReturnType<typeof listContracts>> = [];
+  let vmiContractRows: VmiContractTermsRow[] = [];
+  let policyRows: TradingPolicyRow[] = [];
+  let itemOptions: { id: string; name: string; code: string }[] = [];
 
   if (activeSection === "overview") {
     vmiSummaryRows = await getVmiCbmLedgerSummary(selectedMonth, selectedYear);
@@ -148,15 +160,27 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
   } else if (activeSection === "configuration") {
     // Configuration contains independent datasets. Keep one unavailable or
     // not-yet-migrated table from taking down the entire Billing workspace.
-    const [contractsResult] =
+    const [contractsResult, vmiResult, policiesResult, itemsResult] =
       await Promise.allSettled([
         listContracts(resolver),
+        listVmiContractTerms(db),
+        listTradingPolicies(db, { activeOnly: false }),
+        listItems(db, { limit: 100 }),
       ]);
 
     if (contractsResult.status === "fulfilled") {
       contracts = contractsResult.value;
     } else {
       console.warn("Billing configuration: contracts unavailable", contractsResult.reason);
+    }
+    if (vmiResult.status === "fulfilled") vmiContractRows = vmiResult.value;
+    if (policiesResult.status === "fulfilled") policyRows = policiesResult.value.rows;
+    if (itemsResult.status === "fulfilled") {
+      itemOptions = itemsResult.value.rows.map((item) => ({
+        id: item.id,
+        name: item.name,
+        code: item.code,
+      }));
     }
   }
 
@@ -390,6 +414,10 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
         <div className="mt-6">
           <ConfigurationTab
             contracts={contracts}
+            vmiContractRows={vmiContractRows}
+            parties={partyOptions}
+            policyRows={policyRows}
+            items={itemOptions}
           />
         </div>
       )}
