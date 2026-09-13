@@ -28,7 +28,7 @@ export function ContractHeader({ contract }: ContractHeaderProps) {
       {/* Top row with Back navigation and Action buttons */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <Link
-          href="/billing-pricing/contracts"
+          href="/billing-pricing?tab=configuration"
           className="inline-flex items-center gap-1.5 font-label text-label-md font-bold text-text-grey hover:text-brand-navy transition-colors"
         >
           <ArrowLeft size={16} /> Back to Commercial Contracts

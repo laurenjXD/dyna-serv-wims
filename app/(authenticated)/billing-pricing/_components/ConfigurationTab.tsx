@@ -1,14 +1,17 @@
 "use client";
 
 import React, { useState } from "react";
-import { FileText, Truck, Tag } from "lucide-react";
+import Link from "next/link";
+import { FileText, Truck, Tag, Plus } from "lucide-react";
 import { VmiContractTermsTable } from "./VmiContractTermsTable";
 import { LogisticsRateMatrixTable } from "./LogisticsRateMatrixTable";
 import { TradingRateCardsTable } from "./TradingRateCardsTable";
+import { ContractTableClient, type ContractItem } from "../contracts/_components/ContractTableClient";
 import type { VmiContractTermsRow } from "@/lib/db/queries/vmi-contracts";
 import type { TradingPolicyRow } from "@/lib/db/queries/trading-policies";
 
 interface ConfigurationTabProps {
+  contracts?: ContractItem[];
   contractRows: VmiContractTermsRow[];
   parties: { id: string; name: string; code: string }[];
   policyRows?: TradingPolicyRow[];
@@ -16,12 +19,14 @@ interface ConfigurationTabProps {
 }
 
 export function ConfigurationTab({
+  contracts = [],
   contractRows,
   parties,
   policyRows = [],
   items = [],
 }: ConfigurationTabProps) {
   const [subTab, setSubTab] = useState<"contracts" | "trading-rates" | "logistics">("contracts");
+  const [contractViewMode, setContractViewMode] = useState<"master" | "matrix">("master");
 
   return (
     <div className="space-y-6">
@@ -38,7 +43,7 @@ export function ConfigurationTab({
             }`}
           >
             <span className="inline-flex items-center gap-2">
-              <FileText size={16} /> Storage &amp; Handling Terms
+              <FileText size={16} /> Commercial Contracts &amp; Terms
             </span>
           </button>
           <button
@@ -70,18 +75,73 @@ export function ConfigurationTab({
         </div>
       </div>
 
-      {/* Sub-tab content */}
+      {/* Sub-tab 1: Commercial Contracts */}
       {subTab === "contracts" && (
-        <VmiContractTermsTable rows={contractRows} parties={parties} />
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
+            <div>
+              <h2 className="font-heading text-title-md font-bold text-on-surface flex items-center gap-2">
+                <FileText size={20} className="text-brand-navy" />
+                Commercial Contracts &amp; Master Rate Cards
+              </h2>
+              <p className="mt-1 font-body text-body-sm text-text-grey">
+                Customer rate agreements, dynamic pricing policies, VMI storage terms, and LOA regulatory permits.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex rounded-lg border border-outline-variant/30 p-0.5 bg-surface-light-grey/60">
+                <button
+                  type="button"
+                  onClick={() => setContractViewMode("master")}
+                  className={`px-3 py-1.5 font-label text-label-xs font-bold rounded-md transition-colors ${
+                    contractViewMode === "master"
+                      ? "bg-surface-white text-brand-navy shadow-2xs"
+                      : "text-text-grey hover:text-on-surface"
+                  }`}
+                >
+                  Contracts Master
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setContractViewMode("matrix")}
+                  className={`px-3 py-1.5 font-label text-label-xs font-bold rounded-md transition-colors ${
+                    contractViewMode === "matrix"
+                      ? "bg-surface-white text-brand-navy shadow-2xs"
+                      : "text-text-grey hover:text-on-surface"
+                  }`}
+                >
+                  Storage &amp; Handling Matrix
+                </button>
+              </div>
+
+              <Link
+                href="/billing-pricing/contracts/new"
+                className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-brand-navy px-4 font-label text-label font-bold text-white shadow-2xs hover:bg-brand-navy/90 transition-colors"
+              >
+                <Plus size={16} />
+                <span>New Contract</span>
+              </Link>
+            </div>
+          </div>
+
+          {contractViewMode === "master" ? (
+            <ContractTableClient initialContracts={contracts} />
+          ) : (
+            <VmiContractTermsTable rows={contractRows} parties={parties} />
+          )}
+        </div>
       )}
+
+      {/* Sub-tab 2: Trading Rate Cards */}
       {subTab === "trading-rates" && (
         <TradingRateCardsTable rows={policyRows} parties={parties} items={items} />
       )}
+
+      {/* Sub-tab 3: Logistics & Delivery Matrix (kept 100% intact) */}
       {subTab === "logistics" && (
         <LogisticsRateMatrixTable />
       )}
     </div>
   );
 }
-
-

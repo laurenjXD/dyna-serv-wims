@@ -30,6 +30,7 @@ import {
   listVmiContractTerms,
   type VmiContractTermsRow,
 } from "@/lib/db/queries/vmi-contracts";
+import { listContracts } from "@/lib/actions/contracts";
 import { listParties } from "@/lib/db/queries/parties";
 import { listItems } from "@/lib/db/queries/items";
 import { hasTradingPriceInternalVisibility } from "@/lib/rbac/trading-visibility";
@@ -129,6 +130,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
   let vmiSummary: VmiCbmLedgerRow | null = null;
   let vmiDailyRows: Awaited<ReturnType<typeof getVmiDailyBalanceRows>> = [];
   let vmiContractRows: VmiContractTermsRow[] = [];
+  let contractsList: Awaited<ReturnType<typeof listContracts>> = [];
   let tradingRows: TradingMarginRow[] = [];
   let policyRows: TradingPolicyRow[] = [];
   let billingPeriods: VmiBillingPeriodRow[] = [];
@@ -157,7 +159,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
   } else if (activeSection === "soa") {
     billingPeriods = await listVmiBillingPeriods(selectedSoaPartyId || undefined);
   } else if (activeSection === "configuration") {
-
+    contractsList = await listContracts(resolver);
     vmiContractRows = await listVmiContractTerms(db);
     const result = await listTradingPolicies(db, { activeOnly: false });
     policyRows = result.rows;
@@ -397,6 +399,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
       {activeSection === "configuration" && (
         <div className="mt-6">
           <ConfigurationTab
+            contracts={contractsList}
             contractRows={vmiContractRows}
             parties={partyOptions}
             policyRows={policyRows}

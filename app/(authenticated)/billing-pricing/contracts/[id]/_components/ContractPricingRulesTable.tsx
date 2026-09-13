@@ -35,6 +35,23 @@ const CATEGORY_COLORS: Record<string, string> = {
   other: "bg-slate-50 text-slate-700 border-slate-200",
 };
 
+function formatBasis(basis: string): string {
+  switch (basis) {
+    case "cbm_day":
+      return "CBM / Day";
+    case "volume":
+      return "CBM (m³)";
+    case "transaction":
+      return "Per Shipment / AR";
+    case "flat":
+      return "Flat Monthly";
+    case "hour":
+      return "Per Man-Hour";
+    default:
+      return basis.replace(/_/g, " ");
+  }
+}
+
 export function ContractPricingRulesTable({ contractId, rules, currency }: ContractPricingRulesTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -143,7 +160,7 @@ export function ContractPricingRulesTable({ contractId, rules, currency }: Contr
                         </span>
                       </td>
                       <td className="px-4 py-3 font-label text-label-xs uppercase font-medium text-text-grey">
-                        {r.billingBasis.replace("_", " ")}
+                        {formatBasis(r.billingBasis)}
                       </td>
                       <td className="px-4 py-3 text-right font-mono font-bold text-brand-navy">
                         {currency} {Number(r.rate).toFixed(4)}

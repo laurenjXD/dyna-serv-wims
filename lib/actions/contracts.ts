@@ -444,12 +444,53 @@ export async function getContractDetail(
         vmiConfig = vmi ?? null;
       }
 
+      let permit: {
+        id: string;
+        permitNumber: string;
+        itemScope: string;
+        validFrom: string;
+        validTo: string;
+        monthlyFeeUsd: string;
+        isActive: boolean;
+      } | null = null;
+
+      try {
+        const [p] = await db
+          .select({
+            id: vmiPermits.id,
+            permitNumber: vmiPermits.permitNumber,
+            itemScope: vmiPermits.itemScope,
+            validFrom: vmiPermits.validFrom,
+            validTo: vmiPermits.validTo,
+            monthlyFeeUsd: vmiPermits.monthlyFeeUsd,
+            isActive: vmiPermits.isActive,
+          })
+          .from(vmiPermits)
+          .where(and(eq(vmiPermits.partyId, contract.partyId), eq(vmiPermits.isActive, true)))
+          .limit(1);
+
+        if (p) {
+          permit = {
+            id: p.id,
+            permitNumber: p.permitNumber,
+            itemScope: p.itemScope,
+            validFrom: String(p.validFrom),
+            validTo: String(p.validTo),
+            monthlyFeeUsd: String(p.monthlyFeeUsd),
+            isActive: p.isActive,
+          };
+        }
+      } catch (permitErr) {
+        console.warn("Permit lookup note:", permitErr);
+      }
+
       return {
         contract,
         versions,
         activeVersion,
         rules,
         vmiConfig,
+        permit,
       };
     }
   } catch (contractErr) {
@@ -466,6 +507,8 @@ export async function getContractDetail(
         storageRatePerCbmDay: vmiContractTerms.storageRatePerCbmDay,
         handlingInRatePerCbm: vmiContractTerms.handlingInRatePerCbm,
         handlingOutRatePerCbm: vmiContractTerms.handlingOutRatePerCbm,
+        documentationDefaultRateUsd: vmiContractTerms.documentationDefaultRateUsd,
+        billingTiming: vmiContractTerms.billingTiming,
         currency: vmiContractTerms.billingCurrency,
         createdAt: vmiContractTerms.createdAt,
         effectiveDate: vmiContractTerms.effectiveFrom,
@@ -482,6 +525,153 @@ export async function getContractDetail(
       .limit(1);
 
     if (terms) {
+      let permit: {
+        id: string;
+        permitNumber: string;
+        itemScope: string;
+        validFrom: string;
+        validTo: string;
+        monthlyFeeUsd: string;
+        isActive: boolean;
+      } | null = null;
+
+      try {
+        const [p] = await db
+          .select({
+            id: vmiPermits.id,
+            permitNumber: vmiPermits.permitNumber,
+            itemScope: vmiPermits.itemScope,
+            validFrom: vmiPermits.validFrom,
+            validTo: vmiPermits.validTo,
+            monthlyFeeUsd: vmiPermits.monthlyFeeUsd,
+            isActive: vmiPermits.isActive,
+          })
+          .from(vmiPermits)
+          .where(and(eq(vmiPermits.partyId, terms.partyId), eq(vmiPermits.isActive, true)))
+          .limit(1);
+
+        if (p) {
+          permit = {
+            id: p.id,
+            permitNumber: p.permitNumber,
+            itemScope: p.itemScope,
+            validFrom: String(p.validFrom),
+            validTo: String(p.validTo),
+            monthlyFeeUsd: String(p.monthlyFeeUsd),
+            isActive: p.isActive,
+          };
+        }
+      } catch (pErr) {
+        console.warn("Terms permit lookup note:", pErr);
+      }
+
+      const tierRules: {
+        id: string;
+        contractVersionId: string;
+        chargeName: string;
+        chargeCode: string;
+        chargeCategory: string;
+        billingBasis: string;
+        rate: string;
+        currency: string;
+        minCharge: string | null;
+        maxCharge: string | null;
+        priority: number;
+        isTaxable: boolean;
+        conditionsJson: string | null;
+        calculationFormula: string | null;
+        createdAt: Date;
+      }[] = [
+        {
+          id: "r1",
+          contractVersionId: terms.id,
+          chargeName: "Daily Storage Rate",
+          chargeCode: "WRH-STORAGE-CBM",
+          chargeCategory: "warehousing" as const,
+          billingBasis: "cbm_day" as const,
+          rate: String(terms.storageRatePerCbmDay),
+          currency: terms.currency,
+          minCharge: null,
+          maxCharge: null,
+          priority: 10,
+          isTaxable: true,
+          conditionsJson: null,
+          calculationFormula: null,
+          createdAt: new Date(),
+        },
+        {
+          id: "r2",
+          contractVersionId: terms.id,
+          chargeName: "Handling In (Stripping)",
+          chargeCode: "HDL-IN-CBM",
+          chargeCategory: "handling_in" as const,
+          billingBasis: "volume" as const,
+          rate: String(terms.handlingInRatePerCbm),
+          currency: terms.currency,
+          minCharge: null,
+          maxCharge: null,
+          priority: 10,
+          isTaxable: true,
+          conditionsJson: null,
+          calculationFormula: null,
+          createdAt: new Date(),
+        },
+        {
+          id: "r3",
+          contractVersionId: terms.id,
+          chargeName: "Handling Out (Picking)",
+          chargeCode: "HDL-OUT-CBM",
+          chargeCategory: "handling_out" as const,
+          billingBasis: "volume" as const,
+          rate: String(terms.handlingOutRatePerCbm),
+          currency: terms.currency,
+          minCharge: null,
+          maxCharge: null,
+          priority: 10,
+          isTaxable: true,
+          conditionsJson: null,
+          calculationFormula: null,
+          createdAt: new Date(),
+        },
+        {
+          id: "r4",
+          contractVersionId: terms.id,
+          chargeName: "Documentation Fee",
+          chargeCode: "DOC-DEFAULT-AR",
+          chargeCategory: "documentation" as const,
+          billingBasis: "transaction" as const,
+          rate: String(terms.documentationDefaultRateUsd || "15.00"),
+          currency: terms.currency,
+          minCharge: null,
+          maxCharge: null,
+          priority: 5,
+          isTaxable: true,
+          conditionsJson: null,
+          calculationFormula: null,
+          createdAt: new Date(),
+        },
+      ];
+
+      if (permit) {
+        tierRules.push({
+          id: "r-permit",
+          contractVersionId: terms.id,
+          chargeName: `PEZA LOA Permit (${permit.permitNumber})`,
+          chargeCode: "LOA-MONTHLY-PERMIT",
+          chargeCategory: "loa" as const,
+          billingBasis: "flat" as const,
+          rate: String(permit.monthlyFeeUsd),
+          currency: terms.currency,
+          minCharge: null,
+          maxCharge: null,
+          priority: 5,
+          isTaxable: false,
+          conditionsJson: null,
+          calculationFormula: null,
+          createdAt: new Date(),
+        });
+      }
+
       return {
         contract: {
           id: terms.partyId,
@@ -501,60 +691,19 @@ export async function getContractDetail(
         },
         versions: [],
         activeVersion: { id: terms.id, versionNumber: 1, isActive: true },
-        rules: [
-          {
-            id: "r1",
-            contractVersionId: terms.id,
-            chargeName: "Daily Storage Rate",
-            chargeCode: "WRH-STORAGE-CBM",
-            chargeCategory: "warehousing" as const,
-            billingBasis: "cbm_day" as const,
-            rate: String(terms.storageRatePerCbmDay),
-            currency: terms.currency,
-            minCharge: null,
-            maxCharge: null,
-            priority: 10,
-            isTaxable: true,
-            conditionsJson: null,
-            calculationFormula: null,
-            createdAt: new Date(),
-          },
-          {
-            id: "r2",
-            contractVersionId: terms.id,
-            chargeName: "Handling In (Stripping)",
-            chargeCode: "HDL-IN-CBM",
-            chargeCategory: "handling_in" as const,
-            billingBasis: "cbm_day" as const,
-            rate: String(terms.handlingInRatePerCbm),
-            currency: terms.currency,
-            minCharge: null,
-            maxCharge: null,
-            priority: 10,
-            isTaxable: true,
-            conditionsJson: null,
-            calculationFormula: null,
-            createdAt: new Date(),
-          },
-          {
-            id: "r3",
-            contractVersionId: terms.id,
-            chargeName: "Handling Out (Picking)",
-            chargeCode: "HDL-OUT-CBM",
-            chargeCategory: "handling_out" as const,
-            billingBasis: "cbm_day" as const,
-            rate: String(terms.handlingOutRatePerCbm),
-            currency: terms.currency,
-            minCharge: null,
-            maxCharge: null,
-            priority: 10,
-            isTaxable: true,
-            conditionsJson: null,
-            calculationFormula: null,
-            createdAt: new Date(),
-          },
-        ],
-        vmiConfig: null,
+        rules: tierRules,
+        vmiConfig: {
+          id: terms.id,
+          contractVersionId: terms.id,
+          partyId: terms.partyId,
+          inventoryOwnership: "supplier_owned",
+          billingTrigger: terms.billingTiming === "beginning_of_day" ? "beginning_of_day" : "monthly_settlement",
+          minStock: null,
+          maxStock: null,
+          reorderPoint: null,
+          createdAt: terms.createdAt,
+        },
+        permit,
       };
     }
   } catch (termsErr) {
@@ -570,6 +719,46 @@ export async function getContractDetail(
       .limit(1);
 
     if (party) {
+      let permit: {
+        id: string;
+        permitNumber: string;
+        itemScope: string;
+        validFrom: string;
+        validTo: string;
+        monthlyFeeUsd: string;
+        isActive: boolean;
+      } | null = null;
+
+      try {
+        const [p] = await db
+          .select({
+            id: vmiPermits.id,
+            permitNumber: vmiPermits.permitNumber,
+            itemScope: vmiPermits.itemScope,
+            validFrom: vmiPermits.validFrom,
+            validTo: vmiPermits.validTo,
+            monthlyFeeUsd: vmiPermits.monthlyFeeUsd,
+            isActive: vmiPermits.isActive,
+          })
+          .from(vmiPermits)
+          .where(and(eq(vmiPermits.partyId, party.id), eq(vmiPermits.isActive, true)))
+          .limit(1);
+
+        if (p) {
+          permit = {
+            id: p.id,
+            permitNumber: p.permitNumber,
+            itemScope: p.itemScope,
+            validFrom: String(p.validFrom),
+            validTo: String(p.validTo),
+            monthlyFeeUsd: String(p.monthlyFeeUsd),
+            isActive: p.isActive,
+          };
+        }
+      } catch (pErr) {
+        console.warn("Party permit lookup note:", pErr);
+      }
+
       return {
         contract: {
           id: party.id,
@@ -613,7 +802,7 @@ export async function getContractDetail(
             chargeName: "Handling In (Stripping)",
             chargeCode: "HDL-IN-CBM",
             chargeCategory: "handling_in" as const,
-            billingBasis: "cbm_day" as const,
+            billingBasis: "volume" as const,
             rate: "2.00",
             currency: "USD",
             minCharge: null,
@@ -630,7 +819,7 @@ export async function getContractDetail(
             chargeName: "Handling Out (Picking)",
             chargeCode: "HDL-OUT-CBM",
             chargeCategory: "handling_out" as const,
-            billingBasis: "cbm_day" as const,
+            billingBasis: "volume" as const,
             rate: "2.00",
             currency: "USD",
             minCharge: null,
@@ -641,8 +830,36 @@ export async function getContractDetail(
             calculationFormula: null,
             createdAt: new Date(),
           },
+          {
+            id: "r4",
+            contractVersionId: party.id,
+            chargeName: "Documentation Fee",
+            chargeCode: "DOC-DEFAULT-AR",
+            chargeCategory: "documentation" as const,
+            billingBasis: "transaction" as const,
+            rate: "15.00",
+            currency: "USD",
+            minCharge: null,
+            maxCharge: null,
+            priority: 5,
+            isTaxable: true,
+            conditionsJson: null,
+            calculationFormula: null,
+            createdAt: new Date(),
+          },
         ],
-        vmiConfig: null,
+        vmiConfig: {
+          id: party.id,
+          contractVersionId: party.id,
+          partyId: party.id,
+          inventoryOwnership: "supplier_owned",
+          billingTrigger: "beginning_of_day",
+          minStock: null,
+          maxStock: null,
+          reorderPoint: null,
+          createdAt: party.createdAt,
+        },
+        permit,
       };
     }
   } catch (partyErr) {
