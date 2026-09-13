@@ -1,33 +1,27 @@
 "use client";
 
 import React, { useState } from "react";
-import { FileText, Truck, Tag } from "lucide-react";
+import { FileText, Truck } from "lucide-react";
 import { VmiContractTermsTable } from "./VmiContractTermsTable";
 import { LogisticsRateMatrixTable } from "./LogisticsRateMatrixTable";
-import { TradingRateCardsTable } from "./TradingRateCardsTable";
 import type { VmiContractTermsRow } from "@/lib/db/queries/vmi-contracts";
-import type { TradingPolicyRow } from "@/lib/db/queries/trading-policies";
 
 interface ConfigurationTabProps {
   contractRows: VmiContractTermsRow[];
   parties: { id: string; name: string; code: string }[];
-  policyRows?: TradingPolicyRow[];
-  items?: { id: string; name: string; code: string }[];
 }
 
 export function ConfigurationTab({
   contractRows,
   parties,
-  policyRows = [],
-  items = [],
 }: ConfigurationTabProps) {
-  const [subTab, setSubTab] = useState<"contracts" | "trading-rates" | "logistics">("contracts");
+  const [subTab, setSubTab] = useState<"contracts" | "logistics">("contracts");
 
   return (
     <div className="space-y-6">
       {/* Configuration Sub-tabs */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-outline-variant/30 pb-4">
-        <div className="flex flex-wrap gap-2" role="tablist">
+      <div className="border-b border-outline-variant/30 pb-4">
+        <div className="flex flex-wrap gap-2" role="tablist" aria-label="Configuration views">
           <button
             type="button"
             onClick={() => setSubTab("contracts")}
@@ -38,20 +32,7 @@ export function ConfigurationTab({
             }`}
           >
             <span className="inline-flex items-center gap-2">
-              <FileText size={16} /> Storage &amp; Handling Terms
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setSubTab("trading-rates")}
-            className={`rounded-lg px-4 py-2 font-label text-label font-bold transition-colors ${
-              subTab === "trading-rates"
-                ? "bg-brand-navy text-white shadow-sm"
-                : "bg-surface-white text-text-grey hover:bg-surface-light-grey border border-outline-variant/30"
-            }`}
-          >
-            <span className="inline-flex items-center gap-2">
-              <Tag size={16} /> Trading Rate Cards
+              <FileText size={16} /> Commercial Storage &amp; Handling Contracts
             </span>
           </button>
           <button
@@ -64,7 +45,7 @@ export function ConfigurationTab({
             }`}
           >
             <span className="inline-flex items-center gap-2">
-              <Truck size={16} /> Logistics &amp; Delivery Matrix
+              <Truck size={16} /> Logistics &amp; Delivery Rate Matrix
             </span>
           </button>
         </div>
@@ -74,14 +55,10 @@ export function ConfigurationTab({
       {subTab === "contracts" && (
         <VmiContractTermsTable rows={contractRows} parties={parties} />
       )}
-      {subTab === "trading-rates" && (
-        <TradingRateCardsTable rows={policyRows} parties={parties} items={items} />
-      )}
       {subTab === "logistics" && (
         <LogisticsRateMatrixTable />
       )}
     </div>
   );
 }
-
 
