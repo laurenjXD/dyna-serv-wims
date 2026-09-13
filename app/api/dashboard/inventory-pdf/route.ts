@@ -103,7 +103,11 @@ export async function GET() {
   // Logo insertion if available
   try {
     const logoSvg = await readFile(path.join(process.cwd(), "public", "logo.svg"), "utf8");
-    const logoPng = await sharp(Buffer.from(logoSvg)).png().toBuffer();
+    const logoPng = await sharp(Buffer.from(logoSvg), { density: 288 })
+      .flatten({ background: "#ffffff" })
+      .resize(768, 768, { fit: "contain", background: "#ffffff" })
+      .png()
+      .toBuffer();
     const logo = await pdf.embedPng(logoPng);
     page.drawImage(logo, { x: MARGIN, y: 520, width: 34, height: 34 });
   } catch {

@@ -570,7 +570,7 @@ export function CustomReportBuilderModal({
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="flex items-center gap-3">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/logo.svg" alt="Dyna-Serv" className="h-12 w-auto shrink-0 object-contain" />
+                    <img src="/api/brand/logo" alt="Dyna-Serv" className="h-12 w-auto shrink-0 object-contain" />
                     <div>
                       <h1 className="font-heading text-lg font-black tracking-tight text-brand-navy uppercase">
                         Dyna-Serv Logistics &amp; Warehouse Management System

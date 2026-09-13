@@ -87,7 +87,7 @@ export default async function PreAlertExportPage({ params }: PageProps) {
           <div className="flex items-start justify-between gap-6">
             <div>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.svg" alt="Dyna-Serv" className="mb-2 h-12 w-auto" />
+              <img src="/api/brand/logo" alt="Dyna-Serv" className="mb-2 h-12 w-auto" />
               <p className="font-label text-label font-bold uppercase tracking-[0.15em] text-brand-royal-blue">
                 Dyna-Serv Warehouse Inventory Management System
               </p>

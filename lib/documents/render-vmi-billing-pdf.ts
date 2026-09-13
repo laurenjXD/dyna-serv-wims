@@ -42,7 +42,11 @@ function text(page: PDFPage, content: string, x: number, y: number, font: PDFFon
 
 async function embedDynaServLogo(pdf: PDFDocument): Promise<PDFImage> {
   const logoSvg = await readFile(path.join(process.cwd(), "public", "logo.svg"));
-  const logoPng = await sharp(logoSvg).png().toBuffer();
+  const logoPng = await sharp(logoSvg, { density: 288 })
+    .flatten({ background: "#ffffff" })
+    .resize(768, 768, { fit: "contain", background: "#ffffff" })
+    .png()
+    .toBuffer();
   return pdf.embedPng(logoPng);
 }
 
