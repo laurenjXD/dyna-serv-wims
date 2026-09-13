@@ -379,7 +379,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
 
         {/* Desktop Header Left Brand & Toggle Area (matches sidebar width and line exactly) */}
         <div
-          className={`hidden h-full shrink-0 items-center justify-between border-r border-primary/15 transition-[width] duration-200 motion-reduce:transition-none lg:flex ${
+          className={`hidden h-full shrink-0 items-center justify-between border-r border-primary/15 transition-[width] duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none lg:flex ${
             isDesktopOpen ? "w-[304px] px-4" : "w-[88px] gap-1.5 px-2.5 justify-center"
           }`}
         >
@@ -733,7 +733,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
       <main
         id="main-content"
         data-surface={tier}
-        className={`min-w-0 max-w-full min-h-screen pt-14 transition-[padding-left] duration-200 motion-reduce:transition-none lg:pt-[76px] print:!min-h-0 print:!p-0 print:!m-0 ${
+        className={`min-w-0 max-w-full min-h-screen pt-14 transition-[padding-left] duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none lg:pt-[76px] print:!min-h-0 print:!p-0 print:!m-0 ${
           isDesktopOpen ? "lg:pl-[304px]" : "lg:pl-[88px]"
         } ${showFloorTabBar ? "pb-20" : "lg:pb-6"} ${
           tier === "floor" ? "bg-surface" : "bg-background"
