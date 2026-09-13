@@ -13,7 +13,6 @@ import { AuthenticatedShellBoundary } from "@/components/global/AuthenticatedShe
 import { ShellChrome } from "@/components/global/ShellChrome";
 import { UserPreferencesProvider } from "@/lib/user-settings/preferences";
 import { createPageResolver } from "@/lib/auth/page-resolver";
-import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -22,15 +21,12 @@ export default async function AuthenticatedLayout({
 }: {
   children: ReactNode;
 }) {
-  // Resolve the session during the server render. The previous client-side
-  // server-action call could remain pending forever, leaving visitors on an
-  // otherwise blank "Checking your session…" screen.
+  // Resolve the session during the server render. Unauthenticated visitors are
+  // intercepted at the edge in middleware.ts; AuthenticatedShellBoundary safely
+  // handles any boundary edge cases on the client without throwing render-breaking
+  // Server Component redirect exceptions.
   const resolver = await createPageResolver();
   const initialResolution = await resolver.getContext();
-
-  if (initialResolution.kind === "unauthenticated") {
-    redirect("/login");
-  }
 
   return (
     <UserPreferencesProvider>

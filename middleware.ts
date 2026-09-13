@@ -1,26 +1,49 @@
-import { type NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
-// Root middleware — the missing wiring for lib/supabase/middleware.ts's
-// updateSession(), which that file's own header comment already described
-// as needed here "once route groups/auth flows exist." They now do
-// (2026-08-08): without this file, a browser-side sign-in set cookies via
-// document.cookie but nothing refreshed/propagated them on the server-side
-// request that follows a client navigation, so a successful login appeared
-// to redirect nowhere — the shell's server-side session read never saw a
-// valid session. This is the standard @supabase/ssr Next.js App Router
-// pattern: refresh the session on every request, before any Server
-// Component or Server Action runs.
+// Root middleware — coarse public/protected routing and session refresh
+// per specs/05-ui-shell-and-navigation/design.md §3:
+// "Middleware is restricted to lightweight session refresh or coarse
+// public/protected routing; it does not execute TCP/Drizzle database queries
+// or replace server resource authorization."
 //
-// Per specs/05-ui-shell-and-navigation/design.md §3 ("Middleware may handle
-// only approved lightweight concerns such as session refresh or coarse
-// public/protected routing. It must not perform Drizzle/TCP database work
-// or replace server-side resource authorization.") — updateSession() only
-// talks to Supabase Auth over HTTP; it does not touch the database and does
-// not itself decide route authorization (that remains RouteGuard/
-// requirePermission(), server-side, per route).
+// By handling unauthenticated redirects at the HTTP level here, we prevent
+// Server Components / layouts from throwing mid-render redirect() exceptions
+// inside Suspense loading boundaries, avoiding Next.js App Router fiber
+// corruption and React Error #310.
 export async function middleware(request: NextRequest) {
-  return await updateSession(request);
+  const { response, user } = await updateSession(request);
+
+  const pathname = request.nextUrl.pathname;
+  const isAuthRoute =
+    pathname === "/login" ||
+    pathname.startsWith("/login/") ||
+    pathname.startsWith("/accept-invite");
+  const isApiRoute = pathname.startsWith("/api");
+
+  // Redirect unauthenticated visitors attempting to access protected routes to /login
+  if (!user && !isAuthRoute && !isApiRoute) {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    const redirectResponse = NextResponse.redirect(loginUrl);
+    response.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
+    });
+    return redirectResponse;
+  }
+
+  // Redirect already authenticated users visiting /login to /dashboard
+  if (user && isAuthRoute) {
+    const dashboardUrl = request.nextUrl.clone();
+    dashboardUrl.pathname = "/dashboard";
+    const redirectResponse = NextResponse.redirect(dashboardUrl);
+    response.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
+    });
+    return redirectResponse;
+  }
+
+  return response;
 }
 
 export const config = {

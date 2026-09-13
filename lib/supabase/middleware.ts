@@ -1,10 +1,16 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
+import type { User } from "@supabase/supabase-js";
+
+export interface UpdateSessionResult {
+  response: NextResponse;
+  user: User | null;
+}
 
 // Refreshes the Supabase Auth session on every request. Wired into the
 // root `middleware.ts` once route groups/auth flows exist — this helper is
 // the reusable piece per @supabase/ssr's documented Next.js pattern.
-export async function updateSession(request: NextRequest) {
+export async function updateSession(request: NextRequest): Promise<UpdateSessionResult> {
   let supabaseResponse = NextResponse.next({ request });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -13,8 +19,10 @@ export async function updateSession(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!url || !key) {
-    return supabaseResponse;
+    return { response: supabaseResponse, user: null };
   }
+
+  let user: User | null = null;
 
   try {
     const supabase = createServerClient(url, key, {
@@ -33,11 +41,12 @@ export async function updateSession(request: NextRequest) {
     });
 
     // Required to keep the session alive — do not remove this call.
-    await supabase.auth.getUser();
+    const { data } = await supabase.auth.getUser();
+    user = data.user ?? null;
   } catch (err) {
     // Fail-safe — do not crash middleware with 500 if Supabase is unreachable or env var is invalid
     console.error("[middleware] updateSession error:", err);
   }
 
-  return supabaseResponse;
+  return { response: supabaseResponse, user };
 }
