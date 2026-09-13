@@ -1,30 +1,25 @@
-export type BillingSection = "overview" | "vmi" | "trading" | "configuration";
+export type BillingSection = "overview" | "ledger" | "soa" | "configuration";
 
 export function resolveBillingSection(
   sectionParam?: string,
   tabParam?: string,
 ): BillingSection {
-  if (sectionParam === "overview") return "overview";
-  if (sectionParam === "vmi") return "vmi";
-  if (sectionParam === "trading") return "trading";
-  if (sectionParam === "configuration") return "configuration";
+  const active = (sectionParam || tabParam || "overview").toLowerCase();
 
-  if (tabParam === "trading" || tabParam === "policies") return "trading";
-  if (tabParam === "vmi-contracts" || tabParam === "logistics-rates") {
+  if (active === "overview") return "overview";
+  if (active === "ledger" || active === "vmi" || active === "trading") return "ledger";
+  if (active === "soa" || active === "statements") return "soa";
+  if (active === "configuration" || active === "contracts" || active === "vmi-contracts" || active === "logistics-rates" || active === "policies") {
     return "configuration";
   }
 
-  return "vmi";
+  return "overview";
 }
 
 export function resolveBillingTab(
   section: BillingSection,
   tabParam?: string,
-): "overview" | "vmi" | "trading" | "policies" | "vmi-contracts" | "logistics-rates" {
-  if (section === "overview") return "overview";
-  if (section === "vmi") return tabParam === "vmi" ? "vmi" : "vmi";
-  if (section === "trading") {
-    return tabParam === "policies" ? "policies" : "trading";
-  }
-  return tabParam === "vmi-contracts" ? "vmi-contracts" : "logistics-rates";
+): "overview" | "ledger" | "soa" | "configuration" {
+  return section;
 }
+
