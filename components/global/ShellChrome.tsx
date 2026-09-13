@@ -306,7 +306,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
   return (
     <>
       <header
-        className="print:hidden fixed inset-x-0 top-0 z-50 isolate flex h-14 items-center gap-4 overflow-visible bg-surface/95 px-4 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.55)] backdrop-blur-xl lg:h-[76px] lg:px-4"
+        className="print:hidden fixed inset-x-0 top-0 z-50 isolate flex h-14 items-center gap-4 overflow-visible bg-surface/95 px-4 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.55)] backdrop-blur-xl lg:h-[76px] lg:px-0 lg:gap-0"
       >
         {tier !== "floor" && (
           <button
@@ -377,34 +377,68 @@ export function ShellChrome({ children }: { children: ReactNode }) {
           </button>
         </div>
 
-        <div className="hidden min-w-0 flex-1 items-center gap-5 lg:flex">
-          <Link
-            href="/"
-            aria-label="Dyna-Serv WIMS home"
-            className="flex shrink-0 items-center gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            <span className="flex h-11 w-11 items-center justify-center rounded-full border border-primary/15 bg-surface shadow-[0_7px_18px_-8px_rgba(37,99,235,0.55)] ring-4 ring-primary/[0.04] transition-shadow hover:shadow-[0_9px_22px_-8px_rgba(37,99,235,0.7)]">
-              <Image src="/logo-hd.png" alt="" width={36} height={36} priority />
-            </span>
-            {isDesktopOpen && (
-              <span className="font-heading text-title-lg font-bold tracking-tight text-text-primary">
-                Dyna-Serv WIMS
-              </span>
-            )}
-          </Link>
-          {tier !== "floor" && (
-            <button
-              type="button"
-              aria-label={isDesktopOpen ? "Collapse navigation" : "Expand navigation"}
-              aria-expanded={isDesktopOpen}
-              onClick={toggleDesktop}
-              title={isDesktopOpen ? "Collapse sidebar to icons" : "Expand sidebar"}
-              className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-primary/[0.04] text-text-secondary shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/10 hover:text-primary hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:flex"
-            >
-              {isDesktopOpen ? <PanelLeftClose size={22} strokeWidth={2.2} aria-hidden="true" /> : <PanelLeftOpen size={22} strokeWidth={2.2} aria-hidden="true" />}
-            </button>
+        {/* Desktop Header Left Brand & Toggle Area (matches sidebar width and line exactly) */}
+        <div
+          className={`hidden h-full shrink-0 items-center justify-between border-r border-primary/15 transition-[width] duration-200 motion-reduce:transition-none lg:flex ${
+            isDesktopOpen ? "w-[304px] px-4" : "w-[88px] gap-1.5 px-2.5 justify-center"
+          }`}
+        >
+          {isDesktopOpen ? (
+            <>
+              <Link
+                href="/"
+                aria-label="Dyna-Serv WIMS home"
+                className="flex shrink-0 items-center gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <span className="flex h-10 w-10 items-center justify-center rounded-full border border-primary/15 bg-surface shadow-[0_7px_18px_-8px_rgba(37,99,235,0.55)] ring-4 ring-primary/[0.04]">
+                  <Image src="/logo-hd.png" alt="" width={32} height={32} priority />
+                </span>
+                <span className="font-heading text-title-lg font-bold tracking-tight text-text-primary">
+                  Dyna-Serv WIMS
+                </span>
+              </Link>
+              {tier !== "floor" && (
+                <button
+                  type="button"
+                  aria-label="Collapse navigation"
+                  aria-expanded={isDesktopOpen}
+                  onClick={toggleDesktop}
+                  title="Collapse sidebar to icons"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-primary/[0.04] text-text-secondary shadow-sm transition-all hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  <PanelLeftClose size={20} strokeWidth={2.2} aria-hidden="true" />
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              <Link
+                href="/"
+                aria-label="Dyna-Serv WIMS home"
+                className="flex shrink-0 items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/15 bg-surface shadow-sm">
+                  <Image src="/logo-hd.png" alt="" width={24} height={24} priority />
+                </span>
+              </Link>
+              {tier !== "floor" && (
+                <button
+                  type="button"
+                  aria-label="Expand navigation"
+                  aria-expanded={isDesktopOpen}
+                  onClick={toggleDesktop}
+                  title="Expand sidebar"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-primary/15 bg-primary/[0.04] text-text-secondary shadow-sm transition-all hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  <PanelLeftOpen size={18} strokeWidth={2.2} aria-hidden="true" />
+                </button>
+              )}
+            </>
           )}
-          <span aria-hidden="true" className="h-8 w-px bg-primary/15" />
+        </div>
+
+        {/* Desktop Header Main Content (Page title, alerts, shortcuts, user profile) */}
+        <div className="hidden min-w-0 flex-1 items-center gap-5 px-6 lg:flex">
           <div className="min-w-0 shrink-0">
             <p
               className="truncate font-heading text-[23px] font-bold leading-tight tracking-[-0.02em] text-text-primary"
