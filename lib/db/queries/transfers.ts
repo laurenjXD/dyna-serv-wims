@@ -434,6 +434,12 @@ export type InspectionAndTransferQueueRow = {
   status: string;
   createdAt: Date;
   href: string;
+  itemCode?: string;
+  itemName?: string;
+  lotNumber?: string;
+  partyName?: string;
+  locationLabel?: string | null;
+  contextType?: string;
 };
 
 /**
@@ -488,6 +494,12 @@ export async function listInspectionAndTransferQueue(
         status: c.status,
         createdAt: c.openedAt,
         href: `/inspection/${c.id}`,
+        itemCode: c.itemCode,
+        itemName: c.itemName,
+        lotNumber: c.lotNumber,
+        partyName: c.partyName,
+        locationLabel: c.locationLabel,
+        contextType: c.contextType,
       });
     }
   }
