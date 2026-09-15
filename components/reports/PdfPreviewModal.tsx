@@ -115,6 +115,7 @@ export function PdfPreviewModal({
               }
               body {
                 background: #FFFFFF !important;
+                color: #000000 !important;
               }
               #printable-report-sheet {
                 position: absolute !important;
@@ -131,6 +132,24 @@ export function PdfPreviewModal({
               @page {
                 size: A4 portrait;
                 margin: 10mm 12mm 12mm 12mm;
+              }
+              table {
+                width: 100% !important;
+                page-break-inside: auto;
+              }
+              thead {
+                display: table-header-group !important;
+              }
+              tfoot {
+                display: table-footer-group !important;
+              }
+              tr {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+              }
+              .avoid-break {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
               }
             }
           `,

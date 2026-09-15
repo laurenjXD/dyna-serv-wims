@@ -94,8 +94,16 @@ export async function renderVmiBillingPdf(type: VmiDocumentType, data: VmiPdfDat
     y -= 28;
     text(page, "Payment history", LEFT, y, bold, 11, true); y -= 18;
     for (const payment of data.payments) {
+      if (y < 65) {
+        page = pdf.addPage([WIDTH, HEIGHT]);
+        y = header(page, "Statement of Account (continued)", data.period, regular, bold, logo);
+        text(page, "Payment history (continued)", LEFT, y, bold, 11, true);
+        y -= 18;
+      }
       text(page, `${payment.date} · ${payment.type}${payment.notes ? ` · ${payment.notes}` : ""}`, LEFT, y, regular, 9);
-      const amount = money(payment.amountUsd); text(page, amount, RIGHT - bold.widthOfTextAtSize(amount, 9), y, bold, 9); y -= 16;
+      const amount = money(payment.amountUsd);
+      text(page, amount, RIGHT - bold.widthOfTextAtSize(amount, 9), y, bold, 9);
+      y -= 16;
     }
     if (data.payments.length === 0) text(page, "No payments recorded for this period.", LEFT, y, regular, 9);
   } else if (type === "vmi_letter_of_authority") {
