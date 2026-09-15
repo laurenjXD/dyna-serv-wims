@@ -1,36 +1,26 @@
-// Inspection Detail — floor inspection flow for a single inspection case.
+// Inspection Detail — floor/office inspection flow for a single inspection case.
 //
 // Traceability:
 //   specs/11-transfer-and-inspection/design.md §6.1 (inspection contexts),
 //     §6.2 (context isolation), §6.3 (disposition table with balance effects)
 //   specs/11-transfer-and-inspection/requirements.md R3, R3.1–R3.4
-//   specs/00-steering/brand-design-system.md §3 (floor — mobile-first base
-//     styles at 375px, 64px CTAs full-width, one primary action per screen,
-//     active: not hover:, input priority scan>tap>type), §6 (solid bg-brand-navy,
-//     no glassmorphism on floor, Level 2 for solid cards), §1.5 (WCAG AAA for
-//     time-critical floor text), §2 (no text <16px on floor)
-//
-// Surface: FLOOR (bg-brand-navy). Permission gate: inspection.perform (view);
-// inspection.resolve (submit a disposition — supervisor-only two-person
-// separation per 02-rbac-roles §3.2 and lib/actions/transfers.ts's
-// resolveInspectionCase doc comment). A warehouse_staff session holding only
-// inspection.perform can view case details but the disposition form below is
-// hidden entirely for it — it never reaches the DOM, since fail-closed
-// enforcement here is not just "disable the button."
-//
-// Disposition options correspond to inspection_dispositions.disposition_type
-// (design.md §6.1, §6.3). The three UI options resolve to a context-specific
-// DB value via resolveDispositionType below, since "store"/"return_to_stock"
-// and "return_to_party"/"reject" are not interchangeable between the inbound
-// and transfer contexts (lib/transfer/inspection-state.ts's
-// validateInspectionDisposition rejects the wrong-context pairing):
-//   store_as_is     → inbound: 'store'      | transfer: 'return_to_stock'
-//   inspect_further → 'hold' (valid for both contexts)
-//   flag_for_review → inbound: 'quarantine' | transfer: 'reject'
+//   specs/00-steering/brand-design-system.md
 
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Clock,
+  AlertTriangle,
+  Package,
+  MapPin,
+  Layers,
+  FlaskConical,
+  Building2,
+  FileCheck,
+  ShieldAlert,
+} from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
@@ -41,8 +31,6 @@ import { resolveInspectionCase } from "@/lib/actions/transfers";
 
 type DispositionType = "store_as_is" | "inspect_further" | "flag_for_review";
 
-// Maps the floor's three simplified disposition choices to the real
-// inspection_dispositions.disposition_type value for this case's context.
 function resolveDispositionType(
   contextType: string,
   uiValue: DispositionType,
@@ -62,35 +50,40 @@ function resolveDispositionType(
 interface DispositionOption {
   value: DispositionType;
   label: string;
+  badge: string;
   description: string;
-  // Tailwind classes for the selection card background/border
+  icon: typeof CheckCircle2;
+  accentColor: string;
   selectedClasses: string;
-  unselectedClasses: string;
 }
 
 const DISPOSITION_OPTIONS: DispositionOption[] = [
   {
     value: "store_as_is",
-    label: "Store as-is",
-    description: "Item passes inspection — return to standard storage location.",
-    selectedClasses: "bg-status-available/10 border-status-available",
-    unselectedClasses: "bg-surface-white border-outline-variant/50",
+    label: "Store as-is (Pass)",
+    badge: "Passed Inspection",
+    description: "Item meets quality standards. Move to standard storage racks for active picking and issuance.",
+    icon: CheckCircle2,
+    accentColor: "text-emerald-600 bg-emerald-50 border-emerald-200",
+    selectedClasses: "border-emerald-600 bg-emerald-50/50 shadow-sm ring-2 ring-emerald-600/20",
   },
   {
     value: "inspect_further",
-    label: "Inspect Further",
-    description:
-      "Hold for additional inspection — item remains at current location.",
-    selectedClasses: "bg-status-pending/10 border-status-pending",
-    unselectedClasses: "bg-surface-white border-outline-variant/50",
+    label: "Inspect Further (Hold)",
+    badge: "Hold / Secondary Review",
+    description: "Hold for in-depth lab testing or secondary verification. Item remains stored in inspection bay.",
+    icon: Clock,
+    accentColor: "text-amber-600 bg-amber-50 border-amber-200",
+    selectedClasses: "border-amber-600 bg-amber-50/50 shadow-sm ring-2 ring-amber-600/20",
   },
   {
     value: "flag_for_review",
-    label: "Flag for Review",
-    description:
-      "Non-conformance detected — route to supervisor for resolution.",
-    selectedClasses: "bg-status-held/10 border-status-held",
-    unselectedClasses: "bg-surface-white border-outline-variant/50",
+    label: "Flag for Review / Quarantine",
+    badge: "Non-Conformance",
+    description: "Defect or damage detected. Escalate to supervisor and vendor for disposition or RMA return.",
+    icon: AlertTriangle,
+    accentColor: "text-rose-600 bg-rose-50 border-rose-200",
+    selectedClasses: "border-rose-600 bg-rose-50/50 shadow-sm ring-2 ring-rose-600/20",
   },
 ];
 
@@ -116,9 +109,7 @@ export default async function InspectionDetailPage({
     notFound();
   }
 
-  // Gate: inspection.resolve required to submit a disposition — two-person
-  // separation (02-rbac-roles §3.2). warehouse_staff (inspection.perform
-  // only) can view but not resolve; supervisors hold inspection.resolve.
+  // Gate: inspection.resolve required to submit a disposition.
   const canResolve =
     (await requirePermission(resolver, "inspection.resolve")).kind === "authorized";
 
@@ -127,12 +118,8 @@ export default async function InspectionDetailPage({
     notFound();
   }
 
-  // Only allow submission when case is open (and the session can resolve it).
   const isOpen = inspection.status === "open";
 
-  // ─── Server action — resolveInspectionCase(resolver, id, { disposition }) ──
-  // Re-checks inspection.resolve itself (fail-closed even if a client somehow
-  // POSTs directly to this action with the form hidden).
   async function handleSubmitInspection(formData: FormData): Promise<void> {
     "use server";
     const dispositionValue = ((formData.get("disposition") as string | null) ??
@@ -175,319 +162,369 @@ export default async function InspectionDetailPage({
     }
   }
 
-  // Submission success flash — brand-design-system.md §9: scan/result feedback
-  // is a solid color block, not a gradient. Full-screen style for high-priority
-  // floor feedback.
   const showSuccess = result === "submitted";
   const showError = result === "error";
 
   return (
-    // Floor screen — solid bg-brand-navy, no glassmorphism, 16px padding.
-    // brand-design-system.md §6: floor never gets Level 1 glassmorphism.
-    <div className="inspection-page flex min-h-screen flex-col bg-surface-white">
-      {/* Top bar — back link + inspection reference */}
-      <div className="inspection-page-header bg-surface-white px-4 py-3">
-        <div className="flex items-center justify-between">
-          {/* Back link — h-14 (56px) floor touch target per §3 */}
+    <div className="mx-auto max-w-4xl space-y-6 pb-12">
+      {/* ── Breadcrumb & Top Navigation ─────────────────────────────────── */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
           <Link
-            href="/inspection"
-            className="inline-flex h-14 items-center gap-2 font-body text-body-md text-on-surface
-                       active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100
-                       focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            href="/inventory?tab=inspection"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-surface text-text-secondary shadow-sm transition-all hover:border-primary/30 hover:bg-primary/[0.04] hover:text-primary active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            title="Back to Inspection Queue"
           >
-            <ChevronLeft size={20} strokeWidth={2} aria-hidden="true" />
-            <span>Inspections</span>
+            <ArrowLeft size={18} />
           </Link>
-          {/* Source reference — Roboto Mono per §9. Raw sourceRefType/sourceRefId;
-              inspection_cases.source_ref_id is a polymorphic reference (design.md §2)
-              with no formatted business document number resolved here. */}
-          <span className="font-mono text-mono-lg text-text-grey">
-            {inspection.sourceRefType}:{inspection.sourceRefId.slice(0, 8)}
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs font-semibold uppercase tracking-wider text-text-secondary">
+                Inspection Case
+              </span>
+              <span className="font-mono text-xs text-text-secondary/60">·</span>
+              <span className="font-mono text-xs font-bold text-primary">
+                {inspection.sourceRefType}:{inspection.sourceRefId.slice(0, 8)}
+              </span>
+            </div>
+            <h1 className="font-heading text-2xl font-bold tracking-tight text-text-primary">
+              Quality Inspection Review
+            </h1>
+          </div>
+        </div>
+
+        {/* Status Badge */}
+        <div className="flex items-center gap-2">
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-label text-xs font-bold uppercase tracking-wider ${
+              isOpen
+                ? "bg-amber-100 text-amber-800 border border-amber-300"
+                : "bg-emerald-100 text-emerald-800 border border-emerald-300"
+            }`}
+          >
+            {isOpen ? <Clock size={14} /> : <CheckCircle2 size={14} />}
+            {inspection.status}
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-3 py-1 font-label text-xs font-semibold text-text-secondary">
+            <FlaskConical size={13} className="text-primary" />
+            {inspection.contextType.toUpperCase()} Context
           </span>
         </div>
       </div>
 
-      {/* Main content — flex-1, single-column, 16px padding */}
-      <div className="flex flex-1 flex-col px-4 pb-4">
-        {/* Success feedback — solid color block per §9 full-screen flash pattern */}
-        {showSuccess && (
-          <div
-            role="status"
-            aria-live="assertive"
-            className="mb-4 rounded-xl bg-status-available border border-status-available px-4 py-4"
-          >
-            {/* WCAG AAA: brand-navy on status-available = high contrast */}
-            <p className="font-heading font-bold text-headline-md text-on-surface">
-              ✓ Inspection Submitted
+      {/* ── Alert Banners ──────────────────────────────────────────────── */}
+      {showSuccess && (
+        <div
+          role="status"
+          className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/90 p-4 shadow-sm backdrop-blur-sm"
+        >
+          <CheckCircle2 size={20} className="mt-0.5 shrink-0 text-emerald-600" />
+          <div className="min-w-0">
+            <p className="font-heading text-body-md font-bold text-emerald-950">
+              Inspection Disposition Recorded Successfully
             </p>
-            <p className="mt-1 font-body text-body-md text-brand-navy/80">
-              The inspection case has been recorded. Redirecting…
+            <p className="mt-0.5 font-body text-body-sm text-emerald-800">
+              The disposition has been committed to inventory ledgers. You may now return to the queue.
+            </p>
+            <div className="mt-3">
+              <Link
+                href="/inventory?tab=inspection"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-1.5 font-label text-xs font-bold text-white shadow-sm hover:bg-emerald-700 active:scale-95 transition-all"
+              >
+                <ArrowLeft size={14} /> Return to Queue
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showError && (
+        <div
+          role="alert"
+          className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50/90 p-4 shadow-sm backdrop-blur-sm"
+        >
+          <ShieldAlert size={20} className="mt-0.5 shrink-0 text-rose-600" />
+          <div>
+            <p className="font-heading text-body-md font-bold text-rose-950">
+              Submission Failed
+            </p>
+            <p className="mt-0.5 font-body text-body-sm text-rose-800">
+              {errorReason ?? "Could not record this inspection disposition. Please verify inputs and try again."}
             </p>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Error feedback — mirrors success block styling with held-status color */}
-        {showError && (
-          <div
-            role="alert"
-            aria-live="assertive"
-            className="mb-4 rounded-xl bg-status-held border border-status-held px-4 py-4"
-          >
-            <p className="font-heading font-bold text-headline-md text-on-surface">
-              Submission failed
-            </p>
-            <p className="mt-1 font-body text-body-md text-on-surface">
-              {errorReason ?? "Could not record this inspection. Try again."}
-            </p>
-          </div>
-        )}
-
-        {/* Item context card — solid surface, Level 2 shadow, no glassmorphism */}
-        <div className="rounded-xl border border-outline-variant/50 bg-surface-white p-4 shadow-elevation-1">
-          {/* Item name — Fira Sans SemiBold, headline-md; floor min 16px §2 */}
-          <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
-            {inspection.itemName}
-          </h1>
-          {/* Item code — Roboto Mono per §9 */}
-          <p className="mt-1 font-mono text-mono-lg text-text-grey">
-            {inspection.itemCode}
-          </p>
-          {/* Party — VMI cases carry an owner party; Trading/Supplies too (partyId is required) */}
-          <p className="mt-1 font-body text-body-md text-text-grey">
-            {inspection.partyName}
-          </p>
-          {/* Lot + location context — body-md (16px) per §2 floor minimum */}
-          <div className="mt-3 grid grid-cols-2 gap-3">
+      {/* ── Item & Location Overview Card ─────────────────────────────── */}
+      <section aria-labelledby="item-summary-heading" className="overflow-hidden rounded-2xl border border-border bg-surface shadow-elevation-1">
+        <div className="border-b border-border bg-surface px-6 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <p className="font-label text-body-md text-text-grey">Lot</p>
-              <p className="font-mono text-mono-lg text-on-surface">
+              <p className="font-label text-xs font-bold uppercase tracking-wider text-text-secondary">
+                Inspected Article
+              </p>
+              <h2 id="item-summary-heading" className="font-heading text-xl font-bold text-text-primary">
+                {inspection.itemName}
+              </h2>
+            </div>
+            <span className="rounded-xl border border-primary/20 bg-primary/[0.06] px-3 py-1 font-mono text-xs font-bold text-primary">
+              {inspection.itemCode}
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 p-6 sm:grid-cols-4 bg-surface/50">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
+              <Building2 size={18} />
+            </div>
+            <div className="min-w-0">
+              <p className="font-label text-xs font-semibold text-text-secondary">Partner Organization</p>
+              <p className="truncate font-heading text-body-md font-bold text-text-primary">
+                {inspection.partyName}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-purple-50 text-purple-600 border border-purple-100">
+              <Layers size={18} />
+            </div>
+            <div className="min-w-0">
+              <p className="font-label text-xs font-semibold text-text-secondary">Lot Number</p>
+              <p className="truncate font-mono text-body-md font-bold text-text-primary">
                 {inspection.lotNumber}
               </p>
             </div>
-            <div>
-              <p className="font-label text-body-md text-text-grey">Location</p>
-              <p className="font-mono text-mono-lg text-on-surface">
-                {inspection.locationLabel ?? "Unavailable"}
+          </div>
+
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-100">
+              <MapPin size={18} />
+            </div>
+            <div className="min-w-0">
+              <p className="font-label text-xs font-semibold text-text-secondary">Current Location</p>
+              <p className="truncate font-mono text-body-md font-bold text-text-primary">
+                {inspection.locationLabel ?? "Unassigned Bay"}
               </p>
             </div>
-            <div>
-              <p className="font-label text-body-md text-text-grey">Qty to Inspect</p>
-              <p className="font-mono text-mono-lg text-on-surface">
-                {inspection.qtyToInspect} {inspection.itemUom}
-              </p>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+              <Package size={18} />
             </div>
-            <div>
-              <p className="font-label text-body-md text-text-grey">Context</p>
-              <p className="font-body text-body-md text-on-surface capitalize">
-                {inspection.contextType}
+            <div className="min-w-0">
+              <p className="font-label text-xs font-semibold text-text-secondary">Qty to Inspect</p>
+              <p className="font-mono text-body-md font-bold text-text-primary">
+                {inspection.qtyToInspect} <span className="font-normal text-text-secondary text-xs">{inspection.itemUom}</span>
               </p>
             </div>
           </div>
         </div>
+      </section>
 
-        {/* Inspection form — only shown when case is open AND this session
-            holds inspection.resolve (two-person separation — see top-of-file
-            comment). A warehouse_staff session that opened this case never
-            gets the resolve form, even while the case is open. */}
-        {isOpen && !canResolve && (
-          <div className="mt-4 rounded-xl border border-outline-variant/50 bg-surface-white p-4">
-            <p className="font-body text-body-md text-on-surface">
-              This case is open and awaiting a supervisor&apos;s resolution.
-              You do not have the{" "}
-              <span className="font-mono text-mono-md text-on-surface">
-                inspection.resolve
-              </span>{" "}
-              capability required to record a disposition.
+      {/* ── Inspection Resolution Form ─────────────────────────────────── */}
+      {isOpen && !canResolve && (
+        <div className="rounded-2xl border border-border bg-surface p-6 shadow-elevation-1">
+          <div className="flex items-center gap-3 text-text-secondary">
+            <Clock size={20} className="text-amber-600" />
+            <p className="font-body text-body-md">
+              This case is open and awaiting supervisor resolution. You hold view-only{" "}
+              <code className="rounded bg-background px-1.5 py-0.5 font-mono text-xs font-bold text-text-primary">
+                inspection.perform
+              </code>{" "}
+              permissions.
             </p>
           </div>
-        )}
-        {isOpen && canResolve ? (
-          <form action={handleSubmitInspection} className="mt-4 flex flex-col gap-4">
-            {/* ── Disposition selection — large tap targets per §3 ───────────── */}
-            <fieldset>
-              <legend className="font-label text-body-md text-text-grey">
-                Disposition
-              </legend>
-              <div className="mt-2 space-y-2">
-                {DISPOSITION_OPTIONS.map((option) => {
-                  const isSelected =
-                    selectedDisposition === option.value ||
-                    (!selectedDisposition && option.value === "store_as_is");
-                  return (
-                    <label
-                      key={option.value}
-                      // h-16 (64px) minimum floor tap target per §3 — radio-style card
-                      className={`flex h-16 cursor-pointer items-center gap-4 rounded-xl border-2 px-4
-                                  active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100
-                                  ${isSelected ? option.selectedClasses : option.unselectedClasses}`}
-                    >
-                      <input
-                        type="radio"
-                        name="disposition"
-                        value={option.value}
-                        defaultChecked={isSelected}
-                        className="sr-only"
-                      />
-                      {/* Visual radio indicator — visible circle, accessible label */}
-                      <span
-                        aria-hidden="true"
-                        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${
-                          isSelected
-                            ? "border-current bg-current/20"
-                            : "border-outline-variant"
-                        }`}
-                      >
+        </div>
+      )}
+
+      {isOpen && canResolve ? (
+        <form action={handleSubmitInspection} className="space-y-6">
+          {/* Disposition Radio Cards */}
+          <section aria-labelledby="disposition-heading" className="rounded-2xl border border-border bg-surface p-6 shadow-elevation-1">
+            <div className="mb-4 flex items-center gap-2">
+              <FileCheck size={18} className="text-primary" />
+              <h3 id="disposition-heading" className="font-heading text-body-md font-bold text-text-primary">
+                1. Select Inspection Outcome & Disposition
+              </h3>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              {DISPOSITION_OPTIONS.map((option) => {
+                const isSelected =
+                  selectedDisposition === option.value ||
+                  (!selectedDisposition && option.value === "store_as_is");
+                const Icon = option.icon;
+
+                return (
+                  <label
+                    key={option.value}
+                    className={`relative flex cursor-pointer flex-col justify-between rounded-xl border p-4 transition-all duration-200 hover:border-primary/40 hover:bg-background/80 ${
+                      isSelected ? option.selectedClasses : "border-border bg-surface"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="disposition"
+                      value={option.value}
+                      defaultChecked={isSelected}
+                      className="sr-only"
+                    />
+                    <div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border ${option.accentColor}`}>
+                          <Icon size={16} />
+                        </span>
                         {isSelected && (
-                          <span className="block h-2.5 w-2.5 rounded-full bg-current" />
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white">
+                            <CheckCircle2 size={13} />
+                          </span>
                         )}
-                      </span>
-                      <div className="min-w-0">
-                        {/* Label — body-md minimum per floor §2 rule */}
-                        <p className="font-label text-body-md text-on-surface">
-                          {option.label}
-                        </p>
-                        <p className="font-body text-body-md text-text-grey truncate">
-                          {option.description}
-                        </p>
                       </div>
-                    </label>
-                  );
-                })}
-              </div>
-            </fieldset>
+                      <p className="mt-3 font-heading text-body-md font-bold text-text-primary">
+                        {option.label}
+                      </p>
+                      <p className="mt-1 font-body text-xs text-text-secondary leading-relaxed">
+                        {option.description}
+                      </p>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          </section>
 
-            {/* ── Quantity fields ─────────────────────────────────────────────── */}
-            <div className="rounded-xl border border-outline-variant/50 bg-surface-white p-4">
-              <p className="mb-3 font-label text-body-md text-text-grey">
-                Quantities
-              </p>
-              <div className="grid grid-cols-3 gap-3">
-                {/* Inspected Qty */}
-                <div>
-                  <label
-                    htmlFor="inspectedQty"
-                    className="block font-label text-body-md text-text-grey"
-                  >
-                    Inspected
-                  </label>
-                  <input
-                    id="inspectedQty"
-                    name="inspectedQty"
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    max={inspection.qtyToInspect}
-                    defaultValue={inspection.qtyToInspect}
-                    // h-14 (56px) floor default touch target — §3
-                    className="mt-1 h-14 w-full rounded-xl border border-outline-variant bg-surface-white px-3 font-mono text-mono-lg text-on-surface
-                               focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-transparent
-                               placeholder:text-status-neutral"
-                    aria-label="Inspected quantity"
-                  />
-                </div>
-                {/* Passed Qty */}
-                <div>
-                  <label
-                    htmlFor="passedQty"
-                    className="block font-label text-body-md text-text-grey"
-                  >
-                    Passed
-                  </label>
-                  <input
-                    id="passedQty"
-                    name="passedQty"
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    defaultValue={0}
-                    className="mt-1 h-14 w-full rounded-xl border border-outline-variant bg-surface-white px-3 font-mono text-mono-lg text-on-surface
-                               focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-transparent
-                               placeholder:text-status-neutral"
-                    aria-label="Passed quantity"
-                  />
-                </div>
-                {/* Failed Qty */}
-                <div>
-                  <label
-                    htmlFor="failedQty"
-                    className="block font-label text-body-md text-text-grey"
-                  >
-                    Failed
-                  </label>
-                  <input
-                    id="failedQty"
-                    name="failedQty"
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    defaultValue={0}
-                    className="mt-1 h-14 w-full rounded-xl border border-outline-variant bg-surface-white px-3 font-mono text-mono-lg text-on-surface
-                               focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-transparent
-                               placeholder:text-status-neutral"
-                    aria-label="Failed quantity"
-                  />
-                </div>
+          {/* Quantity Audit Matrix */}
+          <section aria-labelledby="quantities-heading" className="rounded-2xl border border-border bg-surface p-6 shadow-elevation-1">
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Package size={18} className="text-primary" />
+                <h3 id="quantities-heading" className="font-heading text-body-md font-bold text-text-primary">
+                  2. Inspection Quantities Breakdown
+                </h3>
               </div>
+              <span className="font-mono text-xs text-text-secondary">
+                Max Available: {inspection.qtyToInspect} {inspection.itemUom}
+              </span>
             </div>
 
-            {/* ── Notes field ─────────────────────────────────────────────────── */}
-            <div>
-              <label
-                htmlFor="notes"
-                className="block font-label text-body-md text-text-grey"
-              >
-                Notes{" "}
-                <span className="font-body text-body-md text-text-grey">
-                  (optional)
-                </span>
-              </label>
-              <textarea
-                id="notes"
-                name="notes"
-                rows={3}
-                placeholder="Add any observations, remarks, or exception notes…"
-                className="mt-1 w-full rounded-xl border border-outline-variant bg-surface-white px-4 py-3 font-body text-body-md text-on-surface
-                           focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-transparent
-                           placeholder:text-status-neutral resize-none"
-              />
-            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div>
+                <label
+                  htmlFor="inspectedQty"
+                  className="block font-label text-xs font-bold text-text-secondary uppercase tracking-wider"
+                >
+                  Total Inspected
+                </label>
+                <input
+                  id="inspectedQty"
+                  name="inspectedQty"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={inspection.qtyToInspect}
+                  defaultValue={inspection.qtyToInspect}
+                  className="mt-1.5 h-12 w-full rounded-xl border border-border bg-surface px-3.5 font-mono text-body-md font-bold text-text-primary shadow-sm transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
 
-            {/* ── Submit CTA — bottom, full-width, h-16 (64px) ───────────────── */}
-            {/* brand-design-system.md §3: primary action in bottom third,
-                full-width, always visible without scrolling. bg-brand-red,
-                text-white, active: scale not hover:. WCAG AAA (7:1 white on
-                brand-red ≈ 5.7:1 — boosted by font-bold). */}
-            {/* White on brand-red: 7.31:1 (AAA) — resolved 2026-08-12 by darkening brand-red to #9A3412; see brand-design-system.md §1.1. */}
+              <div>
+                <label
+                  htmlFor="passedQty"
+                  className="block font-label text-xs font-bold text-emerald-700 uppercase tracking-wider"
+                >
+                  Passed Quantity
+                </label>
+                <input
+                  id="passedQty"
+                  name="passedQty"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  defaultValue={inspection.qtyToInspect}
+                  className="mt-1.5 h-12 w-full rounded-xl border border-emerald-200 bg-emerald-50/40 px-3.5 font-mono text-body-md font-bold text-emerald-950 shadow-sm transition-all focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="failedQty"
+                  className="block font-label text-xs font-bold text-rose-700 uppercase tracking-wider"
+                >
+                  Failed / Defect Qty
+                </label>
+                <input
+                  id="failedQty"
+                  name="failedQty"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  defaultValue={0}
+                  className="mt-1.5 h-12 w-full rounded-xl border border-rose-200 bg-rose-50/40 px-3.5 font-mono text-body-md font-bold text-rose-950 shadow-sm transition-all focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* Observations & Notes */}
+          <section aria-labelledby="notes-heading" className="rounded-2xl border border-border bg-surface p-6 shadow-elevation-1">
+            <h3 id="notes-heading" className="font-heading text-body-md font-bold text-text-primary">
+              3. Observations & Inspection Remarks
+            </h3>
+            <p className="mt-0.5 font-body text-xs text-text-secondary">
+              Record physical inspection notes, package conditions, or non-conformance details for audit trails.
+            </p>
+            <textarea
+              id="notes"
+              name="notes"
+              rows={3}
+              placeholder="e.g. Minor outer box abrasion observed. All internal seals intact and passed electrical resistance check."
+              className="mt-3 w-full rounded-xl border border-border bg-surface px-4 py-3 font-body text-body-sm text-text-primary shadow-sm transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-text-secondary/50"
+            />
+          </section>
+
+          {/* Action CTAs */}
+          <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
+            <Link
+              href="/inventory?tab=inspection"
+              className="rounded-xl border border-border bg-surface px-5 py-3 font-label text-body-md font-bold text-text-secondary hover:bg-background active:scale-[0.98] transition-all"
+            >
+              Cancel
+            </Link>
             <button
               type="submit"
-              className="mt-2 flex h-16 w-full items-center justify-center rounded-xl bg-primary font-label text-body-md uppercase tracking-wide text-white
-                         active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100
-                         focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 focus:ring-offset-surface-white"
+              className="flex items-center gap-2 rounded-xl bg-primary px-8 py-3 font-label text-body-md font-bold text-white shadow-sm hover:bg-primary-hover active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-all"
             >
-              Submit Inspection
+              <CheckCircle2 size={18} />
+              Submit Inspection Disposition
             </button>
-          </form>
-        ) : !isOpen ? (
-          // Non-open case — read-only view
-          <div className="mt-4 rounded-xl border border-outline-variant/50 bg-surface-white p-4">
-            <p className="font-body text-body-md text-on-surface">
-              This inspection case is{" "}
-              <span className="font-label text-body-md text-on-surface uppercase">
-                {inspection.status}
-              </span>{" "}
-              and cannot be edited.
-            </p>
+          </div>
+        </form>
+      ) : !isOpen ? (
+        <div className="rounded-2xl border border-border bg-surface p-6 text-center shadow-elevation-1">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+            <CheckCircle2 size={24} />
+          </div>
+          <h3 className="mt-3 font-heading text-lg font-bold text-text-primary">
+            Inspection Case Closed
+          </h3>
+          <p className="mt-1 font-body text-body-sm text-text-secondary">
+            This case has already been resolved and finalized.
+          </p>
+          <div className="mt-6 flex justify-center">
             <Link
-              href="/inspection"
-              className="mt-4 flex h-16 w-full items-center justify-center rounded-xl border border-brand-navy bg-brand-navy font-label text-body-md uppercase text-surface-white
-                         active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100
-                         focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 focus:ring-offset-surface-white"
+              href="/inventory?tab=inspection"
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-2.5 font-label text-body-md font-bold text-white shadow-sm hover:bg-primary-hover active:scale-95 transition-all"
             >
+              <ArrowLeft size={16} />
               Back to Queue
             </Link>
           </div>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 }
+
