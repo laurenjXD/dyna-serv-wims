@@ -69,11 +69,29 @@ async function handleCreateTransfer(formData: FormData): Promise<void> {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 interface PageProps {
-  searchParams: Promise<{ errors?: string }>;
+  searchParams: Promise<{
+    errors?: string;
+    fromLocationId?: string;
+    toLocationId?: string;
+    flowType?: string;
+    reason?: string;
+    lotId?: string;
+    itemId?: string;
+    qty?: string;
+  }>;
 }
 
 export default async function NewTransferPage({ searchParams }: PageProps) {
-  const { errors: encodedErrors } = await searchParams;
+  const {
+    errors: encodedErrors,
+    fromLocationId,
+    toLocationId,
+    flowType,
+    reason,
+    lotId,
+    itemId,
+    qty,
+  } = await searchParams;
   const resolver = await createPageResolver();
 
   // Gate: transfer.request required to create a transfer.
@@ -85,6 +103,28 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
   const errors = encodedErrors
     ? decodeURIComponent(encodedErrors).split("|").filter(Boolean)
     : [];
+
+  const locationList = await db
+    .select({
+      id: locations.id,
+      label: locations.label,
+      locationType: locations.locationType,
+      zone: locations.zone,
+    })
+    .from(locations)
+    .where(eq(locations.isActive, true))
+    .orderBy(asc(locations.label));
+
+  const initialLines =
+    lotId || itemId
+      ? [
+          {
+            lotId: lotId ?? "",
+            itemId: itemId ?? "",
+            qtyRequested: qty ?? "",
+          },
+        ]
+      : undefined;
 
   return (
     <div className="mx-auto max-w-container">
@@ -131,20 +171,26 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
                 htmlFor="fromLocationId"
                 className="block font-label text-label text-text-grey"
               >
-                From Location ID{" "}
+                From Location{" "}
                 <span aria-hidden="true" className="text-brand-red">
                   *
                 </span>
                 <span className="sr-only">(required)</span>
               </label>
-              <input
+              <select
                 id="fromLocationId"
                 name="fromLocationId"
-                type="text"
                 required
-                placeholder="UUID of the source location"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              />
+                defaultValue={fromLocationId ?? ""}
+                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              >
+                <option value="">Select source location…</option>
+                {locationList.map((loc) => (
+                  <option key={loc.id} value={loc.id}>
+                    {loc.label} ({loc.locationType} · Zone {loc.zone})
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* To Location ID — required */}
@@ -153,20 +199,26 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
                 htmlFor="toLocationId"
                 className="block font-label text-label text-text-grey"
               >
-                To Location ID{" "}
+                To Location{" "}
                 <span aria-hidden="true" className="text-brand-red">
                   *
                 </span>
                 <span className="sr-only">(required)</span>
               </label>
-              <input
+              <select
                 id="toLocationId"
                 name="toLocationId"
-                type="text"
                 required
-                placeholder="UUID of the destination location"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              />
+                defaultValue={toLocationId ?? ""}
+                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              >
+                <option value="">Select destination location…</option>
+                {locationList.map((loc) => (
+                  <option key={loc.id} value={loc.id}>
+                    {loc.label} ({loc.locationType} · Zone {loc.zone})
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Flow Type — required */}
@@ -185,6 +237,7 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
                 id="flowType"
                 name="flowType"
                 required
+                defaultValue={flowType ?? ""}
                 className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
               >
                 <option value="">Select flow type…</option>
@@ -206,9 +259,11 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
                 id="reason"
                 name="reason"
                 type="text"
+                defaultValue={reason ?? ""}
                 placeholder="Optional reason for the transfer"
                 className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              />
+              >
+              </input>
             </div>
 
             {/* Requires Approval — optional checkbox */}
@@ -240,7 +295,7 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
           </p>
           <div className="mt-4">
             {/* TransferLineItems is a client component — handles dynamic add/remove. */}
-            <TransferLineItems />
+            <TransferLineItems initialLines={initialLines} />
           </div>
         </div>
 

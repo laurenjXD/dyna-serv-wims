@@ -580,7 +580,7 @@ export function InspectionTab({ rows }: { rows: InspectionAndTransferQueueRow[] 
 
               {/* Option 2: Internal Quarantine Rack Transfer */}
               <Link
-                href={`/transfers/new?fromLocation=${encodeURIComponent(activeModalRow.locationLabel || "")}&lot=${encodeURIComponent(activeModalRow.lotNumber || "")}&reason=quarantine_relocation`}
+                href={`/transfers/new?lotId=${encodeURIComponent(activeModalRow.lotId || "")}&itemId=${encodeURIComponent(activeModalRow.itemId || "")}&flowType=${encodeURIComponent(activeModalRow.flowType || "vmi")}&reason=${encodeURIComponent(`Quarantine relocation for Lot ${activeModalRow.lotNumber || ""}`)}`}
                 className="group flex items-start gap-3.5 rounded-xl border border-border bg-surface p-3.5 hover:border-blue-600 hover:bg-blue-50/30 transition-all"
               >
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700 mt-0.5">
@@ -601,7 +601,7 @@ export function InspectionTab({ rows }: { rows: InspectionAndTransferQueueRow[] 
 
               {/* Option 3: Outbound Return to Vendor (RTV) */}
               <Link
-                href={`/outgoing/new?flowType=vmi&reason=rtv&lot=${encodeURIComponent(activeModalRow.lotNumber || "")}`}
+                href={`/inventory?tab=pick-lists&reason=rtv&lotNumber=${encodeURIComponent(activeModalRow.lotNumber || "")}`}
                 className="group flex items-start gap-3.5 rounded-xl border border-rose-200 bg-rose-50/40 p-3.5 hover:border-rose-400 hover:bg-rose-50 transition-all"
               >
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-rose-800 mt-0.5">

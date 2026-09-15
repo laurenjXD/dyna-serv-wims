@@ -26,8 +26,14 @@ const EMPTY_LINE: LineState = {
   qtyRequested: "",
 };
 
-export function TransferLineItems() {
-  const [lines, setLines] = useState<LineState[]>([{ ...EMPTY_LINE }]);
+export function TransferLineItems({
+  initialLines,
+}: {
+  initialLines?: LineState[];
+}) {
+  const [lines, setLines] = useState<LineState[]>(
+    initialLines && initialLines.length > 0 ? initialLines : [{ ...EMPTY_LINE }]
+  );
 
   function addLine() {
     setLines((prev) => [...prev, { ...EMPTY_LINE }]);

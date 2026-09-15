@@ -253,6 +253,7 @@ export type InspectionCaseListRow = {
   contextType: string;
   sourceRefType: string;
   sourceRefId: string;
+  lotId?: string;
   lotNumber: string;
   itemId: string;
   itemCode: string;
@@ -298,6 +299,7 @@ export async function listInspectionCases(
       contextType: inspectionCases.contextType,
       sourceRefType: inspectionCases.sourceRefType,
       sourceRefId: inspectionCases.sourceRefId,
+      lotId: lots.id,
       lotNumber: lots.lotNumber,
       itemId: items.id,
       itemCode: items.code,
@@ -437,9 +439,12 @@ export type InspectionAndTransferQueueRow = {
   itemCode?: string;
   itemName?: string;
   lotNumber?: string;
+  lotId?: string;
+  itemId?: string;
   partyName?: string;
   locationLabel?: string | null;
   contextType?: string;
+  flowType?: string;
 };
 
 /**
@@ -497,9 +502,12 @@ export async function listInspectionAndTransferQueue(
         itemCode: c.itemCode,
         itemName: c.itemName,
         lotNumber: c.lotNumber,
+        lotId: c.lotId,
+        itemId: c.itemId,
         partyName: c.partyName,
         locationLabel: c.locationLabel,
         contextType: c.contextType,
+        flowType: c.flowType,
       });
     }
   }
