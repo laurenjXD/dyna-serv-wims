@@ -31,6 +31,7 @@ import {
   Building2,
   MapPin,
   CheckCheck,
+  X,
 } from "lucide-react";
 import type { InspectionAndTransferQueueRow } from "@/lib/db/queries/transfers";
 import { TablePagination } from "@/components/ui/TablePagination";
@@ -103,7 +104,7 @@ export function InspectionTab({ rows }: { rows: InspectionAndTransferQueueRow[] 
   >("all");
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useState(10);
-  const [openRtvMenuId, setOpenRtvMenuId] = useState<string | null>(null);
+  const [activeModalRow, setActiveModalRow] = useState<InspectionAndTransferQueueRow | null>(null);
 
   // Compute KPI metrics
   const pendingQaCount = rows.filter(
@@ -438,48 +439,19 @@ export function InspectionTab({ rows }: { rows: InspectionAndTransferQueueRow[] 
                     <td className="px-4 py-3.5 text-right align-middle">
                       {row.type === "inspection" ? (
                         isFailed ? (
-                          <div className="relative inline-block text-left">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setOpenRtvMenuId(openRtvMenuId === row.id ? null : row.id)
-                              }
-                              className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 font-label text-label-xs font-bold text-rose-800 hover:bg-rose-100"
-                            >
-                              <span>Resolve / RTV</span>
-                              <ChevronRight size={12} className="rotate-90" />
-                            </button>
-
-                            {openRtvMenuId === row.id && (
-                              <div className="absolute right-0 z-20 mt-1 w-56 origin-top-right rounded-xl border border-border bg-surface p-1.5 shadow-elevation-2">
-                                <Link
-                                  href={row.href}
-                                  className="flex items-center gap-2 rounded-lg px-3 py-2 font-label text-label-xs font-medium text-on-surface hover:bg-surface-light-grey"
-                                >
-                                  <ExternalLink size={13} className="text-brand-navy" />
-                                  <span>Review Inspection Case</span>
-                                </Link>
-                                <Link
-                                  href={`/withdrawals/new?reason=rtv&lot=${row.lotNumber ?? ""}`}
-                                  className="flex items-center gap-2 rounded-lg px-3 py-2 font-label text-label-xs font-medium text-amber-800 hover:bg-amber-50"
-                                >
-                                  <PackageCheck size={13} />
-                                  <span>Create RTV Outbound</span>
-                                </Link>
-                                <Link
-                                  href={`/transfers/new?fromLocation=${row.locationLabel ?? ""}&reason=qa_retest`}
-                                  className="flex items-center gap-2 rounded-lg px-3 py-2 font-label text-label-xs font-medium text-blue-800 hover:bg-blue-50"
-                                >
-                                  <RotateCcw size={13} />
-                                  <span>Transfer for Re-test</span>
-                                </Link>
-                              </div>
-                            )}
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setActiveModalRow(row)}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-rose-300 bg-rose-50 px-3 py-1.5 font-label text-label-xs font-bold text-rose-800 hover:bg-rose-100 active:scale-95 shadow-sm transition-all"
+                          >
+                            <ShieldAlert size={13} className="text-rose-600" />
+                            <span>Resolve / RTV</span>
+                            <ChevronRight size={13} />
+                          </button>
                         ) : isOpen ? (
                           <Link
                             href={row.href}
-                            className="inline-flex items-center gap-1 rounded-lg border border-border bg-surface px-3 py-1.5 font-label text-label-xs font-bold text-brand-navy shadow-sm hover:bg-brand-navy hover:text-white transition-colors"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 font-label text-label-xs font-bold text-brand-navy shadow-sm hover:bg-brand-navy hover:text-white transition-colors"
                           >
                             <span>Inspect Now</span>
                             <ChevronRight size={13} />
@@ -487,7 +459,7 @@ export function InspectionTab({ rows }: { rows: InspectionAndTransferQueueRow[] 
                         ) : (
                           <Link
                             href={row.href}
-                            className="inline-flex items-center gap-1 rounded-lg border border-border bg-surface px-3 py-1.5 font-label text-label-xs font-bold text-text-grey shadow-sm hover:bg-surface-light-grey transition-colors"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 font-label text-label-xs font-bold text-text-grey shadow-sm hover:bg-surface-light-grey transition-colors"
                           >
                             <span>View Audit</span>
                             <ChevronRight size={13} />
@@ -496,7 +468,7 @@ export function InspectionTab({ rows }: { rows: InspectionAndTransferQueueRow[] 
                       ) : (
                         <Link
                           href={row.href}
-                          className="inline-flex items-center gap-1 rounded-lg border border-border bg-surface px-3 py-1.5 font-label text-label-xs font-bold text-brand-navy shadow-sm hover:bg-brand-navy hover:text-white transition-colors"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 font-label text-label-xs font-bold text-brand-navy shadow-sm hover:bg-brand-navy hover:text-white transition-colors"
                         >
                           <span>Execute</span>
                           <ChevronRight size={13} />
@@ -525,6 +497,143 @@ export function InspectionTab({ rows }: { rows: InspectionAndTransferQueueRow[] 
           pageSizeOptions={[5, 10, 20, 50]}
         />
       </div>
+
+      {/* ── Quarantine / RTV Resolution Action Modal ── */}
+      {activeModalRow && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in"
+          onClick={() => setActiveModalRow(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="w-full max-w-xl rounded-2xl border border-border bg-surface p-6 shadow-elevation-3 space-y-5 animate-in zoom-in-95"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-border pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-700 border border-rose-200">
+                  <ShieldAlert className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-heading text-title-md font-bold text-on-surface">
+                    Quarantine &amp; RTV Resolution
+                  </h3>
+                  <p className="mt-0.5 font-body text-body-xs text-text-grey">
+                    Choose the next operational step for this rejected / non-conforming lot
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveModalRow(null)}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-text-grey hover:bg-surface-light-grey hover:text-on-surface transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Lot Context Info */}
+            <div className="grid grid-cols-2 gap-3 rounded-xl bg-surface-light-grey/60 p-3.5 font-body text-body-xs">
+              <div>
+                <span className="text-text-grey block font-label text-[11px] uppercase">Item</span>
+                <strong className="text-on-surface truncate block">{activeModalRow.itemName || activeModalRow.title}</strong>
+              </div>
+              <div>
+                <span className="text-text-grey block font-label text-[11px] uppercase">Lot Number</span>
+                <strong className="font-mono text-on-surface block">{activeModalRow.lotNumber || "—"}</strong>
+              </div>
+              <div>
+                <span className="text-text-grey block font-label text-[11px] uppercase">Current Location</span>
+                <span className="text-on-surface">{activeModalRow.locationLabel || "Staging Bay"}</span>
+              </div>
+              <div>
+                <span className="text-text-grey block font-label text-[11px] uppercase">Partner Organization</span>
+                <span className="text-on-surface">{activeModalRow.partyName || "—"}</span>
+              </div>
+            </div>
+
+            {/* 3 Clear Action Cards */}
+            <div className="space-y-3">
+              {/* Option 1: Review Case */}
+              <Link
+                href={activeModalRow.href}
+                className="group flex items-start gap-3.5 rounded-xl border border-border bg-surface p-3.5 hover:border-brand-navy hover:bg-brand-navy/[0.02] transition-all"
+              >
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-navy/10 text-brand-navy mt-0.5">
+                  <ExternalLink size={16} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-heading text-body-md font-bold text-on-surface group-hover:text-brand-navy">
+                      1. Review Inspection Audit &amp; Defect Notes
+                    </h4>
+                    <ChevronRight size={16} className="text-text-grey group-hover:text-brand-navy group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                  <p className="mt-0.5 font-body text-body-xs text-text-grey">
+                    View test breakdown, inspector notes, and photographic evidence recorded on the floor.
+                  </p>
+                </div>
+              </Link>
+
+              {/* Option 2: Internal Quarantine Rack Transfer */}
+              <Link
+                href={`/transfers/new?fromLocation=${encodeURIComponent(activeModalRow.locationLabel || "")}&lot=${encodeURIComponent(activeModalRow.lotNumber || "")}&reason=quarantine_relocation`}
+                className="group flex items-start gap-3.5 rounded-xl border border-border bg-surface p-3.5 hover:border-blue-600 hover:bg-blue-50/30 transition-all"
+              >
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700 mt-0.5">
+                  <RotateCcw size={16} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-heading text-body-md font-bold text-on-surface group-hover:text-blue-700">
+                      2. Relocate to Quarantine / QA Hold Bay
+                    </h4>
+                    <ChevronRight size={16} className="text-text-grey group-hover:text-blue-700 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                  <p className="mt-0.5 font-body text-body-xs text-text-grey">
+                    Move rejected boxes out of active floor traffic into a designated secure quarantine bin.
+                  </p>
+                </div>
+              </Link>
+
+              {/* Option 3: Outbound Return to Vendor (RTV) */}
+              <Link
+                href={`/outgoing/new?flowType=vmi&reason=rtv&lot=${encodeURIComponent(activeModalRow.lotNumber || "")}`}
+                className="group flex items-start gap-3.5 rounded-xl border border-rose-200 bg-rose-50/40 p-3.5 hover:border-rose-400 hover:bg-rose-50 transition-all"
+              >
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-rose-800 mt-0.5">
+                  <PackageCheck size={16} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-heading text-body-md font-bold text-rose-950 group-hover:text-rose-900">
+                      3. Initiate Outbound Return-to-Vendor (RTV)
+                    </h4>
+                    <ChevronRight size={16} className="text-rose-600 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                  <p className="mt-0.5 font-body text-body-xs text-rose-800/80">
+                    Generate an Outbound Withdrawal order to ship rejected goods back once supplier RMA is authorized.
+                  </p>
+                </div>
+              </Link>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-end pt-2 border-t border-border">
+              <button
+                type="button"
+                onClick={() => setActiveModalRow(null)}
+                className="rounded-xl border border-border bg-surface px-5 py-2 font-label text-label-xs font-bold text-text-grey hover:bg-surface-light-grey hover:text-on-surface transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
