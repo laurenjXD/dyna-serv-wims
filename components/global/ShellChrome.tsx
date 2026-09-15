@@ -377,68 +377,57 @@ export function ShellChrome({ children }: { children: ReactNode }) {
           </button>
         </div>
 
-        {/* Desktop Header Left Brand & Toggle Area (matches sidebar width and line exactly) */}
+        {/* Desktop Header Left Brand Area (matches sidebar width and line exactly) */}
         <div
-          className={`hidden h-full shrink-0 items-center justify-between border-r border-primary/15 transition-[width] duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none lg:flex ${
-            isDesktopOpen ? "w-[304px] px-4" : "w-[88px] gap-1.5 px-2.5 justify-center"
+          className={`hidden h-full shrink-0 items-center border-r border-primary/15 transition-[width] duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none lg:flex ${
+            isDesktopOpen ? "w-[304px] px-5 justify-start" : "w-[88px] justify-center px-0"
           }`}
         >
           {isDesktopOpen ? (
-            <>
-              <Link
-                href="/"
-                aria-label="Dyna-Serv WIMS home"
-                className="flex shrink-0 items-center gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              >
-                <span className="flex h-10 w-10 items-center justify-center rounded-full border border-primary/15 bg-surface shadow-[0_7px_18px_-8px_rgba(37,99,235,0.55)] ring-4 ring-primary/[0.04]">
-                  <Image src="/logo-hd.png" alt="" width={32} height={32} priority />
-                </span>
-                <span className="font-heading text-title-lg font-bold tracking-tight text-text-primary">
-                  Dyna-Serv WIMS
-                </span>
-              </Link>
-              {tier !== "floor" && (
-                <button
-                  type="button"
-                  aria-label="Collapse navigation"
-                  aria-expanded={isDesktopOpen}
-                  onClick={toggleDesktop}
-                  title="Collapse sidebar to icons"
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-primary/[0.04] text-text-secondary shadow-sm transition-all hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                >
-                  <PanelLeftClose size={20} strokeWidth={2.2} aria-hidden="true" />
-                </button>
-              )}
-            </>
+            <Link
+              href="/"
+              aria-label="Dyna-Serv WIMS home"
+              className="flex shrink-0 items-center gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <span className="flex h-10 w-10 items-center justify-center rounded-full border border-primary/15 bg-surface shadow-[0_7px_18px_-8px_rgba(37,99,235,0.55)] ring-4 ring-primary/[0.04]">
+                <Image src="/logo-hd.png" alt="" width={32} height={32} priority />
+              </span>
+              <span className="font-heading text-title-lg font-bold tracking-tight text-text-primary">
+                Dyna-Serv WIMS
+              </span>
+            </Link>
           ) : (
-            <>
-              <Link
-                href="/"
-                aria-label="Dyna-Serv WIMS home"
-                className="flex shrink-0 items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              >
-                <span className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/15 bg-surface shadow-sm">
-                  <Image src="/logo-hd.png" alt="" width={24} height={24} priority />
-                </span>
-              </Link>
-              {tier !== "floor" && (
-                <button
-                  type="button"
-                  aria-label="Expand navigation"
-                  aria-expanded={isDesktopOpen}
-                  onClick={toggleDesktop}
-                  title="Expand sidebar"
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-primary/15 bg-primary/[0.04] text-text-secondary shadow-sm transition-all hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                >
-                  <PanelLeftOpen size={18} strokeWidth={2.2} aria-hidden="true" />
-                </button>
-              )}
-            </>
+            <Link
+              href="/"
+              aria-label="Dyna-Serv WIMS home"
+              className="flex h-full w-full items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <span className="flex h-10 w-10 items-center justify-center rounded-full border border-primary/15 bg-surface shadow-[0_7px_18px_-8px_rgba(37,99,235,0.45)] ring-4 ring-primary/[0.04]">
+                <Image src="/logo-hd.png" alt="" width={28} height={28} priority />
+              </span>
+            </Link>
           )}
         </div>
 
         {/* Desktop Header Main Content (Page title, alerts, shortcuts, user profile) */}
-        <div className="hidden min-w-0 flex-1 items-center gap-5 px-6 lg:flex">
+        <div className="hidden min-w-0 flex-1 items-center gap-4 px-6 lg:flex">
+          {tier !== "floor" && (
+            <button
+              type="button"
+              aria-label={isDesktopOpen ? "Collapse navigation" : "Expand navigation"}
+              aria-expanded={isDesktopOpen}
+              onClick={toggleDesktop}
+              title={isDesktopOpen ? "Collapse sidebar" : "Expand sidebar"}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-primary/[0.04] text-text-secondary shadow-sm transition-all hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              {isDesktopOpen ? (
+                <PanelLeftClose size={20} strokeWidth={2.2} aria-hidden="true" />
+              ) : (
+                <PanelLeftOpen size={20} strokeWidth={2.2} aria-hidden="true" />
+              )}
+            </button>
+          )}
+
           <div className="min-w-0 shrink-0">
             <p
               className="truncate font-heading text-[23px] font-bold leading-tight tracking-[-0.02em] text-text-primary"
