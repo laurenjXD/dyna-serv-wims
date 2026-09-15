@@ -293,9 +293,9 @@ function NavLink({
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
         {shortcutNumber && (
           <kbd
-            className={`pointer-events-none hidden rounded px-1.5 py-0.5 font-mono text-[11px] font-semibold leading-none shadow-sm transition-all xl:inline-flex ${
+            className={`pointer-events-none inline-flex rounded px-1.5 py-0.5 font-mono text-[11px] font-semibold leading-none shadow-sm transition-all ${
               isActive
-                ? "border border-blue-200/80 bg-blue-50 text-[#0b4d94]"
+                ? "border border-blue-200/80 bg-blue-50 text-[#0b4d94] opacity-100"
                 : "border border-white/20 bg-white/15 text-white/90 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100"
             }`}
           >
