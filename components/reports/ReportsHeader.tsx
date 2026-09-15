@@ -54,31 +54,22 @@ export function ReportsHeader({
       {/* ─────────────────────────────────────────────────────────────────── */}
       {/* 📱 MOBILE STICKY TITLE & FAST CONTROLS (< 1024px)                   */}
       {/* ─────────────────────────────────────────────────────────────────── */}
-      <div className="block lg:hidden space-y-3 rounded-2xl border border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-900/80 p-4 shadow-sm backdrop-blur-md">
+      <div className="block lg:hidden space-y-3 rounded-2xl border border-border bg-surface p-4 shadow-card">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="font-heading text-xl font-black text-brand-navy">
+            <h1 className="font-heading text-title-lg font-bold text-brand-navy">
               Reports &amp; Settlement
             </h1>
-            <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
-              <span className="rounded-md bg-blue-50 px-2 py-0.5 font-mono text-[10px] font-bold text-brand-navy border border-blue-200">
-                {horizon === "7D"
-                  ? "Sep 05 – Sep 12 (7D)"
-                  : horizon === "30D"
-                  ? "Aug 14 – Sep 12 (30D)"
-                  : horizon === "90D"
-                  ? "Jun 14 – Sep 12 (90D)"
-                  : `${startDate} to ${endDate}`}
-              </span>
-              <span className="text-[11px] text-text-grey">Warehouse 1 (Single Hub)</span>
-            </div>
+            <p className="mt-0.5 font-body text-body-xs text-text-grey">
+              Ledgers, audit history, and throughput billing
+            </p>
           </div>
 
           {/* Primary + New Report Button (Min 48px Touch Target) */}
           <button
             type="button"
             onClick={onOpenReportBuilder}
-            className="flex min-h-[48px] items-center justify-center gap-1.5 rounded-xl bg-brand-navy px-3.5 font-heading text-xs font-bold text-white shadow-md active:scale-95 transition-transform"
+            className="flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl bg-brand-navy px-3.5 font-label text-label-xs font-bold text-white shadow-sm active:scale-95 transition-transform"
           >
             <Plus size={16} />
             <span>+ New Report</span>
@@ -93,7 +84,7 @@ export function ReportsHeader({
             placeholder="Search report archive, VMI consignors..."
             value={mobileSearch}
             onChange={(e) => setMobileSearch(e.target.value)}
-            className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/80 pl-9 pr-3 font-body text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="h-10 w-full rounded-xl border border-border bg-surface-light-grey/60 pl-9 pr-3 font-body text-body-xs text-on-surface placeholder:text-text-grey focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-navy"
           />
         </div>
       </div>
@@ -103,16 +94,11 @@ export function ReportsHeader({
       {/* ─────────────────────────────────────────────────────────────────── */}
       <div className="hidden lg:flex flex-row items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="font-heading text-2xl sm:text-3xl font-black text-brand-navy tracking-tight">
-              Warehouse Reports &amp; Financial Settlement Hub
-            </h1>
-            <span className="rounded-full bg-blue-50 px-2.5 py-0.5 font-mono text-[10px] font-bold text-brand-navy border border-blue-200">
-              WAREHOUSE 1 · SINGLE HUB
-            </span>
-          </div>
-          <p className="mt-1 font-body text-xs sm:text-sm text-text-grey">
-            Generate, audit, schedule, and reconcile billing, inventory positions, and throughput movement.
+          <h1 className="font-heading text-title-lg sm:text-headline-md font-extrabold text-brand-navy tracking-tight">
+            Warehouse Reports &amp; Financial Settlement
+          </h1>
+          <p className="mt-0.5 font-body text-body-xs sm:text-body-sm text-text-grey">
+            Generate, audit, schedule, and reconcile billing, inventory positions, and throughput movement
           </p>
         </div>
 
