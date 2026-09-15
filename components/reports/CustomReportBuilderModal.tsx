@@ -566,45 +566,42 @@ export function CustomReportBuilderModal({
               className="w-full max-w-[850px] rounded-xl border border-slate-300 bg-white p-8 sm:p-10 shadow-2xl transition-transform duration-150 space-y-6 text-slate-900 font-body"
             >
               {/* ── Document Header ───────────────────────────────────── */}
-              <div className="border-b-2 border-slate-900 pb-5">
+              <div className="border-b-2 border-slate-800 pb-4">
                 <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/api/brand/logo" alt="Dyna-Serv" className="h-12 w-auto shrink-0 object-contain" />
+                    <img src="/api/brand/logo" alt="Dyna-Serv" className="h-7 w-auto shrink-0 object-contain" />
                     <div>
-                      <h1 className="font-heading text-lg font-black tracking-tight text-brand-navy uppercase">
-                        Dyna-Serv Logistics &amp; Warehouse Management System
+                      <h1 className="font-heading font-bold text-xs uppercase tracking-wider text-slate-800 leading-none">
+                        DYNA-SERV ENTERPRISES
                       </h1>
-                      <p className="text-[11px] font-body text-slate-600">
-                        100 Logistics Boulevard, Light Industry &amp; Science Park, Laguna, Philippines · WIMS v2.4
+                      <p className="font-heading text-sm font-extrabold uppercase tracking-wide text-brand-navy mt-0.5">
+                        {reportTitle}
                       </p>
                     </div>
                   </div>
 
-                  <div className="text-right">
-                    <span className="inline-block rounded-md bg-slate-900 px-2.5 py-1 font-mono text-[10px] font-bold text-white uppercase tracking-wider">
+                  <div className="text-right font-mono">
+                    <span className="inline-block rounded bg-slate-900 px-2 py-0.5 text-[10px] font-bold text-white uppercase tracking-wider">
                       {category} Audit Report
                     </span>
                     <p className="mt-1 font-mono text-xs font-bold text-slate-900">
                       REF: {reportRefNumber}
                     </p>
-                    <p className="text-[10px] text-text-grey">
+                    <p className="text-[10px] text-slate-500">
                       Generated: {generationTimestamp}
                     </p>
                   </div>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                <div className="mt-3 pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 font-mono text-[11px]">
                   <div>
-                    <h2 className="font-heading text-base font-bold text-slate-900">
-                      {reportTitle}
-                    </h2>
-                    <p className="text-xs text-slate-600">
+                    <p className="text-slate-600">
                       Primary Breakdown: <strong className="text-slate-900">{selectedDimension}</strong> · Scope: <strong className="text-slate-900">{facilityZone}</strong>
                     </p>
                   </div>
                   <div className="text-right">
-                    <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 font-label text-[10px] font-bold text-blue-800">
+                    <span className="rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-800">
                       {horizon}
                     </span>
                   </div>

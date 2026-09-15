@@ -90,148 +90,148 @@ export default async function InboundTurnoverReceiptPage({ params }: PageProps) 
       </div>
 
       {/* Official Inbound Goods Turnover Document Sheet */}
-      <div className="rounded-2xl border border-outline-variant/40 bg-surface-white p-8 shadow-elevation-2 print:border-0 print:p-0 print:shadow-none">
+      <div className="rounded-xl border border-slate-300 bg-surface-white p-6 shadow-elevation-2 print:border-0 print:p-0 print:shadow-none">
         {/* Header */}
-        <div className="flex items-start justify-between border-b-2 border-brand-navy pb-5">
+        <div className="flex items-start justify-between border-b-2 border-slate-800 pb-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/api/brand/logo" alt="Dyna-Serv" className="h-8 w-auto" />
-              <span className="font-heading text-headline-sm font-extrabold text-on-surface">
+              <img src="/api/brand/logo" alt="Dyna-Serv" className="h-7 w-auto" />
+              <span className="font-heading text-xs font-bold uppercase tracking-wider text-slate-800">
                 Dyna-Serv WIMS
               </span>
             </div>
-            <h1 className="font-heading text-headline-md font-bold uppercase tracking-tight text-brand-navy">
+            <h1 className="font-heading text-sm font-extrabold uppercase tracking-wide text-brand-navy">
               Inbound Goods Turnover Receipt
             </h1>
-            <p className="font-body text-body-xs text-text-grey">
-              Official Carrier Dock Handover & Physical Receipt Proof
+            <p className="font-mono text-[10px] text-slate-500">
+              Official Carrier Dock Handover &amp; Physical Receipt Record
             </p>
           </div>
 
           <div className="text-right">
-            <p className="font-label text-label-xs uppercase text-text-grey font-bold">
-              Receipt #
+            <p className="font-mono text-[10px] uppercase font-bold text-slate-500">
+              Receipt No.
             </p>
-            <p className="font-mono text-mono-lg font-extrabold text-brand-navy">
+            <p className="font-mono text-xs font-extrabold text-brand-navy">
               {receiptNumber}
             </p>
-            <p className="mt-1 font-mono text-mono-xs text-text-grey">
+            <p className="font-mono text-[10px] text-slate-500">
               Ref WRR: {wrr.wrrNumber}
             </p>
-            <div className="mt-2 flex justify-end">
+            <div className="mt-1.5 flex justify-end">
               <WrrBarcode wrrNumber={receiptNumber} />
             </div>
           </div>
         </div>
 
         {/* Handover & Vendor Logistics Details */}
-        <div className="mt-5 grid grid-cols-2 gap-4 rounded-xl border border-outline-variant/30 bg-surface-light-grey/40 p-4 text-body-sm sm:grid-cols-4">
+        <div className="mt-4 grid grid-cols-2 gap-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3 font-mono text-[11px] sm:grid-cols-4">
           <div>
-            <p className="font-label text-label-xs uppercase text-text-grey font-bold">Supplier / Vendor</p>
-            <p className="mt-0.5 font-body font-bold text-on-surface">{wrr.vendorPartyName ?? "—"}</p>
-            <p className="font-mono text-mono-xs text-text-grey">{wrr.vendorPartyCode ?? "—"}</p>
+            <p className="text-[9px] uppercase font-bold text-slate-500">Supplier / Vendor</p>
+            <p className="mt-0.5 font-bold text-slate-900">{wrr.vendorPartyName ?? "—"}</p>
+            <p className="text-[10px] text-slate-500">{wrr.vendorPartyCode ?? "—"}</p>
           </div>
           <div>
-            <p className="font-label text-label-xs uppercase text-text-grey font-bold">Invoice / CI/PL Ref</p>
-            <p className="mt-0.5 font-mono font-bold text-on-surface">{wrr.commercialInvoiceNo ?? "—"}</p>
-            <p className="font-label text-label-xs uppercase text-text-grey">Flow: {wrr.flowType.toUpperCase()}</p>
+            <p className="text-[9px] uppercase font-bold text-slate-500">Invoice / CI/PL Ref</p>
+            <p className="mt-0.5 font-bold text-slate-900">{wrr.commercialInvoiceNo ?? "—"}</p>
+            <p className="text-[10px] text-slate-500">FLOW: {wrr.flowType.toUpperCase()}</p>
           </div>
           <div>
-            <p className="font-label text-label-xs uppercase text-text-grey font-bold">MAWB / MBL #</p>
-            <p className="mt-0.5 font-mono font-bold text-on-surface">{wrr.mawbMblNumber ?? "—"}</p>
-            <p className="font-mono text-mono-xs text-text-grey">PEZA: {wrr.pezaNumber ?? "N/A"}</p>
+            <p className="text-[9px] uppercase font-bold text-slate-500">MAWB / MBL No.</p>
+            <p className="mt-0.5 font-bold text-slate-900">{wrr.mawbMblNumber ?? "—"}</p>
+            <p className="text-[10px] text-slate-500">IP: {wrr.ipNumber ?? "—"}</p>
           </div>
           <div>
-            <p className="font-label text-label-xs uppercase text-text-grey font-bold">Dock Receipt Date</p>
-            <p className="mt-0.5 font-mono font-bold text-on-surface">
+            <p className="text-[9px] uppercase font-bold text-slate-500">Dock Receipt Date</p>
+            <p className="mt-0.5 font-bold text-slate-900">
               {wrr.confirmedAt
                 ? new Date(wrr.confirmedAt).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })
                 : new Date(wrr.createdAt).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}
             </p>
-            <p className="font-mono text-mono-xs text-text-grey">Status: {wrr.status.toUpperCase()}</p>
+            <p className="text-[10px] text-slate-500">STATUS: {wrr.status.toUpperCase()}</p>
           </div>
         </div>
 
         {/* Goods Tally Table */}
-        <div className="mt-6">
-          <div className="flex items-center justify-between pb-2">
-            <h2 className="font-heading text-title-md font-bold text-on-surface">
+        <div className="mt-5">
+          <div className="flex items-center justify-between pb-1.5">
+            <h2 className="font-heading text-xs font-bold uppercase tracking-wider text-slate-800">
               Cargo Turnover Breakdown
             </h2>
-            <span className="font-label text-label-xs uppercase text-text-grey font-bold">
+            <span className="font-mono text-[10px] uppercase font-bold text-slate-500">
               Total {wrr.items.length} Line Items
             </span>
           </div>
 
-          <table className="w-full border-collapse border border-outline-variant/40 font-body text-[11px]">
+          <table className="w-full border-collapse border border-slate-300 font-mono text-[11px]">
             <thead>
-              <tr className="bg-surface-light-grey text-[10px]">
-                <th className="border border-outline-variant/30 px-2.5 py-2 text-left font-label uppercase font-bold tracking-wider text-text-grey">
+              <tr className="bg-slate-100 text-[10px]">
+                <th className="border border-slate-300 px-2 py-1.5 text-left uppercase font-bold tracking-wider text-slate-700">
                   Item / Part Number
                 </th>
-                <th className="border border-outline-variant/30 px-2.5 py-2 text-left font-label uppercase font-bold tracking-wider text-text-grey">
+                <th className="border border-slate-300 px-2 py-1.5 text-left uppercase font-bold tracking-wider text-slate-700">
                   Description
                 </th>
-                <th className="border border-outline-variant/30 px-2.5 py-2 text-left font-label uppercase font-bold tracking-wider text-text-grey">
+                <th className="border border-slate-300 px-2 py-1.5 text-left uppercase font-bold tracking-wider text-slate-700">
                   Lot / Batch
                 </th>
-                <th className="border border-outline-variant/30 px-2.5 py-2 text-right font-label uppercase font-bold tracking-wider text-text-grey">
-                  Boxes / Cartons
+                <th className="border border-slate-300 px-2 py-1.5 text-right uppercase font-bold tracking-wider text-slate-700">
+                  Boxes
                 </th>
-                <th className="border border-outline-variant/30 px-2.5 py-2 text-right font-label uppercase font-bold tracking-wider text-text-grey">
-                  Total Units (PCS)
+                <th className="border border-slate-300 px-2 py-1.5 text-right uppercase font-bold tracking-wider text-slate-700">
+                  Total Units
                 </th>
-                <th className="border border-outline-variant/30 px-2.5 py-2 text-center font-label uppercase font-bold tracking-wider text-text-grey">
-                  Package Condition
+                <th className="border border-slate-300 px-2 py-1.5 text-center uppercase font-bold tracking-wider text-slate-700">
+                  Condition
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-outline-variant/20">
+            <tbody className="divide-y divide-slate-200">
               {wrr.items.map((item: WrrItemRow) => {
                 const spq = Number(item.spq) || 1;
                 const boxCount = item.scannedQty > 0 ? item.scannedQty : item.expectedQty;
                 const totalUnits = boxCount * spq;
 
                 return (
-                  <tr key={item.id} className="hover:bg-surface-light-grey/20">
-                    <td className="border border-outline-variant/30 px-2.5 py-2 font-mono font-bold text-on-surface">
+                  <tr key={item.id} className="hover:bg-slate-50">
+                    <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-900">
                       {item.itemCode ?? item.supplierItemCode ?? "—"}
                     </td>
-                    <td className="border border-outline-variant/30 px-2.5 py-2 text-on-surface">
+                    <td className="border border-slate-300 px-2 py-1.5 text-slate-800 font-body text-[11px]">
                       {item.itemName ?? "—"}
                     </td>
-                    <td className="border border-outline-variant/30 px-2.5 py-2 font-mono font-bold text-on-surface">
+                    <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-900">
                       {item.lotNumber}
                     </td>
-                    <td className="border border-outline-variant/30 px-2.5 py-2 text-right font-mono font-bold text-on-surface">
+                    <td className="border border-slate-300 px-2 py-1.5 text-right font-bold text-slate-900">
                       {boxCount.toLocaleString()} {boxCount === 1 ? "box" : "boxes"}
                     </td>
-                    <td className="border border-outline-variant/30 px-2.5 py-2 text-right font-mono font-bold text-brand-navy">
+                    <td className="border border-slate-300 px-2 py-1.5 text-right font-bold text-brand-navy">
                       {totalUnits.toLocaleString()} {item.uom || "PCS"}
                     </td>
-                    <td className="border border-outline-variant/30 px-2.5 py-2 text-center">
-                      <span className="inline-flex items-center gap-1 rounded bg-status-available/10 px-2 py-0.5 font-label text-[10px] font-bold text-status-available">
-                        <CheckCircle2 size={12} /> Intact / Verified
+                    <td className="border border-slate-300 px-2 py-1.5 text-center">
+                      <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
+                        <CheckCircle2 size={11} /> Intact / Verified
                       </span>
                     </td>
                   </tr>
                 );
               })}
             </tbody>
-            <tfoot className="border-t-2 border-brand-navy bg-surface-light-grey font-bold">
+            <tfoot className="border-t-2 border-slate-800 bg-slate-100 font-bold">
               <tr>
-                <td colSpan={3} className="border border-outline-variant/30 px-2.5 py-2 text-right font-label text-[11px] uppercase text-on-surface">
+                <td colSpan={3} className="border border-slate-300 px-2 py-1.5 text-right text-[10px] uppercase text-slate-800">
                   Grand Total Received:
                 </td>
-                <td className="border border-outline-variant/30 px-2.5 py-2 text-right font-mono text-mono-md text-brand-navy">
+                <td className="border border-slate-300 px-2 py-1.5 text-right text-brand-navy">
                   {totalBoxes.toLocaleString()} boxes
                 </td>
-                <td className="border border-outline-variant/30 px-2.5 py-2 text-right font-mono text-mono-md text-brand-navy">
+                <td className="border border-slate-300 px-2 py-1.5 text-right text-brand-navy">
                   {totalPieces.toLocaleString()} pcs
                 </td>
-                <td className="border border-outline-variant/30 px-2.5 py-2 text-center font-label text-label-xs uppercase text-status-available">
-                  All Items Accounted
+                <td className="border border-slate-300 px-2 py-1.5 text-center text-[10px] uppercase text-emerald-700">
+                  Accounted
                 </td>
               </tr>
             </tfoot>
@@ -239,43 +239,43 @@ export default async function InboundTurnoverReceiptPage({ params }: PageProps) 
         </div>
 
         {/* Physical Handover & Sign-off Blocks */}
-        <div className="avoid-break mt-10 grid grid-cols-2 gap-8 border-t border-outline-variant/30 pt-6">
-          <div className="rounded-xl border border-outline-variant/30 bg-surface-light-grey/20 p-4">
-            <p className="font-label text-label-xs uppercase font-bold text-text-grey">
+        <div className="avoid-break mt-8 grid grid-cols-2 gap-6 border-t border-slate-300 pt-5">
+          <div className="rounded-lg border border-slate-300 bg-slate-50/50 p-3.5">
+            <p className="font-mono text-[10px] uppercase font-bold text-slate-600">
               Delivered By (Forwarder / Driver)
             </p>
-            <div className="mt-8 border-b border-dashed border-outline-variant/60" />
-            <div className="mt-2 flex justify-between font-body text-body-xs text-text-grey">
+            <div className="mt-8 border-b border-dashed border-slate-400" />
+            <div className="mt-1.5 flex justify-between font-mono text-[10px] text-slate-500">
               <span>Driver Signature &amp; Printed Name</span>
               <span>Plate # / Forwarder</span>
             </div>
-            <p className="mt-3 font-body text-body-xs text-text-grey">
+            <p className="mt-2.5 font-mono text-[10px] text-slate-500">
               Date &amp; Time: ________________________
             </p>
           </div>
 
-          <div className="rounded-xl border border-outline-variant/30 bg-surface-light-grey/20 p-4">
-            <p className="font-label text-label-xs uppercase font-bold text-brand-navy">
+          <div className="rounded-lg border border-slate-300 bg-slate-50/50 p-3.5">
+            <p className="font-mono text-[10px] uppercase font-bold text-brand-navy">
               Received &amp; Inspected At Dock By (Dyna-Serv WIMS)
             </p>
-            <div className="mt-8 border-b border-dashed border-outline-variant/60" />
-            <div className="mt-2 flex justify-between font-body text-body-xs text-text-grey">
+            <div className="mt-8 border-b border-dashed border-slate-400" />
+            <div className="mt-1.5 flex justify-between font-mono text-[10px] text-slate-500">
               <span>Warehouse Receiver Signature</span>
               <span>Supervisor Verified</span>
             </div>
-            <p className="mt-3 font-body text-body-xs text-text-grey">
+            <p className="mt-2.5 font-mono text-[10px] text-slate-500">
               Date &amp; Time: ________________________
             </p>
           </div>
         </div>
 
         {/* Footer Security Notice */}
-        <div className="avoid-break mt-8 flex items-center justify-between border-t border-outline-variant/20 pt-4 text-text-grey font-body text-body-xs">
+        <div className="avoid-break mt-6 flex items-center justify-between border-t border-slate-200 pt-3 text-slate-500 font-mono text-[10px]">
           <div className="flex items-center gap-1.5">
-            <ShieldCheck size={14} className="text-brand-navy" />
-            <span>Official Dyna-Serv WIMS Dock Turnover Record — Stored Authoritatively</span>
+            <ShieldCheck size={13} className="text-brand-navy" />
+            <span>Official Dyna-Serv WIMS Dock Turnover Record — Authoritative System Ledger</span>
           </div>
-          <span className="font-mono text-[11px]">{receiptNumber}</span>
+          <span>{receiptNumber}</span>
         </div>
       </div>
     </main>

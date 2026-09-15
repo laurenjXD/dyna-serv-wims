@@ -252,104 +252,94 @@ export function PdfPreviewModal({
             className="w-full max-w-4xl rounded-2xl border border-outline-variant/30 bg-surface-white p-8 sm:p-10 shadow-elevation-3 text-on-surface transition-transform duration-150 origin-top"
           >
             {/* 1. Formal Document Header with Logo */}
-            <div className="flex flex-col sm:flex-row items-start justify-between border-b-2 border-brand-navy pb-5 gap-4">
+            <div className="flex flex-col sm:flex-row items-start justify-between border-b-2 border-slate-800 pb-4 gap-4">
               <div>
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/api/brand/logo" alt="Dyna-Serv" className="h-9 w-auto" />
+                  <img src="/api/brand/logo" alt="Dyna-Serv" className="h-7 w-auto object-contain" />
                   <div>
-                    <h2 className="font-heading text-headline-sm font-extrabold text-brand-navy leading-none">
+                    <h2 className="font-heading font-bold text-xs uppercase tracking-wider text-slate-800 leading-none">
                       DYNA-SERV ENTERPRISES
                     </h2>
-                    <p className="font-label text-[10px] uppercase tracking-widest text-text-grey mt-0.5">
-                      Warehouse &amp; Supply Chain Management System
+                    <p className="font-heading text-sm font-extrabold uppercase tracking-wide text-brand-navy mt-0.5">
+                      {reportTitle}
                     </p>
                   </div>
                 </div>
-                <div className="mt-3 text-body-xs text-text-grey space-y-0.5 font-body">
+                <div className="mt-2 text-[10px] text-slate-500 font-mono space-y-0.5">
                   <p>Facility: Main Distribution Center (MDC) — All Logistics Zones</p>
                   <p>Address: Clark Special Economic Zone, Pampanga, Philippines</p>
                 </div>
               </div>
 
-              <div className="sm:text-right">
-                <span className="inline-block rounded bg-brand-navy px-2.5 py-0.5 font-mono text-mono-xs font-bold text-surface-white">
+              <div className="sm:text-right font-mono">
+                <span className="inline-block rounded bg-brand-navy px-2 py-0.5 text-[10px] font-bold text-surface-white uppercase">
                   IMMUTABLE AUDIT REPORT
                 </span>
-                <p className="mt-2 font-mono text-mono-xs font-bold text-on-surface">
+                <p className="mt-1.5 text-[10px] font-bold text-slate-900">
                   Doc Ref: <span className="text-brand-navy">{reportRefNumber}</span>
                 </p>
-                <p className="mt-0.5 text-body-xs text-text-grey font-body">
-                  Generated: {new Date().toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" })}
+                <p className="text-[10px] text-slate-500">
+                  Generated: {new Date().toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}
                 </p>
               </div>
             </div>
 
-            {/* 2. Document Title & Subtitle */}
-            <div className="my-6">
-              <h1 className="font-heading text-headline-md font-bold text-brand-navy">
-                {reportTitle}
-              </h1>
-              <p className="font-body text-body-sm text-text-grey mt-1">
-                {reportSubtitle}
-              </p>
-            </div>
-
-            {/* 3. Executive KPI Summary Box */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 rounded-xl border border-outline-variant/30 bg-surface-light-grey/40 p-4 mb-6">
+            {/* 2. Executive KPI Summary Box */}
+            <div className="my-4 grid grid-cols-2 sm:grid-cols-4 gap-2.5 rounded-lg border border-slate-200 bg-slate-50/70 p-2.5 font-mono text-[11px]">
               <div>
-                <p className="font-label text-[10px] font-bold uppercase tracking-wider text-text-grey">Consolidated Valuation</p>
-                <p className="font-mono text-mono-lg font-black text-brand-navy mt-0.5">$2,480,500.00</p>
+                <p className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Consolidated Valuation</p>
+                <p className="font-bold text-brand-navy mt-0.5">$2,480,500.00</p>
               </div>
               <div>
-                <p className="font-label text-[10px] font-bold uppercase tracking-wider text-text-grey">Active Stock Lines</p>
-                <p className="font-mono text-mono-lg font-black text-on-surface mt-0.5">1,420 Lots</p>
+                <p className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Active Stock Lines</p>
+                <p className="font-bold text-slate-900 mt-0.5">1,420 Lots</p>
               </div>
               <div>
-                <p className="font-label text-[10px] font-bold uppercase tracking-wider text-text-grey">Storage Occupancy</p>
-                <p className="font-mono text-mono-lg font-black text-brand-royal-blue mt-0.5">1,640 m³ (82%)</p>
+                <p className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Storage Occupancy</p>
+                <p className="font-bold text-brand-navy mt-0.5">1,640 m³ (82%)</p>
               </div>
               <div>
-                <p className="font-label text-[10px] font-bold uppercase tracking-wider text-text-grey">Accrued Charges</p>
-                <p className="font-mono text-mono-lg font-black text-status-available mt-0.5">$34,200.00</p>
+                <p className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Accrued Charges</p>
+                <p className="font-bold text-emerald-700 mt-0.5">$34,200.00</p>
               </div>
             </div>
 
-            {/* 4. Itemized Summary Table */}
-            <div className="mb-6 overflow-x-auto">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="font-heading font-bold text-headline-xs uppercase tracking-wider text-brand-navy">
+            {/* 3. Itemized Summary Table */}
+            <div className="mb-4 overflow-x-auto">
+              <div className="flex items-center justify-between mb-1.5">
+                <h4 className="font-heading font-bold text-xs uppercase tracking-wider text-slate-800">
                   Account Breakdown &amp; Movement Summary
                 </h4>
-                <span className="font-mono text-mono-xs text-text-grey">
+                <span className="font-mono text-[10px] text-slate-500">
                   Showing {pagedRows.length} of {totalCount} records
                 </span>
               </div>
-              <table className="w-full border-collapse text-left text-body-sm border border-outline-variant/30">
+              <table className="w-full border-collapse border border-slate-300 font-mono text-[11px]">
                 <thead>
-                  <tr className="bg-surface-light-grey font-label text-label-xs uppercase font-bold text-text-grey border-b border-outline-variant/30">
-                    <th className="p-2.5 border-r border-outline-variant/30">Account / Organization</th>
-                    <th className="p-2.5 border-r border-outline-variant/30 text-center">Flow</th>
-                    <th className="p-2.5 border-r border-outline-variant/30 text-right">Occupied CBM</th>
-                    <th className="p-2.5 border-r border-outline-variant/30 text-right">Applied Rate</th>
-                    <th className="p-2.5 text-right">Accrued Total</th>
+                  <tr className="bg-slate-100 text-[10px] text-slate-700 font-bold uppercase tracking-wider">
+                    <th className="p-2 border border-slate-300 text-left">Account / Organization</th>
+                    <th className="p-2 border border-slate-300 text-center">Flow</th>
+                    <th className="p-2 border border-slate-300 text-right">Occupied CBM</th>
+                    <th className="p-2 border border-slate-300 text-right">Applied Rate</th>
+                    <th className="p-2 border border-slate-300 text-right">Accrued Total</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-outline-variant/20 font-body">
+                <tbody className="divide-y divide-slate-200">
                   {pagedRows.map((row) => (
-                    <tr key={row.id} className="hover:bg-brand-navy/[0.02]">
-                      <td className="p-2.5 font-bold border-r border-outline-variant/30 text-on-surface">{row.name}</td>
-                      <td className="p-2.5 text-center border-r border-outline-variant/30 font-mono text-mono-xs font-bold text-brand-navy">{row.flow}</td>
-                      <td className="p-2.5 text-right border-r border-outline-variant/30 font-mono">{row.cbm}</td>
-                      <td className="p-2.5 text-right border-r border-outline-variant/30 font-mono">{row.rate}</td>
-                      <td className="p-2.5 text-right font-mono font-bold text-brand-navy">{row.valuation}</td>
+                    <tr key={row.id} className="hover:bg-slate-50">
+                      <td className="p-2 font-bold border border-slate-300 text-slate-900">{row.name}</td>
+                      <td className="p-2 text-center border border-slate-300 font-bold text-brand-navy">{row.flow}</td>
+                      <td className="p-2 text-right border border-slate-300 text-slate-700">{row.cbm}</td>
+                      <td className="p-2 text-right border border-slate-300 text-slate-700">{row.rate}</td>
+                      <td className="p-2 text-right border border-slate-300 font-bold text-brand-navy">{row.valuation}</td>
                     </tr>
                   ))}
-                  <tr className="bg-surface-light-grey/80 font-bold border-t-2 border-brand-navy">
-                    <td className="p-2.5 border-r border-outline-variant/30" colSpan={2}>CONSOLIDATED TOTAL</td>
-                    <td className="p-2.5 text-right border-r border-outline-variant/30 font-mono">1,489.0 m³</td>
-                    <td className="p-2.5 text-right border-r border-outline-variant/30 font-mono">—</td>
-                    <td className="p-2.5 text-right font-mono font-black text-brand-navy">$341,454.02</td>
+                  <tr className="bg-slate-100 font-bold border-t-2 border-slate-800">
+                    <td className="p-2 border border-slate-300 text-[10px] uppercase text-slate-800" colSpan={2}>CONSOLIDATED TOTAL</td>
+                    <td className="p-2 text-right border border-slate-300 text-brand-navy">1,489.0 m³</td>
+                    <td className="p-2 text-right border border-slate-300 text-slate-500">—</td>
+                    <td className="p-2 text-right border border-slate-300 text-brand-navy">$341,454.02</td>
                   </tr>
                 </tbody>
               </table>
@@ -373,27 +363,27 @@ export function PdfPreviewModal({
               </div>
             </div>
 
-            {/* 5. Formal Verification & Sign-off Block */}
-            <div className="mt-8 pt-6 border-t border-outline-variant/30 grid grid-cols-1 sm:grid-cols-2 gap-6 text-body-sm font-body">
-              <div>
-                <p className="font-label font-bold text-text-grey uppercase text-[10px]">Prepared &amp; Verified By:</p>
-                <div className="mt-8 border-b border-dashed border-outline-variant/60 w-48" />
-                <p className="mt-1 font-bold text-on-surface">Warehouse Operations Lead</p>
-                <p className="text-body-xs text-text-grey">Dyna-Serv Logistics Center</p>
+            {/* 4. Formal Verification & Sign-off Block */}
+            <div className="mt-6 pt-4 border-t border-slate-300 grid grid-cols-2 gap-4 font-mono text-[10px]">
+              <div className="rounded-lg border border-slate-300 bg-slate-50/50 p-3">
+                <p className="uppercase font-bold text-slate-700">Prepared &amp; Verified By:</p>
+                <div className="mt-8 border-b border-dashed border-slate-400" />
+                <p className="mt-1 font-bold text-slate-900">Warehouse Operations Lead</p>
+                <p className="text-slate-500">Dyna-Serv Logistics Center</p>
               </div>
 
-              <div>
-                <p className="font-label font-bold text-text-grey uppercase text-[10px]">Audited &amp; Approved By:</p>
-                <div className="mt-8 border-b border-dashed border-outline-variant/60 w-48" />
-                <p className="mt-1 font-bold text-on-surface">Commercial Controller</p>
-                <p className="text-body-xs text-text-grey">Finance &amp; Audit Administration</p>
+              <div className="rounded-lg border border-slate-300 bg-slate-50/50 p-3">
+                <p className="uppercase font-bold text-brand-navy">Audited &amp; Approved By:</p>
+                <div className="mt-8 border-b border-dashed border-slate-400" />
+                <p className="mt-1 font-bold text-slate-900">Commercial Controller</p>
+                <p className="text-slate-500">Finance &amp; Audit Administration</p>
               </div>
             </div>
 
-            {/* 6. Footer Digital Stamp */}
-            <div className="mt-8 pt-4 border-t border-outline-variant/20 flex flex-col sm:flex-row items-center justify-between text-[11px] text-text-grey font-mono gap-1">
+            {/* 5. Footer Digital Stamp */}
+            <div className="mt-6 pt-3 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between text-[10px] text-slate-500 font-mono gap-1">
               <div className="flex items-center gap-1.5">
-                <ShieldCheck size={14} className="text-brand-navy" />
+                <ShieldCheck size={13} className="text-brand-navy" />
                 <span>SHA-256 Verified Immutable Snapshot · Stored in bucket: generated-documents</span>
               </div>
               <span>Ref: {reportRefNumber}</span>

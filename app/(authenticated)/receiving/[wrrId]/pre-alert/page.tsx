@@ -95,127 +95,128 @@ export default async function PreAlertExportPage({ params }: PageProps) {
       </div>
 
       {/* Formal Pre-Alert Document Container */}
-      <article className="rounded-xl border border-outline-variant/40 bg-surface-white p-8 shadow-elevation-2 print:border-0 print:p-0 print:shadow-none">
+      <article className="rounded-xl border border-slate-300 bg-surface-white p-6 shadow-elevation-2 print:border-0 print:p-0 print:shadow-none">
         {/* Header with Logo and Title */}
-        <header className="border-b-2 border-brand-navy pb-6">
+        <header className="border-b-2 border-slate-800 pb-4">
           <div className="flex items-start justify-between gap-6">
             <div>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/api/brand/logo" alt="Dyna-Serv" className="mb-2 h-12 w-auto" />
-              <p className="font-label text-label font-bold uppercase tracking-[0.15em] text-brand-royal-blue">
-                Dyna-Serv Warehouse Inventory Management System
-              </p>
-              <h1 className="mt-1 font-heading text-headline-lg font-extrabold text-on-surface">
+              <div className="flex items-center gap-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/api/brand/logo" alt="Dyna-Serv" className="h-7 w-auto object-contain" />
+                <span className="font-heading text-xs font-bold uppercase tracking-wider text-slate-800">
+                  Dyna-Serv WIMS
+                </span>
+              </div>
+              <h1 className="mt-1 font-heading text-sm font-extrabold uppercase tracking-wide text-brand-navy">
                 Pre-Alert / Incoming Shipment Advice
               </h1>
+              <p className="font-mono text-[10px] text-slate-500">
+                Official Advance Inbound Freight &amp; Cargo Notification
+              </p>
             </div>
             <div className="text-right">
-              <p className="font-label text-label-xs uppercase tracking-wider text-text-grey">
+              <p className="font-mono text-[10px] uppercase font-bold text-slate-500">
                 Document Ref
               </p>
-              <p className="mt-0.5 font-mono text-mono-lg font-bold text-brand-navy">
+              <p className="mt-0.5 font-mono text-xs font-black text-brand-navy">
                 {wrr.wrrNumber}
               </p>
-              <p className="mt-1 font-body text-body-xs text-text-grey">
+              <p className="mt-1 font-mono text-[10px] text-slate-500">
                 Generated: {new Date().toLocaleDateString()}
               </p>
-              <div className="mt-2 flex justify-end">
+              <div className="mt-1.5 flex justify-end">
                 <WrrBarcode wrrNumber={wrr.wrrNumber} />
               </div>
             </div>
           </div>
 
           {/* Shipment Summary Grid */}
-          <div className="mt-6 grid grid-cols-2 gap-4 rounded-lg bg-surface-light-grey/60 p-4 font-body text-body-sm sm:grid-cols-4">
+          <div className="mt-4 grid grid-cols-2 gap-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3 font-mono text-[11px] sm:grid-cols-4">
             <div>
-              <p className="font-label text-label-xs font-bold uppercase text-text-grey">Vendor / Organization</p>
-              <p className="mt-0.5 font-semibold text-on-surface">{wrr.vendorPartyName ?? wrr.vendorPartyId}</p>
+              <p className="text-[9px] font-bold uppercase text-slate-500">Vendor / Organization</p>
+              <p className="mt-0.5 font-bold text-slate-900">{wrr.vendorPartyName ?? wrr.vendorPartyId}</p>
             </div>
             <div>
-              <p className="font-label text-label-xs font-bold uppercase text-text-grey">Inventory Model</p>
-              <p className="mt-0.5 font-semibold text-on-surface">{FLOW_LABELS[wrr.flowType] ?? wrr.flowType}</p>
+              <p className="text-[9px] font-bold uppercase text-slate-500">Inventory Model</p>
+              <p className="mt-0.5 font-bold text-slate-900">{FLOW_LABELS[wrr.flowType] ?? wrr.flowType.toUpperCase()}</p>
             </div>
             <div>
-              <p className="font-label text-label-xs font-bold uppercase text-text-grey">Commercial Invoice #</p>
-              <p className="mt-0.5 font-mono font-semibold text-on-surface">{wrr.commercialInvoiceNo || "—"}</p>
+              <p className="text-[9px] font-bold uppercase text-slate-500">Commercial Invoice No.</p>
+              <p className="mt-0.5 font-bold text-slate-900">{wrr.commercialInvoiceNo || "—"}</p>
             </div>
             <div>
-              <p className="font-label text-label-xs font-bold uppercase text-text-grey">IP Number</p>
-              <p className="mt-0.5 font-mono font-semibold text-on-surface">{wrr.ipNumber || "—"}</p>
+              <p className="text-[9px] font-bold uppercase text-slate-500">Import Permit (IP)</p>
+              <p className="mt-0.5 font-bold text-slate-900">{wrr.ipNumber || "—"}</p>
             </div>
             <div>
-              <p className="font-label text-label-xs font-bold uppercase text-text-grey">MAWB / MBL Number</p>
-              <p className="mt-0.5 font-mono font-semibold text-on-surface">{wrr.mawbMblNumber || "—"}</p>
+              <p className="text-[9px] font-bold uppercase text-slate-500">MAWB / MBL Number</p>
+              <p className="mt-0.5 font-bold text-slate-900">{wrr.mawbMblNumber || "—"}</p>
             </div>
             <div>
-              <p className="font-label text-label-xs font-bold uppercase text-text-grey">PEZA Number</p>
-              <p className="mt-0.5 font-mono font-semibold text-on-surface">{wrr.pezaNumber || "—"}</p>
+              <p className="text-[9px] font-bold uppercase text-slate-500">Person in Charge</p>
+              <p className="mt-0.5 font-bold text-slate-900">{wrr.stagedByDisplayName ?? wrr.stagedByUserId}</p>
             </div>
             <div>
-              <p className="font-label text-label-xs font-bold uppercase text-text-grey">Person in Charge</p>
-              <p className="mt-0.5 font-semibold text-on-surface">{wrr.stagedByDisplayName ?? wrr.stagedByUserId}</p>
-            </div>
-            <div>
-              <p className="font-label text-label-xs font-bold uppercase text-text-grey">Shipment Status</p>
-              <p className="mt-0.5 font-semibold uppercase text-brand-royal-blue">{wrr.status.replace(/_/g, " ")}</p>
+              <p className="text-[9px] font-bold uppercase text-slate-500">Shipment Status</p>
+              <p className="mt-0.5 font-bold uppercase text-brand-navy">{wrr.status.replace(/_/g, " ")}</p>
             </div>
           </div>
         </header>
 
         {/* Line Items Table */}
-        <section className="mt-6">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-heading text-title-md font-bold text-on-surface">
+        <section className="mt-5">
+          <div className="mb-1.5 flex items-center justify-between">
+            <h2 className="font-heading text-xs font-bold uppercase tracking-wider text-slate-800">
               Expected Line Items ({wrr.items.length})
             </h2>
-            <span className="font-mono text-body-sm font-bold text-brand-navy">
-              Total Expected Quantity: {totalExpectedUnits.toLocaleString()}
+            <span className="font-mono text-[10px] uppercase font-bold text-slate-500">
+              Total Units: {totalExpectedUnits.toLocaleString()}
             </span>
           </div>
 
           <div className="overflow-x-auto print:overflow-visible">
-            <table className="w-full border-collapse text-left font-body text-[11px]">
+            <table className="w-full border-collapse border border-slate-300 text-left font-mono text-[11px]">
               <thead>
-                <tr className="border-y-2 border-brand-navy bg-surface-light-grey text-[10px]">
-                  <th className="px-2.5 py-2 font-label font-bold uppercase tracking-wider text-on-surface">#</th>
-                  <th className="px-2.5 py-2 font-label font-bold uppercase tracking-wider text-on-surface">Item Code</th>
-                  <th className="px-2.5 py-2 font-label font-bold uppercase tracking-wider text-on-surface">Cust Part #</th>
-                  <th className="px-2.5 py-2 font-label font-bold uppercase tracking-wider text-on-surface">Description</th>
-                  <th className="px-2.5 py-2 font-label font-bold uppercase tracking-wider text-on-surface">Lot Number</th>
-                  <th className="px-2.5 py-2 font-label font-bold uppercase tracking-wider text-on-surface">Mfg Date</th>
-                  <th className="px-2.5 py-2 text-right font-label font-bold uppercase tracking-wider text-on-surface">Expected Qty</th>
-                  <th className="px-2.5 py-2 font-label font-bold uppercase tracking-wider text-on-surface">UOM</th>
-                  <th className="px-2.5 py-2 font-label font-bold uppercase tracking-wider text-on-surface">Remarks</th>
+                <tr className="bg-slate-100 text-slate-700 text-[10px] border-b border-slate-300">
+                  <th className="border border-slate-300 px-2 py-1.5 uppercase font-bold tracking-wider">#</th>
+                  <th className="border border-slate-300 px-2 py-1.5 uppercase font-bold tracking-wider">Item Code</th>
+                  <th className="border border-slate-300 px-2 py-1.5 uppercase font-bold tracking-wider">Cust Part #</th>
+                  <th className="border border-slate-300 px-2 py-1.5 uppercase font-bold tracking-wider font-body">Description</th>
+                  <th className="border border-slate-300 px-2 py-1.5 uppercase font-bold tracking-wider">Lot Number</th>
+                  <th className="border border-slate-300 px-2 py-1.5 uppercase font-bold tracking-wider">Mfg Date</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-right uppercase font-bold tracking-wider">Expected Qty</th>
+                  <th className="border border-slate-300 px-2 py-1.5 uppercase font-bold tracking-wider">UOM</th>
+                  <th className="border border-slate-300 px-2 py-1.5 uppercase font-bold tracking-wider">Remarks</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-outline-variant/30">
+              <tbody className="divide-y divide-slate-200">
                 {wrr.items.map((item, index) => (
-                  <tr key={item.id} className="hover:bg-surface-light-grey/30">
-                    <td className="px-2.5 py-2 font-mono text-text-grey">{index + 1}</td>
-                    <td className="px-2.5 py-2 font-mono font-bold text-on-surface">
+                  <tr key={item.id} className="hover:bg-slate-50">
+                    <td className="border border-slate-300 px-2 py-1.5 text-slate-500">{index + 1}</td>
+                    <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-900">
                       {item.itemCode ?? item.supplierItemCode ?? "—"}
                     </td>
-                    <td className="px-2.5 py-2 font-mono text-text-grey">{item.customerItemCode ?? "—"}</td>
-                    <td className="px-2.5 py-2 text-on-surface">{item.itemName ?? item.itemCode ?? item.supplierItemCode ?? "—"}</td>
-                    <td className="px-2.5 py-2 font-mono font-bold text-on-surface">{item.lotNumber}</td>
-                    <td className="px-2.5 py-2 font-mono text-text-grey">{item.manufactureDate ?? "—"}</td>
-                    <td className="px-2.5 py-2 text-right font-mono font-bold text-on-surface">
+                    <td className="border border-slate-300 px-2 py-1.5 text-slate-600">{item.customerItemCode ?? "—"}</td>
+                    <td className="border border-slate-300 px-2 py-1.5 font-body text-[11px] text-slate-900">{item.itemName ?? item.itemCode ?? item.supplierItemCode ?? "—"}</td>
+                    <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-900">{item.lotNumber}</td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-slate-600">{item.manufactureDate ?? "—"}</td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-right font-bold text-slate-900">
                       {item.expectedQty.toLocaleString()}
                     </td>
-                    <td className="px-2.5 py-2 font-label uppercase text-text-grey">{item.uom || "PCS"}</td>
-                    <td className="px-2.5 py-2 text-text-grey">{item.remarks ?? "—"}</td>
+                    <td className="border border-slate-300 px-2 py-1.5 uppercase text-slate-600">{item.uom || "PCS"}</td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-slate-500">{item.remarks ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>
-              <tfoot className="border-t-2 border-brand-navy bg-surface-light-grey/80 font-bold">
+              <tfoot className="border-t-2 border-slate-800 bg-slate-100 font-bold">
                 <tr>
-                  <td colSpan={6} className="px-2.5 py-2 text-right font-label text-[11px] uppercase text-on-surface">
+                  <td colSpan={6} className="border border-slate-300 px-2 py-1.5 text-right text-[10px] uppercase text-slate-800">
                     Total Expected Quantity:
                   </td>
-                  <td className="px-2.5 py-2 text-right font-mono text-mono-md font-bold text-brand-navy">
+                  <td className="border border-slate-300 px-2 py-1.5 text-right font-bold text-brand-navy">
                     {totalExpectedUnits.toLocaleString()}
                   </td>
-                  <td colSpan={2} className="px-2.5 py-2 font-label uppercase text-text-grey"></td>
+                  <td colSpan={2} className="border border-slate-300 px-2 py-1.5"></td>
                 </tr>
               </tfoot>
             </table>
@@ -223,15 +224,15 @@ export default async function PreAlertExportPage({ params }: PageProps) {
 
           {/* Summary totals box */}
           <div className="avoid-break mt-4 flex justify-end">
-            <div className="w-full max-w-sm rounded-lg border border-outline-variant/40 bg-surface-light-grey/40 p-4 font-body text-[11px]">
-              <dl className="space-y-1.5">
+            <div className="w-full max-w-sm rounded-lg border border-slate-300 bg-slate-50/60 p-3 font-mono text-[11px]">
+              <dl className="space-y-1">
                 <div className="flex justify-between">
-                  <dt className="text-text-grey">Total Expected Lines:</dt>
-                  <dd className="font-mono font-bold text-on-surface">{wrr.items.length} lines</dd>
+                  <dt className="text-slate-500">Total Expected Lines:</dt>
+                  <dd className="font-bold text-slate-900">{wrr.items.length} lines</dd>
                 </div>
-                <div className="flex justify-between border-t border-outline-variant/30 pt-1.5">
-                  <dt className="font-bold text-on-surface">Grand Total Quantity:</dt>
-                  <dd className="font-mono font-bold text-brand-navy text-mono-lg">{totalExpectedUnits.toLocaleString()}</dd>
+                <div className="flex justify-between border-t border-slate-200 pt-1">
+                  <dt className="font-bold text-slate-900">Grand Total Quantity:</dt>
+                  <dd className="font-bold text-brand-navy">{totalExpectedUnits.toLocaleString()}</dd>
                 </div>
               </dl>
             </div>
@@ -239,20 +240,20 @@ export default async function PreAlertExportPage({ params }: PageProps) {
         </section>
 
         {/* Document Footer & Authorization Sign-off */}
-        <footer className="avoid-break mt-10 border-t border-outline-variant/50 pt-6">
-          <div className="grid grid-cols-2 gap-12 font-body text-body-sm text-text-grey">
-            <div>
-              <p className="font-label text-label-xs font-bold uppercase text-on-surface">Shipment Prepared By:</p>
-              <div className="mt-8 border-b border-on-surface/40 pb-1" />
-              <p className="mt-1 text-xs">Authorized Signature &amp; Date</p>
+        <footer className="avoid-break mt-8 border-t border-slate-300 pt-5">
+          <div className="grid grid-cols-2 gap-8 font-mono text-[10px] text-slate-600">
+            <div className="rounded-lg border border-slate-300 bg-slate-50/50 p-3.5">
+              <p className="font-bold uppercase text-slate-700">Shipment Prepared By:</p>
+              <div className="mt-8 border-b border-dashed border-slate-400 pb-1" />
+              <p className="mt-1 text-[9px] text-slate-500">Authorized Signature &amp; Date</p>
             </div>
-            <div>
-              <p className="font-label text-label-xs font-bold uppercase text-on-surface">Warehouse Reception Verified By:</p>
-              <div className="mt-8 border-b border-on-surface/40 pb-1" />
-              <p className="mt-1 text-xs">Authorized Signature &amp; Date</p>
+            <div className="rounded-lg border border-slate-300 bg-slate-50/50 p-3.5">
+              <p className="font-bold uppercase text-slate-700">Warehouse Reception Verified By:</p>
+              <div className="mt-8 border-b border-dashed border-slate-400 pb-1" />
+              <p className="mt-1 text-[9px] text-slate-500">Authorized Signature &amp; Date</p>
             </div>
           </div>
-          <p className="mt-8 text-center text-xs text-text-grey/70">
+          <p className="mt-5 text-center font-mono text-[9px] text-slate-400">
             Dyna-Serv Warehouse Inventory Management System &bull; Confidential Pre-Alert Advice
           </p>
         </footer>
