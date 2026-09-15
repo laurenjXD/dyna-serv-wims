@@ -283,35 +283,39 @@ function NavLink({
         motion-safe:transition-all motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
         focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-1
         ${isActive
-          ? "bg-white text-[#0b4d94] shadow-[0_4px_14px_rgba(0,0,0,0.15)] bg-primary/[0.08] before:absolute before:inset-y-2 before:left-0 before:w-2 before:rounded-r-full before:bg-primary before:content-[''] scale-[1.01]"
+          ? "bg-white text-[#0b4d94] shadow-[0_4px_14px_rgba(0,0,0,0.15)] bg-primary/[0.08] before:bg-primary scale-[1.01]"
           : "text-white/90 hover:translate-x-1 hover:bg-white/10 hover:text-white hover:bg-primary/[0.05] hover:shadow-sm"}`}
     >
-      {/* Left blue accent curve */}
-      {isActive && (
-        <span
-          aria-hidden="true"
-          className="absolute left-0 top-1/2 -translate-y-1/2 h-7 w-2 rounded-r-full bg-[#1e40af] motion-safe:transition-all motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
-        />
-      )}
       <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full motion-safe:transition-all motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${isActive ? "bg-blue-100/90 text-primary text-[#0b4d94]" : "bg-white/15 text-white group-hover:bg-white/25"}`}>
         <Icon size={20} strokeWidth={2.2} aria-hidden="true" className="motion-safe:transition-transform motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-110" />
       </span>
       <span className={`whitespace-nowrap min-w-0 flex-1 truncate motion-safe:transition-opacity motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${floorText ? "text-mono-md" : "text-label"} ${isActive ? "text-[#0b4d94] font-bold" : "text-white/90 font-semibold"}`}>{label}</span>
-      {entry.id === "approvals" && pendingApprovalCount > 0 && (
-        <span data-testid="approval-count-badge" className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#ef4444] px-1.5 font-mono text-mono-sm font-bold leading-none text-white shadow-sm">
-          {pendingApprovalCount > 99 ? "99+" : pendingApprovalCount}
-        </span>
-      )}
-      {shortcutNumber && (
-        <kbd className="pointer-events-none absolute right-8 top-1/2 hidden -translate-y-1/2 rounded border border-white/20 bg-white/15 px-1.5 py-1 font-mono text-[11px] font-semibold leading-none text-white opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 xl:inline-flex">
-          {shortcutLabel(shortcutNumber - 1)}
-        </kbd>
-      )}
-      {isActive ? (
-        <ChevronRight size={18} strokeWidth={2.5} aria-hidden="true" className="text-[#0b4d94] shrink-0" />
-      ) : (
-        <ChevronRight size={16} aria-hidden="true" className="shrink-0 motion-safe:transition-transform motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] -translate-x-1 text-white/40 opacity-0 group-hover:translate-x-0 group-hover:opacity-100" />
-      )}
+      <div className="ml-auto flex shrink-0 items-center gap-1.5">
+        {shortcutNumber && (
+          <kbd
+            className={`pointer-events-none hidden rounded px-1.5 py-0.5 font-mono text-[11px] font-semibold leading-none shadow-sm transition-all xl:inline-flex ${
+              isActive
+                ? "border border-blue-200/80 bg-blue-50 text-[#0b4d94]"
+                : "border border-white/20 bg-white/15 text-white/90 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100"
+            }`}
+          >
+            {shortcutLabel(shortcutNumber - 1)}
+          </kbd>
+        )}
+        {entry.id === "approvals" && pendingApprovalCount > 0 && (
+          <span
+            data-testid="approval-count-badge"
+            className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#ef4444] px-1.5 font-mono text-mono-sm font-bold leading-none text-white shadow-sm"
+          >
+            {pendingApprovalCount > 99 ? "99+" : pendingApprovalCount}
+          </span>
+        )}
+        {isActive ? (
+          <ChevronRight size={18} strokeWidth={2.5} aria-hidden="true" className="text-[#0b4d94] shrink-0" />
+        ) : (
+          <ChevronRight size={16} aria-hidden="true" className="shrink-0 motion-safe:transition-transform motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] -translate-x-1 text-white/40 opacity-0 group-hover:translate-x-0 group-hover:opacity-100" />
+        )}
+      </div>
     </Link>
   );
 }
