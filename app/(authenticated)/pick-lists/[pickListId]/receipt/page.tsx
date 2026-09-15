@@ -47,10 +47,34 @@ export default async function DeliveryReceiptPage({
       <style
         dangerouslySetInnerHTML={{
           __html: `
-            @page { size: A4 landscape; margin: 10mm; }
+            @page {
+              size: A4 landscape;
+              margin: 10mm 12mm 12mm 12mm;
+            }
             @media print {
-              .print-hide { display: none !important; }
-              body { background: #fff !important; }
+              [data-testid="desktop-sidebar"], [data-testid="floor-tab-bar"], .print-hide {
+                display: none !important;
+              }
+              body {
+                background: #FFFFFF !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+              main {
+                padding: 0 !important;
+                margin: 0 !important;
+              }
+              thead {
+                display: table-header-group !important;
+              }
+              tr {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+              }
+              .avoid-break {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+              }
             }
           `,
         }}
@@ -77,83 +101,111 @@ export default async function DeliveryReceiptPage({
               <p className="mt-1 text-xs text-slate-600">Dyna-Serv Global Corporation</p>
             </div>
             <dl className="grid grid-cols-[auto_auto] gap-x-4 gap-y-1 text-xs">
-              <dt className="font-bold uppercase">Delivery Receipt No.</dt>
-              <dd className="font-bold">DR-{pickList.pickListNumber.replace(/^PL-/, "")}</dd>
-              <dt className="font-bold uppercase">Pick List No.</dt>
-              <dd className="font-bold">{pickList.pickListNumber}</dd>
-              <dt className="font-bold uppercase">PEZA Permit No.</dt>
+              <dt className="font-bold uppercase text-slate-600">Delivery Receipt No.</dt>
+              <dd className="font-mono font-bold text-brand-navy">DR-{pickList.pickListNumber.replace(/^PL-/, "")}</dd>
+              <dt className="font-bold uppercase text-slate-600">Pick List No.</dt>
+              <dd className="font-mono font-bold">{pickList.pickListNumber}</dd>
+              <dt className="font-bold uppercase text-slate-600">PEZA Permit No.</dt>
               <dd className="font-mono font-bold">{pezaPermitNo ?? "—"}</dd>
-              <dt className="font-bold uppercase">Delivery Date</dt>
-              <dd>{pickList.createdAt.toLocaleDateString()}</dd>
+              <dt className="font-bold uppercase text-slate-600">Delivery Date</dt>
+              <dd className="font-mono">{pickList.createdAt.toLocaleDateString()}</dd>
             </dl>
           </div>
           <div className="mt-4 grid grid-cols-[1fr_auto] gap-8 text-xs">
             <div>
-              <p className="font-bold uppercase">Delivery To:</p>
-              <p className="font-bold">{party?.name ?? pickList.customerPartyId}</p>
-              <p>{[party?.address1, party?.address2].filter(Boolean).join(", ") || "Address on file"}</p>
+              <p className="font-bold uppercase text-slate-600">Delivery To:</p>
+              <p className="font-bold text-on-surface">{party?.name ?? pickList.customerPartyId}</p>
+              <p className="text-slate-600">{[party?.address1, party?.address2].filter(Boolean).join(", ") || "Address on file"}</p>
             </div>
             <div className="text-right">
-              <p><span className="font-bold">Inventory Model:</span> {pickList.flowType}</p>
-              <p><span className="font-bold">Generated:</span> {new Date().toLocaleString()}</p>
+              <p><span className="font-bold uppercase text-slate-600">Inventory Model:</span> <span className="font-semibold uppercase">{pickList.flowType}</span></p>
+              <p><span className="font-bold uppercase text-slate-600">Generated:</span> <span className="font-mono">{new Date().toLocaleString()}</span></p>
             </div>
           </div>
         </header>
 
         <section className="mt-4">
           <div className="overflow-x-auto print:overflow-visible">
-          <table className="w-full min-w-[1100px] table-fixed border-collapse text-[8px] leading-tight print:min-w-0">
-            <colgroup>
-              <col className="w-[4%]" /><col className="w-[6%]" /><col className="w-[5%]" /><col className="w-[8%]" />
-              <col className="w-[10%]" /><col className="w-[9%]" /><col className="w-[14%]" /><col className="w-[10%]" />
-              <col className="w-[8%]" /><col className="w-[8%]" /><col className="w-[9%]" /><col className="w-[9%]" />
-            </colgroup>
-            <thead>
-              <tr className="bg-[#D8DDE5] text-center font-bold uppercase">
-                {[
-                  "No.", "Qty", "SPQ", "No. of Boxes", "Item Code", "CUST PN", "Item Description",
-                  "Lot Number", "PO Number", "Invoice No.", "Remarks", "Location",
-                ].map((heading) => <th key={heading} className="whitespace-normal border border-[#374151] px-1 py-1.5">{heading}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {lines.map((line, index) => (
-                <tr key={line.id} className="align-middle">
-                  <td className="border border-[#6B7280] px-1.5 py-2 text-center">{index + 1}</td>
-                  <td className="border border-[#6B7280] px-1.5 py-2 text-center font-bold">{line.qty.toLocaleString()}</td>
-                  <td className="border border-[#6B7280] px-1.5 py-2 text-center">{line.spq.toLocaleString()}</td>
-                  <td className="border border-[#6B7280] px-1.5 py-2 text-center">{line.numberOfBoxes.toLocaleString()}</td>
-                  <td className="border border-[#6B7280] px-1.5 py-2 font-mono font-bold">{line.itemCode}</td>
-                  <td className="border border-[#6B7280] px-1.5 py-2 font-mono">{line.customerItemCode ?? "—"}</td>
-                  <td className="border border-[#6B7280] px-1.5 py-2">{line.itemDescription ?? "—"}</td>
-                  <td className="border border-[#6B7280] px-1.5 py-2 font-mono">{line.lotNumber}</td>
-                  <td className="border border-[#6B7280] px-1.5 py-2">—</td>
-                  <td className="border border-[#6B7280] px-1.5 py-2">—</td>
-                  <td className="border border-[#6B7280] px-1.5 py-2">—</td>
-                  <td className="border border-[#6B7280] px-1.5 py-2 font-mono">{line.locationLabel}</td>
+            <table className="w-full table-fixed border-collapse font-body text-[11px] leading-tight">
+              <colgroup>
+                <col className="w-[4%]" />
+                <col className="w-[6%]" />
+                <col className="w-[5%]" />
+                <col className="w-[7%]" />
+                <col className="w-[12%]" />
+                <col className="w-[10%]" />
+                <col className="w-[18%]" />
+                <col className="w-[12%]" />
+                <col className="w-[8%]" />
+                <col className="w-[8%]" />
+                <col className="w-[10%]" />
+              </colgroup>
+              <thead>
+                <tr className="bg-[#D8DDE5] text-left text-[10px] font-bold uppercase tracking-wider text-on-surface">
+                  <th className="border border-[#374151] px-2 py-1.5 text-center">#</th>
+                  <th className="border border-[#374151] px-2 py-1.5 text-right">Qty</th>
+                  <th className="border border-[#374151] px-2 py-1.5 text-right">SPQ</th>
+                  <th className="border border-[#374151] px-2 py-1.5 text-right">Boxes</th>
+                  <th className="border border-[#374151] px-2 py-1.5">Item Code</th>
+                  <th className="border border-[#374151] px-2 py-1.5">Cust PN</th>
+                  <th className="border border-[#374151] px-2 py-1.5">Item Description</th>
+                  <th className="border border-[#374151] px-2 py-1.5">Lot Number</th>
+                  <th className="border border-[#374151] px-2 py-1.5">PO #</th>
+                  <th className="border border-[#374151] px-2 py-1.5">Invoice #</th>
+                  <th className="border border-[#374151] px-2 py-1.5">Location</th>
                 </tr>
-              ))}
-              <tr className="font-bold">
-                <td className="border border-[#6B7280] px-1.5 py-2 text-center">Total</td>
-                <td className="border border-[#6B7280] px-1.5 py-2 text-center">{totalQty.toLocaleString()}</td>
-                <td className="border border-[#6B7280] px-1.5 py-2">—</td>
-                <td className="border border-[#6B7280] px-1.5 py-2 text-center">{totalBoxes.toLocaleString()}</td>
-                <td colSpan={8} className="border border-[#6B7280] px-1.5 py-2" />
-              </tr>
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-outline-variant/30">
+                {lines.map((line, index) => (
+                  <tr key={line.id} className="hover:bg-surface-light-grey/20">
+                    <td className="border border-[#6B7280] px-2 py-1.5 text-center font-mono text-text-grey">{index + 1}</td>
+                    <td className="border border-[#6B7280] px-2 py-1.5 text-right font-mono font-bold text-on-surface">{line.qty.toLocaleString()}</td>
+                    <td className="border border-[#6B7280] px-2 py-1.5 text-right font-mono text-text-grey">{line.spq.toLocaleString()}</td>
+                    <td className="border border-[#6B7280] px-2 py-1.5 text-right font-mono font-bold text-on-surface">{line.numberOfBoxes.toLocaleString()}</td>
+                    <td className="border border-[#6B7280] px-2 py-1.5 font-mono font-bold text-on-surface">{line.itemCode}</td>
+                    <td className="border border-[#6B7280] px-2 py-1.5 font-mono text-text-grey">{line.customerItemCode ?? "—"}</td>
+                    <td className="border border-[#6B7280] px-2 py-1.5 text-on-surface">{line.itemDescription ?? "—"}</td>
+                    <td className="border border-[#6B7280] px-2 py-1.5 font-mono font-bold text-on-surface">{line.lotNumber}</td>
+                    <td className="border border-[#6B7280] px-2 py-1.5 font-mono text-text-grey">—</td>
+                    <td className="border border-[#6B7280] px-2 py-1.5 font-mono text-text-grey">—</td>
+                    <td className="border border-[#6B7280] px-2 py-1.5 font-mono font-bold text-brand-navy">{line.locationLabel}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="border-t-2 border-brand-navy bg-[#D8DDE5] font-bold text-[11px]">
+                <tr>
+                  <td className="border border-[#6B7280] px-2 py-1.5 text-center uppercase font-bold text-on-surface">Total</td>
+                  <td className="border border-[#6B7280] px-2 py-1.5 text-right font-mono font-bold text-brand-navy">{totalQty.toLocaleString()}</td>
+                  <td className="border border-[#6B7280] px-2 py-1.5 text-right font-mono text-text-grey">—</td>
+                  <td className="border border-[#6B7280] px-2 py-1.5 text-right font-mono font-bold text-brand-navy">{totalBoxes.toLocaleString()}</td>
+                  <td colSpan={7} className="border border-[#6B7280] px-2 py-1.5" />
+                </tr>
+              </tfoot>
+            </table>
           </div>
         </section>
 
-        <section className="mt-4 border border-[#374151] text-xs">
-          <div className="bg-[#D8DDE5] px-2 py-1 font-bold uppercase">Delivery Instructions / Remarks</div>
-          <div className="min-h-10 px-2 py-2">—</div>
+        <section className="avoid-break mt-4 border border-[#374151] text-xs">
+          <div className="bg-[#D8DDE5] px-2.5 py-1.5 font-bold uppercase tracking-wider text-on-surface">Delivery Instructions / Remarks</div>
+          <div className="min-h-10 px-2.5 py-2 font-body text-[11px] text-text-grey">—</div>
         </section>
 
-        <footer className="mt-6 grid grid-cols-3 border border-[#374151] text-xs">
-          <div className="min-h-20 border-r border-[#374151] p-2"><p className="font-bold uppercase">Checked By:</p></div>
-          <div className="min-h-20 border-r border-[#374151] p-2"><p className="font-bold uppercase">Loaded By:</p></div>
-          <div className="min-h-20 p-2"><p className="font-bold uppercase">Acknowledged & Received By:</p></div>
+        <footer className="avoid-break mt-6 grid grid-cols-3 border border-[#374151] text-xs">
+          <div className="min-h-20 border-r border-[#374151] p-3">
+            <p className="font-bold uppercase tracking-wider text-on-surface">Checked By:</p>
+            <div className="mt-8 border-b border-dashed border-outline-variant/60" />
+            <p className="mt-1 text-[10px] text-text-grey">Signature over Printed Name</p>
+          </div>
+          <div className="min-h-20 border-r border-[#374151] p-3">
+            <p className="font-bold uppercase tracking-wider text-on-surface">Loaded By:</p>
+            <div className="mt-8 border-b border-dashed border-outline-variant/60" />
+            <p className="mt-1 text-[10px] text-text-grey">Signature over Printed Name</p>
+          </div>
+          <div className="min-h-20 p-3">
+            <p className="font-bold uppercase tracking-wider text-on-surface">Acknowledged &amp; Received By:</p>
+            <div className="mt-8 border-b border-dashed border-outline-variant/60" />
+            <p className="mt-1 text-[10px] text-text-grey">Signature over Printed Name</p>
+          </div>
         </footer>
       </article>
     </main>

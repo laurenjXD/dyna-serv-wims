@@ -47,19 +47,33 @@ export default async function PreAlertExportPage({ params }: PageProps) {
       <style
         dangerouslySetInnerHTML={{
           __html: `
+            @page {
+              size: A4 portrait;
+              margin: 10mm 12mm 12mm 12mm;
+            }
             @media print {
               [data-testid="desktop-sidebar"], [data-testid="floor-tab-bar"], .print-hide {
                 display: none !important;
               }
               body {
                 background: #FFFFFF !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
               }
               main {
                 padding: 0 !important;
+                margin: 0 !important;
               }
-              @page {
-                size: A4 portrait;
-                margin: 12mm 15mm 15mm 15mm;
+              thead {
+                display: table-header-group !important;
+              }
+              tr {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+              }
+              .avoid-break {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
               }
             }
           `,
@@ -159,57 +173,57 @@ export default async function PreAlertExportPage({ params }: PageProps) {
             </span>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left font-body text-body-sm">
+          <div className="overflow-x-auto print:overflow-visible">
+            <table className="w-full border-collapse text-left font-body text-[11px]">
               <thead>
-                <tr className="border-y-2 border-brand-navy bg-surface-light-grey text-xs">
-                  <th className="px-3 py-2.5 font-label font-bold uppercase text-on-surface">#</th>
-                  <th className="px-3 py-2.5 font-label font-bold uppercase text-on-surface">Item Code</th>
-                  <th className="px-3 py-2.5 font-label font-bold uppercase text-on-surface">Cust Part #</th>
-                  <th className="px-3 py-2.5 font-label font-bold uppercase text-on-surface">Description</th>
-                  <th className="px-3 py-2.5 font-label font-bold uppercase text-on-surface">Lot Number</th>
-                  <th className="px-3 py-2.5 font-label font-bold uppercase text-on-surface">Mfg Date</th>
-                  <th className="px-3 py-2.5 text-right font-label font-bold uppercase text-on-surface">Expected Qty</th>
-                  <th className="px-3 py-2.5 font-label font-bold uppercase text-on-surface">UOM</th>
-                  <th className="px-3 py-2.5 font-label font-bold uppercase text-on-surface">Remarks</th>
+                <tr className="border-y-2 border-brand-navy bg-surface-light-grey text-[10px]">
+                  <th className="px-2.5 py-2 font-label font-bold uppercase tracking-wider text-on-surface">#</th>
+                  <th className="px-2.5 py-2 font-label font-bold uppercase tracking-wider text-on-surface">Item Code</th>
+                  <th className="px-2.5 py-2 font-label font-bold uppercase tracking-wider text-on-surface">Cust Part #</th>
+                  <th className="px-2.5 py-2 font-label font-bold uppercase tracking-wider text-on-surface">Description</th>
+                  <th className="px-2.5 py-2 font-label font-bold uppercase tracking-wider text-on-surface">Lot Number</th>
+                  <th className="px-2.5 py-2 font-label font-bold uppercase tracking-wider text-on-surface">Mfg Date</th>
+                  <th className="px-2.5 py-2 text-right font-label font-bold uppercase tracking-wider text-on-surface">Expected Qty</th>
+                  <th className="px-2.5 py-2 font-label font-bold uppercase tracking-wider text-on-surface">UOM</th>
+                  <th className="px-2.5 py-2 font-label font-bold uppercase tracking-wider text-on-surface">Remarks</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/30">
                 {wrr.items.map((item, index) => (
                   <tr key={item.id} className="hover:bg-surface-light-grey/30">
-                    <td className="px-3 py-2.5 font-mono text-text-grey">{index + 1}</td>
-                    <td className="px-3 py-2.5 font-mono font-bold text-on-surface">
+                    <td className="px-2.5 py-2 font-mono text-text-grey">{index + 1}</td>
+                    <td className="px-2.5 py-2 font-mono font-bold text-on-surface">
                       {item.itemCode ?? item.supplierItemCode ?? "—"}
                     </td>
-                    <td className="px-3 py-2.5 font-mono text-text-grey">{item.customerItemCode ?? "—"}</td>
-                    <td className="px-3 py-2.5 text-on-surface">{item.itemName ?? item.itemCode ?? item.supplierItemCode ?? "—"}</td>
-                    <td className="px-3 py-2.5 font-mono text-on-surface">{item.lotNumber}</td>
-                    <td className="px-3 py-2.5 font-mono text-text-grey">{item.manufactureDate ?? "—"}</td>
-                    <td className="px-3 py-2.5 text-right font-mono font-bold text-on-surface">
+                    <td className="px-2.5 py-2 font-mono text-text-grey">{item.customerItemCode ?? "—"}</td>
+                    <td className="px-2.5 py-2 text-on-surface">{item.itemName ?? item.itemCode ?? item.supplierItemCode ?? "—"}</td>
+                    <td className="px-2.5 py-2 font-mono font-bold text-on-surface">{item.lotNumber}</td>
+                    <td className="px-2.5 py-2 font-mono text-text-grey">{item.manufactureDate ?? "—"}</td>
+                    <td className="px-2.5 py-2 text-right font-mono font-bold text-on-surface">
                       {item.expectedQty.toLocaleString()}
                     </td>
-                    <td className="px-3 py-2.5 font-label uppercase text-text-grey">{item.uom || "PCS"}</td>
-                    <td className="px-3 py-2.5 text-text-grey">{item.remarks ?? "—"}</td>
+                    <td className="px-2.5 py-2 font-label uppercase text-text-grey">{item.uom || "PCS"}</td>
+                    <td className="px-2.5 py-2 text-text-grey">{item.remarks ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot className="border-t-2 border-brand-navy bg-surface-light-grey/80 font-bold">
                 <tr>
-                  <td colSpan={6} className="px-3 py-3 text-right font-label uppercase text-on-surface">
+                  <td colSpan={6} className="px-2.5 py-2 text-right font-label text-[11px] uppercase text-on-surface">
                     Total Expected Quantity:
                   </td>
-                  <td className="px-3 py-3 text-right font-mono text-mono-md font-bold text-brand-navy">
+                  <td className="px-2.5 py-2 text-right font-mono text-mono-md font-bold text-brand-navy">
                     {totalExpectedUnits.toLocaleString()}
                   </td>
-                  <td colSpan={2} className="px-3 py-3 font-label uppercase text-text-grey"></td>
+                  <td colSpan={2} className="px-2.5 py-2 font-label uppercase text-text-grey"></td>
                 </tr>
               </tfoot>
             </table>
           </div>
 
           {/* Summary totals box */}
-          <div className="mt-4 flex justify-end">
-            <div className="w-full max-w-sm rounded-lg border border-outline-variant/40 bg-surface-light-grey/40 p-4 font-body text-body-md">
+          <div className="avoid-break mt-4 flex justify-end">
+            <div className="w-full max-w-sm rounded-lg border border-outline-variant/40 bg-surface-light-grey/40 p-4 font-body text-[11px]">
               <dl className="space-y-1.5">
                 <div className="flex justify-between">
                   <dt className="text-text-grey">Total Expected Lines:</dt>
@@ -217,7 +231,7 @@ export default async function PreAlertExportPage({ params }: PageProps) {
                 </div>
                 <div className="flex justify-between border-t border-outline-variant/30 pt-1.5">
                   <dt className="font-bold text-on-surface">Grand Total Quantity:</dt>
-                  <dd className="font-mono font-bold text-brand-navy text-headline-sm">{totalExpectedUnits.toLocaleString()}</dd>
+                  <dd className="font-mono font-bold text-brand-navy text-mono-lg">{totalExpectedUnits.toLocaleString()}</dd>
                 </div>
               </dl>
             </div>
@@ -225,7 +239,7 @@ export default async function PreAlertExportPage({ params }: PageProps) {
         </section>
 
         {/* Document Footer & Authorization Sign-off */}
-        <footer className="mt-12 border-t border-outline-variant/50 pt-6">
+        <footer className="avoid-break mt-10 border-t border-outline-variant/50 pt-6">
           <div className="grid grid-cols-2 gap-12 font-body text-body-sm text-text-grey">
             <div>
               <p className="font-label text-label-xs font-bold uppercase text-on-surface">Shipment Prepared By:</p>

@@ -43,20 +43,33 @@ export default async function InboundTurnoverReceiptPage({ params }: PageProps) 
       <style
         dangerouslySetInnerHTML={{
           __html: `
+            @page {
+              size: A4 portrait;
+              margin: 10mm 12mm 12mm 12mm;
+            }
             @media print {
               [data-testid="desktop-sidebar"], [data-testid="floor-tab-bar"], .print-hide {
                 display: none !important;
               }
               body {
                 background: #FFFFFF !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
               }
               main {
                 padding: 0 !important;
                 margin: 0 !important;
               }
-              @page {
-                size: A4 portrait;
-                margin: 12mm 15mm 15mm 15mm;
+              thead {
+                display: table-header-group !important;
+              }
+              tr {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+              }
+              .avoid-break {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
               }
             }
           `,
@@ -143,33 +156,33 @@ export default async function InboundTurnoverReceiptPage({ params }: PageProps) 
         {/* Goods Tally Table */}
         <div className="mt-6">
           <div className="flex items-center justify-between pb-2">
-            <h2 className="font-heading text-headline-sm font-bold text-on-surface">
+            <h2 className="font-heading text-title-md font-bold text-on-surface">
               Cargo Turnover Breakdown
             </h2>
-            <span className="font-label text-label-xs uppercase text-text-grey">
+            <span className="font-label text-label-xs uppercase text-text-grey font-bold">
               Total {wrr.items.length} Line Items
             </span>
           </div>
 
-          <table className="w-full border-collapse border border-outline-variant/40">
+          <table className="w-full border-collapse border border-outline-variant/40 font-body text-[11px]">
             <thead>
-              <tr className="bg-surface-light-grey">
-                <th className="border border-outline-variant/30 px-3 py-2 text-left font-label text-label-xs uppercase font-bold text-text-grey">
+              <tr className="bg-surface-light-grey text-[10px]">
+                <th className="border border-outline-variant/30 px-2.5 py-2 text-left font-label uppercase font-bold tracking-wider text-text-grey">
                   Item / Part Number
                 </th>
-                <th className="border border-outline-variant/30 px-3 py-2 text-left font-label text-label-xs uppercase font-bold text-text-grey">
+                <th className="border border-outline-variant/30 px-2.5 py-2 text-left font-label uppercase font-bold tracking-wider text-text-grey">
                   Description
                 </th>
-                <th className="border border-outline-variant/30 px-3 py-2 text-left font-label text-label-xs uppercase font-bold text-text-grey">
+                <th className="border border-outline-variant/30 px-2.5 py-2 text-left font-label uppercase font-bold tracking-wider text-text-grey">
                   Lot / Batch
                 </th>
-                <th className="border border-outline-variant/30 px-3 py-2 text-right font-label text-label-xs uppercase font-bold text-text-grey">
+                <th className="border border-outline-variant/30 px-2.5 py-2 text-right font-label uppercase font-bold tracking-wider text-text-grey">
                   Boxes / Cartons
                 </th>
-                <th className="border border-outline-variant/30 px-3 py-2 text-right font-label text-label-xs uppercase font-bold text-text-grey">
+                <th className="border border-outline-variant/30 px-2.5 py-2 text-right font-label uppercase font-bold tracking-wider text-text-grey">
                   Total Units (PCS)
                 </th>
-                <th className="border border-outline-variant/30 px-3 py-2 text-center font-label text-label-xs uppercase font-bold text-text-grey">
+                <th className="border border-outline-variant/30 px-2.5 py-2 text-center font-label uppercase font-bold tracking-wider text-text-grey">
                   Package Condition
                 </th>
               </tr>
@@ -181,24 +194,24 @@ export default async function InboundTurnoverReceiptPage({ params }: PageProps) 
                 const totalUnits = boxCount * spq;
 
                 return (
-                  <tr key={item.id} className="text-body-sm">
-                    <td className="border border-outline-variant/30 px-3 py-2 font-mono text-mono-sm font-bold text-on-surface">
+                  <tr key={item.id} className="hover:bg-surface-light-grey/20">
+                    <td className="border border-outline-variant/30 px-2.5 py-2 font-mono font-bold text-on-surface">
                       {item.itemCode ?? item.supplierItemCode ?? "—"}
                     </td>
-                    <td className="border border-outline-variant/30 px-3 py-2 font-body text-body-sm text-on-surface">
+                    <td className="border border-outline-variant/30 px-2.5 py-2 text-on-surface">
                       {item.itemName ?? "—"}
                     </td>
-                    <td className="border border-outline-variant/30 px-3 py-2 font-mono text-mono-sm text-text-grey">
+                    <td className="border border-outline-variant/30 px-2.5 py-2 font-mono font-bold text-on-surface">
                       {item.lotNumber}
                     </td>
-                    <td className="border border-outline-variant/30 px-3 py-2 text-right font-mono text-mono-sm font-bold text-on-surface">
+                    <td className="border border-outline-variant/30 px-2.5 py-2 text-right font-mono font-bold text-on-surface">
                       {boxCount.toLocaleString()} {boxCount === 1 ? "box" : "boxes"}
                     </td>
-                    <td className="border border-outline-variant/30 px-3 py-2 text-right font-mono text-mono-sm font-bold text-brand-navy">
+                    <td className="border border-outline-variant/30 px-2.5 py-2 text-right font-mono font-bold text-brand-navy">
                       {totalUnits.toLocaleString()} {item.uom || "PCS"}
                     </td>
-                    <td className="border border-outline-variant/30 px-3 py-2 text-center">
-                      <span className="inline-flex items-center gap-1 rounded bg-status-available/10 px-2 py-0.5 font-label text-[11px] font-bold text-status-available">
+                    <td className="border border-outline-variant/30 px-2.5 py-2 text-center">
+                      <span className="inline-flex items-center gap-1 rounded bg-status-available/10 px-2 py-0.5 font-label text-[10px] font-bold text-status-available">
                         <CheckCircle2 size={12} /> Intact / Verified
                       </span>
                     </td>
@@ -208,16 +221,16 @@ export default async function InboundTurnoverReceiptPage({ params }: PageProps) 
             </tbody>
             <tfoot className="border-t-2 border-brand-navy bg-surface-light-grey font-bold">
               <tr>
-                <td colSpan={3} className="border border-outline-variant/30 px-3 py-2 text-right font-label text-label-xs uppercase text-on-surface">
+                <td colSpan={3} className="border border-outline-variant/30 px-2.5 py-2 text-right font-label text-[11px] uppercase text-on-surface">
                   Grand Total Received:
                 </td>
-                <td className="border border-outline-variant/30 px-3 py-2 text-right font-mono text-mono-md text-brand-navy">
+                <td className="border border-outline-variant/30 px-2.5 py-2 text-right font-mono text-mono-md text-brand-navy">
                   {totalBoxes.toLocaleString()} boxes
                 </td>
-                <td className="border border-outline-variant/30 px-3 py-2 text-right font-mono text-mono-md text-brand-navy">
+                <td className="border border-outline-variant/30 px-2.5 py-2 text-right font-mono text-mono-md text-brand-navy">
                   {totalPieces.toLocaleString()} pcs
                 </td>
-                <td className="border border-outline-variant/30 px-3 py-2 text-center font-label text-label-xs uppercase text-status-available">
+                <td className="border border-outline-variant/30 px-2.5 py-2 text-center font-label text-label-xs uppercase text-status-available">
                   All Items Accounted
                 </td>
               </tr>
@@ -226,24 +239,24 @@ export default async function InboundTurnoverReceiptPage({ params }: PageProps) 
         </div>
 
         {/* Physical Handover & Sign-off Blocks */}
-        <div className="mt-10 grid grid-cols-2 gap-8 border-t border-outline-variant/30 pt-6">
+        <div className="avoid-break mt-10 grid grid-cols-2 gap-8 border-t border-outline-variant/30 pt-6">
           <div className="rounded-xl border border-outline-variant/30 bg-surface-light-grey/20 p-4">
             <p className="font-label text-label-xs uppercase font-bold text-text-grey">
               Delivered By (Forwarder / Driver)
             </p>
             <div className="mt-8 border-b border-dashed border-outline-variant/60" />
             <div className="mt-2 flex justify-between font-body text-body-xs text-text-grey">
-              <span>Driver Signature & Printed Name</span>
+              <span>Driver Signature &amp; Printed Name</span>
               <span>Plate # / Forwarder</span>
             </div>
             <p className="mt-3 font-body text-body-xs text-text-grey">
-              Date & Time: ________________________
+              Date &amp; Time: ________________________
             </p>
           </div>
 
           <div className="rounded-xl border border-outline-variant/30 bg-surface-light-grey/20 p-4">
             <p className="font-label text-label-xs uppercase font-bold text-brand-navy">
-              Received & Inspected At Dock By (Dyna-Serv WIMS)
+              Received &amp; Inspected At Dock By (Dyna-Serv WIMS)
             </p>
             <div className="mt-8 border-b border-dashed border-outline-variant/60" />
             <div className="mt-2 flex justify-between font-body text-body-xs text-text-grey">
@@ -251,13 +264,13 @@ export default async function InboundTurnoverReceiptPage({ params }: PageProps) 
               <span>Supervisor Verified</span>
             </div>
             <p className="mt-3 font-body text-body-xs text-text-grey">
-              Date & Time: ________________________
+              Date &amp; Time: ________________________
             </p>
           </div>
         </div>
 
         {/* Footer Security Notice */}
-        <div className="mt-8 flex items-center justify-between border-t border-outline-variant/20 pt-4 text-text-grey font-body text-body-xs">
+        <div className="avoid-break mt-8 flex items-center justify-between border-t border-outline-variant/20 pt-4 text-text-grey font-body text-body-xs">
           <div className="flex items-center gap-1.5">
             <ShieldCheck size={14} className="text-brand-navy" />
             <span>Official Dyna-Serv WIMS Dock Turnover Record — Stored Authoritatively</span>
