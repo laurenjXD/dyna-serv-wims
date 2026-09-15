@@ -200,6 +200,9 @@ export default async function PartyDetailPage({
       <div className="mt-6 rounded-xl bg-surface-white shadow-elevation-1 p-6">
         <PartyDetailActions
           partyId={partyId}
+          partyName={party.name}
+          partyEmail={party.email ?? undefined}
+          contactPerson={party.contactPerson ?? undefined}
           roles={party.roles}
           canManage={canManage}
           hasEmail={!!party.email}

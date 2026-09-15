@@ -17,6 +17,8 @@ import { redirect, notFound } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
+import { locations } from "@/lib/db/schema";
+import { eq, asc } from "drizzle-orm";
 import { createTransfer } from "@/lib/actions/transfers";
 import { TransferLineItems } from "./_components/transfer-line-items";
 import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";

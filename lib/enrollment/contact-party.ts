@@ -11,14 +11,24 @@ export type ContactPartyActionResult =
   | { ok: true }
   | { ok: false; error: string };
 
+export type ContactPartyEmailAttachment = {
+  filename: string;
+  content: Buffer | string;
+  contentType?: string;
+};
+
 export type ContactPartyEmailPayload = {
   partyId: string;
+  partyName?: string;
   recipientEmail: string;       // resolved from DB — never client-supplied
   recipientName: string | null; // contact_person from DB — never client-supplied
+  subject?: string | null;
   templateKey: string;          // identifies the transactional template in 04's pipeline
+  templateCategory?: string;
   resourceType: "party";
   resourceId: string;           // = partyId
   optionalMessage: string | null;
+  attachments?: ContactPartyEmailAttachment[];
 };
 
 /**
@@ -74,16 +84,26 @@ export function validatePartyEmailPresence(
  * no client-supplied recipient is accepted (R6.3).
  */
 export function buildContactPartyPayload(
-  party: { id: string; email: string; contactPerson: string | null },
+  party: { id: string; name?: string; email: string; contactPerson: string | null },
   optionalMessage?: string | null,
+  options?: {
+    subject?: string | null;
+    templateKey?: string;
+    templateCategory?: string;
+    attachments?: ContactPartyEmailAttachment[];
+  },
 ): ContactPartyEmailPayload {
   return {
     partyId: party.id,
+    partyName: party.name,
     recipientEmail: party.email,
     recipientName: party.contactPerson,
-    templateKey: "contact_party_notification_v1",
+    subject: options?.subject ?? null,
+    templateKey: options?.templateKey ?? "contact_party_notification_v1",
+    templateCategory: options?.templateCategory ?? "general",
     resourceType: "party",
     resourceId: party.id,
     optionalMessage: optionalMessage ?? null,
+    attachments: options?.attachments ?? [],
   };
 }
