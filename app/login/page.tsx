@@ -72,7 +72,7 @@ export default function LoginPage() {
       const result = await Promise.race([
         signInAction({ email, password }),
         new Promise<never>((_, reject) => {
-          timeoutId = setTimeout(() => reject(new Error("Sign-in timed out")), 8_000);
+          timeoutId = setTimeout(() => reject(new Error("Sign-in timed out")), 20_000);
         }),
       ]).finally(() => {
         if (timeoutId) clearTimeout(timeoutId);

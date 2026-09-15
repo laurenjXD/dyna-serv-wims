@@ -16,7 +16,7 @@ export const metadata = {
   description: "Real-time warehouse operations telemetry, inventory valuation, location heatmap, and performance metrics.",
 };
 
-function withDashboardTimeout<T>(promise: Promise<T>, timeoutMs = 2_500): Promise<T | undefined> {
+function withDashboardTimeout<T>(promise: Promise<T>, timeoutMs = 6_000): Promise<T | undefined> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   return Promise.race([
     promise,
