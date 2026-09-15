@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   X,
   Shield,
@@ -49,30 +49,37 @@ export function RoleManagementModal({
   roles,
   onRolesUpdated,
 }: RoleManagementModalProps) {
-  const [selectedRole, setSelectedRole] = useState<DynamicRole>(roles[0] || null);
+  const [selectedRole, setSelectedRole] = useState<DynamicRole | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
-  if (!isOpen || !selectedRole) return null;
+  const activeRole = selectedRole ?? roles[0] ?? null;
+
+  useEffect(() => {
+    if (!selectedRole && roles.length > 0) {
+      setSelectedRole(roles[0]);
+    }
+  }, [roles, selectedRole]);
+
+  if (!isOpen || !activeRole) return null;
 
   function handleCapabilityToggle(moduleName: string, capKey: "view" | "create" | "edit" | "approve" | "delete") {
-    setSelectedRole((prev) => {
-      const caps = [...prev.capabilities];
-      const modIdx = caps.findIndex((c) => c.module === moduleName);
-      if (modIdx >= 0) {
-        caps[modIdx] = { ...caps[modIdx], [capKey]: !caps[modIdx][capKey] };
-      } else {
-        caps.push({
-          module: moduleName,
-          view: capKey === "view",
-          create: capKey === "create",
-          edit: capKey === "edit",
-          approve: capKey === "approve",
-          delete: capKey === "delete",
-        });
-      }
-      return { ...prev, capabilities: caps };
-    });
+    if (!activeRole) return;
+    const caps = [...activeRole.capabilities];
+    const modIdx = caps.findIndex((c) => c.module === moduleName);
+    if (modIdx >= 0) {
+      caps[modIdx] = { ...caps[modIdx], [capKey]: !caps[modIdx][capKey] };
+    } else {
+      caps.push({
+        module: moduleName,
+        view: capKey === "view",
+        create: capKey === "create",
+        edit: capKey === "edit",
+        approve: capKey === "approve",
+        delete: capKey === "delete",
+      });
+    }
+    setSelectedRole({ ...activeRole, capabilities: caps });
   }
 
   function handleCreateNew() {
@@ -94,12 +101,14 @@ export function RoleManagementModal({
       })),
     };
     setSelectedRole(newRole);
+    setStatus(null);
   }
 
   async function handleSave() {
+    if (!activeRole) return;
     setIsSaving(true);
     setStatus(null);
-    const res = await saveDynamicRole(selectedRole);
+    const res = await saveDynamicRole(activeRole);
     setIsSaving(false);
     if (res.ok) {
       setStatus({ type: "success", message: "Role and permission matrix saved." });
@@ -110,13 +119,13 @@ export function RoleManagementModal({
   }
 
   async function handleDelete() {
-    if (selectedRole.isSystem) return;
-    if (confirm(`Delete role "${selectedRole.name}"?`)) {
+    if (!activeRole || activeRole.isSystem) return;
+    if (confirm(`Delete role "${activeRole.name}"?`)) {
       setIsSaving(true);
-      await deleteDynamicRole(selectedRole.id);
+      await deleteDynamicRole(activeRole.id);
       setIsSaving(false);
       onRolesUpdated();
-      setSelectedRole(roles[0]);
+      setSelectedRole(roles.find((r) => r.id !== activeRole.id) || null);
     }
   }
 
@@ -167,7 +176,7 @@ export function RoleManagementModal({
 
             <div className="space-y-1.5">
               {roles.map((r) => {
-                const isSelected = selectedRole.id === r.id;
+                const isSelected = activeRole.id === r.id;
                 return (
                   <button
                     key={r.id}
@@ -207,8 +216,8 @@ export function RoleManagementModal({
                 </label>
                 <input
                   type="text"
-                  value={selectedRole.name}
-                  onChange={(e) => setSelectedRole({ ...selectedRole, name: e.target.value })}
+                  value={activeRole.name}
+                  onChange={(e) => setSelectedRole({ ...activeRole, name: e.target.value })}
                   className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 font-body text-xs text-slate-900 shadow-2xs outline-none focus:border-brand-navy"
                 />
               </div>
@@ -218,8 +227,8 @@ export function RoleManagementModal({
                   Badge Color Style
                 </label>
                 <select
-                  value={selectedRole.color}
-                  onChange={(e) => setSelectedRole({ ...selectedRole, color: e.target.value })}
+                  value={activeRole.color}
+                  onChange={(e) => setSelectedRole({ ...activeRole, color: e.target.value })}
                   className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 font-body text-xs text-slate-900 shadow-2xs outline-none focus:border-brand-navy"
                 >
                   {COLOR_OPTIONS.map((c) => (
@@ -236,8 +245,8 @@ export function RoleManagementModal({
                 </label>
                 <input
                   type="text"
-                  value={selectedRole.description}
-                  onChange={(e) => setSelectedRole({ ...selectedRole, description: e.target.value })}
+                  value={activeRole.description}
+                  onChange={(e) => setSelectedRole({ ...activeRole, description: e.target.value })}
                   className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 font-body text-xs text-slate-900 shadow-2xs outline-none focus:border-brand-navy"
                 />
               </div>
@@ -263,7 +272,7 @@ export function RoleManagementModal({
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {MODULE_NAMES.map((mod) => {
-                      const currentCap = selectedRole.capabilities.find((c) => c.module === mod.id) || {
+                      const currentCap = activeRole.capabilities.find((c) => c.module === mod.id) || {
                         module: mod.id,
                         view: false,
                         create: false,
@@ -318,7 +327,7 @@ export function RoleManagementModal({
         {/* Footer */}
         <div className="flex items-center justify-between border-t border-slate-100 bg-[#F8FAFC] px-6 py-3">
           <div>
-            {!selectedRole.isSystem && (
+            {!activeRole.isSystem && (
               <button
                 type="button"
                 onClick={handleDelete}
