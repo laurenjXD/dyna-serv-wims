@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { ChevronLeft } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { parties } from "@/lib/db/schema/parties";
+import { vmiPermits } from "@/lib/db/schema/vmi_billing";
 import { getPickList, getPickListItems } from "@/lib/db/queries/withdrawals";
 import { PickListPrintButton } from "../print/_components/PickListPrintButton";
 
@@ -22,16 +23,22 @@ export default async function DeliveryReceiptPage({
   const pickList = await getPickList(db, pickListId);
   if (!pickList) notFound();
 
-  const [lines, partyRows] = await Promise.all([
+  const [lines, partyRows, permitRows] = await Promise.all([
     getPickListItems(db, pickListId),
     db
       .select({ name: parties.name, address1: parties.address1, address2: parties.address2 })
       .from(parties)
       .where(eq(parties.id, pickList.customerPartyId))
       .limit(1),
+    db
+      .select({ permitNumber: vmiPermits.permitNumber })
+      .from(vmiPermits)
+      .where(and(eq(vmiPermits.partyId, pickList.customerPartyId), eq(vmiPermits.isActive, true)))
+      .limit(1),
   ]);
 
   const party = partyRows[0];
+  const pezaPermitNo = permitRows[0]?.permitNumber ?? null;
   const totalQty = lines.reduce((sum, line) => sum + line.qty, 0);
   const totalBoxes = lines.reduce((sum, line) => sum + line.numberOfBoxes, 0);
 
@@ -74,6 +81,8 @@ export default async function DeliveryReceiptPage({
               <dd className="font-bold">DR-{pickList.pickListNumber.replace(/^PL-/, "")}</dd>
               <dt className="font-bold uppercase">Pick List No.</dt>
               <dd className="font-bold">{pickList.pickListNumber}</dd>
+              <dt className="font-bold uppercase">PEZA Permit No.</dt>
+              <dd className="font-mono font-bold">{pezaPermitNo ?? "—"}</dd>
               <dt className="font-bold uppercase">Delivery Date</dt>
               <dd>{pickList.createdAt.toLocaleDateString()}</dd>
             </dl>

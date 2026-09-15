@@ -1,12 +1,13 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { PDFDocument, StandardFonts, rgb, type PDFPage, type PDFFont } from "pdf-lib";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { parties } from "@/lib/db/schema/parties";
+import { vmiPermits } from "@/lib/db/schema/vmi_billing";
 import { getPickList, getPickListItems } from "@/lib/db/queries/withdrawals";
 
 const PAGE_WIDTH = 841.89;
@@ -24,37 +25,47 @@ function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): 
   let line = "";
   for (const word of words) {
     const candidate = line ? `${line} ${word}` : word;
-    if (font.widthOfTextAtSize(candidate, size) <= maxWidth || !line) {
+    if (font.widthOfTextAtSize(candidate, size) <= maxWidth) {
       line = candidate;
     } else {
-      lines.push(line);
+      if (line) lines.push(line);
       line = word;
     }
   }
   if (line) lines.push(line);
-  return lines.length ? lines : ["—"];
+  return lines.length > 0 ? lines : [text];
 }
 
 function drawCell(
   page: PDFPage,
-  value: string,
+  text: string,
   x: number,
-  top: number,
+  yTop: number,
   width: number,
   height: number,
   font: PDFFont,
   size: number,
   align: "left" | "center" = "left",
 ) {
-  page.drawRectangle({ x, y: top - height, width, height, borderColor: GRID, borderWidth: 0.6 });
-  const lines = wrapText(value, font, size, width - 8);
+  page.drawRectangle({
+    x,
+    y: yTop - height,
+    width,
+    height,
+    borderColor: GRID,
+    borderWidth: 0.8,
+  });
+
+  const lines = wrapText(text, font, size, width - 6);
   const lineHeight = size + 2;
-  const textBlockHeight = (lines.length - 1) * lineHeight + size;
-  const startY = top - (height - textBlockHeight) / 2 - size;
+  const blockHeight = lines.length * lineHeight;
+  const startY = yTop - (height - blockHeight) / 2 - size;
+
   lines.slice(0, 3).forEach((line, index) => {
-    const lineWidth = font.widthOfTextAtSize(line, size);
+    const textWidth = font.widthOfTextAtSize(line, size);
+    const textX = align === "center" ? x + (width - textWidth) / 2 : x + 3;
     page.drawText(line, {
-      x: align === "center" ? x + (width - lineWidth) / 2 : x + 4,
+      x: textX,
       y: startY - index * lineHeight,
       size,
       font,
@@ -74,10 +85,14 @@ export async function GET(
 
   const pickList = await getPickList(db, pickListId);
   if (!pickList) return new NextResponse("Not found", { status: 404 });
-  const [lines, partyRows] = await Promise.all([
+  const [lines, partyRows, permitRows] = await Promise.all([
     getPickListItems(db, pickListId),
     db.select({ name: parties.name, address1: parties.address1, address2: parties.address2 })
       .from(parties).where(eq(parties.id, pickList.customerPartyId)).limit(1),
+    db.select({ permitNumber: vmiPermits.permitNumber })
+      .from(vmiPermits)
+      .where(and(eq(vmiPermits.partyId, pickList.customerPartyId), eq(vmiPermits.isActive, true)))
+      .limit(1),
   ]);
 
   const pdf = await PDFDocument.create();
@@ -85,6 +100,7 @@ export async function GET(
   const regular = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
   const party = partyRows[0];
+  const pezaPermitNo = permitRows[0]?.permitNumber ?? null;
   const drNumber = `DR-${pickList.pickListNumber.replace(/^PL-/, "")}`;
 
   const logoPng = await readFile(path.join(process.cwd(), "public", "logo-hd.png"));
@@ -96,11 +112,12 @@ export async function GET(
   const meta = [
     ["DELIVERY RECEIPT NO.", drNumber],
     ["PICK LIST NO.", pickList.pickListNumber],
+    ["PEZA PERMIT NO.", pezaPermitNo || "—"],
     ["DELIVERY DATE", pickList.createdAt.toLocaleDateString()],
   ];
   meta.forEach(([label, value], index) => {
-    page.drawText(label, { x: 595, y: 535 - index * 17, size: 8, font: bold, color: INK });
-    page.drawText(value, { x: 718, y: 535 - index * 17, size: 8, font: bold, color: INK });
+    page.drawText(label, { x: 595, y: 538 - index * 13, size: 7.5, font: bold, color: INK });
+    page.drawText(value, { x: 718, y: 538 - index * 13, size: 7.5, font: bold, color: INK });
   });
   page.drawText("DELIVERY TO:", { x: MARGIN, y: 478, size: 8, font: bold, color: INK });
   page.drawText(party?.name ?? pickList.customerPartyId, { x: MARGIN, y: 465, size: 9, font: bold, color: INK });
