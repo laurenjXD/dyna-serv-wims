@@ -6,10 +6,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   // tsconfig.json sets jsx: "preserve" (Next.js/SWC handles the JSX
-  // transform for the real app build). Vitest's esbuild transform needs
+  // transform for the real app build). Vitest's esbuild/oxc transform needs
   // its own jsx setting for *.test.tsx files, since it never goes through
   // Next's SWC pipeline.
   esbuild: { jsx: "automatic" },
+  oxc: { jsx: { runtime: "automatic" } },
   test: {
     // Default stays "node" for pure-logic tests (lib/db, lib/rbac,
     // lib/shell) — fast, no DOM. Component tests (*.test.tsx, using RTL)
