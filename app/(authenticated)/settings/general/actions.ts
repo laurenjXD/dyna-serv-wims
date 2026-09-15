@@ -10,8 +10,12 @@ import { requirePermission } from "@/lib/rbac/guard";
 
 export interface GeneralSettingsData {
   facility: {
-    warehouseId: string;
-    warehouseName: string;
+    companyName: string;
+    facilityName: string;
+    physicalAddress: string;
+    contactPhone: string;
+    contactEmail: string;
+    tinNumber: string;
     defaultZone: string;
     timezone: string;
     dateFormat: string;
@@ -42,8 +46,12 @@ export interface GeneralSettingsData {
 
 const DEFAULT_SETTINGS: GeneralSettingsData = {
   facility: {
-    warehouseId: "WH-01",
-    warehouseName: "Main Laguna Hub — Biñan (WH-01)",
+    companyName: "Dyna-Serv Logistics Philippines Inc.",
+    facilityName: "Main Warehouse & Logistics Hub — Biñan",
+    physicalAddress: "Lot 14 Block 3, Laguna Technopark Special Economic Zone, Biñan, Laguna 4024, Philippines",
+    contactPhone: "+63 (49) 541-2345 / +63 917 555 8899",
+    contactEmail: "warehouse.ops@dyna-serv.com",
+    tinNumber: "008-765-432-000",
     defaultZone: "Zone A — Intake & Staging",
     timezone: "Asia/Manila (GMT+8)",
     dateFormat: "YYYY-MM-DD",
@@ -103,7 +111,9 @@ export async function saveGeneralSettings(settings: GeneralSettingsData): Promis
       entityType: "system_preferences",
       entityId: permission.context.userId,
       diffData: {
-        facilityHub: settings.facility.warehouseId,
+        companyName: settings.facility.companyName,
+        facilityName: settings.facility.facilityName,
+        physicalAddress: settings.facility.physicalAddress,
         defaultZone: settings.facility.defaultZone,
         scannerContinuous: settings.scanner.continuousStream,
         lowStockUnits: settings.alerts.lowStockThresholdUnits,

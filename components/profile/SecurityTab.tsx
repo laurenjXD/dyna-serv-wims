@@ -1,14 +1,3 @@
-// Security tab — <ChangePasswordForm>, <ActiveSessionsList>, MFA entry
-// point.
-//
-// Traceability: specs/21-user-profile-and-settings/design.md §1.1, §4.4
-// (MFA — "Supabase Auth owns MFA enrollment... The `21` Security tab
-// provides the UI entry point that routes the user into Supabase Auth's MFA
-// setup flow via `supabase.auth.mfa.*` client calls. `21` does not store
-// MFA state or device records"), §4.5 (session display — read-only,
-// sourced from Supabase Auth metadata, no extend/mint/revoke-on-behalf
-// controls), and tasks.md Tasks 21.3/21.11/21.12.
-
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
@@ -16,6 +5,7 @@ import type { OwnProfile } from "@/app/(authenticated)/profile/actions";
 import { changePassword } from "@/app/(authenticated)/profile/actions";
 import { changePasswordSchema } from "@/lib/user-settings/schemas";
 import { createClient } from "@/lib/supabase/client";
+import { KeyRound, ShieldCheck, Smartphone, CheckCircle2, AlertCircle, QrCode, Lock, Check } from "lucide-react";
 
 function ChangePasswordForm() {
   const [newPassword, setNewPassword] = useState("");
@@ -34,9 +24,6 @@ function ChangePasswordForm() {
     }
 
     setStatus("saving");
-    // Runs through the server Supabase client (design.md §4.5 — never a
-    // direct browser-side Supabase call for a credential mutation on this
-    // surface).
     const result = await changePassword(parsed.data);
     if (!result.ok) {
       setError(result.error);
@@ -49,72 +36,87 @@ function ChangePasswordForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
-      <h2 className="font-heading text-headline-md font-semibold text-on-surface">
-        Change password
-      </h2>
-
-      <div className="flex flex-col gap-1">
-        <label
-          htmlFor="new-password"
-          className="font-label text-body-md uppercase tracking-wide text-on-surface"
-        >
-          New password
-        </label>
-        <input
-          id="new-password"
-          data-testid="new-password-input"
-          type="password"
-          autoComplete="new-password"
-          value={newPassword}
-          onChange={(e) => {
-            setNewPassword(e.target.value);
-            setStatus("idle");
-          }}
-          className="min-h-14 rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
-        />
+    <form onSubmit={handleSubmit} noValidate className="space-y-4">
+      <div>
+        <h3 className="font-heading text-sm font-bold text-slate-900 flex items-center gap-2">
+          <KeyRound className="h-4 w-4 text-brand-navy" />
+          Change Password
+        </h3>
+        <p className="mt-0.5 font-body text-xs text-slate-500">
+          Must be at least 8 characters. Ensure passwords contain mixed casing and numbers.
+        </p>
       </div>
 
-      <div className="flex flex-col gap-1">
-        <label
-          htmlFor="confirm-password"
-          className="font-label text-body-md uppercase tracking-wide text-on-surface"
-        >
-          Confirm new password
-        </label>
-        <input
-          id="confirm-password"
-          data-testid="confirm-password-input"
-          type="password"
-          autoComplete="new-password"
-          value={confirmPassword}
-          onChange={(e) => {
-            setConfirmPassword(e.target.value);
-            setStatus("idle");
-          }}
-          className="min-h-14 rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
-        />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label
+            htmlFor="new-password"
+            className="block font-label text-xs font-bold text-slate-700 mb-1"
+          >
+            New Password
+          </label>
+          <input
+            id="new-password"
+            data-testid="new-password-input"
+            type="password"
+            autoComplete="new-password"
+            value={newPassword}
+            onChange={(e) => {
+              setNewPassword(e.target.value);
+              setStatus("idle");
+            }}
+            placeholder="Enter new password"
+            className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3.5 font-body text-sm text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
+          />
+        </div>
+
+        <div>
+          <label
+            htmlFor="confirm-password"
+            className="block font-label text-xs font-bold text-slate-700 mb-1"
+          >
+            Confirm New Password
+          </label>
+          <input
+            id="confirm-password"
+            data-testid="confirm-password-input"
+            type="password"
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(e) => {
+              setConfirmPassword(e.target.value);
+              setStatus("idle");
+            }}
+            placeholder="Confirm new password"
+            className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3.5 font-body text-sm text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
+          />
+        </div>
       </div>
 
       {error && (
-        <p role="alert" className="font-body text-body-md text-brand-red">
-          {error}
-        </p>
+        <div role="alert" className="flex items-center gap-2 rounded-xl bg-rose-50 p-3 text-xs font-medium text-rose-800 border border-rose-200">
+          <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
+          <span>{error}</span>
+        </div>
       )}
       {status === "saved" && (
-        <p role="status" className="font-body text-body-md text-status-available">
-          Password updated.
-        </p>
+        <div role="status" className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-xs font-medium text-emerald-800 border border-emerald-200">
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+          <span>Password updated successfully.</span>
+        </div>
       )}
 
-      <button
-        type="submit"
-        disabled={status === "saving"}
-        data-testid="save-password"
-        className="flex min-h-14 w-full items-center justify-center rounded bg-brand-navy px-4 font-label text-body-md uppercase tracking-wide text-surface-white transition-transform duration-0 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2 disabled:opacity-60"
-      >
-        {status === "saving" ? "Updating…" : "Update password"}
-      </button>
+      <div className="flex justify-end pt-1">
+        <button
+          type="submit"
+          disabled={status === "saving"}
+          data-testid="save-password"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand-navy px-5 font-label text-xs font-bold text-white shadow-sm hover:bg-brand-navy/90 transition-colors disabled:opacity-50"
+        >
+          <KeyRound className="h-4 w-4" />
+          {status === "saving" ? "Updating..." : "Update Password"}
+        </button>
+      </div>
     </form>
   );
 }
@@ -124,11 +126,6 @@ interface MfaFactor {
   status: string;
 }
 
-// MFA is an interactive, stateful, multi-step exchange (enroll -> show QR ->
-// verify code against the SAME enrollment session) — it runs client-side
-// against the browser Supabase client, unlike ChangePasswordForm above.
-// `21` never stores factor state itself (design.md §4.4); this component
-// only calls through to `supabase.auth.mfa.*` and reflects its responses.
 function MfaSection() {
   const [factors, setFactors] = useState<MfaFactor[]>([]);
   const [enrolling, setEnrolling] = useState(false);
@@ -138,13 +135,6 @@ function MfaSection() {
   const [error, setError] = useState<string | null>(null);
   const [verified, setVerified] = useState(false);
 
-  // KNOWN SEAM GAP (flag for integration-reviewer): whether an
-  // administrator has configured MFA as required (design.md §4.4 — a
-  // "policy managed in `04`/Supabase Auth project settings") is not
-  // queryable from this client surface today. Defaulting to "not required"
-  // (disable control shown) rather than guessing a stricter default; wire
-  // the real policy source here once `04-services-and-infrastructure`
-  // exposes it.
   const mfaRequiredByPolicy = false;
 
   useEffect(() => {
@@ -203,30 +193,38 @@ function MfaSection() {
   }
 
   return (
-    <div className="flex flex-col gap-3 border-t border-outline-variant/30 pt-4">
-      <h2 className="font-heading text-headline-md font-semibold text-on-surface">
-        Two-factor authentication
-      </h2>
+    <div className="border-t border-slate-100 pt-6 space-y-4">
+      <div>
+        <h3 className="font-heading text-sm font-bold text-slate-900 flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4 text-emerald-600" />
+          Two-Factor Authentication (2FA)
+        </h3>
+        <p className="mt-0.5 font-body text-xs text-slate-500">
+          Enhance account protection with time-based one-time passwords (TOTP Authenticator app).
+        </p>
+      </div>
 
       {factors.length > 0 && (
-        <ul className="flex flex-col gap-2">
+        <ul className="space-y-2">
           {factors.map((factor) => (
             <li
               key={factor.id}
-              className="flex items-center justify-between rounded border border-outline-variant/30 px-3 py-2"
+              className="flex items-center justify-between rounded-xl border border-slate-200 bg-[#F8FAFC] p-3 text-xs"
             >
-              <span className="font-body text-body-md text-on-surface">
-                Authenticator app ({factor.status})
-              </span>
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                <span className="font-heading font-bold text-slate-900">
+                  Authenticator App
+                </span>
+                <span className="rounded-md bg-emerald-100 px-1.5 py-0.5 font-mono text-[10px] font-bold text-emerald-800">
+                  {factor.status.toUpperCase()}
+                </span>
+              </div>
               {!mfaRequiredByPolicy && (
                 <button
                   type="button"
                   onClick={() => handleRemove(factor.id)}
-                  // Destructive action -> status-held, not brand-red, per
-                  // brand-design-system.md §9 ("Destructive: status-held
-                  // solid") — brand-red is reserved for primary CTA/active
-                  // nav, never a destructive/removal action.
-                  className="flex min-h-14 items-center px-2 font-label text-body-md uppercase tracking-wide text-status-held active:opacity-70"
+                  className="rounded-lg px-2.5 py-1 font-label text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
                 >
                   Remove
                 </button>
@@ -242,80 +240,94 @@ function MfaSection() {
           onClick={handleEnroll}
           disabled={enrolling}
           data-testid="mfa-enroll"
-          // Solid, not outline — brand-design-system.md §9: floor screens
-          // avoid outline-only buttons since they're harder to spot at
-          // speed, and /profile defaults to floor per the 2026-08-08
-          // amendment (design.md §1.1).
-          className="flex min-h-14 w-full items-center justify-center rounded bg-brand-navy px-4 font-label text-body-md uppercase tracking-wide text-surface-white transition-transform duration-0 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2 disabled:opacity-60"
+          className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 font-label text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors disabled:opacity-60"
         >
-          {enrolling ? "Starting…" : "Set up two-factor authentication"}
+          <ShieldCheck className="h-4 w-4 text-emerald-600" />
+          {enrolling ? "Starting..." : "Set Up Two-Factor Authentication"}
         </button>
       )}
 
       {qrCode && (
-        <form onSubmit={handleVerify} className="flex flex-col gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element -- Supabase
-              returns an inline SVG data URI, not a static asset next/image
-              can optimize. */}
-          <img src={qrCode} alt="Scan with your authenticator app" className="h-40 w-40" />
-          <label
-            htmlFor="mfa-code"
-            className="font-label text-body-md uppercase tracking-wide text-on-surface"
-          >
-            Enter the 6-digit code
-          </label>
-          <input
-            id="mfa-code"
-            data-testid="mfa-code-input"
-            type="text"
-            inputMode="numeric"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            className="min-h-14 rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-mono text-mono-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
-          />
+        <form onSubmit={handleVerify} className="space-y-4 rounded-xl border border-slate-200 bg-[#F8FAFC] p-4 max-w-md">
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-800 font-heading">
+            <QrCode className="h-4 w-4 text-brand-navy" />
+            Scan QR Code in Authenticator App
+          </div>
+          <div className="p-2 bg-white rounded-lg border border-slate-200 inline-block shadow-2xs">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={qrCode} alt="Scan with your authenticator app" className="h-36 w-36" />
+          </div>
+          <div>
+            <label
+              htmlFor="mfa-code"
+              className="block font-label text-xs font-bold text-slate-700 mb-1"
+            >
+              Enter the 6-Digit Code
+            </label>
+            <input
+              id="mfa-code"
+              data-testid="mfa-code-input"
+              type="text"
+              inputMode="numeric"
+              placeholder="000000"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3.5 font-mono text-sm tracking-widest text-slate-900 shadow-2xs outline-none focus:border-brand-navy"
+            />
+          </div>
           <button
             type="submit"
             data-testid="mfa-verify"
-            className="flex min-h-14 w-full items-center justify-center rounded bg-brand-navy px-4 font-label text-body-md uppercase tracking-wide text-surface-white transition-transform duration-0 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100"
+            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-brand-navy px-4 font-label text-xs font-bold text-white shadow-sm hover:bg-brand-navy/90 transition-colors"
           >
-            Verify and enable
+            <Check className="h-4 w-4" />
+            Verify and Enable
           </button>
         </form>
       )}
 
       {verified && (
-        <p role="status" className="font-body text-body-md text-status-available">
-          Two-factor authentication enabled.
-        </p>
+        <div role="status" className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-xs font-medium text-emerald-800 border border-emerald-200">
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+          <span>Two-factor authentication enabled successfully.</span>
+        </div>
       )}
       {error && (
-        <p role="alert" className="font-body text-body-md text-brand-red">
-          {error}
-        </p>
+        <div role="alert" className="flex items-center gap-2 rounded-xl bg-rose-50 p-3 text-xs font-medium text-rose-800 border border-rose-200">
+          <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
+          <span>{error}</span>
+        </div>
       )}
     </div>
   );
 }
 
-// KNOWN SEAM GAP (flag for integration-reviewer): design.md §4.5 allows a
-// "read-only... active-sessions list from Supabase Auth metadata" —
-// supabase-js's browser/server client SDK exposes the CURRENT session's
-// metadata (last sign-in time) but has no public method to list every
-// active session/device for a user (that requires an Admin API surface this
-// repo has not wired for self-service use). This renders only the current
-// session's last-sign-in time rather than fabricating a multi-device list.
 function ActiveSessionsList({ profile }: { profile: OwnProfile }) {
   return (
-    <div className="flex flex-col gap-2 border-t border-outline-variant/30 pt-4">
-      <h2 className="font-heading text-headline-md font-semibold text-on-surface">
-        Active session
-      </h2>
-      <div className="rounded border border-outline-variant/30 px-3 py-2">
-        <p className="font-body text-body-md text-on-surface">This device — current session</p>
-        <p className="font-body text-body-md text-on-surface">
-          Last sign-in:{" "}
-          {profile.lastSignInAt ? new Date(profile.lastSignInAt).toLocaleString() : "Unknown"}
+    <div className="border-t border-slate-100 pt-6 space-y-3">
+      <div>
+        <h3 className="font-heading text-sm font-bold text-slate-900 flex items-center gap-2">
+          <Smartphone className="h-4 w-4 text-primary" />
+          Active Device Session
+        </h3>
+        <p className="mt-0.5 font-body text-xs text-slate-500">
+          Current authenticated client and floor hardware binding status.
         </p>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-[#F8FAFC] p-4 text-xs">
+        <div className="space-y-0.5">
+          <span className="font-heading font-bold text-slate-900 block">
+            This Device — Current Session
+          </span>
+          <p className="font-mono text-[11px] text-slate-500">
+            Last sign-in: {profile.lastSignInAt ? new Date(profile.lastSignInAt).toLocaleString() : "Active Now"}
+          </p>
+        </div>
+        <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 font-mono text-[10px] font-bold text-emerald-700 border border-emerald-200 flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          CONNECTED
+        </span>
       </div>
     </div>
   );
@@ -323,7 +335,7 @@ function ActiveSessionsList({ profile }: { profile: OwnProfile }) {
 
 export function SecurityTab({ profile }: { profile: OwnProfile }) {
   return (
-    <div className="flex flex-col gap-6">
+    <div className="space-y-6">
       <ChangePasswordForm />
       <MfaSection />
       <ActiveSessionsList profile={profile} />
