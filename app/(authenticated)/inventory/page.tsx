@@ -511,19 +511,11 @@ async function InspectionTabSection() {
 
   return (
     <div className="mt-6">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h2 className="font-heading text-headline-md font-semibold text-on-surface">Inspection</h2>
-          <p className="mt-1 font-body text-body-md text-text-grey">
-            Open transfer and inspection items requiring action.
-          </p>
-        </div>
-        <Link
-          href="/inspection"
-          className="inline-flex h-11 items-center gap-2 rounded border border-outline-variant/30 px-4 font-label text-label font-semibold text-on-surface hover:bg-surface-light-grey focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
-        >
-          View All
-        </Link>
+      <div className="mb-4">
+        <h2 className="font-heading text-headline-md font-semibold text-on-surface">Inspection</h2>
+        <p className="mt-1 font-body text-body-md text-text-grey">
+          Warehouse quality verification, hold bay inspections, and quarantine management.
+        </p>
       </div>
 
       <InspectionTab rows={rows} />

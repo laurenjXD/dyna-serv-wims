@@ -27,10 +27,10 @@ import {
   ChevronRight,
   ExternalLink,
   RotateCcw,
-  Trash2,
   PackageCheck,
   Building2,
   MapPin,
+  CheckCheck,
 } from "lucide-react";
 import type { InspectionAndTransferQueueRow } from "@/lib/db/queries/transfers";
 import { TablePagination } from "@/components/ui/TablePagination";
@@ -75,6 +75,16 @@ const STATUS_CONFIG: Record<
     badgeClasses: "bg-rose-50 text-rose-800 border border-rose-200",
     dotColor: "bg-rose-500",
   },
+  failed: {
+    label: "FAILED",
+    badgeClasses: "bg-rose-50 text-rose-800 border border-rose-200",
+    dotColor: "bg-rose-500",
+  },
+  passed: {
+    label: "PASSED",
+    badgeClasses: "bg-emerald-50 text-emerald-800 border border-emerald-200",
+    dotColor: "bg-emerald-500",
+  },
   resolved: {
     label: "RESOLVED",
     badgeClasses: "bg-emerald-50 text-emerald-800 border border-emerald-200",
@@ -89,7 +99,7 @@ const STATUS_CONFIG: Record<
 
 export function InspectionTab({ rows }: { rows: InspectionAndTransferQueueRow[] }) {
   const [selectedFilter, setSelectedFilter] = useState<
-    "all" | "inbound" | "retest" | "quarantine" | "transfer"
+    "all" | "inbound" | "failed" | "passed" | "transfer"
   >("all");
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useState(10);
@@ -100,12 +110,19 @@ export function InspectionTab({ rows }: { rows: InspectionAndTransferQueueRow[] 
     (r) => r.type === "inspection" && (r.status === "open" || r.status === "pending"),
   ).length;
 
-  const underRetestCount = rows.filter(
-    (r) => r.type === "inspection" && r.status === "under_retest",
+  const failedCount = rows.filter(
+    (r) =>
+      r.type === "inspection" &&
+      (r.status === "failed" ||
+        r.status === "quarantine" ||
+        r.status === "flagged" ||
+        r.status === "under_retest"),
   ).length;
 
-  const quarantineCount = rows.filter(
-    (r) => r.type === "inspection" && (r.status === "quarantine" || r.status === "flagged"),
+  const passedCount = rows.filter(
+    (r) =>
+      r.type === "inspection" &&
+      (r.status === "passed" || r.status === "resolved" || r.status === "completed"),
   ).length;
 
   const transferCount = rows.filter((r) => r.type === "transfer").length;
@@ -118,12 +135,21 @@ export function InspectionTab({ rows }: { rows: InspectionAndTransferQueueRow[] 
         (r) => r.type === "inspection" && (r.status === "open" || r.status === "pending"),
       );
     }
-    if (selectedFilter === "retest") {
-      return rows.filter((r) => r.type === "inspection" && r.status === "under_retest");
-    }
-    if (selectedFilter === "quarantine") {
+    if (selectedFilter === "failed") {
       return rows.filter(
-        (r) => r.type === "inspection" && (r.status === "quarantine" || r.status === "flagged"),
+        (r) =>
+          r.type === "inspection" &&
+          (r.status === "failed" ||
+            r.status === "quarantine" ||
+            r.status === "flagged" ||
+            r.status === "under_retest"),
+      );
+    }
+    if (selectedFilter === "passed") {
+      return rows.filter(
+        (r) =>
+          r.type === "inspection" &&
+          (r.status === "passed" || r.status === "resolved" || r.status === "completed"),
       );
     }
     if (selectedFilter === "transfer") {
@@ -171,31 +197,14 @@ export function InspectionTab({ rows }: { rows: InspectionAndTransferQueueRow[] 
             <span className="font-heading text-headline-sm font-black text-on-surface">
               {pendingQaCount}
             </span>
-            <span className="font-body text-body-xs text-text-grey">lots to verify</span>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-blue-200/80 bg-gradient-to-br from-blue-50/60 to-surface p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="font-label text-label-xs font-bold uppercase tracking-wider text-blue-800">
-              Under QA Retest
-            </span>
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/10 text-blue-800">
-              <Clock className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="font-heading text-headline-sm font-black text-on-surface">
-              {underRetestCount}
-            </span>
-            <span className="font-body text-body-xs text-text-grey">secondary review</span>
+            <span className="font-body text-body-xs text-text-grey">lots awaiting test</span>
           </div>
         </div>
 
         <div className="rounded-xl border border-rose-200/80 bg-gradient-to-br from-rose-50/60 to-surface p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="font-label text-label-xs font-bold uppercase tracking-wider text-rose-800">
-              Quarantine / Staged RTV
+              Failed / Quarantine / RTV
             </span>
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-500/10 text-rose-800">
               <ShieldAlert className="h-4 w-4" />
@@ -203,9 +212,26 @@ export function InspectionTab({ rows }: { rows: InspectionAndTransferQueueRow[] 
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="font-heading text-headline-sm font-black text-on-surface">
-              {quarantineCount}
+              {failedCount}
             </span>
-            <span className="font-body text-body-xs text-text-grey">awaiting RMA / scrap</span>
+            <span className="font-body text-body-xs text-text-grey">held / awaiting RMA</span>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50/60 to-surface p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="font-label text-label-xs font-bold uppercase tracking-wider text-emerald-800">
+              Passed / Released
+            </span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-800">
+              <CheckCheck className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="font-heading text-headline-sm font-black text-on-surface">
+              {passedCount}
+            </span>
+            <span className="font-body text-body-xs text-text-grey">verified sound</span>
           </div>
         </div>
 
@@ -256,35 +282,35 @@ export function InspectionTab({ rows }: { rows: InspectionAndTransferQueueRow[] 
                 : "text-text-grey hover:bg-surface-light-grey hover:text-on-surface"
             }`}
           >
-            Inbound QA ({pendingQaCount})
+            Pending QA ({pendingQaCount})
           </button>
           <button
             type="button"
             onClick={() => {
-              setSelectedFilter("retest");
+              setSelectedFilter("failed");
               setPageIndex(0);
             }}
             className={`rounded-lg px-3 py-1.5 font-label text-label-xs font-bold transition-colors ${
-              selectedFilter === "retest"
-                ? "bg-blue-600 text-white shadow-sm"
-                : "text-text-grey hover:bg-surface-light-grey hover:text-on-surface"
-            }`}
-          >
-            Under Retest ({underRetestCount})
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedFilter("quarantine");
-              setPageIndex(0);
-            }}
-            className={`rounded-lg px-3 py-1.5 font-label text-label-xs font-bold transition-colors ${
-              selectedFilter === "quarantine"
+              selectedFilter === "failed"
                 ? "bg-rose-600 text-white shadow-sm"
                 : "text-text-grey hover:bg-surface-light-grey hover:text-on-surface"
             }`}
           >
-            Quarantine / RTV ({quarantineCount})
+            Failed / Quarantine ({failedCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedFilter("passed");
+              setPageIndex(0);
+            }}
+            className={`rounded-lg px-3 py-1.5 font-label text-label-xs font-bold transition-colors ${
+              selectedFilter === "passed"
+                ? "bg-emerald-600 text-white shadow-sm"
+                : "text-text-grey hover:bg-surface-light-grey hover:text-on-surface"
+            }`}
+          >
+            Passed ({passedCount})
           </button>
           {transferCount > 0 && (
             <button
@@ -341,7 +367,11 @@ export function InspectionTab({ rows }: { rows: InspectionAndTransferQueueRow[] 
                   dotColor: "bg-text-grey",
                 };
                 const titleAlreadySaysType = row.title.toLowerCase().includes(row.type);
-                const isQuarantine = row.status === "quarantine" || row.status === "flagged";
+                const isFailed =
+                  row.status === "failed" ||
+                  row.status === "quarantine" ||
+                  row.status === "flagged";
+                const isOpen = row.status === "open" || row.status === "pending";
 
                 return (
                   <tr key={row.id} className="transition-colors hover:bg-surface-light-grey/40">
@@ -407,7 +437,7 @@ export function InspectionTab({ rows }: { rows: InspectionAndTransferQueueRow[] 
 
                     <td className="px-4 py-3.5 text-right align-middle">
                       {row.type === "inspection" ? (
-                        isQuarantine ? (
+                        isFailed ? (
                           <div className="relative inline-block text-left">
                             <button
                               type="button"
@@ -446,12 +476,20 @@ export function InspectionTab({ rows }: { rows: InspectionAndTransferQueueRow[] 
                               </div>
                             )}
                           </div>
-                        ) : (
+                        ) : isOpen ? (
                           <Link
                             href={row.href}
                             className="inline-flex items-center gap-1 rounded-lg border border-border bg-surface px-3 py-1.5 font-label text-label-xs font-bold text-brand-navy shadow-sm hover:bg-brand-navy hover:text-white transition-colors"
                           >
                             <span>Inspect Now</span>
+                            <ChevronRight size={13} />
+                          </Link>
+                        ) : (
+                          <Link
+                            href={row.href}
+                            className="inline-flex items-center gap-1 rounded-lg border border-border bg-surface px-3 py-1.5 font-label text-label-xs font-bold text-text-grey shadow-sm hover:bg-surface-light-grey transition-colors"
+                          >
+                            <span>View Audit</span>
                             <ChevronRight size={13} />
                           </Link>
                         )
