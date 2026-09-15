@@ -13,6 +13,7 @@ import Link from "next/link";
 import type { PartyFormState } from "../_actions";
 import type { PartyDetail } from "@/lib/db/queries/parties";
 import { computeNextPartyCode } from "@/lib/db/queries/parties";
+import { PhoneInputField } from "@/components/global/PhoneInputField";
 
 const PARTY_ROLES = [
   { value: "vendor", label: "Vendor" },
@@ -249,17 +250,15 @@ export function PartyForm({ action, party, initialCode, existingCodes = [], canc
         <div>
           <label
             htmlFor="phone"
-            className="block font-label text-label text-on-surface"
+            className="block font-label text-label text-on-surface mb-1"
           >
-            Phone
+            Contact Phone Number
           </label>
-          <input
+          <PhoneInputField
             id="phone"
             name="phone"
-            type="tel"
-            maxLength={50}
             defaultValue={party?.phone ?? ""}
-            className={inputClass("phone")}
+            placeholder="e.g. 917 123 4567"
           />
         </div>
 

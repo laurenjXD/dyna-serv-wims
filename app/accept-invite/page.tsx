@@ -17,6 +17,7 @@ import {
   ArrowRight,
   Sparkles,
 } from "lucide-react";
+import { PhoneInputField } from "@/components/global/PhoneInputField";
 
 export default function AcceptInvitePage() {
   const router = useRouter();
@@ -126,19 +127,14 @@ export default function AcceptInvitePage() {
                 htmlFor="accept-phone"
                 className="block font-label text-xs font-bold text-slate-700 mb-1"
               >
-                Contact Number (Optional)
+                Contact Phone Number (Optional)
               </label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <input
-                  id="accept-phone"
-                  type="tel"
-                  placeholder="+63 9XX XXX XXXX"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3.5 font-body text-sm text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
-                />
-              </div>
+              <PhoneInputField
+                id="accept-phone"
+                value={phone}
+                onChange={(val) => setPhone(val)}
+                placeholder="e.g. 917 123 4567"
+              />
             </div>
           </div>
 

@@ -6,3 +6,4 @@ export * from "./AuthenticatedShellBoundary";
 export * from "./ShellChrome";
 export * from "./ShellNavigation";
 export * from "./FloorPrimaryAction";
+export * from "./PhoneInputField";

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import type { GeneralSettingsData } from "@/app/(authenticated)/settings/general/actions";
 import { saveGeneralSettings } from "@/app/(authenticated)/settings/general/actions";
+import { PhoneInputField } from "@/components/global/PhoneInputField";
 
 export function GeneralSettingsForm({ initialSettings }: { initialSettings: GeneralSettingsData }) {
   const [settings, setSettings] = useState<GeneralSettingsData>(initialSettings);
@@ -154,17 +155,15 @@ export function GeneralSettingsForm({ initialSettings }: { initialSettings: Gene
             <label className="block font-label text-xs font-bold text-slate-700 mb-1">
               Operational Contact Phone
             </label>
-            <input
-              type="text"
+            <PhoneInputField
               value={settings.facility.contactPhone}
-              onChange={(e) =>
+              onChange={(val) =>
                 setSettings({
                   ...settings,
-                  facility: { ...settings.facility, contactPhone: e.target.value },
+                  facility: { ...settings.facility, contactPhone: val },
                 })
               }
-              placeholder="+63 49 541 2345"
-              className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3.5 font-body text-sm text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
+              placeholder="e.g. 49 541 2345"
             />
           </div>
 
