@@ -105,6 +105,9 @@ importers:
       autoprefixer:
         specifier: ^10.4.20
         version: 10.6.0(postcss@8.5.28)
+      dotenv:
+        specifier: ^17.4.2
+        version: 17.4.2
       drizzle-kit:
         specifier: 0.31.10
         version: 0.31.10
