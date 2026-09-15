@@ -3,6 +3,8 @@
 // Server Actions backing `/settings/general` — Facility, Scanner Engine, and Floor Alert configurations.
 
 import { revalidatePath } from "next/cache";
+import { db } from "@/lib/db/client";
+import { auditLog } from "@/lib/db/schema";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 
@@ -91,6 +93,27 @@ export async function saveGeneralSettings(settings: GeneralSettingsData): Promis
   }
 
   runtimeGeneralSettings = { ...settings };
+
+  // Record audit log
+  try {
+    await db.insert(auditLog).values({
+      actorUserId: permission.context.userId,
+      actorRole: permission.context.activeRoleKeys[0] ?? "administrator",
+      action: "general_settings_updated",
+      entityType: "system_preferences",
+      entityId: permission.context.userId,
+      diffData: {
+        facilityHub: settings.facility.warehouseId,
+        defaultZone: settings.facility.defaultZone,
+        scannerContinuous: settings.scanner.continuousStream,
+        lowStockUnits: settings.alerts.lowStockThresholdUnits,
+      },
+      correlationId: `GEN-${Date.now()}`,
+    });
+  } catch {
+    // ignore logging failure
+  }
+
   revalidatePath("/settings/general");
   return { ok: true };
 }
