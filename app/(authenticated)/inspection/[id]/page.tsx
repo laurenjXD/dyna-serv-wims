@@ -27,6 +27,8 @@ import { db } from "@/lib/db/client";
 import { getInspectionCase } from "@/lib/db/queries/transfers";
 import { resolveInspectionCase } from "@/lib/actions/transfers";
 import { InspectionResolutionForm } from "./_components/InspectionResolutionForm";
+import { locations } from "@/lib/db/schema/locations";
+import { and, asc, eq } from "drizzle-orm";
 
 // ─── Disposition options — design.md §6.3 ────────────────────────────────────
 
@@ -119,6 +121,12 @@ export default async function InspectionDetailPage({
     notFound();
   }
 
+  const storageLocations = (await db
+    .select({ id: locations.id, label: locations.label })
+    .from(locations)
+    .where(and(eq(locations.locationType, "storage"), eq(locations.isActive, true)))
+    .orderBy(asc(locations.label))) as Array<{ id: string; label: string }>;
+
   const isOpen = inspection.status === "open";
 
   async function handleSubmitInspection(formData: FormData): Promise<void> {
@@ -138,6 +146,16 @@ export default async function InspectionDetailPage({
       10
     );
     const notesInput = (formData.get("notes") as string | null) ?? "";
+    const allocationsInput = (formData.get("putawayAllocations") as string | null) ?? "";
+    let putawayAllocations: Array<{ locationId: string; qty: number }> = [];
+    try {
+      const parsed = JSON.parse(allocationsInput);
+      if (Array.isArray(parsed)) {
+        putawayAllocations = parsed;
+      }
+    } catch {
+      putawayAllocations = [];
+    }
 
     const actionResolver = await createPageResolver();
     const dispositionType = resolveDispositionType(
@@ -151,6 +169,7 @@ export default async function InspectionDetailPage({
     const submitResult = await resolveInspectionCase(actionResolver, id, {
       dispositionType,
       quantityAffected: inspectedQty,
+      putawayAllocations,
       notes: combinedNotes,
     });
 
@@ -346,6 +365,7 @@ export default async function InspectionDetailPage({
           inspectionId={id}
           qtyToInspect={inspection.qtyToInspect}
           itemUom={inspection.itemUom}
+          storageLocations={storageLocations}
           onSubmitAction={handleSubmitInspection}
         />
       ) : !isOpen ? (
@@ -373,4 +393,3 @@ export default async function InspectionDetailPage({
     </div>
   );
 }
-
