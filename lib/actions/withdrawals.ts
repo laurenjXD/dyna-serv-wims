@@ -673,8 +673,11 @@ export async function selectPickUnit(
       if (!line) return { ok: false as const, errors: ["line_complete"] };
       const requiredCount = Number(line.numberOfBoxes);
 
-      // Shared QR labels do not identify an individual box. Assign the next
-      // available physical unit from this committed lot/location instead.
+      const neededCount = requiredCount - selectedRows.length;
+      if (neededCount <= 0) return { ok: false as const, errors: ["line_complete"] };
+
+      // Shared QR labels verify the line on the pallet. Assign all remaining
+      // physical units for this line from this committed lot/location.
       const unitRows = (await db
         .select({
           id: inventoryUnits.id,
@@ -690,22 +693,21 @@ export async function selectPickUnit(
           eq(inventoryUnits.status, "available"),
           sql`${inventoryUnits.pickListItemId} IS NULL`,
         ))
-        .limit(1)) as AnyRecord[];
+        .limit(neededCount)) as AnyRecord[];
 
-      if (unitRows.length > 0) {
-        const unit = unitRows[0];
-        const updated = (await db
+      for (const unit of unitRows) {
+        await db
           .update(inventoryUnits)
           .set({ status: "selected", pickListItemId: line.id, updatedAt: new Date() })
-          .where(and(eq(inventoryUnits.id, unit.id), eq(inventoryUnits.status, "available")))
-          .returning({ id: inventoryUnits.id })) as AnyRecord[];
-        if (updated.length !== 1) return { ok: false as const, errors: ["box_unavailable"] };
-      } else {
+          .where(and(eq(inventoryUnits.id, unit.id), eq(inventoryUnits.status, "available")));
+      }
+
+      const stillMissingCount = neededCount - unitRows.length;
+      if (stillMissingCount > 0) {
         // Older aggregate receipts can have a confirmed lot balance but fewer
         // internal unit rows than physical boxes. A shared QR still represents
-        // one committed box, so reconstruct the missing internal accounting
-        // row from the authoritative lot source rather than rejecting a valid
-        // scan. The reservation remains the stock authority.
+        // the committed boxes, so reconstruct any missing internal accounting
+        // rows from the authoritative lot source rather than rejecting a valid scan.
         const sourceRows = (await db
           .select({
             wrrItemId: lots.wrrItemId,
@@ -719,27 +721,28 @@ export async function selectPickUnit(
         }>;
         const wrrItemId = sourceRows[0]?.wrrItemId;
         if (!wrrItemId) return { ok: false as const, errors: ["box_unavailable"] };
-        const nextUnitIndex = Math.max(0, ...sourceRows.map((row) => row.unitIndex ?? 0)) + 1;
-        const unitId = randomUUID();
-        const reconstructed = (await db
-          .insert(inventoryUnits)
-          .values({
-            unitId,
-            cartonId: cartonIdFromUnitId(unitId),
-            unitIndex: nextUnitIndex,
-            wrrItemId,
-            lotId: line.lotId,
-            locationId: line.locationId,
-            status: "selected",
-            pickListItemId: line.id,
-          })
-          .returning({ id: inventoryUnits.id })) as AnyRecord[];
-        if (reconstructed.length !== 1) return { ok: false as const, errors: ["box_unavailable"] };
+        let nextUnitIndex = Math.max(0, ...sourceRows.map((row) => row.unitIndex ?? 0)) + 1;
+
+        for (let i = 0; i < stillMissingCount; i++) {
+          const unitId = randomUUID();
+          await db
+            .insert(inventoryUnits)
+            .values({
+              unitId,
+              cartonId: cartonIdFromUnitId(unitId),
+              unitIndex: nextUnitIndex++,
+              wrrItemId,
+              lotId: line.lotId,
+              locationId: line.locationId,
+              status: "selected",
+              pickListItemId: line.id,
+            });
+        }
       }
 
       return {
         ok: true as const,
-        selectedCount: selectedRows.length + 1,
+        selectedCount: requiredCount,
         requiredCount,
       };
     });

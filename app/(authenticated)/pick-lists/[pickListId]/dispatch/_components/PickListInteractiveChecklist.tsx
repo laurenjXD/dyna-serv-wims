@@ -77,9 +77,11 @@ export function PickListInteractiveChecklist({
           return (
             <div
               key={item.id}
-              className={`flex items-start gap-3.5 rounded-xl border p-4 transition-colors ${
-                isPhysicallyChecked
-                  ? "border-status-available/40 bg-status-available/5"
+              className={`flex items-start gap-3.5 rounded-xl border p-4 transition-all ${
+                scanComplete
+                  ? "border-status-available bg-status-available/10 shadow-sm"
+                  : isPhysicallyChecked
+                  ? "border-brand-royal-blue/30 bg-brand-royal-blue/5"
                   : "border-outline-variant/30 bg-surface-white hover:bg-surface-light-grey/40"
               }`}
             >
@@ -91,8 +93,12 @@ export function PickListInteractiveChecklist({
                   className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
                   aria-label={`Mark ${item.itemCode} as picked`}
                 >
-                  {isPhysicallyChecked ? (
+                  {scanComplete ? (
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-status-available text-surface-white shadow-sm">
+                      <CheckCircle2 size={22} className="stroke-[2.5]" />
+                    </div>
+                  ) : isPhysicallyChecked ? (
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-royal-blue text-surface-white shadow-sm">
                       <CheckSquare size={22} className="stroke-[2.5]" />
                     </div>
                   ) : (
@@ -121,15 +127,23 @@ export function PickListInteractiveChecklist({
                     )}
                   </div>
                   <span
-                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-label text-label-xs font-bold uppercase ${
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-label text-label-xs font-bold uppercase tracking-wide ${
                       scanComplete
                         ? "bg-status-available/15 text-status-available"
+                        : scannedCount > 0
+                        ? "bg-brand-blue/15 text-brand-blue"
                         : isPhysicallyChecked
                         ? "bg-brand-royal-blue/15 text-brand-royal-blue"
                         : "bg-status-pending/15 text-status-pending"
                     }`}
                   >
-                    {scanComplete ? "Scanned & Verified" : isPhysicallyChecked ? "Marked Picked" : "To Pick"}
+                    {scanComplete
+                      ? "Scanned & Verified"
+                      : scannedCount > 0
+                      ? `Scanning (${scannedCount}/${item.numberOfBoxes})`
+                      : isPhysicallyChecked
+                      ? "Picked (Awaiting Scan)"
+                      : "To Pick"}
                   </span>
                 </div>
 
@@ -153,7 +167,7 @@ export function PickListInteractiveChecklist({
                   </div>
                   <div className="rounded-lg bg-surface-light-grey/60 px-2.5 py-1.5">
                     <span className="text-text-grey block font-label text-mono-xs uppercase">Boxes</span>
-                    <span className="font-bold text-on-surface">{scannedCount} / {item.numberOfBoxes} scanned</span>
+                    <span className="font-bold text-on-surface">{scannedCount} / {item.numberOfBoxes} verified</span>
                   </div>
                 </div>
 
