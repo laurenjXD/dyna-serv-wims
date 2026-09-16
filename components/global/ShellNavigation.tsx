@@ -229,16 +229,16 @@ function NavLink({
         data-testid={`nav-entry-${entry.id}`}
         aria-current={isActive ? "page" : undefined}
         onClick={onNavigate}
-        title={label}
+        title={`${label}${shortcutNumber ? ` (${shortcutLabel(shortcutNumber - 1)})` : ""}`}
         data-active={isActive ? "true" : "false"}
-        className={`group relative mx-auto flex h-11 w-11 items-center justify-center rounded-xl
-          motion-safe:transition-[transform,background-color,color,box-shadow,ring] motion-safe:duration-300 motion-safe:ease-out
+        className={`group relative mx-auto flex h-11 w-11 items-center justify-center rounded-full
+          motion-safe:transition-all motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
           focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80
           ${isActive
-            ? "bg-white text-[#0b4d94] shadow-[0_8px_22px_rgba(0,0,0,0.22)] ring-2 ring-[#72b7ff]/60 scale-105"
-            : "text-white/75 hover:text-white hover:bg-white/15 hover:shadow-[0_5px_16px_rgba(0,0,0,0.14)] hover:scale-105 active:scale-95"}`}
+            ? "bg-white/20 text-white ring-2 ring-white/60 shadow-[0_4px_14px_rgba(0,0,0,0.18)] scale-105"
+            : "text-white/75 hover:text-white hover:bg-white/10 hover:scale-105 active:scale-95"}`}
       >
-        <Icon size={23} strokeWidth={2.2} aria-hidden="true" />
+        <Icon size={22} strokeWidth={2.2} aria-hidden="true" className="motion-safe:transition-transform motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-110" />
         {entry.id === "approvals" && pendingApprovalCount > 0 && (
           <span
             data-testid="approval-count-badge"
@@ -251,7 +251,7 @@ function NavLink({
         {/* Floating Tooltip displaying current tab name on hover */}
         <div
           role="tooltip"
-          className="pointer-events-none absolute left-[calc(100%+14px)] top-1/2 z-50 -translate-y-1/2 hidden group-hover:flex items-center gap-2 rounded-xl bg-slate-900/95 px-3 py-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.35)] backdrop-blur-md border border-white/10 opacity-0 group-hover:opacity-100 group-hover:scale-100 scale-95 transition-all duration-150 motion-reduce:transition-none whitespace-nowrap"
+          className="pointer-events-none absolute left-[calc(100%+14px)] top-1/2 z-50 -translate-y-1/2 hidden group-hover:flex items-center gap-2 rounded-xl bg-slate-900/95 px-3 py-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.35)] backdrop-blur-md border border-white/10 opacity-0 group-hover:opacity-100 group-hover:scale-100 scale-95 transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none whitespace-nowrap"
         >
           {/* Arrow */}
           <span className="absolute -left-1 top-1/2 -translate-y-1/2 h-2 w-2 rotate-45 bg-slate-900 border-b border-l border-white/10" aria-hidden="true" />
@@ -260,6 +260,11 @@ function NavLink({
             <span className="rounded-full bg-blue-500/20 border border-blue-400/40 px-1.5 py-0.5 text-[10px] font-bold text-blue-300">
               Active
             </span>
+          )}
+          {shortcutNumber && (
+            <kbd className="rounded border border-white/20 bg-white/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-slate-300">
+              {shortcutLabel(shortcutNumber - 1)}
+            </kbd>
           )}
         </div>
       </Link>
@@ -273,29 +278,44 @@ function NavLink({
       aria-current={isActive ? "page" : undefined}
       onClick={onNavigate}
       data-active={isActive ? "true" : "false"}
-      className={`group relative flex ${compact ? "h-11 gap-3 rounded-xl px-2.5" : "h-12 gap-3 rounded-xl px-3"} items-center overflow-hidden font-label font-semibold
+      className={`group relative flex ${compact ? "h-11 gap-3 rounded-full px-3" : "h-12 gap-3 rounded-full px-3"} items-center overflow-hidden font-label font-semibold
         ${floorText ? "text-mono-md" : "text-label"}
-        motion-safe:transition-[background-color,color,box-shadow,transform] motion-safe:duration-300 motion-safe:ease-out
+        motion-safe:transition-all motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
         focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-1
         ${isActive
-          ? "-mr-3 rounded-[28px] translate-x-0 bg-primary/[0.08] text-[#0b4d94] shadow-[0_8px_22px_rgba(0,0,0,0.18)] before:absolute before:inset-y-2 before:left-0 before:w-1.5 before:rounded-r-full before:bg-primary before:content-['']"
-          : "text-white/85 hover:translate-x-0.5 hover:bg-white/15 hover:text-white hover:bg-primary/[0.05] hover:shadow-sm"}`}
+          ? "bg-white text-[#0b4d94] shadow-[0_4px_14px_rgba(0,0,0,0.15)] bg-primary/[0.08] before:bg-primary scale-[1.01]"
+          : "text-white/90 hover:translate-x-1 hover:bg-white/10 hover:text-white hover:bg-primary/[0.05] hover:shadow-sm"}`}
     >
-      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg motion-safe:transition-colors motion-safe:duration-150 ${isActive ? "bg-[#0b4d94]/10 text-primary" : "bg-white/10 text-white/90 group-hover:bg-white/20 group-hover:text-white"}`}>
-        <Icon size={22} strokeWidth={2.2} aria-hidden="true" />
+      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full motion-safe:transition-all motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${isActive ? "bg-blue-100/90 text-primary text-[#0b4d94]" : "bg-white/15 text-white group-hover:bg-white/25"}`}>
+        <Icon size={20} strokeWidth={2.2} aria-hidden="true" className="motion-safe:transition-transform motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-110" />
       </span>
-      <span className={`min-w-0 flex-1 truncate ${floorText ? "text-mono-md" : "text-label"} ${isActive ? "text-[#0b4d94] font-bold" : "text-white/90"}`}>{label}</span>
-      {entry.id === "approvals" && pendingApprovalCount > 0 && (
-        <span data-testid="approval-count-badge" className="inline-flex min-w-6 items-center justify-center rounded-full border-2 border-red-500 bg-red-500 px-1.5 py-0.5 font-mono text-mono-sm font-bold leading-none text-white">
-          {pendingApprovalCount > 99 ? "99+" : pendingApprovalCount}
-        </span>
-      )}
-      {shortcutNumber && (
-        <kbd className="pointer-events-none absolute right-8 top-1/2 hidden -translate-y-1/2 rounded border border-white/20 bg-white/15 px-1.5 py-1 font-mono text-[11px] font-semibold leading-none text-white opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 xl:inline-flex">
-          {shortcutLabel(shortcutNumber - 1)}
-        </kbd>
-      )}
-      <ChevronRight size={16} aria-hidden="true" className={`shrink-0 motion-safe:transition-transform motion-safe:duration-150 ${isActive ? "translate-x-0 text-primary text-[#0b4d94]" : "-translate-x-1 text-white/40 opacity-0 group-hover:translate-x-0 group-hover:opacity-100"}`} />
+      <span className={`whitespace-nowrap min-w-0 flex-1 truncate motion-safe:transition-opacity motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${floorText ? "text-mono-md" : "text-label"} ${isActive ? "text-[#0b4d94] font-bold" : "text-white/90 font-semibold"}`}>{label}</span>
+      <div className="ml-auto flex shrink-0 items-center gap-1.5">
+        {shortcutNumber && (
+          <kbd
+            className={`pointer-events-none inline-flex rounded px-1.5 py-0.5 font-mono text-[11px] font-semibold leading-none shadow-sm transition-all ${
+              isActive
+                ? "border border-blue-200/80 bg-blue-50 text-[#0b4d94] opacity-100"
+                : "border border-white/20 bg-white/15 text-white/90 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100"
+            }`}
+          >
+            {shortcutLabel(shortcutNumber - 1)}
+          </kbd>
+        )}
+        {entry.id === "approvals" && pendingApprovalCount > 0 && (
+          <span
+            data-testid="approval-count-badge"
+            className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#ef4444] px-1.5 font-mono text-mono-sm font-bold leading-none text-white shadow-sm"
+          >
+            {pendingApprovalCount > 99 ? "99+" : pendingApprovalCount}
+          </span>
+        )}
+        {isActive ? (
+          <ChevronRight size={18} strokeWidth={2.5} aria-hidden="true" className="text-[#0b4d94] shrink-0" />
+        ) : (
+          <ChevronRight size={16} aria-hidden="true" className="shrink-0 motion-safe:transition-transform motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] -translate-x-1 text-white/40 opacity-0 group-hover:translate-x-0 group-hover:opacity-100" />
+        )}
+      </div>
     </Link>
   );
 }
@@ -518,7 +538,7 @@ export function ShellNavigation({
         data-testid="desktop-sidebar"
         aria-label="Primary navigation"
         aria-hidden={false}
-        className={`print:hidden hidden flex-col overflow-visible rounded-tr-[76px] border-r border-[#083c77]/60 bg-gradient-to-b from-[#0e549e] via-[#0b4d94] to-[#083c77] shadow-[4px_0_24px_rgba(11,77,148,0.18)] transition-[width,border-radius] duration-300 ease-out motion-reduce:transition-none lg:fixed lg:bottom-0 lg:left-0 lg:top-[76px] lg:z-40 lg:flex ${
+        className={`print:hidden hidden flex-col overflow-visible border-r border-[#083c77]/60 bg-gradient-to-b from-[#0e549e] via-[#0b4d94] to-[#083c77] shadow-[4px_0_24px_rgba(11,77,148,0.18)] transition-[width] duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none lg:fixed lg:bottom-0 lg:left-0 lg:top-[76px] lg:z-40 lg:flex ${
           desktopOpen ? "lg:w-[304px]" : "lg:w-[88px]"
         }`}
       >
@@ -532,7 +552,7 @@ export function ShellNavigation({
         </a>
 
         {/* Navigation Section List */}
-        <div className={`min-h-0 flex-1 py-3 ${desktopOpen ? "px-3" : "px-1.5"}`}>
+        <div className={`min-h-0 flex-1 py-3 transition-all duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] ${desktopOpen ? "px-3" : "px-1.5"}`}>
           <GroupedSections
             sections={sections}
             activeId={activeId}
@@ -545,19 +565,19 @@ export function ShellNavigation({
         </div>
 
         {/* User Footer Card */}
-        <div className={`border-t border-white/15 bg-black/10 ${desktopOpen ? "p-3" : "p-2 text-center"}`}>
-          <div className={`flex items-center ${desktopOpen ? "gap-3 rounded-2xl border border-white/15 bg-white/10 p-2.5 backdrop-blur-sm shadow-[0_4px_16px_rgba(0,0,0,0.15)]" : "justify-center p-1"}`}>
+        <div className={`border-t border-white/10 bg-black/10 transition-all duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] ${desktopOpen ? "p-3" : "p-2 text-center"}`}>
+          <div className={`flex items-center transition-all duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] ${desktopOpen ? "gap-3 rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm shadow-[0_4px_16px_rgba(0,0,0,0.15)]" : "justify-center p-1"}`}>
             <span
-              className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20 font-heading text-label font-bold text-white border border-white/30 shadow-sm transition-transform hover:scale-105"
-              title={`${displayName ?? "Signed-in user"} (${roleLabel})`}
+              className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#3b5998]/80 font-heading text-sm font-bold text-white border border-white/30 shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-105"
+              title={`${displayName ?? "admin"} (${roleLabel})`}
             >
               {initials(displayName)}
-              <span aria-hidden="true" className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#0b4d94] bg-status-available" />
+              <span aria-hidden="true" className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#0b4d94] bg-emerald-400" />
             </span>
             {desktopOpen && (
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-label text-label font-bold text-white">{displayName ?? "Signed-in user"}</p>
-                <p className="mt-0.5 truncate font-body text-mono-sm text-blue-100/80">{roleLabel}</p>
+              <div className="min-w-0 flex-1 whitespace-nowrap overflow-hidden transition-opacity duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]">
+                <p className="truncate font-heading text-sm font-bold text-white">{displayName ?? "admin"}</p>
+                <p className="truncate font-body text-xs text-blue-200/90">{roleLabel}</p>
               </div>
             )}
           </div>

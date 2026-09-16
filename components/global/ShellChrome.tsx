@@ -306,7 +306,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
   return (
     <>
       <header
-        className="print:hidden fixed inset-x-0 top-0 z-50 isolate flex h-14 items-center gap-4 overflow-visible bg-surface/95 px-4 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.55)] backdrop-blur-xl lg:h-[76px] lg:px-4"
+        className="print:hidden fixed inset-x-0 top-0 z-50 isolate flex h-14 items-center gap-4 overflow-visible bg-surface/95 px-4 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.55)] backdrop-blur-xl lg:h-[76px] lg:px-0 lg:gap-0"
       >
         {tier !== "floor" && (
           <button
@@ -377,39 +377,57 @@ export function ShellChrome({ children }: { children: ReactNode }) {
           </button>
         </div>
 
-        <div className="hidden min-w-0 flex-1 items-center gap-5 lg:flex">
-          <div
-            className={`-ml-4 box-border flex h-[76px] shrink-0 items-center bg-surface px-4 transition-[width,padding,gap] duration-300 ease-out ${isDesktopOpen ? "w-[304px] gap-3" : "w-[88px] justify-center gap-2"}`}
-            data-testid="brand-zone"
-          >
+        {/* Desktop Header Left Brand Area (matches sidebar width and line exactly) */}
+        <div
+          className={`hidden h-full shrink-0 items-center border-r border-primary/15 transition-[width] duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none lg:flex ${
+            isDesktopOpen ? "w-[304px] px-5 justify-start" : "w-[88px] justify-center px-0"
+          }`}
+        >
+          {isDesktopOpen ? (
             <Link
               href="/"
               aria-label="Dyna-Serv WIMS home"
-              className="flex min-w-0 shrink-0 items-center gap-3 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="flex shrink-0 items-center gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/80 bg-white shadow-[0_6px_16px_rgba(0,0,0,0.22)] transition-[box-shadow,transform] duration-300 hover:-translate-y-0.5 hover:shadow-[0_9px_20px_rgba(0,0,0,0.28)]" data-testid="brand-logo">
-                <Image src="/logo-hd.png" alt="" width={36} height={36} priority />
+              <span className="flex h-10 w-10 items-center justify-center rounded-full border border-primary/15 bg-surface shadow-[0_7px_18px_-8px_rgba(37,99,235,0.55)] ring-4 ring-primary/[0.04]">
+                <Image src="/logo-hd.png" alt="" width={32} height={32} priority />
               </span>
-              {isDesktopOpen && (
-                <span className="truncate font-heading text-title-lg font-bold tracking-tight text-text-primary">
-                  Dyna-Serv WIMS
-                </span>
-              )}
+              <span className="font-heading text-title-lg font-bold tracking-tight text-text-primary">
+                Dyna-Serv WIMS
+              </span>
             </Link>
-            {tier !== "floor" && (
-              <button
-                type="button"
-                aria-label={isDesktopOpen ? "Collapse navigation" : "Expand navigation"}
-                aria-expanded={isDesktopOpen}
-                onClick={toggleDesktop}
-                title={isDesktopOpen ? "Collapse sidebar to icons" : "Expand sidebar"}
-                className={`hidden h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-surface text-text-secondary shadow-[0_4px_12px_rgba(11,77,148,0.12)] transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/[0.04] hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 lg:flex ${isDesktopOpen ? "" : "translate-x-1"}`}
-              >
-                {isDesktopOpen ? <PanelLeftClose size={22} strokeWidth={2.2} aria-hidden="true" /> : <PanelLeftOpen size={22} strokeWidth={2.2} aria-hidden="true" />}
-              </button>
-            )}
-          </div>
-          <span aria-hidden="true" className="h-8 w-px bg-primary/15" />
+          ) : (
+            <Link
+              href="/"
+              aria-label="Dyna-Serv WIMS home"
+              className="flex h-full w-full items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <span className="flex h-10 w-10 items-center justify-center rounded-full border border-primary/15 bg-surface shadow-[0_7px_18px_-8px_rgba(37,99,235,0.45)] ring-4 ring-primary/[0.04]">
+                <Image src="/logo-hd.png" alt="" width={28} height={28} priority />
+              </span>
+            </Link>
+          )}
+        </div>
+
+        {/* Desktop Header Main Content (Page title, alerts, shortcuts, user profile) */}
+        <div className="hidden min-w-0 flex-1 items-center gap-4 px-6 lg:flex">
+          {tier !== "floor" && (
+            <button
+              type="button"
+              aria-label={isDesktopOpen ? "Collapse navigation" : "Expand navigation"}
+              aria-expanded={isDesktopOpen}
+              onClick={toggleDesktop}
+              title={isDesktopOpen ? "Collapse sidebar" : "Expand sidebar"}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-primary/[0.04] text-text-secondary shadow-sm transition-all hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              {isDesktopOpen ? (
+                <PanelLeftClose size={20} strokeWidth={2.2} aria-hidden="true" />
+              ) : (
+                <PanelLeftOpen size={20} strokeWidth={2.2} aria-hidden="true" />
+              )}
+            </button>
+          )}
+
           <div className="min-w-0 shrink-0">
             <p
               className="truncate font-heading text-[23px] font-bold leading-tight tracking-[-0.02em] text-text-primary"
@@ -704,7 +722,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
       <main
         id="main-content"
         data-surface={tier}
-        className={`min-w-0 max-w-full min-h-screen pt-14 transition-[padding-left] duration-200 motion-reduce:transition-none lg:pt-[76px] print:!min-h-0 print:!p-0 print:!m-0 ${
+        className={`min-w-0 max-w-full min-h-screen pt-14 transition-[padding-left] duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none lg:pt-[76px] print:!min-h-0 print:!p-0 print:!m-0 ${
           isDesktopOpen ? "lg:pl-[304px]" : "lg:pl-[88px]"
         } ${showFloorTabBar ? "pb-20" : "lg:pb-6"} ${
           tier === "floor" ? "bg-surface" : "bg-background"
