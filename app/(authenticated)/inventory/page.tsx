@@ -21,7 +21,7 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CheckCircle2, ChevronDown, ChevronRight, Download } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronRight, Download, ArrowLeftRight } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
@@ -501,6 +501,8 @@ async function InspectionTabSection() {
     (await requirePermission(resolver, "transfer.view")).kind === "authorized";
   const includeInspections =
     (await requirePermission(resolver, "inspection.perform")).kind === "authorized";
+  const canRequestTransfer =
+    (await requirePermission(resolver, "transfer.request")).kind === "authorized";
 
   const rows = await listInspectionAndTransferQueue(db, {
     limit: 50,
@@ -511,19 +513,22 @@ async function InspectionTabSection() {
 
   return (
     <div className="mt-6">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="font-heading text-headline-md font-semibold text-on-surface">Inspection</h2>
+          <h2 className="font-heading text-headline-md font-semibold text-on-surface">Inspection & Movement Hub</h2>
           <p className="mt-1 font-body text-body-md text-text-grey">
-            Open transfer and inspection items requiring action.
+            Warehouse quality verification, hold bay inspections, and rack relocation transfers.
           </p>
         </div>
-        <Link
-          href="/inspection"
-          className="inline-flex h-11 items-center gap-2 rounded border border-outline-variant/30 px-4 font-label text-label font-semibold text-on-surface hover:bg-surface-light-grey focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
-        >
-          View All
-        </Link>
+        {canRequestTransfer && (
+          <Link
+            href="/transfers/new"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-brand-navy px-4 font-label text-label font-bold text-white shadow-sm hover:bg-brand-navy/90 active:scale-[0.98] transition-all"
+          >
+            <ArrowLeftRight size={16} />
+            <span>+ New Transfer Request</span>
+          </Link>
+        )}
       </div>
 
       <InspectionTab rows={rows} />

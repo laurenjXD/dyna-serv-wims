@@ -15,7 +15,7 @@ import { createRequestAuthorizationResolver } from "@/lib/rbac/session";
 import type { RawAuthorizationRecord } from "@/lib/rbac/session";
 import { getAuthenticatedSession } from "@/lib/auth/get-authenticated-session";
 import { db } from "@/lib/db/client";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import {
   userProfiles,
   userRoles,
@@ -28,7 +28,9 @@ import {
 async function loadAuthorizationRecordViaSupabase(
   userId: string,
 ): Promise<RawAuthorizationRecord | null> {
-  const supabase = await createClient();
+  const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY
+    ? createServiceRoleClient()
+    : await createClient();
   const now = new Date().toISOString();
 
   const { data: profile, error: profileError } = await supabase
@@ -112,7 +114,7 @@ export async function createPageResolver() {
         .where(eq(userProfiles.id, userId))
         .limit(1);
       const timeoutPromise = new Promise<never>((_, reject) => {
-        timeoutId = setTimeout(() => reject(new Error("Database profile query timed out")), 2500);
+        timeoutId = setTimeout(() => reject(new Error("Database profile query timed out")), 6000);
       });
 
       const profileRows = await Promise.race([queryPromise, timeoutPromise]).finally(() => {

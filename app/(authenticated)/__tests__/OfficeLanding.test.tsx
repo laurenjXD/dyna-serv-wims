@@ -74,9 +74,22 @@
 //   - Expected failure mode if the module does not exist:
 //     "Cannot find module '../_components/OfficeLanding'".
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { OfficeLanding } from "../_components/OfficeLanding";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    refresh: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => "/",
+}));
 
 const baseProps = {
   dateString: "Sunday, August 16, 2026",

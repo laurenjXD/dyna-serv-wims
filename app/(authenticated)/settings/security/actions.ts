@@ -96,6 +96,28 @@ export async function saveSecuritySettings(settings: SecuritySettingsData): Prom
   }
 
   runtimeSecuritySettings = { ...settings };
+
+  // Write audit record
+  try {
+    await db.insert(auditLog).values({
+      actorUserId: permission.context.userId,
+      actorRole: permission.context.activeRoleKeys[0] ?? "administrator",
+      action: "security_policy_updated",
+      entityType: "system_security",
+      entityId: permission.context.userId,
+      diffData: {
+        wifiEnforcement: settings.network.wifiEnforcementEnabled,
+        allowedIpRangesCount: settings.network.allowedIpRanges.length,
+        passwordMinLength: settings.authRules.passwordMinLength,
+        mfaPolicy: settings.authRules.mfaPolicy,
+        mobileIdleTimeoutMinutes: settings.sessionConfig.mobileIdleTimeoutMinutes,
+      },
+      correlationId: `SEC-${Date.now()}`,
+    });
+  } catch {
+    // ignore logging failure
+  }
+
   revalidatePath("/settings/security");
   return { ok: true };
 }
@@ -160,6 +182,21 @@ export async function terminateAllMobileSessions(): Promise<{ ok: true; count: n
       await serviceClient.auth.admin.signOut(u.id).catch(() => {});
       count++;
     }
+
+    // Write audit record
+    await db.insert(auditLog).values({
+      actorUserId: permission.context.userId,
+      actorRole: permission.context.activeRoleKeys[0] ?? "administrator",
+      action: "emergency_killswitch_executed",
+      entityType: "system_sessions",
+      entityId: permission.context.userId,
+      diffData: {
+        disconnectedDeviceCount: count,
+        event: "floor_mobile_sessions_terminated",
+      },
+      correlationId: `KILLSWITCH-${Date.now()}`,
+    }).catch(() => {});
+
     revalidatePath("/settings/security");
     return { ok: true, count };
   } catch {

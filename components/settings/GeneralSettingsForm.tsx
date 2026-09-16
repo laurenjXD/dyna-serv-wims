@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import type { GeneralSettingsData } from "@/app/(authenticated)/settings/general/actions";
 import { saveGeneralSettings } from "@/app/(authenticated)/settings/general/actions";
+import { PhoneInputField } from "@/components/global/PhoneInputField";
 
 export function GeneralSettingsForm({ initialSettings }: { initialSettings: GeneralSettingsData }) {
   const [settings, setSettings] = useState<GeneralSettingsData>(initialSettings);
@@ -81,16 +82,16 @@ export function GeneralSettingsForm({ initialSettings }: { initialSettings: Gene
 
   return (
     <form onSubmit={handleSave} className="space-y-8 max-w-4xl">
-      {/* ── Section 1: Facility & Site Preferences ─────────────── */}
+      {/* ── Section 1: Facility & Company Identity ─────────────── */}
       <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs space-y-6">
         <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-navy text-white shadow-xs">
             <Warehouse className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="font-heading text-base font-bold text-slate-900">Facility &amp; Site Preferences</h2>
+            <h2 className="font-heading text-base font-bold text-slate-900">Company &amp; Warehouse Facility Identity</h2>
             <p className="font-body text-xs text-slate-500">
-              Active warehouse hub identity, localized operational shift clock, and zone routing defaults.
+              Registered corporate identity, physical warehouse facility address, and localized operational defaults.
             </p>
           </div>
         </div>
@@ -98,27 +99,113 @@ export function GeneralSettingsForm({ initialSettings }: { initialSettings: Gene
         <div className="grid gap-5 sm:grid-cols-2">
           <div>
             <label className="block font-label text-xs font-bold text-slate-700 mb-1">
-              Active Facility / Hub
+              Registered Company Name
             </label>
-            <select
-              value={settings.facility.warehouseId}
+            <input
+              type="text"
+              value={settings.facility.companyName}
               onChange={(e) =>
                 setSettings({
                   ...settings,
-                  facility: { ...settings.facility, warehouseId: e.target.value },
+                  facility: { ...settings.facility, companyName: e.target.value },
                 })
               }
-              className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
-            >
-              <option value="WH-01">Main Laguna Hub — Biñan (WH-01)</option>
-              <option value="WH-02">Cabuyao Extension Hub (WH-02)</option>
-              <option value="WH-03">Makati Forwarding Station (WH-03)</option>
-            </select>
+              placeholder="e.g. Dyna-Serv Logistics Philippines Inc."
+              className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3.5 font-body text-sm text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
+            />
           </div>
 
           <div>
             <label className="block font-label text-xs font-bold text-slate-700 mb-1">
-              Default Zone for New Floor Logins
+              Warehouse Facility Name
+            </label>
+            <input
+              type="text"
+              value={settings.facility.facilityName}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  facility: { ...settings.facility, facilityName: e.target.value },
+                })
+              }
+              placeholder="e.g. Main Logistics & Distribution Warehouse Hub"
+              className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3.5 font-body text-sm text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
+            />
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="block font-label text-xs font-bold text-slate-700 mb-1">
+              Physical Warehouse Address (Street, Barangay, City, Province, Postal Code)
+            </label>
+            <input
+              type="text"
+              value={settings.facility.physicalAddress}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  facility: { ...settings.facility, physicalAddress: e.target.value },
+                })
+              }
+              placeholder="e.g. Lot 14 Block 3, Laguna Technopark Special Economic Zone, Biñan, Laguna 4024, Philippines"
+              className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3.5 font-body text-sm text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
+            />
+          </div>
+
+          <div>
+            <label className="block font-label text-xs font-bold text-slate-700 mb-1">
+              Operational Contact Phone
+            </label>
+            <PhoneInputField
+              value={settings.facility.contactPhone}
+              onChange={(val) =>
+                setSettings({
+                  ...settings,
+                  facility: { ...settings.facility, contactPhone: val },
+                })
+              }
+              placeholder="e.g. 49 541 2345"
+            />
+          </div>
+
+          <div>
+            <label className="block font-label text-xs font-bold text-slate-700 mb-1">
+              Official Operational Email
+            </label>
+            <input
+              type="email"
+              value={settings.facility.contactEmail}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  facility: { ...settings.facility, contactEmail: e.target.value },
+                })
+              }
+              placeholder="warehouse.ops@dyna-serv.com"
+              className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3.5 font-body text-sm text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
+            />
+          </div>
+
+          <div>
+            <label className="block font-label text-xs font-bold text-slate-700 mb-1">
+              Company Tax ID / TIN (Document Header)
+            </label>
+            <input
+              type="text"
+              value={settings.facility.tinNumber}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  facility: { ...settings.facility, tinNumber: e.target.value },
+                })
+              }
+              placeholder="000-123-456-000"
+              className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3.5 font-mono text-sm text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
+            />
+          </div>
+
+          <div>
+            <label className="block font-label text-xs font-bold text-slate-700 mb-1">
+              Default Floor Intake Zone
             </label>
             <select
               value={settings.facility.defaultZone}

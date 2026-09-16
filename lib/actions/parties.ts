@@ -396,10 +396,27 @@ export async function contactParty(
   partyId: string,
   sendEmail: (payload: ContactPartyEmailPayload) => Promise<void>,
   message?: string | null,
-  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+  optionsOrRlsDeps?: {
+    subject?: string | null;
+    templateKey?: string;
+    templateCategory?: string;
+    attachments?: import("@/lib/enrollment/contact-party").ContactPartyEmailAttachment[];
+  } | RlsTransactionDeps,
+  maybeRlsDeps?: RlsTransactionDeps,
 ): Promise<ActionSimpleResult> {
   const denied = await checkPermission(resolver, "parties.manage");
   if (denied) return denied;
+
+  const isOptions =
+    optionsOrRlsDeps != null &&
+    !("pool" in optionsOrRlsDeps || "getAuthenticatedSession" in optionsOrRlsDeps);
+  const options = isOptions ? (optionsOrRlsDeps as {
+    subject?: string | null;
+    templateKey?: string;
+    templateCategory?: string;
+    attachments?: import("@/lib/enrollment/contact-party").ContactPartyEmailAttachment[];
+  }) : undefined;
+  const rlsDeps = isOptions ? (maybeRlsDeps ?? defaultRlsDeps) : ((optionsOrRlsDeps as RlsTransactionDeps) ?? defaultRlsDeps);
 
   const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
     const db = tx.db as DbLike;
@@ -408,6 +425,7 @@ export async function contactParty(
     const [partyRow] = await db
       .select({
         id: parties.id,
+        name: parties.name,
         email: parties.email,
         contact_person: parties.contactPerson,
       })
@@ -421,6 +439,7 @@ export async function contactParty(
 
     const raw = partyRow as {
       id: string;
+      name: string;
       email: string | null;
       contact_person: string | null;
     };
@@ -435,10 +454,12 @@ export async function contactParty(
     const payload = buildContactPartyPayload(
       {
         id: raw.id,
+        name: raw.name,
         email: raw.email as string,
         contactPerson: raw.contact_person ?? null,
       },
       message,
+      options,
     );
 
     // Invoke 04's existing Resend pipeline — fail-open (design.md §5a step 5)

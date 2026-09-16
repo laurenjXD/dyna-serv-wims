@@ -25,6 +25,7 @@ import { getWrrDocument, getWrrPutawayAllocations } from "@/lib/db/queries/recei
 import { startReceiving, getCiplSignedUrl, cancelWrr, setWrrLineDisposition } from "@/lib/actions/receiving";
 import type { WrrItemRow } from "@/lib/db/queries/receiving";
 import { WRRUnitLabelGenerator } from "@/components/barcode/WRRUnitLabelGenerator";
+import { FlaskConical, ChevronRight } from "lucide-react";
 import { CiplDocumentLink, type SignedUrlResult } from "./_components/CiplDocumentLink";
 import { WrrDetailTabs } from "./_components/WrrDetailTabs";
 import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
@@ -94,6 +95,15 @@ export default async function WrrDetailPage({ params }: PageProps) {
     (sum, item) => sum + Math.max(0, item.expectedQty - item.scannedQty),
     0,
   );
+  const inspectionAllocations = putawayAllocations.filter(
+    (a) =>
+      a.locationType === "inspection" ||
+      a.locationType === "hold" ||
+      a.locationLabel?.toLowerCase().includes("inspection") ||
+      a.locationLabel?.toLowerCase().includes("qa") ||
+      a.locationLabel?.toLowerCase().includes("hold"),
+  );
+  const totalInspectionBoxes = inspectionAllocations.reduce((sum, a) => sum + a.qty, 0);
 
   // ─── Inline server action: startReceiving ──────────────────────────────────
   async function handleStartReceiving(): Promise<void> {
@@ -267,6 +277,38 @@ export default async function WrrDetailPage({ params }: PageProps) {
           )}
         </div>
       </div>
+
+      {/* Inbound Inspection Alert Banner */}
+      {totalInspectionBoxes > 0 && (
+        <div className="mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border border-amber-300/80 bg-gradient-to-r from-amber-50 to-[#FFFDF5] p-5 shadow-elevation-1">
+          <div className="flex items-start gap-3.5">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-800">
+              <FlaskConical className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-heading text-title-md font-bold text-amber-950">
+                  Inbound Inspection Bay Routing Triggered
+                </h3>
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 font-label text-label-xs font-bold text-amber-800">
+                  QA HOLD
+                </span>
+              </div>
+              <p className="mt-1 font-body text-body-sm text-amber-900">
+                <strong>{totalInspectionBoxes} box{totalInspectionBoxes === 1 ? "" : "es"}</strong> in this shipment {totalInspectionBoxes === 1 ? "was" : "were"} assigned to QA Holding / Inspection Bays. Stock is locked until floor inspection and verification are completed.
+              </p>
+            </div>
+          </div>
+
+          <Link
+            href="/inventory?tab=inspection"
+            className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-amber-600 px-4 py-2.5 font-label text-label font-bold text-white shadow-sm hover:bg-amber-700 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500"
+          >
+            <span>Open Inspection Queue</span>
+            <ChevronRight size={16} />
+          </Link>
+        </div>
+      )}
 
       {/* OS&D Discrepancy Notice */}
       {wrr.status === "confirmed" && shortageItems.length > 0 && (

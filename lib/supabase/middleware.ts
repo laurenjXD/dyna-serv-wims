@@ -47,7 +47,7 @@ export async function updateSession(request: NextRequest): Promise<UpdateSession
     const timeoutPromise = new Promise<{ data: { user: User | null }; error: Error | null }>((resolve) => {
       timeoutId = setTimeout(() => {
         resolve({ data: { user: null }, error: new Error("Middleware auth timed out") });
-      }, 3000);
+      }, 10_000);
     });
 
     try {

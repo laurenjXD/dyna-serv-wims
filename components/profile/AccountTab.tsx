@@ -21,6 +21,7 @@ import {
 import type { OwnProfile } from "@/app/(authenticated)/profile/actions";
 import { updateProfileDetails, disconnectCurrentDevice } from "@/app/(authenticated)/profile/actions";
 import { EffectivePermissionsModal } from "./EffectivePermissionsModal";
+import { PhoneInputField } from "@/components/global/PhoneInputField";
 
 export function AccountTab({ profile }: { profile: OwnProfile }) {
   const [displayName, setDisplayName] = useState(profile.displayName);
@@ -165,16 +166,15 @@ export function AccountTab({ profile }: { profile: OwnProfile }) {
 
           <div>
             <label htmlFor="account-contact" className="block font-label text-xs font-bold text-slate-700 mb-1">
-              Contact number
+              Contact Phone Number
             </label>
-            <input
+            <PhoneInputField
               id="account-contact"
-              aria-label="Contact number"
-              type="tel"
+              aria-label="Contact phone number"
+              data-testid="contact-phone-input"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+63 9XX XXX XXXX"
-              className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
+              onChange={(val) => setPhone(val)}
+              placeholder="e.g. 917 123 4567"
             />
           </div>
         </div>

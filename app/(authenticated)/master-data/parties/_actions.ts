@@ -208,36 +208,41 @@ export async function removePartyRoleAction(
   return { ok: true };
 }
 
-// ---------------------------------------------------------------------------
-// contactPartyAction
-// ---------------------------------------------------------------------------
+import { generateBrandedEmailHtml } from "@/lib/notifications/email-composer-templates";
 
 async function sendEmailViaResend(
   payload: ContactPartyEmailPayload,
 ): Promise<void> {
-  // Minimal Resend integration using 04-services-and-infrastructure's pipeline.
-  // The template_key and resource_type follow the email_deliveries contract
-  // (design.md §5a step 4). Failures are caught by the callee (contactParty)
-  // per the fail-open rule (design.md §5a step 5).
+  // Resend integration using 04-services-and-infrastructure's pipeline.
+  // The template_key and resource_type follow the email_deliveries contract.
   const { Resend } = await import("resend");
   const resend = new Resend(process.env.RESEND_API_KEY);
   const from =
     process.env.RESEND_FROM_OPERATIONS ?? "noreply@example.com";
 
+  const emailSubject = payload.subject?.trim() || "Message from Dyna-Serv Operations";
+  const attachmentNames = payload.attachments?.map((a) => a.filename) ?? [];
+
+  const html = generateBrandedEmailHtml({
+    partyName: payload.partyName ?? "Valued Partner",
+    contactPerson: payload.recipientName,
+    subject: emailSubject,
+    templateCategory: payload.templateCategory ?? "general",
+    messageBody: payload.optionalMessage || "You have received an operational notification from Dyna-Serv Warehouse Operations.",
+    attachmentNames,
+  });
+
+  const resendAttachments = payload.attachments?.map((att) => ({
+    filename: att.filename,
+    content: Buffer.isBuffer(att.content) ? att.content : Buffer.from(att.content),
+  }));
+
   await resend.emails.send({
     from,
     to: [payload.recipientEmail],
-    subject: "Message from Dyna-Serv Operations",
-    html: [
-      payload.recipientName
-        ? `<p>Dear ${payload.recipientName},</p>`
-        : "<p>Dear Valued Partner,</p>",
-      "<p>You have received a notification from Dyna-Serv Warehouse Operations.</p>",
-      payload.optionalMessage
-        ? `<p>${payload.optionalMessage}</p>`
-        : "",
-      "<p>Regards,<br/>Dyna-Serv Operations Team</p>",
-    ].join(""),
+    subject: emailSubject,
+    html,
+    attachments: resendAttachments && resendAttachments.length > 0 ? resendAttachments : undefined,
   });
 }
 
@@ -248,12 +253,39 @@ export async function contactPartyAction(
   const resolver = await createPageResolver();
   const partyId = formData.get("partyId") as string;
   const message = nullableString(formData.get("message"));
+  const subject = nullableString(formData.get("subject"));
+  const templateKey = (formData.get("templateKey") as string | null) ?? "custom_message";
+  const templateCategory = (formData.get("templateCategory") as string | null) ?? "general";
+
+  // Parse attached files
+  const fileEntries = formData.getAll("files");
+  const attachments: import("@/lib/enrollment/contact-party").ContactPartyEmailAttachment[] = [];
+
+  for (const entry of fileEntries) {
+    if (entry instanceof File && entry.size > 0) {
+      if (entry.size > 10 * 1024 * 1024) {
+        return { error: `File "${entry.name}" exceeds the maximum 10 MB size limit.` };
+      }
+      const arrayBuffer = await entry.arrayBuffer();
+      attachments.push({
+        filename: entry.name,
+        content: Buffer.from(arrayBuffer),
+        contentType: entry.type || "application/octet-stream",
+      });
+    }
+  }
 
   const result = await contactParty(
     resolver,
     partyId,
     sendEmailViaResend,
     message,
+    {
+      subject,
+      templateKey,
+      templateCategory,
+      attachments,
+    },
   );
 
   if (!result.ok) {

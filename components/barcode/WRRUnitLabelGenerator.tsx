@@ -78,6 +78,32 @@ export function WRRUnitLabelGenerator({
           aria-labelledby="print-modal-title"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 print:p-0 print:bg-white print:static"
         >
+          {/* Print Media Isolation Rules */}
+          <style>{`
+            @media print {
+              body * {
+                visibility: hidden !important;
+              }
+              #print-unit-labels-sheet,
+              #print-unit-labels-sheet * {
+                visibility: visible !important;
+              }
+              #print-unit-labels-sheet {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #FFFFFF !important;
+              }
+              @page {
+                size: A4 portrait;
+                margin: 10mm 12mm;
+              }
+            }
+          `}</style>
+
           <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-xl bg-surface-white p-6 shadow-elevation-2 print:max-h-none print:p-0 print:shadow-none">
             {/* Header — Screen only */}
             <div className="flex items-center justify-between border-b border-outline-variant pb-4 print:hidden">
@@ -118,11 +144,15 @@ export function WRRUnitLabelGenerator({
 
             {/* Printable Sheet Grid */}
             <div className="mt-4 flex-1 overflow-y-auto print:overflow-visible">
-              <div className="grid grid-cols-2 gap-4 print:grid-cols-2 print:gap-4 print:w-full">
+              <div
+                id="print-unit-labels-sheet"
+                className="grid grid-cols-2 gap-4 print:grid-cols-2 print:gap-4 print:w-full"
+              >
                 {unitLabels.map((unit) => (
                   <div
                     key={unit.unitId}
-                    className="flex flex-col items-center justify-between rounded border-2 border-brand-navy bg-surface-white p-4 text-center break-inside-avoid print:border-black print:p-3"
+                    style={{ breakInside: "avoid", pageBreakInside: "avoid" }}
+                    className="flex flex-col items-center justify-between rounded border-2 border-brand-navy bg-surface-white p-4 text-center break-inside-avoid print:border-black print:p-3 min-h-[220px]"
                   >
                     {/* Header info */}
                     <div className="mb-2 w-full">

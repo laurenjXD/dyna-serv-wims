@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { DashboardHeader } from "./DashboardHeader";
+import { DashboardHeader, type DateHorizon } from "./DashboardHeader";
 import { KpiGrid } from "./KpiGrid";
 import { FlowMovementChart } from "./FlowMovementChart";
 import { DeliveryPerformanceChart } from "./DeliveryPerformanceChart";
@@ -9,6 +9,7 @@ import { LocationOccupancyChart } from "./LocationOccupancyChart";
 import { MonthlyHeatmap } from "./MonthlyHeatmap";
 import { MasterInventoryTable } from "./MasterInventoryTable";
 import { verifyBarcodeAction } from "@/lib/actions/scanner";
+import { useRouter } from "next/navigation";
 import type {
   DashboardKpiData,
   MonthlyFlowDatum,
@@ -57,6 +58,8 @@ export function OperationsDashboard({
   heatmapGrid,
   masterInventory,
 }: OperationsDashboardProps) {
+  const router = useRouter();
+  const [dateHorizon, setDateHorizon] = useState<DateHorizon>("30D MTD");
   const [reportSuccessMessage, setReportSuccessMessage] = useState<string | null>(null);
   const [reportErrorMessage, setReportErrorMessage] = useState<string | null>(null);
   const [mobilePerfTab, setMobilePerfTab] = useState<"otif" | "occupancy">("otif");
@@ -64,6 +67,26 @@ export function OperationsDashboard({
   const [customScanInput, setCustomScanInput] = useState("");
   const [isScanning, setIsScanning] = useState(false);
   const [activeStockFilter, setActiveStockFilter] = useState<"all" | "low_stock" | "held">("all");
+
+  const handleRefresh = async () => {
+    router.refresh();
+  };
+
+  // Dynamically filter chart data based on date horizon
+  const filteredDeliveryPerformance = React.useMemo(() => {
+    if (!deliveryPerformance) return undefined;
+    const raw = deliveryPerformance.chartData || [];
+    let sliced = raw;
+    if (dateHorizon === "Today") sliced = raw.slice(-2);
+    else if (dateHorizon === "7D") sliced = raw.slice(-3);
+    else if (dateHorizon === "30D MTD") sliced = raw.slice(-6);
+    else if (dateHorizon === "90D QTD") sliced = raw.slice(-9);
+
+    return {
+      chartData: sliced,
+      miniMetrics: deliveryPerformance.miniMetrics,
+    };
+  }, [deliveryPerformance, dateHorizon]);
 
   const handleGenerateReport = async () => {
     try {
@@ -120,7 +143,12 @@ export function OperationsDashboard({
   return (
     <div className="mx-auto max-w-container bg-background px-4 py-6 pb-24 sm:px-6 lg:px-8 lg:pb-8 space-y-6">
       {/* ── 1. Header & Global Toolbar ────────────────────────────────────── */}
-      <DashboardHeader onGenerateReport={handleGenerateReport} />
+      <DashboardHeader
+        dateHorizon={dateHorizon}
+        onDateHorizonChange={setDateHorizon}
+        onRefresh={handleRefresh}
+        onGenerateReport={handleGenerateReport}
+      />
 
       {/* Report Generation Notification Toast */}
       {reportSuccessMessage && (
@@ -178,7 +206,7 @@ export function OperationsDashboard({
 
         {/* Total Delivery Performance Multi-Line Chart (Full Width) */}
         <div className="col-span-3">
-          <DeliveryPerformanceChart initialData={deliveryPerformance} />
+          <DeliveryPerformanceChart initialData={filteredDeliveryPerformance} />
         </div>
       </div>
 
@@ -218,7 +246,7 @@ export function OperationsDashboard({
           </div>
 
           {mobilePerfTab === "otif" ? (
-            <DeliveryPerformanceChart initialData={deliveryPerformance} />
+            <DeliveryPerformanceChart initialData={filteredDeliveryPerformance} />
           ) : (
             <LocationOccupancyChart initialData={occupancyData} />
           )}

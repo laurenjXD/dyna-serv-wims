@@ -28,10 +28,33 @@ export function LabelPrinter({
     <div data-print-label className="bg-surface-white shadow-elevation-2 rounded p-4 flex flex-col items-center gap-4 w-full max-w-sm mx-auto">
       <style>{`
         @media print {
-          body * { visibility: hidden !important; }
-          [data-print-label], [data-print-label] * { visibility: visible !important; }
-          [data-print-label] { position: fixed; inset: 0; width: 100%; max-width: none; padding: 12mm; box-shadow: none; }
-          [data-print-label] button { display: none !important; }
+          body * {
+            visibility: hidden !important;
+          }
+          [data-print-label],
+          [data-print-label] * {
+            visibility: visible !important;
+          }
+          [data-print-label] {
+            position: absolute !important;
+            left: 50% !important;
+            top: 20mm !important;
+            transform: translateX(-50%) !important;
+            width: 100mm !important;
+            max-width: 100mm !important;
+            padding: 8mm !important;
+            border: 2px solid #000000 !important;
+            border-radius: 8px !important;
+            box-shadow: none !important;
+            background: #FFFFFF !important;
+          }
+          [data-print-label] button {
+            display: none !important;
+          }
+          @page {
+            size: auto;
+            margin: 10mm;
+          }
         }
       `}</style>
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -40,7 +63,7 @@ export function LabelPrinter({
         FR-3.2: QR payload is exactly the UUID string — "a UUID lookup, not a data blob"
         (design.md §2). No prefix, no JSON wrapping, no transformation.
       */}
-      <QRCode value={lotId} />
+      <QRCode value={lotId} size={150} />
 
       {/*
         FR-3.1: human-readable label text displayed below the QR code.
@@ -48,7 +71,7 @@ export function LabelPrinter({
         Floor minimum: 16px (body-md). mono-lg (18px) satisfies this comfortably.
       */}
       <div className="font-mono text-mono-lg text-on-surface text-center leading-snug">
-        <div>{lotNumber}</div>
+        <div className="font-bold">{lotNumber}</div>
         <div>{itemCode}</div>
         {locationLabel && <div>{locationLabel}</div>}
       </div>

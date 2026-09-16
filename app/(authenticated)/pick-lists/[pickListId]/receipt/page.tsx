@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { ChevronLeft } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { parties } from "@/lib/db/schema/parties";
+import { vmiPermits } from "@/lib/db/schema/vmi_billing";
 import { getPickList, getPickListItems } from "@/lib/db/queries/withdrawals";
 import { PickListPrintButton } from "../print/_components/PickListPrintButton";
 
@@ -22,16 +23,22 @@ export default async function DeliveryReceiptPage({
   const pickList = await getPickList(db, pickListId);
   if (!pickList) notFound();
 
-  const [lines, partyRows] = await Promise.all([
+  const [lines, partyRows, permitRows] = await Promise.all([
     getPickListItems(db, pickListId),
     db
       .select({ name: parties.name, address1: parties.address1, address2: parties.address2 })
       .from(parties)
       .where(eq(parties.id, pickList.customerPartyId))
       .limit(1),
+    db
+      .select({ permitNumber: vmiPermits.permitNumber })
+      .from(vmiPermits)
+      .where(and(eq(vmiPermits.partyId, pickList.customerPartyId), eq(vmiPermits.isActive, true)))
+      .limit(1),
   ]);
 
   const party = partyRows[0];
+  const pezaPermitNo = permitRows[0]?.permitNumber ?? null;
   const totalQty = lines.reduce((sum, line) => sum + line.qty, 0);
   const totalBoxes = lines.reduce((sum, line) => sum + line.numberOfBoxes, 0);
 
@@ -40,10 +47,34 @@ export default async function DeliveryReceiptPage({
       <style
         dangerouslySetInnerHTML={{
           __html: `
-            @page { size: A4 landscape; margin: 10mm; }
+            @page {
+              size: A4 landscape;
+              margin: 10mm 12mm 12mm 12mm;
+            }
             @media print {
-              .print-hide { display: none !important; }
-              body { background: #fff !important; }
+              [data-testid="desktop-sidebar"], [data-testid="floor-tab-bar"], .print-hide {
+                display: none !important;
+              }
+              body {
+                background: #FFFFFF !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+              main {
+                padding: 0 !important;
+                margin: 0 !important;
+              }
+              thead {
+                display: table-header-group !important;
+              }
+              tr {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+              }
+              .avoid-break {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+              }
             }
           `,
         }}
@@ -60,91 +91,140 @@ export default async function DeliveryReceiptPage({
         <PickListPrintButton />
       </div>
 
-      <article className="mx-auto max-w-[1500px] bg-white p-6 shadow-elevation-2 print:max-w-none print:p-0 print:shadow-none">
-        <header className="border-b-2 border-[#111827] pb-3">
-          <div className="flex items-start justify-between gap-8">
+      <article className="mx-auto max-w-[1500px] rounded-xl border border-slate-300 bg-surface-white p-6 shadow-elevation-2 print:max-w-none print:border-0 print:p-0 print:shadow-none">
+        {/* Document Header */}
+        <header className="border-b-2 border-slate-800 pb-3">
+          <div className="flex items-start justify-between gap-6">
             <div>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/api/brand/logo" alt="Dyna-Serv" className="mb-2 h-10 w-auto" />
-              <h1 className="text-lg font-bold uppercase tracking-wide">Acknowledgement Receipt</h1>
-              <p className="mt-1 text-xs text-slate-600">Dyna-Serv Global Corporation</p>
+              <div className="flex items-center gap-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/api/brand/logo" alt="Dyna-Serv" className="h-7 w-auto object-contain" />
+                <div>
+                  <h1 className="font-heading font-bold text-xs uppercase tracking-wider text-slate-800 leading-none">
+                    DYNA-SERV GLOBAL CORPORATION
+                  </h1>
+                  <p className="mt-0.5 font-heading text-sm font-extrabold uppercase tracking-wide text-brand-navy">
+                    Official Acknowledgement Receipt (Delivery Proof)
+                  </p>
+                </div>
+              </div>
+              <p className="mt-1 font-mono text-[10px] text-slate-500">
+                Official Carrier Dock Handover &amp; Custody Turnover Record
+              </p>
             </div>
-            <dl className="grid grid-cols-[auto_auto] gap-x-4 gap-y-1 text-xs">
-              <dt className="font-bold uppercase">Delivery Receipt No.</dt>
-              <dd className="font-bold">DR-{pickList.pickListNumber.replace(/^PL-/, "")}</dd>
-              <dt className="font-bold uppercase">Pick List No.</dt>
-              <dd className="font-bold">{pickList.pickListNumber}</dd>
-              <dt className="font-bold uppercase">Delivery Date</dt>
-              <dd>{pickList.createdAt.toLocaleDateString()}</dd>
-            </dl>
-          </div>
-          <div className="mt-4 grid grid-cols-[1fr_auto] gap-8 text-xs">
-            <div>
-              <p className="font-bold uppercase">Delivery To:</p>
-              <p className="font-bold">{party?.name ?? pickList.customerPartyId}</p>
-              <p>{[party?.address1, party?.address2].filter(Boolean).join(", ") || "Address on file"}</p>
-            </div>
+
             <div className="text-right">
-              <p><span className="font-bold">Inventory Model:</span> {pickList.flowType}</p>
-              <p><span className="font-bold">Generated:</span> {new Date().toLocaleString()}</p>
+              <p className="font-mono text-[10px] uppercase font-bold text-slate-500">Delivery Receipt No.</p>
+              <p className="font-mono text-xs font-black text-brand-navy">DR-{pickList.pickListNumber.replace(/^PL-/, "")}</p>
+              <p className="font-mono text-[10px] text-slate-500">Pick List Ref: {pickList.pickListNumber}</p>
+            </div>
+          </div>
+
+          {/* Delivery & Logistics Details Grid */}
+          <div className="mt-3 grid grid-cols-2 gap-2.5 rounded-lg border border-slate-200 bg-slate-50/70 p-2.5 font-mono text-[11px] sm:grid-cols-4">
+            <div>
+              <p className="text-[9px] font-bold uppercase text-slate-500">Delivery To (Customer)</p>
+              <p className="mt-0.5 font-bold text-slate-900">{party?.name ?? pickList.customerPartyId}</p>
+              <p className="text-[10px] text-slate-500 truncate">{[party?.address1, party?.address2].filter(Boolean).join(", ") || "Address on file"}</p>
+            </div>
+            <div>
+              <p className="text-[9px] font-bold uppercase text-slate-500">Inventory Flow</p>
+              <p className="mt-0.5 font-bold text-slate-900">{pickList.flowType.toUpperCase()}</p>
+              <p className="text-[10px] text-slate-500">STATUS: {pickList.status.toUpperCase()}</p>
+            </div>
+            <div>
+              <p className="text-[9px] font-bold uppercase text-slate-500">PEZA Permit No.</p>
+              <p className="mt-0.5 font-bold text-slate-900">{pezaPermitNo ?? "—"}</p>
+              <p className="text-[10px] text-slate-500">Zone Authorization</p>
+            </div>
+            <div>
+              <p className="text-[9px] font-bold uppercase text-slate-500">Delivery Date</p>
+              <p className="mt-0.5 font-bold text-slate-900">
+                {pickList.createdAt.toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}
+              </p>
+              <p className="text-[10px] text-slate-500">GEN: {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
             </div>
           </div>
         </header>
 
         <section className="mt-4">
+          <div className="mb-1.5 flex items-center justify-between">
+            <h2 className="font-heading text-xs font-bold uppercase tracking-wider text-slate-800">
+              Delivered Cargo Line Items ({lines.length} Lines)
+            </h2>
+            <span className="font-mono text-[10px] uppercase font-bold text-slate-500">
+              Total Boxes: {totalBoxes.toLocaleString()} &bull; Total PCS: {totalQty.toLocaleString()}
+            </span>
+          </div>
+
           <div className="overflow-x-auto print:overflow-visible">
-          <table className="w-full min-w-[1100px] table-fixed border-collapse text-[8px] leading-tight print:min-w-0">
-            <colgroup>
-              <col className="w-[4%]" /><col className="w-[6%]" /><col className="w-[5%]" /><col className="w-[8%]" />
-              <col className="w-[10%]" /><col className="w-[9%]" /><col className="w-[14%]" /><col className="w-[10%]" />
-              <col className="w-[8%]" /><col className="w-[8%]" /><col className="w-[9%]" /><col className="w-[9%]" />
-            </colgroup>
-            <thead>
-              <tr className="bg-[#D8DDE5] text-center font-bold uppercase">
-                {[
-                  "No.", "Qty", "SPQ", "No. of Boxes", "Item Code", "CUST PN", "Item Description",
-                  "Lot Number", "PO Number", "Invoice No.", "Remarks", "Location",
-                ].map((heading) => <th key={heading} className="whitespace-normal border border-[#374151] px-1 py-1.5">{heading}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {lines.map((line, index) => (
-                <tr key={line.id} className="align-middle">
-                  <td className="border border-[#6B7280] px-1.5 py-2 text-center">{index + 1}</td>
-                  <td className="border border-[#6B7280] px-1.5 py-2 text-center font-bold">{line.qty.toLocaleString()}</td>
-                  <td className="border border-[#6B7280] px-1.5 py-2 text-center">{line.spq.toLocaleString()}</td>
-                  <td className="border border-[#6B7280] px-1.5 py-2 text-center">{line.numberOfBoxes.toLocaleString()}</td>
-                  <td className="border border-[#6B7280] px-1.5 py-2 font-mono font-bold">{line.itemCode}</td>
-                  <td className="border border-[#6B7280] px-1.5 py-2 font-mono">{line.customerItemCode ?? "—"}</td>
-                  <td className="border border-[#6B7280] px-1.5 py-2">{line.itemDescription ?? "—"}</td>
-                  <td className="border border-[#6B7280] px-1.5 py-2 font-mono">{line.lotNumber}</td>
-                  <td className="border border-[#6B7280] px-1.5 py-2">—</td>
-                  <td className="border border-[#6B7280] px-1.5 py-2">—</td>
-                  <td className="border border-[#6B7280] px-1.5 py-2">—</td>
-                  <td className="border border-[#6B7280] px-1.5 py-2 font-mono">{line.locationLabel}</td>
+            <table className="w-full border-collapse border border-slate-300 font-mono text-[11px]">
+              <thead>
+                <tr className="bg-slate-100 text-[10px]">
+                  <th className="border border-slate-300 px-2 py-1.5 text-center uppercase font-bold tracking-wider text-slate-700 w-8">#</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-left uppercase font-bold tracking-wider text-slate-700">Item Code</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-left uppercase font-bold tracking-wider text-slate-700">Cust PN</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-left uppercase font-bold tracking-wider text-slate-700">Description</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-left uppercase font-bold tracking-wider text-slate-700">Lot Number</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-left uppercase font-bold tracking-wider text-slate-700">Location</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-right uppercase font-bold tracking-wider text-slate-700">SPQ</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-right uppercase font-bold tracking-wider text-slate-700">Boxes</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-right uppercase font-bold tracking-wider text-slate-700">Qty (PCS)</th>
                 </tr>
-              ))}
-              <tr className="font-bold">
-                <td className="border border-[#6B7280] px-1.5 py-2 text-center">Total</td>
-                <td className="border border-[#6B7280] px-1.5 py-2 text-center">{totalQty.toLocaleString()}</td>
-                <td className="border border-[#6B7280] px-1.5 py-2">—</td>
-                <td className="border border-[#6B7280] px-1.5 py-2 text-center">{totalBoxes.toLocaleString()}</td>
-                <td colSpan={8} className="border border-[#6B7280] px-1.5 py-2" />
-              </tr>
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {lines.map((line, index) => (
+                  <tr key={line.id} className="hover:bg-slate-50">
+                    <td className="border border-slate-300 px-2 py-1.5 text-center font-bold text-slate-500">{index + 1}</td>
+                    <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-900">{line.itemCode}</td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-slate-600">{line.customerItemCode ?? "—"}</td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-slate-800 max-w-[220px] truncate">{line.itemDescription ?? "—"}</td>
+                    <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-900">{line.lotNumber}</td>
+                    <td className="border border-slate-300 px-2 py-1.5 font-bold text-brand-navy">{line.locationLabel}</td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-right text-slate-700">{line.spq.toLocaleString()}</td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-right font-bold text-slate-900">{line.numberOfBoxes.toLocaleString()}</td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-right font-bold text-brand-navy">{line.qty.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="border-t-2 border-slate-800 bg-slate-100 font-bold">
+                <tr>
+                  <td colSpan={7} className="border border-slate-300 px-2 py-1.5 text-right text-[10px] uppercase text-slate-800">
+                    Total Delivered:
+                  </td>
+                  <td className="border border-slate-300 px-2 py-1.5 text-right text-brand-navy">
+                    {totalBoxes.toLocaleString()} boxes
+                  </td>
+                  <td className="border border-slate-300 px-2 py-1.5 text-right text-brand-navy">
+                    {totalQty.toLocaleString()} pcs
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
         </section>
 
-        <section className="mt-4 border border-[#374151] text-xs">
-          <div className="bg-[#D8DDE5] px-2 py-1 font-bold uppercase">Delivery Instructions / Remarks</div>
-          <div className="min-h-10 px-2 py-2">—</div>
+        <section className="avoid-break mt-4 rounded-lg border border-slate-200 bg-slate-50/50 p-2.5 font-mono text-[11px]">
+          <div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Delivery Instructions / Remarks</div>
+          <div className="mt-0.5 text-slate-700">Official Physical Handover &amp; Custody Turnover for Client Account. Intact and Accounted.</div>
         </section>
 
-        <footer className="mt-6 grid grid-cols-3 border border-[#374151] text-xs">
-          <div className="min-h-20 border-r border-[#374151] p-2"><p className="font-bold uppercase">Checked By:</p></div>
-          <div className="min-h-20 border-r border-[#374151] p-2"><p className="font-bold uppercase">Loaded By:</p></div>
-          <div className="min-h-20 p-2"><p className="font-bold uppercase">Acknowledged & Received By:</p></div>
+        <footer className="avoid-break mt-6 grid grid-cols-3 gap-4 border-t border-slate-300 pt-4 font-mono text-[10px]">
+          <div className="rounded-lg border border-slate-300 bg-slate-50/50 p-3">
+            <p className="uppercase font-bold text-slate-700">Checked By:</p>
+            <div className="mt-8 border-b border-dashed border-slate-400" />
+            <p className="mt-1 text-slate-500">Signature over Printed Name</p>
+          </div>
+          <div className="rounded-lg border border-slate-300 bg-slate-50/50 p-3">
+            <p className="uppercase font-bold text-slate-700">Loaded By:</p>
+            <div className="mt-8 border-b border-dashed border-slate-400" />
+            <p className="mt-1 text-slate-500">Signature over Printed Name</p>
+          </div>
+          <div className="rounded-lg border border-slate-300 bg-slate-50/50 p-3">
+            <p className="uppercase font-bold text-brand-navy">Acknowledged &amp; Received By:</p>
+            <div className="mt-8 border-b border-dashed border-slate-400" />
+            <p className="mt-1 text-slate-500">Signature over Printed Name</p>
+          </div>
         </footer>
       </article>
     </main>

@@ -28,7 +28,7 @@
 
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { userProfiles, rbacSecurityEvents } from "@/lib/db/schema";
+import { userProfiles, rbacSecurityEvents, auditLog } from "@/lib/db/schema";
 import { createClient } from "@/lib/supabase/server";
 import { displayNameSchema, changePasswordSchema } from "@/lib/user-settings/schemas";
 
@@ -36,6 +36,7 @@ export type ActionResult = { ok: true } | { ok: false; error: string };
 
 export async function completeInvitationAcceptance(input: {
   displayName: string;
+  phone?: string;
   newPassword: string;
   confirmPassword: string;
 }): Promise<ActionResult> {
@@ -51,7 +52,7 @@ export async function completeInvitationAcceptance(input: {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) {
-    return { ok: false, error: "Your invitation link has expired. Ask an administrator to resend it." };
+    return { ok: false, error: "Your invitation link has expired or is invalid. Ask your administrator to resend it." };
   }
 
   const [profile] = await db
@@ -66,6 +67,10 @@ export async function completeInvitationAcceptance(input: {
 
   const { error: passwordError } = await supabase.auth.updateUser({
     password: passwordParsed.data.newPassword,
+    data: {
+      displayName: nameParsed.data.displayName,
+      phone: input.phone || undefined,
+    },
   });
   if (passwordError) {
     return { ok: false, error: passwordError.message };
@@ -88,8 +93,27 @@ export async function completeInvitationAcceptance(input: {
     executorType: "user",
     targetType: "user_profiles",
     targetId: data.user.id,
-    reason: "Self-service invitation acceptance",
+    reason: "Self-service invitation acceptance & onboarding completion",
   });
+
+  // Write to immutable audit_log
+  try {
+    await db.insert(auditLog).values({
+      actorUserId: data.user.id,
+      actorRole: "warehouse_staff",
+      action: "user_onboarded_and_activated",
+      entityType: "user_profiles",
+      entityId: data.user.id,
+      diffData: {
+        status: { before: "invited", after: "active" },
+        displayName: nameParsed.data.displayName,
+        phone: input.phone || "—",
+      },
+      correlationId: `ONBOARD-${Date.now()}`,
+    });
+  } catch {
+    // ignore logging failure
+  }
 
   return { ok: true };
 }

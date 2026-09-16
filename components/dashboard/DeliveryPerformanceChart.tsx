@@ -36,51 +36,22 @@ export function DeliveryPerformanceChart({ initialData }: DeliveryPerformanceCha
   const currentOtif = chartData.length > 0 ? chartData[chartData.length - 1].otifRate : 0;
 
   return (
-    <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-5 shadow-sm">
-      {/* Header with Title & Mini-metrics */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between border-b border-slate-100 pb-4">
+    <div className="rounded-2xl border border-border bg-surface p-5 shadow-card">
+      {/* Clean Header */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-3.5">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="font-heading text-title-md font-bold text-brand-navy">
-              Total Delivery Performance &amp; OTIF
-            </h2>
-            <span className="rounded-md bg-emerald-50 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-700 border border-emerald-200/80">
-              {currentOtif}% OTIF (Current)
-            </span>
-          </div>
-          <p className="mt-0.5 font-body text-xs text-text-grey">
-            On-Time In-Full tracking with {miniMetrics.slaTargetPct}% contractual benchmark SLA line
+          <h2 className="font-heading text-title-md font-bold text-brand-navy">
+            Delivery Performance &amp; OTIF
+          </h2>
+          <p className="mt-0.5 font-body text-body-xs text-text-grey">
+            On-Time In-Full fulfillment rate benchmarked against {miniMetrics.slaTargetPct}% SLA target
           </p>
         </div>
 
-        {/* Mini-Metrics Badges in Card Header */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Average Lead Time */}
-          <div className="flex items-center gap-1.5 rounded-xl bg-slate-50 border border-slate-200/70 px-2.5 py-1 text-xs">
-            <Clock size={12} className="text-slate-400" />
-            <span className="text-text-grey font-medium">Lead Time:</span>
-            <span className="font-mono font-bold text-slate-800">
-              {miniMetrics.avgLeadTimeHours}h (&lt;24h)
-            </span>
-          </div>
-
-          {/* First Attempt Delivery Rate */}
-          <div className="flex items-center gap-1.5 rounded-xl bg-emerald-50 border border-emerald-200/70 px-2.5 py-1 text-xs">
-            <CheckCheck size={12} className="text-emerald-600" />
-            <span className="text-emerald-800 font-medium">1st Attempt:</span>
-            <span className="font-mono font-bold text-emerald-900">
-              {miniMetrics.firstAttemptDeliveryRatePct}%
-            </span>
-          </div>
-
-          {/* Freight Damage Claims */}
-          <div className="flex items-center gap-1.5 rounded-xl bg-slate-50 border border-slate-200/70 px-2.5 py-1 text-xs">
-            <ShieldAlert size={12} className="text-slate-400" />
-            <span className="text-text-grey font-medium">Damage Claims:</span>
-            <span className="font-mono font-bold text-emerald-700">
-              {miniMetrics.freightDamageClaimsPct}% (&lt;0.5%)
-            </span>
-          </div>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-mono-md font-bold text-emerald-700">
+            {currentOtif}% OTIF
+          </span>
         </div>
       </div>
 
@@ -127,18 +98,21 @@ export function DeliveryPerformanceChart({ initialData }: DeliveryPerformanceCha
               content={({ active, payload, label }) => {
                 if (active && payload && payload.length) {
                   return (
-                    <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-elevation-2 font-body text-xs">
-                      <p className="font-bold text-brand-navy mb-1.5 border-b border-slate-100 pb-1">
-                        {label} 2026 Delivery Metrics
+                    <div className="rounded-xl border border-border bg-surface p-3 shadow-elevation-2 font-body text-body-xs">
+                      <p className="font-bold text-brand-navy mb-1.5 border-b border-border pb-1">
+                        {label} Delivery Metrics
                       </p>
                       <div className="space-y-1">
                         {payload.map((entry, index) => (
                           <div key={index} className="flex items-center justify-between gap-4">
-                            <span className="flex items-center gap-1 text-slate-700">
-                              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }}></span>
+                            <span className="flex items-center gap-1 text-on-surface">
+                              <span
+                                className="h-2 w-2 rounded-full"
+                                style={{ backgroundColor: entry.color }}
+                              ></span>
                               {entry.name}:
                             </span>
-                            <span className="font-mono font-bold text-slate-900">{entry.value}%</span>
+                            <span className="font-mono font-bold text-on-surface">{entry.value}%</span>
                           </div>
                         ))}
                       </div>
@@ -155,7 +129,7 @@ export function DeliveryPerformanceChart({ initialData }: DeliveryPerformanceCha
               strokeDasharray="4 4"
               strokeWidth={1.5}
               label={{
-                value: `SLA Target (${miniMetrics.slaTargetPct}%)`,
+                value: `SLA (${miniMetrics.slaTargetPct}%)`,
                 fill: "#10B981",
                 fontSize: 10,
                 fontWeight: 700,
@@ -191,6 +165,35 @@ export function DeliveryPerformanceChart({ initialData }: DeliveryPerformanceCha
             />
           </LineChart>
         </ResponsiveContainer>
+      </div>
+
+      {/* Clean Structured Metric Footer */}
+      <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-3 border-t border-border pt-3">
+        <div className="flex items-center gap-2 rounded-lg bg-surface-light-grey/50 px-3 py-2">
+          <Clock size={14} className="text-text-grey" />
+          <div className="font-body text-body-xs">
+            <span className="text-text-grey">Avg Lead Time: </span>
+            <strong className="font-mono text-on-surface">{miniMetrics.avgLeadTimeHours}h</strong>
+            <span className="text-text-grey text-[11px]"> (&lt;24h)</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 rounded-lg bg-surface-light-grey/50 px-3 py-2">
+          <CheckCheck size={14} className="text-emerald-600" />
+          <div className="font-body text-body-xs">
+            <span className="text-text-grey">First Attempt: </span>
+            <strong className="font-mono text-emerald-800">{miniMetrics.firstAttemptDeliveryRatePct}%</strong>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 rounded-lg bg-surface-light-grey/50 px-3 py-2">
+          <ShieldAlert size={14} className="text-text-grey" />
+          <div className="font-body text-body-xs">
+            <span className="text-text-grey">Damage Claims: </span>
+            <strong className="font-mono text-on-surface">{miniMetrics.freightDamageClaimsPct}%</strong>
+            <span className="text-text-grey text-[11px]"> (&lt;0.5%)</span>
+          </div>
+        </div>
       </div>
     </div>
   );

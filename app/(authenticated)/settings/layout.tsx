@@ -19,14 +19,13 @@
 // request renders the "forbidden" state, not "not_found".
 
 import type { ReactNode } from "react";
-import type { RequestAuthorizationResolver } from "@/lib/rbac/session";
 import { RouteGuard } from "@/components/global/RouteGuard";
 import { SettingsNav } from "@/components/settings/SettingsNav";
-import { resolveShellAuthorization } from "@/app/(authenticated)/actions";
+import { createPageResolver } from "@/lib/auth/page-resolver";
 
-const resolver: RequestAuthorizationResolver = { getContext: resolveShellAuthorization };
+export default async function SettingsLayout({ children }: { children: ReactNode }) {
+  const resolver = await createPageResolver();
 
-export default function SettingsLayout({ children }: { children: ReactNode }) {
   return (
     <RouteGuard resolver={resolver} capability="users.read" existenceSafeToDisclose={true}>
       <div className="flex min-w-0 max-w-full min-h-[calc(100vh-3.5rem)] flex-col">

@@ -43,7 +43,7 @@ export default async function PickListPrintPage({
   const totalPieces = lines.reduce((total, line) => total + line.qty, 0);
 
   return (
-    <main className="mx-auto max-w-7xl bg-surface-white pb-10 print:max-w-none print:p-0">
+    <main className="mx-auto w-full max-w-7xl bg-surface-white pb-10 print:max-w-none print:p-0">
       {/* Print media rules */}
       <style
         dangerouslySetInnerHTML={{
@@ -54,14 +54,35 @@ export default async function PickListPrintPage({
               }
               body {
                 background: #FFFFFF !important;
+                color: #000000 !important;
               }
               main {
                 padding: 0 !important;
                 margin: 0 !important;
+                max-width: none !important;
+                width: 100% !important;
               }
               @page {
                 size: A4 portrait;
-                margin: 12mm 15mm 15mm 15mm;
+                margin: 10mm 12mm 12mm 12mm;
+              }
+              table {
+                width: 100% !important;
+                page-break-inside: auto;
+              }
+              thead {
+                display: table-header-group !important;
+              }
+              tfoot {
+                display: table-footer-group !important;
+              }
+              tr {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+              }
+              .avoid-break {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
               }
             }
           `,
@@ -81,122 +102,130 @@ export default async function PickListPrintPage({
       </div>
 
       {/* Standardized Pick List Document Container */}
-      <article className="rounded-xl border border-outline-variant/40 bg-surface-white p-8 shadow-elevation-2 print:border-0 print:p-0 print:shadow-none">
+      <article className="rounded-xl border border-slate-300 bg-surface-white p-6 shadow-elevation-2 print:border-0 print:p-0 print:shadow-none">
         {/* Header with Logo and Barcode */}
-        <header className="border-b-2 border-brand-navy pb-6">
+        <header className="border-b-2 border-slate-800 pb-3">
           <div className="flex items-start justify-between gap-6">
             <div>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/api/brand/logo" alt="Dyna-Serv" className="mb-2 h-12 w-auto" />
-              <p className="font-label text-label font-bold uppercase tracking-[0.15em] text-brand-royal-blue">
-                Dyna-Serv Warehouse Inventory Management System
+              <div className="flex items-center gap-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/api/brand/logo" alt="Dyna-Serv" className="h-7 w-auto object-contain" />
+                <div>
+                  <h1 className="font-heading font-bold text-xs uppercase tracking-wider text-slate-800 leading-none">
+                    DYNA-SERV GLOBAL CORPORATION
+                  </h1>
+                  <p className="mt-0.5 font-heading text-sm font-extrabold uppercase tracking-wide text-brand-navy">
+                    Official Warehouse Pick List
+                  </p>
+                </div>
+              </div>
+              <p className="mt-1 font-mono text-[10px] text-slate-500">
+                Pick List Directive &bull; Floor Allocation &bull; Warehouse Operations
               </p>
-              <h1 className="mt-1 font-heading text-headline-lg font-extrabold text-on-surface">
-                Official Pick List
-              </h1>
             </div>
+
             <div className="text-right">
-              <p className="font-label text-label-xs uppercase tracking-wider text-text-grey">
-                Document Number
+              <p className="font-mono text-[10px] uppercase font-bold text-slate-500">
+                Pick List No.
               </p>
-              <p className="mt-0.5 font-mono text-mono-lg font-bold text-brand-navy">
+              <p className="font-mono text-xs font-black text-brand-navy">
                 {pickList.pickListNumber}
               </p>
-              <p className="mt-1 font-body text-body-xs text-text-grey">
-                Date: {pickList.createdAt.toLocaleDateString()}
+              <p className="font-mono text-[10px] text-slate-500">
+                Date: {pickList.createdAt.toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}
               </p>
-              <div className="mt-2 flex justify-end">
+              <div className="mt-1 flex justify-end">
                 <WrrBarcode wrrNumber={pickList.pickListNumber} />
               </div>
             </div>
           </div>
 
           {/* Delivery & Shipment Info Grid */}
-          <div className="mt-6 grid grid-cols-2 gap-4 rounded-lg bg-surface-light-grey/60 p-4 font-body text-body-sm sm:grid-cols-4">
+          <div className="mt-3 grid grid-cols-2 gap-2.5 rounded-lg border border-slate-200 bg-slate-50/70 p-2.5 font-mono text-[11px] sm:grid-cols-4">
             <div className="col-span-2">
-              <p className="font-label text-label-xs font-bold uppercase text-text-grey">Delivery To (Customer)</p>
-              <p className="mt-0.5 font-bold text-on-surface">{party?.name ?? pickList.customerPartyId}</p>
-              <p className="mt-0.5 text-body-xs text-text-grey">
+              <p className="text-[9px] font-bold uppercase text-slate-500">Delivery To (Customer)</p>
+              <p className="mt-0.5 font-bold text-slate-900">{party?.name ?? pickList.customerPartyId}</p>
+              <p className="text-[10px] text-slate-500 truncate">
                 {[party?.address1, party?.address2].filter(Boolean).join(", ") || "Address on file"}
               </p>
             </div>
             <div>
-              <p className="font-label text-label-xs font-bold uppercase text-text-grey">Inventory Model</p>
-              <p className="mt-0.5 font-semibold text-on-surface">
-                {FLOW_LABELS[pickList.flowType] ?? pickList.flowType}
+              <p className="text-[9px] font-bold uppercase text-slate-500">Inventory Model</p>
+              <p className="mt-0.5 font-bold text-slate-900">
+                {FLOW_LABELS[pickList.flowType] ?? pickList.flowType.toUpperCase()}
               </p>
             </div>
             <div>
-              <p className="font-label text-label-xs font-bold uppercase text-text-grey">Pick List Status</p>
-              <p className="mt-0.5 font-semibold uppercase text-brand-royal-blue">{pickList.status}</p>
+              <p className="text-[9px] font-bold uppercase text-slate-500">Pick List Status</p>
+              <p className="mt-0.5 font-bold uppercase text-brand-navy">{pickList.status}</p>
             </div>
           </div>
         </header>
 
         {/* Pick List Line Items Table */}
-        <section className="mt-6">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-heading text-title-md font-bold text-on-surface">
+        <section className="mt-4">
+          <div className="mb-1.5 flex items-center justify-between">
+            <h2 className="font-heading text-xs font-bold uppercase tracking-wider text-slate-800">
               Items to Pick ({lines.length} Lines)
             </h2>
-            <span className="font-mono text-body-sm font-bold text-brand-navy">
+            <span className="font-mono text-[10px] uppercase font-bold text-slate-500">
               Total Boxes: {totalBoxes.toLocaleString()} &bull; Total PCS: {totalPieces.toLocaleString()}
             </span>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left font-body text-body-sm">
+            <table className="w-full border-collapse border border-slate-300 font-mono text-[11px]">
               <thead>
-                <tr className="border-y-2 border-brand-navy bg-surface-light-grey text-xs">
-                  <th className="px-2.5 py-3 text-center font-label font-bold uppercase text-on-surface w-12">
-                    Picked
+                <tr className="bg-slate-100 text-[10px]">
+                  <th className="border border-slate-300 px-2 py-1.5 text-center uppercase font-bold tracking-wider text-slate-700 w-10">
+                    Check
                   </th>
-                  <th className="px-2.5 py-3 font-label font-bold uppercase text-on-surface">#</th>
-                  <th className="px-3 py-3 font-label font-bold uppercase text-on-surface">Item Code</th>
-                  <th className="px-3 py-3 font-label font-bold uppercase text-on-surface">Customer PN</th>
-                  <th className="px-3 py-3 font-label font-bold uppercase text-on-surface">Description</th>
-                  <th className="px-3 py-3 font-label font-bold uppercase text-on-surface">Lot Number</th>
-                  <th className="px-3 py-3 font-label font-bold uppercase text-on-surface">Location</th>
-                  <th className="px-3 py-3 text-right font-label font-bold uppercase text-on-surface">SPQ</th>
-                  <th className="px-3 py-3 text-right font-label font-bold uppercase text-on-surface">Boxes</th>
-                  <th className="px-3 py-3 text-right font-label font-bold uppercase text-on-surface">Qty (PCS)</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-left uppercase font-bold tracking-wider text-slate-700 w-8">#</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-left uppercase font-bold tracking-wider text-slate-700">Item Code</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-left uppercase font-bold tracking-wider text-slate-700">Customer PN</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-left uppercase font-bold tracking-wider text-slate-700">Description</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-left uppercase font-bold tracking-wider text-slate-700">Lot Number</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-left uppercase font-bold tracking-wider text-slate-700">Location</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-right uppercase font-bold tracking-wider text-slate-700">SPQ</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-right uppercase font-bold tracking-wider text-slate-700">Boxes</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-right uppercase font-bold tracking-wider text-slate-700">Qty (PCS)</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-outline-variant/30">
+              <tbody className="divide-y divide-slate-200">
                 {lines.map((line, index) => {
                   return (
-                    <tr key={line.id} className="hover:bg-surface-light-grey/30">
+                    <tr key={line.id} className="hover:bg-slate-50">
                       {/* Physical Floor Verification Checkbox Box */}
-                      <td className="px-2.5 py-3 text-center">
-                        <div className="mx-auto h-5 w-5 rounded border-2 border-on-surface/80 bg-surface-white" />
+                      <td className="border border-slate-300 px-2 py-1.5 text-center">
+                        <div className="mx-auto h-3.5 w-3.5 rounded border border-slate-500 bg-surface-white" />
                       </td>
-                      <td className="px-2.5 py-3 font-mono text-text-grey">{index + 1}</td>
-                      <td className="px-3 py-3 font-mono font-bold text-on-surface">{line.itemCode}</td>
-                      <td className="px-3 py-3 font-mono text-text-grey">{line.customerItemCode ?? "—"}</td>
-                      <td className="px-3 py-3 text-on-surface">{line.itemDescription ?? "—"}</td>
-                      <td className="px-3 py-3 font-mono text-on-surface font-semibold">{line.lotNumber}</td>
-                      <td className="px-3 py-3 font-mono font-bold text-brand-navy">{line.locationLabel}</td>
-                      <td className="px-3 py-3 text-right font-mono text-on-surface">{line.spq.toLocaleString()}</td>
-                      <td className="px-3 py-3 text-right font-mono font-bold text-on-surface">
+                      <td className="border border-slate-300 px-2 py-1.5 text-slate-500 font-bold">{index + 1}</td>
+                      <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-900">{line.itemCode}</td>
+                      <td className="border border-slate-300 px-2 py-1.5 text-slate-600">{line.customerItemCode ?? "—"}</td>
+                      <td className="border border-slate-300 px-2 py-1.5 text-slate-800 max-w-[200px] truncate">{line.itemDescription ?? "—"}</td>
+                      <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-900">{line.lotNumber}</td>
+                      <td className="border border-slate-300 px-2 py-1.5 font-bold text-brand-navy">{line.locationLabel}</td>
+                      <td className="border border-slate-300 px-2 py-1.5 text-right text-slate-700">{line.spq.toLocaleString()}</td>
+                      <td className="border border-slate-300 px-2 py-1.5 text-right font-bold text-slate-900">
                         {line.numberOfBoxes.toLocaleString()}
                       </td>
-                      <td className="px-3 py-3 text-right font-mono font-bold text-on-surface">
+                      <td className="border border-slate-300 px-2 py-1.5 text-right font-bold text-brand-navy">
                         {line.qty.toLocaleString()}
                       </td>
                     </tr>
                   );
                 })}
               </tbody>
-              <tfoot className="border-t-2 border-brand-navy bg-surface-light-grey/80 font-bold">
+              <tfoot className="border-t-2 border-slate-800 bg-slate-100 font-bold">
                 <tr>
-                  <td colSpan={8} className="px-3 py-3 text-right font-label uppercase text-on-surface">
+                  <td colSpan={8} className="border border-slate-300 px-2 py-1.5 text-right text-[10px] uppercase text-slate-800">
                     Total Pick Allocation:
                   </td>
-                  <td className="px-3 py-3 text-right font-mono text-mono-md font-bold text-brand-navy">
-                    {totalBoxes.toLocaleString()}
+                  <td className="border border-slate-300 px-2 py-1.5 text-right text-brand-navy">
+                    {totalBoxes.toLocaleString()} boxes
                   </td>
-                  <td className="px-3 py-3 text-right font-mono text-mono-md font-bold text-brand-navy">
-                    {totalPieces.toLocaleString()}
+                  <td className="border border-slate-300 px-2 py-1.5 text-right text-brand-navy">
+                    {totalPieces.toLocaleString()} pcs
                   </td>
                 </tr>
               </tfoot>
@@ -204,45 +233,39 @@ export default async function PickListPrintPage({
           </div>
         </section>
 
-        {/* Summary Totals Box */}
-        <div className="mt-6 flex justify-end">
-          <div className="w-full max-w-sm rounded-lg border border-outline-variant/40 bg-surface-light-grey/40 p-4 font-body text-body-md">
-            <dl className="space-y-1.5">
-              <div className="flex justify-between">
-                <dt className="text-text-grey">Total Packages / Boxes:</dt>
-                <dd className="font-mono font-bold text-on-surface">{totalBoxes.toLocaleString()} boxes</dd>
+        {/* Avoid breaking across pages for summary and sign-offs */}
+        <div className="avoid-break mt-6">
+          {/* Document Footer & Triple Sign-Off Authorization */}
+          <footer className="grid grid-cols-3 gap-4 border-t border-slate-300 pt-4 font-mono text-[10px]">
+            <div className="rounded-lg border border-slate-300 bg-slate-50/50 p-3">
+              <p className="uppercase font-bold text-slate-700">Prepared By (Supervisor):</p>
+              <div className="mt-8 border-b border-dashed border-slate-400" />
+              <div className="mt-1 flex justify-between text-slate-500">
+                <span>Signature</span>
+                <span>Date</span>
               </div>
-              <div className="flex justify-between border-t border-outline-variant/30 pt-1.5">
-                <dt className="font-bold text-on-surface">Total Pick Quantity:</dt>
-                <dd className="font-mono font-bold text-brand-navy text-headline-sm">{totalPieces.toLocaleString()} PCS</dd>
+            </div>
+            <div className="rounded-lg border border-slate-300 bg-slate-50/50 p-3">
+              <p className="uppercase font-bold text-slate-700">Picked By (Floor Staff):</p>
+              <div className="mt-8 border-b border-dashed border-slate-400" />
+              <div className="mt-1 flex justify-between text-slate-500">
+                <span>Signature</span>
+                <span>Date</span>
               </div>
-            </dl>
-          </div>
-        </div>
-
-        {/* Document Footer & Triple Sign-Off Authorization */}
-        <footer className="mt-12 border-t border-outline-variant/50 pt-6">
-          <div className="grid grid-cols-3 gap-8 font-body text-body-sm text-text-grey">
-            <div>
-              <p className="font-label text-label-xs font-bold uppercase text-on-surface">Prepared By (Inventory Supervisor):</p>
-              <div className="mt-8 border-b border-on-surface/40 pb-1" />
-              <p className="mt-1 text-xs">Signature &amp; Date</p>
             </div>
-            <div>
-              <p className="font-label text-label-xs font-bold uppercase text-on-surface">Picked By (Warehouse Floor Staff):</p>
-              <div className="mt-8 border-b border-on-surface/40 pb-1" />
-              <p className="mt-1 text-xs">Signature &amp; Date</p>
+            <div className="rounded-lg border border-slate-300 bg-slate-50/50 p-3">
+              <p className="uppercase font-bold text-brand-navy">Dispatched &amp; Verified By:</p>
+              <div className="mt-8 border-b border-dashed border-slate-400" />
+              <div className="mt-1 flex justify-between text-slate-500">
+                <span>Signature</span>
+                <span>Date</span>
+              </div>
             </div>
-            <div>
-              <p className="font-label text-label-xs font-bold uppercase text-on-surface">Dispatched &amp; Verified By:</p>
-              <div className="mt-8 border-b border-on-surface/40 pb-1" />
-              <p className="mt-1 text-xs">Signature &amp; Date</p>
-            </div>
-          </div>
-          <p className="mt-8 text-center text-xs text-text-grey/70">
-            Dyna-Serv Warehouse Inventory Management System &bull; Confidential Picking Document
+          </footer>
+          <p className="mt-4 text-center font-mono text-[10px] text-slate-400">
+            Dyna-Serv Warehouse Inventory Management System &bull; Confidential Picking Directive &bull; Permanent Retention
           </p>
-        </footer>
+        </div>
       </article>
     </main>
   );

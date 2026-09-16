@@ -14,8 +14,46 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Eye, EyeOff } from "lucide-react";
 import { signInAction } from "./actions";
+
+function ArchEyeIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3 13C5 6.5 19 6.5 21 13" />
+      <circle cx="12" cy="13.5" r="3.5" />
+    </svg>
+  );
+}
+
+function ArchEyeOffIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3 13C5 6.5 19 6.5 21 13" />
+      <circle cx="12" cy="13.5" r="3.5" />
+      <line x1="3" y1="3" x2="21" y2="21" strokeWidth="2" />
+    </svg>
+  );
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -34,7 +72,7 @@ export default function LoginPage() {
       const result = await Promise.race([
         signInAction({ email, password }),
         new Promise<never>((_, reject) => {
-          timeoutId = setTimeout(() => reject(new Error("Sign-in timed out")), 8_000);
+          timeoutId = setTimeout(() => reject(new Error("Sign-in timed out")), 20_000);
         }),
       ]).finally(() => {
         if (timeoutId) clearTimeout(timeoutId);
@@ -111,7 +149,7 @@ export default function LoginPage() {
                 onClick={() => setShowPassword((visible) => !visible)}
                 className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-on-surface/60 hover:text-brand-navy focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
               >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                {showPassword ? <ArchEyeOffIcon size={18} /> : <ArchEyeIcon size={18} />}
               </button>
             </div>
           </div>
