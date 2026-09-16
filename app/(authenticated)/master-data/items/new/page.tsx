@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db/client";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
-import { getActiveSupplierParties, getItemCategories } from "@/lib/db/queries/items";
+import { getActiveSupplierParties, getItemCategories, getNextSuggestedItemCodes } from "@/lib/db/queries/items";
 import { ItemForm } from "../_components/item-form";
 import { createItemAction } from "../_actions";
 
@@ -22,9 +22,10 @@ export default async function NewItemPage({ searchParams }: PageProps) {
 
   const { code } = await searchParams;
 
-  const [categories, supplierParties] = await Promise.all([
+  const [categories, supplierParties, suggestedCodes] = await Promise.all([
     getItemCategories(db),
     getActiveSupplierParties(db),
+    getNextSuggestedItemCodes(db),
   ]);
 
   return (
@@ -45,6 +46,8 @@ export default async function NewItemPage({ searchParams }: PageProps) {
           supplierParties={supplierParties}
           cancelHref="/enrollment?tab=items"
           initialCode={code}
+          suggestedDsgcCode={suggestedCodes.nextDsgcCode}
+          suggestedGenericCode={suggestedCodes.nextGenericCode}
         />
       </div>
     </div>
