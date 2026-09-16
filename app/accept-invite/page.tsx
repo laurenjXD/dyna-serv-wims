@@ -30,11 +30,45 @@ export default function AcceptInvitePage() {
   const [pending, setPending] = useState(false);
   const [loadingInitial, setLoadingInitial] = useState(true);
 
-  // Attempt to load pre-assigned name from invite metadata
+  // Attempt to load pre-assigned name from invite metadata and process tokens
   useEffect(() => {
+    const supabase = createClient();
+
+    // Check if there is a PKCE code in query params to exchange
+    if (typeof window !== "undefined") {
+      const searchParams = new URLSearchParams(window.location.search);
+      const code = searchParams.get("code");
+      if (code) {
+        supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
+          if (!error && data?.user) {
+            const prefilled =
+              data.user.user_metadata?.displayName ||
+              data.user.user_metadata?.display_name ||
+              data.user.user_metadata?.full_name ||
+              "";
+            if (prefilled) setDisplayName(prefilled);
+          }
+        });
+      }
+    }
+
+    // Subscribe to auth state changes for hash tokens (#access_token=...)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        const prefilled =
+          session.user.user_metadata?.displayName ||
+          session.user.user_metadata?.display_name ||
+          session.user.user_metadata?.full_name ||
+          "";
+        if (prefilled) setDisplayName(prefilled);
+      }
+      setLoadingInitial(false);
+    });
+
     async function loadUser() {
       try {
-        const supabase = createClient();
         const { data } = await supabase.auth.getUser();
         if (data.user) {
           const prefilledName =
@@ -53,6 +87,10 @@ export default function AcceptInvitePage() {
       }
     }
     loadUser();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {

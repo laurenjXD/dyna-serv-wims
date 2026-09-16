@@ -20,6 +20,7 @@ import { createPageResolver } from "@/lib/auth/page-resolver";
 import { inviteUserSchema, suspendUserSchema, type InviteUserInput } from "@/lib/user-settings/schemas";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
+import { generateTeamInvitationEmailHtml } from "@/lib/notifications/email-composer-templates";
 
 export type ActionResult<T = undefined> =
   | { ok: true; data: T }
@@ -477,25 +478,46 @@ export async function inviteUser(input: InviteUserInput): Promise<ActionResult<{
       // ignore in test or background environments
     }
   }
-  const redirectTo = `${origin ?? "http://localhost:3000"}/auth/callback?next=/accept-invite`;
+  const redirectTo = `${origin ?? "http://localhost:3000"}/accept-invite`;
 
   const serviceClient = createServiceRoleClient();
-  const { data: authData, error: authError } = await serviceClient.auth.admin.inviteUserByEmail(
-    parsed.data.email,
-    {
+  let newUserId: string;
+  let inviteActionUrl: string | undefined;
+
+  // Prefer generateLink so we can dispatch our own branded invitation via Resend
+  const { data: linkData, error: linkError } = await serviceClient.auth.admin.generateLink({
+    type: "invite",
+    email: parsed.data.email,
+    options: {
       data: {
         displayName: parsed.data.displayName,
         employee_id: `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
       },
       redirectTo,
     },
-  );
+  });
 
-  if (authError || !authData.user) {
-    return { ok: false, error: authError?.message ?? "Failed to create user." };
+  if (!linkError && linkData?.user) {
+    newUserId = linkData.user.id;
+    inviteActionUrl = linkData.properties?.action_link;
+  } else {
+    // Fallback to inviteUserByEmail if generateLink is unavailable in mock or older runtime
+    const { data: authData, error: authError } = await serviceClient.auth.admin.inviteUserByEmail(
+      parsed.data.email,
+      {
+        data: {
+          displayName: parsed.data.displayName,
+          employee_id: `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
+        },
+        redirectTo,
+      },
+    );
+
+    if (authError || !authData?.user) {
+      return { ok: false, error: authError?.message ?? linkError?.message ?? "Failed to create user." };
+    }
+    newUserId = authData.user.id;
   }
-
-  const newUserId = authData.user.id;
 
   // 1. Insert user_profiles row
   await db.insert(userProfiles).values({
@@ -504,6 +526,27 @@ export async function inviteUser(input: InviteUserInput): Promise<ActionResult<{
     status: "invited",
     activatedByUserId: permission.context.userId,
   });
+
+  // If we generated an invite action link, dispatch branded transactional email via Resend
+  if (inviteActionUrl && process.env.RESEND_API_KEY) {
+    try {
+      const { Resend } = await import("resend");
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      const from = process.env.RESEND_FROM_OPERATIONS ?? process.env.RESEND_FROM ?? "onboarding@resend.dev";
+      await resend.emails.send({
+        from,
+        to: [parsed.data.email],
+        subject: "Invitation to join Dyna-Serv WIMS",
+        html: generateTeamInvitationEmailHtml({
+          displayName: parsed.data.displayName,
+          roleName: parsed.data.role.replace(/_/g, " ").toUpperCase(),
+          inviteUrl: inviteActionUrl,
+        }),
+      });
+    } catch (err) {
+      console.error("[inviteUser] Failed to send email via Resend:", err);
+    }
+  }
 
   // 2. Assign role in user_roles table
   try {
