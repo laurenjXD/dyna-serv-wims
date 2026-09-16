@@ -348,16 +348,22 @@ export async function getActiveSupplierParties(
   }
 
   return Array.from(map.values()).map((p) => {
-    // Map assigned party role to automatic default inventory model
+    // Map assigned party role to automatic default inventory model:
+    // - Customer: VMI (receives warehouse services & billable) and trading buyer
+    // - Supplier: Trading only (goods supplier)
+    // - Internal Warehouse: Supplies
     let defaultInventoryModel: "vmi" | "trading" | "supplies" | undefined;
-    if (p.roles.includes("vendor")) {
+    if (p.roles.includes("customer")) {
       defaultInventoryModel = "vmi";
     } else if (p.roles.includes("supplier")) {
       defaultInventoryModel = "trading";
     } else if (p.roles.includes("internal_warehouse")) {
       defaultInventoryModel = "supplies";
-    } else if (p.roles.includes("customer") || p.roles.includes("end_customer")) {
+    } else if (p.roles.includes("end_customer")) {
       defaultInventoryModel = "trading";
+    } else if (p.roles.includes("vendor")) {
+      // Legacy fallback for previously enrolled vendors
+      defaultInventoryModel = "vmi";
     }
 
     return {

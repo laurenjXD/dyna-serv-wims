@@ -16,9 +16,8 @@ import { computeNextPartyCode } from "@/lib/db/queries/parties";
 import { PhoneInputField } from "@/components/global/PhoneInputField";
 
 const PARTY_ROLES = [
-  { value: "vendor", label: "Vendor" },
-  { value: "supplier", label: "Supplier" },
-  { value: "customer", label: "Customer" },
+  { value: "supplier", label: "Supplier (Trading Only)" },
+  { value: "customer", label: "Customer (VMI Client & Trading Buyer — Billable)" },
   { value: "end_customer", label: "End Customer" },
   { value: "internal_warehouse", label: "Internal Warehouse" },
 ] as const;
@@ -47,11 +46,11 @@ export function PartyForm({ action, party, initialCode, existingCodes = [], canc
     if (party && party.roles.length > 0) {
       return party.roles.map((r) => r.role);
     }
-    return ["vendor"];
+    return ["supplier"];
   });
 
   // Primary active role for code serialization
-  const primaryRole = selectedRoles[0] || "vendor";
+  const primaryRole = selectedRoles[0] || "supplier";
 
   // Dynamic suggested serialized code based on the selected role and existing party codes
   const suggestedCode = useMemo(() => {
@@ -67,7 +66,7 @@ export function PartyForm({ action, party, initialCode, existingCodes = [], canc
         return prev.includes(roleVal) ? prev : [...prev, roleVal];
       } else {
         const filtered = prev.filter((r) => r !== roleVal);
-        return filtered.length > 0 ? filtered : ["vendor"];
+        return filtered.length > 0 ? filtered : ["supplier"];
       }
     });
   };
