@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Printer, Download, ChevronDown, ChevronUp, FileText } from "lucide-react";
+import { SoaStatusSelect, type SoaStatus } from "@/components/billing/SoaStatusSelect";
 
 export interface SoaCategory {
   name: string;
@@ -30,6 +31,7 @@ export interface SoaData {
   creditsUsd: number;
   paymentsAppliedUsd: number;
   outstandingBalanceUsd: number;
+  status?: string;
   categories: SoaCategory[];
 }
 
@@ -194,6 +196,9 @@ export function SoaDetailClient({
   otherChargeRows,
 }: SoaDetailClientProps) {
   const [showAppendix, setShowAppendix] = useState(false);
+  const [status, setStatus] = useState<SoaStatus>(
+    (soaData.status as SoaStatus) || "Issued"
+  );
 
   const effectiveCbmRows = cbmRows && cbmRows.length > 0 ? cbmRows : DEMO_CBM_ROWS;
   const effectiveDeliveryRows = deliveryRows && deliveryRows.length > 0 ? deliveryRows : DEMO_DELIVERY_ROWS;
@@ -324,10 +329,16 @@ export function SoaDetailClient({
             <ArrowLeft size={18} strokeWidth={2.4} aria-hidden="true" />
             Back to Billing
           </Link>
-          <h1 className="mt-1 text-xl font-bold text-slate-900">
-            Statement of Account &mdash; {soaData.soaNumber}
-          </h1>
-          <p className="text-sm text-slate-500">
+          <div className="mt-1 flex flex-wrap items-center gap-3">
+            <h1 className="text-xl font-bold text-slate-900">
+              Statement of Account &mdash; {soaData.soaNumber}
+            </h1>
+            <div className="flex items-center gap-2 bg-surface-white px-2.5 py-1 rounded-full border border-slate-200 shadow-2xs">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Status:</span>
+              <SoaStatusSelect value={status} onChange={(next) => setStatus(next)} size="sm" />
+            </div>
+          </div>
+          <p className="text-sm text-slate-500 mt-0.5">
             {soaData.customerName} &bull; {soaData.billingPeriod}
           </p>
         </div>
@@ -411,6 +422,7 @@ export function SoaDetailClient({
                 {[
                   ["Billing Period", `${soaData.billingPeriodStart} – ${soaData.billingPeriodEnd}`],
                   ["Customer", soaData.contractNumber],
+                  ["Status", status],
                   ["Terms", "Net 30 Days"],
                   ["Currency", "USD"],
                   ["Forex Rate", `1 USD = ₱${soaData.exchangeRate.toFixed(2)} PHP`],
@@ -424,6 +436,7 @@ export function SoaDetailClient({
             </table>
           </div>
         </div>
+
 
         {/* Charges table */}
         <div className="mt-7 border border-slate-300 print-avoid-break">

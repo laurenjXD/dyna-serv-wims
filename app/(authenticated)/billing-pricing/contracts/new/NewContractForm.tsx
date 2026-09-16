@@ -23,6 +23,10 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
   const showVmi = contractType === "vmi" || contractType === "vmi_trading";
   const showTrading = contractType === "trading" || contractType === "vmi_trading";
 
+  // Dynamic section numbering depending on active inventory model / contract type
+  const vmiSectionNumber = showVmi ? 2 : null;
+  const tradingSectionNumber = showTrading ? (showVmi ? 3 : 2) : null;
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setIsSubmitting(true);
@@ -214,7 +218,7 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
         <div className="space-y-4 pt-4 border-t border-border-light bg-surface-background/30 p-4 rounded-card">
           <div className="flex items-center justify-between border-b border-border-light pb-2">
             <h2 className="font-heading text-heading-sm font-bold text-brand-blue flex items-center">
-              2. VMI Storage Policy &amp; Rate Terms Configuration
+              {vmiSectionNumber}. VMI Storage Policy &amp; Rate Terms Configuration
             </h2>
             <span className="text-body-xs font-mono font-semibold px-2 py-0.5 bg-brand-blue/10 text-brand-blue rounded">
               VMI Policy Active
@@ -419,7 +423,7 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
         <div className="space-y-4 pt-4 border-t border-border-light bg-surface-background/30 p-4 rounded-card">
           <div className="flex items-center justify-between border-b border-border-light pb-2">
             <h2 className="font-heading text-heading-sm font-bold text-brand-blue flex items-center">
-              3. Trading Pricing &amp; Margin Policy Configuration
+              {tradingSectionNumber}. Trading Pricing &amp; Margin Policy Configuration
             </h2>
             <span className="text-body-xs font-mono font-semibold px-2 py-0.5 bg-green-100 text-green-800 rounded">
               Trading Policy Active

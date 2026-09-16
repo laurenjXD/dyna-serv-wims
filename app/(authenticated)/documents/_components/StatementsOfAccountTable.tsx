@@ -5,6 +5,7 @@ import { Lock, FileText, Download, Share2, Eye } from "lucide-react";
 import type { StatementOfAccountArchiveRow } from "@/lib/db/queries/documents";
 import { DocumentPreviewModal, type PreviewDocData } from "./DocumentPreviewModal";
 import { TablePagination } from "@/components/ui/TablePagination";
+import { SoaStatusSelect } from "@/components/billing/SoaStatusSelect";
 
 interface StatementsOfAccountTableProps {
   rows: StatementOfAccountArchiveRow[];
@@ -145,9 +146,9 @@ export function StatementsOfAccountTable({
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex rounded-full px-2.5 py-0.5 font-label text-label uppercase tracking-wider ${statusClass}`}>
-                        {r.status}
-                      </span>
+                      <SoaStatusSelect
+                        value={r.status}
+                      />
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1.5">
