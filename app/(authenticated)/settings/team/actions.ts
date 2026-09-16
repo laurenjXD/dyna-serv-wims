@@ -477,7 +477,7 @@ export async function inviteUser(input: InviteUserInput): Promise<ActionResult<{
       // ignore in test or background environments
     }
   }
-  const redirectTo = `${origin ?? "http://localhost:3000"}/accept-invite`;
+  const redirectTo = `${origin ?? "http://localhost:3000"}/auth/callback?next=/accept-invite`;
 
   const serviceClient = createServiceRoleClient();
   const { data: authData, error: authError } = await serviceClient.auth.admin.inviteUserByEmail(

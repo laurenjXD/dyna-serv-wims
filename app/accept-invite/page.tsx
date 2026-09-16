@@ -34,13 +34,20 @@ export default function AcceptInvitePage() {
   useEffect(() => {
     const supabase = createClient();
 
-    // Check if there is a PKCE code in query params to exchange
+    // 1. Process URL search parameters: errors, PKCE code, OTP token_hash
     if (typeof window !== "undefined") {
       const searchParams = new URLSearchParams(window.location.search);
+      const errParam = searchParams.get("error_description") || searchParams.get("error");
+      if (errParam) {
+        setError(errParam);
+      }
+
       const code = searchParams.get("code");
       if (code) {
         supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
-          if (!error && data?.user) {
+          if (error) {
+            setError(error.message);
+          } else if (data?.user) {
             const prefilled =
               data.user.user_metadata?.displayName ||
               data.user.user_metadata?.display_name ||
@@ -50,9 +57,28 @@ export default function AcceptInvitePage() {
           }
         });
       }
+
+      const tokenHash = searchParams.get("token_hash");
+      const type = searchParams.get("type");
+      if (tokenHash && (type === "invite" || type === "recovery" || type === "email" || type === "signup")) {
+        supabase.auth
+          .verifyOtp({ token_hash: tokenHash, type: type as "invite" | "recovery" | "email" | "signup" })
+          .then(({ data, error }) => {
+            if (error) {
+              setError(error.message);
+            } else if (data?.user) {
+              const prefilled =
+                data.user.user_metadata?.displayName ||
+                data.user.user_metadata?.display_name ||
+                data.user.user_metadata?.full_name ||
+                "";
+              if (prefilled) setDisplayName(prefilled);
+            }
+          });
+      }
     }
 
-    // Subscribe to auth state changes for hash tokens (#access_token=...)
+    // 2. Subscribe to auth state changes for hash tokens (#access_token=...)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
