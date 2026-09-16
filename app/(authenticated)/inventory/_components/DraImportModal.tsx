@@ -37,7 +37,9 @@ export function DraImportModal({ itemCode, availableStock, onClose, onApplyQuant
 
     // Look for matching item row or default to total requested quantity
     const matchingRow = res.parseResult.rows.find(
-      (r) => r.itemCode && r.itemCode.toLowerCase() === itemCode.toLowerCase()
+      (r) =>
+        (r.itemCode && r.itemCode.toLowerCase() === itemCode.toLowerCase()) ||
+        (r.customerItemCode && r.customerItemCode.toLowerCase() === itemCode.toLowerCase())
     );
 
     if (matchingRow && matchingRow.requestedQty) {
