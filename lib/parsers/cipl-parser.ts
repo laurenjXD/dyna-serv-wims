@@ -1,5 +1,4 @@
-import ExcelJS from "exceljs";
-import { PassThrough } from "node:stream";
+import * as XLSX from "xlsx";
 
 export interface ParsedCiplRow {
   itemCode?: string;
@@ -45,7 +44,7 @@ export async function parseCiplDocument(buffer: Buffer, fileName: string): Promi
       fileName,
       header: {},
       rows: [],
-      errors: [`Unsupported file format .${ext}. Please upload an Excel (.xlsx, .csv) or PDF (.pdf) file.`],
+      errors: [`Unsupported file format .${ext}. Please upload an Excel (.xlsx, .xls, .csv) or PDF (.pdf) file.`],
       warnings: [],
     };
   }
@@ -62,169 +61,241 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
   };
 
   try {
-    const workbook = new ExcelJS.Workbook();
-    const isCsv = fileName.toLowerCase().endsWith(".csv");
-
-    if (isCsv) {
-      const bufferStream = new PassThrough();
-      bufferStream.end(buffer);
-      await workbook.csv.read(bufferStream);
-    } else {
-      await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
-    }
-
-    const worksheet = workbook.worksheets[0];
-    if (!worksheet) {
+    const workbook = XLSX.read(buffer, { type: "buffer" });
+    if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
       result.ok = false;
       result.errors.push("The uploaded Excel workbook contains no worksheets.");
+      return result;
+    }
+
+    // Look for preferred sheets: "Invoice", "Packing List", "CIPL", or default to first sheet
+    let targetSheetName = workbook.SheetNames[0];
+    for (const name of workbook.SheetNames) {
+      const lower = name.toLowerCase();
+      if (lower.includes("invoice") || lower.includes("cipl") || lower.includes("packing")) {
+        targetSheetName = name;
+        break;
+      }
+    }
+
+    const worksheet = workbook.Sheets[targetSheetName];
+    const rawRows: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null });
+
+    if (!rawRows || rawRows.length === 0) {
+      result.ok = false;
+      result.errors.push(`Sheet "${targetSheetName}" contains no data.`);
       return result;
     }
 
     let headerRowIndex = -1;
     const colMap: Record<string, number> = {};
 
-    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-      if (rowNumber > 25) return;
-      const values = row.values as (string | number | undefined | null)[];
-      const rowText = values.map((v) => String(v ?? "").toLowerCase()).join(" ");
+    // Scan top 30 rows for metadata (Invoice #, Date, Vendor) and find column headers
+    for (let r = 0; r < Math.min(rawRows.length, 30); r++) {
+      const row = rawRows[r] || [];
+      const rowStr = row.map((c) => String(c ?? "").trim()).join(" ");
+      const rowLower = rowStr.toLowerCase();
 
-      if (rowText.includes("invoice") || rowText.includes("cipl")) {
-        values.forEach((cell, idx) => {
-          const str = String(cell ?? "");
-          if (str.toLowerCase().includes("inv") || str.toLowerCase().includes("cipl")) {
-            const nextCell = values[idx + 1];
-            if (nextCell && !result.header.ciplReference) {
-              result.header.ciplReference = String(nextCell).trim();
+      // Extract Invoice Reference
+      if (!result.header.ciplReference) {
+        for (let c = 0; c < row.length; c++) {
+          const cellStr = String(row[c] ?? "").trim();
+          const match = cellStr.match(/(?:INVOICE|CIPL|REF)\s*(?:#|NO|NUM|NUMBER|REF|REFERENCE)?\s*[:.-]\s*([A-Z0-9_-]{3,})/i);
+          if (match && match[1] && !/^(no|num|number|ref|reference|form|advice|list)$/i.test(match[1])) {
+            result.header.ciplReference = match[1];
+            break;
+          } else if (/^(?:INVOICE|CIPL|REF)\s*(?:#|NO|NUM|NUMBER|REF|REFERENCE)?\s*[:.-]?$/i.test(cellStr)) {
+            const nextCell = String(row[c + 1] ?? "").trim();
+            if (nextCell && !/^(no|num|number|ref|reference|form|advice|list)$/i.test(nextCell)) {
+              result.header.ciplReference = nextCell;
+              break;
             }
           }
-        });
+        }
       }
 
-      if (
-        headerRowIndex === -1 &&
-        (rowText.includes("item") || rowText.includes("sku") || rowText.includes("part") || rowText.includes("description")) &&
-        (rowText.includes("qty") || rowText.includes("quantity") || rowText.includes("count") || rowText.includes("package") || rowText.includes("carton"))
-      ) {
-        headerRowIndex = rowNumber;
-        values.forEach((cell, idx) => {
-          if (!cell) return;
-          const val = String(cell).trim().toLowerCase();
-          if (
-            val.includes("item code") ||
-            val.includes("sku") ||
-            val === "item" ||
-            val.includes("part no") ||
-            val.includes("part number") ||
-            val.includes("product code") ||
-            val.includes("dsgc item") ||
-            val.includes("supplier item") ||
-            val.includes("material")
-          ) {
-            colMap["itemCode"] = idx;
-          } else if (
-            val.includes("customer item") ||
-            val.includes("cust item") ||
-            val.includes("cust pn") ||
-            val.includes("customer pn") ||
-            val.includes("client item") ||
-            val.includes("customer part") ||
-            val.includes("buyer item")
-          ) {
-            colMap["customerItemCode"] = idx;
-          } else if (val.includes("lot") || val.includes("batch")) {
-            colMap["lotNumber"] = idx;
-          } else if (val.includes("mfg") || val.includes("manufacture")) {
-            colMap["mfgDate"] = idx;
-          } else if (val.includes("expiry") || val.includes("exp date")) {
-            colMap["expiryDate"] = idx;
-          } else if (
-            val.includes("pkg") ||
-            val.includes("package") ||
-            val.includes("carton") ||
-            val.includes("ctn") ||
-            val.includes("no. of") ||
-            val.includes("box count") ||
-            val.includes("total packages") ||
-            val.includes("boxes")
-          ) {
-            colMap["noOfPackages"] = idx;
-          } else if (
-            val.includes("spq") ||
-            val.includes("pcs/ctn") ||
-            val.includes("units/ctn") ||
-            val.includes("pcs per box") ||
-            val.includes("pcs per carton") ||
-            val.includes("standard pkg qty") ||
-            val.includes("standard package")
-          ) {
-            colMap["spq"] = idx;
-          } else if (
-            val.includes("total qty") ||
-            val.includes("expected") ||
-            val.includes("received") ||
-            val === "qty" ||
-            val === "quantity" ||
-            val.includes("pcs")
-          ) {
-            colMap["expectedQty"] = idx;
-          } else if (val.includes("uom") || val.includes("unit of measure") || val === "unit" || val.includes("measurement")) {
-            colMap["uom"] = idx;
-          } else if (val.includes("disp") || val.includes("disposition")) {
-            colMap["disposition"] = idx;
-          } else if (val.includes("remark") || val.includes("note") || val.includes("comment")) {
-            colMap["remarks"] = idx;
+      // Extract Date
+      if (!result.header.invoiceDate) {
+        for (let c = 0; c < row.length; c++) {
+          const cellStr = String(row[c] ?? "").trim();
+          const dateMatch = cellStr.match(/(?:DATE)\s*[:.-]?\s*([0-9A-Z-/.]+)/i);
+          if (dateMatch && dateMatch[1] && dateMatch[1].length >= 4) {
+            result.header.invoiceDate = dateMatch[1];
+            break;
           }
-        });
+        }
       }
-    });
+
+      // Check if this row looks like the table column header
+      const hasItemCol =
+        rowLower.includes("item") ||
+        rowLower.includes("sku") ||
+        rowLower.includes("part") ||
+        rowLower.includes("p/n") ||
+        rowLower.includes("ubot") ||
+        rowLower.includes("description");
+      const hasQtyCol =
+        rowLower.includes("qty") ||
+        rowLower.includes("quantity") ||
+        rowLower.includes("count") ||
+        rowLower.includes("package") ||
+        rowLower.includes("carton") ||
+        rowLower.includes("boxes") ||
+        rowLower.includes("amount");
+
+      if (headerRowIndex === -1 && hasItemCol && hasQtyCol) {
+        headerRowIndex = r;
+
+        // Also check if next row contains sub-headers (e.g. Row 17 "UBoT", Row 18 "P/N")
+        const nextRow = rawRows[r + 1] || [];
+
+        for (let c = 0; c < Math.max(row.length, nextRow.length); c++) {
+          const topVal = String(row[c] ?? "").trim().toLowerCase();
+          const subVal = String(nextRow[c] ?? "").trim().toLowerCase();
+          const combined = `${topVal} ${subVal}`.trim();
+
+          if (
+            combined.includes("item code") ||
+            combined.includes("sku") ||
+            combined === "item" ||
+            combined.includes("ubot") ||
+            combined.includes("dsgc item") ||
+            combined.includes("supplier item") ||
+            combined.includes("part no") ||
+            combined.includes("part number") ||
+            combined.includes("product code") ||
+            combined.includes("material") ||
+            (combined.includes("p/n") && !combined.includes("cust"))
+          ) {
+            colMap["itemCode"] = c;
+          } else if (
+            combined.includes("customer item") ||
+            combined.includes("cust item") ||
+            combined.includes("cust p/n") ||
+            combined.includes("cust pn") ||
+            combined.includes("customer pn") ||
+            combined.includes("client item") ||
+            combined.includes("customer part") ||
+            combined.includes("buyer item")
+          ) {
+            colMap["customerItemCode"] = c;
+          } else if (combined.includes("lot") || combined.includes("batch")) {
+            colMap["lotNumber"] = c;
+          } else if (combined.includes("mfg") || combined.includes("manufacture")) {
+            colMap["mfgDate"] = c;
+          } else if (combined.includes("expiry") || combined.includes("exp date")) {
+            colMap["expiryDate"] = c;
+          } else if (
+            combined.includes("pkg") ||
+            combined.includes("package") ||
+            combined.includes("carton") ||
+            combined.includes("ctn") ||
+            combined.includes("no. of") ||
+            combined.includes("box count") ||
+            combined.includes("total packages") ||
+            combined.includes("boxes")
+          ) {
+            colMap["noOfPackages"] = c;
+          } else if (
+            combined.includes("spq") ||
+            combined.includes("pcs/ctn") ||
+            combined.includes("units/ctn") ||
+            combined.includes("pcs per box") ||
+            combined.includes("pcs per carton") ||
+            combined.includes("standard pkg qty") ||
+            combined.includes("standard package")
+          ) {
+            colMap["spq"] = c;
+          } else if (
+            combined.includes("total qty") ||
+            combined.includes("expected") ||
+            combined.includes("received") ||
+            combined === "qty" ||
+            combined === "quantity" ||
+            combined.includes("quantity") ||
+            combined.includes("pcs")
+          ) {
+            colMap["expectedQty"] = c;
+          } else if (
+            combined.includes("uom") ||
+            combined.includes("unit of measure") ||
+            combined === "unit" ||
+            combined.includes("measurement")
+          ) {
+            colMap["uom"] = c;
+          } else if (combined.includes("disp") || combined.includes("disposition")) {
+            colMap["disposition"] = c;
+          } else if (combined.includes("remark") || combined.includes("note") || combined.includes("comment")) {
+            colMap["remarks"] = c;
+          }
+        }
+      }
+    }
 
     if (headerRowIndex === -1) {
-      headerRowIndex = 1;
+      headerRowIndex = 0;
       colMap["itemCode"] = 1;
-      colMap["expectedQty"] = 2;
-      colMap["uom"] = 3;
-      colMap["lotNumber"] = 4;
+      colMap["expectedQty"] = 6;
+      colMap["uom"] = 7;
       result.warnings.push("Could not unambiguously identify table headers; using default column positions.");
     }
 
-    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-      if (rowNumber <= headerRowIndex) return;
+    // Process data rows
+    const startRow = headerRowIndex + 1;
+    for (let r = startRow; r < rawRows.length; r++) {
+      const row = rawRows[r];
+      if (!row || row.length === 0) continue;
 
-      const values = row.values as (string | number | undefined | null)[];
-      const itemCodeRaw = colMap["itemCode"] ? values[colMap["itemCode"]] : undefined;
-      const qtyRaw = colMap["expectedQty"] ? values[colMap["expectedQty"]] : undefined;
-      const packageCountRaw = colMap["noOfPackages"] ? values[colMap["noOfPackages"]] : undefined;
-      const spqRaw = colMap["spq"] ? values[colMap["spq"]] : undefined;
+      const itemCodeRaw = colMap["itemCode"] !== undefined ? row[colMap["itemCode"]] : undefined;
+      const qtyRaw = colMap["expectedQty"] !== undefined ? row[colMap["expectedQty"]] : undefined;
+      const packageCountRaw = colMap["noOfPackages"] !== undefined ? row[colMap["noOfPackages"]] : undefined;
+      const spqRaw = colMap["spq"] !== undefined ? row[colMap["spq"]] : undefined;
 
-      if (!itemCodeRaw && !qtyRaw && !packageCountRaw) return;
+      // Skip summary, footer, or HS Code breakdown rows
+      const rowStr = row.map((c) => String(c ?? "")).join(" ").toLowerCase();
+      if (
+        rowStr.includes("total") ||
+        rowStr.includes("subtotal") ||
+        rowStr.includes("page ") ||
+        rowStr.includes("hs code") ||
+        rowStr.includes("incoterms") ||
+        rowStr.includes("computer-generated")
+      ) {
+        continue;
+      }
 
-      const itemCode = itemCodeRaw ? String(itemCodeRaw).trim() : "";
-      let expectedQty = qtyRaw ? Number(qtyRaw) : undefined;
-      const packageCount = packageCountRaw ? Number(packageCountRaw) : undefined;
-      const spq = spqRaw ? Number(spqRaw) : undefined;
+      if (!itemCodeRaw) continue;
 
-      // Qty is equal to SPQ × No. of packages (cartons)
+      const itemCode = String(itemCodeRaw).trim();
+      // If itemCode is just a header word like "P/N" from a multi-row header or line number, skip
+      if (/^(p\/n|item|part no|descriptions?|qty|uom|#)$/i.test(itemCode)) continue;
+
+      let expectedQty = qtyRaw !== undefined && qtyRaw !== null && qtyRaw !== "" ? Number(qtyRaw) : undefined;
+      const packageCount = packageCountRaw !== undefined && packageCountRaw !== null && packageCountRaw !== "" ? Number(packageCountRaw) : undefined;
+      const spq = spqRaw !== undefined && spqRaw !== null && spqRaw !== "" ? Number(spqRaw) : undefined;
+
+      // Compute Qty if missing: Qty = SPQ × Package Count
       if ((!expectedQty || isNaN(expectedQty)) && packageCount && spq && !isNaN(packageCount) && !isNaN(spq)) {
         expectedQty = packageCount * spq;
       } else if ((!expectedQty || isNaN(expectedQty)) && packageCount && !isNaN(packageCount)) {
         expectedQty = packageCount;
       }
 
-      const lotNumber = colMap["lotNumber"] && values[colMap["lotNumber"]] ? String(values[colMap["lotNumber"]]).trim() : undefined;
-      const uom = colMap["uom"] && values[colMap["uom"]] ? String(values[colMap["uom"]]).trim() : "BOX";
-      const remarks = colMap["remarks"] && values[colMap["remarks"]] ? String(values[colMap["remarks"]]).trim() : undefined;
+      const lotNumber = colMap["lotNumber"] !== undefined && row[colMap["lotNumber"]] ? String(row[colMap["lotNumber"]]).trim() : undefined;
+      const uom = colMap["uom"] !== undefined && row[colMap["uom"]] ? String(row[colMap["uom"]]).trim() : "BOX";
+      const remarks = colMap["remarks"] !== undefined && row[colMap["remarks"]] ? String(row[colMap["remarks"]]).trim() : undefined;
 
       let disposition: "store" | "inspect" = "store";
-      if (colMap["disposition"] && values[colMap["disposition"]]) {
-        const dispVal = String(values[colMap["disposition"]]).toLowerCase();
+      if (colMap["disposition"] !== undefined && row[colMap["disposition"]]) {
+        const dispVal = String(row[colMap["disposition"]]).toLowerCase();
         if (dispVal.includes("inspect") || dispVal.includes("hold") || dispVal.includes("quarantine")) {
           disposition = "inspect";
         }
       }
 
       let mfgDate: string | undefined;
-      if (colMap["mfgDate"] && values[colMap["mfgDate"]]) {
-        const d = values[colMap["mfgDate"]];
+      if (colMap["mfgDate"] !== undefined && row[colMap["mfgDate"]]) {
+        const d = row[colMap["mfgDate"]];
         if (d && typeof d === "object" && "toISOString" in d) {
           mfgDate = (d as Date).toISOString().slice(0, 10);
         } else {
@@ -233,8 +304,8 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
       }
 
       let expiryDate: string | undefined;
-      if (colMap["expiryDate"] && values[colMap["expiryDate"]]) {
-        const d = values[colMap["expiryDate"]];
+      if (colMap["expiryDate"] !== undefined && row[colMap["expiryDate"]]) {
+        const d = row[colMap["expiryDate"]];
         if (d && typeof d === "object" && "toISOString" in d) {
           expiryDate = (d as Date).toISOString().slice(0, 10);
         } else {
@@ -245,7 +316,7 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
       if (itemCode || (expectedQty && expectedQty > 0)) {
         result.rows.push({
           itemCode: itemCode || undefined,
-          customerItemCode: colMap["customerItemCode"] && values[colMap["customerItemCode"]] ? String(values[colMap["customerItemCode"]]).trim() : undefined,
+          customerItemCode: colMap["customerItemCode"] !== undefined && row[colMap["customerItemCode"]] ? String(row[colMap["customerItemCode"]]).trim() : undefined,
           lotNumber,
           mfgDate,
           expiryDate,
@@ -257,7 +328,7 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
           disposition,
         });
       }
-    });
+    }
 
     if (result.rows.length === 0) {
       result.warnings.push("No valid line item rows were extracted from the Excel sheet.");

@@ -1,5 +1,4 @@
-import ExcelJS from "exceljs";
-import { PassThrough } from "node:stream";
+import * as XLSX from "xlsx";
 
 export interface ParsedDraRow {
   itemCode?: string;
@@ -40,7 +39,7 @@ export async function parseDraDocument(buffer: Buffer, fileName: string): Promis
       fileName,
       header: {},
       rows: [],
-      errors: [`Unsupported file format .${ext}. Please upload an Excel (.xlsx, .csv) or PDF (.pdf) file.`],
+      errors: [`Unsupported file format .${ext}. Please upload an Excel (.xlsx, .xls, .csv) or PDF (.pdf) file.`],
       warnings: [],
     };
   }
@@ -57,75 +56,138 @@ async function parseDraExcel(buffer: Buffer, fileName: string): Promise<DraParse
   };
 
   try {
-    const workbook = new ExcelJS.Workbook();
-    const isCsv = fileName.toLowerCase().endsWith(".csv");
-
-    if (isCsv) {
-      const bufferStream = new PassThrough();
-      bufferStream.end(buffer);
-      await workbook.csv.read(bufferStream);
-    } else {
-      await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
-    }
-
-    const worksheet = workbook.worksheets[0];
-    if (!worksheet) {
+    const workbook = XLSX.read(buffer, { type: "buffer" });
+    if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
       result.ok = false;
       result.errors.push("The uploaded Excel workbook contains no worksheets.");
+      return result;
+    }
+
+    // Pick first non-lookup sheet (skip "DO NOT EDIT" or lookup sheets)
+    let targetSheetName = workbook.SheetNames[0];
+    for (const name of workbook.SheetNames) {
+      const lower = name.toLowerCase();
+      if (!lower.includes("do not edit") && !lower.includes("lookup") && !lower.includes("master")) {
+        targetSheetName = name;
+        break;
+      }
+    }
+
+    const worksheet = workbook.Sheets[targetSheetName];
+    const rawRows: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null });
+
+    if (!rawRows || rawRows.length === 0) {
+      result.ok = false;
+      result.errors.push(`Sheet "${targetSheetName}" contains no data.`);
       return result;
     }
 
     let headerRowIndex = -1;
     const colMap: Record<string, number> = {};
 
-    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-      if (rowNumber > 25) return;
-      const values = row.values as (string | number | undefined | null)[];
-      const rowText = values.map((v) => String(v ?? "").toLowerCase()).join(" ");
+    // Scan top 30 rows for metadata and headers
+    for (let r = 0; r < Math.min(rawRows.length, 30); r++) {
+      const row = rawRows[r] || [];
+      const rowStr = row.map((c) => String(c ?? "").trim()).join(" ");
+      const rowLower = rowStr.toLowerCase();
 
-      if (rowText.includes("dra") || rowText.includes("advice") || rowText.includes("release")) {
-        values.forEach((cell, idx) => {
-          const str = String(cell ?? "");
-          if (str.toLowerCase().includes("dra") || str.toLowerCase().includes("ref")) {
-            const nextCell = values[idx + 1];
-            if (nextCell && !result.header.draReference) {
-              result.header.draReference = String(nextCell).trim();
+      // Extract Reference (DSGC WR NO / WRF / DRA / Release No)
+      if (!result.header.draReference) {
+        for (let c = 0; c < row.length; c++) {
+          const cellStr = String(row[c] ?? "").trim();
+          const match = cellStr.match(/(?:DSGC\s*WR|WR|WRF|DRA|RELEASE)\s*(?:NO|#|NUM|NUMBER|REF|REFERENCE)?\s*[:.-]\s*([A-Z0-9_-]{3,})/i);
+          if (match && match[1] && !/^(no|num|number|ref|reference|form|advice|list)$/i.test(match[1])) {
+            result.header.draReference = match[1];
+            break;
+          } else if (/^(?:DSGC\s*WR|WR|WRF|DRA|RELEASE)\s*(?:NO|#|NUM|NUMBER|REF|REFERENCE)?\s*[:.-]?$/i.test(cellStr)) {
+            const nextCell = String(row[c + 1] ?? "").trim();
+            if (nextCell && !/^(no|num|number|ref|reference|form|advice|list)$/i.test(nextCell)) {
+              result.header.draReference = nextCell;
+              break;
             }
           }
-        });
+        }
       }
 
-      if (
-        headerRowIndex === -1 &&
-        (rowText.includes("item") || rowText.includes("sku") || rowText.includes("part") || rowText.includes("description")) &&
-        (rowText.includes("qty") || rowText.includes("quantity") || rowText.includes("release") || rowText.includes("requested") || rowText.includes("package") || rowText.includes("carton"))
-      ) {
-        headerRowIndex = rowNumber;
-        values.forEach((cell, idx) => {
-          if (!cell) return;
-          const val = String(cell).trim().toLowerCase();
+      // Extract Organization (DELIVERY TO:)
+      if (!result.header.customerOrganization) {
+        for (let c = 0; c < row.length; c++) {
+          const cellStr = String(row[c] ?? "").trim();
+          if (/^DELIVERY\s*TO\s*[:.-]?$/i.test(cellStr)) {
+            // Next row or next col
+            const nextCell = String(row[c + 1] ?? "").trim();
+            const belowCell = rawRows[r + 1] ? String(rawRows[r + 1][c] ?? "").trim() : "";
+            result.header.customerOrganization = nextCell || belowCell;
+            break;
+          }
+        }
+      }
+
+      // Extract Date (REQUESTED WITHDRAWAL DATE:)
+      if (!result.header.releaseDate) {
+        for (let c = 0; c < row.length; c++) {
+          const cellStr = String(row[c] ?? "").trim();
+          const dateMatch = cellStr.match(/(?:DATE)\s*[:.-]?\s*([0-9A-Z-/.]+)/i);
+          if (dateMatch && dateMatch[1] && dateMatch[1].length >= 4) {
+            result.header.releaseDate = dateMatch[1];
+            break;
+          } else if (/DATE\s*[:.-]?$/i.test(cellStr)) {
+            const nextCell = String(row[c + 1] ?? "").trim();
+            if (nextCell) {
+              result.header.releaseDate = nextCell;
+              break;
+            }
+          }
+        }
+      }
+
+      // Check if this row is the column header
+      const hasItemCol =
+        rowLower.includes("item") ||
+        rowLower.includes("sku") ||
+        rowLower.includes("part") ||
+        rowLower.includes("cust pn") ||
+        rowLower.includes("cust p/n") ||
+        rowLower.includes("description");
+      const hasQtyCol =
+        rowLower.includes("qty") ||
+        rowLower.includes("quantity") ||
+        rowLower.includes("release") ||
+        rowLower.includes("requested") ||
+        rowLower.includes("package") ||
+        rowLower.includes("boxes") ||
+        rowLower.includes("carton");
+
+      if (headerRowIndex === -1 && hasItemCol && hasQtyCol) {
+        headerRowIndex = r;
+        for (let c = 0; c < row.length; c++) {
+          if (!row[c]) continue;
+          const val = String(row[c]).trim().toLowerCase();
+
           if (
-            val.includes("item code") ||
-            val.includes("sku") ||
-            val === "item" ||
-            val.includes("part no") ||
-            val.includes("part number") ||
-            val.includes("product code") ||
-            val.includes("dsgc item") ||
-            val.includes("supplier item") ||
-            val.includes("material")
-          ) {
-            colMap["itemCode"] = idx;
-          } else if (
             val.includes("customer item") ||
             val.includes("cust item") ||
             val.includes("cust pn") ||
+            val.includes("cust p/n") ||
             val.includes("customer pn") ||
             val.includes("client item") ||
             val.includes("customer part") ||
             val.includes("buyer item")
           ) {
-            colMap["customerItemCode"] = idx;
+            colMap["customerItemCode"] = c;
+          } else if (
+            val === "item code" ||
+            val === "sku" ||
+            val.includes("part no") ||
+            val.includes("part number") ||
+            val.includes("product code") ||
+            val.includes("dsgc item") ||
+            val.includes("supplier item") ||
+            val.includes("material") ||
+            (val.includes("item") && !val.includes("no") && !val.includes("desc") && !val.includes("cust"))
+          ) {
+            // Only set if not customer item or item index
+            if (colMap["itemCode"] === undefined) colMap["itemCode"] = c;
           } else if (
             val.includes("pkg") ||
             val.includes("package") ||
@@ -136,7 +198,7 @@ async function parseDraExcel(buffer: Buffer, fileName: string): Promise<DraParse
             val.includes("total packages") ||
             val.includes("boxes")
           ) {
-            colMap["noOfPackages"] = idx;
+            colMap["noOfPackages"] = c;
           } else if (
             val.includes("spq") ||
             val.includes("pcs/ctn") ||
@@ -146,7 +208,7 @@ async function parseDraExcel(buffer: Buffer, fileName: string): Promise<DraParse
             val.includes("standard pkg qty") ||
             val.includes("standard package")
           ) {
-            colMap["spq"] = idx;
+            colMap["spq"] = c;
           } else if (
             val.includes("requested qty") ||
             val.includes("to pick") ||
@@ -157,39 +219,60 @@ async function parseDraExcel(buffer: Buffer, fileName: string): Promise<DraParse
             val === "quantity" ||
             val.includes("pcs")
           ) {
-            colMap["requestedQty"] = idx;
-          } else if (val.includes("uom") || val.includes("unit of measure") || val === "unit" || val.includes("measurement")) {
-            colMap["uom"] = idx;
+            colMap["requestedQty"] = c;
+          } else if (
+            val.includes("uom") ||
+            val.includes("unit of measure") ||
+            val === "unit" ||
+            val.includes("measurement")
+          ) {
+            colMap["uom"] = c;
           } else if (val.includes("remark") || val.includes("note") || val.includes("comment")) {
-            colMap["remarks"] = idx;
+            colMap["remarks"] = c;
           }
-        });
+        }
       }
-    });
+    }
 
     if (headerRowIndex === -1) {
-      headerRowIndex = 1;
-      colMap["itemCode"] = 1;
-      colMap["requestedQty"] = 2;
-      colMap["uom"] = 3;
+      headerRowIndex = 0;
+      colMap["itemCode"] = 0;
+      colMap["requestedQty"] = 1;
+      colMap["uom"] = 2;
       result.warnings.push("Could not unambiguously identify DRA table headers; using default column positions.");
     }
 
-    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-      if (rowNumber <= headerRowIndex) return;
+    // Process data rows
+    const startRow = headerRowIndex + 1;
+    for (let r = startRow; r < rawRows.length; r++) {
+      const row = rawRows[r];
+      if (!row || row.length === 0) continue;
 
-      const values = row.values as (string | number | undefined | null)[];
-      const itemCodeRaw = colMap["itemCode"] ? values[colMap["itemCode"]] : undefined;
-      const qtyRaw = colMap["requestedQty"] ? values[colMap["requestedQty"]] : undefined;
-      const packageCountRaw = colMap["noOfPackages"] ? values[colMap["noOfPackages"]] : undefined;
-      const spqRaw = colMap["spq"] ? values[colMap["spq"]] : undefined;
+      const rowStr = row.map((c) => String(c ?? "")).join(" ").toLowerCase();
+      if (
+        rowStr.includes("total qty") ||
+        rowStr.includes("total quantity") ||
+        rowStr.includes("subtotal") ||
+        rowStr.includes("delivery instructions") ||
+        rowStr.includes("n/f")
+      ) {
+        continue;
+      }
 
-      if (!itemCodeRaw && !qtyRaw && !packageCountRaw) return;
+      const itemCodeRaw = colMap["itemCode"] !== undefined ? row[colMap["itemCode"]] : undefined;
+      const custItemCodeRaw = colMap["customerItemCode"] !== undefined ? row[colMap["customerItemCode"]] : undefined;
+      const qtyRaw = colMap["requestedQty"] !== undefined ? row[colMap["requestedQty"]] : undefined;
+      const packageCountRaw = colMap["noOfPackages"] !== undefined ? row[colMap["noOfPackages"]] : undefined;
+      const spqRaw = colMap["spq"] !== undefined ? row[colMap["spq"]] : undefined;
 
-      const itemCode = itemCodeRaw ? String(itemCodeRaw).trim() : "";
-      let requestedQty = qtyRaw ? Number(qtyRaw) : undefined;
-      const packageCount = packageCountRaw ? Number(packageCountRaw) : undefined;
-      const spq = spqRaw ? Number(spqRaw) : undefined;
+      if (!itemCodeRaw && !custItemCodeRaw && !qtyRaw && !packageCountRaw) continue;
+
+      const primaryCode = custItemCodeRaw ? String(custItemCodeRaw).trim() : (itemCodeRaw ? String(itemCodeRaw).trim() : "");
+      if (/^(item|part|cust|n\/f|#|total)$/i.test(primaryCode)) continue;
+
+      let requestedQty = qtyRaw !== undefined && qtyRaw !== null && qtyRaw !== "" ? Number(qtyRaw) : undefined;
+      const packageCount = packageCountRaw !== undefined && packageCountRaw !== null && packageCountRaw !== "" ? Number(packageCountRaw) : undefined;
+      const spq = spqRaw !== undefined && spqRaw !== null && spqRaw !== "" ? Number(spqRaw) : undefined;
 
       // Qty is equal to SPQ × No. of packages (cartons)
       if ((!requestedQty || isNaN(requestedQty)) && packageCount && spq && !isNaN(packageCount) && !isNaN(spq)) {
@@ -198,18 +281,18 @@ async function parseDraExcel(buffer: Buffer, fileName: string): Promise<DraParse
         requestedQty = packageCount;
       }
 
-      if (itemCode || (requestedQty && requestedQty > 0)) {
+      if (primaryCode || (requestedQty && requestedQty > 0)) {
         result.rows.push({
-          itemCode: itemCode || undefined,
-          customerItemCode: colMap["customerItemCode"] && values[colMap["customerItemCode"]] ? String(values[colMap["customerItemCode"]]).trim() : undefined,
+          itemCode: itemCodeRaw ? String(itemCodeRaw).trim() : undefined,
+          customerItemCode: custItemCodeRaw ? String(custItemCodeRaw).trim() : undefined,
           requestedQty: requestedQty && !isNaN(requestedQty) ? requestedQty : undefined,
           packageCount: packageCount && !isNaN(packageCount) ? packageCount : undefined,
           spq: spq && !isNaN(spq) ? spq : undefined,
-          uom: colMap["uom"] && values[colMap["uom"]] ? String(values[colMap["uom"]]).trim() : "BOX",
-          remarks: colMap["remarks"] && values[colMap["remarks"]] ? String(values[colMap["remarks"]]).trim() : undefined,
+          uom: colMap["uom"] !== undefined && row[colMap["uom"]] ? String(row[colMap["uom"]]).trim() : "BOX",
+          remarks: colMap["remarks"] !== undefined && row[colMap["remarks"]] ? String(row[colMap["remarks"]]).trim() : undefined,
         });
       }
-    });
+    }
 
     if (result.rows.length === 0) {
       result.warnings.push("No valid line item rows were extracted from the DRA sheet.");
@@ -240,7 +323,8 @@ async function parseDraPdf(buffer: Buffer, fileName: string): Promise<DraParseRe
     const text: string = pdfData.text || "";
     const lines = text.split("\n").map((l: string) => l.trim()).filter(Boolean);
 
-    const refMatch = text.match(/(?:DRA|Release|Advice|Ref)\s*(?:No|#|Num|Reference)?\s*[:.-]?\s*([A-Z0-9_-]{3,30})/i);
+    const refMatch = text.match(/(?:DRA|WRF|DSGC\s*WR|WR)\s*(?:No|#|Num|Reference)?\s*[:.-]?\s*([A-Z0-9_-]{3,30})/i) ||
+      text.match(/(?:Release|Advice|Ref)\s*(?:No|#|Num|Reference)?\s*[:.-]?\s*([A-Z0-9_-]{3,30})/i);
     if (refMatch) {
       result.header.draReference = refMatch[1];
     }

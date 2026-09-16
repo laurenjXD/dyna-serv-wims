@@ -26,6 +26,24 @@ describe("dra-parser", () => {
     expect(result.rows[1].requestedQty).toBe(10);
   });
 
+  it("parses DSGC WR NO as draReference correctly", async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("WR Sheet");
+
+    worksheet.addRow(["Warehouse Release Form"]);
+    worksheet.addRow(["DSGC WR NO:", "WR-2026-0901"]);
+    worksheet.addRow([]);
+    worksheet.addRow(["Item Code", "Requested Qty", "UOM"]);
+    worksheet.addRow(["ITEM-500", 15, "BOX"]);
+
+    const buffer = (await workbook.xlsx.writeBuffer()) as unknown as Buffer;
+    const result = await parseDraDocument(Buffer.from(buffer), "release-form.xlsx");
+
+    expect(result.ok).toBe(true);
+    expect(result.header.draReference).toBe("WR-2026-0901");
+    expect(result.rows[0].requestedQty).toBe(15);
+  });
+
   it("handles unsupported file extensions cleanly", async () => {
     const result = await parseDraDocument(Buffer.from("dummy"), "document.docx");
     expect(result.ok).toBe(false);
