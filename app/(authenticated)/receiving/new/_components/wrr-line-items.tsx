@@ -19,10 +19,12 @@ import { ItemSearchCombobox } from "./ItemSearchCombobox";
 export interface ImportedWrrLine {
   itemId: string;
   customerItemCode: string;
+  description?: string;
   lotNumber: string;
   mfgDate: string;
   expiryDate: string;
   expectedQty: string;
+  unitCbm?: string;
   uom: string;
   remarks: string;
   disposition: "store" | "inspect";
@@ -87,14 +89,14 @@ export function WrrLineItems({
         return {
           lotNumber: imp.lotNumber || "",
           expectedQty: imp.expectedQty || "",
-          unitCbm: item ? item.volumeCbm : "0.001",
+          unitCbm: imp.unitCbm || (item ? item.volumeCbm : "0.001"),
           uom: imp.uom || (item ? item.uom : "BOX"),
           itemCode: item
             ? flowType === "trading"
               ? (item.dsgcItemNumber ?? item.code)
               : (item.supplierItemCode ?? item.code)
             : "",
-          itemDescription: item ? item.name : "",
+          itemDescription: item ? item.name : (imp.description || ""),
           customerItemCode: imp.customerItemCode || (item ? (item.customerItemCode ?? "") : ""),
           manufactureDate: imp.mfgDate || "",
           remarks: imp.remarks || "",

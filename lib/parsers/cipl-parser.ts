@@ -3,12 +3,14 @@ import * as XLSX from "xlsx";
 export interface ParsedCiplRow {
   itemCode?: string;
   customerItemCode?: string;
+  description?: string;
   lotNumber?: string;
   mfgDate?: string;
   expiryDate?: string;
   expectedQty?: number;
   packageCount?: number;
   spq?: number;
+  cbm?: number;
   uom?: string;
   remarks?: string;
   disposition?: "store" | "inspect";
@@ -21,6 +23,7 @@ export interface CiplParseResult {
     ciplReference?: string;
     invoiceDate?: string;
     mawbMbl?: string;
+    ipNumber?: string;
     vendorOrganization?: string;
   };
   rows: ParsedCiplRow[];
@@ -126,6 +129,30 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
         }
       }
 
+      // Extract IP Number (Import Permit)
+      if (!result.header.ipNumber) {
+        for (let c = 0; c < row.length; c++) {
+          const cellStr = String(row[c] ?? "").trim();
+          const ipMatch = cellStr.match(/(?:IP|IMPORT\s*PERMIT)\s*(?:#|NO|NUM)?\s*[:.-]?\s*([A-Z0-9_-]{3,})/i);
+          if (ipMatch && ipMatch[1] && !/^(no|num|number|ref|permit)$/i.test(ipMatch[1])) {
+            result.header.ipNumber = ipMatch[1];
+            break;
+          }
+        }
+      }
+
+      // Extract MAWB / MBL
+      if (!result.header.mawbMbl) {
+        for (let c = 0; c < row.length; c++) {
+          const cellStr = String(row[c] ?? "").trim();
+          const mawbMatch = cellStr.match(/(?:MAWB|MBL|WAYBILL|BL|BILL\s*OF\s*LADING)\s*(?:#|NO|NUM)?\s*[:.-]?\s*([A-Z0-9_-]{3,})/i);
+          if (mawbMatch && mawbMatch[1] && !/^(no|num|number|ref|lading)$/i.test(mawbMatch[1])) {
+            result.header.mawbMbl = mawbMatch[1];
+            break;
+          }
+        }
+      }
+
       // Check if this row looks like the table column header
       const hasItemCol =
         rowLower.includes("item") ||
@@ -155,6 +182,23 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
           const combined = `${topVal} ${subVal}`.trim();
 
           if (
+            combined.includes("description") ||
+            combined.includes("item name") ||
+            combined.includes("desc")
+          ) {
+            colMap["description"] = c;
+          } else if (
+            combined.includes("customer item") ||
+            combined.includes("cust item") ||
+            combined.includes("cust p/n") ||
+            combined.includes("cust pn") ||
+            combined.includes("customer pn") ||
+            combined.includes("client item") ||
+            combined.includes("customer part") ||
+            combined.includes("buyer item")
+          ) {
+            colMap["customerItemCode"] = c;
+          } else if (
             combined.includes("item code") ||
             combined.includes("sku") ||
             combined === "item" ||
@@ -169,22 +213,25 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
           ) {
             colMap["itemCode"] = c;
           } else if (
-            combined.includes("customer item") ||
-            combined.includes("cust item") ||
-            combined.includes("cust p/n") ||
-            combined.includes("cust pn") ||
-            combined.includes("customer pn") ||
-            combined.includes("client item") ||
-            combined.includes("customer part") ||
-            combined.includes("buyer item")
+            combined.includes("shipping lot") ||
+            combined.includes("lot") ||
+            combined.includes("batch")
           ) {
-            colMap["customerItemCode"] = c;
-          } else if (combined.includes("lot") || combined.includes("batch")) {
             colMap["lotNumber"] = c;
-          } else if (combined.includes("mfg") || combined.includes("manufacture")) {
+          } else if (
+            combined.includes("mfd") ||
+            combined.includes("mfg") ||
+            combined.includes("manufacture")
+          ) {
             colMap["mfgDate"] = c;
           } else if (combined.includes("expiry") || combined.includes("exp date")) {
             colMap["expiryDate"] = c;
+          } else if (
+            combined.includes("cbm") ||
+            combined.includes("unit cbm") ||
+            combined.includes("volume")
+          ) {
+            colMap["cbm"] = c;
           } else if (
             combined.includes("pkg") ||
             combined.includes("package") ||
@@ -247,9 +294,12 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
       if (!row || row.length === 0) continue;
 
       const itemCodeRaw = colMap["itemCode"] !== undefined ? row[colMap["itemCode"]] : undefined;
+      const custItemCodeRaw = colMap["customerItemCode"] !== undefined ? row[colMap["customerItemCode"]] : undefined;
+      const descRaw = colMap["description"] !== undefined ? row[colMap["description"]] : undefined;
       const qtyRaw = colMap["expectedQty"] !== undefined ? row[colMap["expectedQty"]] : undefined;
       const packageCountRaw = colMap["noOfPackages"] !== undefined ? row[colMap["noOfPackages"]] : undefined;
       const spqRaw = colMap["spq"] !== undefined ? row[colMap["spq"]] : undefined;
+      const cbmRaw = colMap["cbm"] !== undefined ? row[colMap["cbm"]] : undefined;
 
       // Skip summary, footer, or HS Code breakdown rows
       const rowStr = row.map((c) => String(c ?? "")).join(" ").toLowerCase();
@@ -264,15 +314,16 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
         continue;
       }
 
-      if (!itemCodeRaw) continue;
+      if (!itemCodeRaw && !custItemCodeRaw) continue;
 
-      const itemCode = String(itemCodeRaw).trim();
+      const itemCode = itemCodeRaw ? String(itemCodeRaw).trim() : "";
       // If itemCode is just a header word like "P/N" from a multi-row header or line number, skip
       if (/^(p\/n|item|part no|descriptions?|qty|uom|#)$/i.test(itemCode)) continue;
 
       let expectedQty = qtyRaw !== undefined && qtyRaw !== null && qtyRaw !== "" ? Number(qtyRaw) : undefined;
       const packageCount = packageCountRaw !== undefined && packageCountRaw !== null && packageCountRaw !== "" ? Number(packageCountRaw) : undefined;
       const spq = spqRaw !== undefined && spqRaw !== null && spqRaw !== "" ? Number(spqRaw) : undefined;
+      const cbm = cbmRaw !== undefined && cbmRaw !== null && cbmRaw !== "" ? Number(cbmRaw) : undefined;
 
       // Compute Qty if missing: Qty = SPQ × Package Count
       if ((!expectedQty || isNaN(expectedQty)) && packageCount && spq && !isNaN(packageCount) && !isNaN(spq)) {
@@ -284,6 +335,7 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
       const lotNumber = colMap["lotNumber"] !== undefined && row[colMap["lotNumber"]] ? String(row[colMap["lotNumber"]]).trim() : undefined;
       const uom = colMap["uom"] !== undefined && row[colMap["uom"]] ? String(row[colMap["uom"]]).trim() : "BOX";
       const remarks = colMap["remarks"] !== undefined && row[colMap["remarks"]] ? String(row[colMap["remarks"]]).trim() : undefined;
+      const description = descRaw ? String(descRaw).trim() : undefined;
 
       let disposition: "store" | "inspect" = "store";
       if (colMap["disposition"] !== undefined && row[colMap["disposition"]]) {
@@ -313,16 +365,18 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
         }
       }
 
-      if (itemCode || (expectedQty && expectedQty > 0)) {
+      if (itemCode || custItemCodeRaw || (expectedQty && expectedQty > 0)) {
         result.rows.push({
           itemCode: itemCode || undefined,
-          customerItemCode: colMap["customerItemCode"] !== undefined && row[colMap["customerItemCode"]] ? String(row[colMap["customerItemCode"]]).trim() : undefined,
+          customerItemCode: custItemCodeRaw ? String(custItemCodeRaw).trim() : undefined,
+          description,
           lotNumber,
           mfgDate,
           expiryDate,
           expectedQty: expectedQty && !isNaN(expectedQty) ? expectedQty : undefined,
           packageCount: packageCount && !isNaN(packageCount) ? packageCount : undefined,
           spq: spq && !isNaN(spq) ? spq : undefined,
+          cbm: cbm && !isNaN(cbm) ? cbm : undefined,
           uom,
           remarks,
           disposition,
