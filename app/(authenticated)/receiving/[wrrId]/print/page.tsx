@@ -368,50 +368,31 @@ export default async function WrrPrintPage({ params }: PageProps) {
 
           {/* Avoid breaking across pages for summary and signature blocks */}
           <div className="avoid-break mt-6 pt-4 border-t border-outline-variant/30">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-              {/* Warehouse Stamp & Notes */}
-              <div>
-                <div className="flex items-center gap-4">
-                  <div className="h-20 w-44 rounded-lg border-2 border-dashed border-outline-variant/50 p-2 flex flex-col justify-between">
-                    <p className="font-label text-[10px] font-bold uppercase text-text-grey">
-                      Warehouse Official Stamp
-                    </p>
-                    <p className="font-mono text-[9px] text-text-grey/60 text-right">Dyna-Serv Receiving</p>
-                  </div>
-                  <div className="font-body text-[11px] text-text-grey space-y-0.5">
-                    <p className="font-bold text-on-surface">Warehouse Operations Notice:</p>
-                    <p>Inbound counts certified under ISO 9001:2015 WMS custody guidelines.</p>
-                    <p>Discrepancies reported within 24 hours of receipt confirmation.</p>
-                  </div>
-                </div>
-              </div>
-
+            <div className="flex justify-end">
               {/* Summary totals box */}
-              <div className="flex justify-end">
-                <div className="w-full max-w-sm rounded-lg border border-outline-variant/40 bg-surface-light-grey/40 p-3 font-body text-[11px]">
-                  <dl className="space-y-1">
-                    <div className="flex justify-between">
-                      <dt className="text-text-grey">Total Expected Boxes:</dt>
-                      <dd className="font-mono font-bold text-on-surface">{wrr.items.reduce((sum, item) => sum + item.expectedQty, 0).toLocaleString()} Boxes</dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="text-text-grey">Total Expected Pieces:</dt>
-                      <dd className="font-mono font-bold text-on-surface">{wrr.items.reduce((sum, item) => sum + item.expectedQty * (Number(item.spq) || 1), 0).toLocaleString()} PCS</dd>
-                    </div>
-                    <div className="flex justify-between border-t border-outline-variant/20 pt-1">
-                      <dt className="text-text-grey">Total Actual Received Boxes:</dt>
-                      <dd className="font-mono font-bold text-brand-navy">{wrr.items.reduce((sum, item) => sum + item.scannedQty, 0).toLocaleString()} Boxes</dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="text-text-grey">Total Actual Received Pieces:</dt>
-                      <dd className="font-mono font-bold text-brand-navy">{wrr.items.reduce((sum, item) => sum + item.scannedQty * (Number(item.spq) || 1), 0).toLocaleString()} PCS</dd>
-                    </div>
-                    <div className="flex justify-between border-t border-outline-variant/20 pt-1 client-export-hide-cbm">
-                      <dt className="text-text-grey">Total Shipment CBM:</dt>
-                      <dd className="font-mono font-bold text-on-surface">{wrr.items.reduce((sum, item) => sum + (item.unitCbm * item.expectedQty), 0).toFixed(4)} m³</dd>
-                    </div>
-                  </dl>
-                </div>
+              <div className="w-full max-w-sm rounded-lg border border-outline-variant/40 bg-surface-light-grey/40 p-3 font-body text-[11px]">
+                <dl className="space-y-1">
+                  <div className="flex justify-between">
+                    <dt className="text-text-grey">Total Expected Boxes:</dt>
+                    <dd className="font-mono font-bold text-on-surface">{wrr.items.reduce((sum, item) => sum + item.expectedQty, 0).toLocaleString()} Boxes</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-grey">Total Expected Pieces:</dt>
+                    <dd className="font-mono font-bold text-on-surface">{wrr.items.reduce((sum, item) => sum + item.expectedQty * (Number(item.spq) || 1), 0).toLocaleString()} PCS</dd>
+                  </div>
+                  <div className="flex justify-between border-t border-outline-variant/20 pt-1">
+                    <dt className="text-text-grey">Total Actual Received Boxes:</dt>
+                    <dd className="font-mono font-bold text-brand-navy">{wrr.items.reduce((sum, item) => sum + item.scannedQty, 0).toLocaleString()} Boxes</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-grey">Total Actual Received Pieces:</dt>
+                    <dd className="font-mono font-bold text-brand-navy">{wrr.items.reduce((sum, item) => sum + item.scannedQty * (Number(item.spq) || 1), 0).toLocaleString()} PCS</dd>
+                  </div>
+                  <div className="flex justify-between border-t border-outline-variant/20 pt-1 client-export-hide-cbm">
+                    <dt className="text-text-grey">Total Shipment CBM:</dt>
+                    <dd className="font-mono font-bold text-on-surface">{wrr.items.reduce((sum, item) => sum + (item.unitCbm * item.expectedQty), 0).toFixed(4)} m³</dd>
+                  </div>
+                </dl>
               </div>
             </div>
 

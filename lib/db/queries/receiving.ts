@@ -360,6 +360,7 @@ export type WrrPutawayAllocationRow = {
   id: string;
   wrrItemId: string;
   itemCode: string | null;
+  itemName?: string | null;
   lotNumber: string;
   locationId: string;
   locationLabel: string;
@@ -379,6 +380,7 @@ export async function getWrrPutawayAllocations(
         id: wrrItemPutawayAllocations.id,
         wrrItemId: wrrItemPutawayAllocations.wrrItemId,
         itemCode: itemsTable.code,
+        itemName: itemsTable.name,
         lotNumber: wrrItems.lotNumber,
         locationId: wrrItemPutawayAllocations.locationId,
         locationLabel: locations.label,
