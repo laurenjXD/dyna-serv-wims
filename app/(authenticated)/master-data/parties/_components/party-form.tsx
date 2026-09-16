@@ -16,8 +16,8 @@ import { computeNextPartyCode } from "@/lib/db/queries/parties";
 import { PhoneInputField } from "@/components/global/PhoneInputField";
 
 const PARTY_ROLES = [
-  { value: "supplier", label: "Supplier (Trading Only)" },
-  { value: "customer", label: "Customer (VMI Client & Trading Buyer — Billable)" },
+  { value: "supplier", label: "Supplier" },
+  { value: "customer", label: "Customer" },
   { value: "end_customer", label: "End Customer" },
   { value: "internal_warehouse", label: "Internal Warehouse" },
 ] as const;
@@ -41,21 +41,18 @@ export function PartyForm({ action, party, initialCode, existingCodes = [], canc
   const isEdit = !!party;
   const assignedRoleValues = useMemo(() => new Set(party?.roles.map((r) => r.role) ?? []), [party]);
 
-  // Selected business roles state
+  // Selected business roles state - empty by default for new organizations
   const [selectedRoles, setSelectedRoles] = useState<string[]>(() => {
     if (party && party.roles.length > 0) {
       return party.roles.map((r) => r.role);
     }
-    return ["supplier"];
+    return [];
   });
 
-  // Primary active role for code serialization
-  const primaryRole = selectedRoles[0] || "supplier";
-
-  // Dynamic suggested serialized code based on the selected role and existing party codes
+  // Dynamic suggested serialized code based on the selected roles and existing party codes
   const suggestedCode = useMemo(() => {
-    return computeNextPartyCode(primaryRole, existingCodes);
-  }, [primaryRole, existingCodes]);
+    return computeNextPartyCode(selectedRoles, existingCodes);
+  }, [selectedRoles, existingCodes]);
 
   // Code input state
   const [codeValue, setCodeValue] = useState<string>(party?.code ?? initialCode ?? "");
@@ -65,8 +62,7 @@ export function PartyForm({ action, party, initialCode, existingCodes = [], canc
       if (isChecked) {
         return prev.includes(roleVal) ? prev : [...prev, roleVal];
       } else {
-        const filtered = prev.filter((r) => r !== roleVal);
-        return filtered.length > 0 ? filtered : ["supplier"];
+        return prev.filter((r) => r !== roleVal);
       }
     });
   };
@@ -150,27 +146,15 @@ export function PartyForm({ action, party, initialCode, existingCodes = [], canc
 
         {/* Code */}
         <div>
-          <div className="flex items-center justify-between">
-            <label
-              htmlFor="code"
-              className="block font-label text-label text-on-surface"
-            >
-              Organization Code{" "}
-              <span aria-hidden="true" className="text-brand-red">
-                *
-              </span>
-            </label>
-            {!isEdit && (
-              <button
-                type="button"
-                onClick={() => setCodeValue(suggestedCode)}
-                className="font-mono text-label-xs font-semibold text-brand-navy hover:underline focus:outline-none"
-                title="Click to apply the next sequential code"
-              >
-                Suggested: <span className="font-bold">{suggestedCode}</span> (Auto-fill)
-              </button>
-            )}
-          </div>
+          <label
+            htmlFor="code"
+            className="block font-label text-label text-on-surface"
+          >
+            Organization Code{" "}
+            <span aria-hidden="true" className="text-brand-red">
+              *
+            </span>
+          </label>
           <input
             id="code"
             name="code"
@@ -180,11 +164,11 @@ export function PartyForm({ action, party, initialCode, existingCodes = [], canc
             value={codeValue}
             onChange={(e) => setCodeValue(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Tab" && !e.shiftKey && !codeValue.trim()) {
+              if (e.key === "Tab" && !e.shiftKey && !codeValue.trim() && suggestedCode) {
                 setCodeValue(suggestedCode);
               }
             }}
-            placeholder={isEdit ? "e.g. VENDOR-001" : `e.g. ${suggestedCode}`}
+            placeholder={isEdit ? "e.g. SUPPLIER-001" : suggestedCode ? `e.g. ${suggestedCode}` : "e.g. ORG-001"}
             className={inputClass("code")}
             {...ariaProps("code")}
           />

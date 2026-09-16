@@ -189,23 +189,76 @@ export const PARTY_ROLE_CODE_PREFIXES: Record<string, string[]> = {
   internal_warehouse: ["WH", "WAREHOUSE"],
 };
 
+const CANONICAL_ROLE_ORDER = [
+  "supplier",
+  "customer",
+  "end_customer",
+  "internal_warehouse",
+  "vendor",
+];
+
+const ROLE_SHORT_TAGS: Record<string, string> = {
+  supplier: "SUP",
+  customer: "CUST",
+  end_customer: "ENDCUST",
+  internal_warehouse: "WH",
+  vendor: "VEN",
+};
+
+const ROLE_FULL_TAGS: Record<string, string> = {
+  supplier: "SUPPLIER",
+  customer: "CUSTOMER",
+  end_customer: "ENDCUST",
+  internal_warehouse: "WH",
+  vendor: "VENDOR",
+};
+
 /**
- * Computes the next serialized organization code for a given business role.
- * e.g. VENDOR-001, VENDOR-002, SUPPLIER-001, CUSTOMER-001, etc.
+ * Computes the next serialized organization code for a given business role or set of roles.
+ * - Single role: SUPPLIER-001, CUSTOMER-001, ENDCUST-001, WH-001, etc.
+ * - Multi role: SUP-CUST-001, SUP-ENDCUST-001, CUST-WH-001, etc.
+ * - No role / empty: ORG-001
  */
 export function computeNextPartyCode(
-  role: string = "vendor",
+  roles: string | string[] = [],
   existingCodes: string[] = []
 ): string {
-  const prefixes = PARTY_ROLE_CODE_PREFIXES[role] || ["ORG", "PTY"];
-  const primaryPrefix = prefixes[0];
+  const roleList = (Array.isArray(roles) ? roles : [roles])
+    .filter(Boolean)
+    .map((r) => r.trim().toLowerCase());
+
+  let primaryPrefix = "ORG";
+  let searchPrefixes: string[] = ["ORG", "PTY"];
+
+  if (roleList.length === 1) {
+    const singleRole = roleList[0];
+    searchPrefixes = PARTY_ROLE_CODE_PREFIXES[singleRole] || [singleRole.toUpperCase()];
+    primaryPrefix = searchPrefixes[0];
+  } else if (roleList.length > 1) {
+    const sortedRoles = [...new Set(roleList)].sort((a, b) => {
+      const idxA = CANONICAL_ROLE_ORDER.indexOf(a);
+      const idxB = CANONICAL_ROLE_ORDER.indexOf(b);
+      return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+    });
+
+    primaryPrefix = sortedRoles.map((r) => ROLE_SHORT_TAGS[r] || r.toUpperCase()).join("-");
+
+    const fullTagCombined = sortedRoles.map((r) => ROLE_FULL_TAGS[r] || r.toUpperCase()).join("-");
+    const underscoreShort = sortedRoles.map((r) => ROLE_SHORT_TAGS[r] || r.toUpperCase()).join("_");
+    const underscoreFull = sortedRoles.map((r) => ROLE_FULL_TAGS[r] || r.toUpperCase()).join("_");
+
+    searchPrefixes = Array.from(
+      new Set([primaryPrefix, fullTagCombined, underscoreShort, underscoreFull])
+    );
+  }
 
   let maxNum = 0;
   for (const code of existingCodes) {
     if (!code) continue;
     const trimmed = code.trim();
-    for (const p of prefixes) {
-      const regex = new RegExp(`^${p}-(\\d+)$`, "i");
+    for (const p of searchPrefixes) {
+      const escaped = p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = new RegExp(`^${escaped}-(\\d+)$`, "i");
       const match = trimmed.match(regex);
       if (match && match[1]) {
         const num = parseInt(match[1], 10);
