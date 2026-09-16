@@ -18,7 +18,8 @@ export async function middleware(request: NextRequest) {
   const isAuthRoute =
     pathname === "/login" ||
     pathname.startsWith("/login/") ||
-    pathname.startsWith("/accept-invite");
+    pathname.startsWith("/accept-invite") ||
+    pathname.startsWith("/auth/callback");
   const isApiRoute = pathname.startsWith("/api");
 
   // Redirect unauthenticated visitors attempting to access protected routes to /login

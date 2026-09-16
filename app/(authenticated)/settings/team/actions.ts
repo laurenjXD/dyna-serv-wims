@@ -19,6 +19,7 @@ import { requirePermission } from "@/lib/rbac/guard";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { inviteUserSchema, suspendUserSchema, type InviteUserInput } from "@/lib/user-settings/schemas";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 
 export type ActionResult<T = undefined> =
   | { ok: true; data: T }
@@ -463,6 +464,21 @@ export async function inviteUser(input: InviteUserInput): Promise<ActionResult<{
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
+  let origin = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXT_PUBLIC_APP_URL;
+  if (!origin) {
+    try {
+      const headersList = await headers();
+      const host = headersList.get("x-forwarded-host") ?? headersList.get("host");
+      const proto = headersList.get("x-forwarded-proto") ?? "http";
+      if (host) {
+        origin = `${proto}://${host}`;
+      }
+    } catch {
+      // ignore in test or background environments
+    }
+  }
+  const redirectTo = `${origin ?? "http://localhost:3000"}/auth/callback?next=/accept-invite`;
+
   const serviceClient = createServiceRoleClient();
   const { data: authData, error: authError } = await serviceClient.auth.admin.inviteUserByEmail(
     parsed.data.email,
@@ -471,6 +487,7 @@ export async function inviteUser(input: InviteUserInput): Promise<ActionResult<{
         displayName: parsed.data.displayName,
         employee_id: `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
       },
+      redirectTo,
     },
   );
 

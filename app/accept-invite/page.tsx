@@ -3,9 +3,10 @@
 
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { completeInvitationAcceptance } from "./actions";
+import { createClient } from "@/lib/supabase/client";
 import {
   Warehouse,
   User,
@@ -27,6 +28,32 @@ export default function AcceptInvitePage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [loadingInitial, setLoadingInitial] = useState(true);
+
+  // Attempt to load pre-assigned name from invite metadata
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const supabase = createClient();
+        const { data } = await supabase.auth.getUser();
+        if (data.user) {
+          const prefilledName =
+            data.user.user_metadata?.displayName ||
+            data.user.user_metadata?.display_name ||
+            data.user.user_metadata?.full_name ||
+            "";
+          if (prefilledName) {
+            setDisplayName(prefilledName);
+          }
+        }
+      } catch {
+        // Ignore client session load error
+      } finally {
+        setLoadingInitial(false);
+      }
+    }
+    loadUser();
+  }, []);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
