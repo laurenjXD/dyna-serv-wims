@@ -62,11 +62,12 @@ export function PutawayLocationSelector({
   const safeQuantity = Math.max(0, Math.floor(Number(quantity) || 0));
   const safeUnitCbm = Number(unitCbm) || 0;
   const safeSpq = Math.max(1, Number(spq) || 1);
+  const safeUom = (!uom || uom.toLowerCase() === "pallet" || uom.toLowerCase() === "plt") ? "PCS" : uom.toUpperCase();
 
   const [locationsBySlot, setLocationsBySlot] = useState<string[]>(() =>
     buildInitialAssignment(candidates, safeQuantity, safeUnitCbm),
   );
-  const [attested, setAttested] = useState(false);
+  const [attested, setAttested] = useState(true);
 
   // Combined options: storage candidates (with capacity) + inspection candidates
   const allLocationOptions = useMemo(() => {
@@ -159,11 +160,11 @@ export function PutawayLocationSelector({
               Put all {safeQuantity} declared boxes in
             </label>
             <p className="mt-0.5 font-body text-body-sm text-text-grey">
-              Expected: <strong>{safeQuantity} Boxes</strong> ({(safeQuantity * safeSpq).toLocaleString()} {uom}) · Mark boxes that did not arrive as <strong>Missing</strong> · SPQ: <strong>{safeSpq} {uom}/Box</strong>
+              Expected: <strong>{safeQuantity} Boxes</strong>{safeSpq > 1 ? ` (${(safeQuantity * safeSpq).toLocaleString()} ${safeUom}) · SPQ: ${safeSpq} ${safeUom}/Box` : ""} · Mark boxes that did not arrive as <strong>Missing</strong>
             </p>
           </div>
           <span className="rounded-full bg-[#EEF3FF] px-3 py-1 font-mono text-mono-sm font-bold text-brand-navy">
-            {safeQuantity} boxes ({(safeQuantity * safeSpq).toLocaleString()} {uom})
+            {safeQuantity} boxes{safeSpq > 1 ? ` (${(safeQuantity * safeSpq).toLocaleString()} ${safeUom})` : ""}
           </span>
         </div>
         <div className="mt-3">
@@ -237,7 +238,7 @@ export function PutawayLocationSelector({
           </div>
         ) : (
           <div className="mt-3 rounded-lg bg-surface-light-grey p-3 font-body text-body-sm text-text-grey">
-            This shipment contains {safeQuantity} boxes ({(safeQuantity * safeSpq).toLocaleString()} {uom}). Assign a primary location above.
+            This shipment contains {safeQuantity} boxes{safeSpq > 1 ? ` (${(safeQuantity * safeSpq).toLocaleString()} ${safeUom})` : ""}. Assign a primary location above.
           </div>
         )}
       </details>
@@ -249,21 +250,20 @@ export function PutawayLocationSelector({
             <p className="mt-1 font-heading text-title-md font-bold text-on-surface">Placement summary</p>
           </div>
           <span className="font-mono text-mono-sm font-bold text-brand-navy">
-            {assignedBoxesCount}/{safeQuantity} Boxes Assigned ({ (assignedBoxesCount * safeSpq).toLocaleString() }/{ (safeQuantity * safeSpq).toLocaleString() } {uom})
+            {assignedBoxesCount}/{safeQuantity} Boxes Assigned{safeSpq > 1 ? ` (${(assignedBoxesCount * safeSpq).toLocaleString()}/${(safeQuantity * safeSpq).toLocaleString()} ${safeUom})` : ""}
           </span>
         </div>
 
         {missingBoxesCount > 0 && (
           <div className="mt-3 rounded-xl border border-status-pending/40 bg-[#FFF9EB] p-3">
             <p className="font-label text-body-sm font-bold text-amber-900">
-              OS&amp;D shortage: {missingBoxesCount} declared box{missingBoxesCount === 1 ? "" : "es"} marked Missing ({(missingBoxesCount * safeSpq).toLocaleString()} {uom})
+              OS&amp;D shortage: {missingBoxesCount} declared box{missingBoxesCount === 1 ? "" : "es"} marked Missing{safeSpq > 1 ? ` (${(missingBoxesCount * safeSpq).toLocaleString()} ${safeUom})` : ""}
             </p>
             <p className="mt-0.5 font-body text-body-xs text-amber-800">
               Only the {assignedBoxesCount} received boxes will be assigned and posted to inventory.
             </p>
           </div>
         )}
-
 
         {assignedBoxesCount === 0 ? (
           <div className="mt-3 rounded-xl border border-dashed border-outline-variant/60 bg-surface-white p-4 text-center">
@@ -286,7 +286,7 @@ export function PutawayLocationSelector({
                 <details key={allocation.locationId} className="rounded-xl border border-outline-variant/20 bg-surface-white px-4 py-3">
                   <summary className="cursor-pointer font-body text-body-md text-on-surface">
                     <span className="font-label font-bold">{opt.label}</span>
-                    {" · "}{allocation.qty} box{allocation.qty === 1 ? "" : "es"} ({(allocation.qty * safeSpq).toLocaleString()} {uom})
+                    {" · "}{allocation.qty} box{allocation.qty === 1 ? "" : "es"}{safeSpq > 1 ? ` (${(allocation.qty * safeSpq).toLocaleString()} ${safeUom})` : ""}
                     {isInspection && (
                       <span className="ml-2 rounded bg-status-pending/10 px-1.5 py-0.5 font-label text-label-xs font-bold uppercase text-status-pending">
                         Quarantine / On Hold
@@ -325,16 +325,15 @@ export function PutawayLocationSelector({
         )}
       </section>
 
-      <label className={`flex items-start gap-3 rounded-2xl border-2 p-4 font-body text-body-md text-on-surface ${assignedBoxesCount > 0 ? "border-status-available/30 bg-[#F0FDF8]" : "border-outline-variant/40 bg-surface-light-grey/40 opacity-70"}`}>
+      <label className={`flex items-start gap-3 rounded-2xl border-2 p-4 font-body text-body-md text-on-surface cursor-pointer transition-colors ${assignedBoxesCount > 0 ? (attested ? "border-status-available/40 bg-[#F0FDF8]" : "border-amber-400 bg-amber-50/50") : "border-outline-variant/40 bg-surface-light-grey/40 opacity-70"}`}>
         <input
-          required
           type="checkbox"
           name="presenceAttested"
           value="true"
           disabled={assignedBoxesCount === 0}
           checked={attested && assignedBoxesCount > 0}
           onChange={(event) => setAttested(event.target.checked)}
-          className="mt-0.5 h-6 w-6 shrink-0 cursor-pointer disabled:cursor-not-allowed"
+          className="mt-0.5 h-6 w-6 shrink-0 cursor-pointer disabled:cursor-not-allowed accent-primary"
         />
         <span>
           <span className="block font-label text-label font-bold uppercase tracking-[0.1em] text-status-available">
@@ -343,7 +342,7 @@ export function PutawayLocationSelector({
           <span className="mt-1 block">
             {assignedBoxesCount > 0 ? (
               <>
-                I confirm that {assignedBoxesCount} of {safeQuantity} declared boxes ({(assignedBoxesCount * safeSpq).toLocaleString()} {uom}) are physically present and assigned.
+                I confirm that {assignedBoxesCount} of {safeQuantity} declared boxes{safeSpq > 1 ? ` (${(assignedBoxesCount * safeSpq).toLocaleString()} ${safeUom})` : ""} are physically present and assigned.
                 {missingBoxesCount > 0 && ` (${missingBoxesCount} declared box${missingBoxesCount === 1 ? "" : "es"} missing; OS&D will be recorded).`}
               </>
             ) : (

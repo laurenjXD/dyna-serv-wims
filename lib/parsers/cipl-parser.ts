@@ -333,7 +333,8 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
       }
 
       const lotNumber = colMap["lotNumber"] !== undefined && row[colMap["lotNumber"]] ? String(row[colMap["lotNumber"]]).trim() : undefined;
-      const uom = colMap["uom"] !== undefined && row[colMap["uom"]] ? String(row[colMap["uom"]]).trim() : "BOX";
+      const rawUom = colMap["uom"] !== undefined && row[colMap["uom"]] ? String(row[colMap["uom"]]).trim().toUpperCase() : "BOX";
+      const uom = (rawUom === "PALLET" || rawUom === "PLT") ? "BOX" : rawUom;
       const remarks = colMap["remarks"] !== undefined && row[colMap["remarks"]] ? String(row[colMap["remarks"]]).trim() : undefined;
       const description = descRaw ? String(descRaw).trim() : undefined;
 
@@ -423,7 +424,7 @@ async function parseCiplPdf(buffer: Buffer, fileName: string): Promise<CiplParse
       result.header.invoiceDate = dateMatch[1];
     }
 
-    const lineRegex = /([A-Z0-9_-]{3,25})\s+(?:(LOT-[A-Z0-9_-]+|[A-Z0-9_-]{4,15})\s+)?(\d+(?:\.\d+)?)\s*(BOX|PCS|CTN|PALLET|KG|UNITS|PK)?/gi;
+    const lineRegex = /([A-Z0-9_-]{3,25})\s+(?:(LOT-[A-Z0-9_-]+|[A-Z0-9_-]{4,15})\s+)?(\d+(?:\.\d+)?)\s*(BOX|PCS|CTN|KG|UNITS|PK)?/gi;
 
     for (const line of lines) {
       if (/invoice|packing|commercial|date|page|total|subtotal/i.test(line) && !/\d{2,}/.test(line)) {
@@ -436,7 +437,8 @@ async function parseCiplPdf(buffer: Buffer, fileName: string): Promise<CiplParse
         const potentialItem = match[1];
         const potentialLot = match[2];
         const qtyStr = match[3];
-        const uom = match[4] || "BOX";
+        const rawUom = (match[4] || "BOX").toUpperCase();
+        const uom = (rawUom === "PALLET" || rawUom === "PLT") ? "BOX" : rawUom;
 
         if (/^(total|page|inv|date|ref|no|qty|uom)$/i.test(potentialItem)) continue;
 
@@ -446,7 +448,7 @@ async function parseCiplPdf(buffer: Buffer, fileName: string): Promise<CiplParse
             itemCode: potentialItem,
             lotNumber: potentialLot && !/^(box|pcs|ctn)$/i.test(potentialLot) ? potentialLot : undefined,
             expectedQty: qty,
-            uom: uom.toUpperCase(),
+            uom,
             disposition: "store",
           });
         }

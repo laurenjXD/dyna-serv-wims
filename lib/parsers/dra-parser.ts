@@ -282,13 +282,15 @@ async function parseDraExcel(buffer: Buffer, fileName: string): Promise<DraParse
       }
 
       if (primaryCode || (requestedQty && requestedQty > 0)) {
+        const rawUom = colMap["uom"] !== undefined && row[colMap["uom"]] ? String(row[colMap["uom"]]).trim().toUpperCase() : "BOX";
+        const uom = (rawUom === "PALLET" || rawUom === "PLT") ? "BOX" : rawUom;
         result.rows.push({
           itemCode: itemCodeRaw ? String(itemCodeRaw).trim() : undefined,
           customerItemCode: custItemCodeRaw ? String(custItemCodeRaw).trim() : undefined,
           requestedQty: requestedQty && !isNaN(requestedQty) ? requestedQty : undefined,
           packageCount: packageCount && !isNaN(packageCount) ? packageCount : undefined,
           spq: spq && !isNaN(spq) ? spq : undefined,
-          uom: colMap["uom"] !== undefined && row[colMap["uom"]] ? String(row[colMap["uom"]]).trim() : "BOX",
+          uom,
           remarks: colMap["remarks"] !== undefined && row[colMap["remarks"]] ? String(row[colMap["remarks"]]).trim() : undefined,
         });
       }
@@ -329,7 +331,7 @@ async function parseDraPdf(buffer: Buffer, fileName: string): Promise<DraParseRe
       result.header.draReference = refMatch[1];
     }
 
-    const lineRegex = /([A-Z0-9_-]{3,25})\s+(\d+(?:\.\d+)?)\s*(BOX|PCS|CTN|PALLET|KG|UNITS|PK)?/gi;
+    const lineRegex = /([A-Z0-9_-]{3,25})\s+(\d+(?:\.\d+)?)\s*(BOX|PCS|CTN|KG|UNITS|PK)?/gi;
 
     for (const line of lines) {
       if (/delivery|release|advice|date|page|total|subtotal/i.test(line) && !/\d{2,}/.test(line)) {
@@ -341,7 +343,8 @@ async function parseDraPdf(buffer: Buffer, fileName: string): Promise<DraParseRe
       while ((match = lineRegex.exec(line)) !== null) {
         const potentialItem = match[1];
         const qtyStr = match[2];
-        const uom = match[3] || "BOX";
+        const rawUom = (match[3] || "BOX").toUpperCase();
+        const uom = (rawUom === "PALLET" || rawUom === "PLT") ? "BOX" : rawUom;
 
         if (/^(total|page|dra|date|ref|no|qty|uom)$/i.test(potentialItem)) continue;
 
@@ -350,7 +353,7 @@ async function parseDraPdf(buffer: Buffer, fileName: string): Promise<DraParseRe
           result.rows.push({
             itemCode: potentialItem,
             requestedQty: qty,
-            uom: uom.toUpperCase(),
+            uom,
           });
         }
       }

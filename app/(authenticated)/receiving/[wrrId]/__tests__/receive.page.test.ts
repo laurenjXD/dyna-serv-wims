@@ -285,11 +285,11 @@ describe(
     );
 
     it(
-      "AC R3.3-R3.5: one pallet QR is explicitly verified before batch locations are requested",
+      "AC R3.3-R3.5: one carton QR is explicitly verified before batch locations are requested",
       () => {
         const source = pageSource();
-        expect(source).toContain("Scan one pallet QR to verify the boxes");
-        expect(source).toContain("Pallet verified");
+        expect(source).toContain("Scan carton or item barcode to verify");
+        expect(source).toContain("Item verified");
         expect(source).not.toContain("Verify another carton individually");
         expect(source).toContain("item.scannedQty >= 1 && !isCommitted");
       },
