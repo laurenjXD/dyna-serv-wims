@@ -151,15 +151,27 @@ export function PartyForm({ action, party, initialCode, existingCodes = [], canc
 
         {/* Code */}
         <div>
-          <label
-            htmlFor="code"
-            className="block font-label text-label text-on-surface"
-          >
-            Organization Code{" "}
-            <span aria-hidden="true" className="text-brand-red">
-              *
-            </span>
-          </label>
+          <div className="flex items-center justify-between">
+            <label
+              htmlFor="code"
+              className="block font-label text-label text-on-surface"
+            >
+              Organization Code{" "}
+              <span aria-hidden="true" className="text-brand-red">
+                *
+              </span>
+            </label>
+            {!isEdit && (
+              <button
+                type="button"
+                onClick={() => setCodeValue(suggestedCode)}
+                className="font-mono text-label-xs font-semibold text-brand-navy hover:underline focus:outline-none"
+                title="Click to apply the next sequential code"
+              >
+                Suggested: <span className="font-bold">{suggestedCode}</span> (Auto-fill)
+              </button>
+            )}
+          </div>
           <input
             id="code"
             name="code"

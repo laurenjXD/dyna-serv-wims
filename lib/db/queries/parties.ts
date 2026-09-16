@@ -181,12 +181,12 @@ export async function getAllPartyCodes(db: DbLike): Promise<string[]> {
   return (rows as Array<{ code: string }>).map((r) => r.code);
 }
 
-export const PARTY_ROLE_CODE_PREFIXES: Record<string, string> = {
-  vendor: "VENDOR",
-  supplier: "SUPPLIER",
-  customer: "CUSTOMER",
-  end_customer: "ENDCUST",
-  internal_warehouse: "WH",
+export const PARTY_ROLE_CODE_PREFIXES: Record<string, string[]> = {
+  vendor: ["VENDOR", "VND", "VEN"],
+  supplier: ["SUPPLIER", "SUP"],
+  customer: ["CUSTOMER", "CUST"],
+  end_customer: ["ENDCUST", "END_CUST", "ECUST"],
+  internal_warehouse: ["WH", "WAREHOUSE"],
 };
 
 /**
@@ -197,21 +197,25 @@ export function computeNextPartyCode(
   role: string = "vendor",
   existingCodes: string[] = []
 ): string {
-  const prefix = PARTY_ROLE_CODE_PREFIXES[role] ?? "ORG";
-  const regex = new RegExp(`^${prefix}-(\\d+)$`, "i");
+  const prefixes = PARTY_ROLE_CODE_PREFIXES[role] || ["ORG", "PTY"];
+  const primaryPrefix = prefixes[0];
 
   let maxNum = 0;
   for (const code of existingCodes) {
     if (!code) continue;
-    const match = code.trim().match(regex);
-    if (match && match[1]) {
-      const num = parseInt(match[1], 10);
-      if (!isNaN(num) && num > maxNum) {
-        maxNum = num;
+    const trimmed = code.trim();
+    for (const p of prefixes) {
+      const regex = new RegExp(`^${p}-(\\d+)$`, "i");
+      const match = trimmed.match(regex);
+      if (match && match[1]) {
+        const num = parseInt(match[1], 10);
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
       }
     }
   }
 
   const nextNum = maxNum + 1;
-  return `${prefix}-${String(nextNum).padStart(3, "0")}`;
+  return `${primaryPrefix}-${String(nextNum).padStart(3, "0")}`;
 }
