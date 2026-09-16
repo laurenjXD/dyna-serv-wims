@@ -15,17 +15,18 @@ import {
   UserPlus,
   Sliders,
   Search,
-  Smartphone,
-  CheckCircle2,
-  Shield,
-  FileText,
-  Clock,
   ChevronRight,
-  ExternalLink,
+  Mail,
+  UserX,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  X,
 } from "lucide-react";
 import { roleLabel } from "@/lib/user-settings/roles";
 import { InviteUserModal } from "./InviteUserModal";
 import { SuspendUserDialog } from "./SuspendUserDialog";
+import { CancelInviteDialog } from "./CancelInviteDialog";
 import { UserAuditDrawer } from "./UserAuditDrawer";
 import { RoleManagementModal } from "./RoleManagementModal";
 import { TablePagination } from "@/components/ui/TablePagination";
@@ -35,7 +36,12 @@ import type {
   TeamMember,
   DynamicRole,
 } from "@/app/(authenticated)/settings/team/actions";
-import { listRoles, listTeamMembers } from "@/app/(authenticated)/settings/team/actions";
+import {
+  listRoles,
+  listTeamMembers,
+  resendInvite as defaultResendInvite,
+  cancelInvite as defaultCancelInvite,
+} from "@/app/(authenticated)/settings/team/actions";
 import type { InviteUserInput } from "@/lib/user-settings/schemas";
 
 export function UserManagementGrid({
@@ -44,12 +50,16 @@ export function UserManagementGrid({
   inviteUser,
   suspendUser,
   reactivateUser,
+  resendInvite = defaultResendInvite,
+  cancelInvite = defaultCancelInvite,
 }: {
   initialMembers: TeamMember[];
   parties: ActivePartyOption[];
   inviteUser: (input: InviteUserInput) => Promise<{ ok: boolean; error?: string }>;
   suspendUser: (input: { userId: string; reason: string }) => Promise<{ ok: boolean; error?: string }>;
   reactivateUser: (userId: string) => Promise<{ ok: boolean; error?: string }>;
+  resendInvite?: (userId: string) => Promise<{ ok: boolean; error?: string }>;
+  cancelInvite?: (userId: string) => Promise<{ ok: boolean; error?: string }>;
 }) {
   const [members, setMembers] = useState(initialMembers);
   const [roles, setRoles] = useState<DynamicRole[]>([]);
@@ -58,8 +68,11 @@ export function UserManagementGrid({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [suspendTarget, setSuspendTarget] = useState<TeamMember | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<TeamMember | null>(null);
   const [auditTarget, setAuditTarget] = useState<TeamMember | null>(null);
   const [rolesModalOpen, setRolesModalOpen] = useState(false);
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   useEffect(() => {
     listRoles().then((res) => {
@@ -82,6 +95,32 @@ export function UserManagementGrid({
       setMembers((curr) =>
         curr.map((m) => (m.id === member.id ? { ...m, status: "active" } : m)),
       );
+    }
+  }
+
+  async function handleResendInvite(member: TeamMember) {
+    setResendingId(member.id);
+    setFeedback(null);
+    try {
+      const res = await resendInvite(member.id);
+      if (res.ok) {
+        setFeedback({
+          type: "success",
+          message: `Invitation link successfully resent to ${member.email || member.displayName}.`,
+        });
+      } else {
+        setFeedback({
+          type: "error",
+          message: res.error ?? "Failed to resend invitation link.",
+        });
+      }
+    } catch {
+      setFeedback({
+        type: "error",
+        message: "An unexpected error occurred while resending the invite.",
+      });
+    } finally {
+      setResendingId(null);
     }
   }
 
@@ -194,10 +233,39 @@ export function UserManagementGrid({
               <button
                 type="button"
                 onClick={() => setAuditTarget(member)}
-                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 font-label text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs"
+                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 font-label text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors"
               >
                 Audit Log
               </button>
+              {member.status === "invited" && (
+                <>
+                  <button
+                    type="button"
+                    data-testid={`resend-invite-${member.id}`}
+                    disabled={resendingId === member.id}
+                    onClick={() => handleResendInvite(member)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 font-label text-xs font-semibold text-brand-navy hover:bg-slate-50 shadow-2xs transition-colors disabled:opacity-50"
+                    title="Resend invitation link"
+                  >
+                    {resendingId === member.id ? (
+                      <Loader2 className="h-3 w-3 animate-spin text-brand-navy" />
+                    ) : (
+                      <Mail className="h-3 w-3 text-brand-navy" />
+                    )}
+                    <span>{resendingId === member.id ? "Sending…" : "Resend Invite"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    data-testid={`cancel-invite-${member.id}`}
+                    onClick={() => setCancelTarget(member)}
+                    className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 font-label text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
+                    title="Cancel pending invitation"
+                  >
+                    <UserX className="h-3 w-3 text-rose-500" />
+                    <span>Cancel Invite</span>
+                  </button>
+                </>
+              )}
               {member.status === "active" && (
                 <button
                   type="button"
@@ -223,7 +291,7 @@ export function UserManagementGrid({
         },
       },
     ],
-    [],
+    [resendingId],
   );
 
   const table = useReactTable({
@@ -241,6 +309,34 @@ export function UserManagementGrid({
 
   return (
     <div className="min-w-0 max-w-full space-y-6">
+      {/* Action Notification Banner */}
+      {feedback && (
+        <div
+          role="status"
+          className={`flex items-center justify-between gap-3 rounded-xl p-3.5 text-xs font-medium border shadow-2xs transition-all ${
+            feedback.type === "success"
+              ? "bg-emerald-50 text-emerald-900 border-emerald-200"
+              : "bg-rose-50 text-rose-900 border-rose-200"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {feedback.type === "success" ? (
+              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+            ) : (
+              <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+            )}
+            <span>{feedback.message}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFeedback(null)}
+            className="p-1 rounded-lg hover:bg-black/5 text-slate-500 transition-colors"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Top Header Card */}
       <section className="min-w-0 max-w-full rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-5">
@@ -364,6 +460,29 @@ export function UserManagementGrid({
             const res = await inviteUser(input);
             if (res.ok) {
               setInviteOpen(false);
+              refreshData();
+            }
+            return res;
+          }}
+        />
+      )}
+
+      {/* Cancel Invite Dialog */}
+      {cancelTarget && (
+        <CancelInviteDialog
+          displayName={cancelTarget.displayName}
+          email={cancelTarget.email}
+          onCancel={() => setCancelTarget(null)}
+          onConfirm={async () => {
+            const targetId = cancelTarget.id;
+            const res = await cancelInvite(targetId);
+            if (res.ok) {
+              setMembers((curr) => curr.filter((m) => m.id !== targetId));
+              setCancelTarget(null);
+              setFeedback({
+                type: "success",
+                message: `Invitation for ${cancelTarget.displayName} was removed.`,
+              });
               refreshData();
             }
             return res;

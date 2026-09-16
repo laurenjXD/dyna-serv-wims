@@ -183,4 +183,59 @@ describe("UserManagementGrid (FR-3.1, Task 21.6/21.8)", () => {
     const janeRow = screen.getByText("Jane Staff").closest("tr")!;
     await waitFor(() => expect(within(janeRow).getByText("active")).toBeInTheDocument());
   });
+
+  it("resends an invite link for an invited user", async () => {
+    const resendInvite = vi.fn(async () => ({ ok: true }));
+    const user = userEvent.setup();
+    render(
+      <UserManagementGrid
+        initialMembers={members}
+        parties={[]}
+        inviteUser={noop}
+        suspendUser={noop}
+        reactivateUser={noop}
+        resendInvite={resendInvite}
+        cancelInvite={noop}
+      />,
+    );
+
+    const resendBtn = screen.getByTestId("resend-invite-u2");
+    expect(resendBtn).toBeInTheDocument();
+    await user.click(resendBtn);
+
+    await waitFor(() => expect(resendInvite).toHaveBeenCalledWith("u2"));
+    expect(
+      screen.getByText(/Invitation link successfully resent to vendor@example\.com/i),
+    ).toBeInTheDocument();
+  });
+
+  it("cancels an invite after confirmation in dialog and removes row", async () => {
+    const cancelInvite = vi.fn(async () => ({ ok: true }));
+    const user = userEvent.setup();
+    render(
+      <UserManagementGrid
+        initialMembers={members}
+        parties={[]}
+        inviteUser={noop}
+        suspendUser={noop}
+        reactivateUser={noop}
+        resendInvite={noop}
+        cancelInvite={cancelInvite}
+      />,
+    );
+
+    const cancelBtn = screen.getByTestId("cancel-invite-u2");
+    expect(cancelBtn).toBeInTheDocument();
+    await user.click(cancelBtn);
+
+    expect(screen.getByTestId("cancel-invite-dialog")).toBeInTheDocument();
+    await user.click(screen.getByTestId("cancel-invite-confirm"));
+
+    await waitFor(() => expect(cancelInvite).toHaveBeenCalledWith("u2"));
+    await waitFor(() =>
+      expect(screen.queryByTestId("cancel-invite-dialog")).not.toBeInTheDocument(),
+    );
+    expect(screen.queryByText("Vendor Contact")).not.toBeInTheDocument();
+  });
 });
+

@@ -637,3 +637,115 @@ export async function reactivateUser(userId: string): Promise<ActionResult> {
   revalidatePath("/settings/team");
   return { ok: true, data: undefined };
 }
+
+export async function resendInvite(userId: string): Promise<ActionResult> {
+  const permission = await requireUsersCapability("invite");
+  if (permission.kind !== "authorized") {
+    return { ok: false, error: "You don't have access to invite team members." };
+  }
+
+  const [profile] = await db
+    .select({ id: userProfiles.id, displayName: userProfiles.displayName, status: userProfiles.status })
+    .from(userProfiles)
+    .where(eq(userProfiles.id, userId))
+    .limit(1);
+
+  if (!profile || profile.status !== "invited") {
+    return { ok: false, error: "Only pending invitations can be resent." };
+  }
+
+  const serviceClient = createServiceRoleClient();
+  const { data: authUser, error: getUserError } = await serviceClient.auth.admin.getUserById(userId);
+  if (getUserError || !authUser?.user?.email) {
+    return { ok: false, error: "Could not locate user account to resend invite." };
+  }
+
+  let origin = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXT_PUBLIC_APP_URL;
+  if (!origin) {
+    try {
+      const headersList = await headers();
+      const host = headersList.get("x-forwarded-host") ?? headersList.get("host");
+      const proto = headersList.get("x-forwarded-proto") ?? "http";
+      if (host) origin = `${proto}://${host}`;
+    } catch {
+      // ignore
+    }
+  }
+  const redirectTo = `${origin ?? "http://localhost:3000"}/auth/callback?next=/accept-invite`;
+
+  const { error: inviteError } = await serviceClient.auth.admin.inviteUserByEmail(
+    authUser.user.email,
+    {
+      data: {
+        displayName: profile.displayName,
+        employee_id: (authUser.user.user_metadata?.employee_id as string) || `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
+      },
+      redirectTo,
+    },
+  );
+
+  if (inviteError) {
+    return { ok: false, error: inviteError.message };
+  }
+
+  // Audit log
+  await db.insert(auditLog).values({
+    actorUserId: permission.context.userId,
+    actorRole: permission.context.activeRoleKeys[0] ?? "administrator",
+    action: "invite_resent",
+    entityType: "user_profiles",
+    entityId: userId,
+    diffData: {
+      email: authUser.user.email,
+      displayName: profile.displayName,
+    },
+    correlationId: `RESEND-${Date.now()}`,
+  }).catch(() => {});
+
+  revalidatePath("/settings/team");
+  return { ok: true, data: undefined };
+}
+
+export async function cancelInvite(userId: string): Promise<ActionResult> {
+  const permission = await requireUsersCapability("deactivate");
+  if (permission.kind !== "authorized") {
+    return { ok: false, error: "You don't have access to cancel invitations." };
+  }
+
+  const [profile] = await db
+    .select({ id: userProfiles.id, displayName: userProfiles.displayName, status: userProfiles.status })
+    .from(userProfiles)
+    .where(eq(userProfiles.id, userId))
+    .limit(1);
+
+  if (!profile || profile.status !== "invited") {
+    return { ok: false, error: "Only pending invitations can be removed." };
+  }
+
+  // 1. Remove scopes and roles
+  await db.delete(userPartyScopes).where(eq(userPartyScopes.userId, userId)).catch(() => {});
+  await db.delete(userRoles).where(eq(userRoles.userId, userId)).catch(() => {});
+
+  // 2. Remove user profile
+  await db.delete(userProfiles).where(eq(userProfiles.id, userId));
+
+  // 3. Remove auth user from Supabase
+  const serviceClient = createServiceRoleClient();
+  await serviceClient.auth.admin.deleteUser(userId).catch(() => {});
+
+  // 4. Audit log
+  await db.insert(auditLog).values({
+    actorUserId: permission.context.userId,
+    actorRole: permission.context.activeRoleKeys[0] ?? "administrator",
+    action: "invite_cancelled",
+    entityType: "user_profiles",
+    entityId: userId,
+    diffData: {
+      displayName: profile.displayName,
+    },
+    correlationId: `CANCEL-${Date.now()}`,
+  }).catch(() => {});
+
+  revalidatePath("/settings/team");
+  return { ok: true, data: undefined };
+}
