@@ -8,7 +8,7 @@ import {
   Html5Qrcode,
   Html5QrcodeSupportedFormats,
 } from "html5-qrcode";
-import { RefreshCw, AlertCircle } from "lucide-react";
+import { RefreshCw, AlertCircle, Camera, Check } from "lucide-react";
 
 // R11 scoped exception: WAN:<uuid> is the only valid Code 128 payload.
 const WAN_UUID_PATTERN =
@@ -104,7 +104,7 @@ export function MobileQRScanner({
         ];
 
     const scannerConfig = {
-      fps: 10,
+      fps: 15,
       qrbox: { width: 250, height: 250 },
       aspectRatio: 1.0,
       formatsToSupport,
@@ -128,93 +128,118 @@ export function MobileQRScanner({
       // Ignore normal per-frame non-matches
     };
 
-    try {
-      const scannerInstance = createScanner(elementId, {
-        formatsToSupport,
-        verbose: false,
-      });
+    async function initAndStart() {
+      try {
+        const scannerInstance = createScanner(elementId, {
+          formatsToSupport,
+          verbose: false,
+        });
 
-      if (!scannerInstance) {
-        setIsLoading(false);
-        setErrorMessage("Scanner could not be initialized.");
-        return;
-      }
-
-      currentScanner = scannerInstance;
-
-      if (typeof scannerInstance.render === "function") {
-        scannerInstance.render(handleSuccess, handleError);
-        setIsLoading(false);
-      } else if (typeof scannerInstance.start === "function") {
-        // Enumerate cameras in background if supported
-        if (typeof Html5Qrcode.getCameras === "function") {
-          Html5Qrcode.getCameras()
-            .then((rawDevices: any) => {
-              if (!isMounted) return;
-              if (rawDevices && rawDevices.length > 0) {
-                setCameras(
-                  rawDevices.map((d: any) => ({
-                    id: d.id,
-                    label: d.label || `Camera ${d.id.slice(0, 5)}`,
-                  }))
-                );
-              }
-            })
-            .catch(() => {});
+        if (!scannerInstance) {
+          if (isMounted) {
+            setIsLoading(false);
+            setErrorMessage("Scanner library could not be instantiated.");
+          }
+          return;
         }
 
-        const cameraChoice = selectedCameraId
+        currentScanner = scannerInstance;
+
+        if (typeof scannerInstance.render === "function") {
+          scannerInstance.render(handleSuccess, handleError);
+          if (isMounted) setIsLoading(false);
+          return;
+        }
+
+        if (typeof scannerInstance.start !== "function") {
+          if (isMounted) setIsLoading(false);
+          return;
+        }
+
+        // 1. Determine camera device to use
+        let targetCamera: string | object = selectedCameraId
           ? selectedCameraId
           : { facingMode: "environment" };
 
-        const startPromise = scannerInstance.start(
-          cameraChoice,
-          scannerConfig,
-          handleSuccess,
-          handleError,
-        );
+        if (!selectedCameraId && typeof Html5Qrcode.getCameras === "function") {
+          try {
+            const rawDevices = await Html5Qrcode.getCameras();
+            if (rawDevices && rawDevices.length > 0) {
+              const deviceList = rawDevices.map((d: any) => ({
+                id: d.id,
+                label: d.label || `Camera ${d.id.slice(0, 5)}`,
+              }));
+              if (isMounted) setCameras(deviceList);
 
-        if (startPromise && typeof startPromise.then === "function") {
-          startPromise
-            .then(() => {
-              if (isMounted) setIsLoading(false);
-            })
-            .catch(() => {
-              if (!isMounted) return;
-              // Fallback to user facing mode / default webcam
-              scannerInstance
-                .start?.(
-                  { facingMode: "user" },
-                  scannerConfig,
-                  handleSuccess,
-                  handleError,
-                )
-                ?.then(() => {
-                  if (isMounted) setIsLoading(false);
-                })
-                .catch((err: any) => {
-                  if (!isMounted) return;
-                  setIsLoading(false);
-                  const errText = err?.message || String(err);
-                  if (/permission|notallowed|denied/i.test(errText)) {
-                    setErrorMessage(
-                      "Camera access was blocked. Please grant camera permission in your browser settings.",
-                    );
-                  } else {
-                    setErrorMessage(
-                      "Unable to access camera feed. Please verify camera permissions.",
-                    );
-                  }
-                });
-            });
-        } else {
-          setIsLoading(false);
+              const rearCam = deviceList.find((c) =>
+                /back|rear|environment|facing\s*back/i.test(c.label),
+              );
+              targetCamera = rearCam ? rearCam.id : deviceList[0].id;
+            }
+          } catch {
+            // Enumeration failed — keep facingMode constraint
+          }
         }
+
+        if (!isMounted) return;
+
+        // 2. Start video stream
+        try {
+          await scannerInstance.start(
+            targetCamera,
+            scannerConfig,
+            handleSuccess,
+            handleError,
+          );
+          if (isMounted) {
+            setIsLoading(false);
+            setErrorMessage(null);
+          }
+        } catch (startErr: any) {
+          if (!isMounted) return;
+          // Fallback to user facing camera / webcam
+          try {
+            await scannerInstance.start(
+              { facingMode: "user" },
+              scannerConfig,
+              handleSuccess,
+              handleError,
+            );
+            if (isMounted) {
+              setIsLoading(false);
+              setErrorMessage(null);
+            }
+          } catch (fallbackErr: any) {
+            if (!isMounted) return;
+            setIsLoading(false);
+            const errText = fallbackErr?.message || String(fallbackErr);
+            if (/permission|notallowed|denied/i.test(errText)) {
+              setErrorMessage(
+                "Camera permission was blocked. Please allow camera access in your browser and tap Retry.",
+              );
+            } else if (/secure|https|insecure/i.test(errText)) {
+              setErrorMessage(
+                "Camera access requires a secure connection (HTTPS) or localhost.",
+              );
+            } else if (/notfound|overconstrained|no camera/i.test(errText)) {
+              setErrorMessage(
+                "No camera device was detected on this device.",
+              );
+            } else {
+              setErrorMessage(
+                "Could not start video stream. Please check camera permissions and tap Retry.",
+              );
+            }
+          }
+        }
+      } catch (err: any) {
+        if (!isMounted) return;
+        setIsLoading(false);
+        setErrorMessage("Scanner initialization error.");
       }
-    } catch (err: any) {
-      setIsLoading(false);
-      setErrorMessage("Scanner initialization error.");
     }
+
+    initAndStart();
 
     return () => {
       isMounted = false;
@@ -236,18 +261,36 @@ export function MobileQRScanner({
   }, [selectedCameraId, retryCount]);
 
   return (
-    <div className="w-full max-w-md mx-auto relative">
+    <div className="w-full max-w-md mx-auto">
+      <style>{`
+        #html5qr-code-full-region {
+          border: none !important;
+        }
+        #html5qr-code-full-region video {
+          width: 100% !important;
+          max-height: 320px !important;
+          object-fit: cover !important;
+          border-radius: 0.75rem !important;
+        }
+        #html5qr-code-full-region img {
+          display: none !important;
+        }
+        #html5qr-code-full-region__scan_region {
+          min-height: 240px;
+        }
+      `}</style>
+
       {/* Camera device switcher if multiple cameras available */}
       {cameras.length > 1 && (
         <div className="mb-2 flex items-center justify-between gap-2">
-          <label htmlFor="scanner-camera-select" className="font-label text-xs font-semibold text-text-grey">
-            Camera:
+          <label htmlFor="scanner-camera-select" className="font-label text-xs font-semibold text-text-grey flex items-center gap-1">
+            <Camera size={13} /> Camera source:
           </label>
           <select
             id="scanner-camera-select"
             value={selectedCameraId ?? ""}
             onChange={(e) => setSelectedCameraId(e.target.value)}
-            className="rounded border border-outline-variant/60 bg-surface-white px-2 py-1 font-body text-xs text-on-surface focus:outline-none focus:ring-1 focus:ring-brand-navy"
+            className="rounded-lg border border-outline-variant/60 bg-surface-white px-2 py-1 font-body text-xs text-on-surface focus:outline-none focus:ring-1 focus:ring-brand-navy"
           >
             {cameras.map((cam, idx) => (
               <option key={cam.id} value={cam.id}>
@@ -258,41 +301,44 @@ export function MobileQRScanner({
         </div>
       )}
 
-      {/* Loading state indicator */}
-      {isLoading && (
-        <div className="flex h-48 w-full flex-col items-center justify-center rounded-xl border border-slate-200 bg-slate-50 p-4 text-center">
-          <RefreshCw className="h-6 w-6 animate-spin text-brand-navy" />
-          <p className="mt-2 font-heading text-xs font-semibold text-on-surface">
-            Starting camera stream...
-          </p>
-        </div>
-      )}
+      {/* Relative container holding scanner element and overlay */}
+      <div className="relative min-h-[280px] w-full overflow-hidden rounded-2xl bg-slate-900 shadow-elevation-2">
+        {/* The scanner element is ALWAYS in the DOM so html5-qrcode can measure dimensions */}
+        <div id={elementId} className="w-full" />
 
-      {/* Error state */}
-      {errorMessage && !isLoading && (
-        <div className="flex h-48 w-full flex-col items-center justify-center rounded-xl border border-rose-200 bg-rose-50/50 p-4 text-center">
-          <AlertCircle className="h-7 w-7 text-status-held" />
-          <p className="mt-1.5 font-heading text-xs font-bold text-status-held">
-            Camera Unavailable
-          </p>
-          <p className="mt-1 font-body text-xs text-text-grey max-w-xs">
-            {errorMessage}
-          </p>
-          <button
-            type="button"
-            onClick={() => setRetryCount((c) => c + 1)}
-            className="mt-2.5 inline-flex items-center gap-1 rounded-lg bg-brand-navy px-3 py-1 font-label text-xs font-bold text-surface-white hover:bg-brand-navy/90"
-          >
-            <RefreshCw size={13} /> Retry
-          </button>
-        </div>
-      )}
+        {/* Loading overlay */}
+        {isLoading && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900/85 p-4 text-center text-white backdrop-blur-xs">
+            <RefreshCw className="h-7 w-7 animate-spin text-blue-400" />
+            <p className="mt-3 font-heading text-sm font-semibold">
+              Connecting camera stream...
+            </p>
+            <p className="mt-1 font-body text-xs text-slate-300">
+              Please grant camera permission in your browser if prompted.
+            </p>
+          </div>
+        )}
 
-      {/* Scanner container for html5-qrcode */}
-      <div
-        id="html5qr-code-full-region"
-        className={`w-full bg-surface-white shadow-elevation-2 rounded-xl overflow-hidden ${isLoading || errorMessage ? "hidden" : "block"}`}
-      />
+        {/* Error overlay */}
+        {errorMessage && !isLoading && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900/95 p-5 text-center text-white">
+            <AlertCircle className="h-8 w-8 text-rose-400" />
+            <p className="mt-2 font-heading text-sm font-bold text-rose-300">
+              Camera Access Required
+            </p>
+            <p className="mt-1 font-body text-xs text-slate-300 max-w-xs">
+              {errorMessage}
+            </p>
+            <button
+              type="button"
+              onClick={() => setRetryCount((c) => c + 1)}
+              className="mt-3.5 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 font-label text-xs font-bold text-white shadow hover:bg-blue-500 active:scale-95 transition-all"
+            >
+              <RefreshCw size={14} /> Retry Camera
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
