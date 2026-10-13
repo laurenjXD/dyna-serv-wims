@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, ChevronRight, FileSpreadsheet, PackagePlus, ShieldCheck, Trash2, Upload } from "lucide-react";
 import { parseDraDocumentAction } from "../_actions";
+import { matchItemAgainstCatalog } from "@/lib/parsers/item-matcher";
 
 type StockSource = {
   itemId: string;
@@ -201,19 +202,27 @@ export function MultiItemPickListDraft({
 
     if (!targetOrgId) {
       for (const draRow of draRows) {
-        const code = (draRow.itemCode || draRow.customerItemCode || "").toLowerCase();
-        if (!code) continue;
-        const matchedStock = stock.find(
-          (s) =>
-            s.itemCode.toLowerCase() === code ||
-            (s.customerItemCode && s.customerItemCode.toLowerCase() === code)
+        if (!draRow.itemCode && !draRow.customerItemCode) continue;
+        const matchRes = matchItemAgainstCatalog(
+          { itemCode: draRow.itemCode, customerItemCode: draRow.customerItemCode },
+          stock.map((s) => ({
+            id: s.itemId,
+            code: s.itemCode,
+            name: s.itemName,
+            customerItemCode: s.customerItemCode,
+            defaultSupplierPartyId: s.organizationId,
+          }))
         );
-        if (matchedStock && matchedStock.organizationId) {
-          targetOrgId = matchedStock.organizationId;
-          targetFlow = matchedStock.flowType;
-          setOrganizationId(targetOrgId);
-          setFlowType(targetFlow);
-          break;
+
+        if (matchRes.bestMatch && matchRes.bestMatch.score >= 70) {
+          const matchedStock = stock.find((s) => s.itemId === matchRes.bestMatch!.item.id);
+          if (matchedStock && matchedStock.organizationId) {
+            targetOrgId = matchedStock.organizationId;
+            targetFlow = matchedStock.flowType;
+            setOrganizationId(targetOrgId);
+            setFlowType(targetFlow);
+            break;
+          }
         }
       }
     }
@@ -234,17 +243,23 @@ export function MultiItemPickListDraft({
     const missingItems: string[] = [];
 
     for (const draRow of draRows) {
-      const code = (draRow.itemCode || draRow.customerItemCode || "").toLowerCase();
       const requestedBoxes = draRow.packageCount || draRow.requestedQty;
-      if (!code || !requestedBoxes) continue;
+      if (!requestedBoxes) continue;
 
-      const candidateSources = availableStock
-        .filter(
-          (s) =>
-            s.itemCode.toLowerCase() === code ||
-            (s.customerItemCode && s.customerItemCode.toLowerCase() === code)
-        )
-        .sort((a, b) => a.priority - b.priority);
+      const matchRes = matchItemAgainstCatalog(
+        { itemCode: draRow.itemCode, customerItemCode: draRow.customerItemCode },
+        availableStock.map((s) => ({
+          id: s.itemId,
+          code: s.itemCode,
+          name: s.itemName,
+          customerItemCode: s.customerItemCode,
+        }))
+      );
+
+      const matchedItemId = matchRes.bestMatch && matchRes.bestMatch.score >= 65 ? matchRes.bestMatch.item.id : null;
+      const candidateSources = matchedItemId
+        ? availableStock.filter((s) => s.itemId === matchedItemId).sort((a, b) => a.priority - b.priority)
+        : [];
 
       if (candidateSources.length === 0) {
         missingItems.push(draRow.customerItemCode || draRow.itemCode || "Unknown Item");

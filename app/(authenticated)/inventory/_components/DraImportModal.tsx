@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Upload, FileSpreadsheet, AlertTriangle, X, Check } from "lucide-react";
+import { Upload, FileSpreadsheet, AlertTriangle, X, Check, CheckCircle2, Sparkles } from "lucide-react";
 import type { DraParseResult } from "@/lib/parsers/dra-parser";
+import { matchItemAgainstCatalog } from "@/lib/parsers/item-matcher";
 import { parseDraDocumentAction } from "../_actions";
 
 interface DraImportModalProps {
@@ -17,6 +18,8 @@ export function DraImportModal({ itemCode, availableStock, onClose, onApplyQuant
   const [error, setError] = useState<string | null>(null);
   const [parseResult, setParseResult] = useState<DraParseResult | null>(null);
   const [matchedQty, setMatchedQty] = useState<number | null>(null);
+  const [matchedRowIndex, setMatchedRowIndex] = useState<number | null>(null);
+  const [matchExplanation, setMatchExplanation] = useState<string | null>(null);
 
   async function handleFileSelect(file: File) {
     setLoading(true);
@@ -35,19 +38,54 @@ export function DraImportModal({ itemCode, availableStock, onClose, onApplyQuant
 
     setParseResult(res.parseResult);
 
-    // Look for matching item row or default to total requested quantity
-    const matchingRow = res.parseResult.rows.find(
-      (r) =>
-        (r.itemCode && r.itemCode.toLowerCase() === itemCode.toLowerCase()) ||
-        (r.customerItemCode && r.customerItemCode.toLowerCase() === itemCode.toLowerCase())
-    );
+    // Fuzzy match each extracted row against target itemCode
+    let bestRowIdx = -1;
+    let bestRowScore = 0;
+    let bestReason = "";
 
-    if (matchingRow && matchingRow.requestedQty) {
-      setMatchedQty(matchingRow.requestedQty);
-    } else if (res.parseResult.rows.length > 0 && res.parseResult.rows[0].requestedQty) {
-      setMatchedQty(res.parseResult.rows[0].requestedQty);
+    const targetCatalog = [
+      {
+        id: "target",
+        code: itemCode,
+        customerItemCode: itemCode,
+        supplierItemCode: itemCode,
+        dsgcItemNumber: itemCode,
+      },
+    ];
+
+    for (let i = 0; i < res.parseResult.rows.length; i++) {
+      const r = res.parseResult.rows[i];
+      const matchRes = matchItemAgainstCatalog(
+        { itemCode: r.itemCode, customerItemCode: r.customerItemCode },
+        targetCatalog
+      );
+
+      if (matchRes.bestMatch && matchRes.bestMatch.score > bestRowScore) {
+        bestRowScore = matchRes.bestMatch.score;
+        bestRowIdx = i;
+        bestReason = matchRes.bestMatch.matchReason;
+      }
+    }
+
+    if (bestRowIdx !== -1 && bestRowScore >= 70) {
+      const matchedRow = res.parseResult.rows[bestRowIdx];
+      setMatchedRowIndex(bestRowIdx);
+      setMatchedQty(matchedRow.requestedQty ?? matchedRow.packageCount ?? 0);
+      setMatchExplanation(`${bestReason} (${bestRowScore}%)`);
     } else {
-      setMatchedQty(0);
+      setMatchedRowIndex(null);
+      setMatchedQty(null);
+      setMatchExplanation(null);
+    }
+  }
+
+  function handleSelectRow(idx: number) {
+    if (!parseResult) return;
+    const row = parseResult.rows[idx];
+    if (row) {
+      setMatchedRowIndex(idx);
+      setMatchedQty(row.requestedQty ?? row.packageCount ?? 0);
+      setMatchExplanation("Manually selected from document");
     }
   }
 
@@ -131,14 +169,69 @@ export function DraImportModal({ itemCode, availableStock, onClose, onApplyQuant
                   </div>
                 </div>
 
+                {matchedRowIndex !== null && matchExplanation ? (
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                        Matched Document Line {matchedRowIndex + 1}
+                      </span>
+                      <span className="text-[11px] font-mono font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
+                        {matchExplanation}
+                      </span>
+                    </div>
+                    <p className="text-xs text-emerald-900/80">
+                      Extracted Code: <span className="font-mono font-bold">{parseResult.rows[matchedRowIndex]?.itemCode || parseResult.rows[matchedRowIndex]?.customerItemCode || "N/A"}</span>
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-amber-300 bg-amber-50/50 p-3 space-y-1">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800">
+                      <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                      <span>Item not automatically matched with high confidence.</span>
+                    </div>
+                    <p className="text-xs text-amber-900/80">
+                      Please pick the corresponding line below from the uploaded document:
+                    </p>
+                  </div>
+                )}
+
+                {/* Document Line Selector */}
+                <div className="space-y-1">
+                  <label className="block font-label text-label-xs text-text-grey">
+                    Document Line Items ({parseResult.rows.length}):
+                  </label>
+                  <select
+                    value={matchedRowIndex ?? ""}
+                    onChange={(e) => {
+                      if (e.target.value !== "") {
+                        handleSelectRow(Number(e.target.value));
+                      } else {
+                        setMatchedRowIndex(null);
+                        setMatchedQty(null);
+                        setMatchExplanation(null);
+                      }
+                    }}
+                    className="w-full rounded border border-outline-variant/50 bg-surface-white px-3 py-2 text-on-surface font-body text-body-xs"
+                  >
+                    <option value="">-- Choose document line item --</option>
+                    {parseResult.rows.map((row, idx) => (
+                      <option key={idx} value={idx}>
+                        Line {idx + 1}: {row.itemCode || row.customerItemCode || "Item"} (Qty: {row.requestedQty ?? row.packageCount ?? 0} {row.uom || "BOX"})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="mt-2">
-                  <label className="block font-label text-label-xs text-text-grey mb-1">Parsed Requested Release Quantity:</label>
+                  <label className="block font-label text-label-xs text-text-grey mb-1">Requested Release Quantity to Apply:</label>
                   <input
                     type="number"
-                    value={matchedQty ?? 0}
-                    onChange={(e) => setMatchedQty(Number(e.target.value))}
+                    value={matchedQty ?? ""}
+                    onChange={(e) => setMatchedQty(e.target.value ? Number(e.target.value) : null)}
                     max={availableStock}
                     min={1}
+                    placeholder="Enter or select quantity"
                     className="w-full h-11 rounded border border-outline-variant/50 bg-surface-white px-3 font-mono text-on-surface"
                   />
                 </div>

@@ -84,6 +84,9 @@ async function parseDraExcel(buffer: Buffer, fileName: string): Promise<DraParse
 
     let headerRowIndex = -1;
     const colMap: Record<string, number> = {};
+    let bestHeaderRowIndex = -1;
+    let bestColMap: Record<string, number> = {};
+    let bestScore = 0;
 
     // Scan top 30 rows for metadata and headers
     for (let r = 0; r < Math.min(rawRows.length, 30); r++) {
@@ -141,100 +144,135 @@ async function parseDraExcel(buffer: Buffer, fileName: string): Promise<DraParse
         }
       }
 
-      // Check if this row is the column header
-      const hasItemCol =
-        rowLower.includes("item") ||
-        rowLower.includes("sku") ||
-        rowLower.includes("part") ||
-        rowLower.includes("cust pn") ||
-        rowLower.includes("cust p/n") ||
-        rowLower.includes("description");
-      const hasQtyCol =
-        rowLower.includes("qty") ||
-        rowLower.includes("quantity") ||
-        rowLower.includes("release") ||
-        rowLower.includes("requested") ||
-        rowLower.includes("package") ||
-        rowLower.includes("boxes") ||
-        rowLower.includes("carton");
+      // Check if this row or combined next row can serve as column headers
+      const nextRow = rawRows[r + 1] || [];
+      const candidateColMap: Record<string, number> = {};
 
-      if (headerRowIndex === -1 && hasItemCol && hasQtyCol) {
-        headerRowIndex = r;
-        for (let c = 0; c < row.length; c++) {
-          if (!row[c]) continue;
-          const val = String(row[c]).trim().toLowerCase();
+      for (let c = 0; c < Math.max(row.length, nextRow.length); c++) {
+        const topVal = String(row[c] ?? "").trim().toLowerCase();
+        const subVal = String(nextRow[c] ?? "").trim().toLowerCase();
+        const combined = `${topVal} ${subVal}`.trim();
+        const val = combined.length > 0 ? combined : topVal;
 
-          if (
-            val.includes("customer item") ||
-            val.includes("cust item") ||
-            val.includes("cust pn") ||
-            val.includes("cust p/n") ||
-            val.includes("customer pn") ||
-            val.includes("client item") ||
-            val.includes("customer part") ||
-            val.includes("buyer item")
-          ) {
-            colMap["customerItemCode"] = c;
-          } else if (
-            val === "item code" ||
-            val === "sku" ||
-            val.includes("part no") ||
-            val.includes("part number") ||
-            val.includes("product code") ||
-            val.includes("dsgc item") ||
-            val.includes("supplier item") ||
-            val.includes("material") ||
-            (val.includes("item") && !val.includes("no") && !val.includes("desc") && !val.includes("cust"))
-          ) {
-            // Only set if not customer item or item index
-            if (colMap["itemCode"] === undefined) colMap["itemCode"] = c;
-          } else if (
-            val.includes("pkg") ||
-            val.includes("package") ||
-            val.includes("carton") ||
-            val.includes("ctn") ||
-            val.includes("no. of") ||
-            val.includes("box count") ||
-            val.includes("total packages") ||
-            val.includes("boxes")
-          ) {
-            colMap["noOfPackages"] = c;
-          } else if (
-            val.includes("spq") ||
-            val.includes("pcs/ctn") ||
-            val.includes("units/ctn") ||
-            val.includes("pcs per box") ||
-            val.includes("pcs per carton") ||
-            val.includes("standard pkg qty") ||
-            val.includes("standard package")
-          ) {
-            colMap["spq"] = c;
-          } else if (
-            val.includes("requested qty") ||
-            val.includes("to pick") ||
-            val.includes("pick qty") ||
-            val.includes("release qty") ||
-            val.includes("total qty") ||
-            val === "qty" ||
-            val === "quantity" ||
-            val.includes("pcs")
-          ) {
-            colMap["requestedQty"] = c;
-          } else if (
-            val.includes("uom") ||
-            val.includes("unit of measure") ||
-            val === "unit" ||
-            val.includes("measurement")
-          ) {
-            colMap["uom"] = c;
-          } else if (val.includes("remark") || val.includes("note") || val.includes("comment")) {
-            colMap["remarks"] = c;
-          }
+        if (
+          val.includes("customer item") ||
+          val.includes("cust item") ||
+          val.includes("cust pn") ||
+          val.includes("cust p/n") ||
+          val.includes("customer pn") ||
+          val.includes("client item") ||
+          val.includes("customer part") ||
+          val.includes("buyer item") ||
+          val.includes("drawing no") ||
+          val.includes("cust part #") ||
+          val.includes("cust part no")
+        ) {
+          if (candidateColMap["customerItemCode"] === undefined) candidateColMap["customerItemCode"] = c;
+        } else if (
+          val === "item code" ||
+          val === "sku" ||
+          val.includes("part no") ||
+          val.includes("part number") ||
+          val.includes("part #") ||
+          val.includes("product code") ||
+          val.includes("material code") ||
+          val.includes("material no") ||
+          val === "material" ||
+          val.includes("dsgc item") ||
+          val.includes("supplier item") ||
+          val.includes("catalog no") ||
+          val.includes("cat #") ||
+          (val.includes("p/n") && !val.includes("cust")) ||
+          (val.includes("pn") && !val.includes("cust") && !val.includes("desc")) ||
+          (val.includes("item") && !val.includes("no") && !val.includes("desc") && !val.includes("cust"))
+        ) {
+          if (candidateColMap["itemCode"] === undefined) candidateColMap["itemCode"] = c;
+        } else if (
+          val.includes("no. of packages") ||
+          val.includes("total packages") ||
+          val.includes("package count") ||
+          val.includes("box count") ||
+          val.includes("boxes") ||
+          val.includes("carton count") ||
+          val.includes("cartons") ||
+          val.includes("ctn") ||
+          val.includes("ctns") ||
+          val.includes("no of ctn") ||
+          val.includes("no. of pkg") ||
+          val.includes("pkgs") ||
+          val.includes("package") ||
+          val.includes("pkg")
+        ) {
+          if (candidateColMap["noOfPackages"] === undefined) candidateColMap["noOfPackages"] = c;
+        } else if (
+          val.includes("spq") ||
+          val.includes("pcs/ctn") ||
+          val.includes("pcs per ctn") ||
+          val.includes("pcs/carton") ||
+          val.includes("pcs per carton") ||
+          val.includes("pcs per box") ||
+          val.includes("pcs/box") ||
+          val.includes("qty/box") ||
+          val.includes("units/ctn") ||
+          val.includes("standard pkg") ||
+          val.includes("std pkg") ||
+          val.includes("standard package")
+        ) {
+          if (candidateColMap["spq"] === undefined) candidateColMap["spq"] = c;
+        } else if (
+          val.includes("requested qty") ||
+          val.includes("to pick") ||
+          val.includes("pick qty") ||
+          val.includes("release qty") ||
+          val.includes("total qty") ||
+          val.includes("order qty") ||
+          val.includes("ordered qty") ||
+          val.includes("bal qty") ||
+          val.includes("balance qty") ||
+          val === "qty" ||
+          val === "quantity" ||
+          val.includes("quantity") ||
+          val.includes("amount (pcs)") ||
+          val.includes("total pcs") ||
+          val.includes("pcs")
+        ) {
+          if (candidateColMap["requestedQty"] === undefined) candidateColMap["requestedQty"] = c;
+        } else if (
+          val.includes("uom") ||
+          val.includes("unit of measure") ||
+          val === "unit" ||
+          val.includes("measurement") ||
+          val.includes("base unit")
+        ) {
+          if (candidateColMap["uom"] === undefined) candidateColMap["uom"] = c;
+        } else if (
+          val.includes("remark") ||
+          val.includes("note") ||
+          val.includes("comment")
+        ) {
+          if (candidateColMap["remarks"] === undefined) candidateColMap["remarks"] = c;
         }
+      }
+
+      const hasItem =
+        candidateColMap["itemCode"] !== undefined ||
+        candidateColMap["customerItemCode"] !== undefined;
+      const hasQty =
+        candidateColMap["requestedQty"] !== undefined ||
+        candidateColMap["noOfPackages"] !== undefined;
+
+      const recognizedCount = Object.keys(candidateColMap).length;
+      if (hasItem && hasQty && recognizedCount > bestScore) {
+        bestScore = recognizedCount;
+        bestHeaderRowIndex = r;
+        bestColMap = candidateColMap;
       }
     }
 
-    if (headerRowIndex === -1) {
+    if (bestHeaderRowIndex !== -1) {
+      headerRowIndex = bestHeaderRowIndex;
+      Object.assign(colMap, bestColMap);
+    } else {
       headerRowIndex = 0;
       colMap["itemCode"] = 0;
       colMap["requestedQty"] = 1;
@@ -268,7 +306,7 @@ async function parseDraExcel(buffer: Buffer, fileName: string): Promise<DraParse
       if (!itemCodeRaw && !custItemCodeRaw && !qtyRaw && !packageCountRaw) continue;
 
       const primaryCode = custItemCodeRaw ? String(custItemCodeRaw).trim() : (itemCodeRaw ? String(itemCodeRaw).trim() : "");
-      if (/^(item|part|cust|n\/f|#|total)$/i.test(primaryCode)) continue;
+      if (/^(item|item code|item no|part|part no|part number|sku|cust|cust pn|cust p\/n|customer part|customer item|n\/f|#|total)$/i.test(primaryCode)) continue;
 
       let requestedQty = qtyRaw !== undefined && qtyRaw !== null && qtyRaw !== "" ? Number(qtyRaw) : undefined;
       const packageCount = packageCountRaw !== undefined && packageCountRaw !== null && packageCountRaw !== "" ? Number(packageCountRaw) : undefined;
