@@ -271,7 +271,7 @@ export function ApprovalsFilterableTable({
           }}
           className={`flex min-h-[124px] flex-col rounded-2xl border p-4 text-left transition-all shadow-2xs hover:shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 ${
             activeFilterTab === "pending"
-              ? "border-amber-400 bg-amber-50/50 ring-2 ring-amber-400/30"
+              ? "border-amber-400 bg-surface ring-2 ring-amber-400/30"
               : "border-border bg-surface hover:border-amber-300"
           }`}
         >
@@ -298,8 +298,8 @@ export function ApprovalsFilterableTable({
           }}
           className={`flex min-h-[124px] flex-col rounded-2xl border p-4 text-left transition-all shadow-2xs hover:shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 ${
             selectedStatus === "approved"
-              ? "border-emerald-400 bg-emerald-50/50 ring-2 ring-emerald-400/30"
-              : "border-border bg-surface hover:border-emerald-300 hover:bg-emerald-50/20"
+              ? "border-emerald-400 bg-surface ring-2 ring-emerald-400/30"
+              : "border-border bg-surface hover:border-emerald-300"
           }`}
         >
           <div className="flex items-center justify-between">
@@ -325,7 +325,7 @@ export function ApprovalsFilterableTable({
           }}
           className={`flex min-h-[124px] flex-col rounded-2xl border p-4 text-left transition-all shadow-2xs hover:shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/50 ${
             activeFilterTab === "expired"
-              ? "border-rose-400 bg-rose-50/50 ring-2 ring-rose-400/30"
+              ? "border-rose-400 bg-surface ring-2 ring-rose-400/30"
               : "border-border bg-surface hover:border-rose-300"
           }`}
         >
