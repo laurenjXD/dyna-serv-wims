@@ -5,7 +5,7 @@ export type BrandIconProps = SVGProps<SVGSVGElement> & {
   strokeWidth?: number;
 };
 
-function Icon({ children, size = 24, strokeWidth = 2.2, ...props }: BrandIconProps & { children: ReactNode }) {
+function Icon({ children, size = 24, strokeWidth = 2.6, ...props }: BrandIconProps & { children: ReactNode }) {
   return (
     <svg
       viewBox="0 0 48 48"
@@ -165,6 +165,16 @@ export function ProfileIcon(props: BrandIconProps) {
     <Icon {...props}>
       <circle cx="24" cy="16" r="7" />
       <path d="M10 40c1-8 6-12 14-12s13 4 14 12" />
+    </Icon>
+  );
+}
+
+/** Navigation icon: account and application settings. */
+export function SettingsIcon(props: BrandIconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="24" cy="24" r="6" />
+      <path d="M39 27.5c.2-1.1.2-2.2 0-3.3l4-3.1-4-6.9-4.8 2a15 15 0 0 0-2.9-1.7L30.7 9h-8l-.6 5.5c-1 .4-2 .9-2.9 1.7l-4.8-2-4 6.9 4 3.1a13 13 0 0 0 0 3.6l-4 3.1 4 6.9 4.8-2c.9.7 1.9 1.3 2.9 1.7l.6 5.5h8l.6-5.5c1-.4 2-1 2.9-1.7l4.8 2 4-6.9z" />
     </Icon>
   );
 }

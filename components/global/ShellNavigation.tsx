@@ -27,6 +27,7 @@ import {
   ProfileIcon,
   QualityIcon,
   ReportsIcon,
+  SettingsIcon,
   TestingIcon,
   VmiIcon,
   type BrandIconProps,
@@ -64,7 +65,7 @@ const ROUTE_ICON_MAP: Record<string, ComponentType<BrandIconProps>> = {
   "billing-pricing": BillingIcon,
   sync: TestingIcon,
   profile: ProfileIcon,
-  settings: EfeIcon,
+  settings: SettingsIcon,
   portal: GlobalIcon,
   "portal-inventory": VmiIcon,
   "portal-orders": ElseIcon,
@@ -235,7 +236,7 @@ function NavLink({
             ? "bg-white/20 text-white ring-2 ring-white/60 shadow-[0_4px_14px_rgba(0,0,0,0.18)] scale-105"
             : "text-white/75 hover:text-white hover:bg-white/10 hover:scale-105 active:scale-95"}`}
       >
-        <Icon size={22} strokeWidth={2.2} aria-hidden="true" className="motion-safe:transition-transform motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-110" />
+        <Icon size={22} strokeWidth={2.6} aria-hidden="true" className="motion-safe:transition-transform motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-110" />
         {entry.id === "approvals" && pendingApprovalCount > 0 && (
           <span
             data-testid="approval-count-badge"
@@ -284,7 +285,7 @@ function NavLink({
           : "text-white/90 hover:translate-x-1 hover:bg-white/10 hover:text-white hover:bg-primary/[0.05] hover:shadow-sm"}`}
     >
       <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full motion-safe:transition-all motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${isActive ? "bg-blue-100/90 text-primary text-[#0b4d94]" : "bg-white/15 text-white group-hover:bg-white/25"}`}>
-        <Icon size={20} strokeWidth={2.2} aria-hidden="true" className="motion-safe:transition-transform motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-110" />
+        <Icon size={20} strokeWidth={2.6} aria-hidden="true" className="motion-safe:transition-transform motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-110" />
       </span>
       <span className={`min-w-0 flex-1 break-words leading-tight motion-safe:transition-opacity motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${floorText ? "text-mono-md" : "text-label"} ${isActive ? "text-[#0b4d94] font-bold" : "text-white/90 font-semibold"}`}>{label}</span>
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
