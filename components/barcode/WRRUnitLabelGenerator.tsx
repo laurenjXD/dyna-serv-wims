@@ -80,7 +80,19 @@ export function WRRUnitLabelGenerator({
         >
           {/* Print Media Isolation Rules */}
           <style>{`
+            @page {
+              size: 2in 2in;
+              margin: 0;
+            }
             @media print {
+              html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #FFFFFF !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                text-rendering: geometricPrecision !important;
+              }
               body * {
                 visibility: hidden !important;
               }
@@ -92,14 +104,36 @@ export function WRRUnitLabelGenerator({
                 position: absolute !important;
                 left: 0 !important;
                 top: 0 !important;
-                width: 100% !important;
+                width: 2in !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 background: #FFFFFF !important;
+                display: block !important;
               }
-              @page {
-                size: A4 portrait;
-                margin: 10mm 12mm;
+              .unit-thermal-label-card {
+                width: 2in !important;
+                height: 2in !important;
+                max-width: 2in !important;
+                max-height: 2in !important;
+                margin: 0 !important;
+                padding: 1.5mm !important;
+                box-sizing: border-box !important;
+                border: none !important;
+                border-radius: 0 !important;
+                background: #FFFFFF !important;
+                page-break-after: always !important;
+                break-after: page !important;
+                overflow: hidden !important;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: space-between !important;
+                image-rendering: pixelated !important;
+                image-rendering: crisp-edges !important;
+              }
+              .unit-thermal-label-card:last-child {
+                page-break-after: avoid !important;
+                break-after: avoid !important;
               }
             }
           `}</style>
@@ -108,18 +142,23 @@ export function WRRUnitLabelGenerator({
             {/* Header — Screen only */}
             <div className="flex items-center justify-between border-b border-outline-variant pb-4 print:hidden">
               <div>
-                <h2
-                  id="print-modal-title"
-                  className="font-heading font-semibold text-headline-md text-brand-navy"
-                >
-                  Unit Labels ({expectedQty} {expectedQty === 1 ? "label" : "labels"})
-                </h2>
-                <p className="font-body text-body-sm text-on-surface">
+                <div className="flex items-center gap-2">
+                  <h2
+                    id="print-modal-title"
+                    className="font-heading font-semibold text-headline-md text-brand-navy"
+                  >
+                    Unit Labels ({expectedQty} {expectedQty === 1 ? "label" : "labels"})
+                  </h2>
+                  <span className="rounded bg-brand-navy/10 px-2 py-0.5 font-mono text-[10px] font-bold text-brand-navy">
+                    2&quot; × 2&quot; Thermal Roll · HD
+                  </span>
+                </div>
+                <p className="font-body text-body-sm text-on-surface mt-1">
                   {wrrNumber} — Lot:{" "}
                   <span className="font-mono text-mono-md font-bold">{lotNumber}</span>
                 </p>
                 <p className="mt-1 font-body text-body-sm text-text-grey">
-                  Each carton has its own unique QR label. Scan any one label to resolve the related cartons on this WRR line.
+                  Formatted for 2&quot; × 2&quot; (50mm × 50mm) continuous thermal label rolls. High-definition 1-bit monochrome output.
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -129,7 +168,7 @@ export function WRRUnitLabelGenerator({
                   className="flex h-12 items-center justify-center gap-2 rounded bg-primary px-5 font-heading font-bold text-body-md text-surface-white active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 >
                   <span aria-hidden="true">&#128424;</span>
-                  <span>Print Labels</span>
+                  <span>Print 2&quot; × 2&quot; Labels</span>
                 </button>
                 <button
                   type="button"
@@ -142,50 +181,52 @@ export function WRRUnitLabelGenerator({
               </div>
             </div>
 
-            {/* Printable Sheet Grid */}
+            {/* Printable Sheet Grid (Screen: responsive preview grid; Print: 2x2 sequential pages) */}
             <div className="mt-4 flex-1 overflow-y-auto print:overflow-visible">
               <div
                 id="print-unit-labels-sheet"
-                className="grid grid-cols-2 gap-4 print:grid-cols-2 print:gap-4 print:w-full"
+                className="grid grid-cols-2 gap-4 print:block print:w-[2in]"
               >
                 {unitLabels.map((unit) => (
                   <div
                     key={unit.unitId}
                     style={{ breakInside: "avoid", pageBreakInside: "avoid" }}
-                    className="flex flex-col items-center justify-between rounded border-2 border-brand-navy bg-surface-white p-4 text-center break-inside-avoid print:border-black print:p-3 min-h-[220px]"
+                    className="unit-thermal-label-card flex flex-col items-center justify-between rounded-xl border border-outline-variant/60 bg-surface-white p-3 text-center shadow-xs print:border-none print:shadow-none min-h-[210px] print:min-h-0"
                   >
                     {/* Header info */}
-                    <div className="mb-2 w-full">
-                      <div className="flex items-center justify-between">
-                        <p className="font-heading text-body-sm uppercase font-bold text-brand-navy">
-                          Dyna-Serv WIMS
-                        </p>
-                        <span className="rounded bg-brand-navy px-1.5 py-0.5 font-mono text-label-xs font-bold text-surface-white">
-                          CTN-{String(unit.unitIndex).padStart(2, "0")}
+                    <div className="w-full text-black pb-0.5 border-b border-black">
+                      <div className="flex items-center justify-between text-[8px] font-mono font-black uppercase tracking-wider">
+                        <span>DYNA-SERV</span>
+                        <span className="font-bold">
+                          CTN-{String(unit.unitIndex).padStart(2, "0")} ({unit.unitIndex}/{expectedQty})
                         </span>
                       </div>
-                      <p className="font-mono text-mono-md font-bold text-on-surface text-left mt-1">
+                      <p className="font-mono text-[9.5px] font-bold text-black text-left mt-0.5 truncate tracking-tight">
                         {itemCode}
                       </p>
                     </div>
 
-                    {/* QR Code */}
-                    <div className="my-2 p-2 bg-white rounded border border-outline-variant">
+                    {/* High-Definition QR Code */}
+                    <div className="my-1 p-1 bg-white flex items-center justify-center">
                       <QRCode
                         value={unit.payload}
-                        size={120}
-                        style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+                        size={110}
+                        level="M"
+                        fgColor="#000000"
+                        bgColor="#FFFFFF"
+                        shapeRendering="crispEdges"
+                        style={{ height: "auto", maxWidth: "29mm", width: "100%" }}
                         viewBox={`0 0 256 256`}
                       />
                     </div>
 
-                    {/* Footer info & hierarchical carton tag (Option 3) */}
-                    <div className="mt-2 w-full text-center border-t border-outline-variant/30 pt-1.5">
-                      <p className="font-mono text-mono-sm font-semibold text-on-surface">
+                    {/* Footer info */}
+                    <div className="w-full text-center border-t border-black pt-0.5 font-mono text-black leading-tight">
+                      <p className="text-[10px] font-black tracking-tight truncate">
                         Lot: {lotNumber}
                       </p>
-                      <p className="font-mono text-mono-xs font-bold text-brand-navy mt-0.5">
-                        Carton: {lotNumber} · CTN-{String(unit.unitIndex).padStart(2, "0")} ({unit.unitIndex} of {expectedQty})
+                      <p className="text-[8px] font-semibold truncate mt-0.5 tracking-tight">
+                        {wrrNumber} · CTN-{String(unit.unitIndex).padStart(2, "0")}
                       </p>
                     </div>
                   </div>

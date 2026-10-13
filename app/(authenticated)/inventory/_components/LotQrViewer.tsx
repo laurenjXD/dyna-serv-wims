@@ -33,7 +33,19 @@ export function LotQrViewer({
           className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/60 p-4 print:p-0 print:bg-white print:static"
         >
           <style>{`
+            @page {
+              size: 2in 2in;
+              margin: 0;
+            }
             @media print {
+              html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #FFFFFF !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                text-rendering: geometricPrecision !important;
+              }
               body * {
                 visibility: hidden !important;
               }
@@ -42,36 +54,48 @@ export function LotQrViewer({
                 visibility: visible !important;
               }
               #lot-qr-print-card {
-                position: absolute !important;
-                left: 50% !important;
-                top: 20mm !important;
-                transform: translateX(-50%) !important;
-                width: 100mm !important;
-                max-width: 100mm !important;
-                padding: 8mm !important;
-                border: 2px solid #000000 !important;
-                border-radius: 8px !important;
+                position: fixed !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 2in !important;
+                height: 2in !important;
+                max-width: 2in !important;
+                max-height: 2in !important;
+                margin: 0 !important;
+                padding: 1.5mm !important;
+                border: none !important;
+                border-radius: 0 !important;
                 box-shadow: none !important;
                 background: #FFFFFF !important;
+                box-sizing: border-box !important;
+                overflow: hidden !important;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: space-between !important;
+                image-rendering: pixelated !important;
+                image-rendering: crisp-edges !important;
               }
               .print-hide {
                 display: none !important;
-              }
-              @page {
-                size: auto;
-                margin: 10mm;
               }
             }
           `}</style>
           <div
             id="lot-qr-print-card"
-            className="w-full max-w-sm rounded-2xl bg-surface-white p-6 shadow-elevation-2 print:shadow-none"
+            className="w-full max-w-sm rounded-2xl bg-surface-white p-6 shadow-elevation-2 print:shadow-none print:p-0"
           >
+            {/* Modal Screen Header */}
             <div className="flex items-start justify-between gap-4 print:hidden print-hide">
               <div>
-                <h2 id={`lot-qr-${lotId}`} className="font-heading text-title-lg font-bold text-on-surface">
-                  Lot QR code
-                </h2>
+                <div className="flex items-center gap-2">
+                  <h2 id={`lot-qr-${lotId}`} className="font-heading text-title-lg font-bold text-on-surface">
+                    Lot QR Code
+                  </h2>
+                  <span className="rounded bg-brand-navy/10 px-2 py-0.5 font-mono text-[10px] font-bold text-brand-navy">
+                    2&quot; × 2&quot; Thermal · HD
+                  </span>
+                </div>
                 <p className="mt-1 font-mono text-body-md text-text-grey">
                   {lotNumber} · {itemCode}
                 </p>
@@ -86,19 +110,38 @@ export function LotQrViewer({
               </button>
             </div>
 
-            {/* Print Header (Visible on print & screen) */}
-            <div className="flex flex-col items-center gap-2 text-center">
-              <div className="my-3 flex justify-center rounded-xl border border-outline-variant bg-surface-white p-4 print:border-black">
-                <QRCode value={lotId} size={180} />
+            {/* 2x2 Label Top Header — Print Only */}
+            <div className="hidden print:flex w-full items-center justify-between text-[8px] font-mono font-black uppercase tracking-wider text-black pb-0.5 border-b border-black">
+              <span>DYNA-SERV</span>
+              <span>WIMS LOT</span>
+            </div>
+
+            {/* Printable High-Definition QR Center Content */}
+            <div className="flex flex-col items-center gap-2 text-center w-full print:gap-0">
+              <div className="my-3 flex justify-center rounded-xl border border-outline-variant bg-surface-white p-4 print:border-none print:my-0.5 print:p-0">
+                <QRCode
+                  value={lotId}
+                  size={140}
+                  level="M"
+                  fgColor="#000000"
+                  bgColor="#FFFFFF"
+                  shapeRendering="crispEdges"
+                  style={{ height: "auto", maxWidth: "30mm", width: "100%" }}
+                  viewBox="0 0 256 256"
+                />
               </div>
-              <div className="font-mono text-on-surface">
-                <p className="text-mono-lg font-bold">{lotNumber}</p>
-                <p className="text-mono-md text-text-grey">{itemCode}</p>
+              <div className="font-mono text-on-surface w-full print:text-black print:pt-0.5 print:border-t print:border-black">
+                <p className="text-mono-lg font-bold print:font-black print:text-[11px] print:leading-tight truncate">
+                  {lotNumber}
+                </p>
+                <p className="text-mono-md text-text-grey print:text-[9.5px] print:font-bold print:text-black print:leading-tight truncate">
+                  {itemCode}
+                </p>
               </div>
             </div>
 
             <p className="mt-4 font-body text-body-sm text-text-grey text-center print:hidden print-hide">
-              This code identifies lot {lotNumber}. Scan it repeatedly at Dispatch to count the committed boxes for this lot.
+              Formatted for 2&quot; × 2&quot; (50mm × 50mm) thermal label printers. Scan at Dispatch to verify lot commitment.
             </p>
 
             <div className="mt-5 flex gap-2 print:hidden print-hide">
@@ -108,7 +151,7 @@ export function LotQrViewer({
                 className="flex h-11 flex-1 items-center justify-center gap-2 rounded bg-primary font-label text-label font-bold text-surface-white active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-brand-navy"
               >
                 <span>&#128424;</span>
-                <span>Print QR Label</span>
+                <span>Print 2&quot; × 2&quot; Label</span>
               </button>
               <button
                 type="button"
