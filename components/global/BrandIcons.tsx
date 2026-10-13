@@ -1,11 +1,11 @@
-import type { SVGProps } from "react";
+import type { ReactNode, SVGProps } from "react";
 
 export type BrandIconProps = SVGProps<SVGSVGElement> & {
   size?: number;
   strokeWidth?: number;
 };
 
-function Icon({ children, size = 24, strokeWidth = 2.2, ...props }: BrandIconProps & { children: React.ReactNode }) {
+function Icon({ children, size = 24, strokeWidth = 2.2, ...props }: BrandIconProps & { children: ReactNode }) {
   return (
     <svg
       viewBox="0 0 48 48"
@@ -103,6 +103,68 @@ export function GlobalIcon(props: BrandIconProps) {
     <Icon {...props}>
       <circle cx="24" cy="24" r="16" />
       <path d="M8 24h32M24 8c5 4 8 10 8 16s-3 12-8 16c-5-4-8-10-8-16s3-12 8-16z" />
+    </Icon>
+  );
+}
+
+/** Navigation companion icon: outbound movement. */
+export function OutgoingIcon(props: BrandIconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M8 12h20v24H8z" />
+      <path d="M28 24h12M34 18l6 6-6 6" />
+      <path d="M13 12V8h14v4" />
+    </Icon>
+  );
+}
+
+/** Navigation companion icon: documents and records. */
+export function DocumentIcon(props: BrandIconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M13 6h16l6 6v30H13z" />
+      <path d="M29 6v8h6M18 23h12M18 30h12M18 37h8" />
+    </Icon>
+  );
+}
+
+/** Navigation companion icon: reporting and analytics. */
+export function ReportsIcon(props: BrandIconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M8 40V26M20 40V16M32 40V8M44 40H5" />
+      <path d="m8 20 12-8 12 3 12-9" />
+    </Icon>
+  );
+}
+
+/** Navigation companion icon: parties and enrollment. */
+export function EnrollmentIcon(props: BrandIconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="18" cy="17" r="6" />
+      <circle cx="34" cy="19" r="5" />
+      <path d="M7 38c0-7 5-11 11-11s11 4 11 11M30 29c6 0 10 3 11 9" />
+    </Icon>
+  );
+}
+
+/** Navigation companion icon: billing and pricing. */
+export function BillingIcon(props: BrandIconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="9" y="8" width="30" height="32" rx="2" />
+      <path d="M15 16h18M15 23h18M15 30h8M29 30h4" />
+    </Icon>
+  );
+}
+
+/** Navigation companion icon: user profile. */
+export function ProfileIcon(props: BrandIconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="24" cy="16" r="7" />
+      <path d="M10 40c1-8 6-12 14-12s13 4 14 12" />
     </Icon>
   );
 }
