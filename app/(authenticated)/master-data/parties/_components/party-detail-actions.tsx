@@ -25,8 +25,16 @@ const PARTY_ROLES = [
   { value: "supplier", label: "Supplier" },
   { value: "customer", label: "Customer" },
   { value: "end_customer", label: "End Customer" },
-  { value: "internal_warehouse", label: "Internal Warehouse" },
+  { value: "internal_warehouse", label: "Internal Supplies" },
 ] as const;
+
+const ROLE_DISPLAY_LABELS: Record<string, string> = {
+  vendor: "Vendor",
+  supplier: "Supplier",
+  customer: "Customer",
+  end_customer: "End Customer",
+  internal_warehouse: "Internal Supplies",
+};
 
 // ---------------------------------------------------------------------------
 // Role tag with remove button
@@ -48,8 +56,8 @@ function RoleTag({
 
   return (
     <span className="inline-flex items-center gap-1 rounded-sm bg-surface-light-grey px-3 py-1">
-      <span className="font-label text-label text-on-surface capitalize">
-        {role.role.replace(/_/g, " ")}
+      <span className="font-label text-label text-on-surface">
+        {ROLE_DISPLAY_LABELS[role.role] ?? role.role.replace(/_/g, " ")}
       </span>
       {canManage && (
         <form action={formAction}>

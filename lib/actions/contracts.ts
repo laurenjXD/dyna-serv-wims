@@ -10,7 +10,7 @@ import {
   pricingRules,
   vmiConfigurations,
 } from "@/lib/db/schema/contracts";
-import { parties } from "@/lib/db/schema/parties";
+import { parties, partyRoles } from "@/lib/db/schema/parties";
 import { vmiContractTerms, vmiPermits, vmiRecurringFeeLines } from "@/lib/db/schema/vmi_billing";
 import { listTradingPolicies, type TradingPolicyRow } from "@/lib/db/queries/trading-policies";
 import { eq, desc, or, and, isNull } from "drizzle-orm";
@@ -89,6 +89,23 @@ export async function createContract(
 
   const userId = perm.context.userId;
   let savedTermsId: string | null = null;
+
+  // Established: end-customers do not receive billings (no billing applies to them)
+  const partyRolesList = await db
+    .select({ role: partyRoles.role })
+    .from(partyRoles)
+    .where(eq(partyRoles.partyId, input.partyId));
+
+  const isEndCustomerOnly =
+    partyRolesList.length > 0 &&
+    partyRolesList.every((r) => r.role === "end_customer");
+
+  if (isEndCustomerOnly) {
+    return {
+      ok: false,
+      error: "End-customers do not receive billings (no billing applies to them).",
+    };
+  }
 
   // 1. Primary write: Sync directly to active vmi_contract_terms and vmi_permits in PostgreSQL
   if (input.contractType === "vmi" || input.contractType === "vmi_trading") {

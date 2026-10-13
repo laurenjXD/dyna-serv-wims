@@ -19,7 +19,7 @@ const PARTY_ROLES = [
   { value: "supplier", label: "Supplier" },
   { value: "customer", label: "Customer" },
   { value: "end_customer", label: "End Customer" },
-  { value: "internal_warehouse", label: "Internal Warehouse" },
+  { value: "internal_warehouse", label: "Internal Supplies" },
 ] as const;
 
 type PartyFormAction = (

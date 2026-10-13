@@ -387,7 +387,7 @@ export function ContractRateCards({
           </div>
         )}
 
-        {/* ─── VMI: PEZA Compliance & LOA (Conditional for pure VMI) ─── */}
+        {/* ─── VMI: Compliance Fee (PEZA Compliance, LOA & Customs Surety Bond) ─── */}
         {isVmi && !isTrading && (
           <div className="flex flex-col justify-between rounded-2xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1 transition-all hover:shadow-elevation-2">
             <div className="space-y-4">
@@ -397,8 +397,8 @@ export function ContractRateCards({
                     <FileText size={20} />
                   </div>
                   <div>
-                    <h3 className="font-heading text-title-sm font-bold text-on-surface">PEZA Compliance &amp; LOA</h3>
-                    <p className="font-body text-body-xs text-text-grey">Bonded warehouse regulatory permits and scope</p>
+                    <h3 className="font-heading text-title-sm font-bold text-on-surface">Compliance Fee</h3>
+                    <p className="font-body text-body-xs text-text-grey">PEZA compliance, Letter of Authority (LOA), and Customs surety bond</p>
                   </div>
                 </div>
                 <span
@@ -431,12 +431,24 @@ export function ContractRateCards({
                     {permit ? `$${Number(permit.monthlyFeeUsd).toFixed(2)}` : "$50.00"}
                   </span>
                 </div>
+                <div className="rounded-xl border border-outline-variant/20 bg-surface-light-grey/40 p-3">
+                  <span className="text-body-xs text-text-grey block">Customs Surety Bond:</span>
+                  <span className="font-mono text-mono-md font-bold text-brand-navy">
+                    ${suretyBondRate.toFixed(2)}
+                  </span>
+                </div>
+                <div className="rounded-xl border border-brand-navy/20 bg-brand-navy/5 p-3">
+                  <span className="text-body-xs text-text-grey block">Total Compliance Fee:</span>
+                  <span className="font-mono text-mono-md font-bold text-brand-navy">
+                    ${((permit ? Number(permit.monthlyFeeUsd) : 50.0) + suretyBondRate).toFixed(2)} / mo
+                  </span>
+                </div>
               </div>
             </div>
 
             <div className="mt-4 flex items-center justify-between text-body-xs text-text-grey border-t border-outline-variant/20 pt-3">
               <span>Valid: <strong className="text-on-surface">{permit ? `${permit.validFrom} → ${permit.validTo}` : "Current Term"}</strong></span>
-              <span className="font-mono text-mono-xs text-text-grey font-semibold">PEZA Bonded Facility</span>
+              <span className="font-mono text-mono-xs text-text-grey font-semibold">PEZA &amp; Customs Bonded Facility</span>
             </div>
           </div>
         )}

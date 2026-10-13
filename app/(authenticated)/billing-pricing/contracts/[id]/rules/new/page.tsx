@@ -178,7 +178,7 @@ export default async function PricingRuleBuilderPage({ params }: PageProps) {
                 <option value="handling_in">Handling IN</option>
                 <option value="handling_out">Handling OUT</option>
                 <option value="documentation">Documentation</option>
-                <option value="loa">LOA</option>
+                <option value="loa">Compliance Fee (LOA / PEZA / Bond)</option>
                 <option value="manpower">Manpower</option>
                 <option value="other">Other Charges</option>
                 <option value="trading">Trading</option>

@@ -8,6 +8,7 @@ import { requirePermission } from "@/lib/rbac/guard";
 import { createContract } from "@/lib/actions/contracts";
 import { listParties } from "@/lib/db/queries/parties";
 import { db } from "@/lib/db/client";
+import { partyRoles } from "@/lib/db/schema/parties";
 import { NewContractForm } from "./NewContractForm";
 
 export default async function NewContractPage() {
@@ -25,7 +26,22 @@ export default async function NewContractPage() {
   }
 
   const partiesResult = await listParties(db, { limit: 100 });
-  const partiesList = partiesResult.rows;
+  const allPartyRoles = await db
+    .select({ partyId: partyRoles.partyId, role: partyRoles.role })
+    .from(partyRoles);
+
+  const rolesByParty = new Map<string, string[]>();
+  for (const r of allPartyRoles) {
+    const list = rolesByParty.get(r.partyId) ?? [];
+    list.push(r.role);
+    rolesByParty.set(r.partyId, list);
+  }
+
+  // End-customers do not receive billings (no billing applies to them)
+  const partiesList = partiesResult.rows.filter((p) => {
+    const r = rolesByParty.get(p.id) ?? [];
+    return !(r.length > 0 && r.every((role) => role === "end_customer"));
+  });
 
   async function handleCreateContract(formData: FormData): Promise<{ ok: boolean; error?: string }> {
     "use server";

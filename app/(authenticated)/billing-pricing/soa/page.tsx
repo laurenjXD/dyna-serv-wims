@@ -8,6 +8,7 @@ import { FileText, ArrowLeft, Calendar, Building2, CheckCircle2, ChevronRight } 
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
+import { partyRoles } from "@/lib/db/schema/parties";
 import { listParties } from "@/lib/db/queries/parties";
 import { getVmiCbmLedgerSummary } from "@/lib/billing/queries/vmi-ledger";
 import { SoaDirectoryClient } from "./_components/SoaDirectoryClient";
@@ -42,9 +43,23 @@ export default async function SoaIndexPage({ searchParams }: PageProps) {
   const selectedMonth = monthParam !== undefined ? parseInt(monthParam, 10) : now.getMonth();
   const selectedYear = yearParam !== undefined ? parseInt(yearParam, 10) : now.getFullYear();
 
-  // Fetch registered parties
+  // Fetch registered parties and exclude end-customers (end-customers do not receive billings)
   const partiesResult = await listParties(db, { limit: 100 });
-  const allParties = partiesResult.rows;
+  const allPartyRoles = await db
+    .select({ partyId: partyRoles.partyId, role: partyRoles.role })
+    .from(partyRoles);
+
+  const rolesByParty = new Map<string, string[]>();
+  for (const r of allPartyRoles) {
+    const list = rolesByParty.get(r.partyId) ?? [];
+    list.push(r.role);
+    rolesByParty.set(r.partyId, list);
+  }
+
+  const allParties = partiesResult.rows.filter((p) => {
+    const r = rolesByParty.get(p.id) ?? [];
+    return !(r.length > 0 && r.every((role) => role === "end_customer"));
+  });
 
   const selectedParty = partyIdParam
     ? allParties.find((p) => p.id === partyIdParam)

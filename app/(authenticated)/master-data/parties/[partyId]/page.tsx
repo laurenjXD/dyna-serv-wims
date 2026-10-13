@@ -210,39 +210,63 @@ export default async function PartyDetailPage({
       </div>
 
       {/* Billing & Financial Overview Card — Contextual shortcut to Central Billing Hub (Design System Level 1 Elevation) */}
-      {canViewFinancials && (
-        <div className="mt-6 rounded-xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
+      {canViewFinancials && (() => {
+        const isEndCustomerOnly =
+          party.roles.length > 0 &&
+          party.roles.every((r) => r.role === "end_customer");
+
+        if (isEndCustomerOnly) {
+          return (
+            <div className="mt-6 rounded-xl border border-outline-variant/30 bg-surface-light-grey/40 p-6 shadow-elevation-1">
               <div className="flex items-center gap-2">
-                <h2 className="font-heading font-semibold text-data-display text-on-surface">
+                <h2 className="font-heading font-semibold text-data-display text-text-grey">
                   Billing &amp; Statements of Account
                 </h2>
-                <span className="inline-flex items-center rounded-full bg-brand-navy/10 px-2.5 py-0.5 font-mono text-body-xs font-semibold text-brand-navy">
-                  Permanent Tiered Retention
+                <span className="inline-flex items-center rounded-full bg-slate-200 px-2.5 py-0.5 font-mono text-body-xs font-semibold text-slate-700">
+                  No Billing Applies
                 </span>
               </div>
-              <p className="mt-1 font-body text-body-sm text-text-grey">
-                Access daily storage CBM balance ledgers, commercial rate cards, and monthly Statements of Account (SOA) for {party.name}.
+              <p className="mt-2 font-body text-body-sm text-text-grey">
+                End-customers do not receive billings (no billing applies to them). No commercial contracts, storage fees, or Statements of Account (SOA) are generated for this organization.
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <Link
-                href={`/billing-pricing?partyId=${partyId}`}
-                className="inline-flex h-10 items-center justify-center rounded-lg border border-outline-variant/30 bg-surface-white px-4 font-label text-label font-bold text-on-surface hover:bg-surface-light-grey transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              >
-                View Billing Ledger
-              </Link>
-              <Link
-                href={`/billing-pricing/soa?partyId=${partyId}`}
-                className="inline-flex h-10 items-center justify-center rounded-lg bg-brand-navy px-4 font-label text-label font-bold text-surface-white hover:bg-brand-navy/90 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              >
-                View Statements of Account &rarr;
-              </Link>
+          );
+        }
+
+        return (
+          <div className="mt-6 rounded-xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-heading font-semibold text-data-display text-on-surface">
+                    Billing &amp; Statements of Account
+                  </h2>
+                  <span className="inline-flex items-center rounded-full bg-brand-navy/10 px-2.5 py-0.5 font-mono text-body-xs font-semibold text-brand-navy">
+                    Permanent Tiered Retention
+                  </span>
+                </div>
+                <p className="mt-1 font-body text-body-sm text-text-grey">
+                  Access daily storage CBM balance ledgers, commercial rate cards, and monthly Statements of Account (SOA) for {party.name}.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <Link
+                  href={`/billing-pricing?partyId=${partyId}`}
+                  className="inline-flex h-10 items-center justify-center rounded-lg border border-outline-variant/30 bg-surface-white px-4 font-label text-label font-bold text-on-surface hover:bg-surface-light-grey transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                >
+                  View Billing Ledger
+                </Link>
+                <Link
+                  href={`/billing-pricing/soa?partyId=${partyId}`}
+                  className="inline-flex h-10 items-center justify-center rounded-lg bg-brand-navy px-4 font-label text-label font-bold text-surface-white hover:bg-brand-navy/90 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                >
+                  View Statements of Account &rarr;
+                </Link>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Deactivation zone — only for active parties that the user can manage */}
       {canManage && party.isActive && (

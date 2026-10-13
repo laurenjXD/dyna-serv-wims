@@ -303,49 +303,66 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
-                LOA Permit Number (Optional)
-              </label>
-              <input
-                type="text"
-                name="loaPermitNumber"
-                placeholder="e.g. LOA-2026-889"
-                className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm font-mono"
-              />
+          {/* Compliance Fee: PEZA Compliance, LOA & Customs Surety Bond */}
+          <div className="rounded-lg border border-border-medium bg-surface-white/60 p-4 space-y-3">
+            <div className="flex items-center justify-between border-b border-border-light pb-2">
+              <div>
+                <h3 className="font-heading text-body-sm font-bold text-brand-navy">
+                  Compliance Fee (PEZA Compliance, LOA &amp; Customs Surety Bond)
+                </h3>
+                <p className="font-body text-body-xs text-text-grey">
+                  Bonded warehouse regulatory permits, Letter of Authority (LOA), and Customs surety bond fees
+                </p>
+              </div>
+              <span className="font-mono text-label-xs font-semibold px-2 py-0.5 bg-brand-navy/10 text-brand-navy rounded">
+                Regulatory Compliance
+              </span>
             </div>
 
-            <div>
-              <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
-                LOA Monthly Rate ($ / Month)
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                name="loaMonthlyRate"
-                defaultValue="150.00"
-                placeholder="150.00"
-                className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm font-mono"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
+                  PEZA / LOA Permit Number (Optional)
+                </label>
+                <input
+                  type="text"
+                  name="loaPermitNumber"
+                  placeholder="e.g. LOA-2026-889"
+                  className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
+                  Monthly LOA Rate ($ / Month)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  name="loaMonthlyRate"
+                  defaultValue="150.00"
+                  placeholder="150.00"
+                  className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
+                  Customs Surety Bond ($ / Month)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  name="suretyBondMonthlyFee"
+                  defaultValue="100.00"
+                  placeholder="100.00"
+                  className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm font-mono"
+                />
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
-                Customs Surety Bond ($ / Mo)
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                name="suretyBondMonthlyFee"
-                defaultValue="100.00"
-                placeholder="100.00"
-                className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm font-mono"
-              />
-            </div>
-
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
                 Trucking Admin Fee ($ / Mo)
