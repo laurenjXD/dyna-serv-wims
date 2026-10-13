@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Printer, Download, ChevronDown, ChevronUp, FileText } from "lucide-react";
 import { SoaStatusSelect, type SoaStatus } from "@/components/billing/SoaStatusSelect";
+import { MasterDocumentHeader } from "@/components/print/MasterDocumentHeader";
 
 export interface SoaCategory {
   name: string;
@@ -363,47 +364,15 @@ export function SoaDetailClient({
       ═══════════════════════════════════════════════════════════════════ */}
       <div data-print-document className="bg-white border border-slate-300 p-10 print:p-0 print:border-none shadow-sm print-avoid-break">
 
-        {/* Letterhead */}
-        <div className="flex items-start justify-between gap-4 pb-5 border-b-2 border-slate-800 print-avoid-break">
-          <div className="flex items-start gap-3">
-            {/* The browser print template uses the same logo as generated PDFs. */}
-            <span className="soa-letterhead-logo inline-flex shrink-0 bg-white p-0.5 print:p-0" aria-hidden="true">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/api/brand/logo" alt="" className="h-14 w-auto object-contain print:h-12" />
-            </span>
-            <div>
-              <p className="text-xl font-extrabold tracking-tight text-slate-900 leading-tight">
-                DYNA-SERV GLOBAL CORPORATION
-              </p>
-              <p className="text-xs text-slate-500 mt-1">
-                Unit 7, Orient Goldcrest Building 6A, 149 East Main Avenue Loop, Phase 6C<br />
-                Laguna Technopark SEZ, Biñan City, Laguna, Philippines 4024
-              </p>
-              <p className="text-xs text-blue-700 font-semibold mt-0.5">
-                www.dyna-serv.com.ph
-              </p>
-            </div>
-          </div>
-          <div className="text-right shrink-0">
-            <p className="text-xl font-extrabold text-slate-900 uppercase tracking-wide">
-              Statement of Account
-            </p>
-            <table className="soa-document-meta mt-2 ml-auto text-xs" style={{borderCollapse:"collapse"}}>
-              <tbody>
-                {[
-                  ["SOA No.", soaData.soaNumber],
-                  ["Invoice Date", soaData.issueDate],
-                  ["Payment Due", soaData.dueDate],
-                ].map(([label, value]) => (
-                  <tr key={label}>
-                    <td className="pr-4 py-0.5 text-slate-500 text-right" style={{border:"none"}}>{label}</td>
-                    <td className="font-mono font-bold text-slate-900" style={{border:"none"}}>{value}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        {/* Master Document Uniform Header */}
+        <MasterDocumentHeader
+          documentTitle="Statement of Account"
+          documentNumber={soaData.soaNumber}
+          documentDate={soaData.issueDate}
+          status={status?.toUpperCase() ?? "ISSUED"}
+          orientation="portrait"
+          showPrintButton={false}
+        />
 
         {/* Bill To / Document Details */}
         <div className="grid grid-cols-2 gap-10 mt-5 text-xs print-avoid-break">

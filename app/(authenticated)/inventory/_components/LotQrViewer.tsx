@@ -88,8 +88,6 @@ export function LotQrViewer({
 
             {/* Print Header (Visible on print & screen) */}
             <div className="flex flex-col items-center gap-2 text-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/api/brand/logo" alt="Dyna-Serv" className="h-7 w-auto object-contain" />
               <div className="my-3 flex justify-center rounded-xl border border-outline-variant bg-surface-white p-4 print:border-black">
                 <QRCode value={lotId} size={180} />
               </div>

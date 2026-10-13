@@ -183,6 +183,7 @@ function ContactPartyModal({
   const [activeTab, setActiveTab] = useState<"compose" | "preview">("compose");
   const [selectedTemplateId, setSelectedTemplateId] = useState("custom_message");
   const [subject, setSubject] = useState("Message from Dyna-Serv Operations");
+  const [cc, setCc] = useState("");
   const [message, setMessage] = useState("");
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
@@ -197,6 +198,7 @@ function ContactPartyModal({
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed.subject) setSubject(parsed.subject);
+        if (parsed.cc) setCc(parsed.cc);
         if (parsed.message) setMessage(parsed.message);
         if (parsed.templateId) setSelectedTemplateId(parsed.templateId);
         if (parsed.savedAt) setLastSavedTime(parsed.savedAt);
@@ -215,7 +217,7 @@ function ContactPartyModal({
 
   // Auto-save draft on change
   useEffect(() => {
-    if (!message && !subject) return;
+    if (!message && !subject && !cc) return;
     const timer = setTimeout(() => {
       try {
         const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -223,6 +225,7 @@ function ContactPartyModal({
           draftKey,
           JSON.stringify({
             subject,
+            cc,
             message,
             templateId: selectedTemplateId,
             savedAt: now,
@@ -234,7 +237,7 @@ function ContactPartyModal({
       }
     }, 800);
     return () => clearTimeout(timer);
-  }, [subject, message, selectedTemplateId, draftKey]);
+  }, [subject, cc, message, selectedTemplateId, draftKey]);
 
   // Clear draft on successful send
   useEffect(() => {
@@ -431,24 +434,44 @@ function ContactPartyModal({
 
               {activeTab === "compose" ? (
                 <div className="space-y-4">
-                  {/* Subject Line */}
-                  <div>
-                    <label
-                      htmlFor="email-subject"
-                      className="block font-label text-label-xs font-bold uppercase tracking-wider text-text-grey"
-                    >
-                      Email Subject Line <span className="text-brand-red">*</span>
-                    </label>
-                    <input
-                      id="email-subject"
-                      name="subject"
-                      type="text"
-                      required
-                      value={subject}
-                      onChange={(e) => setSubject(e.target.value)}
-                      placeholder="Enter email subject line…"
-                      className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3.5 font-body text-body-md font-semibold text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                    />
+                  {/* Subject Line & CC */}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label
+                        htmlFor="email-subject"
+                        className="block font-label text-label-xs font-bold uppercase tracking-wider text-text-grey"
+                      >
+                        Email Subject Line <span className="text-brand-red">*</span>
+                      </label>
+                      <input
+                        id="email-subject"
+                        name="subject"
+                        type="text"
+                        required
+                        value={subject}
+                        onChange={(e) => setSubject(e.target.value)}
+                        placeholder="Enter email subject line…"
+                        className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3.5 font-body text-body-md font-semibold text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                      />
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="email-cc"
+                        className="block font-label text-label-xs font-bold uppercase tracking-wider text-text-grey"
+                      >
+                        CC (Optional)
+                      </label>
+                      <input
+                        id="email-cc"
+                        name="cc"
+                        type="text"
+                        value={cc}
+                        onChange={(e) => setCc(e.target.value)}
+                        placeholder="e.g. accounting@dyna-serv.com, ops@client.com"
+                        className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3.5 font-body text-body-md text-on-surface placeholder:text-text-grey/60 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                      />
+                    </div>
                   </div>
 
                   {/* Message Body */}

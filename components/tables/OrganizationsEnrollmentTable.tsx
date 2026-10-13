@@ -7,6 +7,16 @@ import { Building2, Plus } from "lucide-react";
 import { DataTable } from "./DataTable";
 import type { PartyListRow } from "@/lib/db/queries/parties";
 
+const ROLE_BADGE_STYLES: Record<string, { label: string; bg: string; text: string; border: string }> = {
+  supplier: { label: "Supplier", bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
+  vendor: { label: "Vendor", bg: "bg-indigo-50", text: "text-indigo-700", border: "border-indigo-200" },
+  customer: { label: "Customer", bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" },
+  end_customer: { label: "End Customer", bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200" },
+  internal_warehouse: { label: "Internal Supplies", bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200" },
+};
+
+import { ExportDataButton } from "@/components/shared/ExportDataButton";
+
 export function OrganizationsEnrollmentTable({
   data,
   canManage = false,
@@ -51,7 +61,43 @@ export function OrganizationsEnrollmentTable({
       },
     },
 
-    // 3. Email
+    // 3. Business Roles
+    {
+      id: "roles",
+      header: "Business Roles",
+      meta: {
+        filterVariant: "text",
+        filterLabel: "Role",
+      },
+      cell: (info) => {
+        const roles = info.row.original.roles ?? [];
+        if (roles.length === 0) {
+          return <span className="text-xs text-text-grey italic">None</span>;
+        }
+        return (
+          <div className="flex flex-wrap gap-1">
+            {roles.map((r) => {
+              const style = ROLE_BADGE_STYLES[r] ?? {
+                label: r.replace(/_/g, " "),
+                bg: "bg-slate-100",
+                text: "text-slate-700",
+                border: "border-slate-200",
+              };
+              return (
+                <span
+                  key={r}
+                  className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${style.bg} ${style.text} border ${style.border}`}
+                >
+                  {style.label}
+                </span>
+              );
+            })}
+          </div>
+        );
+      },
+    },
+
+    // 4. Email
     {
       accessorKey: "email",
       header: "Email",
@@ -133,14 +179,31 @@ export function OrganizationsEnrollmentTable({
       subtitle="Master directory of suppliers, customers, and VMI client organizations"
       icon={<Building2 size={18} />}
       actions={
-        canManage ? (
-          <Link
-            href="/master-data/parties/new"
-            className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-bold text-surface-white hover:bg-primary/90 transition-all shadow-sm"
-          >
-            <Plus size={14} /> New Organization
-          </Link>
-        ) : null
+        <div className="flex items-center gap-2">
+          <ExportDataButton
+            data={data}
+            filename="organizations_directory"
+            sheetName="Organizations"
+            buttonLabel="Export Orgs"
+            columns={[
+              { header: "Code", key: "code" },
+              { header: "Name", key: "name" },
+              { header: "Roles", format: (r) => (r.roles || []).join(", ") },
+              { header: "Contact Person", key: "contactPerson" },
+              { header: "Email", key: "email" },
+              { header: "Status", format: (r) => (r.isActive ? "Active" : "Inactive") },
+              { header: "Enrolled Date", format: (r) => new Date(r.createdAt).toISOString().split("T")[0] },
+            ]}
+          />
+          {canManage && (
+            <Link
+              href="/master-data/parties/new"
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-bold text-surface-white hover:bg-primary/90 transition-all shadow-sm"
+            >
+              <Plus size={14} /> New Organization
+            </Link>
+          )}
+        </div>
       }
       emptyMessage="No organizations found matching the specified filters."
     />

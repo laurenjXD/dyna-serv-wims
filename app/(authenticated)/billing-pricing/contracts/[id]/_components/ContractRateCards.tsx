@@ -106,6 +106,15 @@ export function ContractRateCards({
   const suretyBondRule = allRules.find((r) => r.chargeCode === "MSC-SURETY-BOND" || r.chargeName.toLowerCase().includes("surety"));
   const suretyBondRate = suretyBondLine?.flatAmountUsd ? Number(suretyBondLine.flatAmountUsd) : suretyBondRule ? Number(suretyBondRule.rate) : 100.0;
 
+  const otherComplianceLine = recurringFeeLines.find((r) => r.feeType === "other");
+  const otherComplianceRule = allRules.find((r) => r.chargeCode === "MSC-OTHER-COMPL");
+  const otherComplianceRate = otherComplianceLine?.flatAmountUsd ? Number(otherComplianceLine.flatAmountUsd) : otherComplianceRule ? Number(otherComplianceRule.rate) : 0;
+  const otherComplianceLabel = otherComplianceLine?.label || otherComplianceRule?.chargeName || "Other Compliance Fee";
+
+  const loaDaysRemaining = permit?.validTo
+    ? Math.ceil((new Date(permit.validTo).getTime() - new Date().setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24))
+    : null;
+
   const truckingAdminLine = recurringFeeLines.find((r) => r.feeType === "trucking_admin_fee");
   const truckingAdminRule = allRules.find((r) => r.chargeCode === "MSC-TRK-ADMIN" || r.chargeName.toLowerCase().includes("trucking admin"));
   const truckingAdminRate = truckingAdminLine?.flatAmountUsd ? Number(truckingAdminLine.flatAmountUsd) : truckingAdminRule ? Number(truckingAdminRule.rate) : 50.0;
@@ -401,15 +410,30 @@ export function ContractRateCards({
                     <p className="font-body text-body-xs text-text-grey">PEZA compliance, Letter of Authority (LOA), and Customs surety bond</p>
                   </div>
                 </div>
-                <span
-                  className={`rounded-lg border px-2 py-0.5 font-label text-label-xs font-bold uppercase ${
-                    permit
-                      ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                      : "bg-surface-light-grey border-outline-variant/30 text-text-grey"
-                  }`}
-                >
-                  {permit ? "Permit Active" : "PEZA Standard"}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  {loaDaysRemaining !== null && (
+                    <span
+                      className={`rounded-lg border px-2 py-0.5 font-label text-label-xs font-bold uppercase ${
+                        loaDaysRemaining > 60
+                          ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                          : loaDaysRemaining > 0
+                          ? "bg-amber-50 border-amber-200 text-amber-700"
+                          : "bg-red-50 border-red-200 text-red-700"
+                      }`}
+                    >
+                      {loaDaysRemaining > 0 ? `${loaDaysRemaining}d LOA Left` : "LOA Expired"}
+                    </span>
+                  )}
+                  <span
+                    className={`rounded-lg border px-2 py-0.5 font-label text-label-xs font-bold uppercase ${
+                      permit
+                        ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                        : "bg-surface-light-grey border-outline-variant/30 text-text-grey"
+                    }`}
+                  >
+                    {permit ? "Permit Active" : "PEZA Standard"}
+                  </span>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3 font-body text-body-sm">
@@ -437,18 +461,31 @@ export function ContractRateCards({
                     ${suretyBondRate.toFixed(2)}
                   </span>
                 </div>
-                <div className="rounded-xl border border-brand-navy/20 bg-brand-navy/5 p-3">
+                {otherComplianceRate > 0 ? (
+                  <div className="rounded-xl border border-outline-variant/20 bg-surface-light-grey/40 p-3">
+                    <span className="text-body-xs text-text-grey block truncate">{otherComplianceLabel}:</span>
+                    <span className="font-mono text-mono-md font-bold text-brand-navy">
+                      ${otherComplianceRate.toFixed(2)}
+                    </span>
+                  </div>
+                ) : null}
+                <div className={`rounded-xl border border-brand-navy/20 bg-brand-navy/5 p-3 ${otherComplianceRate > 0 ? "col-span-2" : ""}`}>
                   <span className="text-body-xs text-text-grey block">Total Compliance Fee:</span>
                   <span className="font-mono text-mono-md font-bold text-brand-navy">
-                    ${((permit ? Number(permit.monthlyFeeUsd) : 50.0) + suretyBondRate).toFixed(2)} / mo
+                    ${((permit ? Number(permit.monthlyFeeUsd) : 50.0) + suretyBondRate + otherComplianceRate).toFixed(2)} / mo
                   </span>
                 </div>
               </div>
             </div>
 
             <div className="mt-4 flex items-center justify-between text-body-xs text-text-grey border-t border-outline-variant/20 pt-3">
-              <span>Valid: <strong className="text-on-surface">{permit ? `${permit.validFrom} → ${permit.validTo}` : "Current Term"}</strong></span>
-              <span className="font-mono text-mono-xs text-text-grey font-semibold">PEZA &amp; Customs Bonded Facility</span>
+              <span>
+                1-Year LOA Term:{" "}
+                <strong className="text-on-surface">
+                  {permit ? `${permit.validFrom} → ${permit.validTo}` : "Annual Term"}
+                </strong>
+              </span>
+              <span className="font-mono text-mono-xs text-text-grey font-semibold">PEZA &amp; Customs Bonded</span>
             </div>
           </div>
         )}

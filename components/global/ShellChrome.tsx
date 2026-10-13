@@ -751,7 +751,7 @@ function getPageTitle(pathname: string): string {
   if (pathname.startsWith("/transfers")) return "Transfers";
   if (pathname.startsWith("/inspection")) return "Inspection";
   if (pathname.startsWith("/approvals")) return "Approvals";
-  if (pathname.startsWith("/enrollment")) return "Enrollment";
+  if (pathname.startsWith("/enrollment")) return "Data Management";
   if (pathname.startsWith("/master-data/parties")) return "Organizations";
   if (pathname.startsWith("/master-data/items")) return "Items (Inventory Model)";
   if (pathname.startsWith("/master-data/locations")) return "Locations";

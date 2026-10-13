@@ -15,13 +15,28 @@ import {
   Clock,
   Sparkles,
   Sliders,
+  Printer,
+  Layout,
+  FileText,
 } from "lucide-react";
 import type { GeneralSettingsData } from "@/app/(authenticated)/settings/general/actions";
 import { saveGeneralSettings } from "@/app/(authenticated)/settings/general/actions";
 import { PhoneInputField } from "@/components/global/PhoneInputField";
+import { MasterDocumentHeader } from "@/components/print/MasterDocumentHeader";
 
 export function GeneralSettingsForm({ initialSettings }: { initialSettings: GeneralSettingsData }) {
-  const [settings, setSettings] = useState<GeneralSettingsData>(initialSettings);
+  const [settings, setSettings] = useState<GeneralSettingsData>(() => ({
+    ...initialSettings,
+    printTemplate: initialSettings.printTemplate ?? {
+      companyName: "DYNA-SERV ENTERPRISES / LOGISTICS",
+      subtitle: "Warehouse Inventory Management System (WIMS)",
+      facilityAddress: initialSettings.facility.physicalAddress,
+      contactInfo: `Tel: ${initialSettings.facility.contactPhone} | Email: ${initialSettings.facility.contactEmail}`,
+      taxOrPezaReg: `PEZA Reg. No. 01-1234 | VAT Reg. TIN: ${initialSettings.facility.tinNumber}`,
+      isoAccreditation: "ISO 9001:2015 Certified Logistics Facility",
+      previewOrientation: "portrait",
+    },
+  }));
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [hapticTested, setHapticTested] = useState(false);
@@ -546,6 +561,272 @@ export function GeneralSettingsForm({ initialSettings }: { initialSettings: Gene
                 Daily automated Master Inventory &amp; Valuation PDF report delivery at shift closing (06:00 PM)
               </span>
             </label>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Section 4: Master Printable Document Template & Layout Preview ─────── */}
+      <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white shadow-xs">
+              <Printer className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="font-heading text-base font-bold text-slate-900">
+                Master Document Print Template &amp; Orientation
+              </h2>
+              <p className="font-body text-xs text-slate-500">
+                Standardized master corporate header adopted across all warehouse printable slips, WRR, Pick Lists, and Statement of Accounts.
+              </p>
+            </div>
+          </div>
+
+          {/* Orientation Toggle: Portrait vs Landscape */}
+          <div className="flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1 shrink-0">
+            <button
+              type="button"
+              onClick={() =>
+                setSettings({
+                  ...settings,
+                  printTemplate: {
+                    ...settings.printTemplate,
+                    previewOrientation: "portrait",
+                  },
+                })
+              }
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                settings.printTemplate.previewOrientation === "portrait"
+                  ? "bg-white text-slate-900 shadow-xs border border-slate-200"
+                  : "text-slate-500 hover:text-slate-900"
+              }`}
+            >
+              <Layout size={13} className="rotate-90" />
+              <span>Portrait Preview</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setSettings({
+                  ...settings,
+                  printTemplate: {
+                    ...settings.printTemplate,
+                    previewOrientation: "landscape",
+                  },
+                })
+              }
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                settings.printTemplate.previewOrientation === "landscape"
+                  ? "bg-white text-slate-900 shadow-xs border border-slate-200"
+                  : "text-slate-500 hover:text-slate-900"
+              }`}
+            >
+              <Layout size={13} />
+              <span>Landscape Preview</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Configuration Fields */}
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div>
+            <label className="block font-heading text-xs font-bold uppercase tracking-wider text-slate-700">
+              Corporate Header Title
+            </label>
+            <input
+              type="text"
+              value={settings.printTemplate.companyName}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  printTemplate: {
+                    ...settings.printTemplate,
+                    companyName: e.target.value,
+                  },
+                })
+              }
+              className="mt-1.5 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 font-body text-sm font-semibold text-slate-900 shadow-2xs outline-none focus:border-brand-navy"
+            />
+          </div>
+
+          <div>
+            <label className="block font-heading text-xs font-bold uppercase tracking-wider text-slate-700">
+              System Subtitle / Operations Department
+            </label>
+            <input
+              type="text"
+              value={settings.printTemplate.subtitle}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  printTemplate: {
+                    ...settings.printTemplate,
+                    subtitle: e.target.value,
+                  },
+                })
+              }
+              className="mt-1.5 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 shadow-2xs outline-none focus:border-brand-navy"
+            />
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="block font-heading text-xs font-bold uppercase tracking-wider text-slate-700">
+              Facility Physical Address (Print Header)
+            </label>
+            <input
+              type="text"
+              value={settings.printTemplate.facilityAddress}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  printTemplate: {
+                    ...settings.printTemplate,
+                    facilityAddress: e.target.value,
+                  },
+                })
+              }
+              className="mt-1.5 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 shadow-2xs outline-none focus:border-brand-navy"
+            />
+          </div>
+
+          <div>
+            <label className="block font-heading text-xs font-bold uppercase tracking-wider text-slate-700">
+              Official Contact Numbers &amp; Email
+            </label>
+            <input
+              type="text"
+              value={settings.printTemplate.contactInfo}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  printTemplate: {
+                    ...settings.printTemplate,
+                    contactInfo: e.target.value,
+                  },
+                })
+              }
+              className="mt-1.5 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 shadow-2xs outline-none focus:border-brand-navy"
+            />
+          </div>
+
+          <div>
+            <label className="block font-heading text-xs font-bold uppercase tracking-wider text-slate-700">
+              PEZA Registration &amp; Tax ID / TIN
+            </label>
+            <input
+              type="text"
+              value={settings.printTemplate.taxOrPezaReg}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  printTemplate: {
+                    ...settings.printTemplate,
+                    taxOrPezaReg: e.target.value,
+                  },
+                })
+              }
+              className="mt-1.5 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 shadow-2xs outline-none focus:border-brand-navy"
+            />
+          </div>
+        </div>
+
+        {/* Live Document Preview Container */}
+        <div className="space-y-2 pt-2 border-t border-slate-100">
+          <div className="flex items-center justify-between">
+            <h3 className="font-heading text-xs font-bold uppercase tracking-wider text-slate-500">
+              Live Printable Preview ({settings.printTemplate.previewOrientation.toUpperCase()} Layout)
+            </h3>
+            <span className="text-[11px] font-mono text-slate-400">
+              Format: {settings.printTemplate.previewOrientation === "portrait" ? "8.5 x 11 in (Portrait)" : "11 x 8.5 in (Landscape)"}
+            </span>
+          </div>
+
+          <div className="rounded-xl border border-slate-300 bg-slate-100/70 p-4 sm:p-6 overflow-x-auto flex justify-center">
+            <div
+              className={`bg-white rounded-lg border border-slate-300 shadow-elevation-1 p-6 transition-all duration-300 ${
+                settings.printTemplate.previewOrientation === "portrait"
+                  ? "w-full max-w-xl min-h-[500px]"
+                  : "w-full max-w-3xl min-h-[380px]"
+              }`}
+            >
+              <MasterDocumentHeader
+                documentTitle="WAREHOUSE RECEIVING REPORT (WRR)"
+                documentNumber="WRR-2026-10-0042"
+                documentDate={new Date()}
+                status="VERIFIED"
+                warehouseName={settings.facility.facilityName}
+                companyName={settings.printTemplate.companyName}
+                subtitle={settings.printTemplate.subtitle}
+                facilityAddress={settings.printTemplate.facilityAddress}
+                contactInfo={settings.printTemplate.contactInfo}
+                taxOrPezaReg={settings.printTemplate.taxOrPezaReg}
+                isoAccreditation={settings.printTemplate.isoAccreditation}
+                orientation={settings.printTemplate.previewOrientation}
+                showPrintButton={false}
+              />
+
+              {/* Sample Document Body Content */}
+              <div className="space-y-4 pt-2">
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  <div className="rounded border border-slate-200 p-2.5 bg-slate-50/50">
+                    <span className="font-bold text-slate-600 block uppercase text-[10px]">Supplier / Principal</span>
+                    <strong className="text-slate-900">UNIVERSAL COMPONENTS ASIA LTD.</strong>
+                    <p className="text-slate-500 text-[11px]">PEZA Registered Ecozone Logistics Supplier</p>
+                  </div>
+                  <div className="rounded border border-slate-200 p-2.5 bg-slate-50/50">
+                    <span className="font-bold text-slate-600 block uppercase text-[10px]">Storage Model &amp; Terms</span>
+                    <strong className="text-slate-900">VMI Bonded Storage (Zone A)</strong>
+                    <p className="text-slate-500 text-[11px]">LOA Reference: PEZA-LOA-2026-0891</p>
+                  </div>
+                </div>
+
+                <div className="overflow-hidden rounded border border-slate-200">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-700">
+                      <tr>
+                        <th className="p-2">Item Code</th>
+                        <th className="p-2">Description</th>
+                        <th className="p-2">Lot Number</th>
+                        <th className="p-2 text-right">Quantity</th>
+                        <th className="p-2 text-right">Volume (CBM)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 font-mono text-[11px]">
+                      <tr>
+                        <td className="p-2 font-bold text-slate-900">RES-10K-0805</td>
+                        <td className="p-2 font-sans font-medium text-slate-700">SMD Resistor 10K Ohm 0805 Reel</td>
+                        <td className="p-2 text-slate-600">LOT-20261013-01</td>
+                        <td className="p-2 text-right font-bold">5,000 PCS</td>
+                        <td className="p-2 text-right">0.024 CBM</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2 font-bold text-slate-900">CAP-100U-16V</td>
+                        <td className="p-2 font-sans font-medium text-slate-700">Aluminum Electrolytic Capacitor</td>
+                        <td className="p-2 text-slate-600">LOT-20261013-02</td>
+                        <td className="p-2 text-right font-bold">2,500 PCS</td>
+                        <td className="p-2 text-right">0.048 CBM</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="grid grid-cols-3 gap-6 pt-4 text-center text-xs">
+                  <div className="border-t border-slate-400 pt-1">
+                    <span className="text-[10px] font-bold uppercase text-slate-500 block">Received By (Staff)</span>
+                    <strong className="text-slate-800">Juan Dela Cruz</strong>
+                  </div>
+                  <div className="border-t border-slate-400 pt-1">
+                    <span className="text-[10px] font-bold uppercase text-slate-500 block">Verified By (QC Inspector)</span>
+                    <strong className="text-slate-800">Maria Santos</strong>
+                  </div>
+                  <div className="border-t border-slate-400 pt-1">
+                    <span className="text-[10px] font-bold uppercase text-slate-500 block">Authorized Signatory</span>
+                    <strong className="text-slate-800">Warehouse Supervisor</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>

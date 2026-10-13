@@ -400,6 +400,7 @@ export async function contactParty(
     subject?: string | null;
     templateKey?: string;
     templateCategory?: string;
+    cc?: string | string[];
     attachments?: import("@/lib/enrollment/contact-party").ContactPartyEmailAttachment[];
   } | RlsTransactionDeps,
   maybeRlsDeps?: RlsTransactionDeps,
@@ -414,6 +415,7 @@ export async function contactParty(
     subject?: string | null;
     templateKey?: string;
     templateCategory?: string;
+    cc?: string | string[];
     attachments?: import("@/lib/enrollment/contact-party").ContactPartyEmailAttachment[];
   }) : undefined;
   const rlsDeps = isOptions ? (maybeRlsDeps ?? defaultRlsDeps) : ((optionsOrRlsDeps as RlsTransactionDeps) ?? defaultRlsDeps);

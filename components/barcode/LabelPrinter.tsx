@@ -57,8 +57,6 @@ export function LabelPrinter({
           }
         }
       `}</style>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/api/brand/logo" alt="Dyna-Serv" className="h-7 w-auto object-contain" />
       {/*
         FR-3.2: QR payload is exactly the UUID string — "a UUID lookup, not a data blob"
         (design.md §2). No prefix, no JSON wrapping, no transformation.

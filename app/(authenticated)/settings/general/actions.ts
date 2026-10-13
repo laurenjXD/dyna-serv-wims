@@ -42,6 +42,15 @@ export interface GeneralSettingsData {
     dailyPdfReportSubscription: boolean;
     subscriptionEmail: string;
   };
+  printTemplate: {
+    companyName: string;
+    subtitle: string;
+    facilityAddress: string;
+    contactInfo: string;
+    taxOrPezaReg: string;
+    isoAccreditation?: string;
+    previewOrientation: "portrait" | "landscape";
+  };
 }
 
 const DEFAULT_SETTINGS: GeneralSettingsData = {
@@ -77,6 +86,15 @@ const DEFAULT_SETTINGS: GeneralSettingsData = {
     qcQuarantineAlerts: true,
     dailyPdfReportSubscription: true,
     subscriptionEmail: "operations@dyna-serv.example",
+  },
+  printTemplate: {
+    companyName: "DYNA-SERV ENTERPRISES / LOGISTICS",
+    subtitle: "Warehouse Inventory Management System (WIMS)",
+    facilityAddress: "Lot 14 Block 3, Laguna Technopark Special Economic Zone, Biñan, Laguna 4024",
+    contactInfo: "Tel: +63 (49) 541-2345 | Mobile: +63 917 555 8899 | Email: warehouse.ops@dyna-serv.com",
+    taxOrPezaReg: "PEZA Reg. No. 01-1234 | VAT Reg. TIN: 008-765-432-000",
+    isoAccreditation: "ISO 9001:2015 Certified Logistics Facility",
+    previewOrientation: "portrait",
   },
 };
 

@@ -43,7 +43,8 @@ export default async function SoaIndexPage({ searchParams }: PageProps) {
   const selectedMonth = monthParam !== undefined ? parseInt(monthParam, 10) : now.getMonth();
   const selectedYear = yearParam !== undefined ? parseInt(yearParam, 10) : now.getFullYear();
 
-  // Fetch registered parties and exclude end-customers (end-customers do not receive billings)
+  // Fetch registered parties: Suppliers bill Dyna Serv, end-customers receive no billing.
+  // Therefore, Statements of Account (SOAs) are generated strictly for Customer accounts.
   const partiesResult = await listParties(db, { limit: 100 });
   const allPartyRoles = await db
     .select({ partyId: partyRoles.partyId, role: partyRoles.role })
@@ -58,7 +59,12 @@ export default async function SoaIndexPage({ searchParams }: PageProps) {
 
   const allParties = partiesResult.rows.filter((p) => {
     const r = rolesByParty.get(p.id) ?? [];
-    return !(r.length > 0 && r.every((role) => role === "end_customer"));
+    if (r.length > 0) {
+      if (r.every((role) => role === "end_customer")) return false;
+      if (r.every((role) => role === "supplier")) return false;
+      return r.includes("customer");
+    }
+    return true; // fallback for unassigned legacy/mock items
   });
 
   const selectedParty = partyIdParam

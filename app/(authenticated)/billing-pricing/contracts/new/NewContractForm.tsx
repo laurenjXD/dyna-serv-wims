@@ -17,8 +17,35 @@ interface NewContractFormProps {
 
 export function NewContractForm({ partiesList, onSubmitAction }: NewContractFormProps) {
   const [contractType, setContractType] = useState<"vmi_trading" | "vmi" | "trading">("vmi_trading");
+  const [billingCycle, setBillingCycle] = useState("weekly_sun_sat");
+  const [loaStartDate, setLoaStartDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [loaExpirationDate, setLoaExpirationDate] = useState(() => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() + 1);
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().split("T")[0];
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleLoaStartDateChange = (val: string) => {
+    setLoaStartDate(val);
+    if (val) {
+      const d = new Date(val);
+      if (!isNaN(d.getTime())) {
+        d.setFullYear(d.getFullYear() + 1);
+        d.setDate(d.getDate() - 1);
+        setLoaExpirationDate(d.toISOString().split("T")[0]);
+      }
+    }
+  };
+
+  const loaDaysRemaining = loaExpirationDate
+    ? Math.ceil(
+        (new Date(loaExpirationDate).getTime() - new Date().setHours(0, 0, 0, 0)) /
+          (1000 * 60 * 60 * 24)
+      )
+    : null;
 
   const showVmi = contractType === "vmi" || contractType === "vmi_trading";
   const showTrading = contractType === "trading" || contractType === "vmi_trading";
@@ -102,7 +129,7 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
               Contract Number <span className="text-red-500">*</span>
@@ -129,6 +156,23 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
               <option value="vmi_trading">VMI + Trading (Combined)</option>
               <option value="vmi">VMI Only</option>
               <option value="trading">Trading Only</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
+              Billing Cycle <span className="text-red-500">*</span>
+            </label>
+            <select
+              name="billingCycle"
+              value={billingCycle}
+              onChange={(e) => setBillingCycle(e.target.value)}
+              className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm font-semibold text-brand-navy"
+            >
+              <option value="weekly_sun_sat">Weekly (Sunday – Saturday) [Standard]</option>
+              <option value="monthly_calendar">Monthly (1st – End of Month)</option>
+              <option value="semi_monthly">Bi-Weekly / Semi-Monthly (1st–15th &amp; 16th–End)</option>
+              <option value="milestone">Milestone / Transaction-Based</option>
             </select>
           </div>
         </div>
@@ -303,22 +347,38 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
             </div>
           </div>
 
-          {/* Compliance Fee: PEZA Compliance, LOA & Customs Surety Bond */}
-          <div className="rounded-lg border border-border-medium bg-surface-white/60 p-4 space-y-3">
-            <div className="flex items-center justify-between border-b border-border-light pb-2">
+          {/* Compliance Fee: PEZA Compliance, LOA (1-Year Validity) & Customs Surety Bond */}
+          <div className="rounded-lg border border-border-medium bg-surface-white/60 p-4 space-y-4">
+            <div className="flex flex-wrap items-center justify-between border-b border-border-light pb-2 gap-2">
               <div>
                 <h3 className="font-heading text-body-sm font-bold text-brand-navy">
                   Compliance Fee (PEZA Compliance, LOA &amp; Customs Surety Bond)
                 </h3>
                 <p className="font-body text-body-xs text-text-grey">
-                  Bonded warehouse regulatory permits, Letter of Authority (LOA), and Customs surety bond fees
+                  Bonded warehouse regulatory permits, Letter of Authority (LOA 1-year cycle), and Customs surety bond fees
                 </p>
               </div>
-              <span className="font-mono text-label-xs font-semibold px-2 py-0.5 bg-brand-navy/10 text-brand-navy rounded">
-                Regulatory Compliance
-              </span>
+              <div className="flex items-center gap-2">
+                {loaDaysRemaining !== null && (
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                      loaDaysRemaining > 60
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                        : loaDaysRemaining > 0
+                        ? "bg-amber-50 text-amber-700 border border-amber-200"
+                        : "bg-red-50 text-red-700 border border-red-200"
+                    }`}
+                  >
+                    LOA Validity: {loaDaysRemaining > 0 ? `${loaDaysRemaining} days remaining` : "Expired"}
+                  </span>
+                )}
+                <span className="font-mono text-label-xs font-semibold px-2 py-0.5 bg-brand-navy/10 text-brand-navy rounded">
+                  Regulatory Compliance
+                </span>
+              </div>
             </div>
 
+            {/* LOA Information (1-Year Cycle) */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
@@ -332,6 +392,41 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
                 />
               </div>
 
+              <div>
+                <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
+                  LOA Start Date
+                </label>
+                <input
+                  type="date"
+                  name="loaStartDate"
+                  value={loaStartDate}
+                  onChange={(e) => handleLoaStartDateChange(e.target.value)}
+                  className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm font-mono"
+                />
+                <p className="mt-1 font-body text-[10px] text-text-grey">
+                  Sets initial 1-year LOA authority term.
+                </p>
+              </div>
+
+              <div>
+                <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
+                  LOA Expiration Date (1-Year Validity)
+                </label>
+                <input
+                  type="date"
+                  name="loaExpirationDate"
+                  value={loaExpirationDate}
+                  onChange={(e) => setLoaExpirationDate(e.target.value)}
+                  className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm font-mono"
+                />
+                <p className="mt-1 font-body text-[10px] text-text-grey">
+                  Auto-calculated 1-year validity (strictly 12 months).
+                </p>
+              </div>
+            </div>
+
+            {/* Fee Rates */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-border-light">
               <div>
                 <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
                   Monthly LOA Rate ($ / Month)
@@ -359,6 +454,32 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
                   className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm font-mono"
                 />
               </div>
+
+              <div>
+                <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
+                  Other Compliance Fee ($ / Month)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  name="otherComplianceFee"
+                  defaultValue="0.00"
+                  placeholder="0.00"
+                  className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="pt-1">
+              <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
+                Other Compliance Fee Description (Optional)
+              </label>
+              <input
+                type="text"
+                name="otherComplianceLabel"
+                placeholder="e.g. Special PEZA Environmental &amp; Safety Compliance"
+                className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm"
+              />
             </div>
           </div>
 

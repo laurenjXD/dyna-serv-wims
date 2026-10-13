@@ -30,6 +30,7 @@ export interface CreateContractInput {
   paymentTerms?: string;
   warehousesCovered?: string;
   notes?: string;
+  billingCycle?: string;
 
   // Optional VMI Policy & Terms
   vmiOwnership?: "supplier_owned" | "customer_owned" | "warehouse_owned";
@@ -39,6 +40,10 @@ export interface CreateContractInput {
   handlingOutRatePerCbm?: number;
   loaPermitNumber?: string;
   loaMonthlyRate?: number;
+  loaStartDate?: string;
+  loaExpirationDate?: string;
+  otherComplianceFee?: number;
+  otherComplianceLabel?: string;
   minStock?: number;
   maxStock?: number;
   reorderPoint?: number;
@@ -149,8 +154,8 @@ export async function createContract(
           partyId: input.partyId,
           permitNumber: input.loaPermitNumber,
           itemScope: "PEZA Bonded Warehouse Goods",
-          validFrom: input.effectiveDate,
-          validTo: input.expirationDate ?? "2030-12-31",
+          validFrom: input.loaStartDate ?? input.effectiveDate,
+          validTo: input.loaExpirationDate ?? input.expirationDate ?? "2030-12-31",
           monthlyFeeUsd: String(input.loaMonthlyRate),
         });
       }
@@ -162,6 +167,16 @@ export async function createContract(
           feeType: "surety_bond",
           label: "Customs Surety Bond",
           flatAmountUsd: String(input.suretyBondMonthlyFee),
+          isActive: true,
+        });
+      }
+
+      if (input.otherComplianceFee && input.otherComplianceFee > 0) {
+        await db.insert(vmiRecurringFeeLines).values({
+          partyId: input.partyId,
+          feeType: "other",
+          label: input.otherComplianceLabel || "Other Compliance Fee",
+          flatAmountUsd: String(input.otherComplianceFee),
           isActive: true,
         });
       }
@@ -193,6 +208,11 @@ export async function createContract(
 
   // 2. Secondary write: Try inserting master contract header & versions if contracts table exists
   try {
+    const finalNotes = [
+      input.billingCycle ? `[Billing Cycle: ${input.billingCycle}]` : null,
+      input.notes,
+    ].filter(Boolean).join("\n\n");
+
     const [contract] = await db
       .insert(contracts)
       .values({
@@ -206,7 +226,7 @@ export async function createContract(
         exchangeRatePolicy: input.exchangeRatePolicy ?? "monthly_rate",
         paymentTerms: input.paymentTerms ?? "Net 30",
         warehousesCovered: input.warehousesCovered ?? "Main Warehouse",
-        notes: input.notes,
+        notes: finalNotes,
         createdByUserId: userId,
       })
       .returning();
@@ -283,6 +303,20 @@ export async function createContract(
           chargeCategory: "other",
           billingBasis: "flat",
           rate: String(input.suretyBondMonthlyFee),
+          currency: input.currency ?? "USD",
+          priority: 5,
+          createdByUserId: userId,
+        });
+      }
+
+      if (input.otherComplianceFee && input.otherComplianceFee > 0) {
+        await db.insert(pricingRules).values({
+          contractVersionId: version.id,
+          chargeName: input.otherComplianceLabel || "Other Compliance Fee",
+          chargeCode: "MSC-OTHER-COMPL",
+          chargeCategory: "other",
+          billingBasis: "flat",
+          rate: String(input.otherComplianceFee),
           currency: input.currency ?? "USD",
           priority: 5,
           createdByUserId: userId,

@@ -112,8 +112,8 @@ export default async function PartyDetailPage({
         )}
       </div>
 
-      {/* Status badge */}
-      <div className="mt-4">
+      {/* Status & RBE Classification badges */}
+      <div className="mt-4 flex flex-wrap items-center gap-2">
         {party.isActive ? (
           <span className="inline-flex items-center gap-1 rounded-full bg-status-available/10 px-3 py-1 font-label text-label text-status-available">
             Active
@@ -123,6 +123,20 @@ export default async function PartyDetailPage({
             Inactive
           </span>
         )}
+
+        {(() => {
+          const rbeMatch = party.notes?.match(/^\[RBE:\s*([^\]]+)\]/i);
+          if (!rbeMatch) return null;
+          const tags = rbeMatch[1].split(",").map((s) => s.trim().toUpperCase());
+          return tags.map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-800"
+            >
+              PEZA RBE: {tag}
+            </span>
+          ));
+        })()}
       </div>
 
       {/* Master data */}
@@ -171,14 +185,18 @@ export default async function PartyDetailPage({
               {party.paymentTerms ?? "—"}
             </dd>
           </div>
-          {party.notes && (
-            <div className="sm:col-span-2">
-              <dt className="font-label text-label text-text-grey">Notes</dt>
-              <dd className="mt-1 font-body text-body-md text-on-surface">
-                {party.notes}
-              </dd>
-            </div>
-          )}
+          {(() => {
+            const clean = party.notes ? party.notes.replace(/^\[RBE:\s*[^\]]+\]\s*\n?/i, "").trim() : "";
+            if (!clean) return null;
+            return (
+              <div className="sm:col-span-2">
+                <dt className="font-label text-label text-text-grey">Notes</dt>
+                <dd className="mt-1 font-body text-body-md text-on-surface">
+                  {clean}
+                </dd>
+              </div>
+            );
+          })()}
           <div>
             <dt className="font-label text-label text-text-grey">Created</dt>
             <dd className="mt-1 font-body text-body-md text-on-surface">
