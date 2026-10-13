@@ -61,16 +61,16 @@ const config: Config = {
       fontSize: {
         // Type scale (specs/00-steering/design.md §7)
         "headline-xl": ["44px", { lineHeight: "52px", letterSpacing: "-0.02em" }],
-        "headline-lg": ["30px", { lineHeight: "38px", letterSpacing: "normal" }],
+        "headline-lg": ["24px", { lineHeight: "32px", letterSpacing: "normal" }],
         "headline-md": ["24px", { lineHeight: "32px", letterSpacing: "normal" }],
         "headline-sm": ["20px", { lineHeight: "28px", letterSpacing: "normal" }],
         // Compatibility aliases used by older page components. They resolve
         // to the same approved brand scale rather than browser defaults.
         "title-xl": ["44px", { lineHeight: "52px", letterSpacing: "-0.02em" }],
-        "title-lg": ["30px", { lineHeight: "38px", letterSpacing: "normal" }],
+        "title-lg": ["24px", { lineHeight: "32px", letterSpacing: "normal" }],
         "title-md": ["24px", { lineHeight: "32px", letterSpacing: "normal" }],
         "title-sm": ["20px", { lineHeight: "28px", letterSpacing: "normal" }],
-        "heading-lg": ["30px", { lineHeight: "38px", letterSpacing: "normal" }],
+        "heading-lg": ["24px", { lineHeight: "32px", letterSpacing: "normal" }],
         "heading-md": ["24px", { lineHeight: "32px", letterSpacing: "normal" }],
         "data-display": ["20px", { lineHeight: "24px", letterSpacing: "normal" }],
         "body-lg": ["18px", { lineHeight: "28px", letterSpacing: "normal" }],
