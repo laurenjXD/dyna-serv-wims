@@ -75,7 +75,7 @@ export default function DesignSystemPage() {
   return (
     <div
       className={`min-h-screen transition-colors duration-200 p-4 sm:p-8 ${
-        isFloor ? "bg-[#002060] text-white" : "bg-background text-text-primary"
+        isFloor ? "bg-brand-navy text-white" : "bg-background text-text-primary"
       }`}
     >
       <div className="max-w-container mx-auto space-y-12">
@@ -133,18 +133,19 @@ export default function DesignSystemPage() {
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
             {[
-              { name: "Primary", hex: "#2563EB", bg: "bg-primary", text: "text-white", note: "Primary buttons, active controls" },
-              { name: "Primary Hover", hex: "#1E3A8A", bg: "bg-[#1E3A8A]", text: "text-white", note: "Hover/pressed state" },
-              { name: "Secondary", hex: "#7C3AED", bg: "bg-secondary", text: "text-white", note: "Accents, highlights" },
+              { name: "Dyna Blue", hex: "#0A2FAE", bg: "bg-primary", text: "text-white", note: "Primary buttons, active controls" },
+              { name: "Deep Blue", hex: "#08248A", bg: "bg-primary-hover", text: "text-white", note: "Hover/pressed state" },
+              { name: "Blue Ink", hex: "#071A63", bg: "bg-secondary", text: "text-white", note: "Headings and dark fills" },
               { name: "Success", hex: "#10B981", bg: "bg-success", text: "text-white", note: "Available, approved" },
               { name: "Warning", hex: "#F59E0B", bg: "bg-warning", text: "text-slate-900", note: "Pending, staged" },
               { name: "Error / Held", hex: "#EF4444", bg: "bg-error", text: "text-white", note: "Held, rejected, fail" },
-              { name: "Text Primary", hex: "#0F172A", bg: "bg-[#0F172A]", text: "text-white", note: "Headings, titles" },
-              { name: "Text Secondary", hex: "#64748B", bg: "bg-[#64748B]", text: "text-white", note: "Descriptions, helpers" },
+              { name: "Dyna Red", hex: "#D40007", bg: "bg-error", text: "text-white", note: "Single accent action" },
+              { name: "Body Text", hex: "#33414F", bg: "bg-text-primary", text: "text-white", note: "Body and reading text" },
+              { name: "Helper Text", hex: "#66789A", bg: "bg-text-secondary", text: "text-white", note: "Descriptions, helpers" },
               { name: "Surface", hex: "#FFFFFF", bg: "bg-white", text: "text-slate-900", border: true, note: "Cards, modals, tables" },
-              { name: "Background", hex: "#F3F6FC", bg: "bg-[#F3F6FC]", text: "text-slate-900", border: true, note: "Office canvas" },
-              { name: "Floor Navy", hex: "#002060", bg: "bg-[#002060]", text: "text-white", note: "Warehouse dark canvas" },
-              { name: "Border", hex: "#E2E8F0", bg: "bg-[#E2E8F0]", text: "text-slate-900", note: "Dividers, outlines" },
+              { name: "Background", hex: "#EEF2FF", bg: "bg-background", text: "text-slate-900", border: true, note: "Office canvas" },
+              { name: "Blue Ink", hex: "#071A63", bg: "bg-brand-navy", text: "text-white", note: "Warehouse dark canvas" },
+              { name: "Border", hex: "#DDE4F7", bg: "bg-border", text: "text-slate-900", note: "Dividers, outlines" },
             ].map((color) => (
               <div
                 key={color.name}
@@ -169,7 +170,7 @@ export default function DesignSystemPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h2 className="font-heading text-headline-md font-bold">2. Typography & Font Size Scale</h2>
-              <Badge variant="primary" size="sm">Etna + Glacial</Badge>
+              <Badge variant="primary" size="sm">Avenir Next + Inter</Badge>
             </div>
             <div className="flex items-center gap-2">
               <Badge variant={isFloor ? "warning" : "neutral"} size="sm">
@@ -183,7 +184,7 @@ export default function DesignSystemPage() {
             <div>
               <div className="flex items-center justify-between mb-4 pb-2 border-b border-inherit/10">
                 <h3 className="font-heading text-sm font-bold uppercase tracking-wider opacity-70">
-                  Headings Hierarchy (Etna Sans Serif)
+                  Headings Hierarchy (Avenir Next)
                 </h3>
                 <span className="text-xs font-mono opacity-60">Font-weight: 700 / 600</span>
               </div>
@@ -267,7 +268,7 @@ export default function DesignSystemPage() {
             <div>
               <div className="flex items-center justify-between mb-4 pb-2 border-b border-inherit/10">
                 <h3 className="font-heading text-sm font-bold uppercase tracking-wider opacity-70">
-                  Body, Labels & High-Legibility Data Displays (Glacial Indifference)
+                  Body, Labels & High-Legibility Data Displays (Inter / JetBrains Mono)
                 </h3>
                 <span className="text-xs font-mono opacity-60">Regular 400 / Bold 700</span>
               </div>
@@ -330,7 +331,7 @@ export default function DesignSystemPage() {
                 </div>
 
                 <div className="p-4 rounded-xl border border-inherit/10 space-y-2">
-                  <Label surface={surfaceMode}>Lot Number (Glacial Bold)</Label>
+                  <Label surface={surfaceMode}>Lot Number (JetBrains Mono)</Label>
                   <Code size="lg" surface={surfaceMode}>LOT-2026-0819-A</Code>
                 </div>
 

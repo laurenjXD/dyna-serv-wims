@@ -306,7 +306,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
   return (
     <>
       <header
-        className="print:hidden fixed inset-x-0 top-0 z-50 isolate flex h-14 items-center gap-4 overflow-visible bg-surface/95 px-4 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.55)] backdrop-blur-xl lg:h-[76px] lg:px-0 lg:gap-0"
+        className="print:hidden fixed inset-x-0 top-0 z-50 isolate flex h-14 items-center gap-4 overflow-visible border-b border-border bg-surface px-4 lg:h-[76px] lg:px-0 lg:gap-0"
       >
         {tier !== "floor" && (
           <button
@@ -389,7 +389,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
               aria-label="Dyna-Serv WIMS home"
               className="flex shrink-0 items-center gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              <span className="flex h-10 w-10 items-center justify-center rounded-full border border-primary/15 bg-surface shadow-[0_7px_18px_-8px_rgba(37,99,235,0.55)] ring-4 ring-primary/[0.04]">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface">
                 <Image src="/logo-hd.png" alt="" width={32} height={32} priority />
               </span>
               <span className="font-heading text-title-lg font-bold tracking-tight text-text-primary">
@@ -402,7 +402,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
               aria-label="Dyna-Serv WIMS home"
               className="flex h-full w-full items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              <span className="flex h-10 w-10 items-center justify-center rounded-full border border-primary/15 bg-surface shadow-[0_7px_18px_-8px_rgba(37,99,235,0.45)] ring-4 ring-primary/[0.04]">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface">
                 <Image src="/logo-hd.png" alt="" width={28} height={28} priority />
               </span>
             </Link>
