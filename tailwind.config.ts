@@ -53,11 +53,10 @@ const config: Config = {
       },
       fontFamily: {
         // Dyna-Serv Brand Guidelines: Avenir Next / Inter / JetBrains Mono.
-        // Legacy local fonts remain as fallbacks where the brand families are unavailable.
-        heading: ["Avenir Next", "Avenir", "var(--font-etna)", "sans-serif"],
-        body: ["Inter", "Helvetica Neue", "var(--font-glacial)", "Arial", "sans-serif"],
-        label: ["JetBrains Mono", "SFMono-Regular", "var(--font-glacial)", "monospace"],
-        mono: ["JetBrains Mono", "SFMono-Regular", "var(--font-glacial)", "monospace"],
+        heading: ["Avenir Next", "Avenir", "sans-serif"],
+        body: ["Inter", "Helvetica Neue", "Arial", "sans-serif"],
+        label: ["JetBrains Mono", "SFMono-Regular", "monospace"],
+        mono: ["JetBrains Mono", "SFMono-Regular", "monospace"],
       },
       fontSize: {
         // Type scale (specs/00-steering/design.md §7)

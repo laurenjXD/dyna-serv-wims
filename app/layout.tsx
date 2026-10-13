@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
 import "@fontsource/inter/400.css";
 import "@fontsource/inter/700.css";
 import "@fontsource/jetbrains-mono/600.css";
@@ -17,25 +16,6 @@ import "./globals.css";
 // convention on Vercel).
 export const preferredRegion = "hnd1";
 
-// Typography: Avenir Next (system display face), Inter (bundled body face),
-// and JetBrains Mono (bundled labels/eyebrows), per the brand guide.
-const fontGlacial = localFont({
-  variable: "--font-glacial",
-  src: [
-    { path: "./fonts/GlacialIndifference-Regular.otf", weight: "400", style: "normal" },
-    { path: "./fonts/GlacialIndifference-Bold.otf", weight: "700", style: "normal" },
-  ],
-  display: "swap",
-});
-
-const fontEtna = localFont({
-  variable: "--font-etna",
-  src: [
-    { path: "./fonts/etna-free-font.otf", style: "normal" },
-  ],
-  display: "swap",
-});
-
 export const metadata: Metadata = {
   title: "Dyna-Serv WIMS",
   description: "Dyna-Serv Warehouse Inventory Management System",
@@ -48,9 +28,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${fontEtna.variable} ${fontGlacial.variable} font-body bg-background text-text-primary antialiased`}
-      >
+      <body className="font-body bg-background text-text-primary antialiased">
         {children}
       </body>
     </html>

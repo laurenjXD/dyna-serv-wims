@@ -35,23 +35,23 @@ export function WeeklyTrendChart({ data }: { data: WeeklyTrendDatum[] }) {
             dataKey="period"
             axisLine={false}
             tickLine={false}
-            tick={{ fill: "#475569", fontSize: 12, fontFamily: "var(--font-glacial)" }}
+            tick={{ fill: "#475569", fontSize: 12, fontFamily: "Inter, Helvetica Neue, Arial, sans-serif" }}
           />
           <YAxis
             axisLine={false}
             tickLine={false}
-            tick={{ fill: "#475569", fontSize: 12, fontFamily: "var(--font-glacial)" }}
+            tick={{ fill: "#475569", fontSize: 12, fontFamily: "Inter, Helvetica Neue, Arial, sans-serif" }}
             width={34}
           />
           <Tooltip
             cursor={{ stroke: "#E2E8F0" }}
-            contentStyle={{ borderRadius: 8, border: "1px solid rgba(226,232,240,0.3)", fontFamily: "var(--font-glacial)", fontSize: 13 }}
+            contentStyle={{ borderRadius: 8, border: "1px solid rgba(226,232,240,0.3)", fontFamily: "Inter, Helvetica Neue, Arial, sans-serif", fontSize: 13 }}
           />
           <Legend
             verticalAlign="top"
             align="right"
             height={28}
-            wrapperStyle={{ fontFamily: "var(--font-glacial)", fontSize: 12, color: "#475569" }}
+            wrapperStyle={{ fontFamily: "Inter, Helvetica Neue, Arial, sans-serif", fontSize: 12, color: "#475569" }}
           />
           <Line type="monotone" dataKey="qty" name="Outgoing Qty" stroke="#1E293B" strokeWidth={2} dot={false} />
           <Line type="monotone" dataKey="cbm" name="CBM" stroke="#64748B" strokeWidth={2} dot={false} />
