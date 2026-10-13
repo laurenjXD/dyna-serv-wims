@@ -54,7 +54,7 @@ export function DashboardHeader({
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         {/* Title & Subtitle */}
         <div>
-          <h1 className="font-heading text-title-lg sm:text-headline-md font-extrabold text-brand-navy tracking-tight">
+          <h1 className="!text-[24px] !leading-[30px] sm:!text-[26px] sm:!leading-[32px] font-heading font-extrabold text-brand-navy tracking-tight">
             Operations Dashboard
           </h1>
           <p className="mt-0.5 font-body text-body-xs sm:text-body-sm text-text-grey">

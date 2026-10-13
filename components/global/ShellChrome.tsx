@@ -273,6 +273,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
   }
 
   const tier = resolveSessionPresentationTier(context?.activeRoleKeys ?? []);
+  const isDashboardRoute = pathname === "/dashboard";
   const showFloorTabBar = tier === "floor" && !isScanLoopRoute(pathname);
   const pageTitle = getPageTitle(pathname);
   const canManageAccess = context?.grants.some(
@@ -286,6 +287,14 @@ export function ShellChrome({ children }: { children: ReactNode }) {
         tier,
       )
     : [];
+
+  if (isDashboardRoute) {
+    return (
+      <main id="main-content" data-surface={tier} className="min-h-screen bg-background">
+        {children}
+      </main>
+    );
+  }
 
   function shortcutLabel(index: number): string {
     if (index < 9) return `Ctrl+${index + 1}`;

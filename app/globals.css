@@ -87,6 +87,13 @@ main[data-surface="party"] h3 {
   font-weight: 700 !important;
 }
 
+/* Dashboard headings stay compact so the operational cards and charts remain
+ * visible without the page feeling dominated by display text. */
+.dashboard-page h2 {
+  font-size: 20px !important;
+  line-height: 28px !important;
+}
+
 /* Suppress browser native password reveal and clear buttons (Microsoft Edge, IE, Chrome)
  * so our custom eye toggle is the sole persistent toggle without dual icons or pop-in/pop-out. */
 input::-ms-reveal,
