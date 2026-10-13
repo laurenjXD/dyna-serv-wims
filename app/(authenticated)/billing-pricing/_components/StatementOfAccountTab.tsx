@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { FileText, Plus, Eye, Search, Filter, Building2, Calendar, DollarSign } from "lucide-react";
 import type { VmiBillingPeriodRow } from "@/lib/billing/queries/vmi-ledger";
 import { PeriodCloseModal } from "../vmi/periods/_components/PeriodCloseModal";
+import { SoaStatusSelect, type SoaStatus } from "@/components/billing/SoaStatusSelect";
 
 interface StatementOfAccountTabProps {
   periods: VmiBillingPeriodRow[];
@@ -232,9 +233,9 @@ export function StatementOfAccountTab({
                       {p.periodStartDate} to {p.periodEndDate}
                     </td>
                     <td className="px-4 py-3.5">
-                      <span className={`inline-flex rounded-full px-2.5 py-0.5 font-label text-label uppercase ${p.status === "issued" ? "bg-status-available/10 text-status-available" : "bg-status-pending/10 text-status-pending"}`}>
-                        {p.status}
-                      </span>
+                      <SoaStatusSelect
+                        value={p.status}
+                      />
                     </td>
                     <td className="px-4 py-3.5 text-right font-mono text-mono-md font-bold text-on-surface">
                       ${p.billingStatementTotalUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

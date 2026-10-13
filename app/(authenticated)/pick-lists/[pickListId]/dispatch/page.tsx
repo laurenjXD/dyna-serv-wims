@@ -242,9 +242,14 @@ export default async function DispatchConfirmationPage({
           </div>
           {/* Pick-verification progress counter */}
           {!alreadyDispatched && (
-            <span className="font-body text-body-md text-text-grey">
-              {selectedBoxCount} / {totalRequiredBoxes} scanned
-            </span>
+            <div className="text-right">
+              <span className="font-mono text-body-md font-bold text-on-surface">
+                {items.filter((item) => (selectionCountByLine.get(item.id) ?? 0) >= item.numberOfBoxes).length} / {totalLines} lines verified
+              </span>
+              <span className="block font-body text-body-xs text-text-grey">
+                ({selectedBoxCount} / {totalRequiredBoxes} boxes)
+              </span>
+            </div>
           )}
         </div>
       </div>
@@ -442,7 +447,23 @@ export default async function DispatchConfirmationPage({
         {!alreadyDispatched && !awaitingPickCompletion && activeItem && (
           <section className="mb-3 rounded-2xl border border-brand-blue/30 bg-brand-blue/5 p-4">
             <div className="flex items-start gap-3"><ScanLine size={24} className="mt-0.5 shrink-0 text-brand-navy" aria-hidden="true" /><div><h2 className="font-heading text-title-md font-bold text-on-surface">Scan QR for dispatch</h2><p className="mt-1 font-body text-body-md text-text-grey">Scan any item or lot QR on this Pick List. The matching unfinished line is counted automatically. Next: {activeItem.itemCode} · Lot {activeItem.lotNumber} · {activeItem.locationLabel}.</p></div></div>
-            <form action={handleBoxScan} className="mt-4 flex flex-col gap-3 sm:flex-row"><input name="barcode" required autoFocus autoComplete="off" placeholder="Scan item or lot QR" className="h-14 min-w-0 flex-1 rounded-xl border border-outline-variant bg-surface-white px-4 font-mono text-body-md text-on-surface outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20" /><button type="submit" className="h-14 rounded-xl bg-brand-navy px-6 font-label text-body-md text-surface-white">Count box</button></form>
+            <form action={handleBoxScan} className="mt-4 flex flex-col gap-3 sm:flex-row">
+              <input
+                name="barcode"
+                required
+                autoFocus
+                autoComplete="off"
+                placeholder="Scan item or lot QR (or enter carton barcode)..."
+                className="h-14 min-w-0 flex-1 rounded-xl border border-outline-variant bg-surface-white px-4 font-mono text-body-md text-on-surface outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20"
+              />
+              <button
+                type="submit"
+                className="inline-flex h-14 items-center justify-center gap-2 rounded-xl bg-brand-navy px-6 font-label text-body-md font-bold text-surface-white transition-colors hover:bg-brand-navy/90 active:scale-[0.99]"
+              >
+                <ScanLine size={18} aria-hidden="true" />
+                <span>Verify Box</span>
+              </button>
+            </form>
             <div className="mt-3"><CameraScanBridge action={handleBoxScan} /></div>
           </section>
         )}

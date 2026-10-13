@@ -130,7 +130,7 @@ export function OrganizationsEnrollmentTable({
       columns={columns}
       data={data}
       title="Organizations Directory"
-      subtitle="Master directory of customers, vendors, carriers, and VMI consignors"
+      subtitle="Master directory of suppliers, customers, and VMI client organizations"
       icon={<Building2 size={18} />}
       actions={
         canManage ? (

@@ -314,28 +314,55 @@ describe("parsePartyInput — valid full input passes and is returned as structu
 import { computeNextPartyCode } from "@/lib/db/queries/parties";
 
 describe("computeNextPartyCode — dynamic serialization by role", () => {
-  it("defaults to VENDOR-001 when no existing codes present", () => {
-    const code = computeNextPartyCode("vendor", []);
-    expect(code).toBe("VENDOR-001");
+  it("defaults to ORG-001 when no roles are selected or provided", () => {
+    expect(computeNextPartyCode([])).toBe("ORG-001");
+    expect(computeNextPartyCode([], ["ORG-001", "ORG-002"])).toBe("ORG-003");
   });
 
-  it("increments vendor sequence given existing vendor codes", () => {
-    const code = computeNextPartyCode("vendor", ["VENDOR-001", "VENDOR-002", "SUPPLIER-001"]);
-    expect(code).toBe("VENDOR-003");
+  it("handles single supplier role prefix correctly", () => {
+    expect(computeNextPartyCode(["supplier"], [])).toBe("SUPPLIER-001");
+    expect(computeNextPartyCode(["supplier"], ["SUPPLIER-001", "VENDOR-005"])).toBe("SUPPLIER-002");
   });
 
-  it("handles supplier role prefix correctly", () => {
-    const code = computeNextPartyCode("supplier", ["SUPPLIER-001", "VENDOR-005"]);
-    expect(code).toBe("SUPPLIER-002");
-  });
-
-  it("handles customer role prefix correctly", () => {
-    const code = computeNextPartyCode("customer", ["CUSTOMER-001", "CUSTOMER-012"]);
-    expect(code).toBe("CUSTOMER-013");
+  it("handles single customer role prefix correctly", () => {
+    expect(computeNextPartyCode(["customer"], [])).toBe("CUSTOMER-001");
+    expect(computeNextPartyCode(["customer"], ["CUSTOMER-001", "CUSTOMER-012"])).toBe("CUSTOMER-013");
   });
 
   it("handles end_customer and internal_warehouse role prefixes", () => {
-    expect(computeNextPartyCode("end_customer", [])).toBe("ENDCUST-001");
-    expect(computeNextPartyCode("internal_warehouse", ["WH-001"])).toBe("WH-002");
+    expect(computeNextPartyCode(["end_customer"], [])).toBe("ENDCUST-001");
+    expect(computeNextPartyCode(["internal_warehouse"], ["WH-001"])).toBe("WH-002");
+  });
+
+  it("combines two roles dynamically into a composite code prefix", () => {
+    const code = computeNextPartyCode(["supplier", "customer"], []);
+    expect(code).toBe("SUP-CUST-001");
+  });
+
+  it("increments sequence for multi-role combined prefix correctly", () => {
+    const code = computeNextPartyCode(["supplier", "customer"], [
+      "SUP-CUST-001",
+      "SUP-CUST-002",
+      "SUPPLIER-001",
+    ]);
+    expect(code).toBe("SUP-CUST-003");
+  });
+
+  it("consistently canonicalizes order of multi-role combinations regardless of selection order", () => {
+    const code1 = computeNextPartyCode(["customer", "supplier"], ["SUP-CUST-001"]);
+    expect(code1).toBe("SUP-CUST-002");
+
+    const code2 = computeNextPartyCode(["internal_warehouse", "customer"], []);
+    expect(code2).toBe("CUST-WH-001");
+  });
+
+  it("handles three or more roles dynamically", () => {
+    const code = computeNextPartyCode(["supplier", "customer", "internal_warehouse"], []);
+    expect(code).toBe("SUP-CUST-WH-001");
+  });
+
+  it("maintains backwards compatibility for string role inputs", () => {
+    expect(computeNextPartyCode("vendor", [])).toBe("VENDOR-001");
+    expect(computeNextPartyCode("supplier", ["SUPPLIER-001"])).toBe("SUPPLIER-002");
   });
 });

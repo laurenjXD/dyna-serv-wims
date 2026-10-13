@@ -201,11 +201,12 @@ export function MultiItemPickListDraft({
 
     if (!targetOrgId) {
       for (const draRow of draRows) {
-        if (!draRow.itemCode) continue;
+        const code = (draRow.itemCode || draRow.customerItemCode || "").toLowerCase();
+        if (!code) continue;
         const matchedStock = stock.find(
           (s) =>
-            s.itemCode.toLowerCase() === draRow.itemCode!.toLowerCase() ||
-            (s.customerItemCode && s.customerItemCode.toLowerCase() === draRow.itemCode!.toLowerCase())
+            s.itemCode.toLowerCase() === code ||
+            (s.customerItemCode && s.customerItemCode.toLowerCase() === code)
         );
         if (matchedStock && matchedStock.organizationId) {
           targetOrgId = matchedStock.organizationId;
@@ -233,23 +234,24 @@ export function MultiItemPickListDraft({
     const missingItems: string[] = [];
 
     for (const draRow of draRows) {
-      if (!draRow.itemCode || !draRow.requestedQty) continue;
+      const code = (draRow.itemCode || draRow.customerItemCode || "").toLowerCase();
+      const requestedBoxes = draRow.packageCount || draRow.requestedQty;
+      if (!code || !requestedBoxes) continue;
 
-      const requestedItemCode = draRow.itemCode.toLowerCase();
       const candidateSources = availableStock
         .filter(
           (s) =>
-            s.itemCode.toLowerCase() === requestedItemCode ||
-            (s.customerItemCode && s.customerItemCode.toLowerCase() === requestedItemCode)
+            s.itemCode.toLowerCase() === code ||
+            (s.customerItemCode && s.customerItemCode.toLowerCase() === code)
         )
         .sort((a, b) => a.priority - b.priority);
 
       if (candidateSources.length === 0) {
-        missingItems.push(draRow.itemCode);
+        missingItems.push(draRow.customerItemCode || draRow.itemCode || "Unknown Item");
         continue;
       }
 
-      let remainingQty = draRow.requestedQty;
+      let remainingQty = requestedBoxes;
       for (const source of candidateSources) {
         const availableInSource = Math.max(0, source.availableQty);
         if (availableInSource <= 0) continue;

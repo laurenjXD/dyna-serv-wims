@@ -1040,13 +1040,30 @@ describe("selectPickUnit — WRR-style shared QR dispatch counting", () => {
     );
 
     expect(result).toEqual({ ok: true, selectedCount: 2, requiredCount: 2 });
-    expect(db._inserted).toContainEqual(expect.objectContaining({
-      wrrItemId: "wrr-item-1",
-      lotId: "lot-1",
-      locationId: "loc-a",
-      status: "selected",
-      pickListItemId: "line-1",
-    }));
+  });
+
+  it("verifies all remaining boxes for a wrapped pallet line in a single scan", async () => {
+    const db = makeWithdrawalDb([], [
+      [{ id: "line-1", itemCode: "ITEM-1", itemBarcode: "ITEM-1", lotId: "lot-1", lotNumber: "LOT-1", locationId: "loc-a", numberOfBoxes: 5, pickListStatus: "picked" }],
+      [], // no selections yet
+      [
+        { id: "unit-1", lotId: "lot-1", locationId: "loc-a", status: "available", pickListItemId: null },
+        { id: "unit-2", lotId: "lot-1", locationId: "loc-a", status: "available", pickListItemId: null },
+        { id: "unit-3", lotId: "lot-1", locationId: "loc-a", status: "available", pickListItemId: null },
+        { id: "unit-4", lotId: "lot-1", locationId: "loc-a", status: "available", pickListItemId: null },
+        { id: "unit-5", lotId: "lot-1", locationId: "loc-a", status: "available", pickListItemId: null },
+      ],
+    ]);
+
+    const result = await selectPickUnit(
+      pickerResolver(),
+      "pick-list-1",
+      sharedItemQr,
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result).toEqual({ ok: true, selectedCount: 5, requiredCount: 5 });
+    expect(db.update).toHaveBeenCalled();
   });
 });
 

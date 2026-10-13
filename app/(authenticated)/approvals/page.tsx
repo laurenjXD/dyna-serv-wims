@@ -12,23 +12,43 @@
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
-import { listApprovalQueueRequests, listPendingApprovalRequests } from "@/lib/db/queries/approvals";
-import { archiveExpiredApprovalRequest } from "@/lib/actions/approvals";
+import {
+  listApprovalQueueRequests,
+  listPendingApprovalRequests,
+} from "@/lib/db/queries/approvals";
+import {
+  approveRequest,
+  rejectRequest,
+  archiveExpiredApprovalRequest,
+  archiveAllExpiredApprovals,
+  createFifoOverrideRequest,
+} from "@/lib/actions/approvals";
+import { listStockView, type StockViewRow } from "@/lib/db/queries/inventory";
+import { approvalRequests } from "@/lib/db/schema/approvals";
+import { eq, and, isNull, isNotNull, lte, sql } from "drizzle-orm";
+import { ApprovalsFilterableTable } from "./_components/ApprovalsFilterableTable";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 50;
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 interface PageProps {
-  searchParams: Promise<{ status?: string; type?: string; page?: string; tab?: string; error?: string; q?: string }>;
+  searchParams: Promise<{
+    status?: string;
+    type?: string;
+    page?: string;
+    tab?: string;
+    error?: string;
+    success?: string;
+    q?: string;
+  }>;
 }
-
-import { ApprovalsFilterableTable } from "./_components/ApprovalsFilterableTable";
 
 export default async function ApprovalQueuePage({ searchParams }: PageProps) {
   const {
@@ -36,13 +56,13 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
     page: pageParam,
     tab: tabParam,
     error: actionError,
+    success: actionSuccess,
     q: searchQuery,
   } = await searchParams;
 
   const resolver = await createPageResolver();
 
   // Gate: fifo_override.approve required (supervisor, global scope).
-  // Not notFound — this route's existence is safe to disclose per design.md §7.
   const permResult = await requirePermission(resolver, "fifo_override.approve");
   if (permResult.kind !== "authorized") {
     return (
@@ -59,6 +79,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
     );
   }
 
+  const currentUserId = permResult.context.userId;
   const showDeleted = tabParam === "deleted";
   const currentPage = Math.max(1, Number(pageParam ?? "1") || 1);
   const offset = (currentPage - 1) * PAGE_SIZE;
@@ -67,38 +88,173 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
   const approvalType =
     typeFilter && typeFilter !== "all" ? typeFilter : undefined;
 
-  let rows;
-  let total;
-  try {
-    ({ rows, total } = await listApprovalQueueRequests(db, {
-      limit: PAGE_SIZE,
-      offset,
-      approvalType,
-      deleted: showDeleted,
-    }));
-  } catch {
-    // Keep the Open queue available while a deployment is waiting for the
-    // soft-archive migration. Archived remains intentionally unavailable until
-    // its durable columns exist rather than pretending the archive is empty.
-    if (showDeleted) throw new Error("Archived approvals are not available until the database migration is applied.");
-    ({ rows, total } = await listPendingApprovalRequests(db, {
-      limit: PAGE_SIZE,
-      offset,
-      approvalType,
-    }));
-  }
+  // Load requests, stock balance rows for create-override modal, and metric aggregates in parallel
+  const [requestData, stockRows, metricCounts] = await Promise.all([
+    (async () => {
+      try {
+        return await listApprovalQueueRequests(db, {
+          limit: PAGE_SIZE,
+          offset,
+          approvalType,
+          deleted: showDeleted,
+        });
+      } catch {
+        if (showDeleted) {
+          throw new Error(
+            "Archived approvals are not available until the database migration is applied.",
+          );
+        }
+        return await listPendingApprovalRequests(db, {
+          limit: PAGE_SIZE,
+          offset,
+          approvalType,
+        });
+      }
+    })(),
+    listStockView(db).catch(() => [] as StockViewRow[]),
+    (async () => {
+      try {
+        const now = new Date();
+        const [pendingRow] = await db
+          .select({ count: sql<string>`count(*)` })
+          .from(approvalRequests)
+          .where(
+            and(
+              isNull(approvalRequests.deletedAt),
+              eq(approvalRequests.status, "pending"),
+              sql`${approvalRequests.expiryAt} > ${now}`,
+            ),
+          );
+        const [expiredRow] = await db
+          .select({ count: sql<string>`count(*)` })
+          .from(approvalRequests)
+          .where(
+            and(
+              isNull(approvalRequests.deletedAt),
+              sql`(${approvalRequests.status} = 'expired' OR (${approvalRequests.status} = 'pending' AND ${approvalRequests.expiryAt} <= ${now}))`,
+            ),
+          );
+        const [archivedRow] = await db
+          .select({ count: sql<string>`count(*)` })
+          .from(approvalRequests)
+          .where(isNotNull(approvalRequests.deletedAt));
+        const [approvedRow] = await db
+          .select({ count: sql<string>`count(*)` })
+          .from(approvalRequests)
+          .where(eq(approvalRequests.status, "approved"));
+
+        return {
+          pending: Number(pendingRow?.count ?? 0),
+          expired: Number(expiredRow?.count ?? 0),
+          archived: Number(archivedRow?.count ?? 0),
+          approved: Number(approvedRow?.count ?? 0),
+        };
+      } catch {
+        return { pending: 0, expired: 0, archived: 0, approved: 0 };
+      }
+    })(),
+  ]);
+
+  const { rows, total } = requestData;
+
+  // ─── Server Actions ──────────────────────────────────────────────────────────
 
   async function handleArchive(formData: FormData) {
     "use server";
     const requestId = String(formData.get("requestId") ?? "");
     let result;
     try {
-      result = await archiveExpiredApprovalRequest(await createPageResolver(), requestId);
+      result = await archiveExpiredApprovalRequest(
+        await createPageResolver(),
+        requestId,
+      );
     } catch {
-      redirect("/approvals?error=Archive%20could%20not%20be%20completed.%20Please%20try%20again.");
+      redirect(
+        "/approvals?error=Archive%20could%20not%20be%20completed.%20Please%20try%20again.",
+      );
     }
     if (result.ok) {
-      redirect("/approvals?tab=deleted");
+      revalidatePath("/approvals");
+      redirect("/approvals?success=Request%20archived%20successfully.");
+    }
+    redirect(`/approvals?error=${encodeURIComponent(result.error)}`);
+  }
+
+  async function handleArchiveAll() {
+    "use server";
+    let result;
+    try {
+      result = await archiveAllExpiredApprovals(await createPageResolver());
+    } catch {
+      redirect(
+        "/approvals?error=Failed%20to%20archive%20expired%20requests.",
+      );
+    }
+    if (result.ok) {
+      revalidatePath("/approvals");
+      redirect(
+        `/approvals?success=${encodeURIComponent(`Successfully archived ${result.count ?? 0} expired request(s).`)}`,
+      );
+    }
+    redirect(`/approvals?error=${encodeURIComponent(result.error)}`);
+  }
+
+  async function handleApprove(formData: FormData) {
+    "use server";
+    const requestId = String(formData.get("requestId") ?? "");
+    const reason = String(formData.get("reason") ?? "");
+    const actionResolver = await createPageResolver();
+    const result = await approveRequest(actionResolver, requestId, reason);
+    if (result.ok) {
+      revalidatePath("/approvals");
+      redirect("/approvals?success=Request%20approved%20successfully.");
+    }
+    redirect(`/approvals?error=${encodeURIComponent(result.error)}`);
+  }
+
+  async function handleReject(formData: FormData) {
+    "use server";
+    const requestId = String(formData.get("requestId") ?? "");
+    const category = String(formData.get("reason_category") ?? "other");
+    const note = String(formData.get("reason_note") ?? "");
+    const reason = note ? `${category}: ${note}` : category;
+    const actionResolver = await createPageResolver();
+    const result = await rejectRequest(actionResolver, requestId, reason);
+    if (result.ok) {
+      revalidatePath("/approvals");
+      redirect("/approvals?success=Request%20rejected.");
+    }
+    redirect(`/approvals?error=${encodeURIComponent(result.error)}`);
+  }
+
+  async function handleCreateOverride(formData: FormData) {
+    "use server";
+    const itemId = String(formData.get("itemId") ?? "");
+    const itemCode = String(formData.get("itemCode") ?? "");
+    const lotId = String(formData.get("lotId") ?? "");
+    const lotNumber = String(formData.get("lotNumber") ?? "");
+    const locationId = String(formData.get("locationId") ?? "");
+    const locationCode = String(formData.get("locationCode") ?? "");
+    const requestedQty = String(formData.get("requestedQty") ?? "1");
+    const reasonCategory = String(formData.get("reasonCategory") ?? "customer_preference");
+    const reasonNote = String(formData.get("reasonNote") ?? "");
+
+    const actionResolver = await createPageResolver();
+    const result = await createFifoOverrideRequest(actionResolver, {
+      itemId,
+      itemCode,
+      lotId,
+      lotNumber,
+      locationId,
+      locationCode,
+      requestedQty,
+      reasonCategory,
+      reasonNote,
+    });
+
+    if (result.ok) {
+      revalidatePath("/approvals");
+      redirect("/approvals?success=FIFO%20override%20request%20submitted%20successfully.");
     }
     redirect(`/approvals?error=${encodeURIComponent(result.error)}`);
   }
@@ -106,43 +262,116 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
-    <div className="mx-auto max-w-container">
-      {/* Page header — text-headline-xl Fira Sans Bold per brand-design-system.md §2 */}
-      <div>
-        <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
-          {showDeleted ? "Archived Approvals" : "Approval Queue"}
-        </h1>
-        <p className="mt-1 font-body text-body-md text-text-grey">
-          {showDeleted ? "Expired requests retained for audit monitoring." : "Review FIFO override requests and clear expired work safely."}
-        </p>
+    <div className="mx-auto max-w-container space-y-6">
+      {/* ── Page Header ────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="font-label text-label-xs font-bold uppercase tracking-wider text-brand-royal-blue bg-brand-royal-blue/10 px-2.5 py-0.5 rounded-full">
+              Operational Governance
+            </span>
+            <span className="text-text-grey text-xs">•</span>
+            <span className="font-body text-xs text-text-grey">
+              Warehouse Floor Controls
+            </span>
+          </div>
+          <h1 className="mt-1 font-heading font-extrabold text-headline-xl text-on-surface">
+            {showDeleted ? "Archived Approvals" : "Approval Queue"}
+          </h1>
+          <p className="mt-1 font-body text-body-sm text-text-grey max-w-2xl">
+            {showDeleted
+              ? "Historical and archived approval decisions retained permanently for compliance and audit logs."
+              : "Review FIFO override requests, evaluate inventory allocation deviations, and govern warehouse compliance."}
+          </p>
+        </div>
+
+        {/* View Tabs */}
+        <div className="flex items-center gap-1 rounded-xl border border-outline-variant/30 bg-surface-white p-1 shadow-2xs">
+          <Link
+            href={`/approvals${typeFilter ? `?type=${typeFilter}` : ""}`}
+            className={`flex items-center gap-2 rounded-lg px-4 py-2 font-label text-label font-bold transition-all ${
+              !showDeleted
+                ? "bg-brand-navy text-surface-white shadow-xs"
+                : "text-text-grey hover:text-on-surface hover:bg-surface-light-grey"
+            }`}
+          >
+            <span>Active Queue</span>
+            {metricCounts.pending > 0 && (
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs ${
+                  !showDeleted
+                    ? "bg-white/20 text-white"
+                    : "bg-status-pending/20 text-status-pending font-bold"
+                }`}
+              >
+                {metricCounts.pending}
+              </span>
+            )}
+          </Link>
+          <Link
+            href={`/approvals?tab=deleted${typeFilter ? `&type=${typeFilter}` : ""}`}
+            className={`flex items-center gap-2 rounded-lg px-4 py-2 font-label text-label font-bold transition-all ${
+              showDeleted
+                ? "bg-brand-navy text-surface-white shadow-xs"
+                : "text-text-grey hover:text-on-surface hover:bg-surface-light-grey"
+            }`}
+          >
+            <span>Archived</span>
+            <span
+              className={`rounded-full px-2 py-0.5 text-xs ${
+                showDeleted
+                  ? "bg-white/20 text-white"
+                  : "bg-surface-light-grey text-text-grey font-bold"
+              }`}
+            >
+              {metricCounts.archived}
+            </span>
+          </Link>
+        </div>
       </div>
 
-      <nav aria-label="Approval views" className="mt-6 flex gap-1 border-b border-outline-variant/30">
-        <Link href={`/approvals${typeFilter ? `?type=${typeFilter}` : ""}`} className={`inline-flex h-11 items-center border-b-2 px-4 font-label text-label font-bold ${!showDeleted ? "border-brand-navy text-brand-navy" : "border-transparent text-text-grey hover:text-on-surface"}`}>Open</Link>
-        <Link href={`/approvals?tab=deleted${typeFilter ? `&type=${typeFilter}` : ""}`} className={`inline-flex h-11 items-center border-b-2 px-4 font-label text-label font-bold ${showDeleted ? "border-brand-navy text-brand-navy" : "border-transparent text-text-grey hover:text-on-surface"}`}>Archived</Link>
-      </nav>
-
+      {/* ── Status Banner (Error or Success feedback) ───────────────── */}
       {actionError && (
-        <div role="alert" className="mt-4 rounded-xl border border-status-held/30 bg-status-held/10 px-4 py-3 font-body text-body-sm text-text-grey">
-          <span className="font-label text-label font-bold text-status-held">Archive could not be completed. </span>
-          {actionError}
+        <div
+          role="alert"
+          className="flex items-start gap-3 rounded-xl border border-status-held/30 bg-status-held/10 p-4 font-body text-body-sm text-status-held"
+        >
+          <span className="font-bold">Error:</span>
+          <span>{actionError}</span>
         </div>
       )}
 
-      <div role="status" className="mt-6 flex items-start gap-3 rounded border border-status-held/30 bg-status-held/10 px-4 py-4">
-        <span className="font-heading text-body-lg text-status-held" aria-hidden="true">⚖</span>
-        <div><p className="font-label text-label font-bold text-status-held">COMPLIANCE ENFORCEMENT ACTIVE</p><p className="mt-1 font-body text-body-sm text-text-grey">Another user must review or archive the request. The requester cannot approve or archive it.</p></div>
-      </div>
+      {actionSuccess && (
+        <div
+          role="status"
+          className="flex items-start gap-3 rounded-xl border border-status-available/30 bg-status-available/10 p-4 font-body text-body-sm text-status-available"
+        >
+          <span className="font-bold">Success:</span>
+          <span>{actionSuccess}</span>
+        </div>
+      )}
 
-      <div className="mt-6">
-      <ApprovalsFilterableTable rows={rows} showDeleted={showDeleted} archiveAction={handleArchive} initialSearch={searchQuery} />
-      </div>
+      {/* ── Interactive Approvals Filterable Table Component ────────── */}
+      <ApprovalsFilterableTable
+        rows={rows}
+        showDeleted={showDeleted}
+        currentUserId={currentUserId}
+        stockRows={stockRows}
+        metrics={metricCounts}
+        initialSearch={searchQuery}
+        archiveAction={handleArchive}
+        archiveAllAction={handleArchiveAll}
+        approveAction={handleApprove}
+        rejectAction={handleReject}
+        createOverrideAction={handleCreateOverride}
+      />
 
-      {/* Pagination controls */}
+      {/* ── Pagination ──────────────────────────────────────────────── */}
       {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between font-body text-body-sm text-text-grey">
+        <div className="flex items-center justify-between rounded-xl border border-outline-variant/30 bg-surface-white px-4 py-3 font-body text-body-sm text-text-grey">
           <span>
-            Page {currentPage} of {totalPages} ({total} total)
+            Showing Page <strong className="text-on-surface">{currentPage}</strong> of{" "}
+            <strong className="text-on-surface">{totalPages}</strong> ({total} total requests)
           </span>
           <div className="flex gap-2">
             {currentPage > 1 && (
@@ -152,7 +381,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
                   ...(showDeleted ? { tab: "deleted" } : {}),
                   page: String(currentPage - 1),
                 })}`}
-                className="inline-flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="inline-flex h-9 items-center justify-center rounded-lg border border-outline-variant/30 bg-surface px-3 font-label text-label-xs font-bold text-on-surface hover:bg-surface-light-grey"
               >
                 Previous
               </Link>
@@ -161,9 +390,10 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
               <Link
                 href={`/approvals?${new URLSearchParams({
                   ...(typeFilter ? { type: typeFilter } : {}),
+                  ...(showDeleted ? { tab: "deleted" } : {}),
                   page: String(currentPage + 1),
                 })}`}
-                className="inline-flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="inline-flex h-9 items-center justify-center rounded-lg border border-outline-variant/30 bg-surface px-3 font-label text-label-xs font-bold text-on-surface hover:bg-surface-light-grey"
               >
                 Next
               </Link>

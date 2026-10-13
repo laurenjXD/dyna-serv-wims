@@ -409,14 +409,12 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
       )}
 
 
-      {/* Tab 4: Configuration (Contract Terms, Trading Rate Cards & Logistics Rate Matrix) */}
+      {/* Tab 4: Configuration (Commercial Contracts & Logistics Rate Matrix) */}
       {activeSection === "configuration" && (
         <div className="mt-6">
           <ConfigurationTab
             contracts={contracts}
-            vmiContractRows={vmiContractRows}
             parties={partyOptions}
-            policyRows={policyRows}
             items={itemOptions}
           />
         </div>

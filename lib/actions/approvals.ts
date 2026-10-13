@@ -224,6 +224,8 @@ export async function rejectRequest(
   return rlsResult.value;
 }
 
+import { revalidatePath } from "next/cache";
+
 /** Soft-archives an expired pending approval for audit monitoring. */
 export async function archiveExpiredApprovalRequest(
   resolver: RequestAuthorizationResolver,
@@ -235,16 +237,6 @@ export async function archiveExpiredApprovalRequest(
     if (!authResult.ok) return authResult;
     const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
       const db = tx.db as DbLike;
-      const [request] = await db
-        .select({ requesterUserId: approvalRequests.requesterUserId })
-        .from(approvalRequests)
-        .where(eq(approvalRequests.id, requestId));
-      if (request?.requesterUserId === authResult.userId) {
-        return {
-          ok: false,
-          error: "Another user must archive this request. The requester cannot archive it.",
-        } as const;
-      }
       const [archived] = await db
         .update(approvalRequests)
         .set({ status: "expired", deletedAt: new Date(), deletedByUserId: authResult.userId })
@@ -261,13 +253,131 @@ export async function archiveExpiredApprovalRequest(
       return { ok: false, error: "Only expired pending requests can be archived." } as const;
     });
     if (rlsResult.kind === "unauthenticated") return { ok: false, error: "Forbidden" };
+    revalidatePath("/approvals");
     return rlsResult.value;
-  } catch {
-    // A missing migration, RLS denial, or database failure must not turn a
-    // reviewer action into a Next.js error page.
+  } catch (err: any) {
     return {
       ok: false,
-      error: "Another user must archive this request. The requester cannot archive it.",
+      error: err?.message || "Failed to archive expired approval request.",
+    };
+  }
+}
+
+/** Bulk archives all expired approval requests in the queue. */
+export async function archiveAllExpiredApprovals(
+  resolver: RequestAuthorizationResolver,
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+): Promise<ApprovalActionResult & { count?: number }> {
+  try {
+    const authResult = await checkApproveCapability(resolver);
+    if (!authResult.ok) return authResult;
+    const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+      const db = tx.db as DbLike;
+      const rows = await db
+        .update(approvalRequests)
+        .set({ status: "expired", deletedAt: new Date(), deletedByUserId: authResult.userId })
+        .where(and(
+          isNull(approvalRequests.deletedAt),
+          or(
+            eq(approvalRequests.status, "expired"),
+            and(eq(approvalRequests.status, "pending"), lte(approvalRequests.expiryAt, new Date())),
+          ),
+        ))
+        .returning({ id: approvalRequests.id });
+      return { ok: true, count: rows.length } as const;
+    });
+    if (rlsResult.kind === "unauthenticated") return { ok: false, error: "Forbidden" };
+    revalidatePath("/approvals");
+    return rlsResult.value;
+  } catch (err: any) {
+    return {
+      ok: false,
+      error: err?.message || "Failed to bulk archive expired requests.",
+    };
+  }
+}
+
+/** Creates a new FIFO override approval request. */
+export async function createFifoOverrideRequest(
+  resolver: RequestAuthorizationResolver,
+  input: {
+    itemId: string;
+    itemCode: string;
+    lotId: string;
+    lotNumber: string;
+    locationId: string;
+    locationCode: string;
+    requestedQty: number | string;
+    reasonCategory: string;
+    reasonNote?: string;
+    partyId?: string;
+  },
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+): Promise<ApprovalActionResult & { requestId?: string }> {
+  try {
+    const perm = await requirePermission(resolver, "fifo_override.approve");
+    const fallbackPerm = perm.kind !== "authorized" ? await requirePermission(resolver, "pick_list.read") : perm;
+    if (fallbackPerm.kind !== "authorized") {
+      return { ok: false, error: "You do not have permission to request a FIFO override." };
+    }
+
+    const userId = fallbackPerm.context.userId;
+    const reasonText = input.reasonNote
+      ? `${input.reasonCategory}: ${input.reasonNote}`
+      : `${input.reasonCategory} justification for override`;
+
+    if (reasonText.length < 10) {
+      return { ok: false, error: "Reason must be at least 10 characters long." };
+    }
+
+    const expiryAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+    const idempotencyKey = `FIFO-${input.itemId}-${input.lotId}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+
+    const snapshot = {
+      item_id: input.itemId,
+      item_code: input.itemCode,
+      lot_id: input.lotId,
+      lot_number: input.lotNumber,
+      location_id: input.locationId,
+      location_code: input.locationCode,
+      requested_qty: String(input.requestedQty),
+      available_qty_at_request: String(input.requestedQty),
+      flow_type: "trading" as const,
+      actor_user_id: userId,
+      reason: input.reasonCategory,
+      reason_note: input.reasonNote || undefined,
+      allocation_version: 1,
+      requested_at: new Date().toISOString(),
+    };
+
+    const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+      const db = tx.db as DbLike;
+      const [inserted] = await db
+        .insert(approvalRequests)
+        .values({
+          idempotencyKey,
+          approvalType: "fifo_override",
+          requestedAction: "fifo_override_allocation",
+          targetResourceType: "lot_location_balances",
+          targetResourceId: input.lotId,
+          targetSnapshot: snapshot,
+          partyId: input.partyId || null,
+          requesterUserId: userId,
+          reason: reasonText,
+          status: "pending",
+          expiryAt,
+        })
+        .returning({ id: approvalRequests.id });
+      return { ok: true, requestId: inserted.id } as const;
+    });
+
+    if (rlsResult.kind === "unauthenticated") return { ok: false, error: "Forbidden" };
+    revalidatePath("/approvals");
+    return rlsResult.value;
+  } catch (err: any) {
+    return {
+      ok: false,
+      error: err?.message || "Failed to create FIFO override request.",
     };
   }
 }

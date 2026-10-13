@@ -37,6 +37,7 @@
     "recharts": "^3.10.1",
     "resend": "6.18.1",
     "sharp": "^0.34.5",
+    "xlsx": "^0.18.5",
     "zod": "^4.4.3"
   },
   "devDependencies": {

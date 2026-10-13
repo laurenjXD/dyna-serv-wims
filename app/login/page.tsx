@@ -13,8 +13,9 @@
 
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { signInAction } from "./actions";
+import { createClient } from "@/lib/supabase/client";
 
 function ArchEyeIcon({ size = 18 }: { size?: number }) {
   return (
@@ -61,6 +62,52 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+
+  // Detect invite link tokens, hash parameters, or invited user sessions
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    // 1. Check URL query parameters (e.g. ?code=... or ?error=...)
+    const searchParams = new URLSearchParams(window.location.search);
+    const code = searchParams.get("code");
+    const errParam = searchParams.get("error_description") || searchParams.get("error");
+    if (errParam) {
+      setError(errParam);
+    }
+
+    if (code) {
+      window.location.replace(`/auth/callback?code=${encodeURIComponent(code)}&next=/accept-invite`);
+      return;
+    }
+
+    // 2. Check URL hash parameters (e.g. #access_token=...&type=invite)
+    const hash = window.location.hash;
+    if (hash && (hash.includes("type=invite") || hash.includes("type=recovery") || hash.includes("access_token"))) {
+      window.location.replace(`/accept-invite${hash}`);
+      return;
+    }
+
+    // 3. Check if active session is already present and in 'invited' state
+    try {
+      const supabase = createClient();
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          supabase
+            .from("user_profiles")
+            .select("status")
+            .eq("id", session.user.id)
+            .maybeSingle()
+            .then(({ data: profile }) => {
+              if (profile?.status === "invited") {
+                window.location.replace("/accept-invite");
+              }
+            });
+        }
+      });
+    } catch {
+      // ignore
+    }
+  }, []);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();

@@ -3,9 +3,10 @@
 
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { completeInvitationAcceptance } from "./actions";
+import { createClient } from "@/lib/supabase/client";
 import {
   Warehouse,
   User,
@@ -27,6 +28,96 @@ export default function AcceptInvitePage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [loadingInitial, setLoadingInitial] = useState(true);
+
+  // Attempt to load pre-assigned name from invite metadata and process tokens
+  useEffect(() => {
+    const supabase = createClient();
+
+    // 1. Process URL search parameters: errors, PKCE code, OTP token_hash
+    if (typeof window !== "undefined") {
+      const searchParams = new URLSearchParams(window.location.search);
+      const errParam = searchParams.get("error_description") || searchParams.get("error");
+      if (errParam) {
+        setError(errParam);
+      }
+
+      const code = searchParams.get("code");
+      if (code) {
+        supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
+          if (error) {
+            setError(error.message);
+          } else if (data?.user) {
+            const prefilled =
+              data.user.user_metadata?.displayName ||
+              data.user.user_metadata?.display_name ||
+              data.user.user_metadata?.full_name ||
+              "";
+            if (prefilled) setDisplayName(prefilled);
+          }
+        });
+      }
+
+      const tokenHash = searchParams.get("token_hash");
+      const type = searchParams.get("type");
+      if (tokenHash && (type === "invite" || type === "recovery" || type === "email" || type === "signup")) {
+        supabase.auth
+          .verifyOtp({ token_hash: tokenHash, type: type as "invite" | "recovery" | "email" | "signup" })
+          .then(({ data, error }) => {
+            if (error) {
+              setError(error.message);
+            } else if (data?.user) {
+              const prefilled =
+                data.user.user_metadata?.displayName ||
+                data.user.user_metadata?.display_name ||
+                data.user.user_metadata?.full_name ||
+                "";
+              if (prefilled) setDisplayName(prefilled);
+            }
+          });
+      }
+    }
+
+    // 2. Subscribe to auth state changes for hash tokens (#access_token=...)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        const prefilled =
+          session.user.user_metadata?.displayName ||
+          session.user.user_metadata?.display_name ||
+          session.user.user_metadata?.full_name ||
+          "";
+        if (prefilled) setDisplayName(prefilled);
+      }
+      setLoadingInitial(false);
+    });
+
+    async function loadUser() {
+      try {
+        const { data } = await supabase.auth.getUser();
+        if (data.user) {
+          const prefilledName =
+            data.user.user_metadata?.displayName ||
+            data.user.user_metadata?.display_name ||
+            data.user.user_metadata?.full_name ||
+            "";
+          if (prefilledName) {
+            setDisplayName(prefilledName);
+          }
+        }
+      } catch {
+        // Ignore client session load error
+      } finally {
+        setLoadingInitial(false);
+      }
+    }
+    loadUser();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();

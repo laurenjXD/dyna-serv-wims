@@ -14,6 +14,8 @@ import {
   inviteUser,
   suspendUser,
   reactivateUser,
+  resendInvite,
+  cancelInvite,
 } from "./actions";
 
 export default async function SettingsTeamPage() {
@@ -33,6 +35,8 @@ export default async function SettingsTeamPage() {
       inviteUser={inviteUser}
       suspendUser={suspendUser}
       reactivateUser={reactivateUser}
+      resendInvite={resendInvite}
+      cancelInvite={cancelInvite}
     />
   );
 }

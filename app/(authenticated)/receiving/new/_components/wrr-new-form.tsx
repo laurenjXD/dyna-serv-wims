@@ -160,6 +160,14 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
               const ciplInput = document.getElementById("commercialInvoiceNo") as HTMLInputElement | null;
               if (ciplInput) ciplInput.value = header.ciplReference;
             }
+            if (header.ipNumber) {
+              const ipInput = document.getElementById("ipNumber") as HTMLInputElement | null;
+              if (ipInput) ipInput.value = header.ipNumber;
+            }
+            if (header.mawbMbl) {
+              const mawbInput = document.getElementById("mawbMblNumber") as HTMLInputElement | null;
+              if (mawbInput) mawbInput.value = header.mawbMbl;
+            }
             setImportedLines(lines);
             setCiplStatus("done");
             setCiplFileName("Parsed Document Lines Applied");

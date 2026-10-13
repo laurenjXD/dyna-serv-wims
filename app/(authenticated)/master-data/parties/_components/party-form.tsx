@@ -16,7 +16,6 @@ import { computeNextPartyCode } from "@/lib/db/queries/parties";
 import { PhoneInputField } from "@/components/global/PhoneInputField";
 
 const PARTY_ROLES = [
-  { value: "vendor", label: "Vendor" },
   { value: "supplier", label: "Supplier" },
   { value: "customer", label: "Customer" },
   { value: "end_customer", label: "End Customer" },
@@ -42,21 +41,18 @@ export function PartyForm({ action, party, initialCode, existingCodes = [], canc
   const isEdit = !!party;
   const assignedRoleValues = useMemo(() => new Set(party?.roles.map((r) => r.role) ?? []), [party]);
 
-  // Selected business roles state
+  // Selected business roles state - empty by default for new organizations
   const [selectedRoles, setSelectedRoles] = useState<string[]>(() => {
     if (party && party.roles.length > 0) {
       return party.roles.map((r) => r.role);
     }
-    return ["vendor"];
+    return [];
   });
 
-  // Primary active role for code serialization
-  const primaryRole = selectedRoles[0] || "vendor";
-
-  // Dynamic suggested serialized code based on the selected role and existing party codes
+  // Dynamic suggested serialized code based on the selected roles and existing party codes
   const suggestedCode = useMemo(() => {
-    return computeNextPartyCode(primaryRole, existingCodes);
-  }, [primaryRole, existingCodes]);
+    return computeNextPartyCode(selectedRoles, existingCodes);
+  }, [selectedRoles, existingCodes]);
 
   // Code input state
   const [codeValue, setCodeValue] = useState<string>(party?.code ?? initialCode ?? "");
@@ -66,8 +62,7 @@ export function PartyForm({ action, party, initialCode, existingCodes = [], canc
       if (isChecked) {
         return prev.includes(roleVal) ? prev : [...prev, roleVal];
       } else {
-        const filtered = prev.filter((r) => r !== roleVal);
-        return filtered.length > 0 ? filtered : ["vendor"];
+        return prev.filter((r) => r !== roleVal);
       }
     });
   };
@@ -169,11 +164,11 @@ export function PartyForm({ action, party, initialCode, existingCodes = [], canc
             value={codeValue}
             onChange={(e) => setCodeValue(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Tab" && !e.shiftKey && !codeValue.trim()) {
+              if (e.key === "Tab" && !e.shiftKey && !codeValue.trim() && suggestedCode) {
                 setCodeValue(suggestedCode);
               }
             }}
-            placeholder={isEdit ? "e.g. VENDOR-001" : `e.g. ${suggestedCode}`}
+            placeholder={isEdit ? "e.g. SUPPLIER-001" : suggestedCode ? `e.g. ${suggestedCode}` : "e.g. ORG-001"}
             className={inputClass("code")}
             {...ariaProps("code")}
           />

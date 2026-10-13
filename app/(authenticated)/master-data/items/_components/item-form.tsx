@@ -46,6 +46,8 @@ interface ItemFormProps {
   supplierParties: SupplierPartyOption[];
   cancelHref: string;
   initialCode?: string;
+  suggestedDsgcCode?: string;
+  suggestedGenericCode?: string;
 }
 
 function computeVolumeCbm(
@@ -72,6 +74,8 @@ export function ItemForm({
   supplierParties,
   cancelHref,
   initialCode = "",
+  suggestedDsgcCode = "DSGC-TRD-0001",
+  suggestedGenericCode = "ITM-00001",
 }: ItemFormProps) {
   const [state, formAction, isPending] = useActionState(action, {});
   const isEdit = !!item;
@@ -172,7 +176,7 @@ export function ItemForm({
     ? (childCategoriesByParent.get(parentCategoryId) ?? [])
     : [];
 
-  const suggestedDsgcPartNumber = "DSGC-TRD-0001";
+  const suggestedDsgcPartNumber = suggestedDsgcCode;
   const initialUom = item?.uom ?? "piece";
   const isCustomInitialUom = !STANDARD_UOM_OPTIONS.includes(initialUom as (typeof STANDARD_UOM_OPTIONS)[number]) && !!initialUom;
   const [customUomMode, setCustomUomMode] = useState(isCustomInitialUom);
@@ -642,8 +646,13 @@ export function ItemForm({
                 required
                 maxLength={100}
                 value={codeValue}
+                onKeyDown={(e) => {
+                  if (e.key === "Tab" && !e.shiftKey && !codeValue && suggestedGenericCode) {
+                    setCodeValue(suggestedGenericCode);
+                  }
+                }}
                 onChange={(e) => setCodeValue(e.target.value)}
-                placeholder="e.g. ITM-00001"
+                placeholder={suggestedGenericCode ? `e.g. ${suggestedGenericCode}` : "e.g. ITM-00001"}
                 className={inputClass("code")}
                 {...ariaProps("code")}
               />
@@ -727,7 +736,7 @@ export function ItemForm({
                 maxLength={100}
                 value={dsgcItemNumberValue}
                 onChange={(e) => setDsgcItemNumberValue(e.target.value)}
-                placeholder="e.g. DSGC-TRD-00001"
+                placeholder={`e.g. ${suggestedDsgcCode}`}
                 className={inputClass("dsgcItemNumber")}
               />
             </div>

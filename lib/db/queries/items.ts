@@ -348,16 +348,22 @@ export async function getActiveSupplierParties(
   }
 
   return Array.from(map.values()).map((p) => {
-    // Map assigned party role to automatic default inventory model
+    // Map assigned party role to automatic default inventory model:
+    // - Customer: VMI (receives warehouse services & billable) and trading buyer
+    // - Supplier: Trading only (goods supplier)
+    // - Internal Warehouse: Supplies
     let defaultInventoryModel: "vmi" | "trading" | "supplies" | undefined;
-    if (p.roles.includes("vendor")) {
+    if (p.roles.includes("customer")) {
       defaultInventoryModel = "vmi";
     } else if (p.roles.includes("supplier")) {
       defaultInventoryModel = "trading";
     } else if (p.roles.includes("internal_warehouse")) {
       defaultInventoryModel = "supplies";
-    } else if (p.roles.includes("customer") || p.roles.includes("end_customer")) {
+    } else if (p.roles.includes("end_customer")) {
       defaultInventoryModel = "trading";
+    } else if (p.roles.includes("vendor")) {
+      // Legacy fallback for previously enrolled vendors
+      defaultInventoryModel = "vmi";
     }
 
     return {
@@ -396,4 +402,72 @@ export async function getItemCategories(
     .orderBy(itemCategories.name);
 
   return rows as CategoryOption[];
+}
+
+// ---------------------------------------------------------------------------
+// getNextSuggestedItemCodes
+// ---------------------------------------------------------------------------
+
+export type SuggestedItemCodes = {
+  nextDsgcCode: string;
+  nextGenericCode: string;
+};
+
+/**
+ * Scans existing items to calculate the next available serialized codes:
+ * - DSGC Trading code: DSGC-TRD-XXXX (e.g. DSGC-TRD-0001, DSGC-TRD-0002)
+ * - Generic Item code: ITM-XXXXX (e.g. ITM-00001, ITM-00002)
+ */
+export async function getNextSuggestedItemCodes(
+  db: DbLike,
+): Promise<SuggestedItemCodes> {
+  try {
+    const rows = await db
+      .select({
+        code: items.code,
+        dsgcItemNumber: items.dsgcItemNumber,
+      })
+      .from(items);
+
+    let maxDsgcNum = 0;
+    let maxGenericNum = 0;
+
+    for (const row of rows as { code: string; dsgcItemNumber: string | null }[]) {
+      // Check DSGC-TRD-XXXX pattern across code and dsgcItemNumber
+      const dsgcCandidate = row.dsgcItemNumber || row.code;
+      if (dsgcCandidate) {
+        const dsgcMatch = dsgcCandidate.match(/^DSGC-TRD-(\d+)$/i);
+        if (dsgcMatch && dsgcMatch[1]) {
+          const num = parseInt(dsgcMatch[1], 10);
+          if (!isNaN(num) && num > maxDsgcNum) {
+            maxDsgcNum = num;
+          }
+        }
+      }
+
+      // Check ITM-XXXXX pattern across code
+      if (row.code) {
+        const itmMatch = row.code.match(/^ITM-(\d+)$/i);
+        if (itmMatch && itmMatch[1]) {
+          const num = parseInt(itmMatch[1], 10);
+          if (!isNaN(num) && num > maxGenericNum) {
+            maxGenericNum = num;
+          }
+        }
+      }
+    }
+
+    const nextDsgcNum = maxDsgcNum + 1;
+    const nextGenericNum = maxGenericNum + 1;
+
+    return {
+      nextDsgcCode: `DSGC-TRD-${String(nextDsgcNum).padStart(4, "0")}`,
+      nextGenericCode: `ITM-${String(nextGenericNum).padStart(5, "0")}`,
+    };
+  } catch {
+    return {
+      nextDsgcCode: "DSGC-TRD-0001",
+      nextGenericCode: "ITM-00001",
+    };
+  }
 }

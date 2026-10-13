@@ -82,16 +82,19 @@ function getScanErrorMessage(reason: string): string {
 
 function getCommitErrorMessage(reason: string): string {
   if (reason.includes("presence_attestation_required")) {
-    return "Confirm that every received box or pallet is physically present before storing.";
+    return "Confirm that every received box is physically present before storing.";
   }
-  if (reason.includes("allocation_qty_must_equal_expected")) {
-    return "Assign a location to every received box or pallet before storing.";
+  if (reason.includes("allocation_qty_must_equal_expected") || reason.includes("allocation_qty_invalid")) {
+    return "Assign a location to every received box before storing.";
   }
   if (reason.includes("missing_location")) {
-    return "Choose a storage location for every declared box or pallet before storing.";
+    return "Choose a storage location for every declared box before storing.";
   }
   if (reason.includes("under-scanned")) {
-    return "Scan one QR from this pallet first, then assign its locations.";
+    return "Scan carton or item barcode first, then assign its locations.";
+  }
+  if (reason.includes("must be of type")) {
+    return "Please choose valid active storage racks or inspection holding bays.";
   }
   switch (reason) {
     case "forbidden":
@@ -101,7 +104,7 @@ function getCommitErrorMessage(reason: string): string {
     case "commit_failed":
       return "The receipt could not be saved. Nothing was stored. Try again; if it continues, contact a supervisor with the WRR number.";
     default:
-      return `Could not complete this line: ${reason}. Contact a supervisor if this persists.`;
+      return `Could not complete this line: ${reason.replace(/\|/g, ", ")}. Contact a supervisor if this persists.`;
   }
 }
 
@@ -501,6 +504,7 @@ export default async function ReceiveFloorPage({
          <div className="mt-4 space-y-3">
           {wrr.items.map((item: WrrItemRow) => {
             const itemSpq = Number(item.spq) || 1;
+            const itemUom = (!item.uom || item.uom.toLowerCase() === "pallet" || item.uom.toLowerCase() === "plt") ? "PCS" : item.uom.toUpperCase();
             const fullyScanned = item.scannedQty >= item.expectedQty;
             const isCommitted = item.committedAt !== null;
             const readyToCommit = item.scannedQty >= 1 && !isCommitted;
@@ -519,7 +523,7 @@ export default async function ReceiveFloorPage({
                         {item.lotNumber}
                       </p>
                       <span className="rounded-md bg-surface-light-grey px-2 py-0.5 font-label text-label-xs font-bold text-text-grey">
-                        SPQ: {itemSpq} {item.uom || "PCS"}/Box
+                        SPQ: {itemSpq} {itemUom}/Box
                       </span>
                     </div>
 
@@ -532,7 +536,9 @@ export default async function ReceiveFloorPage({
                     {/* Qty progress in both Boxes and Total Pieces */}
                     <p className="mt-1.5 font-body text-body-md text-on-surface">
                       <strong>{item.scannedQty} / {item.expectedQty} Boxes</strong>
-                      {" "}<span className="text-text-grey font-mono">({(item.scannedQty * itemSpq).toLocaleString()} / {(item.expectedQty * itemSpq).toLocaleString()} {item.uom || "PCS"})</span>
+                      {itemSpq > 1 && (
+                        <>{" "}<span className="text-text-grey font-mono">({(item.scannedQty * itemSpq).toLocaleString()} / {(item.expectedQty * itemSpq).toLocaleString()} {itemUom})</span></>
+                      )}
                     </p>
 
                     {/* Disposition badge */}
@@ -588,7 +594,7 @@ export default async function ReceiveFloorPage({
                   <div className="mt-3 flex items-center gap-2 border-t border-outline-variant/30 pt-3">
                     <ArrowDown size={18} aria-hidden="true" className="text-brand-navy" />
                     <p className="font-label text-body-md text-brand-navy font-bold">
-                      QR verified — assign storage and/or inspection bays below
+                      Item verified — assign storage and/or inspection bays below
                     </p>
                   </div>
                 )}
@@ -597,7 +603,7 @@ export default async function ReceiveFloorPage({
                   <div className="mt-3 flex items-center gap-2 border-t border-outline-variant/30 pt-3">
                     <CircleDot size={16} aria-hidden="true" className="text-status-pending" />
                     <p className="font-label text-body-md text-on-surface">
-                      QR verified — complete the current line first
+                      Item verified — complete the current line first
                     </p>
                   </div>
                 )}
@@ -609,7 +615,7 @@ export default async function ReceiveFloorPage({
 
       {/* Primary action — bottom third of screen, full-width */}
       {isReceivable && hasShortage && !hasUncommittedReceivedLines && (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-outline-variant/30 pt-4">
+        <div className="mx-auto mt-4 flex w-full max-w-5xl flex-wrap items-center justify-between gap-3 border-t border-outline-variant/30 px-4 pt-4">
           <p className="font-body text-body-sm text-text-grey">
             Missing boxes will be recorded in the WRR&apos;s OS&amp;D summary.
           </p>
@@ -623,53 +629,64 @@ export default async function ReceiveFloorPage({
           </form>
         </div>
       )}
-      {isReceivable && primaryReadyLine && (
-        <div className="sticky bottom-0 z-10 -mx-4 mt-2 border-t border-outline-variant/40 bg-surface-white px-4 pb-6 pt-4 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] sm:-mx-6 sm:rounded-t-2xl sm:border-x">
-          <form action={handleCommitLine} className="flex flex-col gap-3">
-            <input type="hidden" name="wrrItemId" value={primaryReadyLine.id} />
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="font-mono text-mono-lg font-bold text-on-surface">
-                {primaryReadyLine.lotNumber}
-              </p>
-              <span className="rounded bg-brand-navy/10 px-2 py-0.5 font-label text-label-xs font-bold text-brand-navy">
-                SPQ: {primaryReadyLine.spq ?? 1} {primaryReadyLine.uom || "PCS"}/Box
-              </span>
-            </div>
-            <div className="flex items-start gap-3 rounded-xl border border-status-available/30 bg-[#F0FDF8] px-4 py-3">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-status-available font-heading font-bold text-surface-white" aria-hidden="true">
-                <Check size={18} strokeWidth={3} />
-              </span>
-              <div>
-                <p className="font-label text-body-md font-bold text-on-surface">
-                  Pallet verified
-                </p>
-                <p className="mt-1 font-body text-body-md text-text-grey">
-                  Assign locations for declared boxes (Expected: {primaryReadyLine.expectedQty} Boxes / {((Number(primaryReadyLine.expectedQty) || 0) * (Number(primaryReadyLine.spq) || 1)).toLocaleString()} {primaryReadyLine.uom || "PCS"}). Mark boxes that did not arrive as Missing.
-                </p>
-              </div>
-            </div>
+      {isReceivable && primaryReadyLine && (() => {
+        const primaryLineSpq = Number(primaryReadyLine.spq) || 1;
+        const primaryLineUom = (!primaryReadyLine.uom || primaryReadyLine.uom.toLowerCase() === "pallet" || primaryReadyLine.uom.toLowerCase() === "plt") ? "PCS" : primaryReadyLine.uom.toUpperCase();
+        return (
+          <div className="mx-auto mt-6 w-full max-w-5xl px-4 pb-8">
+            <div className="rounded-2xl border border-primary/30 bg-surface-white p-4 shadow-elevation-2 sm:p-6 ring-2 ring-primary/10">
+              <form action={handleCommitLine} className="flex flex-col gap-4">
+                <input type="hidden" name="wrrItemId" value={primaryReadyLine.id} />
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-outline-variant/30 pb-3">
+                  <div>
+                    <p className="font-label text-label-xs font-bold uppercase tracking-wider text-primary">Active Line For Putaway</p>
+                    <p className="font-mono text-headline-sm font-bold text-on-surface">
+                      {primaryReadyLine.lotNumber}
+                    </p>
+                  </div>
+                  <span className="rounded-md bg-brand-navy/10 px-3 py-1 font-label text-label-sm font-bold text-brand-navy">
+                    SPQ: {primaryLineSpq} {primaryLineUom}/Box
+                  </span>
+                </div>
+                <div className="flex items-start gap-3 rounded-xl border border-status-available/30 bg-[#F0FDF8] px-4 py-3">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-status-available font-heading font-bold text-surface-white" aria-hidden="true">
+                    <Check size={18} strokeWidth={3} />
+                  </span>
+                  <div>
+                    <p className="font-label text-body-md font-bold text-on-surface">
+                      Item verified
+                    </p>
+                    <p className="mt-1 font-body text-body-md text-text-grey">
+                      Assign locations for declared boxes (Expected: {primaryReadyLine.expectedQty} Boxes{primaryLineSpq > 1 ? ` / ${((Number(primaryReadyLine.expectedQty) || 0) * primaryLineSpq).toLocaleString()} ${primaryLineUom}` : ""}). Mark boxes that did not arrive as Missing.
+                    </p>
+                  </div>
+                </div>
 
-            <PutawayLocationSelector
-              candidates={primaryStoreCandidates}
-              inspectionCandidates={inspectionLocations}
-              contents={primaryStoreContents}
-              quantity={primaryReadyLine.expectedQty}
-              unitCbm={Number(primaryReadyLine.unitCbm) || 0}
-              spq={Number(primaryReadyLine.spq) || 1}
-              uom={primaryReadyLine.uom || "PCS"}
-              lotNumber={primaryReadyLine.lotNumber}
-            />
+                <PutawayLocationSelector
+                  candidates={primaryStoreCandidates}
+                  inspectionCandidates={inspectionLocations}
+                  contents={primaryStoreContents}
+                  quantity={primaryReadyLine.expectedQty}
+                  unitCbm={Number(primaryReadyLine.unitCbm) || 0}
+                  spq={primaryLineSpq}
+                  uom={primaryLineUom}
+                  lotNumber={primaryReadyLine.lotNumber}
+                />
 
-            <button
-              type="submit"
-              disabled={primaryStoreCandidates.length === 0 && inspectionLocations.length === 0}
-              className="flex h-16 w-full items-center justify-center rounded bg-primary font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white disabled:opacity-50 shadow-md"
-            >
-              Confirm & Store / Hold Boxes
-            </button>
-          </form>
-        </div>
-      )}
+                <div className="sticky bottom-0 z-20 -mx-4 -mb-4 mt-2 bg-surface-white/95 p-4 backdrop-blur border-t border-outline-variant/30 sm:static sm:mx-0 sm:mb-0 sm:p-0 sm:border-0 sm:bg-transparent">
+                  <button
+                    type="submit"
+                    disabled={primaryStoreCandidates.length === 0 && inspectionLocations.length === 0}
+                    className="flex h-16 w-full items-center justify-center rounded-xl bg-primary font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-primary/20 disabled:opacity-50 shadow-md cursor-pointer hover:bg-primary/90"
+                  >
+                    Confirm & Store / Hold Boxes
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        );
+      })()}
 
       {isReceivable && !primaryReadyLine && !allLinesScanned && (
         <div className="sticky bottom-0 border-t border-outline-variant/30 bg-surface-white px-4 pb-6 pt-4 shadow-elevation-2">
@@ -678,10 +695,10 @@ export default async function ReceiveFloorPage({
               htmlFor="barcode-input"
               className="text-body-md font-body text-on-surface"
             >
-              Scan one pallet QR to verify the boxes
+              Scan carton or item barcode to verify
             </label>
             <p className="font-body text-body-md text-text-grey">
-              Scan one QR from the pallet first. We will confirm the item before asking where its declared boxes should be stored.
+              Scan one barcode from the incoming shipment first. We will confirm the item before asking where its declared boxes should be stored.
             </p>
             <div className="flex gap-2">
               <input
@@ -691,7 +708,7 @@ export default async function ReceiveFloorPage({
                 autoFocus
                 autoComplete="off"
                 inputMode="text"
-                placeholder="Scan or enter pallet code"
+                placeholder="Scan or enter barcode"
                 className="h-16 flex-1 rounded border-2 border-outline-variant bg-surface-white px-4 font-mono text-mono-lg text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-4 focus:ring-brand-navy"
               />
               <button

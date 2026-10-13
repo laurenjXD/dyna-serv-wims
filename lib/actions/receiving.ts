@@ -930,13 +930,20 @@ export async function commitWrrLine(
           : null;
         const validation = validateLineCommit(
           { id: doc.id, status: doc.status, flowType: doc.flowType, vendorPartyId: doc.vendorPartyId },
-          validationLine,
+          {
+            ...validationLine,
+            disposition: row?.locationType === "inspection" ? "inspect" : "store",
+          },
           location,
         );
         if (!validation.ok) {
           return { ok: false, errors: validation.errors } satisfies CommitWrrLineResult;
         }
       }
+
+      const hasStorageLocation = targetLocationIds.some((id) => locationsById.get(id)?.locationType === "storage");
+      const hasInspectionLocation = targetLocationIds.some((id) => locationsById.get(id)?.locationType === "inspection");
+      const finalDisposition = hasInspectionLocation ? "inspect" : "store";
 
       // Conditional claim: only the caller who flips committed_at from NULL to
       // now() may post this line's inventory rows below.
@@ -945,7 +952,8 @@ export async function commitWrrLine(
         .set({
           committedAt: new Date(),
           scannedQty: allocatedTotal,
-          ...(line.disposition === "store" && !isBatch ? { putawayLocationId: targetLocationIds[0] } : {}),
+          disposition: finalDisposition,
+          ...(finalDisposition === "store" && !isBatch ? { putawayLocationId: targetLocationIds[0] } : {}),
         })
         .where(and(eq(wrrItems.id, wrrItemId), isNull(wrrItems.committedAt)))
         .returning({ id: wrrItems.id });
