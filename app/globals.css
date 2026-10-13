@@ -2,6 +2,46 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Dyna-Serv surface primitives.
+ * The brand guide permits 6px, 10px, 12px, and pill radii. These compatibility
+ * selectors normalize legacy utility usage across older pages while those
+ * pages migrate to the shared token names.
+ */
+.rounded-sm { border-radius: 6px !important; }
+.rounded-md { border-radius: 10px !important; }
+.rounded-lg,
+.rounded-xl,
+.rounded-2xl { border-radius: 12px !important; }
+
+/* Cards use a hairline border and surface fill; elevation is reserved for
+ * transient overlays and physical-object mockups in the brand system. */
+[data-surface="office"] .shadow-sm,
+[data-surface="office"] .shadow-md,
+[data-surface="office"] .shadow-lg,
+[data-surface="office"] .shadow-xl,
+[data-surface="office"] .shadow-2xl,
+[data-surface="office"] .shadow-elevation-1,
+[data-surface="office"] .shadow-elevation-2,
+[data-surface="party"] .shadow-sm,
+[data-surface="party"] .shadow-md,
+[data-surface="party"] .shadow-lg,
+[data-surface="party"] .shadow-xl,
+[data-surface="party"] .shadow-2xl,
+[data-surface="party"] .shadow-elevation-1,
+[data-surface="party"] .shadow-elevation-2 {
+  box-shadow: none !important;
+}
+
+/* The guide explicitly disallows glass/blur surfaces. Keep the content
+ * opaque and retain the hairline border instead. */
+[data-surface="office"] [class*="backdrop-blur"],
+[data-surface="party"] [class*="backdrop-blur"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background-color: #ffffff !important;
+}
+
 /* Suppress browser native password reveal and clear buttons (Microsoft Edge, IE, Chrome)
  * so our custom eye toggle is the sole persistent toggle without dual icons or pop-in/pop-out. */
 input::-ms-reveal,

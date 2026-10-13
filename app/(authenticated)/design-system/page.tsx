@@ -211,7 +211,7 @@ export default function DesignSystemPage() {
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <h2 className="font-heading text-headline-md font-bold">2. Typography & Font Size Scale</h2>
+              <h2 className="font-heading text-headline-md font-bold">3. Typography & Font Size Scale</h2>
               <Badge variant="primary" size="sm">Avenir Next + Inter</Badge>
             </div>
             <div className="flex items-center gap-2">

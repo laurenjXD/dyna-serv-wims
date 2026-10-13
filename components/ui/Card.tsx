@@ -32,12 +32,12 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
 
     const baseStyles = isFloor
       ? "bg-white/10 border border-white/20 text-white rounded-2xl shadow-none"
-      : "bg-surface border border-border text-text-primary rounded-2xl shadow-elevation-1";
+      : "bg-surface border border-border text-text-primary rounded-lg shadow-none";
 
     const hoverStyles = hoverable
       ? isFloor
         ? "transition-all duration-150 hover:bg-white/15 cursor-pointer active:scale-[0.99]"
-        : "transition-all duration-150 hover:shadow-elevation-2 hover:border-slate-300 cursor-pointer active:scale-[0.99]"
+        : "transition-colors duration-150 hover:border-primary/40 cursor-pointer active:scale-[0.99]"
       : "";
 
     return (

@@ -26,23 +26,23 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    "bg-primary text-white hover:bg-primary-hover shadow-sm active:scale-[0.98] focus-visible:ring-primary",
+    "bg-primary text-white hover:bg-primary-hover active:scale-[0.98] focus-visible:ring-primary",
   secondary:
-    "bg-surface text-text-primary border border-border hover:bg-slate-50 shadow-xs active:scale-[0.98] focus-visible:ring-primary",
+    "bg-surface text-text-primary border border-border hover:bg-background active:scale-[0.98] focus-visible:ring-primary",
   outline:
     "border border-border text-text-primary hover:bg-slate-100 active:scale-[0.98] focus-visible:ring-primary",
   destructive:
-    "bg-error text-white hover:bg-red-600 shadow-sm active:scale-[0.98] focus-visible:ring-error",
+    "bg-error text-white hover:bg-error/90 active:scale-[0.98] focus-visible:ring-error",
   ghost:
     "text-text-primary hover:bg-slate-100 active:scale-[0.98] focus-visible:ring-primary",
   link:
     "text-primary underline-offset-4 hover:underline p-0 h-auto focus-visible:ring-primary",
   "floor-primary":
-    "bg-primary text-white font-bold text-lg rounded-xl shadow-md min-h-[64px] active:scale-[0.97] focus-visible:ring-white tracking-wide uppercase",
+    "bg-primary text-white font-bold text-lg rounded-xl min-h-[64px] active:scale-[0.97] focus-visible:ring-white tracking-wide uppercase",
   "floor-success":
-    "bg-success text-white font-bold text-lg rounded-xl shadow-md min-h-[64px] active:scale-[0.97] focus-visible:ring-white tracking-wide uppercase",
+    "bg-success text-white font-bold text-lg rounded-xl min-h-[64px] active:scale-[0.97] focus-visible:ring-white tracking-wide uppercase",
   "floor-danger":
-    "bg-error text-white font-bold text-lg rounded-xl shadow-md min-h-[64px] active:scale-[0.97] focus-visible:ring-white tracking-wide uppercase",
+    "bg-error text-white font-bold text-lg rounded-xl min-h-[64px] active:scale-[0.97] focus-visible:ring-white tracking-wide uppercase",
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
