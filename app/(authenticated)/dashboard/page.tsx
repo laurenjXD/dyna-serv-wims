@@ -49,7 +49,7 @@ export default async function DashboardPage() {
   ]);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen bg-background">
       <OperationsDashboard
         kpis={kpis}
         flowData={flowData}

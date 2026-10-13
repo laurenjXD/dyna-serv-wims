@@ -141,7 +141,7 @@ export function OperationsDashboard({
   };
 
   return (
-    <div className="mx-auto max-w-container bg-background px-4 py-6 pb-24 sm:px-6 lg:px-8 lg:pb-8 space-y-6 dashboard-page">
+    <div className="mx-auto max-w-container bg-background px-4 py-6 pb-24 sm:px-6 lg:px-8 lg:pb-8 space-y-6">
       {/* ── 1. Header & Global Toolbar ────────────────────────────────────── */}
       <DashboardHeader
         dateHorizon={dateHorizon}
