@@ -269,7 +269,7 @@ export function ApprovalsFilterableTable({
             setActiveFilterTab("pending");
             setSelectedStatus("all");
           }}
-          className={`flex flex-col text-left rounded-2xl border p-4 transition-all shadow-2xs hover:shadow-xs ${
+          className={`flex min-h-[124px] flex-col rounded-2xl border p-4 text-left transition-all shadow-2xs hover:shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 ${
             activeFilterTab === "pending"
               ? "border-amber-400 bg-amber-50/50 ring-2 ring-amber-400/30"
               : "border-border bg-surface hover:border-amber-300"
@@ -290,17 +290,31 @@ export function ApprovalsFilterableTable({
         </button>
 
         {/* Approved Card */}
-        <div className="flex flex-col rounded-2xl border border-border bg-surface p-4 shadow-2xs">
-          <span className="font-label text-label-xs font-bold uppercase tracking-wider text-text-grey">
-            Approved
-          </span>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveFilterTab("all");
+            setSelectedStatus("approved");
+          }}
+          className={`flex min-h-[124px] flex-col rounded-2xl border p-4 text-left transition-all shadow-2xs hover:shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 ${
+            selectedStatus === "approved"
+              ? "border-emerald-400 bg-emerald-50/50 ring-2 ring-emerald-400/30"
+              : "border-border bg-surface hover:border-emerald-300 hover:bg-emerald-50/20"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="font-label text-label-xs font-bold uppercase tracking-wider text-text-grey">
+              Approved
+            </span>
+            <span className="flex h-2 w-2 rounded-full bg-emerald-500" />
+          </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="font-heading text-title-xl font-black text-emerald-700">
               {metrics.approved}
             </span>
-            <span className="font-body text-xs text-emerald-600 font-semibold">Authorized</span>
+            <span className="font-body text-xs font-semibold text-emerald-600">Authorized</span>
           </div>
-        </div>
+        </button>
 
         {/* Expired / Stale Card */}
         <button
@@ -309,7 +323,7 @@ export function ApprovalsFilterableTable({
             setActiveFilterTab("expired");
             setSelectedStatus("all");
           }}
-          className={`flex flex-col text-left rounded-2xl border p-4 transition-all shadow-2xs hover:shadow-xs ${
+          className={`flex min-h-[124px] flex-col rounded-2xl border p-4 text-left transition-all shadow-2xs hover:shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/50 ${
             activeFilterTab === "expired"
               ? "border-rose-400 bg-rose-50/50 ring-2 ring-rose-400/30"
               : "border-border bg-surface hover:border-rose-300"
@@ -319,9 +333,7 @@ export function ApprovalsFilterableTable({
             <span className="font-label text-label-xs font-bold uppercase tracking-wider text-text-grey">
               Expired Requests
             </span>
-            {metrics.expired > 0 && (
-              <span className="flex h-2 w-2 rounded-full bg-rose-500" />
-            )}
+            <span className="flex h-2 w-2 rounded-full bg-rose-500" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="font-heading text-title-xl font-black text-rose-700">
@@ -334,7 +346,7 @@ export function ApprovalsFilterableTable({
         {/* Archived Audit Card */}
         <Link
           href="/approvals?tab=deleted"
-          className={`flex flex-col rounded-2xl border p-4 transition-all shadow-2xs hover:shadow-xs ${
+          className={`flex min-h-[124px] flex-col rounded-2xl border p-4 transition-all shadow-2xs hover:shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy/50 ${
             showDeleted
               ? "border-brand-navy bg-brand-navy/5 ring-2 ring-brand-navy/30"
               : "border-border bg-surface hover:border-brand-navy/40"
