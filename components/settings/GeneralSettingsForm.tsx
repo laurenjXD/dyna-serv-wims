@@ -18,11 +18,17 @@ import {
   Printer,
   Layout,
   FileText,
+  Upload,
+  RotateCcw,
+  Trash2,
+  AlignLeft,
+  AlignCenter,
 } from "lucide-react";
 import type { GeneralSettingsData } from "@/app/(authenticated)/settings/general/actions";
 import { saveGeneralSettings } from "@/app/(authenticated)/settings/general/actions";
 import { PhoneInputField } from "@/components/global/PhoneInputField";
 import { MasterDocumentHeader } from "@/components/print/MasterDocumentHeader";
+import { MasterDocumentFooter } from "@/components/print/MasterDocumentFooter";
 
 export function GeneralSettingsForm({ initialSettings }: { initialSettings: GeneralSettingsData }) {
   const [settings, setSettings] = useState<GeneralSettingsData>(() => ({
@@ -32,8 +38,13 @@ export function GeneralSettingsForm({ initialSettings }: { initialSettings: Gene
       subtitle: "Warehouse Inventory Management System (WIMS)",
       facilityAddress: initialSettings.facility.physicalAddress,
       contactInfo: `Tel: ${initialSettings.facility.contactPhone} | Email: ${initialSettings.facility.contactEmail}`,
-      taxOrPezaReg: `PEZA Reg. No. 01-1234 | VAT Reg. TIN: ${initialSettings.facility.tinNumber}`,
-      isoAccreditation: "ISO 9001:2015 Certified Logistics Facility",
+      logoUrl: "/logo-hd.png",
+      taxOrPezaReg: "",
+      isoAccreditation: "",
+      headerAlignment: "left",
+      titleAlignment: "left",
+      showSignatures: true,
+      showDisclaimer: false,
       previewOrientation: "portrait",
     },
   }));
@@ -41,6 +52,30 @@ export function GeneralSettingsForm({ initialSettings }: { initialSettings: Gene
   const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [hapticTested, setHapticTested] = useState(false);
   const [audioTested, setAudioTested] = useState(false);
+
+  // Handle Logo Upload via browser FileReader
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Logo image size must be under 2MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (uploadEvent) => {
+      const result = uploadEvent.target?.result as string;
+      if (result) {
+        setSettings((prev) => ({
+          ...prev,
+          printTemplate: {
+            ...prev.printTemplate,
+            logoUrl: result,
+          },
+        }));
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Web Audio Synthesizer for Floor Alerts test
   function testAudioAlertTone() {
@@ -628,6 +663,102 @@ export function GeneralSettingsForm({ initialSettings }: { initialSettings: Gene
           </div>
         </div>
 
+        {/* Brand Logo Upload & Management */}
+        <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="font-heading text-xs font-bold uppercase tracking-wider text-slate-800">
+                Official Corporate Brand Logo
+              </h3>
+              <p className="font-body text-xs text-slate-500">
+                Upload your company or warehouse logo. Displayed on official printable documents (WRR, Pick Lists, SOAs).
+              </p>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <label className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-brand-navy px-3 font-label text-xs font-bold text-white shadow-xs cursor-pointer hover:bg-brand-navy/90 transition-all">
+                <Upload size={13} />
+                <span>Upload Logo Image</span>
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                  onChange={handleLogoUpload}
+                  className="hidden"
+                />
+              </label>
+              {settings.printTemplate.logoUrl && settings.printTemplate.logoUrl !== "/logo-hd.png" && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSettings({
+                      ...settings,
+                      printTemplate: {
+                        ...settings.printTemplate,
+                        logoUrl: "/logo-hd.png",
+                      },
+                    })
+                  }
+                  className="inline-flex h-9 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 font-label text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors"
+                >
+                  <RotateCcw size={12} />
+                  <span>Reset Default</span>
+                </button>
+              )}
+              {settings.printTemplate.logoUrl && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSettings({
+                      ...settings,
+                      printTemplate: {
+                        ...settings.printTemplate,
+                        logoUrl: "",
+                      },
+                    })
+                  }
+                  className="inline-flex h-9 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 font-label text-xs font-bold text-rose-600 hover:bg-rose-50 transition-colors"
+                >
+                  <Trash2 size={12} />
+                  <span>Text Only</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4 pt-1">
+            <div className="flex h-12 w-28 items-center justify-center rounded-lg border border-slate-300 bg-white p-1 shadow-2xs shrink-0">
+              {settings.printTemplate.logoUrl ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={settings.printTemplate.logoUrl}
+                  alt="Logo Preview"
+                  className="h-full w-auto max-h-10 max-w-full object-contain"
+                />
+              ) : (
+                <span className="font-mono text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                  No Logo
+                </span>
+              )}
+            </div>
+            <div className="flex-1">
+              <input
+                type="text"
+                value={settings.printTemplate.logoUrl ?? ""}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    printTemplate: {
+                      ...settings.printTemplate,
+                      logoUrl: e.target.value,
+                    },
+                  })
+                }
+                placeholder="Or specify image URL / path (e.g. /logo-hd.png)"
+                className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 font-mono text-xs text-slate-800 outline-none focus:border-brand-navy"
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Configuration Fields */}
         <div className="grid gap-5 sm:grid-cols-2">
           <div>
@@ -712,11 +843,11 @@ export function GeneralSettingsForm({ initialSettings }: { initialSettings: Gene
 
           <div>
             <label className="block font-heading text-xs font-bold uppercase tracking-wider text-slate-700">
-              PEZA Registration &amp; Tax ID / TIN
+              PEZA Registration &amp; Tax ID / TIN (Optional)
             </label>
             <input
               type="text"
-              value={settings.printTemplate.taxOrPezaReg}
+              value={settings.printTemplate.taxOrPezaReg ?? ""}
               onChange={(e) =>
                 setSettings({
                   ...settings,
@@ -726,8 +857,198 @@ export function GeneralSettingsForm({ initialSettings }: { initialSettings: Gene
                   },
                 })
               }
+              placeholder="e.g. PEZA Reg. 01-1234 | TIN 008-765-432 (Leave blank if not needed)"
               className="mt-1.5 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 shadow-2xs outline-none focus:border-brand-navy"
             />
+            <p className="mt-1 text-[11px] text-slate-500">
+              Only needed for customs/billing documents crossing ecozone boundaries.
+            </p>
+          </div>
+
+          <div>
+            <label className="block font-heading text-xs font-bold uppercase tracking-wider text-slate-700">
+              ISO Accreditation (Optional)
+            </label>
+            <input
+              type="text"
+              value={settings.printTemplate.isoAccreditation ?? ""}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  printTemplate: {
+                    ...settings.printTemplate,
+                    isoAccreditation: e.target.value,
+                  },
+                })
+              }
+              placeholder="e.g. ISO 9001:2015 Certified (Leave blank to omit from header)"
+              className="mt-1.5 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 shadow-2xs outline-none focus:border-brand-navy"
+            />
+            <p className="mt-1 text-[11px] text-slate-500">
+              Safe to leave empty for a clean, minimal header.
+            </p>
+          </div>
+
+          {/* Header Layout & Text Alignment Controls */}
+          <div className="sm:col-span-2 pt-2 border-t border-slate-100 space-y-3">
+            <h4 className="font-heading text-xs font-bold uppercase tracking-wider text-slate-700">
+              Header Layout &amp; Text Position Alignment
+            </h4>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="block font-heading text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                  Corporate Header Position
+                </label>
+                <div className="flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSettings({
+                        ...settings,
+                        printTemplate: {
+                          ...settings.printTemplate,
+                          headerAlignment: "left",
+                        },
+                      })
+                    }
+                    className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-bold transition-all ${
+                      (settings.printTemplate.headerAlignment ?? "left") === "left"
+                        ? "bg-white text-slate-900 shadow-xs border border-slate-200"
+                        : "text-slate-500 hover:text-slate-900"
+                    }`}
+                  >
+                    <AlignLeft size={13} />
+                    <span>Left-Aligned (Split)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSettings({
+                        ...settings,
+                        printTemplate: {
+                          ...settings.printTemplate,
+                          headerAlignment: "center",
+                        },
+                      })
+                    }
+                    className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-bold transition-all ${
+                      settings.printTemplate.headerAlignment === "center"
+                        ? "bg-white text-slate-900 shadow-xs border border-slate-200"
+                        : "text-slate-500 hover:text-slate-900"
+                    }`}
+                  >
+                    <AlignCenter size={13} />
+                    <span>Centered (Letterhead)</span>
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-heading text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                  Document Title Position
+                </label>
+                <div className="flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSettings({
+                        ...settings,
+                        printTemplate: {
+                          ...settings.printTemplate,
+                          titleAlignment: "left",
+                        },
+                      })
+                    }
+                    className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-bold transition-all ${
+                      (settings.printTemplate.titleAlignment ?? "left") === "left"
+                        ? "bg-white text-slate-900 shadow-xs border border-slate-200"
+                        : "text-slate-500 hover:text-slate-900"
+                    }`}
+                  >
+                    <AlignLeft size={13} />
+                    <span>Left-Aligned Title</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSettings({
+                        ...settings,
+                        printTemplate: {
+                          ...settings.printTemplate,
+                          titleAlignment: "center",
+                        },
+                      })
+                    }
+                    className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-bold transition-all ${
+                      settings.printTemplate.titleAlignment === "center"
+                        ? "bg-white text-slate-900 shadow-xs border border-slate-200"
+                        : "text-slate-500 hover:text-slate-900"
+                    }`}
+                  >
+                    <AlignCenter size={13} />
+                    <span>Centered Title</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer Controls */}
+          <div className="sm:col-span-2 pt-2 border-t border-slate-100 space-y-3">
+            <h4 className="font-heading text-xs font-bold uppercase tracking-wider text-slate-700">
+              Master Document Footer Controls
+            </h4>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="flex items-start gap-2.5 rounded-xl border border-slate-200 bg-slate-50/50 p-3 cursor-pointer hover:bg-slate-50">
+                <input
+                  type="checkbox"
+                  checked={settings.printTemplate.showSignatures ?? true}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      printTemplate: {
+                        ...settings.printTemplate,
+                        showSignatures: e.target.checked,
+                      },
+                    })
+                  }
+                  className="mt-0.5 h-4 w-4 rounded text-brand-navy focus:ring-brand-navy"
+                />
+                <div>
+                  <span className="block font-body text-xs font-bold text-slate-800">
+                    Include Physical Signature Blocks
+                  </span>
+                  <span className="block font-body text-[11px] text-slate-500">
+                    Prints signature lines for Floor Receiver / QC Inspector / Supervisor handover proof.
+                  </span>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-2.5 rounded-xl border border-slate-200 bg-slate-50/50 p-3 cursor-pointer hover:bg-slate-50">
+                <input
+                  type="checkbox"
+                  checked={settings.printTemplate.showDisclaimer ?? false}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      printTemplate: {
+                        ...settings.printTemplate,
+                        showDisclaimer: e.target.checked,
+                      },
+                    })
+                  }
+                  className="mt-0.5 h-4 w-4 rounded text-brand-navy focus:ring-brand-navy"
+                />
+                <div>
+                  <span className="block font-body text-xs font-bold text-slate-800">
+                    Include Legal / Retention Notice
+                  </span>
+                  <span className="block font-body text-[11px] text-slate-500">
+                    Prints small bottom disclaimer text (&quot;Confidential Warehouse Document&quot;).
+                  </span>
+                </div>
+              </label>
+            </div>
           </div>
         </div>
 
@@ -757,11 +1078,14 @@ export function GeneralSettingsForm({ initialSettings }: { initialSettings: Gene
                 status="VERIFIED"
                 warehouseName={settings.facility.facilityName}
                 companyName={settings.printTemplate.companyName}
+                logoUrl={settings.printTemplate.logoUrl}
                 subtitle={settings.printTemplate.subtitle}
                 facilityAddress={settings.printTemplate.facilityAddress}
                 contactInfo={settings.printTemplate.contactInfo}
                 taxOrPezaReg={settings.printTemplate.taxOrPezaReg}
                 isoAccreditation={settings.printTemplate.isoAccreditation}
+                headerAlignment={settings.printTemplate.headerAlignment ?? "left"}
+                titleAlignment={settings.printTemplate.titleAlignment ?? "left"}
                 orientation={settings.printTemplate.previewOrientation}
                 showPrintButton={false}
               />
@@ -772,7 +1096,7 @@ export function GeneralSettingsForm({ initialSettings }: { initialSettings: Gene
                   <div className="rounded border border-slate-200 p-2.5 bg-slate-50/50">
                     <span className="font-bold text-slate-600 block uppercase text-[10px]">Supplier / Principal</span>
                     <strong className="text-slate-900">UNIVERSAL COMPONENTS ASIA LTD.</strong>
-                    <p className="text-slate-500 text-[11px]">PEZA Registered Ecozone Logistics Supplier</p>
+                    <p className="text-slate-500 text-[11px]">Ecozone Logistics Supplier</p>
                   </div>
                   <div className="rounded border border-slate-200 p-2.5 bg-slate-50/50">
                     <span className="font-bold text-slate-600 block uppercase text-[10px]">Storage Model &amp; Terms</span>
@@ -811,20 +1135,11 @@ export function GeneralSettingsForm({ initialSettings }: { initialSettings: Gene
                   </table>
                 </div>
 
-                <div className="grid grid-cols-3 gap-6 pt-4 text-center text-xs">
-                  <div className="border-t border-slate-400 pt-1">
-                    <span className="text-[10px] font-bold uppercase text-slate-500 block">Received By (Staff)</span>
-                    <strong className="text-slate-800">Juan Dela Cruz</strong>
-                  </div>
-                  <div className="border-t border-slate-400 pt-1">
-                    <span className="text-[10px] font-bold uppercase text-slate-500 block">Verified By (QC Inspector)</span>
-                    <strong className="text-slate-800">Maria Santos</strong>
-                  </div>
-                  <div className="border-t border-slate-400 pt-1">
-                    <span className="text-[10px] font-bold uppercase text-slate-500 block">Authorized Signatory</span>
-                    <strong className="text-slate-800">Warehouse Supervisor</strong>
-                  </div>
-                </div>
+                {/* Standardized Master Document Footer in Sandbox */}
+                <MasterDocumentFooter
+                  showSignatures={settings.printTemplate.showSignatures ?? true}
+                  showDisclaimer={settings.printTemplate.showDisclaimer ?? false}
+                />
               </div>
             </div>
           </div>
