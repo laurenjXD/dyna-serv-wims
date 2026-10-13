@@ -59,6 +59,34 @@
   background-color: #ffffff !important;
 }
 
+/* Canonical office hierarchy from the brand guide. A few older screens still
+ * carry page-local text-xl/text-2xl utilities; normalize the rendered heading
+ * roles here so every office page has the same visual scale. */
+main[data-surface="office"] h1,
+main[data-surface="party"] h1 {
+  font-family: "Avenir Next", "Avenir", sans-serif !important;
+  font-size: 44px !important;
+  line-height: 52px !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.02em !important;
+}
+
+main[data-surface="office"] h2,
+main[data-surface="party"] h2 {
+  font-family: "Avenir Next", "Avenir", sans-serif !important;
+  font-size: 30px !important;
+  line-height: 38px !important;
+  font-weight: 700 !important;
+}
+
+main[data-surface="office"] h3,
+main[data-surface="party"] h3 {
+  font-family: "Avenir Next", "Avenir", sans-serif !important;
+  font-size: 24px !important;
+  line-height: 32px !important;
+  font-weight: 700 !important;
+}
+
 /* Suppress browser native password reveal and clear buttons (Microsoft Edge, IE, Chrome)
  * so our custom eye toggle is the sole persistent toggle without dual icons or pop-in/pop-out. */
 input::-ms-reveal,
