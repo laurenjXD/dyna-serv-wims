@@ -79,22 +79,22 @@ html:not([data-theme="dark"]) .inspection-page [class~="bg-white/15"] {
  */
 @layer base {
   h1 {
-    @apply font-heading text-headline-xl font-bold tracking-tight text-text-primary;
+    @apply font-heading text-headline-xl font-bold tracking-tight text-heading;
   }
   h2 {
-    @apply font-heading text-headline-lg font-bold tracking-tight text-text-primary;
+    @apply font-heading text-headline-lg font-bold tracking-tight text-heading;
   }
   h3 {
-    @apply font-heading text-headline-md font-semibold text-text-primary;
+    @apply font-heading text-headline-md font-semibold text-heading;
   }
   h4 {
-    @apply font-heading text-xl font-semibold leading-7 text-text-primary;
+    @apply font-heading text-xl font-semibold leading-7 text-heading;
   }
   h5 {
-    @apply font-heading text-lg font-semibold leading-6 text-text-primary;
+    @apply font-heading text-lg font-semibold leading-6 text-heading;
   }
   h6 {
-    @apply font-heading text-base font-semibold leading-5 text-text-primary;
+    @apply font-heading text-base font-semibold leading-5 text-heading;
   }
   p {
     @apply font-body text-body-md text-text-primary leading-normal;
@@ -127,7 +127,7 @@ html:not([data-theme="dark"]) .inspection-page [class~="bg-white/15"] {
   }
 
   table thead th {
-    @apply font-heading text-xs font-bold uppercase tracking-wider text-slate-700 select-none;
+    @apply font-label text-xs font-bold uppercase tracking-[0.14em] text-text-secondary select-none;
   }
 
   table tbody td {
@@ -145,12 +145,12 @@ html:not([data-theme="dark"]) .inspection-page [class~="bg-white/15"] {
 
   main[data-surface="office"] thead,
   main[data-surface="party"] thead {
-    @apply bg-[#F4F6FB];
+    @apply bg-background;
   }
 
   main[data-surface="office"] th,
   main[data-surface="party"] th {
-    @apply font-heading text-xs font-bold uppercase tracking-wider text-slate-700;
+    @apply font-label text-xs font-bold uppercase tracking-[0.14em] text-text-secondary;
   }
 
   main[data-surface="office"] tbody tr,

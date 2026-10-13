@@ -251,10 +251,10 @@ function NavLink({
         {/* Floating Tooltip displaying current tab name on hover */}
         <div
           role="tooltip"
-          className="pointer-events-none absolute left-[calc(100%+14px)] top-1/2 z-50 -translate-y-1/2 hidden group-hover:flex items-center gap-2 rounded-xl bg-slate-900/95 px-3 py-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.35)] backdrop-blur-md border border-white/10 opacity-0 group-hover:opacity-100 group-hover:scale-100 scale-95 transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none whitespace-nowrap"
+          className="pointer-events-none absolute left-[calc(100%+14px)] top-1/2 z-50 -translate-y-1/2 hidden group-hover:flex items-center gap-2 rounded-xl bg-brand-navy px-3 py-1.5 border border-white/10 opacity-0 group-hover:opacity-100 group-hover:scale-100 scale-95 transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none whitespace-nowrap"
         >
           {/* Arrow */}
-          <span className="absolute -left-1 top-1/2 -translate-y-1/2 h-2 w-2 rotate-45 bg-slate-900 border-b border-l border-white/10" aria-hidden="true" />
+          <span className="absolute -left-1 top-1/2 -translate-y-1/2 h-2 w-2 rotate-45 bg-brand-navy border-b border-l border-white/10" aria-hidden="true" />
           <span className="font-heading text-xs font-bold text-white tracking-wide">{label}</span>
           {isActive && (
             <span className="rounded-full bg-blue-500/20 border border-blue-400/40 px-1.5 py-0.5 text-[10px] font-bold text-blue-300">
@@ -538,7 +538,7 @@ export function ShellNavigation({
         data-testid="desktop-sidebar"
         aria-label="Primary navigation"
         aria-hidden={false}
-        className={`print:hidden hidden flex-col overflow-visible border-r border-[#083c77]/60 bg-gradient-to-b from-[#0e549e] via-[#0b4d94] to-[#083c77] shadow-[4px_0_24px_rgba(11,77,148,0.18)] transition-[width] duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none lg:fixed lg:bottom-0 lg:left-0 lg:top-[76px] lg:z-40 lg:flex ${
+        className={`print:hidden hidden flex-col overflow-visible border-r border-brand-navy bg-brand-navy transition-[width] duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none lg:fixed lg:bottom-0 lg:left-0 lg:top-[76px] lg:z-40 lg:flex ${
           desktopOpen ? "lg:w-[304px]" : "lg:w-[88px]"
         }`}
       >
@@ -566,7 +566,7 @@ export function ShellNavigation({
 
         {/* User Footer Card */}
         <div className={`border-t border-white/10 bg-black/10 transition-all duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] ${desktopOpen ? "p-3" : "p-2 text-center"}`}>
-          <div className={`flex items-center transition-all duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] ${desktopOpen ? "gap-3 rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm shadow-[0_4px_16px_rgba(0,0,0,0.15)]" : "justify-center p-1"}`}>
+          <div className={`flex items-center transition-all duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] ${desktopOpen ? "gap-3 rounded-2xl border border-white/15 bg-white/10 p-3" : "justify-center p-1"}`}>
             <span
               className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#3b5998]/80 font-heading text-sm font-bold text-white border border-white/30 shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-105"
               title={`${displayName ?? "admin"} (${roleLabel})`}
@@ -642,12 +642,12 @@ function MoreOverlay({
         type="button"
         aria-hidden="true"
         tabIndex={-1}
-        className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-slate-950/70 transition-opacity"
         onClick={onClose}
       />
 
       {/* Bottom Sheet rising from bottom to up */}
-      <div className="relative z-10 flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-[28px] border-t border-[#083c77]/60 bg-gradient-to-b from-[#0e549e] via-[#0b4d94] to-[#083c77] shadow-2xl transition-transform duration-300 ease-out animate-in slide-in-from-bottom">
+      <div className="relative z-10 flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-[28px] border-t border-brand-navy bg-brand-navy transition-transform duration-300 ease-out animate-in slide-in-from-bottom">
         {/* Grab Handle */}
         <div className="flex justify-center pt-3 pb-1 shrink-0">
           <div className="h-1.5 w-12 rounded-full bg-white/30" aria-hidden="true" />

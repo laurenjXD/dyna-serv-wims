@@ -17,57 +17,58 @@ const config: Config = {
     },
     extend: {
       colors: {
-        // Unified UI/UX Visual Design System Palette (specs/00-steering/design.md)
-        primary: "#2563EB",         // 🔵 Vibrant Blue
-        "primary-hover": "#1E3A8A", // 🔵 Deep Blue
-        secondary: "#7C3AED",       // 🟣 Violet
-        neutral: "#94A3B8",         // ◻️ Cool Gray
-        background: "#F3F6FC",      // Cool blue-gray application canvas
+        // Dyna-Serv Brand Guidelines (rev. August 2026)
+        primary: "#0A2FAE",         // Dyna Blue
+        "primary-hover": "#08248A", // Deep Blue
+        secondary: "#071A63",       // Blue Ink
+        neutral: "#8CA0E0",         // Muted label / mono text
+        background: "#EEF2FF",      // Blue Tint application canvas
         surface: "#FFFFFF",         // ⬜ Solid White (Level 1)
-        "text-primary": "#0F172A",  // 🌑 Deep Navy
-        "text-secondary": "#64748B",// 🩶 Slate
-        border: "#E2E8F0",          // ◽ Light Blue-Gray
+        "text-primary": "#33414F", // Body and primary reading text
+        "text-secondary": "#66789A", // Secondary copy and helper text
+        heading: "#071A63",        // Blue Ink heading emphasis
+        border: "#DDE4F7",          // Hairline border
         success: "#10B981",         // 🟢 Emerald
         warning: "#F59E0B",         // 🟠 Amber
-        error: "#EF4444",           // 🔴 Red
+        error: "#D40007",           // Dyna Red
 
         // Legacy compatibility aliases mapped to unified design tokens
-        "brand-navy": "#0F172A",
-        "brand-blue": "#2563EB",
-        "brand-blue-dark": "#1E3A8A",
-        "brand-royal-blue": "#2563EB",
-        "brand-red": "#EF4444",
-        "accent-indigo-50": "#EEF3FF",
-        "accent-indigo-300": "#2563EB",
-        "accent-indigo-600": "#1E3A8A",
-        "text-grey": "#64748B",
+        "brand-navy": "#071A63",
+        "brand-blue": "#0A2FAE",
+        "brand-blue-dark": "#08248A",
+        "brand-royal-blue": "#0A2FAE",
+        "brand-red": "#D40007",
+        "accent-indigo-50": "#EEF2FF",
+        "accent-indigo-300": "#0A2FAE",
+        "accent-indigo-600": "#08248A",
+        "text-grey": "#66789A",
         "surface-white": "#FFFFFF",
-        "surface-light-grey": "#F3F6FC",
-        "on-surface": "#0F172A",
-        "outline-variant": "#E2E8F0",
+        "surface-light-grey": "#EEF2FF",
+        "on-surface": "#33414F",
+        "outline-variant": "#DDE4F7",
         "status-available": "#10B981",
         "status-pending": "#F59E0B",
-        "status-held": "#EF4444",
-        "status-neutral": "#64748B",
+        "status-held": "#D40007",
+        "status-neutral": "#66789A",
       },
       fontFamily: {
-        // Typography System (specs/00-steering/design.md)
-        // Etna Sans Serif (headings/displays) + Glacial Indifference (body/UI/nav/badges/buttons)
-        heading: ["var(--font-etna)", "sans-serif"],
-        body: ["var(--font-glacial)", "sans-serif"],
-        label: ["var(--font-glacial)", "sans-serif"],
-        mono: ["var(--font-glacial)", "sans-serif"],
+        // Dyna-Serv Brand Guidelines: Avenir Next / Inter / JetBrains Mono.
+        // Legacy local fonts remain as fallbacks where the brand families are unavailable.
+        heading: ["Avenir Next", "Avenir", "var(--font-etna)", "sans-serif"],
+        body: ["Inter", "Helvetica Neue", "var(--font-glacial)", "Arial", "sans-serif"],
+        label: ["JetBrains Mono", "SFMono-Regular", "var(--font-glacial)", "monospace"],
+        mono: ["JetBrains Mono", "SFMono-Regular", "var(--font-glacial)", "monospace"],
       },
       fontSize: {
         // Type scale (specs/00-steering/design.md §7)
-        "headline-xl": ["40px", { lineHeight: "48px", letterSpacing: "-0.02em" }],
-        "headline-lg": ["32px", { lineHeight: "40px", letterSpacing: "normal" }],
+        "headline-xl": ["44px", { lineHeight: "52px", letterSpacing: "-0.02em" }],
+        "headline-lg": ["30px", { lineHeight: "38px", letterSpacing: "normal" }],
         "headline-md": ["24px", { lineHeight: "32px", letterSpacing: "normal" }],
         "data-display": ["20px", { lineHeight: "24px", letterSpacing: "normal" }],
         "body-lg": ["18px", { lineHeight: "28px", letterSpacing: "normal" }],
         "body-md": ["16px", { lineHeight: "24px", letterSpacing: "normal" }],
         "body-sm": ["14px", { lineHeight: "20px", letterSpacing: "normal" }],
-        label: ["14px", { lineHeight: "16px", letterSpacing: "0.03em" }],
+        label: ["12px", { lineHeight: "16px", letterSpacing: "0.14em" }],
         "mono-sm": ["14px", { lineHeight: "20px", letterSpacing: "normal" }],
         "mono-md": ["16px", { lineHeight: "24px", letterSpacing: "normal" }],
         "mono-lg": ["18px", { lineHeight: "28px", letterSpacing: "normal" }],
@@ -82,7 +83,7 @@ const config: Config = {
         sm: "4px",
         DEFAULT: "8px",
         md: "12px",
-        lg: "16px",
+        lg: "12px",
         // 2026-08-19: bento-box card/navbar/sidebar rounding, per user
         // request and per page specs.md §2's "Floating Header (radius-full)
         // / Floating Sidebar (radius-xl)" description — previously never

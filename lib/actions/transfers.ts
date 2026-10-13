@@ -23,7 +23,7 @@
 //     disposition table with balance effects.
 //   specs/00-steering/tech.md — RBAC always from session, never client params.
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { RequestAuthorizationResolver } from "@/lib/rbac/session";
 import { requirePermission } from "@/lib/rbac/guard";
 import { validateCreateTransfer } from "@/lib/transfer/transfer-validator";
@@ -33,6 +33,7 @@ import {
   inspectionCases,
   inspectionDispositions,
 } from "@/lib/db/schema/transfers";
+import { locations } from "@/lib/db/schema/locations";
 import { getTransferRequest } from "@/lib/db/queries/transfers";
 import { withRlsTransaction } from "@/lib/db/rls-transaction";
 import type { RlsTransactionDeps } from "@/lib/db/rls-transaction";
@@ -270,6 +271,7 @@ export async function resolveInspectionCase(
   disposition: {
     dispositionType: string;
     quantityAffected: number;
+    putawayAllocations?: Array<{ locationId: string; qty: number }>;
     notes?: string;
   },
   rlsDeps: RlsTransactionDeps = defaultRlsDeps,
@@ -315,6 +317,34 @@ export async function resolveInspectionCase(
       return { ok: false as const, errors: validationResult.errors };
     }
 
+    // Inbound "store" must leave the inspection bay for an explicitly
+    // selected storage destination. Multiple rows are allowed so cartons can
+    // be dispersed across racks, but their quantities must balance exactly.
+    const putawayAllocations = disposition.putawayAllocations ?? [];
+    const isStorageDisposition = disposition.dispositionType === "store" || disposition.dispositionType === "return_to_stock";
+    if (isStorageDisposition && disposition.putawayAllocations !== undefined) {
+      if (putawayAllocations.length === 0) {
+        return { ok: false as const, errors: ["storage_location_required"] };
+      }
+
+      const allocations = putawayAllocations.filter(
+        (allocation) => typeof allocation.locationId === "string" && allocation.locationId.length > 0 && Number.isInteger(allocation.qty) && allocation.qty > 0,
+      );
+      const allocationTotal = allocations.reduce((sum, allocation) => sum + allocation.qty, 0);
+      if (allocations.length !== putawayAllocations.length || allocationTotal !== disposition.quantityAffected) {
+        return { ok: false as const, errors: ["storage_allocation_must_match_passed_quantity"] };
+      }
+
+      const locationRows = (await db
+        .select({ id: locations.id })
+        .from(locations)
+        .where(and(eq(locations.isActive, true), eq(locations.locationType, "storage")))) as Array<{ id: string }>;
+      const validLocationIds = new Set(locationRows.map((location) => location.id));
+      if (allocations.some((allocation) => !validLocationIds.has(allocation.locationId))) {
+        return { ok: false as const, errors: ["invalid_storage_location"] };
+      }
+    }
+
     // 4. Determine terminal status
     const terminalStatus = terminalStatusForDisposition(disposition.dispositionType);
     const now = new Date();
@@ -330,17 +360,25 @@ export async function resolveInspectionCase(
       .where(eq(inspectionCases.id, caseId));
 
     // 6. INSERT inspection disposition record
-    await db
-      .insert(inspectionDispositions)
-      .values({
-        inspectionCaseId: caseId,
-        dispositionType: disposition.dispositionType,
-        quantityAffected: String(disposition.quantityAffected),
-        notes: disposition.notes ?? null,
-        appliedBy: userId,
-        appliedAt: now,
-      })
-      .returning();
+    const dispositionRows = putawayAllocations.length > 0 && isStorageDisposition
+      ? putawayAllocations.map((allocation) => ({
+          inspectionCaseId: caseId,
+          dispositionType: disposition.dispositionType,
+          quantityAffected: String(allocation.qty),
+          notes: `${disposition.notes ?? ""}${disposition.notes ? " — " : ""}Storage location: ${allocation.locationId}`,
+          appliedBy: userId,
+          appliedAt: now,
+        }))
+      : [{
+          inspectionCaseId: caseId,
+          dispositionType: disposition.dispositionType,
+          quantityAffected: String(disposition.quantityAffected),
+          notes: disposition.notes ?? null,
+          appliedBy: userId,
+          appliedAt: now,
+        }];
+
+    await db.insert(inspectionDispositions).values(dispositionRows).returning();
 
     return { ok: true as const };
   });

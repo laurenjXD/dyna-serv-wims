@@ -7,6 +7,7 @@ import {
   Clock,
   AlertTriangle,
   Package,
+  MapPin,
   Send,
   Loader2,
   Sparkles,
@@ -59,6 +60,7 @@ interface InspectionResolutionFormProps {
   inspectionId: string;
   qtyToInspect: number;
   itemUom: string;
+  storageLocations: Array<{ id: string; label: string }>;
   onSubmitAction: (formData: FormData) => Promise<void>;
 }
 
@@ -66,6 +68,7 @@ export function InspectionResolutionForm({
   inspectionId,
   qtyToInspect,
   itemUom,
+  storageLocations,
   onSubmitAction,
 }: InspectionResolutionFormProps) {
   const [selectedDisposition, setSelectedDisposition] = useState<
@@ -77,6 +80,9 @@ export function InspectionResolutionForm({
   const [failedQty, setFailedQty] = useState(0);
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [allocations, setAllocations] = useState<Array<{ locationId: string; qty: number }>>([
+    { locationId: "", qty: qtyToInspect },
+  ]);
 
   // Auto-adjust quantities when disposition changes
   const handleDispositionSelect = (
@@ -117,6 +123,17 @@ export function InspectionResolutionForm({
     const safeFailed = Math.max(0, val);
     setFailedQty(safeFailed);
     setPassedQty(Math.max(0, inspectedQty - safeFailed));
+  };
+
+  const allocationTotal = allocations.reduce((sum, allocation) => sum + (Number(allocation.qty) || 0), 0);
+  const allocationsComplete =
+    selectedDisposition !== "store_as_is" ||
+    (allocationTotal === passedQty && passedQty > 0 && allocations.every((allocation) => allocation.locationId && allocation.qty > 0));
+
+  const updateAllocation = (index: number, patch: Partial<{ locationId: string; qty: number }>) => {
+    setAllocations((current) => current.map((allocation, allocationIndex) =>
+      allocationIndex === index ? { ...allocation, ...patch } : allocation,
+    ));
   };
 
   return (
@@ -294,6 +311,92 @@ export function InspectionResolutionForm({
         </div>
       </section>
 
+      {selectedDisposition === "store_as_is" && (
+        <section
+          aria-labelledby="putaway-heading"
+          className="rounded-2xl border border-primary/20 bg-primary/[0.04] p-6 shadow-elevation-1"
+        >
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <MapPin size={18} className="text-primary" />
+              <div>
+                <h3 id="putaway-heading" className="font-heading text-body-md font-bold text-text-primary">
+                  3. Choose Storage Location{allocations.length > 1 ? "s" : ""}
+                </h3>
+                <p className="mt-1 font-body text-body-sm text-text-secondary">
+                  Select where the passed boxes will be stored. You can split them across multiple locations.
+                </p>
+              </div>
+            </div>
+            <span className="shrink-0 rounded-full bg-primary/10 px-3 py-1 font-mono text-xs font-bold text-primary">
+              {allocationTotal}/{passedQty} {itemUom}
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {allocations.map((allocation, index) => (
+              <div key={index} className="grid gap-3 rounded-xl border border-border bg-surface p-3 sm:grid-cols-[1fr_9rem_auto] sm:items-end">
+                <div>
+                  <label htmlFor={`storage-location-${index}`} className="block font-label text-xs font-bold uppercase tracking-wider text-text-secondary">
+                    Location {index + 1}
+                  </label>
+                  <select
+                    id={`storage-location-${index}`}
+                    value={allocation.locationId}
+                    required
+                    onChange={(event) => updateAllocation(index, { locationId: event.target.value })}
+                    className="mt-1.5 h-11 w-full rounded-xl border border-border bg-surface px-3 font-body text-body-sm text-text-primary focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value="">Choose a storage location...</option>
+                    {storageLocations.map((location) => (
+                      <option key={location.id} value={location.id}>{location.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor={`storage-qty-${index}`} className="block font-label text-xs font-bold uppercase tracking-wider text-text-secondary">
+                    Boxes / Qty
+                  </label>
+                  <input
+                    id={`storage-qty-${index}`}
+                    type="number"
+                    min={1}
+                    max={passedQty}
+                    value={allocation.qty}
+                    onChange={(event) => updateAllocation(index, { qty: Math.max(0, parseInt(event.target.value, 10) || 0) })}
+                    className="mt-1.5 h-11 w-full rounded-xl border border-border bg-surface px-3 font-mono text-body-md font-bold text-text-primary focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+                <button
+                  type="button"
+                  aria-label={`Remove location ${index + 1}`}
+                  disabled={allocations.length === 1}
+                  onClick={() => setAllocations((current) => current.filter((_, allocationIndex) => allocationIndex !== index))}
+                  className="h-11 rounded-xl px-3 font-label text-xs font-bold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-30"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setAllocations((current) => [...current, { locationId: "", qty: 0 }])}
+            className="mt-3 rounded-xl border border-primary/30 bg-surface px-4 py-2.5 font-label text-sm font-bold text-primary transition-colors hover:bg-primary/[0.06]"
+          >
+            + Add another location
+          </button>
+
+          {!allocationsComplete && (
+            <p role="alert" className="mt-3 rounded-xl bg-amber-50 px-3 py-2 font-body text-body-sm font-semibold text-amber-800">
+              Assign every passed box to an active storage location. The location quantities must total exactly {passedQty} {itemUom}.
+            </p>
+          )}
+          <input type="hidden" name="putawayAllocations" value={JSON.stringify(allocations)} />
+        </section>
+      )}
+
       {/* 3. Remarks & Quality Observations */}
       <section
         aria-labelledby="observations-heading"
@@ -325,11 +428,11 @@ export function InspectionResolutionForm({
         </div>
       </section>
 
-      {/* 4. Action Buttons */}
+      {/* 5. Action Buttons */}
       <div className="flex items-center justify-end gap-3 pt-2">
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || !allocationsComplete}
           className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-brand-navy px-8 font-label text-body-md font-bold text-white shadow-elevation-1 transition-all hover:bg-brand-navy/90 active:scale-[0.98] disabled:opacity-50"
         >
           {isSubmitting ? (
