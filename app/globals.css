@@ -12,7 +12,9 @@
 .rounded-md { border-radius: 10px !important; }
 .rounded-lg,
 .rounded-xl,
-.rounded-2xl { border-radius: 12px !important; }
+.rounded-2xl,
+.rounded-3xl { border-radius: 12px !important; }
+.rounded-t-3xl { border-top-left-radius: 12px !important; border-top-right-radius: 12px !important; }
 
 /* Cards use a hairline border and surface fill; elevation is reserved for
  * transient overlays and physical-object mockups in the brand system. */
@@ -31,6 +33,21 @@
 [data-surface="party"] .shadow-elevation-1,
 [data-surface="party"] .shadow-elevation-2 {
   box-shadow: none !important;
+}
+
+/* One-pixel hairlines are the only general-purpose border weight in the
+ * system. Rings remain available for focus and selected states. */
+[data-surface="office"] .border-2,
+[data-surface="party"] .border-2 {
+  border-width: 1px !important;
+}
+
+/* No gradients on application surfaces. Status colors belong on the border,
+ * label, or a very light solid tint instead. */
+[data-surface="office"] [class*="bg-gradient"],
+[data-surface="party"] [class*="bg-gradient"] {
+  background-image: none !important;
+  background-color: #ffffff !important;
 }
 
 /* The guide explicitly disallows glass/blur surfaces. Keep the content

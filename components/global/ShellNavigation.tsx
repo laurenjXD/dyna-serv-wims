@@ -644,7 +644,7 @@ function MoreOverlay({
       />
 
       {/* Bottom Sheet rising from bottom to up */}
-      <div className="relative z-10 flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-[28px] border-t border-brand-navy bg-brand-navy transition-transform duration-300 ease-out animate-in slide-in-from-bottom">
+      <div className="relative z-10 flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-lg border-t border-brand-navy bg-brand-navy transition-transform duration-300 ease-out animate-in slide-in-from-bottom">
         {/* Grab Handle */}
         <div className="flex justify-center pt-3 pb-1 shrink-0">
           <div className="h-1.5 w-12 rounded-full bg-white/30" aria-hidden="true" />
