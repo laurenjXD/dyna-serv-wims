@@ -1,0 +1,108 @@
+import type { SVGProps } from "react";
+
+export type BrandIconProps = SVGProps<SVGSVGElement> & {
+  size?: number;
+  strokeWidth?: number;
+};
+
+function Icon({ children, size = 24, strokeWidth = 2.2, ...props }: BrandIconProps & { children: React.ReactNode }) {
+  return (
+    <svg
+      viewBox="0 0 48 48"
+      width={size}
+      height={size}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...props}
+    >
+      {children}
+    </svg>
+  );
+}
+
+/** PDF icon set: 01 ELSE / Logistics. */
+export function ElseIcon(props: BrandIconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M7 16h25v14H7z" />
+      <path d="M32 20h6l4 5v5h-10z" />
+      <path d="M13 30a4 4 0 1 0 8 0M33 30a4 4 0 1 0 8 0" />
+      <path d="M7 20h17M36 20v5h6" />
+    </Icon>
+  );
+}
+
+/** PDF icon set: 02 EFE / Engineering and technical service. */
+export function EfeIcon(props: BrandIconProps) {
+  return (
+    <Icon {...props}>
+      <path d="m9 35 15-15" />
+      <path d="m8 39 8-2 15-15-6-6L10 31z" />
+      <path d="M29 9a9 9 0 0 0-2 10l6 6a9 9 0 0 0 10-2l-6-1-4-4z" />
+    </Icon>
+  );
+}
+
+/** PDF icon set: 03 VMI / Inventory grid. */
+export function VmiIcon(props: BrandIconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="10" y="9" width="28" height="30" />
+      <path d="M10 19h28M10 29h28M24 9v30" />
+    </Icon>
+  );
+}
+
+/** PDF icon set: 04 Testing / Semiconductor chip. */
+export function TestingIcon(props: BrandIconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="14" y="14" width="20" height="20" rx="2" />
+      <path d="M19 8v6M29 8v6M19 34v6M29 34v6M8 19h6M8 29h6M34 19h6M34 29h6" />
+    </Icon>
+  );
+}
+
+/** PDF icon set: 05 Fabrication / Sun and process. */
+export function FabricationIcon(props: BrandIconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="24" cy="24" r="8" />
+      <path d="M24 6v5M24 37v5M6 24h5M37 24h5M11.3 11.3l3.5 3.5M33.2 33.2l3.5 3.5M36.7 11.3l-3.5 3.5M14.8 33.2l-3.5 3.5" />
+    </Icon>
+  );
+}
+
+/** PDF icon set: 06 Packaging / Carton. */
+export function PackagingIcon(props: BrandIconProps) {
+  return (
+    <Icon {...props}>
+      <path d="m8 15 16-8 16 8-16 8z" />
+      <path d="M8 15v18l16 8 16-8V15M24 23v18M16 11l16 8" />
+    </Icon>
+  );
+}
+
+/** PDF icon set: 07 Quality / Verified shield. */
+export function QualityIcon(props: BrandIconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M24 6 38 12v10c0 9-6 15-14 20C16 37 10 31 10 22V12z" />
+      <path d="m17 24 5 5 10-11" />
+    </Icon>
+  );
+}
+
+/** PDF icon set: 08 Global / World network. */
+export function GlobalIcon(props: BrandIconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="24" cy="24" r="16" />
+      <path d="M8 24h32M24 8c5 4 8 10 8 16s-3 12-8 16c-5-4-8-10-8-16s3-12 8-16z" />
+    </Icon>
+  );
+}

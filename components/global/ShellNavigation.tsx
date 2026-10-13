@@ -9,31 +9,22 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { LucideIcon } from "lucide-react";
 import {
-  Layers,
-  Users,
-  ArrowLeftRight,
-  CheckSquare,
-  FileText,
-  BarChart2,
-  Receipt,
-  RefreshCw,
-  UserCircle,
-  Settings,
-  Globe,
-  Package,
-  ShoppingCart,
-  Bell,
-  Tag,
-  Circle,
-  House,
-  Inbox,
-  Shield,
   Menu,
   X,
   ChevronRight,
 } from "lucide-react";
+import type { ComponentType } from "react";
+import {
+  ElseIcon,
+  EfeIcon,
+  GlobalIcon,
+  PackagingIcon,
+  QualityIcon,
+  TestingIcon,
+  VmiIcon,
+  type BrandIconProps,
+} from "./BrandIcons";
 import type { AuthorizationContext } from "@/lib/rbac/session";
 import type { SessionPresentationTier } from "@/lib/shell/surface";
 import { roleDisplayLabel } from "@/lib/shell/surface";
@@ -49,32 +40,32 @@ import type { RouteRegistryEntry } from "@/lib/shell/registry";
 import { resolveShellUserDisplay } from "@/app/(authenticated)/actions";
 
 // Icon map keyed by route id.
-const ROUTE_ICON_MAP: Record<string, LucideIcon> = {
-  root: House,
-  receiving: Inbox,
-  "receiving-detail": Inbox,
-  inventory: Layers,
-  outgoing: ShoppingCart,
-  "inventory-pick-list-execute": ShoppingCart,
-  "inventory-pick-list-dispatch": ShoppingCart,
-  enrollment: Users,
-  transfers: ArrowLeftRight,
-  inspection: Shield,
-  "inspection-detail": Shield,
-  approvals: CheckSquare,
-  documents: FileText,
-  reports: BarChart2,
-  "billing-pricing": Receipt,
-  sync: RefreshCw,
-  profile: UserCircle,
-  settings: Settings,
-  portal: Globe,
-  "portal-inventory": Package,
-  "portal-orders": ShoppingCart,
-  "portal-documents": FileText,
-  "portal-notifications": Bell,
-  "portal-labels": Tag,
-  notifications: Bell,
+const ROUTE_ICON_MAP: Record<string, ComponentType<BrandIconProps>> = {
+  root: GlobalIcon,
+  receiving: ElseIcon,
+  "receiving-detail": ElseIcon,
+  inventory: VmiIcon,
+  outgoing: ElseIcon,
+  "inventory-pick-list-execute": ElseIcon,
+  "inventory-pick-list-dispatch": ElseIcon,
+  enrollment: PackagingIcon,
+  transfers: PackagingIcon,
+  inspection: QualityIcon,
+  "inspection-detail": QualityIcon,
+  approvals: QualityIcon,
+  documents: PackagingIcon,
+  reports: GlobalIcon,
+  "billing-pricing": VmiIcon,
+  sync: TestingIcon,
+  profile: QualityIcon,
+  settings: EfeIcon,
+  portal: GlobalIcon,
+  "portal-inventory": VmiIcon,
+  "portal-orders": ElseIcon,
+  "portal-documents": PackagingIcon,
+  "portal-notifications": GlobalIcon,
+  "portal-labels": PackagingIcon,
+  notifications: GlobalIcon,
 };
 
 const SHORT_LABEL_OVERRIDES: Record<string, string> = {
@@ -90,8 +81,8 @@ const SHORT_LABEL_OVERRIDES: Record<string, string> = {
   "billing-pricing": "Billing & Pricing",
 };
 
-function routeIcon(id: string): LucideIcon {
-  return ROUTE_ICON_MAP[id] ?? Circle;
+function routeIcon(id: string): ComponentType<BrandIconProps> {
+  return ROUTE_ICON_MAP[id] ?? GlobalIcon;
 }
 
 function toLabel(id: string): string {
