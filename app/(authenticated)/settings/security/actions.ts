@@ -5,7 +5,7 @@
 
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { auditLog, rbacSecurityEvents, userProfiles } from "@/lib/db/schema";
 import { createPageResolver } from "@/lib/auth/page-resolver";
