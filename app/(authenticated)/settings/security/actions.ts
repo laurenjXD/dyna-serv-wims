@@ -4,6 +4,7 @@
 // active session inspection & termination, and immutable whole-system audit trail.
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { eq, desc } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { auditLog, rbacSecurityEvents, userProfiles } from "@/lib/db/schema";
@@ -85,6 +86,24 @@ export async function getSecuritySettings(): Promise<{ ok: true; data: SecurityS
     return { ok: false, error: "Access denied to security settings." };
   }
 
+  try {
+    const [latest] = await db
+      .select({ diffData: auditLog.diffData })
+      .from(auditLog)
+      .where(eq(auditLog.action, "security_policy_updated"))
+      .orderBy(desc(auditLog.createdAt))
+      .limit(1);
+
+    if (latest?.diffData && typeof latest.diffData === "object" && "settings" in latest.diffData) {
+      const persisted = (latest.diffData as { settings: SecuritySettingsData }).settings;
+      if (persisted && persisted.network && persisted.authRules && persisted.sessionConfig) {
+        runtimeSecuritySettings = { ...DEFAULT_SECURITY_SETTINGS, ...persisted };
+      }
+    }
+  } catch {
+    // fallback to runtime state
+  }
+
   return { ok: true, data: runtimeSecuritySettings };
 }
 
@@ -97,7 +116,7 @@ export async function saveSecuritySettings(settings: SecuritySettingsData): Prom
 
   runtimeSecuritySettings = { ...settings };
 
-  // Write audit record
+  // Write audit record with full policy snapshot
   try {
     await db.insert(auditLog).values({
       actorUserId: permission.context.userId,
@@ -106,6 +125,7 @@ export async function saveSecuritySettings(settings: SecuritySettingsData): Prom
       entityType: "system_security",
       entityId: permission.context.userId,
       diffData: {
+        settings: settings as unknown as Record<string, unknown>,
         wifiEnforcement: settings.network.wifiEnforcementEnabled,
         allowedIpRangesCount: settings.network.allowedIpRanges.length,
         passwordMinLength: settings.authRules.passwordMinLength,
@@ -122,6 +142,66 @@ export async function saveSecuritySettings(settings: SecuritySettingsData): Prom
   return { ok: true };
 }
 
+export function isIpInCidr(ip: string, cidr: string): boolean {
+  try {
+    const cleanIp = ip.trim();
+    const cleanCidr = cidr.trim();
+    if (cleanIp === cleanCidr) return true;
+    if (cleanIp === "127.0.0.1" || cleanIp === "::1" || cleanIp === "localhost") return true;
+
+    if (!cleanCidr.includes("/")) {
+      return cleanIp === cleanCidr;
+    }
+
+    const [range, bitsStr] = cleanCidr.split("/");
+    const bits = parseInt(bitsStr, 10);
+    if (isNaN(bits) || bits < 0 || bits > 32) return false;
+
+    const ipToLong = (addr: string) =>
+      addr
+        .split(".")
+        .reduce((acc, octet) => ((acc << 8) + parseInt(octet, 10)) >>> 0, 0);
+
+    const ipLong = ipToLong(cleanIp);
+    const rangeLong = ipToLong(range);
+    const mask = bits === 0 ? 0 : (~0 << (32 - bits)) >>> 0;
+
+    return (ipLong & mask) === (rangeLong & mask);
+  } catch {
+    return false;
+  }
+}
+
+export async function verifyFloorNetworkAccess(): Promise<{ allowed: boolean; reason?: string }> {
+  const settings = await getSecuritySettings();
+  if (!settings.ok || !settings.data.network.wifiEnforcementEnabled) {
+    return { allowed: true };
+  }
+
+  try {
+    const headersList = await headers();
+    const forwarded = headersList.get("x-forwarded-for");
+    const realIp = headersList.get("x-real-ip");
+    const clientIp = (forwarded ? forwarded.split(",")[0].trim() : realIp) || "127.0.0.1";
+
+    if (clientIp === "127.0.0.1" || clientIp === "::1" || clientIp.startsWith("::ffff:127.0.0.1")) {
+      return { allowed: true };
+    }
+
+    const isAllowed = settings.data.network.allowedIpRanges.some((cidr) => isIpInCidr(clientIp, cidr));
+    if (!isAllowed) {
+      return {
+        allowed: false,
+        reason: `Floor scanning and stock operations are restricted to internal warehouse Wi-Fi. (Client IP: ${clientIp})`,
+      };
+    }
+  } catch {
+    // Non-request context
+  }
+
+  return { allowed: true };
+}
+
 export async function listActiveSessions(): Promise<{ ok: true; data: ActiveSessionItem[] } | { ok: false; error: string }> {
   const resolver = await createPageResolver();
   const permission = await requirePermission(resolver, "users.read");
@@ -132,7 +212,7 @@ export async function listActiveSessions(): Promise<{ ok: true; data: ActiveSess
   try {
     const serviceClient = createServiceRoleClient();
     const [{ data: authUsers }, profiles] = await Promise.all([
-      serviceClient.auth.admin.listUsers(),
+      serviceClient.auth.admin.listUsers().catch(() => ({ data: { users: [] } })),
       db.select({ id: userProfiles.id, displayName: userProfiles.displayName, status: userProfiles.status }).from(userProfiles),
     ]);
 
@@ -149,10 +229,10 @@ export async function listActiveSessions(): Promise<{ ok: true; data: ActiveSess
           userId: u.id,
           userName: p?.displayName || (u.user_metadata?.displayName as string) || u.email?.split("@")[0] || "Operator",
           employeeId: (u.user_metadata?.employee_id as string) || `EMP-${shortId}`,
-          deviceAlias: "Registered BYOD Device",
-          browserUserAgent: "Active Browser Client",
+          deviceAlias: "Web Browser Client",
+          browserUserAgent: u.email ? `Authenticated User (${u.email})` : "Active Browser Client",
           ipAddress: "Internal Network",
-          connectedZone: "Warehouse Floor",
+          connectedZone: p?.status === "active" ? "Authorized Session" : "Inactive",
           sessionUuid: `SESS-${shortId}-${u.id.substring(u.id.length - 4).toUpperCase()}`,
           loginTime: u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleTimeString() : "—",
           lastActiveTime: u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleDateString() : "—",

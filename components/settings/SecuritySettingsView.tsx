@@ -455,8 +455,8 @@ export function SecuritySettingsView({
                   <tr className="border-b border-slate-200 bg-[#F8FAFC] text-[10px] font-bold uppercase tracking-wider text-slate-600">
                     <th className="py-2.5 px-3">Operator</th>
                     <th className="py-2.5 px-3">Session UUID</th>
-                    <th className="py-2.5 px-3">Device / Client</th>
-                    <th className="py-2.5 px-3">IP &amp; Zone</th>
+                    <th className="py-2.5 px-3">Client Type</th>
+                    <th className="py-2.5 px-3">Network &amp; Access</th>
                     <th className="py-2.5 px-3">Status</th>
                   </tr>
                 </thead>

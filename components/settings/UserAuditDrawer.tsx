@@ -125,12 +125,14 @@ export function UserAuditDrawer({ user, onClose }: UserAuditDrawerProps) {
                   <span className="font-bold text-brand-navy">{user.sessionUuid}</span>
                 </div>
                 <div className="flex justify-between font-body">
-                  <span className="text-slate-500">Hardware / Client:</span>
-                  <span className="font-semibold text-slate-800">{user.activeDevice}</span>
+                  <span className="text-slate-500">Client Type:</span>
+                  <span className="font-semibold text-slate-800">Authenticated Web Client</span>
                 </div>
                 <div className="flex justify-between font-body">
-                  <span className="text-slate-500">Connected Zone:</span>
-                  <span className="font-semibold text-slate-800">Zone A Intake (Wi-Fi)</span>
+                  <span className="text-slate-500">Last Sign-In:</span>
+                  <span className="font-semibold text-slate-800">
+                    {user.lastSignInAt ? new Date(user.lastSignInAt).toLocaleString() : "—"}
+                  </span>
                 </div>
               </div>
 

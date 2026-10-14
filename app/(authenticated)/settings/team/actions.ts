@@ -104,7 +104,8 @@ export async function listTeamMembers(): Promise<ActionResult<TeamMember[]>> {
   }
 
   try {
-    const [profiles, activeRoleRows, activeScopeRows] = await Promise.all([
+    const serviceClient = createServiceRoleClient();
+    const [profiles, activeRoleRows, activeScopeRows, authUsersRes] = await Promise.all([
       db.select({ id: userProfiles.id, displayName: userProfiles.displayName, status: userProfiles.status }).from(userProfiles),
       db
         .select({ userId: userRoles.userId, roleKey: roles.key })
@@ -116,16 +117,10 @@ export async function listTeamMembers(): Promise<ActionResult<TeamMember[]>> {
         .from(userPartyScopes)
         .innerJoin(parties, eq(userPartyScopes.partyId, parties.id))
         .where(isNull(userPartyScopes.revokedAt)),
+      serviceClient.auth.admin.listUsers().catch(() => ({ data: { users: [] } })),
     ]);
 
-    let authUserMap = new Map();
-    try {
-      const serviceClient = createServiceRoleClient();
-      const { data: authUsers } = await serviceClient.auth.admin.listUsers();
-      authUserMap = new Map((authUsers?.users ?? []).map((u) => [u.id, u]));
-    } catch {
-      // Supabase admin listUsers fallback
-    }
+    const authUserMap = new Map((authUsersRes?.data?.users ?? []).map((u) => [u.id, u]));
 
     const members: TeamMember[] = profiles.map((p) => {
       const auth = authUserMap.get(p.id);

@@ -21,6 +21,7 @@ import {
   resolveShellUserDisplay,
   signOutAction,
 } from "@/app/(authenticated)/actions";
+import { IdleSessionTracker } from "./IdleSessionTracker";
 import type { ShellNotification } from "@/app/(authenticated)/actions";
 import {
   markNotificationReadAction,
@@ -738,6 +739,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
           {children}
         </div>
       </main>
+      <IdleSessionTracker tier={tier} />
     </>
   );
 }
