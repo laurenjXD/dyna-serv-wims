@@ -142,7 +142,7 @@ export async function saveSecuritySettings(settings: SecuritySettingsData): Prom
   return { ok: true };
 }
 
-export function isIpInCidr(ip: string, cidr: string): boolean {
+function isIpInCidr(ip: string, cidr: string): boolean {
   try {
     const cleanIp = ip.trim();
     const cleanCidr = cidr.trim();
