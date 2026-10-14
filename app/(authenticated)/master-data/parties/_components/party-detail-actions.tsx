@@ -21,7 +21,6 @@ import type { PartyFormState } from "../_actions";
 import type { PartyRoleRow } from "@/lib/db/queries/parties";
 
 const PARTY_ROLES = [
-  { value: "vendor", label: "Vendor" },
   { value: "supplier", label: "Supplier" },
   { value: "customer", label: "Customer" },
   { value: "end_customer", label: "End Customer" },
