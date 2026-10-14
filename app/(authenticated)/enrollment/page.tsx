@@ -40,7 +40,7 @@ type TabKey = "parties" | "items" | "locations";
 
 const TABS: Array<{ key: TabKey; label: string }> = [
   { key: "parties", label: "Organizations" },
-  { key: "items", label: "Items" },
+  { key: "items", label: "Material" },
   { key: "locations", label: "Locations" },
 ];
 

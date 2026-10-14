@@ -15,6 +15,7 @@ import {
   Warehouse,
 } from "lucide-react";
 import { TablePagination } from "@/components/ui/TablePagination";
+import { MasterDocumentHeader } from "@/components/print/MasterDocumentHeader";
 
 export interface ReportLineRow {
   id: string;
@@ -251,39 +252,15 @@ export function PdfPreviewModal({
             style={{ transform: `scale(${zoomLevel / 100})` }}
             className="w-full max-w-4xl rounded-2xl border border-outline-variant/30 bg-surface-white p-8 sm:p-10 shadow-elevation-3 text-on-surface transition-transform duration-150 origin-top"
           >
-            {/* 1. Formal Document Header with Logo */}
-            <div className="flex flex-col sm:flex-row items-start justify-between border-b-2 border-slate-800 pb-4 gap-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/api/brand/logo" alt="Dyna-Serv" className="h-7 w-auto object-contain" />
-                  <div>
-                    <h2 className="font-heading font-bold text-xs uppercase tracking-wider text-slate-800 leading-none">
-                      DYNA-SERV ENTERPRISES
-                    </h2>
-                    <p className="font-heading text-sm font-extrabold uppercase tracking-wide text-brand-navy mt-0.5">
-                      {reportTitle}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-2 text-[10px] text-slate-500 font-mono space-y-0.5">
-                  <p>Facility: Main Distribution Center (MDC) — All Logistics Zones</p>
-                  <p>Address: Clark Special Economic Zone, Pampanga, Philippines</p>
-                </div>
-              </div>
-
-              <div className="sm:text-right font-mono">
-                <span className="inline-block rounded bg-brand-navy px-2 py-0.5 text-[10px] font-bold text-surface-white uppercase">
-                  IMMUTABLE AUDIT REPORT
-                </span>
-                <p className="mt-1.5 text-[10px] font-bold text-slate-900">
-                  Doc Ref: <span className="text-brand-navy">{reportRefNumber}</span>
-                </p>
-                <p className="text-[10px] text-slate-500">
-                  Generated: {new Date().toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}
-                </p>
-              </div>
-            </div>
+            {/* Master Document Uniform Header */}
+            <MasterDocumentHeader
+              documentTitle={reportTitle}
+              documentNumber={reportRefNumber}
+              documentDate={new Date()}
+              status="IMMUTABLE AUDIT REPORT"
+              orientation="portrait"
+              showPrintButton={false}
+            />
 
             {/* 2. Executive KPI Summary Box */}
             <div className="my-4 grid grid-cols-2 sm:grid-cols-4 gap-2.5 rounded-lg border border-slate-200 bg-slate-50/70 p-2.5 font-mono text-[11px]">

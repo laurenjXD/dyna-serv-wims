@@ -25,9 +25,24 @@ export function LabelPrinter({
 }: LabelPrinterProps) {
   return (
     // brand-design-system.md §6: floor cards use solid surface-white, shadow-elevation-2.
-    <div data-print-label className="bg-surface-white shadow-elevation-2 rounded p-4 flex flex-col items-center gap-4 w-full max-w-sm mx-auto">
+    <div
+      data-print-label
+      className="bg-surface-white shadow-elevation-2 rounded-xl p-5 flex flex-col items-center gap-3 w-full max-w-[280px] mx-auto border border-outline-variant/60"
+    >
       <style>{`
+        @page {
+          size: 2in 2in;
+          margin: 0;
+        }
         @media print {
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #FFFFFF !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            text-rendering: geometricPrecision !important;
+          }
           body * {
             visibility: hidden !important;
           }
@@ -36,57 +51,80 @@ export function LabelPrinter({
             visibility: visible !important;
           }
           [data-print-label] {
-            position: absolute !important;
-            left: 50% !important;
-            top: 20mm !important;
-            transform: translateX(-50%) !important;
-            width: 100mm !important;
-            max-width: 100mm !important;
-            padding: 8mm !important;
-            border: 2px solid #000000 !important;
-            border-radius: 8px !important;
+            position: fixed !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 2in !important;
+            height: 2in !important;
+            max-width: 2in !important;
+            max-height: 2in !important;
+            margin: 0 !important;
+            padding: 1.5mm !important;
+            border: none !important;
+            border-radius: 0 !important;
             box-shadow: none !important;
             background: #FFFFFF !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            image-rendering: pixelated !important;
+            image-rendering: crisp-edges !important;
           }
-          [data-print-label] button {
+          .thermal-screen-only {
             display: none !important;
-          }
-          @page {
-            size: auto;
-            margin: 10mm;
           }
         }
       `}</style>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/api/brand/logo" alt="Dyna-Serv" className="h-7 w-auto object-contain" />
-      {/*
-        FR-3.2: QR payload is exactly the UUID string — "a UUID lookup, not a data blob"
-        (design.md §2). No prefix, no JSON wrapping, no transformation.
-      */}
-      <QRCode value={lotId} size={150} />
 
-      {/*
-        FR-3.1: human-readable label text displayed below the QR code.
-        brand-design-system.md §2: Roboto Mono for codes, lot numbers.
-        Floor minimum: 16px (body-md). mono-lg (18px) satisfies this comfortably.
-      */}
-      <div className="font-mono text-mono-lg text-on-surface text-center leading-snug">
-        <div className="font-bold">{lotNumber}</div>
-        <div>{itemCode}</div>
-        {locationLabel && <div>{locationLabel}</div>}
+      {/* Screen helper banner */}
+      <div className="thermal-screen-only flex items-center justify-between w-full pb-2 border-b border-outline-variant/40">
+        <span className="text-[11px] font-bold text-brand-navy uppercase tracking-wider">
+          Thermal Preview
+        </span>
+        <span className="rounded bg-brand-navy/10 px-2 py-0.5 font-mono text-[10px] font-bold text-brand-navy">
+          2&quot; × 2&quot; (50mm) · HD
+        </span>
       </div>
 
-      {/*
-        AC-3: "Print Label" button triggers window.print().
-        brand-design-system.md §3: floor primary action, h-16 (64px), full-width,
-        bg-primary for CTA, active:scale-[0.97] press feedback, no hover state.
-      */}
+      {/* 2x2 Label Top Header */}
+      <div className="w-full flex items-center justify-between text-[8px] font-mono font-black uppercase tracking-wider text-black pb-0.5 border-b border-black">
+        <span>DYNA-SERV</span>
+        <span>WIMS LOT</span>
+      </div>
+
+      {/* High-Definition QR Code (Pure 1-bit B&W, crispEdges, Level M error correction) */}
+      <div className="my-0.5 p-1 bg-white flex items-center justify-center">
+        <QRCode
+          value={lotId}
+          size={115}
+          level="M"
+          fgColor="#000000"
+          bgColor="#FFFFFF"
+          shapeRendering="crispEdges"
+          style={{ height: "auto", maxWidth: "30mm", width: "100%" }}
+          viewBox="0 0 256 256"
+        />
+      </div>
+
+      {/* High-Contrast Human-readable metadata */}
+      <div className="font-mono text-black text-center leading-tight w-full pt-0.5 border-t border-black">
+        <div className="font-black text-[11px] tracking-tight truncate">{lotNumber}</div>
+        <div className="text-[9.5px] font-bold tracking-tight truncate">{itemCode}</div>
+        {locationLabel && (
+          <div className="text-[8px] font-semibold tracking-tight truncate mt-0.5">{locationLabel}</div>
+        )}
+      </div>
+
+      {/* Print action CTA */}
       <button
         type="button"
         onClick={() => window.print()}
-        className="h-16 w-full bg-primary text-surface-white font-label text-body-md rounded active:scale-[0.97] motion-safe:transition-transform"
+        className="thermal-screen-only mt-2 h-12 w-full bg-primary text-surface-white font-label text-body-md font-bold rounded-lg shadow-sm active:scale-[0.97] transition-all focus:outline-none focus:ring-2 focus:ring-brand-navy"
       >
-        Print Label
+        Print 2&quot; × 2&quot; Label
       </button>
     </div>
   );

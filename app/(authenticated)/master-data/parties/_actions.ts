@@ -14,6 +14,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
+import { db } from "@/lib/db/client";
+import { partyRoles } from "@/lib/db/schema/parties";
+import { eq } from "drizzle-orm";
 
 import {
   createParty,
@@ -45,6 +48,13 @@ function nullableString(value: FormDataEntryValue | null): string | null {
   return trimmed === "" ? null : trimmed;
 }
 
+function formatNotesWithRbe(notes: string | null, rbeList: string[]): string | null {
+  const cleanNotes = notes ? notes.replace(/^\[RBE:\s*[^\]]+\]\s*\n?/i, "").trim() : "";
+  if (rbeList.length === 0) return cleanNotes || null;
+  const header = `[RBE: ${rbeList.join(", ")}]`;
+  return cleanNotes ? `${header}\n${cleanNotes}` : header;
+}
+
 // ---------------------------------------------------------------------------
 // createPartyAction
 // ---------------------------------------------------------------------------
@@ -54,6 +64,12 @@ export async function createPartyAction(
   formData: FormData,
 ): Promise<PartyFormState> {
   const resolver = await createPageResolver();
+
+  const rawNotes = nullableString(formData.get("notes"));
+  const rbeValues = formData
+    .getAll("rbe")
+    .filter((v): v is string => typeof v === "string" && ["EE", "ELSE", "ETC"].includes(v.toUpperCase()));
+  const formattedNotes = formatNotesWithRbe(rawNotes, rbeValues.map((v) => v.toUpperCase()));
 
   const input = {
     code: formData.get("code"),
@@ -65,7 +81,7 @@ export async function createPartyAction(
     address1: nullableString(formData.get("address1")),
     address2: nullableString(formData.get("address2")),
     paymentTerms: nullableString(formData.get("paymentTerms")),
-    notes: nullableString(formData.get("notes")),
+    notes: formattedNotes,
     isActive: formData.get("isActive") !== "false",
   };
 
@@ -106,6 +122,12 @@ export async function updatePartyAction(
   const id = formData.get("id") as string;
   const submittedUpdatedAt = formData.get("updatedAt") as string;
 
+  const rawNotes = nullableString(formData.get("notes"));
+  const rbeValues = formData
+    .getAll("rbe")
+    .filter((v): v is string => typeof v === "string" && ["EE", "ELSE", "ETC"].includes(v.toUpperCase()));
+  const formattedNotes = formatNotesWithRbe(rawNotes, rbeValues.map((v) => v.toUpperCase()));
+
   const input = {
     code: formData.get("code"),
     name: formData.get("name"),
@@ -116,7 +138,7 @@ export async function updatePartyAction(
     address1: nullableString(formData.get("address1")),
     address2: nullableString(formData.get("address2")),
     paymentTerms: nullableString(formData.get("paymentTerms")),
-    notes: nullableString(formData.get("notes")),
+    notes: formattedNotes,
     isActive: formData.get("isActive") !== "false",
   };
 
@@ -133,6 +155,36 @@ export async function updatePartyAction(
       };
     }
     return { error: result.error };
+  }
+
+  // Reconcile business roles across party_roles
+  const submittedRoles = formData
+    .getAll("roles")
+    .filter((r): r is string => typeof r === "string" && r.trim() !== "");
+
+  try {
+    const existingRoles = await db
+      .select({ id: partyRoles.id, role: partyRoles.role })
+      .from(partyRoles)
+      .where(eq(partyRoles.partyId, id));
+
+    const existingRoleValues = existingRoles.map((r) => r.role as string);
+
+    // Add newly checked roles
+    for (const newRole of submittedRoles) {
+      if (!existingRoleValues.includes(newRole)) {
+        await addPartyRole(resolver, id, newRole);
+      }
+    }
+
+    // Remove unchecked roles
+    for (const existing of existingRoles) {
+      if (!submittedRoles.includes(existing.role)) {
+        await removePartyRole(resolver, id, existing.id);
+      }
+    }
+  } catch (err) {
+    console.error("Failed to reconcile party roles on update:", err);
   }
 
   revalidatePath("/master-data/parties");
@@ -240,6 +292,7 @@ async function sendEmailViaResend(
   await resend.emails.send({
     from,
     to: [payload.recipientEmail],
+    cc: payload.cc ? (Array.isArray(payload.cc) ? payload.cc : [payload.cc]) : undefined,
     subject: emailSubject,
     html,
     attachments: resendAttachments && resendAttachments.length > 0 ? resendAttachments : undefined,
@@ -254,6 +307,7 @@ export async function contactPartyAction(
   const partyId = formData.get("partyId") as string;
   const message = nullableString(formData.get("message"));
   const subject = nullableString(formData.get("subject"));
+  const cc = nullableString(formData.get("cc"));
   const templateKey = (formData.get("templateKey") as string | null) ?? "custom_message";
   const templateCategory = (formData.get("templateCategory") as string | null) ?? "general";
 
@@ -284,6 +338,7 @@ export async function contactPartyAction(
       subject,
       templateKey,
       templateCategory,
+      cc: cc ? cc.split(",").map((s) => s.trim()).filter(Boolean) : undefined,
       attachments,
     },
   );

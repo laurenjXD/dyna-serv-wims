@@ -1,5 +1,24 @@
 # Revision Log — Hyperion 3PL / Dyna-Serv
 
+## Nomenclature updates (Internal Supplies, Material tab, Compliance Fee) & End-Customer non-billable rule (2026-10-13)
+
+**What changed**:
+1. **End-Customers Excluded from Billing**:
+   - **Established business rule**: End-customers do not receive billings (no billing applies to them).
+   - In Party Details (`/master-data/parties/[partyId]`), explicitly displays a `"No Billing Applies"` status card for end-customer organizations instead of commercial billing CTA shortcuts.
+   - In Contract Management (`createContract` server action and New Contract form), validates against and excludes end-customers from commercial contract creation.
+   - Excludes end-customer organizations from Statements of Account (SOA) recipient lists in `/billing-pricing/soa`.
+2. **Nomenclature Update: Internal Warehouse ➔ Internal Supplies**:
+   - Renamed business role display nomenclature from "Internal Warehouse" to "Internal Supplies" across organization enrollment forms and detail action tags (`app/(authenticated)/master-data/parties/_components/party-form.tsx`, `party-detail-actions.tsx`).
+   - Canonical database enum `internal_warehouse` remains unchanged for schema and migration compatibility.
+3. **Nomenclature Update: Enrollment Items Tab ➔ Material**:
+   - Renamed Master Data Enrollment tab from "Items" to "Material" in `app/(authenticated)/enrollment/page.tsx` (`TABS`).
+   - Preserves tab key (`items`), URL parameter (`?tab=items`), and permissions (`items.read`/`items.manage`) for backward compatibility.
+4. **Compliance Fee Grouping (PEZA Compliance, LOA & Customs Surety Bond)**:
+   - Grouped PEZA compliance permit, LOA (Letter of Authority), and Customs Surety Bond fields under a dedicated "Compliance Fee" container in `NewContractForm.tsx`.
+   - Updated `ContractRateCards.tsx` to present a unified "Compliance Fee" commercial card aggregating PEZA permit, LOA fee, and Customs Surety Bond rates into total monthly compliance fees.
+   - Updated contract pricing rule charge category selectors to label LOA/Bond options as "Compliance Fee (LOA / PEZA / Bond)".
+
 ## One-QR receiving confirmation and per-line shortage placement approved (2026-09-02)
 
 Product Owner approved the clarified receiving workflow: the Work Queue/WRR owns expected lines and quantities; one QR scan identifies and confirms the matching receiving line; the operator assigns declared boxes to storage/Hold or marks individual boxes `Missing`; only assigned boxes enter inventory; missing boxes are excluded from location allocations and inventory; lines commit independently; and the WRR becomes `confirmed` after all lines resolve, with OS&D shown as a shortage summary rather than a new `partial` status. The receiving UI implementation is recorded in commit `ac4f5c0` and the approval is captured in `specs/07-incoming-receiving/{requirements,design,tasks}.md`.

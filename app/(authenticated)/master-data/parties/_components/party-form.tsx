@@ -19,7 +19,13 @@ const PARTY_ROLES = [
   { value: "supplier", label: "Supplier" },
   { value: "customer", label: "Customer" },
   { value: "end_customer", label: "End Customer" },
-  { value: "internal_warehouse", label: "Internal Warehouse" },
+  { value: "internal_warehouse", label: "Internal Supplies" },
+] as const;
+
+export const RBE_OPTIONS = [
+  { value: "EE", label: "EE (Ecozone Enterprise)" },
+  { value: "ELSE", label: "ELSE (Ecozone Logistics Services Enterprise)" },
+  { value: "ETC", label: "ETC (Ecozone Tourism / IT / Other Enterprise)" },
 ] as const;
 
 type PartyFormAction = (
@@ -48,6 +54,24 @@ export function PartyForm({ action, party, initialCode, existingCodes = [], canc
     }
     return [];
   });
+
+  // Parse existing RBE and clean notes
+  const initialRbe = useMemo(() => {
+    if (!party?.notes) return [];
+    const match = party.notes.match(/^\[RBE:\s*([^\]]+)\]/i);
+    if (!match) return [];
+    return match[1]
+      .split(",")
+      .map((s) => s.trim().toUpperCase())
+      .filter((s) => ["EE", "ELSE", "ETC"].includes(s));
+  }, [party?.notes]);
+
+  const [selectedRbe, setSelectedRbe] = useState<string[]>(initialRbe);
+
+  const initialCleanNotes = useMemo(() => {
+    if (!party?.notes) return "";
+    return party.notes.replace(/^\[RBE:\s*[^\]]+\]\s*\n?/i, "").trim();
+  }, [party?.notes]);
 
   // Dynamic suggested serialized code based on the selected roles and existing party codes
   const suggestedCode = useMemo(() => {
@@ -115,26 +139,63 @@ export function PartyForm({ action, party, initialCode, existingCodes = [], canc
       )}
 
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Business roles (create only — edit manages roles on detail page) */}
-        {!isEdit && (
-          <div className="md:col-span-2">
+        {/* Business roles (available in both create and edit mode) */}
+        <div className="md:col-span-2">
+          <fieldset>
+            <legend className="font-label text-label text-on-surface">
+              Business Roles
+            </legend>
+            <div className="mt-2 flex flex-wrap gap-4">
+              {PARTY_ROLES.map(({ value, label }) => (
+                <label
+                  key={value}
+                  className="flex cursor-pointer items-center gap-2 font-body text-body-md text-on-surface"
+                >
+                  <input
+                    type="checkbox"
+                    name="roles"
+                    value={value}
+                    checked={selectedRoles.includes(value)}
+                    onChange={(e) => handleRoleToggle(value, e.target.checked)}
+                    className="h-4 w-4 rounded border-outline-variant/30 text-brand-navy focus:ring-2 focus:ring-brand-navy"
+                  />
+                  <span>{label}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        </div>
+
+        {/* Customer RBE (Registered Business Enterprise) Classification */}
+        {selectedRoles.includes("customer") && (
+          <div className="md:col-span-2 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
             <fieldset>
-              <legend className="font-label text-label text-on-surface">
-                Business Roles
+              <legend className="font-label text-label font-bold text-emerald-900 flex items-center gap-2">
+                <span>Customer PEZA / RBE Classification</span>
+                <span className="text-xs font-normal text-emerald-700">(Select applicable — max 3)</span>
               </legend>
-              <div className="mt-2 flex flex-wrap gap-4">
-                {PARTY_ROLES.map(({ value, label }) => (
+              <div className="mt-2.5 flex flex-wrap gap-4">
+                {RBE_OPTIONS.map(({ value, label }) => (
                   <label
                     key={value}
-                    className="flex cursor-pointer items-center gap-2 font-body text-body-md text-on-surface"
+                    className="flex cursor-pointer items-center gap-2 font-body text-body-sm text-emerald-950 font-medium"
                   >
                     <input
                       type="checkbox"
-                      name="roles"
+                      name="rbe"
                       value={value}
-                      checked={selectedRoles.includes(value)}
-                      onChange={(e) => handleRoleToggle(value, e.target.checked)}
-                      className="h-4 w-4 rounded border-outline-variant/30 text-brand-navy focus:ring-2 focus:ring-brand-navy"
+                      checked={selectedRbe.includes(value)}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setSelectedRbe((prev) =>
+                          checked
+                            ? prev.includes(value)
+                              ? prev
+                              : [...prev, value]
+                            : prev.filter((v) => v !== value)
+                        );
+                      }}
+                      className="h-4 w-4 rounded border-emerald-300 text-brand-navy focus:ring-2 focus:ring-brand-navy"
                     />
                     <span>{label}</span>
                   </label>
@@ -344,7 +405,7 @@ export function PartyForm({ action, party, initialCode, existingCodes = [], canc
             id="notes"
             name="notes"
             rows={3}
-            defaultValue={party?.notes ?? ""}
+            defaultValue={initialCleanNotes}
             className={inputClass("notes")}
           />
         </div>

@@ -116,7 +116,7 @@ export function ContractPricingRulesTable({ contractId, rules, currency }: Contr
             <option value="handling_out">Handling OUT</option>
             <option value="delivery">Delivery</option>
             <option value="documentation">Documentation</option>
-            <option value="loa">LOA Permit</option>
+            <option value="loa">Compliance Fee (LOA / PEZA / Bond)</option>
             <option value="manpower">Manpower</option>
             <option value="trading">Trading</option>
           </select>

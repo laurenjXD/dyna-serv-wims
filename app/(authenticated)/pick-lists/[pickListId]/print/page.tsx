@@ -9,6 +9,7 @@ import { parties } from "@/lib/db/schema/parties";
 import { getPickList, getPickListItems } from "@/lib/db/queries/withdrawals";
 import { PickListPrintButton } from "./_components/PickListPrintButton";
 import { WrrBarcode } from "../../../receiving/[wrrId]/print/_components/WrrBarcode";
+import { MasterDocumentHeader } from "@/components/print/MasterDocumentHeader";
 
 const FLOW_LABELS: Record<string, string> = {
   vmi: "VMI (Vendor Managed Inventory)",
@@ -103,42 +104,21 @@ export default async function PickListPrintPage({
 
       {/* Standardized Pick List Document Container */}
       <article className="rounded-xl border border-slate-300 bg-surface-white p-6 shadow-elevation-2 print:border-0 print:p-0 print:shadow-none">
-        {/* Header with Logo and Barcode */}
-        <header className="border-b-2 border-slate-800 pb-3">
-          <div className="flex items-start justify-between gap-6">
-            <div>
-              <div className="flex items-center gap-2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/api/brand/logo" alt="Dyna-Serv" className="h-7 w-auto object-contain" />
-                <div>
-                  <h1 className="font-heading font-bold text-xs uppercase tracking-wider text-slate-800 leading-none">
-                    DYNA-SERV GLOBAL CORPORATION
-                  </h1>
-                  <p className="mt-0.5 font-heading text-sm font-extrabold uppercase tracking-wide text-brand-navy">
-                    Official Warehouse Pick List
-                  </p>
-                </div>
-              </div>
-              <p className="mt-1 font-mono text-[10px] text-slate-500">
-                Pick List Directive &bull; Floor Allocation &bull; Warehouse Operations
-              </p>
-            </div>
+        {/* Master Document Uniform Header */}
+        <MasterDocumentHeader
+          documentTitle="Official Warehouse Pick List"
+          documentNumber={pickList.pickListNumber}
+          documentDate={pickList.createdAt}
+          status={pickList.status.toUpperCase()}
+          orientation="portrait"
+          showPrintButton={false}
+        />
 
-            <div className="text-right">
-              <p className="font-mono text-[10px] uppercase font-bold text-slate-500">
-                Pick List No.
-              </p>
-              <p className="font-mono text-xs font-black text-brand-navy">
-                {pickList.pickListNumber}
-              </p>
-              <p className="font-mono text-[10px] text-slate-500">
-                Date: {pickList.createdAt.toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}
-              </p>
-              <div className="mt-1 flex justify-end">
-                <WrrBarcode wrrNumber={pickList.pickListNumber} />
-              </div>
-            </div>
-          </div>
+        <div className="flex justify-end mb-2 print:hidden">
+          <WrrBarcode wrrNumber={pickList.pickListNumber} />
+        </div>
+
+        <header className="border-b-2 border-slate-800 pb-3">
 
           {/* Delivery & Shipment Info Grid */}
           <div className="mt-3 grid grid-cols-2 gap-2.5 rounded-lg border border-slate-200 bg-slate-50/70 p-2.5 font-mono text-[11px] sm:grid-cols-4">

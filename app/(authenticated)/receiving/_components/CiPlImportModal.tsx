@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, X, Check } from "lucide-react";
+import { Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, X, Check, Sparkles } from "lucide-react";
 import type { WrrItemOption } from "@/lib/db/queries/items";
 import type { CiplParseResult } from "@/lib/parsers/cipl-parser";
+import { matchItemAgainstCatalog } from "@/lib/parsers/item-matcher";
 import { uploadAndParseCiplDocument } from "@/lib/actions/receiving";
 
 export interface ImportedCiplLine {
@@ -60,6 +61,10 @@ export function CiPlImportModal({ wrrId, itemOptions, onClose, onApply }: CiPlIm
       uom: string;
       remarks: string;
       disposition: "store" | "inspect";
+      matchScore: number;
+      matchReason: string;
+      matchConfidence: "high" | "medium" | "low" | "none";
+      suggestedItems: { id: string; code: string; name: string; score: number; reason: string }[];
     }[]
   >([]);
 
@@ -87,36 +92,45 @@ export function CiPlImportModal({ wrrId, itemOptions, onClose, onApply }: CiPlIm
       mawbMbl: res.parseResult.header.mawbMbl || "",
     });
 
-    // Map extracted rows to form lines and attempt item code matching
+    // Map extracted rows to form lines using multi-tier fuzzy matching engine
     const mapped = res.parseResult.rows.map((row) => {
-      const match = itemOptions.find((opt) => {
-        const itemCodeMatch =
-          row.itemCode &&
-          (opt.code.toLowerCase() === row.itemCode.toLowerCase() ||
-            opt.supplierItemCode?.toLowerCase() === row.itemCode.toLowerCase() ||
-            opt.dsgcItemNumber?.toLowerCase() === row.itemCode.toLowerCase());
+      const matchRes = matchItemAgainstCatalog(
+        {
+          itemCode: row.itemCode,
+          customerItemCode: row.customerItemCode,
+          description: row.description,
+        },
+        itemOptions
+      );
 
-        const custCodeMatch =
-          row.customerItemCode &&
-          (opt.code.toLowerCase() === row.customerItemCode.toLowerCase() ||
-            opt.customerItemCode?.toLowerCase() === row.customerItemCode.toLowerCase());
-
-        return itemCodeMatch || custCodeMatch;
-      });
+      const best = matchRes.bestMatch;
+      const matchedItem = best?.item;
+      // High or medium confidence matches auto-populate
+      const autoPopulate = Boolean(matchedItem && (matchRes.confidenceLevel === "high" || matchRes.confidenceLevel === "medium"));
 
       return {
-        itemId: match ? match.id : "",
-        itemCodeDisplay: row.itemCode || (match ? match.code : ""),
-        customerItemCode: row.customerItemCode || (match ? match.customerItemCode ?? "" : ""),
-        description: row.description || (match ? match.name : ""),
+        itemId: autoPopulate && matchedItem ? matchedItem.id : "",
+        itemCodeDisplay: row.itemCode || (matchedItem ? matchedItem.code : ""),
+        customerItemCode: row.customerItemCode || (matchedItem ? matchedItem.customerItemCode ?? "" : ""),
+        description: row.description || (matchedItem ? matchedItem.name : ""),
         lotNumber: row.lotNumber || "",
         mfgDate: row.mfgDate || "",
         expiryDate: row.expiryDate || "",
         expectedQty: row.expectedQty ? String(row.expectedQty) : "",
-        unitCbm: row.cbm ? String(row.cbm) : (match ? match.volumeCbm : "0.001"),
-        uom: row.uom || (match ? match.uom : "BOX"),
+        unitCbm: row.cbm ? String(row.cbm) : (matchedItem ? matchedItem.volumeCbm : "0.001"),
+        uom: row.uom || (matchedItem ? matchedItem.uom : "BOX"),
         remarks: row.remarks || "",
         disposition: row.disposition || "store",
+        matchScore: best ? best.score : 0,
+        matchReason: best ? best.matchReason : "No catalog match found",
+        matchConfidence: matchRes.confidenceLevel,
+        suggestedItems: matchRes.candidates.map((c) => ({
+          id: c.item.id,
+          code: c.item.code,
+          name: c.item.name ?? "",
+          score: c.score,
+          reason: c.matchReason,
+        })),
       };
     });
 
@@ -136,6 +150,9 @@ export function CiPlImportModal({ wrrId, itemOptions, onClose, onApply }: CiPlIm
           customerItemCode: copy[index].customerItemCode || (item ? item.customerItemCode ?? "" : ""),
           unitCbm: item ? item.volumeCbm : copy[index].unitCbm,
           uom: copy[index].uom || (item ? item.uom : "BOX"),
+          matchConfidence: value ? "high" : "none",
+          matchScore: value ? 100 : 0,
+          matchReason: value ? "Manually selected by operator" : "Unmapped",
         };
       } else {
         copy[index] = { ...copy[index], [field]: value };
@@ -302,28 +319,65 @@ export function CiPlImportModal({ wrrId, itemOptions, onClose, onApply }: CiPlIm
                         return (
                           <tr key={idx} className={isMapped ? "bg-surface-white hover:bg-slate-50" : "bg-amber-500/5 hover:bg-amber-500/10"}>
                             <td className="p-2.5 whitespace-nowrap">
-                              {isMapped ? (
-                                <span className="inline-flex items-center gap-1 text-emerald-600 font-medium text-[11px]">
-                                  <CheckCircle2 className="h-3.5 w-3.5" /> Matched
-                                </span>
+                              {row.matchConfidence === "high" && isMapped ? (
+                                <div className="flex flex-col">
+                                  <span className="inline-flex items-center gap-1 text-emerald-600 font-medium text-[11px]">
+                                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                                    {row.matchScore === 100 ? "Exact" : "Auto-Matched"} ({row.matchScore}%)
+                                  </span>
+                                  <span className="text-[10px] text-text-grey truncate max-w-[150px]" title={row.matchReason}>
+                                    {row.matchReason}
+                                  </span>
+                                </div>
+                              ) : row.matchConfidence === "medium" && isMapped ? (
+                                <div className="flex flex-col">
+                                  <span className="inline-flex items-center gap-1 text-amber-600 font-medium text-[11px]">
+                                    <Sparkles className="h-3.5 w-3.5 shrink-0" /> Suggested ({row.matchScore}%)
+                                  </span>
+                                  <span className="text-[10px] text-amber-700/80 truncate max-w-[150px]" title={row.matchReason}>
+                                    {row.matchReason}
+                                  </span>
+                                </div>
                               ) : (
-                                <span className="inline-flex items-center gap-1 text-amber-600 font-medium text-[11px]">
-                                  <AlertTriangle className="h-3.5 w-3.5" /> Unmapped
-                                </span>
+                                <div className="flex flex-col">
+                                  <span className="inline-flex items-center gap-1 text-rose-500 font-medium text-[11px]">
+                                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> Unmapped
+                                  </span>
+                                  {row.suggestedItems.length > 0 && (
+                                    <span className="text-[10px] text-text-grey">
+                                      {row.suggestedItems.length} candidate(s)
+                                    </span>
+                                  )}
+                                </div>
                               )}
                             </td>
                             <td className="p-2.5">
                               <select
                                 value={row.itemId}
                                 onChange={(e) => handleRowChange(idx, "itemId", e.target.value)}
-                                className="w-full rounded border border-outline-variant/50 bg-surface-white px-2 py-1 text-on-surface font-body text-body-xs"
+                                className={`w-full rounded border px-2 py-1 font-body text-body-xs ${
+                                  !isMapped
+                                    ? "border-amber-400 bg-amber-50/50 text-amber-900 font-semibold"
+                                    : "border-outline-variant/50 bg-surface-white text-on-surface"
+                                }`}
                               >
                                 <option value="">-- Select Master Item ({row.itemCodeDisplay || "Extracted"}) --</option>
-                                {itemOptions.map((opt) => (
-                                  <option key={opt.id} value={opt.id}>
-                                    {opt.code} - {opt.name}
-                                  </option>
-                                ))}
+                                {row.suggestedItems.length > 0 && (
+                                  <optgroup label="Suggested Matches">
+                                    {row.suggestedItems.map((s) => (
+                                      <option key={s.id} value={s.id}>
+                                        ★ {s.code} - {s.name} ({s.score}% - {s.reason})
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                )}
+                                <optgroup label="All Master Items">
+                                  {itemOptions.map((opt) => (
+                                    <option key={opt.id} value={opt.id}>
+                                      {opt.code} - {opt.name}
+                                    </option>
+                                  ))}
+                                </optgroup>
                               </select>
                             </td>
                             <td className="p-2.5">

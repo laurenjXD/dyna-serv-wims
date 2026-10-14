@@ -92,6 +92,9 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
 
     let headerRowIndex = -1;
     const colMap: Record<string, number> = {};
+    let bestHeaderRowIndex = -1;
+    let bestColMap: Record<string, number> = {};
+    let bestScore = 0;
 
     // Scan top 30 rows for metadata (Invoice #, Date, Vendor) and find column headers
     for (let r = 0; r < Math.min(rawRows.length, 30); r++) {
@@ -153,133 +156,201 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
         }
       }
 
-      // Check if this row looks like the table column header
-      const hasItemCol =
-        rowLower.includes("item") ||
-        rowLower.includes("sku") ||
-        rowLower.includes("part") ||
-        rowLower.includes("p/n") ||
-        rowLower.includes("ubot") ||
-        rowLower.includes("description");
-      const hasQtyCol =
-        rowLower.includes("qty") ||
-        rowLower.includes("quantity") ||
-        rowLower.includes("count") ||
-        rowLower.includes("package") ||
-        rowLower.includes("carton") ||
-        rowLower.includes("boxes") ||
-        rowLower.includes("amount");
+      // Check if this row or combined next row can serve as column headers
+      const nextRow = rawRows[r + 1] || [];
+      const candidateColMap: Record<string, number> = {};
 
-      if (headerRowIndex === -1 && hasItemCol && hasQtyCol) {
-        headerRowIndex = r;
+      for (let c = 0; c < Math.max(row.length, nextRow.length); c++) {
+        const topVal = String(row[c] ?? "").trim().toLowerCase();
+        const subVal = String(nextRow[c] ?? "").trim().toLowerCase();
+        const combined = `${topVal} ${subVal}`.trim();
+        const val = combined.length > 0 ? combined : topVal;
 
-        // Also check if next row contains sub-headers (e.g. Row 17 "UBoT", Row 18 "P/N")
-        const nextRow = rawRows[r + 1] || [];
-
-        for (let c = 0; c < Math.max(row.length, nextRow.length); c++) {
-          const topVal = String(row[c] ?? "").trim().toLowerCase();
-          const subVal = String(nextRow[c] ?? "").trim().toLowerCase();
-          const combined = `${topVal} ${subVal}`.trim();
-
-          if (
-            combined.includes("description") ||
-            combined.includes("item name") ||
-            combined.includes("desc")
-          ) {
-            colMap["description"] = c;
-          } else if (
-            combined.includes("customer item") ||
-            combined.includes("cust item") ||
-            combined.includes("cust p/n") ||
-            combined.includes("cust pn") ||
-            combined.includes("customer pn") ||
-            combined.includes("client item") ||
-            combined.includes("customer part") ||
-            combined.includes("buyer item")
-          ) {
-            colMap["customerItemCode"] = c;
-          } else if (
-            combined.includes("item code") ||
-            combined.includes("sku") ||
-            combined === "item" ||
-            combined.includes("ubot") ||
-            combined.includes("dsgc item") ||
-            combined.includes("supplier item") ||
-            combined.includes("part no") ||
-            combined.includes("part number") ||
-            combined.includes("product code") ||
-            combined.includes("material") ||
-            (combined.includes("p/n") && !combined.includes("cust"))
-          ) {
-            colMap["itemCode"] = c;
-          } else if (
-            combined.includes("shipping lot") ||
-            combined.includes("lot") ||
-            combined.includes("batch")
-          ) {
-            colMap["lotNumber"] = c;
-          } else if (
-            combined.includes("mfd") ||
-            combined.includes("mfg") ||
-            combined.includes("manufacture")
-          ) {
-            colMap["mfgDate"] = c;
-          } else if (combined.includes("expiry") || combined.includes("exp date")) {
-            colMap["expiryDate"] = c;
-          } else if (
-            combined.includes("cbm") ||
-            combined.includes("unit cbm") ||
-            combined.includes("volume")
-          ) {
-            colMap["cbm"] = c;
-          } else if (
-            combined.includes("pkg") ||
-            combined.includes("package") ||
-            combined.includes("carton") ||
-            combined.includes("ctn") ||
-            combined.includes("no. of") ||
-            combined.includes("box count") ||
-            combined.includes("total packages") ||
-            combined.includes("boxes")
-          ) {
-            colMap["noOfPackages"] = c;
-          } else if (
-            combined.includes("spq") ||
-            combined.includes("pcs/ctn") ||
-            combined.includes("units/ctn") ||
-            combined.includes("pcs per box") ||
-            combined.includes("pcs per carton") ||
-            combined.includes("standard pkg qty") ||
-            combined.includes("standard package")
-          ) {
-            colMap["spq"] = c;
-          } else if (
-            combined.includes("total qty") ||
-            combined.includes("expected") ||
-            combined.includes("received") ||
-            combined === "qty" ||
-            combined === "quantity" ||
-            combined.includes("quantity") ||
-            combined.includes("pcs")
-          ) {
-            colMap["expectedQty"] = c;
-          } else if (
-            combined.includes("uom") ||
-            combined.includes("unit of measure") ||
-            combined === "unit" ||
-            combined.includes("measurement")
-          ) {
-            colMap["uom"] = c;
-          } else if (combined.includes("disp") || combined.includes("disposition")) {
-            colMap["disposition"] = c;
-          } else if (combined.includes("remark") || combined.includes("note") || combined.includes("comment")) {
-            colMap["remarks"] = c;
-          }
+        if (
+          val.includes("description") ||
+          val.includes("item name") ||
+          val.includes("product name") ||
+          val.includes("desc") ||
+          val.includes("goods desc") ||
+          val.includes("material desc") ||
+          val === "spec" ||
+          val.includes("specification") ||
+          val.includes("device name")
+        ) {
+          if (candidateColMap["description"] === undefined) candidateColMap["description"] = c;
+        } else if (
+          val.includes("customer item") ||
+          val.includes("cust item") ||
+          val.includes("cust p/n") ||
+          val.includes("cust pn") ||
+          val.includes("customer pn") ||
+          val.includes("client item") ||
+          val.includes("customer part") ||
+          val.includes("buyer item") ||
+          val.includes("buyer part") ||
+          val.includes("drawing no") ||
+          val.includes("oem part") ||
+          val.includes("cust part #") ||
+          val.includes("cust part no")
+        ) {
+          if (candidateColMap["customerItemCode"] === undefined) candidateColMap["customerItemCode"] = c;
+        } else if (
+          val.includes("item code") ||
+          val.includes("sku") ||
+          val === "item" ||
+          val.includes("ubot") ||
+          val.includes("dsgc item") ||
+          val.includes("supplier item") ||
+          val.includes("part no") ||
+          val.includes("part number") ||
+          val.includes("part #") ||
+          val.includes("material code") ||
+          val.includes("material no") ||
+          val === "material" ||
+          val.includes("product code") ||
+          val.includes("catalog no") ||
+          val.includes("cat #") ||
+          (val.includes("p/n") && !val.includes("cust")) ||
+          (val.includes("pn") && !val.includes("cust") && !val.includes("desc"))
+        ) {
+          if (candidateColMap["itemCode"] === undefined) candidateColMap["itemCode"] = c;
+        } else if (
+          val.includes("shipping lot") ||
+          val.includes("lot no") ||
+          val.includes("lot number") ||
+          val.includes("lot #") ||
+          val.includes("batch no") ||
+          val.includes("batch number") ||
+          val.includes("batch #") ||
+          val.includes("lot") ||
+          val.includes("batch") ||
+          val.includes("date code") ||
+          val === "d/c"
+        ) {
+          if (candidateColMap["lotNumber"] === undefined) candidateColMap["lotNumber"] = c;
+        } else if (
+          val.includes("mfd") ||
+          val.includes("mfg date") ||
+          val.includes("mfg") ||
+          val.includes("manufacture") ||
+          val.includes("production date") ||
+          val.includes("date of mfg")
+        ) {
+          if (candidateColMap["mfgDate"] === undefined) candidateColMap["mfgDate"] = c;
+        } else if (
+          val.includes("expiry") ||
+          val.includes("exp date") ||
+          val.includes("expiration") ||
+          val.includes("shelf life")
+        ) {
+          if (candidateColMap["expiryDate"] === undefined) candidateColMap["expiryDate"] = c;
+        } else if (
+          val.includes("cbm") ||
+          val.includes("unit cbm") ||
+          val.includes("total cbm") ||
+          val.includes("volume") ||
+          val.includes("m3")
+        ) {
+          if (candidateColMap["cbm"] === undefined) candidateColMap["cbm"] = c;
+        } else if (
+          val.includes("no. of packages") ||
+          val.includes("total packages") ||
+          val.includes("package count") ||
+          val.includes("box count") ||
+          val.includes("boxes") ||
+          val.includes("carton count") ||
+          val.includes("cartons") ||
+          val.includes("ctn") ||
+          val.includes("ctns") ||
+          val.includes("no of ctn") ||
+          val.includes("no. of pkg") ||
+          val.includes("pkgs") ||
+          val.includes("package") ||
+          val.includes("pkg")
+        ) {
+          if (candidateColMap["noOfPackages"] === undefined) candidateColMap["noOfPackages"] = c;
+        } else if (
+          val.includes("spq") ||
+          val.includes("pcs/ctn") ||
+          val.includes("pcs per ctn") ||
+          val.includes("pcs/carton") ||
+          val.includes("pcs per carton") ||
+          val.includes("pcs per box") ||
+          val.includes("pcs/box") ||
+          val.includes("qty/box") ||
+          val.includes("units/ctn") ||
+          val.includes("standard pkg") ||
+          val.includes("std pkg") ||
+          val.includes("standard package")
+        ) {
+          if (candidateColMap["spq"] === undefined) candidateColMap["spq"] = c;
+        } else if (
+          val.includes("total qty") ||
+          val.includes("expected qty") ||
+          val.includes("expected") ||
+          val.includes("received qty") ||
+          val.includes("received") ||
+          val.includes("ship qty") ||
+          val.includes("shipped qty") ||
+          val.includes("order qty") ||
+          val.includes("ordered qty") ||
+          val.includes("delivery qty") ||
+          val.includes("billing qty") ||
+          val.includes("bal qty") ||
+          val.includes("balance qty") ||
+          val === "qty" ||
+          val === "quantity" ||
+          val.includes("quantity") ||
+          val.includes("amount (pcs)") ||
+          val.includes("total pcs") ||
+          val === "pcs"
+        ) {
+          if (candidateColMap["expectedQty"] === undefined) candidateColMap["expectedQty"] = c;
+        } else if (
+          val.includes("uom") ||
+          val.includes("unit of measure") ||
+          val === "unit" ||
+          val.includes("measurement") ||
+          val.includes("base unit")
+        ) {
+          if (candidateColMap["uom"] === undefined) candidateColMap["uom"] = c;
+        } else if (
+          val.includes("disp") ||
+          val.includes("disposition") ||
+          val === "status" ||
+          val.includes("route")
+        ) {
+          if (candidateColMap["disposition"] === undefined) candidateColMap["disposition"] = c;
+        } else if (
+          val.includes("remark") ||
+          val.includes("note") ||
+          val.includes("comment")
+        ) {
+          if (candidateColMap["remarks"] === undefined) candidateColMap["remarks"] = c;
         }
+      }
+
+      // Check if candidate header has both item indicator and quantity indicator
+      const hasItem =
+        candidateColMap["itemCode"] !== undefined ||
+        candidateColMap["customerItemCode"] !== undefined ||
+        candidateColMap["description"] !== undefined;
+      const hasQty =
+        candidateColMap["expectedQty"] !== undefined ||
+        candidateColMap["noOfPackages"] !== undefined;
+
+      const recognizedCount = Object.keys(candidateColMap).length;
+      if (hasItem && hasQty && recognizedCount > bestScore) {
+        bestScore = recognizedCount;
+        bestHeaderRowIndex = r;
+        bestColMap = candidateColMap;
       }
     }
 
-    if (headerRowIndex === -1) {
+    if (bestHeaderRowIndex !== -1) {
+      headerRowIndex = bestHeaderRowIndex;
+      Object.assign(colMap, bestColMap);
+    } else {
       headerRowIndex = 0;
       colMap["itemCode"] = 1;
       colMap["expectedQty"] = 6;
@@ -317,8 +388,8 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
       if (!itemCodeRaw && !custItemCodeRaw) continue;
 
       const itemCode = itemCodeRaw ? String(itemCodeRaw).trim() : "";
-      // If itemCode is just a header word like "P/N" from a multi-row header or line number, skip
-      if (/^(p\/n|item|part no|descriptions?|qty|uom|#)$/i.test(itemCode)) continue;
+      // If itemCode is just a header word like "Item Code" from a multi-row header or line number, skip
+      if (/^(p\/n|pn|item|item code|item no|part no|part number|sku|cust p\/n|customer part|descriptions?|qty|quantity|uom|#)$/i.test(itemCode)) continue;
 
       let expectedQty = qtyRaw !== undefined && qtyRaw !== null && qtyRaw !== "" ? Number(qtyRaw) : undefined;
       const packageCount = packageCountRaw !== undefined && packageCountRaw !== null && packageCountRaw !== "" ? Number(packageCountRaw) : undefined;

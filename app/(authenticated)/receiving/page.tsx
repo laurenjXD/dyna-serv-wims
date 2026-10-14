@@ -20,9 +20,10 @@ import { ClipboardList, FileSpreadsheet, Plus, Truck, Warehouse } from "lucide-r
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
-import { listWrrDocuments } from "@/lib/db/queries/receiving";
+import { listWrrDocuments, findWrrDocumentByNumber } from "@/lib/db/queries/receiving";
 import type { WrrDocumentRow } from "@/lib/db/queries/receiving";
 import { AutoSubmitSelect } from "./_components/AutoSubmitSelect";
+import { QuickJumpScanner } from "./_components/QuickJumpScanner";
 import { WrrFilterableTable } from "./_components/WrrFilterableTable";
 import { WrrLedgerFilterableTable } from "./_components/WrrLedgerFilterableTable";
 
@@ -272,8 +273,25 @@ async function ReceiveTab({
   const inProgressCount = rows.filter((r) => r.status === "receiving_in_progress").length;
   const stagedCount = rows.filter((r) => r.status === "staged_pending_arrival").length;
 
+  async function handleQuickJump(formData: FormData) {
+    "use server";
+    const wrrNumber = String(formData.get("wrrNumber") ?? "").trim();
+    if (!wrrNumber) return;
+    const match = await findWrrDocumentByNumber(db, wrrNumber);
+    if (match) {
+      if (match.status === "staged_pending_arrival" || match.status === "receiving_in_progress") {
+        redirect(`/receiving/${match.id}/receive`);
+      } else {
+        redirect(`/receiving/${match.id}`);
+      }
+    }
+  }
+
   return (
     <div className="mt-6 space-y-6">
+      {/* Quick Jump Barcode / QR Scanner for floor intake */}
+      <QuickJumpScanner action={handleQuickJump} />
+
       {/* Top Telemetry Summary Pills */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-4 shadow-2xs">

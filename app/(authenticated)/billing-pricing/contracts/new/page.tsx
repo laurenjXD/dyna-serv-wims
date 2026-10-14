@@ -8,6 +8,7 @@ import { requirePermission } from "@/lib/rbac/guard";
 import { createContract } from "@/lib/actions/contracts";
 import { listParties } from "@/lib/db/queries/parties";
 import { db } from "@/lib/db/client";
+import { partyRoles } from "@/lib/db/schema/parties";
 import { NewContractForm } from "./NewContractForm";
 
 export default async function NewContractPage() {
@@ -25,7 +26,22 @@ export default async function NewContractPage() {
   }
 
   const partiesResult = await listParties(db, { limit: 100 });
-  const partiesList = partiesResult.rows;
+  const allPartyRoles = await db
+    .select({ partyId: partyRoles.partyId, role: partyRoles.role })
+    .from(partyRoles);
+
+  const rolesByParty = new Map<string, string[]>();
+  for (const r of allPartyRoles) {
+    const list = rolesByParty.get(r.partyId) ?? [];
+    list.push(r.role);
+    rolesByParty.set(r.partyId, list);
+  }
+
+  // End-customers do not receive billings (no billing applies to them)
+  const partiesList = partiesResult.rows.filter((p) => {
+    const r = rolesByParty.get(p.id) ?? [];
+    return !(r.length > 0 && r.every((role) => role === "end_customer"));
+  });
 
   async function handleCreateContract(formData: FormData): Promise<{ ok: boolean; error?: string }> {
     "use server";
@@ -39,6 +55,7 @@ export default async function NewContractPage() {
     const exchangeRatePolicy = String(formData.get("exchangeRatePolicy") ?? "monthly_rate");
     const paymentTerms = String(formData.get("paymentTerms") ?? "Net 30");
     const warehousesCovered = String(formData.get("warehousesCovered") ?? "Main Warehouse");
+    const billingCycle = String(formData.get("billingCycle") ?? "weekly_sun_sat");
     const notes = String(formData.get("notes") ?? "");
 
     if (!partyId) {
@@ -67,7 +84,11 @@ export default async function NewContractPage() {
     const handlingOutRatePerCbm = numOrUndef("handlingOutRatePerCbm");
     const loaPermitNumber = formData.get("loaPermitNumber") ? String(formData.get("loaPermitNumber")).trim() : undefined;
     const loaMonthlyRate = numOrUndef("loaMonthlyRate");
+    const loaStartDate = formData.get("loaStartDate") ? String(formData.get("loaStartDate")).trim() : undefined;
+    const loaExpirationDate = formData.get("loaExpirationDate") ? String(formData.get("loaExpirationDate")).trim() : undefined;
     const suretyBondMonthlyFee = numOrUndef("suretyBondMonthlyFee");
+    const otherComplianceFee = numOrUndef("otherComplianceFee");
+    const otherComplianceLabel = formData.get("otherComplianceLabel") ? String(formData.get("otherComplianceLabel")).trim() : undefined;
     const truckingAdminFee = numOrUndef("truckingAdminFee");
     const manpowerRatePerHour = numOrUndef("manpowerRatePerHour");
     const minStock = numOrUndef("minStock");
@@ -91,6 +112,7 @@ export default async function NewContractPage() {
       exchangeRatePolicy,
       paymentTerms,
       warehousesCovered,
+      billingCycle,
       notes,
       vmiOwnership,
       vmiBillingTrigger,
@@ -99,7 +121,11 @@ export default async function NewContractPage() {
       handlingOutRatePerCbm,
       loaPermitNumber,
       loaMonthlyRate,
+      loaStartDate,
+      loaExpirationDate,
       suretyBondMonthlyFee,
+      otherComplianceFee,
+      otherComplianceLabel,
       truckingAdminFee,
       manpowerRatePerHour,
       minStock,

@@ -6,6 +6,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { MapPin, Plus, Layers } from "lucide-react";
 import { DataTable } from "./DataTable";
 import type { LocationListRow } from "@/lib/db/queries/locations";
+import { ExportDataButton } from "@/components/shared/ExportDataButton";
 
 export function LocationsEnrollmentTable({
   data,
@@ -161,22 +162,41 @@ export function LocationsEnrollmentTable({
       enableGrouping={true}
       initialGrouping={["zone"]}
       actions={
-        canManage ? (
-          <>
-            <Link
-              href="/master-data/locations/bulk"
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-surface-white px-3 text-xs font-bold text-slate-800 hover:bg-slate-50 transition-all shadow-sm"
-            >
-              <Layers size={14} /> Bulk Generate
-            </Link>
-            <Link
-              href="/master-data/locations/new"
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-bold text-surface-white hover:bg-primary/90 transition-all shadow-sm"
-            >
-              <Plus size={14} /> New Location
-            </Link>
-          </>
-        ) : null
+        <div className="flex items-center gap-2">
+          <ExportDataButton
+            data={data}
+            filename="warehouse_locations_grid"
+            sheetName="Locations"
+            buttonLabel="Export Locations"
+            columns={[
+              { header: "Location Label", key: "label" },
+              { header: "Zone", key: "zone" },
+              { header: "Rack", key: "rack" },
+              { header: "Level", key: "level" },
+              { header: "Position", key: "position" },
+              { header: "Type", key: "locationType" },
+              { header: "Max CBM", key: "maxCbmCapacity" },
+              { header: "Status", format: (r) => (r.isActive ? "Active" : "Inactive") },
+              { header: "Enrolled Date", format: (r) => new Date(r.createdAt).toISOString().split("T")[0] },
+            ]}
+          />
+          {canManage && (
+            <>
+              <Link
+                href="/master-data/locations/bulk"
+                className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-surface-white px-3 text-xs font-bold text-slate-800 hover:bg-slate-50 transition-all shadow-sm"
+              >
+                <Layers size={14} /> Bulk Generate
+              </Link>
+              <Link
+                href="/master-data/locations/new"
+                className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-bold text-surface-white hover:bg-primary/90 transition-all shadow-sm"
+              >
+                <Plus size={14} /> New Location
+              </Link>
+            </>
+          )}
+        </div>
       }
       emptyMessage="No locations found matching the specified filters."
     />

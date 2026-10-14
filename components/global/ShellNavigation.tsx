@@ -83,7 +83,7 @@ const SHORT_LABEL_OVERRIDES: Record<string, string> = {
   approvals: "Approvals",
   reports: "Reports & Analytics",
   documents: "Documents",
-  enrollment: "Enrollment",
+  enrollment: "Data Management",
   portal: "Organization Portal",
   "billing-pricing": "Billing & Pricing",
 };
@@ -536,7 +536,7 @@ export function ShellNavigation({
         data-testid="desktop-sidebar"
         aria-label="Primary navigation"
         aria-hidden={false}
-        className={`print:hidden hidden flex-col overflow-visible border-r border-brand-navy bg-brand-navy transition-[width] duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none lg:fixed lg:bottom-0 lg:left-0 lg:top-[76px] lg:z-40 lg:flex ${
+        className={`print:hidden hidden flex-col overflow-hidden border-r border-brand-navy bg-brand-navy transition-[width] duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none lg:fixed lg:bottom-0 lg:left-0 lg:top-[76px] lg:z-40 lg:flex ${
           desktopOpen ? "lg:w-[304px]" : "lg:w-[88px]"
         }`}
       >
@@ -550,7 +550,7 @@ export function ShellNavigation({
         </a>
 
         {/* Navigation Section List */}
-        <div className={`min-h-0 flex-1 py-3 transition-all duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] ${desktopOpen ? "px-3" : "px-1.5"}`}>
+        <div className={`min-h-0 flex-1 overflow-y-auto overflow-x-hidden py-3 transition-all duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] scrollbar-thin scrollbar-thumb-white/20 hover:scrollbar-thumb-white/40 ${desktopOpen ? "px-3" : "px-1.5"}`}>
           <GroupedSections
             sections={sections}
             activeId={activeId}

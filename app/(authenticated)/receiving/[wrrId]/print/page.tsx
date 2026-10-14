@@ -41,6 +41,7 @@ import { getWrrDocument } from "@/lib/db/queries/receiving";
 import type { WrrItemRow } from "@/lib/db/queries/receiving";
 import { PrintButton } from "./_components/PrintButton";
 import { WrrBarcode } from "./_components/WrrBarcode";
+import { MasterDocumentHeader } from "@/components/print/MasterDocumentHeader";
 
 const FLOW_LABELS: Record<string, string> = {
   vmi: "VMI",
@@ -165,47 +166,18 @@ export default async function WrrPrintPage({ params }: PageProps) {
 
         {/* Printable WRR document (Landscape) */}
         <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1 print:border-0 print:p-0 print:shadow-none">
-          {/* Document header */}
-          <div className="border-b-2 border-slate-800 pb-3">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/api/brand/logo" alt="Dyna-Serv" className="h-7 w-auto object-contain" />
-                  <div>
-                    <h1 className="font-heading font-bold text-xs uppercase tracking-wider text-slate-800 leading-none">
-                      DYNA-SERV GLOBAL CORPORATION
-                    </h1>
-                    <p className="mt-0.5 font-heading text-sm font-extrabold uppercase tracking-wide text-brand-navy">
-                      Warehouse Receiving Report (WRR)
-                    </p>
-                  </div>
-                </div>
-                <p className="mt-1.5 font-mono text-[10px] text-slate-500">
-                  Received Date: <span className="font-bold text-slate-900">{wrr.confirmedAt?.toLocaleString() ?? "Pending receipt"}</span>
-                </p>
-              </div>
+          {/* Master Document Uniform Header */}
+          <MasterDocumentHeader
+            documentTitle="Warehouse Receiving Report (WRR)"
+            documentNumber={wrr.wrrNumber}
+            documentDate={wrr.confirmedAt ?? new Date()}
+            status={wrr.status.toUpperCase()}
+            orientation="landscape"
+            showPrintButton={false}
+          />
 
-              <div className="flex items-start gap-4">
-                <div className="text-right">
-                  <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                    WRR Document Number
-                  </p>
-                  <p className="font-mono text-xs font-black text-brand-navy">
-                    {wrr.wrrNumber}
-                  </p>
-                  <span className="inline-block mt-0.5 rounded bg-slate-100 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-slate-700 border border-slate-200">
-                    Status: {wrr.status.replace(/_/g, " ")}
-                  </span>
-                </div>
-                <div className="text-center">
-                  <WrrBarcode wrrNumber={wrr.wrrNumber} />
-                  <p className="mt-0.5 max-w-[110px] font-mono text-[9px] text-slate-400">
-                    Document QR
-                  </p>
-                </div>
-              </div>
-            </div>
+          <div className="flex justify-end mb-3 print:hidden">
+            <WrrBarcode wrrNumber={wrr.wrrNumber} />
           </div>
 
           {/* Header metadata grid — compact & readable */}

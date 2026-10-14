@@ -6,6 +6,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Package, Plus, Barcode } from "lucide-react";
 import { DataTable } from "./DataTable";
 import type { ItemListRow } from "@/lib/db/queries/items";
+import { ExportDataButton } from "@/components/shared/ExportDataButton";
 
 export function ItemsEnrollmentTable({
   data,
@@ -137,18 +138,34 @@ export function ItemsEnrollmentTable({
     <DataTable
       columns={columns}
       data={data}
-      title="Master Item Catalog"
-      subtitle="Catalog of all active inventory items, barcodes, and measurement specifications"
+      title="Master Material Catalog"
+      subtitle="Catalog of all active inventory materials, barcodes, and measurement specifications"
       icon={<Package size={18} />}
       actions={
-        canManage ? (
-          <Link
-            href="/master-data/items/new"
-            className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-bold text-surface-white hover:bg-primary/90 transition-all shadow-sm"
-          >
-            <Plus size={14} /> New Item
-          </Link>
-        ) : null
+        <div className="flex items-center gap-2">
+          <ExportDataButton
+            data={data}
+            filename="materials_catalog"
+            sheetName="Materials"
+            buttonLabel="Export Material"
+            columns={[
+              { header: "Material Code", key: "code" },
+              { header: "Description", key: "name" },
+              { header: "Barcode", key: "barcode" },
+              { header: "UOM", key: "uom" },
+              { header: "Status", format: (r) => (r.isActive ? "Active" : "Inactive") },
+              { header: "Enrolled Date", format: (r) => new Date(r.createdAt).toISOString().split("T")[0] },
+            ]}
+          />
+          {canManage && (
+            <Link
+              href="/master-data/items/new"
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-bold text-surface-white hover:bg-primary/90 transition-all shadow-sm"
+            >
+              <Plus size={14} /> New Material
+            </Link>
+          )}
+        </div>
       }
       emptyMessage="No items found matching the specified filters."
     />

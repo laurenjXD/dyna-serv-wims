@@ -5,7 +5,7 @@
 // brand-design-system.md §3 (floor surface rules — mobile-first, no glassmorphism)
 
 import { useState } from "react";
-import { Camera } from "lucide-react";
+import { Camera, X } from "lucide-react";
 import { MobileQRScanner } from "@/components/barcode/MobileQRScanner";
 
 interface ReceivingCameraScannerProps {
@@ -44,28 +44,35 @@ export function ReceivingCameraScanner({
   };
 
   return (
-    <div className="mb-4">
+    <div className="mt-3">
       {!isOpen ? (
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className="flex h-14 w-full items-center justify-center gap-2 rounded bg-surface-white font-heading font-semibold text-body-md text-brand-navy shadow-elevation-2 active:scale-[0.98] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-surface-white font-heading font-semibold text-xs text-brand-navy shadow-xs hover:bg-slate-50 active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-brand-navy"
         >
-          <Camera size={18} aria-hidden="true" />
-          <span>Open Camera Scanner</span>
+          <Camera size={16} className="text-brand-navy" aria-hidden="true" />
+          <span>Open Camera Barcode / QR Scanner</span>
         </button>
       ) : (
-        <div className="rounded-xl bg-surface-white p-3 shadow-elevation-2">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="font-heading font-semibold text-body-md text-brand-navy">
-              Camera Scanner Active
-            </span>
+        <div className="rounded-2xl border border-slate-200 bg-surface-white p-4 shadow-sm">
+          <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-2">
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              </span>
+              <span className="font-heading font-bold text-xs text-brand-navy">
+                Live Camera Scanner Active
+              </span>
+            </div>
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="rounded px-2 py-1 font-label text-body-md text-status-held focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1 font-label text-xs font-semibold text-slate-700 hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-navy"
             >
-              Close Camera
+              <X size={13} />
+              <span>Close Camera</span>
             </button>
           </div>
           <MobileQRScanner onScan={handleScan} />

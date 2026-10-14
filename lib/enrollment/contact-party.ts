@@ -22,6 +22,7 @@ export type ContactPartyEmailPayload = {
   partyName?: string;
   recipientEmail: string;       // resolved from DB — never client-supplied
   recipientName: string | null; // contact_person from DB — never client-supplied
+  cc?: string | string[];       // optional CC recipients
   subject?: string | null;
   templateKey: string;          // identifies the transactional template in 04's pipeline
   templateCategory?: string;
@@ -90,6 +91,7 @@ export function buildContactPartyPayload(
     subject?: string | null;
     templateKey?: string;
     templateCategory?: string;
+    cc?: string | string[];
     attachments?: ContactPartyEmailAttachment[];
   },
 ): ContactPartyEmailPayload {
@@ -98,6 +100,7 @@ export function buildContactPartyPayload(
     partyName: party.name,
     recipientEmail: party.email,
     recipientName: party.contactPerson,
+    cc: options?.cc,
     subject: options?.subject ?? null,
     templateKey: options?.templateKey ?? "contact_party_notification_v1",
     templateCategory: options?.templateCategory ?? "general",

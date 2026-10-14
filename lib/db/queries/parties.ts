@@ -4,7 +4,7 @@
 //   specs/06-party-and-item-enrollment/design.md §7 (Search, list, and detail)
 //   specs/06-party-and-item-enrollment/tasks.md §3
 
-import { eq, ilike, or, desc, sql } from "drizzle-orm";
+import { eq, ilike, or, desc, sql, inArray } from "drizzle-orm";
 import { parties, partyRoles } from "@/lib/db/schema";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -22,6 +22,7 @@ export type PartyListRow = {
   email: string | null;
   isActive: boolean;
   createdAt: Date;
+  roles?: string[];
 };
 
 export type PartyRoleRow = {
@@ -108,8 +109,36 @@ export async function listParties(
     .from(parties)
     .where(whereClause);
 
+  const partyIds = (rawRows as Array<{ id: string }>).map((r) => r.id);
+  const rolesByParty = new Map<string, string[]>();
+
+  if (partyIds.length > 0) {
+    try {
+      const roleRows = await db
+        .select({
+          partyId: partyRoles.partyId,
+          role: partyRoles.role,
+        })
+        .from(partyRoles)
+        .where(inArray(partyRoles.partyId, partyIds));
+
+      for (const r of (roleRows as Array<{ partyId: string; role: string }>)) {
+        const list = rolesByParty.get(r.partyId) ?? [];
+        list.push(r.role);
+        rolesByParty.set(r.partyId, list);
+      }
+    } catch {
+      // Graceful fallback if party_roles table is unavailable
+    }
+  }
+
+  const rows = (rawRows as Array<Omit<PartyListRow, "roles">>).map((row) => ({
+    ...row,
+    roles: rolesByParty.get(row.id) ?? [],
+  })) as PartyListRow[];
+
   return {
-    rows: rawRows as PartyListRow[],
+    rows,
     total: Number(countRow?.count ?? 0),
   };
 }
