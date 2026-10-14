@@ -40,13 +40,13 @@ export function MovementChart({ data }: { data: MovementChartDatum[] }) {
             dataKey="label"
             axisLine={false}
             tickLine={false}
-            tick={{ fill: "#475569", fontSize: 12, fontFamily: "var(--font-glacial)" }}
+            tick={{ fill: "#475569", fontSize: 12, fontFamily: "Inter, Helvetica Neue, Arial, sans-serif" }}
           />
           <YAxis
             allowDecimals={false}
             axisLine={false}
             tickLine={false}
-            tick={{ fill: "#475569", fontSize: 12, fontFamily: "var(--font-glacial)" }}
+            tick={{ fill: "#475569", fontSize: 12, fontFamily: "Inter, Helvetica Neue, Arial, sans-serif" }}
             width={28}
           />
           <Tooltip
@@ -54,7 +54,7 @@ export function MovementChart({ data }: { data: MovementChartDatum[] }) {
             contentStyle={{
               borderRadius: 8,
               border: "1px solid rgba(226,232,240,0.3)",
-              fontFamily: "var(--font-glacial)",
+              fontFamily: "Inter, Helvetica Neue, Arial, sans-serif",
               fontSize: 13,
             }}
           />

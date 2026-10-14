@@ -53,21 +53,30 @@ const config: Config = {
       },
       fontFamily: {
         // Dyna-Serv Brand Guidelines: Avenir Next / Inter / JetBrains Mono.
-        // Legacy local fonts remain as fallbacks where the brand families are unavailable.
-        heading: ["Avenir Next", "Avenir", "var(--font-etna)", "sans-serif"],
-        body: ["Inter", "Helvetica Neue", "var(--font-glacial)", "Arial", "sans-serif"],
-        label: ["JetBrains Mono", "SFMono-Regular", "var(--font-glacial)", "monospace"],
-        mono: ["JetBrains Mono", "SFMono-Regular", "var(--font-glacial)", "monospace"],
+        heading: ["Avenir Next", "Avenir", "sans-serif"],
+        body: ["Inter", "Helvetica Neue", "Arial", "sans-serif"],
+        label: ["JetBrains Mono", "SFMono-Regular", "monospace"],
+        mono: ["JetBrains Mono", "SFMono-Regular", "monospace"],
       },
       fontSize: {
         // Type scale (specs/00-steering/design.md §7)
         "headline-xl": ["44px", { lineHeight: "52px", letterSpacing: "-0.02em" }],
-        "headline-lg": ["30px", { lineHeight: "38px", letterSpacing: "normal" }],
+        "headline-lg": ["24px", { lineHeight: "32px", letterSpacing: "normal" }],
         "headline-md": ["24px", { lineHeight: "32px", letterSpacing: "normal" }],
+        "headline-sm": ["20px", { lineHeight: "28px", letterSpacing: "normal" }],
+        // Compatibility aliases used by older page components. They resolve
+        // to the same approved brand scale rather than browser defaults.
+        "title-xl": ["44px", { lineHeight: "52px", letterSpacing: "-0.02em" }],
+        "title-lg": ["24px", { lineHeight: "32px", letterSpacing: "normal" }],
+        "title-md": ["24px", { lineHeight: "32px", letterSpacing: "normal" }],
+        "title-sm": ["20px", { lineHeight: "28px", letterSpacing: "normal" }],
+        "heading-lg": ["24px", { lineHeight: "32px", letterSpacing: "normal" }],
+        "heading-md": ["24px", { lineHeight: "32px", letterSpacing: "normal" }],
         "data-display": ["20px", { lineHeight: "24px", letterSpacing: "normal" }],
         "body-lg": ["18px", { lineHeight: "28px", letterSpacing: "normal" }],
         "body-md": ["16px", { lineHeight: "24px", letterSpacing: "normal" }],
         "body-sm": ["14px", { lineHeight: "20px", letterSpacing: "normal" }],
+        "body-xs": ["12px", { lineHeight: "16px", letterSpacing: "normal" }],
         label: ["12px", { lineHeight: "16px", letterSpacing: "0.14em" }],
         "mono-sm": ["14px", { lineHeight: "20px", letterSpacing: "normal" }],
         "mono-md": ["16px", { lineHeight: "24px", letterSpacing: "normal" }],
@@ -80,16 +89,12 @@ const config: Config = {
         gutter: "24px",
       },
       borderRadius: {
-        sm: "4px",
+        sm: "6px",
         DEFAULT: "8px",
-        md: "12px",
+        md: "10px",
         lg: "12px",
-        // 2026-08-19: bento-box card/navbar/sidebar rounding, per user
-        // request and per page specs.md §2's "Floating Header (radius-full)
-        // / Floating Sidebar (radius-xl)" description — previously never
-        // implemented anywhere (see revision-log.md's "Mega-Card" doc-drift
-        // entry for the earlier phased-rollout decision this supersedes).
-        xl: "24px",
+        xl: "12px",
+        "2xl": "12px",
         full: "9999px",
       },
       maxWidth: {

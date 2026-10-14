@@ -2,6 +2,91 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Dyna-Serv surface primitives.
+ * The brand guide permits 6px, 10px, 12px, and pill radii. These compatibility
+ * selectors normalize legacy utility usage across older pages while those
+ * pages migrate to the shared token names.
+ */
+.rounded-sm { border-radius: 6px !important; }
+.rounded-md { border-radius: 10px !important; }
+.rounded-lg,
+.rounded-xl,
+.rounded-2xl,
+.rounded-3xl { border-radius: 12px !important; }
+.rounded-t-3xl { border-top-left-radius: 12px !important; border-top-right-radius: 12px !important; }
+
+/* Cards use a hairline border and surface fill; elevation is reserved for
+ * transient overlays and physical-object mockups in the brand system. */
+[data-surface="office"] .shadow-sm,
+[data-surface="office"] .shadow-md,
+[data-surface="office"] .shadow-lg,
+[data-surface="office"] .shadow-xl,
+[data-surface="office"] .shadow-2xl,
+[data-surface="office"] .shadow-elevation-1,
+[data-surface="office"] .shadow-elevation-2,
+[data-surface="party"] .shadow-sm,
+[data-surface="party"] .shadow-md,
+[data-surface="party"] .shadow-lg,
+[data-surface="party"] .shadow-xl,
+[data-surface="party"] .shadow-2xl,
+[data-surface="party"] .shadow-elevation-1,
+[data-surface="party"] .shadow-elevation-2 {
+  box-shadow: none !important;
+}
+
+/* One-pixel hairlines are the only general-purpose border weight in the
+ * system. Rings remain available for focus and selected states. */
+[data-surface="office"] .border-2,
+[data-surface="party"] .border-2 {
+  border-width: 1px !important;
+}
+
+/* No gradients on application surfaces. Status colors belong on the border,
+ * label, or a very light solid tint instead. */
+[data-surface="office"] [class*="bg-gradient"],
+[data-surface="party"] [class*="bg-gradient"] {
+  background-image: none !important;
+  background-color: #ffffff !important;
+}
+
+/* The guide explicitly disallows glass/blur surfaces. Keep the content
+ * opaque and retain the hairline border instead. */
+[data-surface="office"] [class*="backdrop-blur"],
+[data-surface="party"] [class*="backdrop-blur"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background-color: #ffffff !important;
+}
+
+/* Canonical office hierarchy from the brand guide. A few older screens still
+ * carry page-local text-xl/text-2xl utilities; normalize the rendered heading
+ * roles here so every office page has the same visual scale. */
+main[data-surface="office"] h1,
+main[data-surface="party"] h1 {
+  font-family: "Avenir Next", "Avenir", sans-serif !important;
+  font-size: 24px !important;
+  line-height: 32px !important;
+  font-weight: 700 !important;
+  letter-spacing: normal !important;
+}
+
+main[data-surface="office"] h2,
+main[data-surface="party"] h2 {
+  font-family: "Avenir Next", "Avenir", sans-serif !important;
+  font-size: 24px !important;
+  line-height: 32px !important;
+  font-weight: 700 !important;
+}
+
+main[data-surface="office"] h3,
+main[data-surface="party"] h3 {
+  font-family: "Avenir Next", "Avenir", sans-serif !important;
+  font-size: 20px !important;
+  line-height: 28px !important;
+  font-weight: 700 !important;
+}
+
 /* Suppress browser native password reveal and clear buttons (Microsoft Edge, IE, Chrome)
  * so our custom eye toggle is the sole persistent toggle without dual icons or pop-in/pop-out. */
 input::-ms-reveal,

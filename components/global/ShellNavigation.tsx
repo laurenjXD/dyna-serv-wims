@@ -9,31 +9,29 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { LucideIcon } from "lucide-react";
 import {
-  Layers,
-  Users,
-  ArrowLeftRight,
-  CheckSquare,
-  FileText,
-  BarChart2,
-  Receipt,
-  RefreshCw,
-  UserCircle,
-  Settings,
-  Globe,
-  Package,
-  ShoppingCart,
-  Bell,
-  Tag,
-  Circle,
-  House,
-  Inbox,
-  Shield,
   Menu,
   X,
   ChevronRight,
 } from "lucide-react";
+import type { ComponentType } from "react";
+import {
+  ElseIcon,
+  EfeIcon,
+  EnrollmentIcon,
+  BillingIcon,
+  DocumentIcon,
+  GlobalIcon,
+  OutgoingIcon,
+  PackagingIcon,
+  ProfileIcon,
+  QualityIcon,
+  ReportsIcon,
+  SettingsIcon,
+  TestingIcon,
+  VmiIcon,
+  type BrandIconProps,
+} from "./BrandIcons";
 import type { AuthorizationContext } from "@/lib/rbac/session";
 import type { SessionPresentationTier } from "@/lib/shell/surface";
 import { roleDisplayLabel } from "@/lib/shell/surface";
@@ -49,32 +47,32 @@ import type { RouteRegistryEntry } from "@/lib/shell/registry";
 import { resolveShellUserDisplay } from "@/app/(authenticated)/actions";
 
 // Icon map keyed by route id.
-const ROUTE_ICON_MAP: Record<string, LucideIcon> = {
-  root: House,
-  receiving: Inbox,
-  "receiving-detail": Inbox,
-  inventory: Layers,
-  outgoing: ShoppingCart,
-  "inventory-pick-list-execute": ShoppingCart,
-  "inventory-pick-list-dispatch": ShoppingCart,
-  enrollment: Users,
-  transfers: ArrowLeftRight,
-  inspection: Shield,
-  "inspection-detail": Shield,
-  approvals: CheckSquare,
-  documents: FileText,
-  reports: BarChart2,
-  "billing-pricing": Receipt,
-  sync: RefreshCw,
-  profile: UserCircle,
-  settings: Settings,
-  portal: Globe,
-  "portal-inventory": Package,
-  "portal-orders": ShoppingCart,
-  "portal-documents": FileText,
-  "portal-notifications": Bell,
-  "portal-labels": Tag,
-  notifications: Bell,
+const ROUTE_ICON_MAP: Record<string, ComponentType<BrandIconProps>> = {
+  root: GlobalIcon,
+  receiving: ElseIcon,
+  "receiving-detail": ElseIcon,
+  inventory: VmiIcon,
+  outgoing: OutgoingIcon,
+  "inventory-pick-list-execute": OutgoingIcon,
+  "inventory-pick-list-dispatch": OutgoingIcon,
+  enrollment: EnrollmentIcon,
+  transfers: TestingIcon,
+  inspection: QualityIcon,
+  "inspection-detail": QualityIcon,
+  approvals: QualityIcon,
+  documents: DocumentIcon,
+  reports: ReportsIcon,
+  "billing-pricing": BillingIcon,
+  sync: TestingIcon,
+  profile: ProfileIcon,
+  settings: SettingsIcon,
+  portal: GlobalIcon,
+  "portal-inventory": VmiIcon,
+  "portal-orders": ElseIcon,
+  "portal-documents": PackagingIcon,
+  "portal-notifications": GlobalIcon,
+  "portal-labels": PackagingIcon,
+  notifications: GlobalIcon,
 };
 
 const SHORT_LABEL_OVERRIDES: Record<string, string> = {
@@ -90,8 +88,8 @@ const SHORT_LABEL_OVERRIDES: Record<string, string> = {
   "billing-pricing": "Billing & Pricing",
 };
 
-function routeIcon(id: string): LucideIcon {
-  return ROUTE_ICON_MAP[id] ?? Circle;
+function routeIcon(id: string): ComponentType<BrandIconProps> {
+  return ROUTE_ICON_MAP[id] ?? GlobalIcon;
 }
 
 function toLabel(id: string): string {
@@ -238,7 +236,7 @@ function NavLink({
             ? "bg-white/20 text-white ring-2 ring-white/60 shadow-[0_4px_14px_rgba(0,0,0,0.18)] scale-105"
             : "text-white/75 hover:text-white hover:bg-white/10 hover:scale-105 active:scale-95"}`}
       >
-        <Icon size={22} strokeWidth={2.2} aria-hidden="true" className="motion-safe:transition-transform motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-110" />
+        <Icon size={22} strokeWidth={2.6} aria-hidden="true" className="motion-safe:transition-transform motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-110" />
         {entry.id === "approvals" && pendingApprovalCount > 0 && (
           <span
             data-testid="approval-count-badge"
@@ -278,7 +276,7 @@ function NavLink({
       aria-current={isActive ? "page" : undefined}
       onClick={onNavigate}
       data-active={isActive ? "true" : "false"}
-      className={`group relative flex ${compact ? "h-11 gap-3 rounded-full px-3" : "h-12 gap-3 rounded-full px-3"} items-center overflow-hidden font-label font-semibold
+      className={`group relative flex ${compact ? "min-h-11 gap-3 rounded-full px-3 py-1.5" : "h-12 gap-3 rounded-full px-3"} items-center font-label font-semibold
         ${floorText ? "text-mono-md" : "text-label"}
         motion-safe:transition-all motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
         focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-1
@@ -287,11 +285,11 @@ function NavLink({
           : "text-white/90 hover:translate-x-1 hover:bg-white/10 hover:text-white hover:bg-primary/[0.05] hover:shadow-sm"}`}
     >
       <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full motion-safe:transition-all motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${isActive ? "bg-blue-100/90 text-primary text-[#0b4d94]" : "bg-white/15 text-white group-hover:bg-white/25"}`}>
-        <Icon size={20} strokeWidth={2.2} aria-hidden="true" className="motion-safe:transition-transform motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-110" />
+        <Icon size={20} strokeWidth={2.6} aria-hidden="true" className="motion-safe:transition-transform motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-110" />
       </span>
-      <span className={`whitespace-nowrap min-w-0 flex-1 truncate motion-safe:transition-opacity motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${floorText ? "text-mono-md" : "text-label"} ${isActive ? "text-[#0b4d94] font-bold" : "text-white/90 font-semibold"}`}>{label}</span>
+      <span className={`min-w-0 flex-1 break-words leading-tight motion-safe:transition-opacity motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${floorText ? "text-mono-md" : "text-label"} ${isActive ? "text-[#0b4d94] font-bold" : "text-white/90 font-semibold"}`}>{label}</span>
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
-        {shortcutNumber && (
+        {shortcutNumber && !compact && (
           <kbd
             className={`pointer-events-none inline-flex rounded px-1.5 py-0.5 font-mono text-[11px] font-semibold leading-none shadow-sm transition-all ${
               isActive
@@ -647,7 +645,7 @@ function MoreOverlay({
       />
 
       {/* Bottom Sheet rising from bottom to up */}
-      <div className="relative z-10 flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-[28px] border-t border-brand-navy bg-brand-navy transition-transform duration-300 ease-out animate-in slide-in-from-bottom">
+      <div className="relative z-10 flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-lg border-t border-brand-navy bg-brand-navy transition-transform duration-300 ease-out animate-in slide-in-from-bottom">
         {/* Grab Handle */}
         <div className="flex justify-center pt-3 pb-1 shrink-0">
           <div className="h-1.5 w-12 rounded-full bg-white/30" aria-hidden="true" />

@@ -392,7 +392,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
               <span className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface">
                 <Image src="/logo-hd.png" alt="" width={32} height={32} priority />
               </span>
-              <span className="font-heading text-title-lg font-bold tracking-tight text-text-primary">
+              <span className="font-heading text-[22px] leading-7 font-bold tracking-tight text-text-primary">
                 Dyna-Serv WIMS
               </span>
             </Link>

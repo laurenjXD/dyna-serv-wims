@@ -59,6 +59,16 @@ import {
   Boxes,
   Info,
 } from "lucide-react";
+import {
+  ElseIcon,
+  EfeIcon,
+  FabricationIcon,
+  GlobalIcon,
+  PackagingIcon,
+  QualityIcon,
+  TestingIcon,
+  VmiIcon,
+} from "@/components/global/BrandIcons";
 
 export default function DesignSystemPage() {
   const [surfaceMode, setSurfaceMode] = useState<"office" | "floor">("office");
@@ -165,11 +175,43 @@ export default function DesignSystemPage() {
           </div>
         </section>
 
-        {/* Section 2: Typography & Font Size System */}
+        {/* Section 2: Brand Iconography */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <h2 className="font-heading text-headline-md font-bold">2. Service Icon Set</h2>
+            <Badge variant="primary" size="sm">Outline / 2.2px</Badge>
+          </div>
+          <Card surface={surfaceMode} padding="md">
+            <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
+              {[
+                { number: "01", label: "ELSE", Icon: ElseIcon },
+                { number: "02", label: "EFE", Icon: EfeIcon },
+                { number: "03", label: "VMI", Icon: VmiIcon },
+                { number: "04", label: "TESTING", Icon: TestingIcon },
+                { number: "05", label: "FABRICATION", Icon: FabricationIcon },
+                { number: "06", label: "PACKAGING", Icon: PackagingIcon },
+                { number: "07", label: "QUALITY", Icon: QualityIcon },
+                { number: "08", label: "GLOBAL", Icon: GlobalIcon },
+              ].map(({ number, label, Icon }) => (
+                <div key={label} className="flex flex-col items-center gap-2 text-center">
+                  <Icon size={48} className="text-primary" />
+                  <span className="font-label text-xs font-semibold tracking-[0.14em] text-text-secondary">
+                    {number} {label}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <p className="mt-6 text-body-sm text-text-secondary">
+              Outline-only service icons with rounded caps and joins. No gradients, fills, emoji, or icon fonts.
+            </p>
+          </Card>
+        </section>
+
+        {/* Section 3: Typography & Font Size System */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <h2 className="font-heading text-headline-md font-bold">2. Typography & Font Size Scale</h2>
+              <h2 className="font-heading text-headline-md font-bold">3. Typography & Font Size Scale</h2>
               <Badge variant="primary" size="sm">Avenir Next + Inter</Badge>
             </div>
             <div className="flex items-center gap-2">
