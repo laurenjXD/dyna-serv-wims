@@ -38,7 +38,7 @@
 //     live link (design.md §5's registry rule), and entries whose
 //     capability the context does not grant are omitted entirely (never
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { AuthorizationContext } from "@/lib/rbac/session";
 import { ShellNavigation } from "@/components/global/ShellNavigation";
@@ -536,4 +536,30 @@ describe("ShellNavigation connected desktop frame", () => {
     expect(within(sidebar).queryByRole("img", { name: /dyna-serv wims/i })).not.toBeInTheDocument();
     expect(within(sidebar).queryByText("Dyna-Serv WIMS")).not.toBeInTheDocument();
   });
+
+  it("renders floating portal tooltip on hover in collapsed mini sidebar mode", async () => {
+    render(
+      <ShellNavigation
+        tier="office"
+        context={officeContext}
+        currentPath="/inventory"
+        desktopOpen={false}
+      />,
+    );
+
+    const inventoryLink = screen.getByTestId("nav-entry-inventory");
+    // Initially tooltip is not visible
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+
+    // Hover
+    fireEvent.mouseEnter(inventoryLink);
+    const tooltip = await screen.findByRole("tooltip");
+    expect(tooltip).toBeInTheDocument();
+    expect(within(tooltip).getByText("Master Inventory")).toBeInTheDocument();
+
+    // Unhover
+    fireEvent.mouseLeave(inventoryLink);
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
 });
+

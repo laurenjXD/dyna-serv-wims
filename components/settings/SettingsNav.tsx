@@ -18,7 +18,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useState, useTransition, useEffect } from "react";
+import { Loader2 } from "lucide-react";
 
 const SETTINGS_NAV_ITEMS = [
   { id: "general", label: "General", href: "/settings/general" },
@@ -28,6 +30,22 @@ const SETTINGS_NAV_ITEMS = [
 
 export function SettingsNav() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPendingHref(null);
+  }, [pathname]);
+
+  const handleNav = (href: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    if (pathname === href || pathname?.startsWith(`${href}/`)) return;
+    setPendingHref(href);
+    startTransition(() => {
+      router.push(href);
+    });
+  };
 
   return (
     <nav
@@ -37,17 +55,21 @@ export function SettingsNav() {
     >
       {SETTINGS_NAV_ITEMS.map((item) => {
         const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`);
+        const isTargetPending = isPending && pendingHref === item.href;
+
         return (
           <Link
             key={item.id}
             href={item.href}
+            onClick={(e) => handleNav(item.href, e)}
             data-testid={`settings-nav-${item.id}`}
             aria-current={isActive ? "page" : undefined}
-            className={`relative flex min-h-16 shrink-0 cursor-pointer items-center whitespace-nowrap px-1 font-heading text-base font-bold tracking-wide transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy sm:text-lg ${
-              isActive ? "text-slate-950" : "text-slate-500 hover:text-slate-800"
+            className={`relative flex min-h-16 shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap px-1 font-heading text-base font-bold tracking-wide transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy sm:text-lg ${
+              isActive || isTargetPending ? "text-slate-950" : "text-slate-500 hover:text-slate-800"
             }`}
           >
             {item.label}
+            {isTargetPending && <Loader2 className="h-4 w-4 animate-spin text-brand-navy" />}
             {isActive && <span className="absolute inset-x-0 bottom-0 h-1 bg-brand-navy" />}
           </Link>
         );
@@ -55,3 +77,4 @@ export function SettingsNav() {
     </nav>
   );
 }
+

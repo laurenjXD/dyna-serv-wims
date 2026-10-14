@@ -72,50 +72,50 @@ export function MasterDocumentHeader({
 
       {/* Top Banner: Corporate Identity & Doc Metadata */}
       {headerAlignment === "center" ? (
-        <div className="flex flex-col items-center text-center space-y-1 mb-2">
+        <div className="flex flex-col items-center text-center space-y-0.5 mb-2">
           {logoUrl ? (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
               src={logoUrl}
               alt={companyName}
-              className="h-10 w-auto max-w-[150px] object-contain mb-1 print:h-9"
+              className="h-8 w-auto max-w-[130px] object-contain mb-1 print:h-7"
             />
           ) : null}
-          <h1 className="font-heading text-lg font-black tracking-tight text-slate-900 uppercase">
+          <h1 className="font-heading text-[15px] font-bold tracking-tight text-slate-900 uppercase">
             {companyName}
           </h1>
-          <p className="font-heading text-xs font-bold uppercase tracking-wider text-slate-600">
+          <p className="font-heading text-[11px] font-semibold uppercase tracking-wider text-slate-600">
             {subtitle}
           </p>
-          <p className="font-body text-xs text-slate-600 leading-tight max-w-xl">
+          <p className="font-body text-[11px] text-slate-600 leading-tight max-w-xl">
             {facilityAddress}
           </p>
           {contactInfo && (
-            <p className="font-body text-[11px] text-slate-500 font-mono">
+            <p className="font-mono text-[11px] text-slate-500">
               {contactInfo}
             </p>
           )}
           {hasSubMeta && (
-            <div className="flex flex-wrap justify-center items-center gap-2 pt-0.5 text-[10px] font-mono text-slate-600">
+            <div className="flex flex-wrap justify-center items-center gap-2 pt-0.5 text-[10px] font-mono text-slate-500">
               {taxOrPezaReg && <span className="font-semibold">{taxOrPezaReg}</span>}
               {taxOrPezaReg && isoAccreditation && <span>•</span>}
               {isoAccreditation && (
-                <span className="text-slate-500">{isoAccreditation}</span>
+                <span>{isoAccreditation}</span>
               )}
             </div>
           )}
 
-          {/* Document Reference Block for Centered Layout */}
-          <div className="mt-3 flex w-full flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-300 bg-slate-50/80 p-2.5 font-mono text-xs print:border-black print:bg-white">
-            <div className="flex items-center gap-2 text-left">
-              <span className="font-bold text-slate-500 uppercase text-[10px]">Doc Ref:</span>
-              <strong className="font-black text-slate-900 text-sm">{documentNumber ?? "OFFICIAL COPY"}</strong>
+          {/* Document Reference Block for Centered Layout (No bulky card) */}
+          <div className="mt-2.5 flex w-full flex-wrap items-center justify-between gap-3 font-mono text-[11px] text-slate-600 border-t border-slate-200/80 pt-2">
+            <div className="flex items-center gap-1.5 text-left">
+              <span className="uppercase text-slate-500 text-[10px]">Doc Ref:</span>
+              <strong className="font-bold text-slate-900 text-[12px]">{documentNumber ?? "OFFICIAL COPY"}</strong>
             </div>
 
             <div className="flex items-center gap-3">
-              <span>Date: <strong>{formattedDate}</strong></span>
+              <span>Date: <strong className="text-slate-800">{formattedDate}</strong></span>
               {status && (
-                <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-800 print:border print:border-black">
+                <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-700 print:border print:border-black">
                   {status}
                 </span>
               )}
@@ -124,9 +124,9 @@ export function MasterDocumentHeader({
                   <button
                     type="button"
                     onClick={() => window.print()}
-                    className="inline-flex h-7 items-center gap-1 rounded bg-slate-900 px-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800"
+                    className="inline-flex h-6 items-center gap-1 rounded bg-slate-900 px-2 text-[11px] font-bold text-white shadow-xs hover:bg-slate-800"
                   >
-                    <Printer size={12} />
+                    <Printer size={11} />
                     <span>Print</span>
                   </button>
                 </div>
@@ -138,68 +138,68 @@ export function MasterDocumentHeader({
         /* Left-aligned layout */
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           {/* Left: Organization & Facility Profile */}
-          <div className="space-y-1">
-            <div className="flex items-center gap-2.5">
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-2">
               {logoUrl ? (
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img
                   src={logoUrl}
                   alt={companyName}
-                  className="h-9 w-auto max-w-[130px] shrink-0 object-contain print:h-8"
+                  className="h-8 w-auto max-w-[120px] shrink-0 object-contain print:h-7"
                 />
               ) : null}
-              <h1 className="font-heading text-lg font-black tracking-tight text-slate-900 uppercase">
+              <h1 className="font-heading text-[15px] font-bold tracking-tight text-slate-900 uppercase">
                 {companyName}
               </h1>
             </div>
-            <p className="font-heading text-xs font-bold uppercase tracking-wider text-slate-600">
+            <p className="font-heading text-[11px] font-semibold uppercase tracking-wider text-slate-600">
               {subtitle}
             </p>
-            <p className="font-body text-xs text-slate-600 leading-tight">
+            <p className="font-body text-[11px] text-slate-600 leading-tight">
               {facilityAddress}
             </p>
             {contactInfo && (
-              <p className="font-body text-[11px] text-slate-500 font-mono">
+              <p className="font-mono text-[11px] text-slate-500">
                 {contactInfo}
               </p>
             )}
             {hasSubMeta && (
-              <div className="flex flex-wrap items-center gap-2 pt-0.5 text-[10px] font-mono text-slate-600">
+              <div className="flex flex-wrap items-center gap-2 pt-0.5 text-[10px] font-mono text-slate-500">
                 {taxOrPezaReg && <span className="font-semibold">{taxOrPezaReg}</span>}
                 {taxOrPezaReg && isoAccreditation && <span>•</span>}
                 {isoAccreditation && (
-                  <span className="text-slate-500">{isoAccreditation}</span>
+                  <span>{isoAccreditation}</span>
                 )}
               </div>
             )}
           </div>
 
-          {/* Right: Document Designation & Actions */}
+          {/* Right: Document Designation & Actions (No bulky card) */}
           <div className="flex flex-col sm:items-end justify-between self-stretch shrink-0">
             {showPrintButton && (
-              <div className="print-header-actions mb-2 flex items-center gap-2">
+              <div className="print-header-actions mb-1.5 flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-slate-900 px-3 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition-all active:scale-[0.98]"
+                  className="inline-flex h-7 items-center gap-1.5 rounded-lg bg-slate-900 px-2.5 text-[11px] font-bold text-white shadow-xs hover:bg-slate-800 transition-all active:scale-[0.98]"
                 >
-                  <Printer size={13} />
+                  <Printer size={12} />
                   <span>Print Document</span>
                 </button>
               </div>
             )}
 
-            <div className="rounded-lg border border-slate-300 bg-slate-50/80 p-2.5 sm:text-right min-w-[210px] print:border-black print:bg-white">
-              <div className="font-mono text-xs font-bold uppercase tracking-wide text-slate-500">
-                Document Ref
+            <div className="sm:text-right font-mono text-[11px] space-y-0.5">
+              <div className="flex items-center sm:justify-end gap-1.5">
+                <span className="text-slate-500 uppercase text-[10px]">Doc Ref:</span>
+                <strong className="font-bold text-slate-900 text-[12px] tracking-tight">
+                  {documentNumber ?? "OFFICIAL COPY"}
+                </strong>
               </div>
-              <div className="font-mono text-base font-black text-slate-900 tracking-tight">
-                {documentNumber ?? "OFFICIAL COPY"}
-              </div>
-              <div className="mt-1 flex items-center justify-between sm:justify-end gap-3 text-xs font-mono text-slate-600">
-                <span>Date: <strong>{formattedDate}</strong></span>
+              <div className="flex items-center sm:justify-end gap-2 text-slate-600">
+                <span>Date: <strong className="text-slate-800">{formattedDate}</strong></span>
                 {status && (
-                  <span className="rounded bg-slate-200 px-1.5 py-0.2 text-[10px] font-bold uppercase tracking-wider text-slate-800 print:border print:border-black">
+                  <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-700 print:border print:border-black">
                     {status}
                   </span>
                 )}
@@ -211,16 +211,16 @@ export function MasterDocumentHeader({
 
       {/* Document Title Banner */}
       <div
-        className={`mt-4 flex items-center border-t border-slate-200 pt-3 ${
+        className={`mt-3 flex items-center border-t border-slate-200 pt-2.5 ${
           titleAlignment === "center"
-            ? "flex-col justify-center text-center gap-1"
+            ? "flex-col justify-center text-center gap-0.5"
             : "justify-between"
         }`}
       >
-        <h2 className="font-heading text-base font-extrabold uppercase tracking-wide text-slate-900">
+        <h2 className="font-heading text-sm font-bold uppercase tracking-wider text-slate-900">
           {documentTitle}
         </h2>
-        <span className="font-mono text-xs font-medium text-slate-500">
+        <span className="font-mono text-[11px] font-medium text-slate-500">
           Warehouse: <strong className="text-slate-700">{warehouseName}</strong>
         </span>
       </div>

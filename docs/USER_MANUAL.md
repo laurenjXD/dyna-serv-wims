@@ -30,3 +30,18 @@ Welcome to the **Dyna-Serv Warehouse Inventory Management System (WIMS)** user m
 * Item Master Enrollment, SPQ Definitions & Dimension Specifications
 * On-the-Fly Category & Subcategory Creation and Inline Editing
 * Financial Pricing (Unit/Box Buying & Selling Rates, Margin Calculation)
+
+### 5. [Warehouse Document Printing, Signatures & Compliance](./user-manual/document-printing-and-compliance.md)
+* Standardized 3-Tier Accountability Signatures (`Floor Staff/Receiver`, `QC Inspector/Lead`, `Warehouse Supervisor Approval`)
+* Print CSS Page-Break Protection (`page-break-inside: avoid !important`)
+* Document Reprint Watermark Security (`REPRINT — [Timestamp]` at 20% opacity) & Audit Trail
+* Pricing Model Treatment & Confidentiality Notices (Trading Final vs. VMI Reference)
+* Permanent Tiered Document Retention Policy (3 Years Hot in Supabase $\rightarrow$ Secure Cold Archive)
+
+### 6. [Edge Cases, Error Handling & System Exception Guide](./user-manual/edge-cases-and-troubleshooting.md)
+* The 3-Component Error Feedback Standard (**What happened**, **Why it failed**, **Next Action / Solution**)
+* Inbound Receiving Edge Cases (WRR header QR mis-scan, advance notice unconfirmed, visual damage splits, OS&D shortages, capacity allocation splits, and commit idempotency)
+* Storage & Quality Control Edge Cases (quarantined lot pick prevention, inspection split dispositions, rack capacity overfill)
+* Outbound Withdrawal Edge Cases (provisional item code gate, FIFO/FEFO override approvals, stock reservation races)
+* Physical Picking & Dispatch Gate Edge Cases (premature dispatch prevention, rack shortages, shared QR disambiguation, 24h commitment TTL expiry, concurrent dispatch row locks & CAS checks, and non-fatal PDF generation recovery)
+

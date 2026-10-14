@@ -1091,22 +1091,22 @@ export function GeneralSettingsForm({ initialSettings }: { initialSettings: Gene
               />
 
               {/* Sample Document Body Content */}
-              <div className="space-y-4 pt-2">
-                <div className="grid grid-cols-2 gap-4 text-xs">
-                  <div className="rounded border border-slate-200 p-2.5 bg-slate-50/50">
-                    <span className="font-bold text-slate-600 block uppercase text-[10px]">Supplier / Principal</span>
-                    <strong className="text-slate-900">UNIVERSAL COMPONENTS ASIA LTD.</strong>
-                    <p className="text-slate-500 text-[11px]">Ecozone Logistics Supplier</p>
+              <div className="space-y-3 pt-2">
+                <div className="grid grid-cols-2 gap-3 text-[11px]">
+                  <div className="rounded border border-slate-200 p-2 bg-slate-50/50">
+                    <span className="font-bold text-slate-500 block uppercase text-[10px]">Supplier / Principal</span>
+                    <strong className="text-slate-900 text-[11px]">UNIVERSAL COMPONENTS ASIA LTD.</strong>
+                    <p className="text-slate-500 text-[10px]">Ecozone Logistics Supplier</p>
                   </div>
-                  <div className="rounded border border-slate-200 p-2.5 bg-slate-50/50">
-                    <span className="font-bold text-slate-600 block uppercase text-[10px]">Storage Model &amp; Terms</span>
-                    <strong className="text-slate-900">VMI Bonded Storage (Zone A)</strong>
-                    <p className="text-slate-500 text-[11px]">LOA Reference: PEZA-LOA-2026-0891</p>
+                  <div className="rounded border border-slate-200 p-2 bg-slate-50/50">
+                    <span className="font-bold text-slate-500 block uppercase text-[10px]">Storage Model &amp; Terms</span>
+                    <strong className="text-slate-900 text-[11px]">VMI Bonded Storage (Zone A)</strong>
+                    <p className="text-slate-500 text-[10px]">LOA Reference: PEZA-LOA-2026-0891</p>
                   </div>
                 </div>
 
                 <div className="overflow-hidden rounded border border-slate-200">
-                  <table className="w-full text-left text-xs">
+                  <table className="w-full text-left text-[11px]">
                     <thead className="bg-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-700">
                       <tr>
                         <th className="p-2">Item Code</th>

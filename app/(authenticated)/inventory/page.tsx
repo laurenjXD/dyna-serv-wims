@@ -101,9 +101,17 @@ export default async function InventoryPage({ searchParams }: PageProps) {
             );
           })}
         </div>
-        <div className="flex items-center pb-2">
-          <Link href="/inventory/export" className="inline-flex h-11 items-center gap-2 rounded bg-on-surface px-4 font-label text-label font-semibold text-surface-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"><Download size={16} aria-hidden="true" />Export Excel</Link>
-        </div>
+        {activeTab === "stock-view" && (
+          <div className="flex items-center pb-2">
+            <Link
+              href="/inventory/export"
+              className="inline-flex h-11 items-center gap-2 rounded bg-on-surface px-4 font-label text-label font-semibold text-surface-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+            >
+              <Download size={16} aria-hidden="true" />
+              Export Excel
+            </Link>
+          </div>
+        )}
       </div>
 
       {pickListError && (
