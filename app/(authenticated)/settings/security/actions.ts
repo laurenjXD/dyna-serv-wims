@@ -11,6 +11,7 @@ import { auditLog, rbacSecurityEvents, userProfiles } from "@/lib/db/schema";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { parseUserAgentDevice } from "@/lib/user-settings/device-parser";
 
 export interface SecuritySettingsData {
   network: {
@@ -202,6 +203,8 @@ export async function verifyFloorNetworkAccess(): Promise<{ allowed: boolean; re
   return { allowed: true };
 }
 
+
+
 export async function listActiveSessions(): Promise<{ ok: true; data: ActiveSessionItem[] } | { ok: false; error: string }> {
   const resolver = await createPageResolver();
   const permission = await requirePermission(resolver, "users.read");
@@ -210,38 +213,73 @@ export async function listActiveSessions(): Promise<{ ok: true; data: ActiveSess
   }
 
   try {
-    const serviceClient = createServiceRoleClient();
-    const [{ data: authUsers }, profiles] = await Promise.all([
-      serviceClient.auth.admin.listUsers().catch(() => ({ data: { users: [] } })),
-      db.select({ id: userProfiles.id, displayName: userProfiles.displayName, status: userProfiles.status }).from(userProfiles),
-    ]);
+    const settingsRes = await getSecuritySettings();
+    const allowedRanges = settingsRes.ok ? settingsRes.data.network.allowedIpRanges : [];
+    const mobileTimeoutMinutes = settingsRes.ok ? settingsRes.data.sessionConfig.mobileIdleTimeoutMinutes : 15;
+    const desktopTimeoutMinutes = settingsRes.ok ? settingsRes.data.sessionConfig.desktopIdleTimeoutMinutes : 60;
 
-    const profileMap = new Map(profiles.map((p) => [p.id, p]));
-    const users = authUsers?.users ?? [];
+    // Query real active sessions from PostgreSQL auth.sessions joined with auth.users & user_profiles
+    const rawSessions = (await db.execute(sql`
+      SELECT 
+        s.id as session_id,
+        s.user_id,
+        s.created_at,
+        s.updated_at,
+        s.user_agent,
+        s.ip::text as ip_address,
+        u.email,
+        u.raw_user_meta_data,
+        p.display_name,
+        p.status as profile_status
+      FROM auth.sessions s
+      LEFT JOIN auth.users u ON u.id = s.user_id
+      LEFT JOIN public.user_profiles p ON p.id = s.user_id
+      ORDER BY s.updated_at DESC
+      LIMIT 50;
+    `)) as Array<{
+      session_id: string;
+      user_id: string;
+      created_at: string | Date;
+      updated_at: string | Date;
+      user_agent: string | null;
+      ip_address: string | null;
+      email: string | null;
+      raw_user_meta_data: Record<string, unknown> | null;
+      display_name: string | null;
+      profile_status: string | null;
+    }>;
 
-    const sessions: ActiveSessionItem[] = users
-      .filter((u) => u.last_sign_in_at)
-      .map((u) => {
-        const p = profileMap.get(u.id);
-        const shortId = u.id.replace(/-/g, "").substring(0, 4).toUpperCase();
-        return {
-          id: `sess-${u.id}`,
-          userId: u.id,
-          userName: p?.displayName || (u.user_metadata?.displayName as string) || u.email?.split("@")[0] || "Operator",
-          employeeId: (u.user_metadata?.employee_id as string) || `EMP-${shortId}`,
-          deviceAlias: "Web Browser Client",
-          browserUserAgent: u.email ? `Authenticated User (${u.email})` : "Active Browser Client",
-          ipAddress: "Internal Network",
-          connectedZone: p?.status === "active" ? "Authorized Session" : "Inactive",
-          sessionUuid: `SESS-${shortId}-${u.id.substring(u.id.length - 4).toUpperCase()}`,
-          loginTime: u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleTimeString() : "—",
-          lastActiveTime: u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleDateString() : "—",
-          status: p?.status === "active" ? "active" : "idle",
-        };
-      });
+    const now = Date.now();
+    const sessions: ActiveSessionItem[] = rawSessions.map((s) => {
+      const shortId = (s.user_id || "").replace(/-/g, "").substring(0, 4).toUpperCase();
+      const parsed = parseUserAgentDevice(s.user_agent);
+      const rawIp = s.ip_address?.replace(/\/32$/, "").trim() || "127.0.0.1";
+      const isAllowed = allowedRanges.some((cidr) => isIpInCidr(rawIp, cidr));
+
+      const updatedTime = new Date(s.updated_at).getTime();
+      const diffMinutes = (now - updatedTime) / (60 * 1000);
+      const timeoutLimit = parsed.isMobile ? mobileTimeoutMinutes : desktopTimeoutMinutes;
+      const isSessionActive = diffMinutes <= timeoutLimit;
+
+      return {
+        id: s.session_id,
+        userId: s.user_id,
+        userName: s.display_name || (s.raw_user_meta_data?.displayName as string) || s.email?.split("@")[0] || "Operator",
+        employeeId: (s.raw_user_meta_data?.employee_id as string) || `EMP-${shortId}`,
+        deviceAlias: parsed.deviceAlias,
+        browserUserAgent: parsed.browserSummary,
+        ipAddress: rawIp,
+        connectedZone: isAllowed ? "Authorized Warehouse Wi-Fi" : "External / Remote Network",
+        sessionUuid: `SESS-${s.session_id.substring(0, 8).toUpperCase()}`,
+        loginTime: new Date(s.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        lastActiveTime: new Date(s.updated_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        status: isSessionActive ? "active" : "idle",
+      };
+    });
 
     return { ok: true, data: sessions };
-  } catch {
+  } catch (err) {
+    console.error("Failed to query real sessions:", err);
     return { ok: true, data: [] };
   }
 }
@@ -253,14 +291,22 @@ export async function terminateAllMobileSessions(): Promise<{ ok: true; count: n
     return { ok: false, error: "Access denied." };
   }
 
-  // Emergency session kill-switch across users
+  // Real emergency kill-switch: identify mobile sessions and delete from auth.sessions
   try {
-    const serviceClient = createServiceRoleClient();
-    const { data: authUsers } = await serviceClient.auth.admin.listUsers();
+    const rawSessions = (await db.execute(sql`
+      SELECT id, user_id, user_agent FROM auth.sessions;
+    `)) as Array<{ id: string; user_id: string; user_agent: string | null }>;
+
+    const mobileSessionIds = rawSessions
+      .filter((s) => parseUserAgentDevice(s.user_agent).isMobile)
+      .map((s) => s.id);
+
     let count = 0;
-    for (const u of authUsers?.users ?? []) {
-      await serviceClient.auth.admin.signOut(u.id).catch(() => {});
-      count++;
+    if (mobileSessionIds.length > 0) {
+      await db.execute(sql`
+        DELETE FROM auth.sessions WHERE id = ANY(${mobileSessionIds}::uuid[]);
+      `);
+      count = mobileSessionIds.length;
     }
 
     // Write audit record
@@ -272,6 +318,7 @@ export async function terminateAllMobileSessions(): Promise<{ ok: true; count: n
       entityId: permission.context.userId,
       diffData: {
         disconnectedDeviceCount: count,
+        terminatedSessionIds: mobileSessionIds,
         event: "floor_mobile_sessions_terminated",
       },
       correlationId: `KILLSWITCH-${Date.now()}`,
@@ -279,9 +326,10 @@ export async function terminateAllMobileSessions(): Promise<{ ok: true; count: n
 
     revalidatePath("/settings/security");
     return { ok: true, count };
-  } catch {
+  } catch (err) {
+    console.error("Failed to terminate mobile sessions:", err);
     revalidatePath("/settings/security");
-    return { ok: true, count: 0 };
+    return { ok: false, error: "Failed to execute emergency session termination." };
   }
 }
 

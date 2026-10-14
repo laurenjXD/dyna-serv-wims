@@ -3,6 +3,7 @@
 // Server Actions backing `/settings/general` — Facility, Scanner Engine, and Floor Alert configurations.
 
 import { revalidatePath } from "next/cache";
+import { eq, desc } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { auditLog } from "@/lib/db/schema";
 import { createPageResolver } from "@/lib/auth/page-resolver";
@@ -118,6 +119,36 @@ export async function getGeneralSettings(): Promise<{ ok: true; data: GeneralSet
     return { ok: false, error: "Access restricted to administrators." };
   }
 
+  try {
+    const latest = await db
+      .select({ diffData: auditLog.diffData })
+      .from(auditLog)
+      .where(eq(auditLog.action, "general_settings_updated"))
+      .orderBy(desc(auditLog.createdAt))
+      .limit(1);
+
+    if (latest.length > 0 && latest[0]?.diffData && typeof latest[0].diffData === "object") {
+      const persisted = (latest[0].diffData as Record<string, unknown>).settings as GeneralSettingsData | undefined;
+      if (persisted && persisted.facility) {
+        runtimeGeneralSettings = {
+          facility: { ...DEFAULT_SETTINGS.facility, ...persisted.facility },
+          scanner: {
+            ...DEFAULT_SETTINGS.scanner,
+            ...persisted.scanner,
+            symbologies: {
+              ...DEFAULT_SETTINGS.scanner.symbologies,
+              ...(persisted.scanner?.symbologies ?? {}),
+            },
+          },
+          alerts: { ...DEFAULT_SETTINGS.alerts, ...persisted.alerts },
+          printTemplate: { ...DEFAULT_SETTINGS.printTemplate, ...(persisted.printTemplate ?? {}) },
+        };
+      }
+    }
+  } catch {
+    // fallback to runtime state if DB read encounters an issue
+  }
+
   return { ok: true, data: runtimeGeneralSettings };
 }
 
@@ -130,7 +161,7 @@ export async function saveGeneralSettings(settings: GeneralSettingsData): Promis
 
   runtimeGeneralSettings = { ...settings };
 
-  // Record audit log
+  // Record audit log with full snapshot and key fields
   try {
     await db.insert(auditLog).values({
       actorUserId: permission.context.userId,
@@ -139,6 +170,7 @@ export async function saveGeneralSettings(settings: GeneralSettingsData): Promis
       entityType: "system_preferences",
       entityId: permission.context.userId,
       diffData: {
+        settings,
         companyName: settings.facility.companyName,
         facilityName: settings.facility.facilityName,
         physicalAddress: settings.facility.physicalAddress,
@@ -155,3 +187,4 @@ export async function saveGeneralSettings(settings: GeneralSettingsData): Promis
   revalidatePath("/settings/general");
   return { ok: true };
 }
+

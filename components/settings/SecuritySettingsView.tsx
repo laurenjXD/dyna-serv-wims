@@ -461,8 +461,15 @@ export function SecuritySettingsView({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {sessions.map((s) => (
-                    <tr key={s.id} className="hover:bg-slate-50">
+                  {sessions.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-8 text-center text-slate-500 font-body">
+                        No active device sessions connected.
+                      </td>
+                    </tr>
+                  ) : (
+                    sessions.map((s) => (
+                      <tr key={s.id} className="hover:bg-slate-50">
                       <td className="py-2.5 px-3">
                         <span className="font-heading font-bold text-slate-900 block">{s.userName}</span>
                         <span className="font-mono text-[10px] text-slate-500">{s.employeeId}</span>
@@ -493,7 +500,8 @@ export function SecuritySettingsView({
                         </span>
                       </td>
                     </tr>
-                  ))}
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

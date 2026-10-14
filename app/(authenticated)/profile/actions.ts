@@ -5,7 +5,8 @@
 // BYOD session binding, and self-service personal activity log.
 
 import { revalidatePath } from "next/cache";
-import { eq, desc } from "drizzle-orm";
+import { headers } from "next/headers";
+import { eq, desc, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { userProfiles, userRoles, roles, auditLog } from "@/lib/db/schema";
 import { withRlsTransaction } from "@/lib/db/rls-transaction";
@@ -174,32 +175,62 @@ export async function getOwnProfile(): Promise<OwnProfile | null> {
     // Database empty or initial state
   }
 
-  // If newly provisioned user has no mutation records yet, supply active shift onboarding activities
-  if (recentActivity.length === 0) {
-    recentActivity = [
-      {
-        id: `act-init-1-${data.user.id.substring(0, 4)}`,
-        action: "Shift QR Check-In Bound",
-        entityType: "session",
-        entityId: "SHIFT-ZONE-A",
-        timestamp: new Date().toISOString(),
-        details: "BYOD hardware fingerprint verified and bound to Zone A Intake staging area.",
-      },
-      {
-        id: `act-init-2-${data.user.id.substring(0, 4)}`,
-        action: "Floor Permissions Synchronized",
-        entityType: "rbac",
-        entityId: "AUTH-OK",
-        timestamp: new Date(Date.now() - 3600000).toISOString(),
-        details: "Dynamic capability matrix resolved for active warehouse operations.",
-      },
-    ];
-  }
-
   const shortId = data.user.id.replace(/-/g, "").substring(0, 4).toUpperCase();
   const employeeId = (data.user.user_metadata?.employee_id as string) || `EMP-${shortId}`;
   const phone = (data.user.user_metadata?.phone as string) || (data.user.phone ?? "");
   const avatarUrl = (data.user.user_metadata?.avatar_url as string) || null;
+
+  let deviceAlias = "Desktop Workstation";
+  let browserUserAgent = "Web Browser Client";
+  let clientIp = "127.0.0.1";
+  let isMobile = false;
+
+  try {
+    const headersList = await headers();
+    const ua = headersList.get("user-agent") || "";
+    const forwarded = headersList.get("x-forwarded-for");
+    const realIp = headersList.get("x-real-ip");
+    clientIp = (forwarded ? forwarded.split(",")[0].trim() : realIp) || "127.0.0.1";
+
+    if (ua) {
+      isMobile = /mobile|android|iphone|ipad|ipod|blackberry|opera mini|iemobile|wpdesktop|zebra|handheld/i.test(ua);
+      if (ua.includes("Edg/")) browserUserAgent = "Microsoft Edge";
+      else if (ua.includes("Chrome/")) browserUserAgent = "Google Chrome";
+      else if (ua.includes("Safari/") && !ua.includes("Chrome/")) browserUserAgent = "Apple Safari";
+      else if (ua.includes("Firefox/")) browserUserAgent = "Mozilla Firefox";
+
+      if (isMobile) {
+        if (ua.includes("Android")) deviceAlias = "BYOD Mobile · Android Handheld";
+        else if (ua.includes("iPhone")) deviceAlias = "BYOD Mobile · Apple iPhone";
+        else if (ua.includes("iPad")) deviceAlias = "BYOD Tablet · Apple iPad";
+        else deviceAlias = "BYOD Mobile Handheld";
+      } else {
+        if (ua.includes("Windows")) deviceAlias = "Office Workstation · Windows";
+        else if (ua.includes("Macintosh")) deviceAlias = "Office Workstation · macOS";
+        else deviceAlias = "Office Workstation Client";
+      }
+    }
+  } catch {
+    // Non-request context
+  }
+
+  let realSessionId = `SESS-${shortId}-${data.user.id.substring(data.user.id.length - 4).toUpperCase()}`;
+  try {
+    const sessionRes = (await db.execute(sql`
+      SELECT id, created_at, updated_at
+      FROM auth.sessions
+      WHERE user_id = ${data.user.id}::uuid
+      ORDER BY updated_at DESC
+      LIMIT 1;
+    `)) as Array<{ id: string; created_at: string | Date; updated_at: string | Date }>;
+    if (sessionRes.length > 0 && sessionRes[0].id) {
+      realSessionId = `SESS-${sessionRes[0].id.substring(0, 8).toUpperCase()}`;
+    }
+  } catch {
+    // fallback if auth.sessions query fails
+  }
+
+  const isInternalIp = clientIp === "127.0.0.1" || clientIp === "::1" || clientIp.startsWith("192.168.") || clientIp.startsWith("10.");
 
   return {
     id: data.user.id,
@@ -213,13 +244,13 @@ export async function getOwnProfile(): Promise<OwnProfile | null> {
     roles: activeRoles,
     effectivePermissions,
     session: {
-      sessionId: `SESS-${shortId}-${data.user.id.substring(data.user.id.length - 4).toUpperCase()}`,
-      deviceAlias: "Active Connected BYOD Session",
-      browserUserAgent: "Browser Session",
-      shiftBinding: "Active Shift QR Binding",
-      connectedZone: "Warehouse Floor",
-      ipAddress: "Internal Network",
-      loginTime: data.user.last_sign_in_at ? new Date(data.user.last_sign_in_at).toLocaleTimeString() : "—",
+      sessionId: realSessionId,
+      deviceAlias,
+      browserUserAgent,
+      shiftBinding: isMobile ? "Floor Handheld Scanner Mode" : "Desktop Workstation Mode",
+      connectedZone: isInternalIp ? "Internal Warehouse Wi-Fi (Authorized)" : "External / Remote Network",
+      ipAddress: clientIp,
+      loginTime: data.user.last_sign_in_at ? new Date(data.user.last_sign_in_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Active Now",
     },
     recentActivity,
   };
