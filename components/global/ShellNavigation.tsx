@@ -6,7 +6,8 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -172,6 +173,138 @@ function resolveNavigationActiveId(currentPath: string, activeId: string | null)
   return activeId;
 }
 
+function MiniNavLink({
+  entry,
+  isActive,
+  onNavigate,
+  pendingApprovalCount = 0,
+  shortcutNumber,
+}: {
+  entry: RouteRegistryEntry;
+  isActive: boolean;
+  onNavigate?: () => void;
+  pendingApprovalCount?: number;
+  shortcutNumber?: number;
+}) {
+  const Icon = routeIcon(entry.id);
+  const label = toLabel(entry.id);
+  const [isHovered, setIsHovered] = useState(false);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const linkRef = useRef<HTMLAnchorElement | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const updatePosition = () => {
+    if (linkRef.current) {
+      const rect = linkRef.current.getBoundingClientRect();
+      const navRect = linkRef.current.closest("nav")?.getBoundingClientRect();
+      setCoords({
+        top: rect.top + rect.height / 2,
+        left: (navRect?.right ?? 88) + 8,
+      });
+    }
+  };
+
+  const handleMouseEnter = () => {
+    updatePosition();
+    setIsHovered(true);
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+  };
+
+  useEffect(() => {
+    if (!isHovered) return;
+    const handleScrollOrResize = () => setIsHovered(false);
+    window.addEventListener("scroll", handleScrollOrResize, true);
+    window.addEventListener("resize", handleScrollOrResize);
+    return () => {
+      window.removeEventListener("scroll", handleScrollOrResize, true);
+      window.removeEventListener("resize", handleScrollOrResize);
+    };
+  }, [isHovered]);
+
+  return (
+    <>
+      <Link
+        ref={linkRef}
+        href={entry.path}
+        data-testid={`nav-entry-${entry.id}`}
+        aria-current={isActive ? "page" : undefined}
+        aria-label={`${label}${shortcutNumber ? ` (${shortcutLabel(shortcutNumber - 1)})` : ""}`}
+        onClick={() => {
+          setIsHovered(false);
+          onNavigate?.();
+        }}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        onFocus={handleMouseEnter}
+        onBlur={handleMouseLeave}
+        data-active={isActive ? "true" : "false"}
+        className={`group relative mx-auto flex h-11 w-11 items-center justify-center rounded-full
+          motion-safe:transition-all motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80
+          ${isActive
+            ? "bg-white/20 text-white ring-2 ring-white/60 shadow-[0_4px_14px_rgba(0,0,0,0.18)] scale-105"
+            : "text-white/75 hover:text-white hover:bg-white/10 hover:scale-105 active:scale-95"}`}
+      >
+        <Icon
+          size={22}
+          strokeWidth={2.6}
+          aria-hidden="true"
+          className="motion-safe:transition-transform motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-110"
+        />
+        {entry.id === "approvals" && pendingApprovalCount > 0 && (
+          <span
+            data-testid="approval-count-badge"
+            className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-[#0b4d94] bg-red-500 text-[10px] font-bold text-white shadow-sm"
+          >
+            {pendingApprovalCount > 9 ? "9+" : pendingApprovalCount}
+          </span>
+        )}
+      </Link>
+
+      {mounted && isHovered && coords && typeof document !== "undefined" && createPortal(
+        <div
+          role="tooltip"
+          style={{
+            position: "fixed",
+            top: `${coords.top}px`,
+            left: `${coords.left}px`,
+            transform: "translateY(-50%)",
+            zIndex: 60,
+          }}
+          className="pointer-events-none flex items-center gap-2 rounded-xl bg-brand-navy px-3 py-1.5 border border-white/15 shadow-[0_4px_20px_rgba(0,0,0,0.35)] whitespace-nowrap animate-in fade-in zoom-in-95 duration-150"
+        >
+          {/* Arrow */}
+          <span
+            className="absolute -left-1 top-1/2 -translate-y-1/2 h-2 w-2 rotate-45 bg-brand-navy border-b border-l border-white/15"
+            aria-hidden="true"
+          />
+          <span className="font-heading text-xs font-bold text-white tracking-wide">
+            {label}
+          </span>
+          {isActive && (
+            <span className="rounded-full bg-blue-500/20 border border-blue-400/40 px-1.5 py-0.5 text-[10px] font-bold text-blue-300">
+              Active
+            </span>
+          )}
+          {shortcutNumber && (
+            <kbd className="rounded border border-white/20 bg-white/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-slate-300">
+              {shortcutLabel(shortcutNumber - 1)}
+            </kbd>
+          )}
+        </div>,
+        document.body
+      )}
+    </>
+  );
+}
+
 function NavLink({
   entry,
   isActive,
@@ -222,50 +355,13 @@ function NavLink({
 
   if (isMini) {
     return (
-      <Link
-        href={entry.path}
-        data-testid={`nav-entry-${entry.id}`}
-        aria-current={isActive ? "page" : undefined}
-        onClick={onNavigate}
-        title={`${label}${shortcutNumber ? ` (${shortcutLabel(shortcutNumber - 1)})` : ""}`}
-        data-active={isActive ? "true" : "false"}
-        className={`group relative mx-auto flex h-11 w-11 items-center justify-center rounded-full
-          motion-safe:transition-all motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
-          focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80
-          ${isActive
-            ? "bg-white/20 text-white ring-2 ring-white/60 shadow-[0_4px_14px_rgba(0,0,0,0.18)] scale-105"
-            : "text-white/75 hover:text-white hover:bg-white/10 hover:scale-105 active:scale-95"}`}
-      >
-        <Icon size={22} strokeWidth={2.6} aria-hidden="true" className="motion-safe:transition-transform motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-110" />
-        {entry.id === "approvals" && pendingApprovalCount > 0 && (
-          <span
-            data-testid="approval-count-badge"
-            className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-[#0b4d94] bg-red-500 text-[10px] font-bold text-white shadow-sm"
-          >
-            {pendingApprovalCount > 9 ? "9+" : pendingApprovalCount}
-          </span>
-        )}
-
-        {/* Floating Tooltip displaying current tab name on hover */}
-        <div
-          role="tooltip"
-          className="pointer-events-none absolute left-[calc(100%+14px)] top-1/2 z-50 -translate-y-1/2 hidden group-hover:flex items-center gap-2 rounded-xl bg-brand-navy px-3 py-1.5 border border-white/10 opacity-0 group-hover:opacity-100 group-hover:scale-100 scale-95 transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none whitespace-nowrap"
-        >
-          {/* Arrow */}
-          <span className="absolute -left-1 top-1/2 -translate-y-1/2 h-2 w-2 rotate-45 bg-brand-navy border-b border-l border-white/10" aria-hidden="true" />
-          <span className="font-heading text-xs font-bold text-white tracking-wide">{label}</span>
-          {isActive && (
-            <span className="rounded-full bg-blue-500/20 border border-blue-400/40 px-1.5 py-0.5 text-[10px] font-bold text-blue-300">
-              Active
-            </span>
-          )}
-          {shortcutNumber && (
-            <kbd className="rounded border border-white/20 bg-white/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-slate-300">
-              {shortcutLabel(shortcutNumber - 1)}
-            </kbd>
-          )}
-        </div>
-      </Link>
+      <MiniNavLink
+        entry={entry}
+        isActive={isActive}
+        onNavigate={onNavigate}
+        pendingApprovalCount={pendingApprovalCount}
+        shortcutNumber={shortcutNumber}
+      />
     );
   }
 
