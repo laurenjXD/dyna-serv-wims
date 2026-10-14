@@ -1,6 +1,6 @@
 // `parties` & `party_roles` — specs/01-core-data-model/design.md §1.2
-import { pgTable, uuid, varchar, text, boolean, timestamp } from "drizzle-orm/pg-core";
-import { partyRoleEnum } from "./enums";
+import { pgTable, uuid, varchar, text, boolean, timestamp, unique } from "drizzle-orm/pg-core";
+import { partyRoleEnum, rbeClassificationEnum } from "./enums";
 
 export const parties = pgTable("parties", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -24,4 +24,11 @@ export const partyRoles = pgTable("party_roles", {
   partyId: uuid("party_id").references(() => parties.id, { onDelete: "cascade" }).notNull(),
   role: partyRoleEnum("role").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [unique("party_roles_party_role_unique").on(table.partyId, table.role)]);
+
+export const partyRbeClassifications = pgTable("party_rbe_classifications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  partyId: uuid("party_id").references(() => parties.id, { onDelete: "cascade" }).notNull(),
+  classification: rbeClassificationEnum("classification").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [unique("party_rbe_party_classification_unique").on(table.partyId, table.classification)]);

@@ -67,7 +67,7 @@ async function main() {
 
     // Inbound-supplying role so this party can also exercise the
     // vendor/supplier-only portal surfaces (e.g. the pre-ship label page).
-    await db.insert(partyRoles).values({ partyId: testParty.id, role: "vendor" });
+    await db.insert(partyRoles).values({ partyId: testParty.id, role: "supplier" });
   } else {
     console.log(`Reusing existing test party: ${testParty.name} (${testParty.id})`);
   }

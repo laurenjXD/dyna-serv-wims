@@ -76,11 +76,10 @@ describe("parties.ts — party_roles table (Req 3)", () => {
     const role = column(partyRoles, "role");
     expect(role.notNull).toBe(true);
     expect(role.enumValues).toEqual([
-      "vendor",
       "supplier",
       "customer",
       "end_customer",
-      "internal_warehouse",
+      "internal_supplies",
     ]);
   });
 });

@@ -331,7 +331,7 @@ describe("computeNextPartyCode — dynamic serialization by role", () => {
 
   it("handles end_customer and internal_warehouse role prefixes", () => {
     expect(computeNextPartyCode(["end_customer"], [])).toBe("ENDCUST-001");
-    expect(computeNextPartyCode(["internal_warehouse"], ["WH-001"])).toBe("WH-002");
+    expect(computeNextPartyCode(["internal_supplies"], ["WH-001"])).toBe("WH-002");
   });
 
   it("combines two roles dynamically into a composite code prefix", () => {
@@ -352,17 +352,17 @@ describe("computeNextPartyCode — dynamic serialization by role", () => {
     const code1 = computeNextPartyCode(["customer", "supplier"], ["SUP-CUST-001"]);
     expect(code1).toBe("SUP-CUST-002");
 
-    const code2 = computeNextPartyCode(["internal_warehouse", "customer"], []);
+    const code2 = computeNextPartyCode(["internal_supplies", "customer"], []);
     expect(code2).toBe("CUST-WH-001");
   });
 
   it("handles three or more roles dynamically", () => {
-    const code = computeNextPartyCode(["supplier", "customer", "internal_warehouse"], []);
+    const code = computeNextPartyCode(["supplier", "customer", "internal_supplies"], []);
     expect(code).toBe("SUP-CUST-WH-001");
   });
 
   it("maintains backwards compatibility for string role inputs", () => {
-    expect(computeNextPartyCode("vendor", [])).toBe("VENDOR-001");
+    expect(computeNextPartyCode("supplier", [])).toBe("SUPPLIER-001");
     expect(computeNextPartyCode("supplier", ["SUPPLIER-001"])).toBe("SUPPLIER-002");
   });
 });

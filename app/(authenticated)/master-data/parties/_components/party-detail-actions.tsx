@@ -25,7 +25,7 @@ const PARTY_ROLES = [
   { value: "supplier", label: "Supplier" },
   { value: "customer", label: "Customer" },
   { value: "end_customer", label: "End Customer" },
-  { value: "internal_warehouse", label: "Internal Supplies" },
+  { value: "internal_supplies", label: "Internal Supplies" },
 ] as const;
 
 const ROLE_DISPLAY_LABELS: Record<string, string> = {
@@ -33,7 +33,7 @@ const ROLE_DISPLAY_LABELS: Record<string, string> = {
   supplier: "Supplier",
   customer: "Customer",
   end_customer: "End Customer",
-  internal_warehouse: "Internal Supplies",
+  internal_supplies: "Internal Supplies",
 };
 
 // ---------------------------------------------------------------------------

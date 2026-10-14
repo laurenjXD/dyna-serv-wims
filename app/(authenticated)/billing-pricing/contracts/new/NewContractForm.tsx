@@ -131,6 +131,16 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
+            <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">Billing Frequency</label>
+            <select name="billingFrequency" defaultValue="monthly" className="w-full rounded-btn border border-border-medium bg-surface-white px-3 py-2 font-body text-body-sm">
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+              <option value="daily">Daily</option>
+              <option value="per_ar">Per AR</option>
+              <option value="per_transaction">Per Transaction</option>
+            </select>
+          </div>
+          <div>
             <label className="block font-body text-body-xs font-semibold text-text-grey mb-1">
               Contract Number <span className="text-red-500">*</span>
             </label>

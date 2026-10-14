@@ -12,7 +12,7 @@ const ROLE_BADGE_STYLES: Record<string, { label: string; bg: string; text: strin
   vendor: { label: "Vendor", bg: "bg-indigo-50", text: "text-indigo-700", border: "border-indigo-200" },
   customer: { label: "Customer", bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" },
   end_customer: { label: "End Customer", bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200" },
-  internal_warehouse: { label: "Internal Supplies", bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200" },
+  internal_supplies: { label: "Internal Supplies", bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200" },
 };
 
 import { ExportDataButton } from "@/components/shared/ExportDataButton";
@@ -176,7 +176,7 @@ export function OrganizationsEnrollmentTable({
       columns={columns}
       data={data}
       title="Organizations Directory"
-      subtitle="Master directory of suppliers, customers, and VMI client organizations"
+      subtitle="Master directory of Suppliers, Customers, End-Customers, and Internal Supplies organizations"
       icon={<Building2 size={18} />}
       actions={
         <div className="flex items-center gap-2">

@@ -12,11 +12,10 @@ describe("enums.ts — schema enum definitions (Req 2, 3, 7, 11)", () => {
   it("exports partyRoleEnum with the full party role set (Req 3)", async () => {
     const { partyRoleEnum } = await import("../enums");
     expect(partyRoleEnum.enumValues).toEqual([
-      "vendor",
       "supplier",
       "customer",
       "end_customer",
-      "internal_warehouse",
+      "internal_supplies",
     ]);
   });
 

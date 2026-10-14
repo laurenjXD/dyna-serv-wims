@@ -84,6 +84,14 @@ export const billingTriggerEnum = pgEnum("billing_trigger", [
   "monthly_settlement",
 ]);
 
+export const billingFrequencyEnum = pgEnum("billing_frequency", [
+  "weekly",
+  "monthly",
+  "daily",
+  "per_ar",
+  "per_transaction",
+]);
+
 export const markupTypeEnum = pgEnum("markup_type", [
   "percentage",
   "fixed_amount",
@@ -107,6 +115,7 @@ export const contracts = pgTable("contracts", {
   currency: varchar("currency", { length: 3 }).notNull().default("USD"),
   exchangeRatePolicy: varchar("exchange_rate_policy", { length: 50 }).notNull().default("monthly_rate"),
   paymentTerms: varchar("payment_terms", { length: 100 }).notNull().default("Net 30"),
+  billingFrequency: billingFrequencyEnum("billing_frequency").notNull().default("monthly"),
   warehousesCovered: text("warehouses_covered").default("Main Warehouse"),
   notes: text("notes"),
   createdByUserId: uuid("created_by_user_id").notNull(),

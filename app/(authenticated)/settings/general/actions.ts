@@ -4,7 +4,8 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db/client";
-import { auditLog } from "@/lib/db/schema";
+import { auditLog, systemSettings } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 
@@ -108,9 +109,6 @@ const DEFAULT_SETTINGS: GeneralSettingsData = {
   },
 };
 
-// In-memory persistent store fallback for active session
-let runtimeGeneralSettings = { ...DEFAULT_SETTINGS };
-
 export async function getGeneralSettings(): Promise<{ ok: true; data: GeneralSettingsData } | { ok: false; error: string }> {
   const resolver = await createPageResolver();
   const permission = await requirePermission(resolver, "users.read");
@@ -118,7 +116,8 @@ export async function getGeneralSettings(): Promise<{ ok: true; data: GeneralSet
     return { ok: false, error: "Access restricted to administrators." };
   }
 
-  return { ok: true, data: runtimeGeneralSettings };
+  const [stored] = await db.select({ value: systemSettings.value }).from(systemSettings).where(eq(systemSettings.key, "general"));
+  return { ok: true, data: stored?.value ? ({ ...DEFAULT_SETTINGS, ...(stored.value as Partial<GeneralSettingsData>) } as GeneralSettingsData) : DEFAULT_SETTINGS };
 }
 
 export async function saveGeneralSettings(settings: GeneralSettingsData): Promise<{ ok: true } | { ok: false; error: string }> {
@@ -128,7 +127,10 @@ export async function saveGeneralSettings(settings: GeneralSettingsData): Promis
     return { ok: false, error: "Access restricted to administrators." };
   }
 
-  runtimeGeneralSettings = { ...settings };
+  await db.insert(systemSettings).values({ key: "general", value: settings, updatedBy: permission.context.userId }).onConflictDoUpdate({
+    target: systemSettings.key,
+    set: { value: settings, updatedAt: new Date(), updatedBy: permission.context.userId },
+  });
 
   // Record audit log
   try {

@@ -119,7 +119,7 @@ async function main() {
     .returning();
   console.log(`Created baseline test party: ${testParty.name} (${testParty.id})`);
 
-  await db.insert(partyRoles).values({ partyId: testParty.id, role: 'vendor' });
+  await db.insert(partyRoles).values({ partyId: testParty.id, role: 'supplier' });
 
   // Link party_user accounts to DEV-VENDOR-01
   const partyUsers = await db

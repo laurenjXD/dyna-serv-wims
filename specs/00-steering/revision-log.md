@@ -1696,3 +1696,34 @@ This changes the approved execution boundary in `08` requirements R3, design §7
 ## Allocated-to-picked Pick List queue (2026-08-25) — approved
 
 The Product Owner clarified that Pick List generation must not mean that warehouse picking is complete. Generation reserves stock and creates an `allocated` list in **To Pick**, with **View / PDF** and **Mark as Picked**. After staff physically pick the PDF’s lines, an authorized user explicitly marks that one list as picked. Only then does it move to **To Dispatch** and expose **Dispatch**. This remains non-scan picking; QR reconciliation remains exclusively at Dispatch. Both amendment sign-offs were granted in conversation; `08` and `10` remain Approved.
+
+## Supply-chain terminology and billing-policy decision record (2026-10-14) — Phase 1
+
+The Product Owner supplied the following terminology and commercial-policy corrections for the remaining enrollment and billing work. These are documentation decisions only; no application code or migration is authorized by this entry.
+
+### Confirmed decisions
+
+- The external supply-chain tiers are **Supplier** (the source/kinukuhanan), **Customer**, and **End-Customer** (the customer's customer).
+- Dyna Serv functions as a trading supplier. Suppliers bill Dyna Serv directly because Dyna Serv purchases through them.
+- End-Customers do not receive billing; no SOA or other billing document applies to an End-Customer.
+- The user-facing and business terminology for the internal-use party/flow is **Internal Supplies**, not Internal Warehouse.
+- The enrollment Materials surface is labeled **Material**, while the underlying `items` entity name remains unchanged unless a separate schema migration is approved.
+- PEZA compliance, LOA, and Bond are presented as one user-facing **Compliance Fee** grouping. This does not yet authorize collapsing their distinct accounting/audit source data.
+- SOA eligibility must be restricted to the approved billable-party policy: VMI customers and eligible Customers only; Supplier purchase invoices remain Dyna Serv liabilities; End-Customers are excluded.
+- Supported billing-frequency values are **Weekly**, **Monthly**, **Daily**, **Per AR**, and **Per Transaction**.
+- LOA, Customs, IN, OUT, and Handling & Activity charges are application-based and accrue only while the relevant application is active. Handling & Activity does not require an LOA, and an **Others** category is required.
+
+### Decisions still required before implementation
+
+The Product Owner's direction establishes the business intent but does not yet define enough of the technical contract to write migrations safely. The following must be resolved in the owning feature specs before implementation:
+
+1. Whether the persisted legacy party-role values `vendor` and `internal_warehouse` are migrated to `supplier` and `internal_supplies`, or retained as compatibility aliases with one canonical display value.
+2. Whether the navigation label is permanently **Data Management** or another approved label; the current code may retain `/enrollment` as a stable route.
+3. Billing-frequency semantics: period boundaries, accrual timing, due-date behavior, and the event that starts a `per_ar` or `per_transaction` charge.
+4. The application contract: application number, applicant/party ownership, application type, approval/active dates, one-year LOA expiration rule, fee-line ownership, source documents, voiding, renewal, and historical-document snapshot behavior.
+5. Whether the RBE identifier is a dedicated table/field or an approved structured extension to the party record. The implementation plan recommends a dedicated relation with a maximum of three classifications enforced server-side and at the database layer.
+
+### Implementation boundary
+
+`06-party-and-item-enrollment`, `12-vmi-billing`, and `13-trading-orders-and-pricing` must update their requirements/design/tasks documents and obtain the required approvals before code or migrations are written. Until then, the current implementation may be audited and tested, but no role-enum rename, RBE schema, billing-frequency column, or application-fee migration should be added.
+

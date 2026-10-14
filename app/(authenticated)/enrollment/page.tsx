@@ -1,4 +1,4 @@
-// Enrollment — tabbed master-data hub: Parties | Items | Locations.
+// Data Management — tabbed master-data hub: Organizations | Material | Locations.
 //
 // Traceability:
 //   specs/06-party-and-item-enrollment/design.md §7 (list, search, pagination)
@@ -70,16 +70,17 @@ export default async function EnrollmentPage({ searchParams }: PageProps) {
 
   // Gate: parties.read required — show forbidden message (not 404) so the
   // route existence isn't hidden from users who simply lack the capability.
-  const readResult = await requirePermission(resolver, "parties.read");
+  const readCapability = activeTab === "items" ? "items.read" : activeTab === "locations" ? "locations.read" : "parties.read";
+  const readResult = await requirePermission(resolver, readCapability);
   if (readResult.kind !== "authorized") {
     return (
       <div className="mx-auto max-w-container px-4 py-12 text-center">
         <p className="font-body text-body-md text-text-grey">
-          You do not have permission to access the Enrollment hub.
+          You do not have permission to access this Data Management section.
         </p>
         <p className="mt-2 font-body text-body-sm text-text-grey">
           This page requires the{" "}
-          <span className="font-mono text-mono-md">parties.read</span>{" "}
+          <span className="font-mono text-mono-md">{readCapability}</span>{" "}
           capability.
         </p>
       </div>
@@ -93,17 +94,23 @@ export default async function EnrollmentPage({ searchParams }: PageProps) {
       {/* Page header */}
       <div>
         <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
-          Master Data Management
+          Data Management
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">
-          Configure and manage core system entities.
+          Configure, manage, and export core system data.
         </p>
+        <Link
+          href={`/api/enrollment/export?tab=${activeTab}`}
+          className="mt-3 inline-flex h-11 items-center rounded bg-brand-navy px-4 font-label text-label text-white hover:bg-brand-navy/90"
+        >
+          Export current data
+        </Link>
       </div>
 
       {/* Tab switcher — office pattern per brand-design-system.md §3 */}
       <div
         role="tablist"
-        aria-label="Enrollment sections"
+        aria-label="Data Management sections"
         className="mt-6 flex gap-2 border-b border-outline-variant/30"
       >
         {TABS.map((tab) => {

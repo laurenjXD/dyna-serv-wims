@@ -12,6 +12,7 @@ import { partyRoles } from "@/lib/db/schema/parties";
 import { listParties } from "@/lib/db/queries/parties";
 import { getVmiCbmLedgerSummary } from "@/lib/billing/queries/vmi-ledger";
 import { SoaDirectoryClient } from "./_components/SoaDirectoryClient";
+import { getBillablePartyDecision } from "@/lib/billing/billable-party-policy";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -59,12 +60,7 @@ export default async function SoaIndexPage({ searchParams }: PageProps) {
 
   const allParties = partiesResult.rows.filter((p) => {
     const r = rolesByParty.get(p.id) ?? [];
-    if (r.length > 0) {
-      if (r.every((role) => role === "end_customer")) return false;
-      if (r.every((role) => role === "supplier")) return false;
-      return r.includes("customer");
-    }
-    return true; // fallback for unassigned legacy/mock items
+    return getBillablePartyDecision(r).canReceiveSoa;
   });
 
   const selectedParty = partyIdParam
