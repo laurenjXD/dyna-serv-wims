@@ -54,3 +54,10 @@ sequenceDiagram
    * Decrements physical stock from master inventory.
    * Records an immutable `pick` movement transaction with Person in Charge audit data.
    * Generates the priced **Delivery Receipt (DR) / Acknowledgement Receipt (AR)**.
+
+---
+
+### 4. Related Operating Guides
+* **Troubleshooting & Edge Cases**: See [Chapter 6: Edge Cases, Error Handling & System Exception Guide](./edge-cases-and-troubleshooting.md#5-physical-picking--dispatch-confirmation-edge-cases) for handling provisional item codes, FIFO/FEFO override approvals, premature dispatch blocks, rack shortages during picking, 24-hour commitment expiry, and concurrent dispatch race conditions.
+* **Document Printing & Sign-Offs**: See [Chapter 5: Warehouse Document Printing, Signatures & Compliance Standards](./document-printing-and-compliance.md) for Pick List and Delivery Receipt (DR/AR) print formats, 3-tier signature block accountability, reprint watermarks, and permanent tiered retention.
+

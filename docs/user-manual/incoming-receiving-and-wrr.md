@@ -85,3 +85,10 @@ Floor receiving is optimized for handheld mobile scanners, tablets, and forklift
    * If missing boxes cannot be found, a supervisor clicks **Finalize with Shortage (OS&D)**.
    * The WRR status transitions to **`confirmed`**, locking the transaction and generating an official WRR document showing Expected In-Transit Qty vs. Actual Received Qty for vendor claims and debit memos.
 
+---
+
+### 6. Related Operating Guides
+* **Troubleshooting & Edge Cases**: See [Chapter 6: Edge Cases, Error Handling & System Exception Guide](./edge-cases-and-troubleshooting.md#2-inbound-receiving-edge-cases--sops) for handling unregistered items, flow-type mismatches, unconfirmed advance notices, visual damage splits, and storage rack capacity overfills.
+* **Document Printing & Sign-Offs**: See [Chapter 5: Warehouse Document Printing, Signatures & Compliance Standards](./document-printing-and-compliance.md) for WRR printing, 3-tier signature block accountability, and page-break rules.
+
+
