@@ -32,8 +32,22 @@ import type {
  */
 export async function getDashboardKpis(): Promise<DashboardKpiData> {
   try {
-    // A. Valuation (Lots available quantity * items unit/buying price grouped by flow type)
-    const valuationRows = await db
+    // These aggregates are independent. Fetching them sequentially could
+    // exceed the dashboard's five-second widget deadline and show zeroes
+    // even when the database was healthy.
+    const [
+      valuationResult,
+      wrrPendingResult,
+      pickActiveResult,
+      qcPendingResult,
+      lowStockResult,
+      heldLotsResult,
+      qcInspectionResult,
+      vmiAvgRateResult,
+      tradingMarginResult,
+      pendingBillingResult,
+    ] = await Promise.allSettled([
+      db
       .select({
         flowType: lots.flowType,
         totalValue: sql<string>`coalesce(sum(case when ${lotLocationBalances.qtyRemaining} > 0 then (${lotLocationBalances.qtyRemaining} - ${lotLocationBalances.qtyCommitted}) * coalesce(${lots.unitCost}, ${items.buyingPrice}, 0) else 0 end), 0)`,
@@ -41,7 +55,81 @@ export async function getDashboardKpis(): Promise<DashboardKpiData> {
       .from(lots)
       .leftJoin(lotLocationBalances, eq(lots.id, lotLocationBalances.lotId))
       .leftJoin(items, eq(lots.itemId, items.id))
-      .groupBy(lots.flowType);
+      .groupBy(lots.flowType),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(wrrDocuments)
+        .where(inArray(wrrDocuments.status, ["staged_pending_arrival", "receiving_in_progress"])),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(pickLists)
+        .where(inArray(pickLists.status, ["allocated", "picked"])),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(lots)
+        .where(inArray(lots.status, ["staged", "quarantined"])),
+      db
+        .select({ count: sql<number>`count(distinct ${items.id})::int` })
+        .from(items)
+        .leftJoin(lots, eq(items.id, lots.itemId))
+        .leftJoin(lotLocationBalances, eq(lots.id, lotLocationBalances.lotId))
+        .where(sql`${items.minReorderLevel} > 0`)
+        .groupBy(items.id, items.minReorderLevel)
+        .having(sql`coalesce(sum(${lotLocationBalances.qtyRemaining} - ${lotLocationBalances.qtyCommitted}), 0) <= ${items.minReorderLevel}`),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(lots)
+        .where(inArray(lots.status, ["quarantined"])),
+      db
+        .select({
+          total: sql<number>`count(*)::int`,
+          passed: sql<number>`count(case when ${wrrInspectionLogs.conformanceStatus} = 'conformance' then 1 end)::int`,
+        })
+        .from(wrrInspectionLogs),
+      db
+        .select({
+          avgRate: sql<string>`coalesce(avg(${vmiContractTerms.storageRatePerCbmDay}), 0.48)`,
+          clientCount: sql<number>`count(distinct ${vmiContractTerms.partyId})::int`,
+        })
+        .from(vmiContractTerms)
+        .where(eq(vmiContractTerms.isActive, true)),
+      db
+        .select({ avgTarget: sql<string>`coalesce(avg(${tradingPolicies.marginValue}), 20.0)` })
+        .from(tradingPolicies),
+      db
+        .select({
+          totalAmount: sql<string>`coalesce(sum(${vmiBillingPeriods.billingStatementTotalUsd}), 0)`,
+          openCount: sql<number>`count(case when ${vmiBillingPeriods.status} = 'draft' then 1 end)::int`,
+        })
+        .from(vmiBillingPeriods),
+    ]);
+
+    function availableRows<T>(result: PromiseSettledResult<T[]>, label: string): T[] {
+      if (result.status === "fulfilled") return result.value;
+      console.warn(`[dashboard] ${label} unavailable`, result.reason);
+      return [];
+    }
+
+    const valuationRows = availableRows(valuationResult, "valuation");
+    const wrrPendingRows = availableRows(wrrPendingResult, "receiving queue");
+    const pickActiveRows = availableRows(pickActiveResult, "pick list queue");
+    const qcPendingRows = availableRows(qcPendingResult, "quality control queue");
+    const lowStockRows = availableRows(lowStockResult, "low stock count");
+    const heldLotsRows = availableRows(heldLotsResult, "held lots count");
+    const qcInspectionRows = availableRows(qcInspectionResult, "inspection stats");
+    const vmiAvgRateRows = availableRows(vmiAvgRateResult, "VMI rates");
+    const tradingMarginRows = availableRows(tradingMarginResult, "trading margin");
+    const pendingBillingRows = availableRows(pendingBillingResult, "pending billing");
+
+    const [wrrPendingRow] = wrrPendingRows;
+    const [pickActiveRow] = pickActiveRows;
+    const [qcPendingRow] = qcPendingRows;
+    const [lowStockRow] = lowStockRows;
+    const [heldLotsRow] = heldLotsRows;
+    const [qcInspectionStats] = qcInspectionRows;
+    const [vmiAvgRateRow] = vmiAvgRateRows;
+    const [tradingMarginAgg] = tradingMarginRows;
+    const [pendingBillingAgg] = pendingBillingRows;
 
     let vmiValuation = 0;
     let tradingValuation = 0;
@@ -52,80 +140,10 @@ export async function getDashboardKpis(): Promise<DashboardKpiData> {
     }
     const totalValuation = vmiValuation + tradingValuation;
 
-    // B. Floor Queues
-    const [wrrPendingRow] = await db
-      .select({
-        count: sql<number>`count(*)::int`,
-      })
-      .from(wrrDocuments)
-      .where(inArray(wrrDocuments.status, ["staged_pending_arrival", "receiving_in_progress"]));
-
-    const [pickActiveRow] = await db
-      .select({
-        count: sql<number>`count(*)::int`,
-      })
-      .from(pickLists)
-      .where(inArray(pickLists.status, ["allocated", "picked"]));
-
-    const [qcPendingRow] = await db
-      .select({
-        count: sql<number>`count(*)::int`,
-      })
-      .from(lots)
-      .where(inArray(lots.status, ["staged", "quarantined"]));
-
-    // C. Stock Health
-    const [lowStockRow] = await db
-      .select({
-        count: sql<number>`count(distinct ${items.id})::int`,
-      })
-      .from(items)
-      .leftJoin(lots, eq(items.id, lots.itemId))
-      .leftJoin(lotLocationBalances, eq(lots.id, lotLocationBalances.lotId))
-      .where(sql`${items.minReorderLevel} > 0`)
-      .groupBy(items.id, items.minReorderLevel)
-      .having(sql`coalesce(sum(${lotLocationBalances.qtyRemaining} - ${lotLocationBalances.qtyCommitted}), 0) <= ${items.minReorderLevel}`);
-
-    const [heldLotsRow] = await db
-      .select({
-        count: sql<number>`count(*)::int`,
-      })
-      .from(lots)
-      .where(inArray(lots.status, ["quarantined"]));
-
-    const [qcInspectionStats] = await db
-      .select({
-        total: sql<number>`count(*)::int`,
-        passed: sql<number>`count(case when ${wrrInspectionLogs.conformanceStatus} = 'conformance' then 1 end)::int`,
-      })
-      .from(wrrInspectionLogs);
-
     const passRate =
       qcInspectionStats && qcInspectionStats.total > 0
         ? Number(((qcInspectionStats.passed / qcInspectionStats.total) * 100).toFixed(1))
         : 98.5;
-
-    // D. Financial Summary
-    const [vmiAvgRateRow] = await db
-      .select({
-        avgRate: sql<string>`coalesce(avg(${vmiContractTerms.storageRatePerCbmDay}), 0.48)`,
-        clientCount: sql<number>`count(distinct ${vmiContractTerms.partyId})::int`,
-      })
-      .from(vmiContractTerms)
-      .where(eq(vmiContractTerms.isActive, true));
-
-    const [tradingMarginAgg] = await db
-      .select({
-        avgTarget: sql<string>`coalesce(avg(${tradingPolicies.marginValue}), 20.0)`,
-      })
-      .from(tradingPolicies);
-
-    const [pendingBillingAgg] = await db
-      .select({
-        totalAmount: sql<string>`coalesce(sum(${vmiBillingPeriods.billingStatementTotalUsd}), 0)`,
-        openCount: sql<number>`count(case when ${vmiBillingPeriods.status} = 'draft' then 1 end)::int`,
-      })
-      .from(vmiBillingPeriods);
 
     return {
       valuation: {

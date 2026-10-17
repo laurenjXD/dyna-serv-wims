@@ -51,9 +51,10 @@ function getDb(): Db {
     );
     const client = postgres(connectionString, {
       prepare: false,
-      connect_timeout: 4,
+      connect_timeout: 10,
       idle_timeout: 20,
-      max: isServerless ? 5 : 10,
+      // Queue excess dashboard work instead of opening ten connections at once.
+      max: 5,
       ssl: connectionString.includes("supabase") ? "require" : undefined,
     });
     realDb = drizzle(client, { schema });

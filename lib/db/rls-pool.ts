@@ -61,7 +61,7 @@ function getSqlClient(): Sql {
     prepare: false,
     connect_timeout: 10,
     idle_timeout: 20,
-    max: isServerless ? 5 : 10,
+    max: 5,
     ssl: connectionString.includes("supabase") ? "require" : undefined,
   });
   return sqlClient;
