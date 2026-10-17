@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import type { ApprovalRequestRow } from "@/lib/db/queries/approvals";
 import type { StockViewRow } from "@/lib/db/queries/inventory";
+import { FilterSelect } from "@/components/ui/FilterSelect";
 
 type ApprovalStatus =
   | "pending"
@@ -394,35 +395,28 @@ export function ApprovalsFilterableTable({
 
         {/* Center/Right: Dropdowns & Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-1.5 shadow-2xs">
-            <span className="font-body text-sm font-bold uppercase text-text-grey">Reason:</span>
-            <select
-              value={selectedReason}
-              onChange={(e) => setSelectedReason(e.target.value)}
-              className="bg-transparent font-body text-body-sm font-semibold text-on-surface focus:outline-none cursor-pointer"
-            >
-              <option value="all">All Reasons</option>
-              <option value="customer_preference">Customer Preference</option>
-              <option value="lot_condition">Lot Condition</option>
-              <option value="partial_lot">Partial Lot</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
+          <FilterSelect
+            label="Reason"
+            value={selectedReason}
+            onChange={setSelectedReason}
+            options={[
+              { value: "all", label: "All Reasons" },
+              ...REASON_CATEGORIES,
+            ]}
+          />
 
-          <div className="flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-1.5 shadow-2xs">
-            <span className="font-body text-sm font-bold uppercase text-text-grey">Status:</span>
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="bg-transparent font-body text-body-sm font-semibold text-on-surface focus:outline-none cursor-pointer"
-            >
-              <option value="all">All Statuses</option>
-              <option value="pending">Pending</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
-              <option value="expired">Expired</option>
-            </select>
-          </div>
+          <FilterSelect
+            label="Status"
+            value={selectedStatus}
+            onChange={setSelectedStatus}
+            options={[
+              { value: "all", label: "All Statuses" },
+              { value: "pending", label: "Pending" },
+              { value: "approved", label: "Approved" },
+              { value: "rejected", label: "Rejected" },
+              { value: "expired", label: "Expired" },
+            ]}
+          />
 
           {/* Bulk Archive Expired Button */}
           {!showDeleted && metrics.expired > 0 && (

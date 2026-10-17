@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import type { PickListRow } from "@/lib/db/queries/withdrawals";
 import { TablePagination } from "@/components/ui/TablePagination";
+import { FilterSelect } from "@/components/ui/FilterSelect";
 
 const STATUS_CLASSES: Record<string, string> = {
   allocated: "bg-status-pending/15 text-status-pending",
@@ -178,40 +179,36 @@ export function PickListsFilterableTable({
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-2.5">
           {/* Flow Filter */}
-          <div className="flex items-center gap-1.5 rounded-xl border border-outline-variant/40 bg-surface-white px-3 py-1.5">
-            <span className="font-label text-label-xs uppercase text-text-grey">Model:</span>
-            <select
-              value={selectedFlow}
-              onChange={(e) => {
-                setSelectedFlow(e.target.value);
-                setPageIndex(0);
-              }}
-              className="bg-transparent font-body text-body-sm font-semibold text-on-surface focus:outline-none cursor-pointer"
-            >
-              <option value="all">All Models</option>
-              <option value="vmi">VMI</option>
-              <option value="trading">Trading</option>
-              <option value="supplies">Supplies</option>
-            </select>
-          </div>
+          <FilterSelect
+            label="Model"
+            value={selectedFlow}
+            onChange={(value) => {
+              setSelectedFlow(value);
+              setPageIndex(0);
+            }}
+            options={[
+              { value: "all", label: "All Models" },
+              { value: "vmi", label: "VMI" },
+              { value: "trading", label: "Trading" },
+              { value: "supplies", label: "Supplies" },
+            ]}
+          />
 
           {/* Status Filter */}
-          <div className="flex items-center gap-1.5 rounded-xl border border-outline-variant/40 bg-surface-white px-3 py-1.5">
-            <span className="font-label text-label-xs uppercase text-text-grey">Status:</span>
-            <select
-              value={selectedStatus}
-              onChange={(e) => {
-                setSelectedStatus(e.target.value);
-                setPageIndex(0);
-              }}
-              className="bg-transparent font-body text-body-sm font-semibold text-on-surface focus:outline-none cursor-pointer"
-            >
-              <option value="all">All Statuses</option>
-              <option value="allocated">Allocated</option>
-              <option value="picked">Picked</option>
-              <option value="dispatched">Dispatched</option>
-            </select>
-          </div>
+          <FilterSelect
+            label="Status"
+            value={selectedStatus}
+            onChange={(value) => {
+              setSelectedStatus(value);
+              setPageIndex(0);
+            }}
+            options={[
+              { value: "all", label: "All Statuses" },
+              { value: "allocated", label: "Allocated" },
+              { value: "picked", label: "Picked" },
+              { value: "dispatched", label: "Dispatched" },
+            ]}
+          />
 
           {(searchQuery || selectedFlow !== "all" || selectedStatus !== "all") && (
             <button

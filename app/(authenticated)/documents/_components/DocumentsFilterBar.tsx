@@ -1,8 +1,9 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Search, X, Calendar, Building2, Filter } from "lucide-react";
+import { Search, X, Calendar, Filter } from "lucide-react";
 import { useCallback, useTransition } from "react";
+import { FilterSelect } from "@/components/ui/FilterSelect";
 
 export interface FilterPartyOption {
   id: string;
@@ -90,25 +91,16 @@ export function DocumentsFilterBar({
         </div>
 
         {/* Organization dropdown */}
-        <div className="relative min-w-[160px] max-w-[220px]">
-          <Building2
-            size={15}
-            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-text-grey"
-            aria-hidden="true"
-          />
-          <select
-            value={currentParty}
-            onChange={(e) => updateParam("partyId", e.target.value)}
-            className="h-10 w-full appearance-none rounded-lg border border-slate-200 bg-surface-white pl-8 pr-7 font-body text-body-sm text-on-surface focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy truncate"
-          >
-            <option value="">All Organizations</option>
-            {organizations.map((org) => (
-              <option key={org.id} value={org.id}>
-                {org.name} ({org.code})
-              </option>
-            ))}
-          </select>
-        </div>
+        <FilterSelect
+          label="Organization"
+          value={currentParty}
+          onChange={(value) => updateParam("partyId", value)}
+          options={[
+            { value: "", label: "All Organizations" },
+            ...organizations.map((org) => ({ value: org.id, label: `${org.name} (${org.code})` })),
+          ]}
+          className="min-w-[160px] max-w-[260px]"
+        />
 
         {/* Date Range Inputs */}
         <div className="flex min-w-0 max-w-full items-center gap-1.5">
