@@ -92,27 +92,32 @@ export type WrrItemOption = {
  * ID independently before staging the WRR.
  */
 export async function listActiveWrrItemOptions(db: DbLike): Promise<WrrItemOption[]> {
-  const rows = (await db
-    .select({
-      id: items.id,
-      defaultSupplierPartyId: items.defaultSupplierPartyId,
-      code: items.code,
-      name: items.name,
-      supplierItemCode: items.supplierItemCode,
-      customerItemCode: items.customerItemCode,
-      dsgcItemNumber: items.dsgcItemNumber,
-      uom: items.uom,
-      volumeCbm: items.volumeCbm,
-      spq: items.spq,
-    })
-    .from(items)
-    .where(eq(items.isActive, true))
-    .orderBy(items.code)) as WrrItemOption[];
+  try {
+    const rows = (await db
+      .select({
+        id: items.id,
+        defaultSupplierPartyId: items.defaultSupplierPartyId,
+        code: items.code,
+        name: items.name,
+        supplierItemCode: items.supplierItemCode,
+        customerItemCode: items.customerItemCode,
+        dsgcItemNumber: items.dsgcItemNumber,
+        uom: items.uom,
+        volumeCbm: items.volumeCbm,
+        spq: items.spq,
+      })
+      .from(items)
+      .where(eq(items.isActive, true))
+      .orderBy(items.code)) as WrrItemOption[];
 
-  return rows.map((r) => ({
-    ...r,
-    uom: r.uom.toLowerCase() === "pallet" ? "piece" : r.uom,
-  }));
+    return rows.map((r) => ({
+      ...r,
+      uom: r.uom.toLowerCase() === "pallet" ? "piece" : r.uom,
+    }));
+  } catch (error) {
+    console.error("[items] active WRR item options unavailable", error);
+    return [];
+  }
 }
 
 export type ItemOperationalRecords = {
@@ -301,32 +306,38 @@ export async function getItemOperationalRecords(
 export async function getActiveSupplierParties(
   db: DbLike,
 ): Promise<SupplierPartyOption[]> {
-  const rows = (await db
-    .select({
-      id: parties.id,
-      code: parties.code,
-      name: parties.name,
-      role: partyRoles.role,
-    })
-    .from(parties)
-    .innerJoin(partyRoles, eq(partyRoles.partyId, parties.id))
-    .where(
-      and(
-        eq(parties.isActive, true),
-        or(
-          eq(partyRoles.role, "supplier" as const),
-          eq(partyRoles.role, "customer" as const),
-          eq(partyRoles.role, "end_customer" as const),
-          eq(partyRoles.role, "internal_supplies" as const),
+  let rows: Array<{ id: string; code: string; name: string; role: string }>;
+  try {
+    rows = (await db
+      .select({
+        id: parties.id,
+        code: parties.code,
+        name: parties.name,
+        role: partyRoles.role,
+      })
+      .from(parties)
+      .innerJoin(partyRoles, eq(partyRoles.partyId, parties.id))
+      .where(
+        and(
+          eq(parties.isActive, true),
+          or(
+            eq(partyRoles.role, "supplier" as const),
+            eq(partyRoles.role, "customer" as const),
+            eq(partyRoles.role, "end_customer" as const),
+            eq(partyRoles.role, "internal_supplies" as const),
+          ),
         ),
-      ),
-    )
-    .orderBy(parties.name)) as Array<{
-      id: string;
-      code: string;
-      name: string;
-      role: string;
-    }>;
+      )
+      .orderBy(parties.name)) as Array<{
+        id: string;
+        code: string;
+        name: string;
+        role: string;
+      }>;
+  } catch (error) {
+    console.error("[items] active supplier parties unavailable", error);
+    rows = [];
+  }
 
   // Group roles by party
   const map = new Map<string, { id: string; code: string; name: string; roles: string[] }>();
