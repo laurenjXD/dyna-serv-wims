@@ -111,8 +111,8 @@ export function DocumentsFilterBar({
         </div>
 
         {/* Date Range Inputs */}
-        <div className="flex items-center gap-1.5">
-          <div className="relative w-[130px]">
+        <div className="flex min-w-0 max-w-full items-center gap-1.5">
+          <div className="relative min-w-0 flex-1 sm:w-[130px] sm:flex-none">
             <Calendar
               size={13}
               className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-text-grey"
@@ -122,12 +122,12 @@ export function DocumentsFilterBar({
               type="date"
               value={currentFrom}
               onChange={(e) => updateParam("from", e.target.value)}
-              className="h-10 w-full rounded-lg border border-slate-200 bg-surface-white pl-6 pr-2 font-body text-body-sm text-on-surface focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
+              className="h-10 w-full min-w-0 rounded-lg border border-slate-200 bg-surface-white px-2 pl-6 font-body text-[14px] leading-5 text-on-surface focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
               aria-label="Filter from date"
             />
           </div>
           <span className="text-xs text-text-grey font-mono">-</span>
-          <div className="relative w-[130px]">
+          <div className="relative min-w-0 flex-1 sm:w-[130px] sm:flex-none">
             <Calendar
               size={13}
               className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-text-grey"
@@ -137,7 +137,7 @@ export function DocumentsFilterBar({
               type="date"
               value={currentTo}
               onChange={(e) => updateParam("to", e.target.value)}
-              className="h-10 w-full rounded-lg border border-slate-200 bg-surface-white pl-6 pr-2 font-body text-body-sm text-on-surface focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
+              className="h-10 w-full min-w-0 rounded-lg border border-slate-200 bg-surface-white px-2 pl-6 font-body text-[14px] leading-5 text-on-surface focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
               aria-label="Filter to date"
             />
           </div>
