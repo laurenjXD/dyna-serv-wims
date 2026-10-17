@@ -23,6 +23,12 @@ describe("reports modal smoke render", () => {
     expect(screen.getByRole("dialog", { name: /Consolidated Warehouse Valuation/i })).toBeInTheDocument();
   });
 
+  it("opens a pre-built report without rendering the dashboard underneath the preview", () => {
+    render(<WarehouseReportsHub />);
+    fireEvent.click(screen.getAllByRole("button", { name: /^Run$/i })[0]);
+    expect(screen.getByRole("dialog", { name: /Master Inventory Valuation/i })).toBeInTheDocument();
+  });
+
   it("opens the custom report builder from the reports hub", () => {
     render(<WarehouseReportsHub />);
     fireEvent.click(screen.getAllByRole("button", { name: /Custom Report Builder/i })[0]);

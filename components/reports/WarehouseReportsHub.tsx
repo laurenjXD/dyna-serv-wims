@@ -156,6 +156,7 @@ export function WarehouseReportsHub({
   const [isBuilderOpen, setIsBuilderOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const isReportOverlayOpen = isPdfPreviewOpen || isBuilderOpen || isAuditModalOpen;
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -327,6 +328,7 @@ export function WarehouseReportsHub({
       )}
 
       {/* ── 2. Executive Reporting & Settlement KPIs (Bento Row) ───────────── */}
+      {!isReportOverlayOpen && <>
       <ReportKpis kpis={activeKpis} />
 
       {/* ── Section Quick Navigation Filter Bar ───────────────────────────── */}
@@ -456,6 +458,8 @@ export function WarehouseReportsHub({
       )}
 
       {/* ── 8. Live In-Browser PDF Preview Dialog ─────────────────────────── */}
+      </>}
+
       <PdfPreviewModal
         isOpen={isPdfPreviewOpen}
         onClose={() => setIsPdfPreviewOpen(false)}
