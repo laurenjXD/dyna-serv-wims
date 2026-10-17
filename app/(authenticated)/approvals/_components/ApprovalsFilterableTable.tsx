@@ -22,6 +22,7 @@ import {
   Info,
   ChevronRight,
   Trash2,
+  Filter,
 } from "lucide-react";
 import type { ApprovalRequestRow } from "@/lib/db/queries/approvals";
 import type { StockViewRow } from "@/lib/db/queries/inventory";
@@ -158,8 +159,7 @@ export function ApprovalsFilterableTable({
 }: ApprovalsFilterableTableProps) {
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [selectedReason, setSelectedReason] = useState<string>("all");
-  const [selectedStatus, setSelectedStatus] = useState<string>("all");
-  const [activeFilterTab, setActiveFilterTab] = useState<"all" | "pending" | "expired" | "self">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "rejected" | "expired" | "self">("all");
   const [sortField, setSortField] = useState<SortField>("createdAt");
   const [sortDir, setSortDir] = useState<SortDirection>("desc");
 
@@ -216,13 +216,14 @@ export function ApprovalsFilterableTable({
         const isExp = req.expiryAt.getTime() <= Date.now();
         const effectiveStatus = req.status === "pending" && isExp ? "expired" : req.status;
 
-        // Quick filter tabs
-        if (activeFilterTab === "pending" && (effectiveStatus !== "pending" || isExp)) return false;
-        if (activeFilterTab === "expired" && effectiveStatus !== "expired") return false;
-        if (activeFilterTab === "self" && req.requesterUserId !== currentUserId) return false;
+        // Status filter
+        if (statusFilter === "pending" && (effectiveStatus !== "pending" || isExp)) return false;
+        if (statusFilter === "approved" && effectiveStatus !== "approved") return false;
+        if (statusFilter === "rejected" && effectiveStatus !== "rejected") return false;
+        if (statusFilter === "expired" && effectiveStatus !== "expired") return false;
+        if (statusFilter === "self" && req.requesterUserId !== currentUserId) return false;
 
-        // Dropdowns
-        if (selectedStatus !== "all" && effectiveStatus !== selectedStatus) return false;
+        // Reason filter
         if (selectedReason !== "all" && req.reason !== selectedReason) return false;
 
         // Search query
@@ -248,7 +249,17 @@ export function ApprovalsFilterableTable({
         const valB = ((b[sortField] as string) || "").toLowerCase();
         return sortDir === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
       });
-  }, [rows, searchQuery, selectedReason, selectedStatus, activeFilterTab, sortField, sortDir, currentUserId]);
+  }, [rows, searchQuery, selectedReason, statusFilter, sortField, sortDir, currentUserId]);
+
+  const hasActiveFilters = Boolean(
+    searchQuery || selectedReason !== "all" || statusFilter !== "all"
+  );
+
+  const resetAllFilters = () => {
+    setSearchQuery("");
+    setSelectedReason("all");
+    setStatusFilter("all");
+  };
 
   const renderSortIcon = (field: SortField) => {
     if (sortField !== field) return <ArrowUpDown size={13} className="opacity-40" />;
@@ -267,11 +278,10 @@ export function ApprovalsFilterableTable({
         <button
           type="button"
           onClick={() => {
-            setActiveFilterTab("pending");
-            setSelectedStatus("all");
+            setStatusFilter(statusFilter === "pending" ? "all" : "pending");
           }}
-          className={`flex min-h-[124px] flex-col rounded-2xl border p-4 text-left transition-all shadow-2xs hover:shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 ${
-            activeFilterTab === "pending"
+          className={`flex min-h-[124px] flex-col rounded-2xl border p-4 text-left transition-all shadow-2xs hover:shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 cursor-pointer ${
+            statusFilter === "pending"
               ? "border-amber-400 bg-surface ring-2 ring-amber-400/30"
               : "border-border bg-surface hover:border-amber-300"
           }`}
@@ -294,11 +304,10 @@ export function ApprovalsFilterableTable({
         <button
           type="button"
           onClick={() => {
-            setActiveFilterTab("all");
-            setSelectedStatus("approved");
+            setStatusFilter(statusFilter === "approved" ? "all" : "approved");
           }}
-          className={`flex min-h-[124px] flex-col rounded-2xl border p-4 text-left transition-all shadow-2xs hover:shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 ${
-            selectedStatus === "approved"
+          className={`flex min-h-[124px] flex-col rounded-2xl border p-4 text-left transition-all shadow-2xs hover:shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 cursor-pointer ${
+            statusFilter === "approved"
               ? "border-emerald-400 bg-surface ring-2 ring-emerald-400/30"
               : "border-border bg-surface hover:border-emerald-300"
           }`}
@@ -321,11 +330,10 @@ export function ApprovalsFilterableTable({
         <button
           type="button"
           onClick={() => {
-            setActiveFilterTab("expired");
-            setSelectedStatus("all");
+            setStatusFilter(statusFilter === "expired" ? "all" : "expired");
           }}
-          className={`flex min-h-[124px] flex-col rounded-2xl border p-4 text-left transition-all shadow-2xs hover:shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/50 ${
-            activeFilterTab === "expired"
+          className={`flex min-h-[124px] flex-col rounded-2xl border p-4 text-left transition-all shadow-2xs hover:shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/50 cursor-pointer ${
+            statusFilter === "expired"
               ? "border-rose-400 bg-surface ring-2 ring-rose-400/30"
               : "border-border bg-surface hover:border-rose-300"
           }`}
@@ -365,36 +373,36 @@ export function ApprovalsFilterableTable({
         </Link>
       </div>
 
-      {/* ── Toolbar & Actions Bar ──────────────────────────────────────── */}
-      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-4 shadow-2xs lg:flex-row lg:items-center lg:justify-between">
-        {/* Left: Omni Search */}
-        <div className="relative flex-1 min-w-[260px]">
-          <Search
-            size={16}
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-grey"
-            aria-hidden="true"
-          />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by Request #, Item, Lot, Requester, Reason…"
-            className="h-10 w-full rounded-xl border border-border bg-surface-light-grey/40 pl-9 pr-9 font-body text-body-sm text-on-surface placeholder:text-text-grey focus:border-brand-navy focus:bg-surface focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-grey hover:text-on-surface"
-              aria-label="Clear search"
-            >
-              <X size={15} />
-            </button>
-          )}
-        </div>
-
-        {/* Center/Right: Dropdowns & Action Buttons */}
+      {/* ── Toolbar & Filter Bar ───────────────────────────────────────── */}
+      <div className="mb-4 space-y-2.5 rounded-xl border border-slate-200/80 bg-surface-white p-3 shadow-2xs">
         <div className="flex flex-wrap items-center gap-2">
+          {/* Omni Search */}
+          <div className="relative min-w-[200px] flex-1">
+            <Search
+              size={15}
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-grey"
+              aria-hidden="true"
+            />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by Request #, Item, Lot, Requester, Reason…"
+              className="h-10 w-full rounded-lg border border-slate-200 bg-surface-white pl-8 pr-7 font-body text-body-sm text-on-surface placeholder:text-text-grey/60 focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-text-grey hover:text-on-surface"
+                aria-label="Clear search"
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
+
+          {/* Reason Filter Dropdown */}
           <FilterSelect
             label="Reason"
             value={selectedReason}
@@ -403,31 +411,31 @@ export function ApprovalsFilterableTable({
               { value: "all", label: "All Reasons" },
               ...REASON_CATEGORIES,
             ]}
+            className="sm:w-[260px]"
           />
 
-          <FilterSelect
-            label="Status"
-            value={selectedStatus}
-            onChange={setSelectedStatus}
-            options={[
-              { value: "all", label: "All Statuses" },
-              { value: "pending", label: "Pending" },
-              { value: "approved", label: "Approved" },
-              { value: "rejected", label: "Rejected" },
-              { value: "expired", label: "Expired" },
-            ]}
-          />
+          {/* Reset Filters CTA */}
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={resetAllFilters}
+              className="inline-flex h-10 items-center gap-1 rounded-lg border border-slate-200 px-2.5 font-body text-body-sm text-text-grey hover:bg-slate-50 hover:text-on-surface focus:outline-none focus:ring-1 focus:ring-brand-navy cursor-pointer transition-colors"
+            >
+              <X size={13} />
+              Reset
+            </button>
+          )}
 
           {/* Bulk Archive Expired Button */}
           {!showDeleted && metrics.expired > 0 && (
-            <form action={archiveAllAction}>
+            <form action={archiveAllAction} className="inline-block">
               <button
                 type="submit"
-                className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 font-label text-label-xs font-bold text-rose-700 hover:bg-rose-100 active:scale-95 transition-all shadow-2xs"
+                className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 font-body text-body-sm font-bold text-rose-700 hover:bg-rose-100 active:scale-95 transition-all shadow-2xs cursor-pointer"
                 title="Move all expired requests to archived records"
               >
                 <Archive size={14} />
-                <span>Archive All Expired ({metrics.expired})</span>
+                <span>Archive Expired ({metrics.expired})</span>
               </button>
             </form>
           )}
@@ -436,66 +444,91 @@ export function ApprovalsFilterableTable({
           <button
             type="button"
             onClick={() => setIsCreateModalOpen(true)}
-            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-brand-navy px-4 font-label text-label-xs font-bold text-surface-white hover:bg-brand-royal-blue active:scale-95 shadow-xs transition-all"
+            className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-brand-navy px-4 font-body text-body-sm font-bold text-surface-white hover:bg-brand-royal-blue active:scale-95 shadow-xs transition-all cursor-pointer shrink-0"
           >
             <Plus size={15} />
             <span>Request Override</span>
           </button>
         </div>
-      </div>
 
-      {/* ── Quick Filter Tabs Strip ────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-1">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => setActiveFilterTab("all")}
-            className={`rounded-lg px-3 py-1 font-label text-label-xs font-bold transition-colors ${
-              activeFilterTab === "all"
-                ? "bg-brand-navy text-white shadow-2xs"
-                : "bg-surface text-text-grey hover:text-on-surface border border-border"
-            }`}
-          >
-            All Requests ({rows.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveFilterTab("pending")}
-            className={`rounded-lg px-3 py-1 font-label text-label-xs font-bold transition-colors ${
-              activeFilterTab === "pending"
-                ? "bg-amber-600 text-white shadow-2xs"
-                : "bg-surface text-text-grey hover:text-on-surface border border-border"
-            }`}
-          >
-            Pending Review
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveFilterTab("expired")}
-            className={`rounded-lg px-3 py-1 font-label text-label-xs font-bold transition-colors ${
-              activeFilterTab === "expired"
-                ? "bg-rose-600 text-white shadow-2xs"
-                : "bg-surface text-text-grey hover:text-on-surface border border-border"
-            }`}
-          >
-            Expired / Stale
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveFilterTab("self")}
-            className={`rounded-lg px-3 py-1 font-label text-label-xs font-bold transition-colors ${
-              activeFilterTab === "self"
-                ? "bg-brand-royal-blue text-white shadow-2xs"
-                : "bg-surface text-text-grey hover:text-on-surface border border-border"
-            }`}
-          >
-            Requested By Me
-          </button>
+        {/* Status filter pills */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-slate-100">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 inline-flex items-center gap-1 font-body text-sm font-bold uppercase text-text-grey">
+              <Filter size={11} /> STATUS:
+            </span>
+            <button
+              type="button"
+              onClick={() => setStatusFilter("all")}
+              className={`h-8 rounded-full px-3 font-body text-sm transition-colors cursor-pointer ${
+                statusFilter === "all"
+                  ? "bg-slate-900 text-surface-white font-bold"
+                  : "border border-slate-200 bg-surface-white text-text-grey hover:bg-slate-50"
+              }`}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter(statusFilter === "pending" ? "all" : "pending")}
+              className={`h-8 rounded-full px-3 font-body text-sm transition-colors cursor-pointer ${
+                statusFilter === "pending"
+                  ? "bg-brand-navy text-surface-white font-bold"
+                  : "border border-slate-200 bg-surface-white text-text-grey hover:bg-slate-50"
+              }`}
+            >
+              Pending Review
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter(statusFilter === "approved" ? "all" : "approved")}
+              className={`h-8 rounded-full px-3 font-body text-sm transition-colors cursor-pointer ${
+                statusFilter === "approved"
+                  ? "bg-brand-navy text-surface-white font-bold"
+                  : "border border-slate-200 bg-surface-white text-text-grey hover:bg-slate-50"
+              }`}
+            >
+              Approved
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter(statusFilter === "rejected" ? "all" : "rejected")}
+              className={`h-8 rounded-full px-3 font-body text-sm transition-colors cursor-pointer ${
+                statusFilter === "rejected"
+                  ? "bg-brand-navy text-surface-white font-bold"
+                : "border border-slate-200 bg-surface-white text-text-grey hover:bg-slate-50"
+              }`}
+            >
+              Rejected
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter(statusFilter === "expired" ? "all" : "expired")}
+              className={`h-8 rounded-full px-3 font-body text-sm transition-colors cursor-pointer ${
+                statusFilter === "expired"
+                  ? "bg-brand-navy text-surface-white font-bold"
+                  : "border border-slate-200 bg-surface-white text-text-grey hover:bg-slate-50"
+              }`}
+            >
+              Expired
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter(statusFilter === "self" ? "all" : "self")}
+              className={`h-8 rounded-full px-3 font-body text-sm transition-colors cursor-pointer ${
+                statusFilter === "self"
+                  ? "bg-brand-navy text-surface-white font-bold"
+                  : "border border-slate-200 bg-surface-white text-text-grey hover:bg-slate-50"
+              }`}
+            >
+              Requested By Me
+            </button>
+          </div>
+
+          <span className="font-body text-xs text-text-grey">
+            Showing <strong className="text-on-surface">{filteredAndSorted.length}</strong> entries
+          </span>
         </div>
-
-        <span className="font-body text-body-xs text-text-grey">
-          Showing <strong className="text-on-surface">{filteredAndSorted.length}</strong> entries
-        </span>
       </div>
 
       {/* ── Table Container ────────────────────────────────────────────── */}
@@ -515,13 +548,8 @@ export function ApprovalsFilterableTable({
             </div>
             <button
               type="button"
-              onClick={() => {
-                setSearchQuery("");
-                setSelectedReason("all");
-                setSelectedStatus("all");
-                setActiveFilterTab("all");
-              }}
-              className="mt-2 inline-flex h-9 items-center rounded-lg border border-border bg-surface px-4 font-label text-label-xs font-bold text-on-surface hover:bg-surface-light-grey"
+              onClick={resetAllFilters}
+              className="mt-2 inline-flex h-9 items-center rounded-lg border border-border bg-surface px-4 font-label text-label-xs font-bold text-on-surface hover:bg-surface-light-grey cursor-pointer"
             >
               Reset Filters
             </button>
