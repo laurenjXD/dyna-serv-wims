@@ -45,6 +45,7 @@ async function canManageMigration() {
     requirePermission(resolver, "locations.manage"),
   ]);
   if ([partiesPermission, itemsPermission, locationsPermission].some((result) => result.kind !== "authorized")) return null;
+  if (partiesPermission.kind !== "authorized" || !partiesPermission.context.activeRoleKeys.includes("administrator")) return null;
   return { resolver, userId: partiesPermission.kind === "authorized" ? partiesPermission.context.userId : "" };
 }
 
