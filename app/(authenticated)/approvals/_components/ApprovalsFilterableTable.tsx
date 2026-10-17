@@ -395,11 +395,11 @@ export function ApprovalsFilterableTable({
         {/* Center/Right: Dropdowns & Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-1.5 shadow-2xs">
-            <span className="font-label text-label-xs font-bold uppercase text-text-grey">Reason:</span>
+            <span className="font-body text-sm font-bold uppercase text-text-grey">Reason:</span>
             <select
               value={selectedReason}
               onChange={(e) => setSelectedReason(e.target.value)}
-              className="bg-transparent font-body text-body-xs font-semibold text-on-surface focus:outline-none cursor-pointer"
+              className="bg-transparent font-body text-body-sm font-semibold text-on-surface focus:outline-none cursor-pointer"
             >
               <option value="all">All Reasons</option>
               <option value="customer_preference">Customer Preference</option>
@@ -410,11 +410,11 @@ export function ApprovalsFilterableTable({
           </div>
 
           <div className="flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-1.5 shadow-2xs">
-            <span className="font-label text-label-xs font-bold uppercase text-text-grey">Status:</span>
+            <span className="font-body text-sm font-bold uppercase text-text-grey">Status:</span>
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="bg-transparent font-body text-body-xs font-semibold text-on-surface focus:outline-none cursor-pointer"
+              className="bg-transparent font-body text-body-sm font-semibold text-on-surface focus:outline-none cursor-pointer"
             >
               <option value="all">All Statuses</option>
               <option value="pending">Pending</option>

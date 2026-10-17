@@ -194,7 +194,7 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
       <div
         role="tablist"
         aria-label="Document archive sections"
-        className="mb-6 flex gap-2 overflow-x-auto border-b border-outline-variant/30 pb-px"
+        className="mb-6 grid grid-cols-2 gap-1 border-b border-outline-variant/30 pb-px sm:grid-cols-3 lg:flex lg:gap-1"
       >
         {[
           { key: "wrr", label: "WRRs & Receipts", count: wrrRows.length },
@@ -211,13 +211,25 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
               href={`/documents?tab=${tab.key}`}
               role="tab"
               aria-selected={isActive}
-              className={`flex h-11 shrink-0 items-center gap-2 border-b-2 px-3 font-label text-xs font-bold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
+              className={`flex min-w-0 min-h-11 items-center justify-center gap-1 border-b-2 px-2 text-center font-body text-sm font-bold leading-tight tracking-normal transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy lg:flex-1 lg:px-1 ${
                 isActive
                   ? "border-brand-navy text-brand-navy font-extrabold"
                   : "border-transparent text-text-grey hover:border-slate-300 hover:text-on-surface"
               }`}
             >
-              <span>{tab.label}</span>
+              <span>
+                <span className="sm:hidden">
+                  {{
+                    wrr: "WRRs",
+                    cipl: "CI/PL",
+                    "pick-lists": "Pick Lists",
+                    "acknowledgement-receipts": "Receipts",
+                    soa: "SOA",
+                    reports: "Reports",
+                  }[tab.key]}
+                </span>
+                <span className="hidden sm:inline">{tab.label}</span>
+              </span>
               <span
                 className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-bold ${
                   isActive

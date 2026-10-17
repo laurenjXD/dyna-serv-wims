@@ -75,7 +75,7 @@ export function DocumentsFilterBar({
             placeholder="Search document #, reference, lot, organization..."
             value={currentSearch}
             onChange={(e) => updateParam("q", e.target.value)}
-            className="h-8 w-full rounded-lg border border-slate-200 bg-surface-white pl-8 pr-7 font-body text-xs text-on-surface placeholder:text-text-grey/60 focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
+            className="h-10 w-full rounded-lg border border-slate-200 bg-surface-white pl-8 pr-7 font-body text-body-sm text-on-surface placeholder:text-text-grey/60 focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
           />
           {currentSearch && (
             <button
@@ -99,7 +99,7 @@ export function DocumentsFilterBar({
           <select
             value={currentParty}
             onChange={(e) => updateParam("partyId", e.target.value)}
-            className="h-8 w-full appearance-none rounded-lg border border-slate-200 bg-surface-white pl-8 pr-7 font-body text-xs text-on-surface focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy truncate"
+            className="h-10 w-full appearance-none rounded-lg border border-slate-200 bg-surface-white pl-8 pr-7 font-body text-body-sm text-on-surface focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy truncate"
           >
             <option value="">All Organizations</option>
             {organizations.map((org) => (
@@ -122,7 +122,7 @@ export function DocumentsFilterBar({
               type="date"
               value={currentFrom}
               onChange={(e) => updateParam("from", e.target.value)}
-              className="h-8 w-full rounded-lg border border-slate-200 bg-surface-white pl-6 pr-2 font-mono text-[11px] text-on-surface focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
+              className="h-10 w-full rounded-lg border border-slate-200 bg-surface-white pl-6 pr-2 font-body text-body-sm text-on-surface focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
               aria-label="Filter from date"
             />
           </div>
@@ -137,7 +137,7 @@ export function DocumentsFilterBar({
               type="date"
               value={currentTo}
               onChange={(e) => updateParam("to", e.target.value)}
-              className="h-8 w-full rounded-lg border border-slate-200 bg-surface-white pl-6 pr-2 font-mono text-[11px] text-on-surface focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
+              className="h-10 w-full rounded-lg border border-slate-200 bg-surface-white pl-6 pr-2 font-body text-body-sm text-on-surface focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
               aria-label="Filter to date"
             />
           </div>
@@ -148,7 +148,7 @@ export function DocumentsFilterBar({
           <button
             type="button"
             onClick={clearAllFilters}
-            className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-200 px-2.5 font-label text-xs text-text-grey hover:bg-slate-50 hover:text-on-surface focus:outline-none focus:ring-1 focus:ring-brand-navy cursor-pointer transition-colors"
+            className="inline-flex h-10 items-center gap-1 rounded-lg border border-slate-200 px-2.5 font-body text-body-sm text-text-grey hover:bg-slate-50 hover:text-on-surface focus:outline-none focus:ring-1 focus:ring-brand-navy cursor-pointer transition-colors"
           >
             <X size={13} />
             Reset
@@ -159,13 +159,13 @@ export function DocumentsFilterBar({
       {/* Status filter pills */}
       {statusOptions.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-slate-100">
-          <span className="mr-1 inline-flex items-center gap-1 font-label text-[10px] font-bold uppercase tracking-wider text-text-grey">
+          <span className="mr-1 inline-flex items-center gap-1 font-body text-sm font-bold uppercase text-text-grey">
             <Filter size={11} /> STATUS:
           </span>
           <button
             type="button"
             onClick={() => updateParam("status", null)}
-            className={`h-6 rounded-full px-2.5 font-label text-[11px] transition-colors cursor-pointer ${
+            className={`h-8 rounded-full px-3 font-body text-sm transition-colors cursor-pointer ${
               !currentStatus
                 ? "bg-slate-900 text-surface-white font-bold"
                 : "border border-slate-200 bg-surface-white text-text-grey hover:bg-slate-50"
@@ -180,7 +180,7 @@ export function DocumentsFilterBar({
                 key={opt.value}
                 type="button"
                 onClick={() => updateParam("status", isSelected ? null : opt.value)}
-                className={`h-6 rounded-full px-2.5 font-label text-[11px] transition-colors cursor-pointer ${
+              className={`h-8 rounded-full px-3 font-body text-sm transition-colors cursor-pointer ${
                   isSelected
                     ? "bg-brand-navy text-surface-white font-bold"
                     : "border border-slate-200 bg-surface-white text-text-grey hover:bg-slate-50"
