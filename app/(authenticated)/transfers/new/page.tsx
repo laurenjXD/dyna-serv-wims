@@ -17,11 +17,44 @@ import { redirect, notFound } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
-import { locations } from "@/lib/db/schema";
-import { eq, asc } from "drizzle-orm";
+import { items, locations, lots } from "@/lib/db/schema";
+import { and, eq, asc, or } from "drizzle-orm";
 import { createTransfer } from "@/lib/actions/transfers";
 import { TransferLineItems } from "./_components/transfer-line-items";
 import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+async function resolveTransferLineReferences(
+  lotReference: string,
+  itemReference: string,
+) {
+  const lotValue = lotReference.trim();
+  const itemValue = itemReference.trim();
+
+  const itemRows = UUID_PATTERN.test(itemValue)
+    ? await db.select({ id: items.id }).from(items).where(eq(items.id, itemValue)).limit(1)
+    : await db
+        .select({ id: items.id })
+        .from(items)
+        .where(or(eq(items.code, itemValue), eq(items.barcode, itemValue)))
+        .limit(1);
+  const item = itemRows[0];
+  if (!item) return { lotId: "", itemId: "", error: "Item not found. Scan a valid item barcode or enter an item code." };
+
+  const lotRows = UUID_PATTERN.test(lotValue)
+    ? await db.select({ id: lots.id, itemId: lots.itemId }).from(lots).where(eq(lots.id, lotValue)).limit(1)
+    : await db
+        .select({ id: lots.id, itemId: lots.itemId })
+        .from(lots)
+        .where(and(eq(lots.lotNumber, lotValue), eq(lots.itemId, item.id)))
+        .limit(2);
+  const lot = lotRows[0];
+  if (!lot) return { lotId: "", itemId: "", error: "Lot not found for this item. Scan the matching lot label." };
+  if (lot.itemId !== item.id) return { lotId: "", itemId: "", error: "The scanned lot and item do not match." };
+
+  return { lotId: lot.id, itemId: item.id, error: lotRows.length > 1 ? "Lot number is ambiguous. Scan the lot barcode instead." : undefined };
+}
 
 // ─── Inline server action ─────────────────────────────────────────────────────
 
@@ -35,13 +68,24 @@ async function handleCreateTransfer(formData: FormData): Promise<void> {
   );
 
   const lines = [];
+  const lineErrors: string[] = [];
+  const seenLots = new Set<string>();
   for (let i = 0; i < lineCount; i++) {
     const rawQty = formData.get(`line_${i}_qtyRequested`) as string | null;
-    lines.push({
-      lotId: (formData.get(`line_${i}_lotId`) as string | null) ?? "",
-      itemId: (formData.get(`line_${i}_itemId`) as string | null) ?? "",
-      qtyRequested: rawQty ? parseFloat(rawQty) : NaN,
-    });
+    const references = await resolveTransferLineReferences(
+      (formData.get(`line_${i}_lotId`) as string | null) ?? "",
+      (formData.get(`line_${i}_itemId`) as string | null) ?? "",
+    );
+    if (references.error) lineErrors.push(`Line ${i + 1}: ${references.error}`);
+    if (references.lotId && seenLots.has(references.lotId)) {
+      lineErrors.push(`Line ${i + 1}: This lot is already included in another transfer line.`);
+    }
+    if (references.lotId) seenLots.add(references.lotId);
+    lines.push({ ...references, qtyRequested: rawQty ? parseFloat(rawQty) : NaN });
+  }
+
+  if (lineErrors.length > 0) {
+    redirect(`/transfers/new?errors=${encodeURIComponent(lineErrors.join("|"))}`);
   }
 
   const rawRequiresApproval = formData.get("requiresApproval");
@@ -292,8 +336,8 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
             Transfer Lines
           </h2>
           <p className="mt-1 font-body text-body-sm text-text-grey">
-            At least one line is required. Each line requires a lot ID, item ID,
-            and quantity to transfer.
+            At least one line is required. Scan or enter the lot number and item
+            code/barcode, then enter the quantity to transfer.
           </p>
           <div className="mt-4">
             {/* TransferLineItems is a client component — handles dynamic add/remove. */}

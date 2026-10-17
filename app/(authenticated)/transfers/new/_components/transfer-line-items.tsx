@@ -77,13 +77,13 @@ export function TransferLineItems({
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {/* Lot ID — required; Roboto Mono per §9 codes/IDs */}
+            {/* Workers use the business lot number; the server resolves it to the internal UUID. */}
             <div>
               <label
                 htmlFor={`line-${index}-lotId`}
                 className="block font-label text-label text-text-grey"
               >
-                Lot ID{" "}
+                Lot Number / Scan{" "}
                 <span aria-hidden="true" className="text-brand-red">
                   *
                 </span>
@@ -96,18 +96,18 @@ export function TransferLineItems({
                 required
                 value={line.lotId}
                 onChange={(e) => updateLine(index, "lotId", e.target.value)}
-                placeholder="UUID of the lot"
+                placeholder="Scan or enter lot number"
                 className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
               />
             </div>
 
-            {/* Item ID — required; Roboto Mono per §9 codes/IDs */}
+            {/* Workers use the item code/barcode; the server resolves it to the internal UUID. */}
             <div>
               <label
                 htmlFor={`line-${index}-itemId`}
                 className="block font-label text-label text-text-grey"
               >
-                Item ID{" "}
+                Item Code / Scan{" "}
                 <span aria-hidden="true" className="text-brand-red">
                   *
                 </span>
@@ -120,7 +120,7 @@ export function TransferLineItems({
                 required
                 value={line.itemId}
                 onChange={(e) => updateLine(index, "itemId", e.target.value)}
-                placeholder="UUID of the item"
+                placeholder="Scan barcode or enter item code"
                 className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
               />
             </div>
