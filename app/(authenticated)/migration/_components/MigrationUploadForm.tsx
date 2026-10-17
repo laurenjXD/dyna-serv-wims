@@ -42,7 +42,13 @@ export function MigrationUploadForm() {
       setCommitMessage(null);
       try {
         const response = await fetch("/api/migration/ubot", { method: "POST", body: formData });
-        const staged = await response.json() as MigrationResult;
+        const responseText = await response.text();
+        let staged: MigrationResult;
+        try {
+          staged = JSON.parse(responseText) as MigrationResult;
+        } catch {
+          throw new Error(responseText.trim() || `The migration upload failed (${response.status}).`);
+        }
         if (!response.ok && !("error" in staged)) throw new Error("The migration upload failed.");
         setResult(staged);
         if (staged.ok) {

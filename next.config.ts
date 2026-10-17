@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
       // are retained in the private Supabase storage bucket.
       bodySizeLimit: "50mb",
     },
+    middlewareClientMaxBodySize: "50mb",
   },
 };
 
