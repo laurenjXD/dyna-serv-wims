@@ -17,6 +17,8 @@ import { BarChart2 } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { WarehouseReportsHub } from "@/components/reports/WarehouseReportsHub";
+import { db } from "@/lib/db/client";
+import { getDocumentTemplate } from "@/lib/documents/document-template";
 import {
   getReportsExecutiveKpis,
   getVmiBillingReconciliationReport,
@@ -98,6 +100,7 @@ export default async function ReportsPage() {
     deliverySla,
     archiveItems,
     availableZones,
+    documentTemplate,
   ] = await Promise.all([
     loadReport(getReportsExecutiveKpis, EMPTY_REPORT_KPIS),
     canReadFinancial
@@ -110,6 +113,7 @@ export default async function ReportsPage() {
     loadReport(getDeliveryPerformanceReport, []),
     loadReport(getReportArchiveList, []),
     loadReport(getWarehouseZonesList, []),
+    getDocumentTemplate(db),
   ]);
 
   return (
@@ -123,6 +127,7 @@ export default async function ReportsPage() {
         archiveItems={archiveItems}
         availableZones={availableZones}
         canReadFinancial={canReadFinancial}
+        documentTemplate={documentTemplate}
       />
     </div>
   );

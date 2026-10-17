@@ -35,6 +35,7 @@ import { PdfPreviewModal } from "./PdfPreviewModal";
 import { CustomReportBuilderModal } from "./CustomReportBuilderModal";
 import { VmiAuditModal } from "./VmiAuditModal";
 import { exportRawTransactionsCsvAction, generateCustomReportAction } from "@/lib/actions/reports";
+import type { DocumentTemplate } from "@/lib/documents/document-template";
 
 export interface WarehouseReportsHubProps {
   kpis?: ReportKpisProps["kpis"];
@@ -48,6 +49,7 @@ export interface WarehouseReportsHubProps {
   archiveItems?: ReportArchiveItem[];
   availableZones?: string[];
   canReadFinancial?: boolean;
+  documentTemplate?: DocumentTemplate;
 }
 
 export function WarehouseReportsHub({
@@ -59,6 +61,7 @@ export function WarehouseReportsHub({
   archiveItems,
   availableZones,
   canReadFinancial = true,
+  documentTemplate,
 }: WarehouseReportsHubProps) {
   const [facility, setFacility] = useState<FacilityZone>("all");
   const [horizon, setHorizon] = useState<DateHorizon>("30D");
@@ -459,6 +462,7 @@ export function WarehouseReportsHub({
         reportTitle={pdfModalTitle}
         reportSubtitle={pdfModalSubtitle}
         reportRefNumber={pdfModalRef}
+        documentTemplate={documentTemplate}
       />
 
       {/* ── 9. Interactive Custom Report Builder Modal ────────────────────── */}

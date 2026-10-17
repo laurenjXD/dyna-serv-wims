@@ -46,11 +46,17 @@ export function DocumentPreviewModal({
   const [showMetadata, setShowMetadata] = useState(false);
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [activeTab, setActiveTab] = useState<"primary" | "secondary">("primary");
+  const [previewLoadFailed, setPreviewLoadFailed] = useState(false);
 
   // Reset tab when doc changes
   useEffect(() => {
     setActiveTab("primary");
+    setPreviewLoadFailed(false);
   }, [doc?.id, doc?.documentType]);
+
+  useEffect(() => {
+    setPreviewLoadFailed(false);
+  }, [doc?.previewUrl]);
 
   // Close on Escape key
   useEffect(() => {
@@ -128,7 +134,7 @@ export function DocumentPreviewModal({
               <div className="flex items-center gap-2 flex-wrap">
                 <h2
                   id="preview-modal-title"
-                  className="truncate font-heading text-headline-sm font-extrabold text-on-surface"
+                  className="truncate font-heading text-[18px] leading-6 font-extrabold text-on-surface"
                 >
                   {activeTitle}
                 </h2>
@@ -310,7 +316,7 @@ export function DocumentPreviewModal({
                 </div>
               </div>
             </div>
-          ) : activePreviewUrl ? (
+          ) : activePreviewUrl && !previewLoadFailed ? (
             <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-start transition-all">
               <div
                 className="w-full rounded-xl bg-surface-white shadow-elevation-3 transition-transform duration-150 origin-top overflow-hidden border border-outline-variant/30 min-h-[75vh]"
@@ -329,6 +335,7 @@ export function DocumentPreviewModal({
                     src={activePreviewUrl}
                     title={`Preview ${activeNumber}`}
                     className="h-[75vh] w-full border-0 bg-surface-white"
+                    onError={() => setPreviewLoadFailed(true)}
                   />
                 )}
               </div>
@@ -337,18 +344,32 @@ export function DocumentPreviewModal({
             <div className="mx-auto my-auto flex max-w-md flex-col items-center justify-center rounded-2xl border border-dashed border-outline-variant/40 bg-surface-white p-8 text-center shadow-elevation-1">
               <FileText size={48} className="text-brand-navy" />
               <p className="mt-3 font-body text-body-md text-on-surface font-semibold">
-                Digital document preview rendered inline from authoritative snapshot.
+                {previewLoadFailed
+                  ? "This document cannot be embedded in the preview window. Open it directly to view the official document."
+                  : "Digital document preview rendered inline from authoritative snapshot."}
               </p>
               <p className="mt-1 font-mono text-mono-md font-bold text-brand-navy">
                 {activeNumber}
               </p>
-              <button
-                type="button"
-                onClick={handlePrint}
-                className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl bg-brand-navy px-5 font-label text-label font-bold text-surface-white hover:bg-brand-navy/90"
-              >
-                <Printer size={16} /> Print Document
-              </button>
+              <div className="mt-4 flex items-center gap-2">
+                {activePreviewUrl && (
+                  <a
+                    href={activePreviewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-10 items-center gap-2 rounded-xl border border-brand-navy px-5 font-label text-label font-bold text-brand-navy hover:bg-brand-navy/5"
+                  >
+                    <FileText size={16} /> Open Document
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={handlePrint}
+                  className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-navy px-5 font-label text-label font-bold text-surface-white hover:bg-brand-navy/90"
+                >
+                  <Printer size={16} /> Print Document
+                </button>
+              </div>
             </div>
           )}
 

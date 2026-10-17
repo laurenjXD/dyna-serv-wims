@@ -176,7 +176,7 @@ export function MasterDocumentHeader({
           </div>
 
           {/* Right: Document Designation & Actions (No bulky card) */}
-          <div className="flex flex-col sm:items-end justify-between self-stretch shrink-0">
+          <div className="flex flex-col sm:items-end justify-start self-stretch shrink-0">
             {showPrintButton && (
               <div className="print-header-actions mb-1.5 flex items-center gap-2">
                 <button

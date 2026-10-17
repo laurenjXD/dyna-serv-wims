@@ -12,6 +12,7 @@ import {
 import { TablePagination } from "@/components/ui/TablePagination";
 import { MasterDocumentHeader } from "@/components/print/MasterDocumentHeader";
 import { DocumentPrintStyles } from "@/components/print/DocumentPrintStyles";
+import type { DocumentTemplate } from "@/lib/documents/document-template";
 
 export interface ReportLineRow {
   id: string;
@@ -38,6 +39,7 @@ interface PdfPreviewModalProps {
   reportSubtitle?: string;
   reportRefNumber?: string;
   customRows?: ReportLineRow[];
+  documentTemplate?: DocumentTemplate;
 }
 
 export function PdfPreviewModal({
@@ -47,6 +49,7 @@ export function PdfPreviewModal({
   reportSubtitle = "Official Consolidated WMS Balance Sheet & CBM Space Reconciliation",
   reportRefNumber = "DS-RPT-2026-0831-VAL",
   customRows,
+  documentTemplate,
 }: PdfPreviewModalProps) {
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useState(5);
@@ -255,6 +258,13 @@ export function PdfPreviewModal({
               documentNumber={reportRefNumber}
               documentDate={new Date()}
               status="IMMUTABLE AUDIT REPORT"
+              companyName={documentTemplate?.companyName}
+              logoUrl={documentTemplate?.logoUrl}
+              subtitle={documentTemplate?.subtitle}
+              facilityAddress={documentTemplate?.facilityAddress}
+              contactInfo={documentTemplate?.contactInfo}
+              taxOrPezaReg={documentTemplate?.taxOrPezaReg}
+              isoAccreditation={documentTemplate?.isoAccreditation}
               orientation="portrait"
               showPrintButton={false}
             />

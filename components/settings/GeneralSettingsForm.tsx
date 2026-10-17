@@ -34,10 +34,18 @@ import { DEFAULT_DOCUMENT_TEMPLATE } from "@/lib/documents/document-template";
 export function GeneralSettingsForm({ initialSettings }: { initialSettings: GeneralSettingsData }) {
   const [settings, setSettings] = useState<GeneralSettingsData>(() => ({
     ...initialSettings,
-    printTemplate: initialSettings.printTemplate ?? {
+    printTemplate: {
       ...DEFAULT_DOCUMENT_TEMPLATE,
-      facilityAddress: initialSettings.facility.physicalAddress,
-      contactInfo: `Tel: ${initialSettings.facility.contactPhone} | Email: ${initialSettings.facility.contactEmail}`,
+      ...(initialSettings.printTemplate ?? {}),
+      facilityAddress:
+        initialSettings.printTemplate?.facilityAddress ?? initialSettings.facility.physicalAddress,
+      contactInfo:
+        initialSettings.printTemplate?.contactInfo ??
+        `Tel: ${initialSettings.facility.contactPhone} | Email: ${initialSettings.facility.contactEmail}`,
+      companyName:
+        initialSettings.printTemplate?.companyName === "DYNA-SERV GLOBAL CORPORATION"
+          ? DEFAULT_DOCUMENT_TEMPLATE.companyName
+          : initialSettings.printTemplate?.companyName ?? DEFAULT_DOCUMENT_TEMPLATE.companyName,
     },
   }));
   const [isSaving, setIsSaving] = useState(false);

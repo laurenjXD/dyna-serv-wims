@@ -18,7 +18,7 @@ export type DocumentTemplate = {
 };
 
 export const DEFAULT_DOCUMENT_TEMPLATE: DocumentTemplate = {
-  companyName: "DYNA-SERV GLOBAL CORPORATION",
+  companyName: "DYNA-SERV ENTERPRISES / LOGISTICS",
   subtitle: "Warehouse Inventory Management System (WIMS)",
   facilityAddress: "Lot 14 Block 3, Laguna Technopark Special Economic Zone, Biñan, Laguna 4024",
   contactInfo: "Tel: +63 (49) 541-2345 | Mobile: +63 917 555 8899 | Email: warehouse.ops@dyna-serv.com",
@@ -44,5 +44,16 @@ export async function getDocumentTemplate(db: DbLike): Promise<DocumentTemplate>
   );
   const stored = rows[0];
   const value = stored?.value as { printTemplate?: Partial<DocumentTemplate> } | undefined;
-  return { ...DEFAULT_DOCUMENT_TEMPLATE, ...(value?.printTemplate ?? {}) };
+  const storedTemplate = value?.printTemplate ?? {};
+  return {
+    ...DEFAULT_DOCUMENT_TEMPLATE,
+    ...storedTemplate,
+    // Keep previously saved templates aligned with the renamed corporate
+    // document identity instead of allowing an old cached setting to bring
+    // the legacy masthead back into generated documents.
+    companyName:
+      storedTemplate.companyName === "DYNA-SERV GLOBAL CORPORATION"
+        ? DEFAULT_DOCUMENT_TEMPLATE.companyName
+        : storedTemplate.companyName ?? DEFAULT_DOCUMENT_TEMPLATE.companyName,
+  };
 }

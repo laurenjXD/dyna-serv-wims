@@ -162,7 +162,7 @@ function AppendixSection({
 }) {
   return (
     <div id={id} className={`mt-6 ${pageBreakBefore ? "print-page-break" : "print-avoid-break"}`}>
-      <h3 className="font-mono text-xs font-bold text-slate-600 uppercase tracking-widest mb-2 print:text-black print:mb-1">
+      <h3 className="font-mono text-[10px] leading-4 font-bold text-slate-600 uppercase tracking-[0.14em] mb-2 print:text-black print:mb-1">
         {title}
       </h3>
       <div className="border border-slate-300 overflow-x-auto print:overflow-visible print:border-slate-400">
@@ -174,11 +174,11 @@ function AppendixSection({
 
 function AppendixTable({ headers, children }: { headers: string[]; children: React.ReactNode }) {
   return (
-    <table className="w-full text-left border-collapse font-mono text-xs print:text-[8pt]">
+    <table data-document-table className="w-full text-left border-collapse font-mono text-[10px] leading-4 print:text-[7.5pt]">
       <thead>
         <tr className="bg-slate-100 border-b border-slate-300 print:bg-slate-100">
           {headers.map((h) => (
-            <th key={h} className="py-1.5 px-3 uppercase tracking-wider text-slate-700 font-bold whitespace-nowrap text-xs print:text-[7.5pt] print:py-1 print:px-1.5">
+            <th key={h} className="py-1.5 px-3 uppercase tracking-[0.08em] text-slate-700 font-bold whitespace-nowrap text-[9px] print:text-[7.5pt] print:py-1 print:px-1.5">
               {h}
             </th>
           ))}
@@ -336,7 +336,7 @@ export function SoaDetailClient({
             Back to Billing
           </Link>
           <div className="mt-1 flex flex-wrap items-center gap-3">
-            <h1 className="text-xl font-bold text-slate-900">
+            <h1 className="text-lg leading-6 font-bold text-slate-900">
               Statement of Account &mdash; {soaData.soaNumber}
             </h1>
             <div className="flex items-center gap-2 bg-surface-white px-2.5 py-1 rounded-full border border-slate-200 shadow-2xs">

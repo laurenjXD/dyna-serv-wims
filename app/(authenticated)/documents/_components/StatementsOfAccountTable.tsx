@@ -35,14 +35,14 @@ export function StatementsOfAccountTable({
 
   const handleShare = (r: StatementOfAccountArchiveRow) => {
     if (typeof window !== "undefined" && typeof navigator !== "undefined") {
-      navigator.clipboard?.writeText?.(`${window.location.origin}/billing-pricing/soa/${r.partyId.slice(0, 8)}?partyId=${r.partyId}`);
+      navigator.clipboard?.writeText?.(`${window.location.origin}/billing-pricing/soa/${r.partyId}?partyId=${r.partyId}`);
       alert(`Document link for SOA ${r.periodNumber} copied to clipboard!`);
     }
   };
 
   const handleDownload = (r: StatementOfAccountArchiveRow) => {
     if (typeof window !== "undefined") {
-      window.open(`/billing-pricing/soa/${r.partyId.slice(0, 8)}?partyId=${r.partyId}`, "_blank");
+      window.open(`/billing-pricing/soa/${r.partyId}?partyId=${r.partyId}`, "_blank");
     }
   };
 
@@ -164,8 +164,8 @@ export function StatementsOfAccountTable({
                               organizationName: r.partyName,
                               actorName: r.closedByUserName,
                               generatedAt: r.closedAt ?? r.createdAt,
-                              previewUrl: `/billing-pricing/soa/${r.partyId.slice(0, 8)}?partyId=${r.partyId}`,
-                              downloadUrl: `/billing-pricing/soa/${r.partyId.slice(0, 8)}?partyId=${r.partyId}`,
+                              previewUrl: `/billing-pricing/soa/${r.partyId}?partyId=${r.partyId}`,
+                              downloadUrl: `/billing-pricing/soa/${r.partyId}?partyId=${r.partyId}`,
                             })
                           }
                           title="Preview SOA Package"
