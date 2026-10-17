@@ -8,13 +8,8 @@ import {
   Printer,
   Download,
   Check,
-  FileText,
   ShieldCheck,
-  Calendar,
-  Warehouse,
   BarChart2,
-  TrendingUp,
-  FileSpreadsheet,
   CheckCircle2,
   Sliders,
   ZoomIn,
@@ -27,8 +22,6 @@ import {
   Bar,
   LineChart,
   Line,
-  AreaChart,
-  Area,
   XAxis,
   YAxis,
   Tooltip,
@@ -450,7 +443,7 @@ export function CustomReportBuilderModal({
                     <button
                       key={ct.id}
                       type="button"
-                      onClick={() => setChartType(ct.id as any)}
+                       onClick={() => setChartType(ct.id as "bar" | "line" | "none")}
                       className={`rounded-xl border py-1.5 text-center text-xs font-bold transition-all ${
                         chartType === ct.id
                           ? "border-brand-navy bg-brand-navy text-white shadow-2xs"
