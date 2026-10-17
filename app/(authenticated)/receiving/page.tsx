@@ -51,7 +51,7 @@ function ReceivingDataError() {
     <section className="mt-6 rounded-2xl border border-status-held/30 bg-surface-white p-6 text-center shadow-elevation-1" role="alert">
       <h2 className="font-heading text-lg font-bold text-on-surface">Receiving data could not be loaded</h2>
       <p className="mt-2 font-body text-sm text-text-grey">The database request took too long. Check the connection and try again.</p>
-      <a href="/receiving" className="mt-4 inline-flex min-h-10 items-center rounded-xl bg-brand-navy px-4 font-body text-sm font-semibold text-surface-white">Try again</a>
+      <Link href="/receiving" className="mt-4 inline-flex min-h-10 items-center rounded-xl bg-brand-navy px-4 font-body text-sm font-semibold text-surface-white">Try again</Link>
     </section>
   );
 }

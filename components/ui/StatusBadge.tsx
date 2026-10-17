@@ -56,7 +56,7 @@ export function StatusBadge({
   // Determine variant, icon, and display label
   let variant: "success" | "warning" | "error" | "neutral" | "primary" = "neutral";
   let Icon = MinusCircle;
-  let displayLabel = label || status.replace(/_/g, " ");
+  const displayLabel = label || status.replace(/_/g, " ");
 
   switch (normalized) {
     case "available":

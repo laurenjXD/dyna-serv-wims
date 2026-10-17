@@ -156,7 +156,7 @@ export default async function VmiPeriodDetailPage({ params }: Props) {
       <section className="rounded-2xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="font-heading text-title-md font-bold text-on-surface">Issuance checklist</h2>
+            <h2 className="font-heading text-title-md font-bold text-on-surface">Required financial documents · Issuance checklist</h2>
             <p className="mt-1 max-w-2xl font-body text-body-sm text-text-grey">These four official PDFs are prepared and stored when the billing period is issued. Review a draft first, then issue to lock the period.</p>
           </div>
           <Link href="/documents?tab=soa" className="inline-flex w-fit items-center gap-1 font-label text-label font-bold text-brand-blue hover:underline"><FileText size={15} /> Documents Center</Link>

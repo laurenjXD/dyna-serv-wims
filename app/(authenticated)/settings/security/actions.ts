@@ -12,6 +12,7 @@ import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { parseUserAgentDevice } from "@/lib/user-settings/device-parser";
+import { withSettingsTimeout } from "@/lib/user-settings/with-timeout";
 
 export interface SecuritySettingsData {
   network: {
@@ -88,12 +89,15 @@ export async function getSecuritySettings(): Promise<{ ok: true; data: SecurityS
   }
 
   try {
-    const [latest] = await db
-      .select({ diffData: auditLog.diffData })
-      .from(auditLog)
-      .where(eq(auditLog.action, "security_policy_updated"))
-      .orderBy(desc(auditLog.createdAt))
-      .limit(1);
+    const [latest] = await withSettingsTimeout(
+      db
+        .select({ diffData: auditLog.diffData })
+        .from(auditLog)
+        .where(eq(auditLog.action, "security_policy_updated"))
+        .orderBy(desc(auditLog.createdAt))
+        .limit(1),
+      [],
+    );
 
     if (latest?.diffData && typeof latest.diffData === "object" && "settings" in latest.diffData) {
       const persisted = (latest.diffData as { settings: SecuritySettingsData }).settings;
@@ -219,7 +223,7 @@ export async function listActiveSessions(): Promise<{ ok: true; data: ActiveSess
     const desktopTimeoutMinutes = settingsRes.ok ? settingsRes.data.sessionConfig.desktopIdleTimeoutMinutes : 60;
 
     // Query real active sessions from PostgreSQL auth.sessions joined with auth.users & user_profiles
-    const rawSessions = (await db.execute(sql`
+    const rawSessions = await withSettingsTimeout((db.execute(sql`
       SELECT 
         s.id as session_id,
         s.user_id,
@@ -236,7 +240,7 @@ export async function listActiveSessions(): Promise<{ ok: true; data: ActiveSess
       LEFT JOIN public.user_profiles p ON p.id = s.user_id
       ORDER BY s.updated_at DESC
       LIMIT 50;
-    `)) as Array<{
+    `)) as Promise<Array<{
       session_id: string;
       user_id: string;
       created_at: string | Date;
@@ -247,7 +251,7 @@ export async function listActiveSessions(): Promise<{ ok: true; data: ActiveSess
       raw_user_meta_data: Record<string, unknown> | null;
       display_name: string | null;
       profile_status: string | null;
-    }>;
+    }>>, []);
 
     const now = Date.now();
     const sessions: ActiveSessionItem[] = rawSessions.map((s) => {
@@ -342,8 +346,9 @@ export async function getSystemAuditEvents(): Promise<{ ok: true; data: SystemAu
 
   let dbEventsList: SystemAuditEvent[] = [];
   try {
-    const rawEvents = await db
-      .select({
+    const rawEvents = await withSettingsTimeout(
+      db
+        .select({
         id: auditLog.id,
         actorUserId: auditLog.actorUserId,
         actorRole: auditLog.actorRole,
@@ -360,7 +365,9 @@ export async function getSystemAuditEvents(): Promise<{ ok: true; data: SystemAu
       .from(auditLog)
       .leftJoin(userProfiles, eq(auditLog.actorUserId, userProfiles.id))
       .orderBy(desc(auditLog.createdAt))
-      .limit(100);
+        .limit(100),
+      [],
+    );
 
     if (rawEvents.length > 0) {
       dbEventsList = rawEvents.map((e) => {
@@ -377,7 +384,7 @@ export async function getSystemAuditEvents(): Promise<{ ok: true; data: SystemAu
         }
 
         const entity = e.entityType.toLowerCase();
-        const module: SystemAuditEvent["module"] =
+        const auditModule: SystemAuditEvent["module"] =
           entity.includes("wrr") || entity.includes("lot") || entity.includes("item") || entity.includes("pick")
             ? "Floor & Stock"
             : entity.includes("billing") || entity.includes("margin") || entity.includes("soa") || entity.includes("tariff")
@@ -393,7 +400,7 @@ export async function getSystemAuditEvents(): Promise<{ ok: true; data: SystemAu
           action: e.action,
           targetEntity: `${e.entityType.toUpperCase()}-${e.entityId ? e.entityId.substring(0, 8) : "REF"}`,
           targetId: e.entityId,
-          module,
+          module: auditModule,
           severity: (e.action.toLowerCase().includes("error") || e.action.toLowerCase().includes("block") || e.action.toLowerCase().includes("revoke")
             ? "critical"
             : e.action.toLowerCase().includes("override") || e.action.toLowerCase().includes("suspend")

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 
 export default function AuthenticatedError({
   error,
@@ -40,12 +41,12 @@ export default function AuthenticatedError({
           >
             Try again
           </button>
-          <a
+          <Link
             href="/"
             className="inline-flex min-h-11 items-center rounded border border-brand-navy px-5 font-label text-label uppercase tracking-wide text-brand-navy"
           >
             Go to dashboard
-          </a>
+          </Link>
         </div>
       </div>
     </main>

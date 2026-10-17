@@ -80,9 +80,9 @@ export default function LoginPage() {
       return;
     }
 
-    // Supabase may deliver an invitation as a query-string OTP instead of a
-    // PKCE code. Route it through the server callback so verifyOtp can create
-    // the SSR session cookie before the onboarding page renders.
+    // Supabase can deliver invitations as a query-string OTP instead of a
+    // PKCE code. Route it through the server callback so the invite session
+    // is written to the SSR cookie before onboarding renders.
     const tokenHash = searchParams.get("token_hash");
     const tokenType = searchParams.get("type");
     if (tokenHash && tokenType === "invite") {
@@ -144,9 +144,9 @@ export default function LoginPage() {
         return;
       }
 
-      // Go directly to the authenticated landing page. Keep pending true so
+      // Go directly to the authenticated dashboard. Keep pending true so
       // button shows feedback while the browser executes the navigation.
-      window.location.replace("/");
+      window.location.replace("/dashboard");
     } catch {
       setError("An unexpected error occurred. Please try again.");
       setPending(false);
