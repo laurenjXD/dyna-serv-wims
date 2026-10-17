@@ -165,7 +165,7 @@ export function OperationsDashboard({
         </div>
 
         {/* Warehouse Location Occupancy (1 Col on Desktop) */}
-        <div className="col-span-1">
+        <div className="col-span-1 h-full">
           <LocationOccupancyChart initialData={occupancyData} />
         </div>
 

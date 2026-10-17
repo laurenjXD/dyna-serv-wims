@@ -23,7 +23,7 @@ export function LocationOccupancyChart({ initialData }: LocationOccupancyChartPr
   const overallPct = totalCbmCapacity > 0 ? Math.round((totalCbmUsed / totalCbmCapacity) * 100) : 0;
 
   return (
-    <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-5 shadow-sm flex flex-col justify-between">
+    <div className="h-full rounded-2xl border border-slate-200/80 bg-surface-white p-5 shadow-sm flex flex-col justify-between">
       {/* Header */}
       <div>
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
