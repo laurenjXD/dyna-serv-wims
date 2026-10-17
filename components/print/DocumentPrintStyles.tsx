@@ -1,0 +1,62 @@
+type DocumentPrintStylesProps = {
+  orientation?: "portrait" | "landscape";
+};
+
+/** Shared print contract for all official warehouse documents. */
+export function DocumentPrintStyles({ orientation = "portrait" }: DocumentPrintStylesProps) {
+  return (
+    <style data-document-print-styles dangerouslySetInnerHTML={{
+      __html: `
+        @page {
+          size: ${orientation};
+          margin: 10mm 12mm 12mm 12mm;
+        }
+        @media print {
+          [data-testid="desktop-sidebar"],
+          [data-testid="floor-tab-bar"],
+          nav[aria-label="Breadcrumb"],
+          .print-hide,
+          .print-hidden,
+          .no-print {
+            display: none !important;
+            visibility: hidden !important;
+          }
+          html,
+          body {
+            background: #ffffff !important;
+            color: #000000 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+          }
+          main,
+          [data-document-root] {
+            margin: 0 !important;
+            padding: 0 !important;
+            max-width: none !important;
+            width: 100% !important;
+            background: #ffffff !important;
+          }
+          thead {
+            display: table-header-group !important;
+          }
+          tfoot {
+            display: table-footer-group !important;
+          }
+          tr,
+          .print-avoid-break {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+          }
+          .print-page-break {
+            break-before: page !important;
+            page-break-before: always !important;
+          }
+          table {
+            page-break-inside: auto;
+          }
+        }
+      `,
+    }} />
+  );
+}

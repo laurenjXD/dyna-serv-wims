@@ -20,6 +20,7 @@ import { getDailyForexRate } from "@/lib/billing/forex-service";
 import { getVmiHandlingForPeriod } from "@/lib/billing/vmi-handling";
 import { getVmiChargeAggregationForPeriod } from "@/lib/billing/vmi-charge-aggregation";
 import { getVmiRecurringFeeAggregationForPeriod } from "@/lib/billing/vmi-recurring-fee-aggregation";
+import { getDocumentTemplate } from "@/lib/documents/document-template";
 import {
   SoaDetailClient,
   type SoaData,
@@ -212,6 +213,6 @@ export default async function SoaDetailPage({ params, searchParams }: PageProps)
     ],
   };
 
-  return <SoaDetailClient soaData={soaData} cbmRows={customCbmRows} />;
+  return <SoaDetailClient soaData={soaData} cbmRows={customCbmRows} documentTemplate={await getDocumentTemplate(db)} />;
 }
 

@@ -10,6 +10,8 @@ import { getPickList, getPickListItems } from "@/lib/db/queries/withdrawals";
 import { PickListPrintButton } from "./_components/PickListPrintButton";
 import { WrrBarcode } from "../../../receiving/[wrrId]/print/_components/WrrBarcode";
 import { MasterDocumentHeader } from "@/components/print/MasterDocumentHeader";
+import { DocumentPrintStyles } from "@/components/print/DocumentPrintStyles";
+import { getDocumentTemplate } from "@/lib/documents/document-template";
 
 const FLOW_LABELS: Record<string, string> = {
   vmi: "VMI (Vendor Managed Inventory)",
@@ -40,11 +42,13 @@ export default async function PickListPrintPage({
   ]);
 
   const party = partyRows[0];
+  const template = await getDocumentTemplate(db);
   const totalBoxes = lines.reduce((total, line) => total + line.numberOfBoxes, 0);
   const totalPieces = lines.reduce((total, line) => total + line.qty, 0);
 
   return (
     <main className="mx-auto w-full max-w-7xl bg-surface-white pb-10 print:max-w-none print:p-0">
+      <DocumentPrintStyles orientation="portrait" />
       {/* Print media rules */}
       <style
         dangerouslySetInnerHTML={{
@@ -110,6 +114,15 @@ export default async function PickListPrintPage({
           documentNumber={pickList.pickListNumber}
           documentDate={pickList.createdAt}
           status={pickList.status.toUpperCase()}
+          companyName={template.companyName}
+          logoUrl={template.logoUrl}
+          subtitle={template.subtitle}
+          facilityAddress={template.facilityAddress}
+          contactInfo={template.contactInfo}
+          taxOrPezaReg={template.taxOrPezaReg}
+          isoAccreditation={template.isoAccreditation}
+          headerAlignment={template.headerAlignment}
+          titleAlignment={template.titleAlignment}
           orientation="portrait"
           showPrintButton={false}
         />

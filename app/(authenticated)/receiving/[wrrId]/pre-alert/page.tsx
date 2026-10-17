@@ -14,6 +14,8 @@ import { db } from "@/lib/db/client";
 import { getWrrDocument } from "@/lib/db/queries/receiving";
 import { WrrBarcode } from "../print/_components/WrrBarcode";
 import { PrintButton } from "../print/_components/PrintButton";
+import { DocumentPrintStyles } from "@/components/print/DocumentPrintStyles";
+import { getDocumentTemplate } from "@/lib/documents/document-template";
 
 const FLOW_LABELS: Record<string, string> = {
   vmi: "VMI (Vendor Managed Inventory)",
@@ -40,9 +42,11 @@ export default async function PreAlertExportPage({ params }: PageProps) {
   }
 
   const totalExpectedUnits = wrr.items.reduce((sum, item) => sum + item.expectedQty, 0);
+  const template = await getDocumentTemplate(db);
 
   return (
     <div className="mx-auto max-w-5xl bg-surface-white px-4 py-8 print:max-w-none print:p-0">
+      <DocumentPrintStyles orientation="portrait" />
       {/* Print media styling */}
       <style
         dangerouslySetInnerHTML={{
@@ -102,9 +106,9 @@ export default async function PreAlertExportPage({ params }: PageProps) {
             <div>
               <div className="flex items-center gap-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/api/brand/logo" alt="Dyna-Serv" className="h-7 w-auto object-contain" />
+                <img src={template.logoUrl || "/logo-hd.png"} alt={template.companyName} className="h-7 w-auto object-contain" />
                 <span className="font-heading text-xs font-bold uppercase tracking-wider text-slate-800">
-                  Dyna-Serv WIMS
+                  {template.companyName}
                 </span>
               </div>
               <h1 className="mt-1 font-heading text-sm font-extrabold uppercase tracking-wide text-brand-navy">

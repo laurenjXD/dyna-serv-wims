@@ -9,15 +9,12 @@ import { db } from "@/lib/db/client";
 import { parties } from "@/lib/db/schema/parties";
 import { vmiPermits } from "@/lib/db/schema/vmi_billing";
 import { getPickList, getPickListItems } from "@/lib/db/queries/withdrawals";
+import { PDF_PAGE, PDF_THEME } from "@/lib/documents/pdf-theme";
+import { getDocumentTemplate } from "@/lib/documents/document-template";
 
-const PAGE_WIDTH = 841.89;
-const PAGE_HEIGHT = 595.28;
-const MARGIN = 28;
+const { width: PAGE_WIDTH, height: PAGE_HEIGHT } = PDF_PAGE.landscape;
+const { margin: MARGIN, ink: INK, muted: MUTED, grid: GRID, headerFill: HEADER_FILL } = PDF_THEME;
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
-const INK = rgb(0.07, 0.1, 0.16);
-const MUTED = rgb(0.39, 0.46, 0.58);
-const GRID = rgb(0.25, 0.3, 0.38);
-const HEADER_FILL = rgb(0.84, 0.86, 0.9);
 
 function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
   const words = text.split(/\s+/).filter(Boolean);
@@ -103,10 +100,12 @@ export async function GET(
   const party = partyRows[0];
   const pezaPermitNo = permitRows[0]?.permitNumber ?? null;
   const drNumber = `DR-${pickList.pickListNumber.replace(/^PL-/, "")}`;
+  const template = await getDocumentTemplate(db);
 
   let logoImage: any = null;
   try {
-    const logoPng = await readFile(path.join(process.cwd(), "public", "logo-hd.png"));
+    const logoPath = template.logoUrl?.startsWith("/") ? template.logoUrl.slice(1) : "logo-hd.png";
+    const logoPng = await readFile(path.join(process.cwd(), "public", logoPath));
     logoImage = await pdf.embedPng(logoPng);
   } catch {
     // Fallback if logo file is not found
@@ -123,7 +122,7 @@ export async function GET(
     }
     const headerX = MARGIN + (logoImage ? 44 : 0);
     page.drawText("ACKNOWLEDGEMENT RECEIPT", { x: headerX, y: 540, size: 14, font: bold, color: INK });
-    page.drawText("DYNA-SERV GLOBAL CORPORATION — WAREHOUSE MANAGEMENT SYSTEM", { x: headerX, y: 526, size: 7.5, font: bold, color: MUTED });
+    page.drawText(`${template.companyName} — ${template.subtitle}`, { x: headerX, y: 526, size: 7.5, font: bold, color: MUTED });
 
     const meta = [
       ["DELIVERY RECEIPT NO.", drNumber],

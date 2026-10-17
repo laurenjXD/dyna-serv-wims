@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { TablePagination } from "@/components/ui/TablePagination";
 import { MasterDocumentHeader } from "@/components/print/MasterDocumentHeader";
+import { DocumentPrintStyles } from "@/components/print/DocumentPrintStyles";
 
 export interface ReportLineRow {
   id: string;
@@ -80,7 +81,7 @@ export function PdfPreviewModal({
   };
 
   const handleDownload = () => {
-    // Generate simple text/CSV download or trigger printable PDF save
+    // Download the tabular report data separately from the print-to-PDF flow.
     const csvContent = "data:text/csv;charset=utf-8," +
       ["Consignor,Flow,Occupied CBM,Rate,Valuation"]
         .concat(rows.map(r => `"${r.name}","${r.flow}","${r.cbm}","${r.rate}","${r.valuation}"`))
@@ -156,6 +157,7 @@ export function PdfPreviewModal({
           `,
         }}
       />
+      <DocumentPrintStyles orientation="portrait" />
 
       <div className="relative flex h-[94vh] w-full max-w-5xl flex-col rounded-3xl border border-outline-variant/30 bg-surface-white shadow-elevation-3 overflow-hidden">
         {/* ── Modal Header Bar ──────────────────────────────────────── */}
@@ -231,7 +233,7 @@ export function PdfPreviewModal({
               className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-brand-navy px-3.5 font-label text-label font-bold text-surface-white hover:bg-brand-navy/90 focus:outline-none focus:ring-2 focus:ring-brand-navy transition-colors"
             >
               <Download size={14} />
-              Download
+              Download CSV
             </button>
 
             <button
@@ -296,7 +298,7 @@ export function PdfPreviewModal({
                 <thead>
                   <tr className="bg-slate-100 text-[10px] text-slate-700 font-bold uppercase tracking-wider">
                     <th className="p-2 border border-slate-300 text-left">Account / Organization</th>
-                    <th className="p-2 border border-slate-300 text-center">Flow</th>
+                    <th className="p-2 border border-slate-300 text-center">Inventory Model</th>
                     <th className="p-2 border border-slate-300 text-right">Occupied CBM</th>
                     <th className="p-2 border border-slate-300 text-right">Applied Rate</th>
                     <th className="p-2 border border-slate-300 text-right">Accrued Total</th>

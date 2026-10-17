@@ -5,6 +5,8 @@ import Link from "next/link";
 import { ArrowLeft, Printer, Download, ChevronDown, ChevronUp, FileText } from "lucide-react";
 import { SoaStatusSelect, type SoaStatus } from "@/components/billing/SoaStatusSelect";
 import { MasterDocumentHeader } from "@/components/print/MasterDocumentHeader";
+import { DocumentPrintStyles } from "@/components/print/DocumentPrintStyles";
+import { DEFAULT_DOCUMENT_TEMPLATE, type DocumentTemplate } from "@/lib/documents/document-template";
 
 export interface SoaCategory {
   name: string;
@@ -82,6 +84,7 @@ export interface ManpowerRow {
 
 interface SoaDetailClientProps {
   soaData: SoaData;
+  documentTemplate?: DocumentTemplate;
   cbmRows?: DailyStorageRow[];
   deliveryRows?: DeliveryRow[];
   loaRows?: LoaRow[];
@@ -190,6 +193,7 @@ function AppendixTable({ headers, children }: { headers: string[]; children: Rea
 
 export function SoaDetailClient({
   soaData,
+  documentTemplate = DEFAULT_DOCUMENT_TEMPLATE,
   cbmRows,
   deliveryRows,
   loaRows,
@@ -223,6 +227,7 @@ export function SoaDetailClient({
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 print:p-0 print:m-0 print:max-w-none">
+      <DocumentPrintStyles orientation="portrait" />
 
       {/* ── Print stylesheet ─────────────────────────────────────────────── */}
       <style>{`
@@ -370,6 +375,15 @@ export function SoaDetailClient({
           documentNumber={soaData.soaNumber}
           documentDate={soaData.issueDate}
           status={status?.toUpperCase() ?? "ISSUED"}
+          companyName={documentTemplate.companyName}
+          logoUrl={documentTemplate.logoUrl}
+          subtitle={documentTemplate.subtitle}
+          facilityAddress={documentTemplate.facilityAddress}
+          contactInfo={documentTemplate.contactInfo}
+          taxOrPezaReg={documentTemplate.taxOrPezaReg}
+          isoAccreditation={documentTemplate.isoAccreditation}
+          headerAlignment={documentTemplate.headerAlignment}
+          titleAlignment={documentTemplate.titleAlignment}
           orientation="portrait"
           showPrintButton={false}
         />

@@ -29,23 +29,15 @@ import { saveGeneralSettings } from "@/app/(authenticated)/settings/general/acti
 import { PhoneInputField } from "@/components/global/PhoneInputField";
 import { MasterDocumentHeader } from "@/components/print/MasterDocumentHeader";
 import { MasterDocumentFooter } from "@/components/print/MasterDocumentFooter";
+import { DEFAULT_DOCUMENT_TEMPLATE } from "@/lib/documents/document-template";
 
 export function GeneralSettingsForm({ initialSettings }: { initialSettings: GeneralSettingsData }) {
   const [settings, setSettings] = useState<GeneralSettingsData>(() => ({
     ...initialSettings,
     printTemplate: initialSettings.printTemplate ?? {
-      companyName: "DYNA-SERV ENTERPRISES / LOGISTICS",
-      subtitle: "Warehouse Inventory Management System (WIMS)",
+      ...DEFAULT_DOCUMENT_TEMPLATE,
       facilityAddress: initialSettings.facility.physicalAddress,
       contactInfo: `Tel: ${initialSettings.facility.contactPhone} | Email: ${initialSettings.facility.contactEmail}`,
-      logoUrl: "/logo-hd.png",
-      taxOrPezaReg: "",
-      isoAccreditation: "",
-      headerAlignment: "left",
-      titleAlignment: "left",
-      showSignatures: true,
-      showDisclaimer: false,
-      previewOrientation: "portrait",
     },
   }));
   const [isSaving, setIsSaving] = useState(false);

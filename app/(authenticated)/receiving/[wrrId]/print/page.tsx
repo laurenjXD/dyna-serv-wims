@@ -42,6 +42,8 @@ import type { WrrItemRow } from "@/lib/db/queries/receiving";
 import { PrintButton } from "./_components/PrintButton";
 import { WrrBarcode } from "./_components/WrrBarcode";
 import { MasterDocumentHeader } from "@/components/print/MasterDocumentHeader";
+import { DocumentPrintStyles } from "@/components/print/DocumentPrintStyles";
+import { getDocumentTemplate } from "@/lib/documents/document-template";
 
 const FLOW_LABELS: Record<string, string> = {
   vmi: "VMI",
@@ -68,9 +70,11 @@ export default async function WrrPrintPage({ params }: PageProps) {
   if (!wrr) {
     notFound();
   }
+  const template = await getDocumentTemplate(db);
 
   return (
     <>
+      <DocumentPrintStyles orientation="landscape" />
       {/*
        * Print media styles: Landscape layout with table-header repetition
        * and clean multi-page pagination.
@@ -172,6 +176,15 @@ export default async function WrrPrintPage({ params }: PageProps) {
             documentNumber={wrr.wrrNumber}
             documentDate={wrr.confirmedAt ?? new Date()}
             status={wrr.status.toUpperCase()}
+            companyName={template.companyName}
+            logoUrl={template.logoUrl}
+            subtitle={template.subtitle}
+            facilityAddress={template.facilityAddress}
+            contactInfo={template.contactInfo}
+            taxOrPezaReg={template.taxOrPezaReg}
+            isoAccreditation={template.isoAccreditation}
+            headerAlignment={template.headerAlignment}
+            titleAlignment={template.titleAlignment}
             orientation="landscape"
             showPrintButton={false}
           />

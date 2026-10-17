@@ -9,6 +9,8 @@ import { parties } from "@/lib/db/schema/parties";
 import { vmiPermits } from "@/lib/db/schema/vmi_billing";
 import { getPickList, getPickListItems } from "@/lib/db/queries/withdrawals";
 import { PickListPrintButton } from "../print/_components/PickListPrintButton";
+import { DocumentPrintStyles } from "@/components/print/DocumentPrintStyles";
+import { getDocumentTemplate } from "@/lib/documents/document-template";
 
 export default async function DeliveryReceiptPage({
   params,
@@ -41,9 +43,11 @@ export default async function DeliveryReceiptPage({
   const pezaPermitNo = permitRows[0]?.permitNumber ?? null;
   const totalQty = lines.reduce((sum, line) => sum + line.qty, 0);
   const totalBoxes = lines.reduce((sum, line) => sum + line.numberOfBoxes, 0);
+  const template = await getDocumentTemplate(db);
 
   return (
     <main className="min-h-screen bg-[#EEF2F8] p-4 text-[#111827] print:bg-white print:p-0">
+      <DocumentPrintStyles orientation="landscape" />
       <style
         dangerouslySetInnerHTML={{
           __html: `
@@ -98,10 +102,10 @@ export default async function DeliveryReceiptPage({
             <div>
               <div className="flex items-center gap-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/api/brand/logo" alt="Dyna-Serv" className="h-7 w-auto object-contain" />
+                <img src={template.logoUrl || "/logo-hd.png"} alt={template.companyName} className="h-7 w-auto object-contain" />
                 <div>
                   <h1 className="font-heading font-bold text-xs uppercase tracking-wider text-slate-800 leading-none">
-                    DYNA-SERV GLOBAL CORPORATION
+                    {template.companyName}
                   </h1>
                   <p className="mt-0.5 font-heading text-sm font-extrabold uppercase tracking-wide text-brand-navy">
                     Official Acknowledgement Receipt (Delivery Proof)
@@ -128,7 +132,7 @@ export default async function DeliveryReceiptPage({
               <p className="text-[10px] text-slate-500 truncate">{[party?.address1, party?.address2].filter(Boolean).join(", ") || "Address on file"}</p>
             </div>
             <div>
-              <p className="text-[9px] font-bold uppercase text-slate-500">Inventory Flow</p>
+              <p className="text-[9px] font-bold uppercase text-slate-500">Inventory Model</p>
               <p className="mt-0.5 font-bold text-slate-900">{pickList.flowType.toUpperCase()}</p>
               <p className="text-[10px] text-slate-500">STATUS: {pickList.status.toUpperCase()}</p>
             </div>

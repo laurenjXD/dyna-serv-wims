@@ -5,6 +5,7 @@ import { db } from "@/lib/db/client";
 import { isVmiDocumentType } from "@/lib/documents/vmi-artifacts";
 import { renderVmiBillingPdf } from "@/lib/documents/render-vmi-billing-pdf";
 import { loadVmiDocumentPdfData } from "@/lib/billing/vmi-document-pdf-data";
+import { getDocumentTemplate } from "@/lib/documents/document-template";
 
 interface RouteProps { params: Promise<{ periodId: string; type: string }>; }
 
@@ -18,7 +19,7 @@ export async function GET(_request: Request, { params }: RouteProps) {
 
   const data = await loadVmiDocumentPdfData(db, periodId);
   if (!data) return NextResponse.json({ error: "Billing period not found." }, { status: 404 });
-  const bytes = await renderVmiBillingPdf(type, data);
+  const bytes = await renderVmiBillingPdf(type, data, await getDocumentTemplate(db));
   const body = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
   return new NextResponse(body, { headers: { "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="${data.period.periodNumber}-${type}.pdf"`, "Cache-Control": "private, no-store" } });
 }

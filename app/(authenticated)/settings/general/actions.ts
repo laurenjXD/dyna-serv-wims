@@ -9,6 +9,7 @@ import { eq } from "drizzle-orm";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { withSettingsTimeout } from "@/lib/user-settings/with-timeout";
+import { DEFAULT_DOCUMENT_TEMPLATE, type DocumentTemplate } from "@/lib/documents/document-template";
 
 export interface GeneralSettingsData {
   facility: {
@@ -44,20 +45,7 @@ export interface GeneralSettingsData {
     dailyPdfReportSubscription: boolean;
     subscriptionEmail: string;
   };
-  printTemplate: {
-    companyName: string;
-    subtitle: string;
-    facilityAddress: string;
-    contactInfo: string;
-    logoUrl?: string;
-    taxOrPezaReg?: string;
-    isoAccreditation?: string;
-    headerAlignment?: "left" | "center";
-    titleAlignment?: "left" | "center";
-    showSignatures?: boolean;
-    showDisclaimer?: boolean;
-    previewOrientation: "portrait" | "landscape";
-  };
+  printTemplate: DocumentTemplate;
 }
 
 const DEFAULT_SETTINGS: GeneralSettingsData = {
@@ -95,7 +83,7 @@ const DEFAULT_SETTINGS: GeneralSettingsData = {
     subscriptionEmail: "operations@dyna-serv.example",
   },
   printTemplate: {
-    companyName: "DYNA-SERV ENTERPRISES / LOGISTICS",
+    companyName: DEFAULT_DOCUMENT_TEMPLATE.companyName,
     subtitle: "Warehouse Inventory Management System (WIMS)",
     facilityAddress: "Lot 14 Block 3, Laguna Technopark Special Economic Zone, Biñan, Laguna 4024",
     contactInfo: "Tel: +63 (49) 541-2345 | Mobile: +63 917 555 8899 | Email: warehouse.ops@dyna-serv.com",
@@ -105,7 +93,7 @@ const DEFAULT_SETTINGS: GeneralSettingsData = {
     headerAlignment: "left",
     titleAlignment: "left",
     showSignatures: true,
-    showDisclaimer: false,
+    showDisclaimer: DEFAULT_DOCUMENT_TEMPLATE.showDisclaimer,
     previewOrientation: "portrait",
   },
 };

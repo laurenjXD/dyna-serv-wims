@@ -5,15 +5,12 @@ import { PDFDocument, StandardFonts, rgb, type PDFPage, type PDFFont } from "pdf
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { getDashboardKpis, getDashboardMasterInventory } from "@/lib/db/queries/dashboard";
+import { db } from "@/lib/db/client";
+import { PDF_PAGE, PDF_THEME } from "@/lib/documents/pdf-theme";
+import { getDocumentTemplate } from "@/lib/documents/document-template";
 
-const PAGE_WIDTH = 841.89; // A4 Landscape
-const PAGE_HEIGHT = 595.28;
-const MARGIN = 28;
-const INK = rgb(0.07, 0.1, 0.16);
-const MUTED = rgb(0.39, 0.46, 0.58);
-const GRID = rgb(0.75, 0.8, 0.88);
-const HEADER_FILL = rgb(0.92, 0.95, 0.98);
-const ACCENT_NAVY = rgb(0.0, 0.17, 0.29);
+const { width: PAGE_WIDTH, height: PAGE_HEIGHT } = PDF_PAGE.landscape;
+const { margin: MARGIN, ink: INK, muted: MUTED, grid: GRID, headerFill: HEADER_FILL, accentNavy: ACCENT_NAVY } = PDF_THEME;
 
 function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
   const words = text.split(/\s+/).filter(Boolean);
@@ -93,6 +90,7 @@ export async function GET() {
     getDashboardKpis(),
     getDashboardMasterInventory({ limit: 50 }),
   ]);
+  const template = await getDocumentTemplate(db);
 
   const pdf = await PDFDocument.create();
   const regular = await pdf.embedFont(StandardFonts.Helvetica);
@@ -100,7 +98,8 @@ export async function GET() {
 
   let logoImage: any = null;
   try {
-    const logoPng = await readFile(path.join(process.cwd(), "public", "logo-hd.png"));
+    const logoPath = template.logoUrl?.startsWith("/") ? template.logoUrl.slice(1) : "logo-hd.png";
+    const logoPng = await readFile(path.join(process.cwd(), "public", logoPath));
     logoImage = await pdf.embedPng(logoPng);
   } catch {
     // Fallback if logo not found
@@ -122,8 +121,8 @@ export async function GET() {
       page.drawImage(logoImage, { x: MARGIN, y: 520, width: 34, height: 34 });
     }
     const headerX = MARGIN + (logoImage ? 44 : 0);
-    page.drawText("DYNA-SERV GLOBAL CORPORATION", { x: headerX, y: 542, size: 14, font: bold, color: ACCENT_NAVY });
-    page.drawText("Warehouse Operations & Master Inventory Executive Summary Report", { x: headerX, y: 526, size: 8.5, font: bold, color: MUTED });
+    page.drawText(template.companyName, { x: headerX, y: 542, size: 14, font: bold, color: ACCENT_NAVY });
+    page.drawText(template.subtitle || "Warehouse Operations & Master Inventory Executive Summary Report", { x: headerX, y: 526, size: 8.5, font: bold, color: MUTED });
 
     page.drawText(`GENERATED: ${nowStr}`, { x: 610, y: 542, size: 7.5, font: bold, color: INK });
     page.drawText(`STATUS: AUTHORIZED REAL-TIME TELEMETRY`, { x: 610, y: 528, size: 6.5, font: regular, color: MUTED });

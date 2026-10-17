@@ -4,6 +4,7 @@ import { vmiBillingPeriods } from "@/lib/db/schema/vmi_billing";
 import { ensureVmiDocumentArtifacts } from "@/lib/billing/vmi-document-artifacts";
 import { loadVmiDocumentPdfData } from "@/lib/billing/vmi-document-pdf-data";
 import { renderVmiBillingPdf } from "@/lib/documents/render-vmi-billing-pdf";
+import { getDocumentTemplate } from "@/lib/documents/document-template";
 import { buildVmiArtifactPath, type VmiDocumentType, VMI_DOCUMENT_TYPES } from "@/lib/documents/vmi-artifacts";
 
 type DbLike = any;
@@ -70,7 +71,7 @@ export async function issueVmiPeriodDocuments(
     for (const type of VMI_DOCUMENT_TYPES) {
       const doc = documentByType.get(type) as { id: string; status: string; artifactPath: string | null };
       if (doc.status === "ready" && doc.artifactPath) continue;
-      const bytes = await renderVmiBillingPdf(type, data);
+      const bytes = await renderVmiBillingPdf(type, data, await getDocumentTemplate(db));
       const path = buildVmiArtifactPath(input.periodId, doc.id, type);
       const upload = await storage.from(BUCKET).upload(path, bytes, { contentType: "application/pdf", upsert: false });
       if (upload.error) throw new Error(`${type}: ${upload.error.message}`);

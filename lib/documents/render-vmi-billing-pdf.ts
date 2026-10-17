@@ -1,7 +1,9 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { PDFDocument, StandardFonts, rgb, type PDFImage, type PDFFont, type PDFPage } from "pdf-lib";
+import { PDFDocument, StandardFonts, type PDFImage, type PDFFont, type PDFPage } from "pdf-lib";
 import type { VmiDocumentType } from "./vmi-artifacts";
+import { PDF_PAGE, PDF_THEME } from "./pdf-theme";
+import { DEFAULT_DOCUMENT_TEMPLATE, type DocumentTemplate } from "./document-template";
 
 export type VmiPdfPeriod = {
   periodNumber: string;
@@ -30,25 +32,26 @@ export type VmiPdfPermit = { permitNumber: string; itemScope: string; validFrom:
 
 export type VmiPdfData = { period: VmiPdfPeriod; dailyRows: VmiPdfDailyRow[]; payments: VmiPdfPayment[]; permits: VmiPdfPermit[] };
 
-const WIDTH = 612;
-const HEIGHT = 792;
-const LEFT = 42;
+const { width: WIDTH, height: HEIGHT } = PDF_PAGE.portrait;
+const LEFT = PDF_THEME.margin + 14;
 const RIGHT = WIDTH - 42;
 
 function money(value: number): string { return `$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
-function line(page: PDFPage, y: number): void { page.drawLine({ start: { x: LEFT, y }, end: { x: RIGHT, y }, thickness: 0.5, color: rgb(0.75, 0.78, 0.82) }); }
-function text(page: PDFPage, content: string, x: number, y: number, font: PDFFont, size = 9, bold = false): void { page.drawText(content, { x, y, font, size, color: bold ? rgb(0.06, 0.12, 0.24) : rgb(0.12, 0.15, 0.2) }); }
+function line(page: PDFPage, y: number): void { page.drawLine({ start: { x: LEFT, y }, end: { x: RIGHT, y }, thickness: 0.5, color: PDF_THEME.grid }); }
+function text(page: PDFPage, content: string, x: number, y: number, font: PDFFont, size = 9, bold = false): void { page.drawText(content, { x, y, font, size, color: bold ? PDF_THEME.accentNavy : PDF_THEME.ink }); }
 
-async function embedDynaServLogo(pdf: PDFDocument): Promise<PDFImage> {
-  const logoPng = await readFile(path.join(process.cwd(), "public", "logo-hd.png"));
+async function embedDynaServLogo(pdf: PDFDocument, template: DocumentTemplate): Promise<PDFImage> {
+  const logoPath = template.logoUrl?.startsWith("/") ? template.logoUrl.slice(1) : "logo-hd.png";
+  const logoPng = await readFile(path.join(process.cwd(), "public", logoPath));
   return pdf.embedPng(logoPng);
 }
 
-function header(page: PDFPage, title: string, period: VmiPdfPeriod, regular: PDFFont, bold: PDFFont, logo: PDFImage): number {
+function header(page: PDFPage, title: string, period: VmiPdfPeriod, regular: PDFFont, bold: PDFFont, logo: PDFImage, template: DocumentTemplate): number {
   const logoSize = 32;
   page.drawImage(logo, { x: LEFT, y: 744 - logoSize, width: logoSize, height: logoSize });
   const textLeft = LEFT + logoSize + 10;
-  text(page, "DYNA-SERV WAREHOUSE MANAGEMENT", textLeft, 755, bold, 11, true);
+  text(page, template.companyName, textLeft, 755, bold, 11, true);
+  text(page, template.subtitle, textLeft, 741, regular, 8);
   text(page, title.toUpperCase(), LEFT, 698, bold, 12, true);
   text(page, `${period.partyName} (${period.partyCode})`, LEFT, 679, regular, 10);
   text(page, `Reference: ${period.periodNumber}`, LEFT, 664, regular, 9);
@@ -63,18 +66,18 @@ function row(page: PDFPage, y: number, label: string, value: string, regular: PD
   return y - 22;
 }
 
-export async function renderVmiBillingPdf(type: VmiDocumentType, data: VmiPdfData): Promise<Uint8Array> {
+export async function renderVmiBillingPdf(type: VmiDocumentType, data: VmiPdfData, template: DocumentTemplate = DEFAULT_DOCUMENT_TEMPLATE): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
   const regular = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
-  const logo = await embedDynaServLogo(pdf);
+  const logo = await embedDynaServLogo(pdf, template);
   let page = pdf.addPage([WIDTH, HEIGHT]);
   let y = header(page, {
     vmi_billing_statement: "Billing Statement",
     vmi_warehousing_charges: "Warehousing Charges",
     vmi_statement_of_account: "Statement of Account",
     vmi_letter_of_authority: "Letter of Authority",
-  }[type], data.period, regular, bold, logo);
+  }[type], data.period, regular, bold, logo, template);
 
   if (type === "vmi_billing_statement") {
     const rows: [string, number][] = [
@@ -96,7 +99,7 @@ export async function renderVmiBillingPdf(type: VmiDocumentType, data: VmiPdfDat
     for (const payment of data.payments) {
       if (y < 65) {
         page = pdf.addPage([WIDTH, HEIGHT]);
-        y = header(page, "Statement of Account (continued)", data.period, regular, bold, logo);
+        y = header(page, "Statement of Account (continued)", data.period, regular, bold, logo, template);
         text(page, "Payment history (continued)", LEFT, y, bold, 11, true);
         y -= 18;
       }
@@ -119,7 +122,7 @@ export async function renderVmiBillingPdf(type: VmiDocumentType, data: VmiPdfDat
     const x = [LEFT, 110, 185, 245, 305, 380, 455];
     headings.forEach((heading, index) => text(page, heading, x[index], y, bold, 8, true)); y -= 12; line(page, y + 5);
     for (const daily of data.dailyRows) {
-      if (y < 65) { page = pdf.addPage([WIDTH, HEIGHT]); y = header(page, "Warehousing Charges (continued)", data.period, regular, bold, logo); }
+      if (y < 65) { page = pdf.addPage([WIDTH, HEIGHT]); y = header(page, "Warehousing Charges (continued)", data.period, regular, bold, logo, template); }
       const values = [daily.date, daily.beginningCbm.toFixed(2), daily.inboundCbm.toFixed(2), daily.outboundCbm.toFixed(2), daily.endingCbm.toFixed(2), `$${daily.rateUsd.toFixed(4)}`, money(daily.amountUsd)];
       values.forEach((value, index) => text(page, value, x[index], y, regular, 8)); y -= 15;
     }

@@ -8,6 +8,8 @@ import { getWrrDocument } from "@/lib/db/queries/receiving";
 import type { WrrItemRow } from "@/lib/db/queries/receiving";
 import { WrrBarcode } from "../print/_components/WrrBarcode";
 import { PrintButton } from "../print/_components/PrintButton";
+import { DocumentPrintStyles } from "@/components/print/DocumentPrintStyles";
+import { getDocumentTemplate } from "@/lib/documents/document-template";
 
 interface PageProps {
   params: Promise<{ wrrId: string }>;
@@ -36,9 +38,11 @@ export default async function InboundTurnoverReceiptPage({ params }: PageProps) 
     const count = Number(item.scannedQty) > 0 ? Number(item.scannedQty) : Number(item.expectedQty) || 0;
     return sum + (count * spq);
   }, 0);
+  const template = await getDocumentTemplate(db);
 
   return (
     <main className="mx-auto max-w-4xl bg-surface-white pb-12 print:max-w-none print:p-0">
+      <DocumentPrintStyles orientation="portrait" />
       {/* Print styles */}
       <style
         dangerouslySetInnerHTML={{
@@ -96,9 +100,9 @@ export default async function InboundTurnoverReceiptPage({ params }: PageProps) 
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/api/brand/logo" alt="Dyna-Serv" className="h-7 w-auto" />
+              <img src={template.logoUrl || "/logo-hd.png"} alt={template.companyName} className="h-7 w-auto" />
               <span className="font-heading text-xs font-bold uppercase tracking-wider text-slate-800">
-                Dyna-Serv WIMS
+                {template.companyName}
               </span>
             </div>
             <h1 className="font-heading text-sm font-extrabold uppercase tracking-wide text-brand-navy">
@@ -135,7 +139,7 @@ export default async function InboundTurnoverReceiptPage({ params }: PageProps) 
           <div>
             <p className="text-[9px] uppercase font-bold text-slate-500">Invoice / CI/PL Ref</p>
             <p className="mt-0.5 font-bold text-slate-900">{wrr.commercialInvoiceNo ?? "—"}</p>
-            <p className="text-[10px] text-slate-500">FLOW: {wrr.flowType.toUpperCase()}</p>
+            <p className="text-[10px] text-slate-500">INVENTORY MODEL: {wrr.flowType.toUpperCase()}</p>
           </div>
           <div>
             <p className="text-[9px] uppercase font-bold text-slate-500">MAWB / MBL No.</p>

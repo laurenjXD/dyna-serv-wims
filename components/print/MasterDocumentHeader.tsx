@@ -65,7 +65,7 @@ export function MasterDocumentHeader({
           }
           @page {
             size: ${orientation === "landscape" ? "landscape" : "portrait"};
-            margin: 12mm 15mm 15mm 15mm;
+            margin: 10mm 12mm 12mm 12mm;
           }
         }
       `}</style>
