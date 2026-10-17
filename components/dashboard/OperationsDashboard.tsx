@@ -262,7 +262,7 @@ export function OperationsDashboard({
       {/* ─────────────────────────────────────────────────────────────────── */}
       {/* 📱 FIXED FLOATING BOTTOM ACTION DOCK (< 1024px)                     */}
       {/* ─────────────────────────────────────────────────────────────────── */}
-      <div className="fixed bottom-3 inset-x-3 z-40 lg:hidden flex items-center justify-between gap-2.5 bg-brand-navy/95 text-white p-2 rounded-2xl shadow-2xl backdrop-blur-lg border border-white/20">
+      <div className="fixed bottom-[calc(3.5rem+0.75rem)] inset-x-3 z-40 lg:hidden flex items-center justify-between gap-2.5 bg-brand-navy/95 text-white p-2 rounded-2xl shadow-2xl backdrop-blur-lg border border-white/20">
         {/* Prominent Scan Barcode/QR Camera Button */}
         <button
           type="button"

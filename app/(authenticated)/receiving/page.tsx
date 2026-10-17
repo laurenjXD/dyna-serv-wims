@@ -202,7 +202,7 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
       <div
         role="tablist"
         aria-label="Receiving sections"
-        className="mt-6 flex gap-6 overflow-x-auto border-b border-outline-variant/30"
+        className="mt-6 flex w-full gap-0 overflow-hidden border-b border-outline-variant/30"
       >
         {TABS.map((tab) => {
           const isActive = tab.key === activeTab;
@@ -218,7 +218,7 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
               href={href}
               role="tab"
               aria-selected={isActive}
-              className={`flex h-11 shrink-0 items-center border-b-2 px-1 font-label text-label font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
+              className={`flex h-11 min-w-0 flex-1 items-center justify-center whitespace-nowrap border-b-2 px-0 font-label text-[11px] font-semibold leading-none sm:text-label focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
                 isActive
                   ? "border-on-surface text-on-surface"
                   : "border-transparent text-text-grey hover:text-on-surface"
