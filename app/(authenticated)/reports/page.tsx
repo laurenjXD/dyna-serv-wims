@@ -8,7 +8,7 @@
 //   specs/00-steering/revision-log.md (2026-08-07: /reports owns KPI dashboard,
 //     not /; 2026-08-07: reporting.financial_read added for supervisor + admin)
 //
-// Surface: Office. Capability gate: reporting.read.
+// Surface: Office. Capability gate: reporting.read or reporting.financial_read.
 // Financial section gate: reporting.financial_read (supervisor/administrator only).
 // Offline: all analytics are Tier 2 — online only, never cached.
 // Aggregate queries MUST read lot_inventory_totals, never raw lot_location_balances.
@@ -30,8 +30,11 @@ import {
 export default async function ReportsPage() {
   const resolver = await createPageResolver();
   const permResult = await requirePermission(resolver, "reporting.read");
+  const financialPerm = await requirePermission(resolver, "reporting.financial_read");
+  const canReadReports =
+    permResult.kind === "authorized" || financialPerm.kind === "authorized";
 
-  if (permResult.kind !== "authorized") {
+  if (!canReadReports) {
     return (
       <div className="mx-auto max-w-container px-8 py-12 text-center">
         <BarChart2 size={40} className="mx-auto mb-3 text-text-grey" aria-hidden="true" />
@@ -40,14 +43,14 @@ export default async function ReportsPage() {
         </p>
         <p className="mt-2 font-body text-body-sm text-text-grey">
           This page requires the{" "}
-          <span className="font-mono text-mono-md">reporting.read</span>{" "}
+          <span className="font-mono text-mono-md">reporting.read</span> or{" "}
+          <span className="font-mono text-mono-md">reporting.financial_read</span>{" "}
           capability.
         </p>
       </div>
     );
   }
 
-  const financialPerm = await requirePermission(resolver, "reporting.financial_read");
   const canReadFinancial = financialPerm.kind === "authorized";
 
   // Fetch live reports datasets in parallel

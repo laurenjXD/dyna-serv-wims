@@ -153,10 +153,10 @@ export function KpiGrid({
           </button>
         </div>
 
-        {/* Valuation & Capacity: Horizontal Swipe Carousel */}
-        <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2 scrollbar-none">
+        {/* Valuation & Capacity: Responsive, non-scrolling card grid */}
+        <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
           {/* Card 1: Valuation */}
-          <div className="min-w-[260px] flex-1 snap-start rounded-2xl border border-black/5 bg-white/90 p-4 shadow-sm backdrop-blur-md">
+          <div className="min-w-0 rounded-2xl border border-black/5 bg-white/90 p-4 shadow-sm backdrop-blur-md">
             <p className="font-label text-[11px] font-bold uppercase tracking-wider text-text-grey">
               Total Stock Valuation
             </p>
@@ -168,7 +168,7 @@ export function KpiGrid({
                 +{valuation.trendPct}% MTD
               </span>
             </div>
-            <div className="mt-2.5 flex items-center gap-2 pt-2 border-t border-slate-100">
+            <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 pt-2 border-t border-slate-100">
               <span className="text-[11px] font-bold text-slate-700">
                 VMI: ${(valuation.vmiAmount / 1000000).toFixed(1)}M
               </span>
@@ -180,7 +180,7 @@ export function KpiGrid({
           </div>
 
           {/* Card 2: Stock Health */}
-          <div className="min-w-[260px] flex-1 snap-start rounded-2xl border border-black/5 bg-white/90 p-4 shadow-sm backdrop-blur-md">
+          <div className="min-w-0 rounded-2xl border border-black/5 bg-white/90 p-4 shadow-sm backdrop-blur-md">
             <p className="font-label text-[11px] font-bold uppercase tracking-wider text-text-grey">
               Stock Health & QC Gate
             </p>

@@ -220,7 +220,7 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
     render(
       <ShellNavigation
         tier="office"
-        context={{ grants: [{ resource: "reporting", action: "read", scopeKind: "global" }] }}
+        context={{ grants: [{ resource: "reporting", action: "financial_read", scopeKind: "global" }] }}
         currentPath="/inventory"
       />,
     );
