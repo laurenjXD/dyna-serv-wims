@@ -423,3 +423,153 @@ html:not([data-theme="dark"]) .inspection-page [class~="bg-white/15"] {
     display: table-header-group !important;
   }
 }
+
+/*
+ * Final dark-theme surface pass.
+ *
+ * A number of older screens still use literal Tailwind light utilities
+ * (including arbitrary fills such as bg-[#F8FAFC]). Those utilities are
+ * valid in the light theme, but they must not punch white holes through the
+ * dark shell. Keep this block at the end of the stylesheet so it wins over
+ * page-local utility output while preserving semantic brand/status colors.
+ */
+html[data-theme="dark"] {
+  --dark-page: #0b1220;
+  --dark-shell: #111a2d;
+  --dark-surface: #162238;
+  --dark-surface-raised: #1d2b43;
+  --dark-input: #101b2e;
+  --dark-border: rgba(148, 163, 184, 0.24);
+  --dark-border-strong: rgba(148, 163, 184, 0.38);
+  --dark-text: #f8fafc;
+  --dark-text-secondary: #b6c4d8;
+  --dark-text-muted: #8fa1b9;
+}
+
+html[data-theme="dark"] body,
+html[data-theme="dark"] main,
+html[data-theme="dark"] [data-surface] {
+  background-color: var(--dark-page);
+  color: var(--dark-text);
+}
+
+/* Light card and panel utilities become layered dark surfaces. */
+html[data-theme="dark"] :is(
+  .bg-white,
+  .bg-surface,
+  .bg-surface-white,
+  .bg-surface-light-grey,
+  .bg-slate-50,
+  .bg-slate-50\/50,
+  .bg-slate-50\/70,
+  .bg-slate-100,
+  .bg-gray-50,
+  .bg-gray-100
+) {
+  background-color: var(--dark-surface) !important;
+}
+
+html[data-theme="dark"] :is(
+  [class*="bg-[#F8FAFC]"],
+  [class*="bg-[#FAFAFA]"],
+  [class*="bg-[#F1F5F9]"],
+  [class*="bg-slate-50/"],
+  [class*="bg-white/"]
+) {
+  background-color: var(--dark-surface-raised) !important;
+}
+
+html[data-theme="dark"] :is(input, select, textarea) {
+  background-color: var(--dark-input) !important;
+  border-color: var(--dark-border-strong) !important;
+  color: var(--dark-text) !important;
+  color-scheme: dark;
+}
+
+/* Keep controls readable: active tracks remain branded, inactive tracks are
+ * slate, and the thumb stays a deliberate high-contrast control affordance. */
+html[data-theme="dark"] [role="switch"] {
+  border-color: transparent !important;
+}
+
+html[data-theme="dark"] [role="switch"] .bg-white {
+  background-color: #f8fafc !important;
+}
+
+html[data-theme="dark"] :is(
+  .text-slate-950,
+  .text-slate-900,
+  .text-slate-800,
+  .text-slate-700,
+  .text-gray-900,
+  .text-gray-800,
+  .text-black
+) {
+  color: var(--dark-text) !important;
+}
+
+html[data-theme="dark"] :is(
+  .text-slate-600,
+  .text-gray-700,
+  .text-gray-600
+) {
+  color: var(--dark-text-secondary) !important;
+}
+
+html[data-theme="dark"] :is(
+  .text-slate-500,
+  .text-slate-400,
+  .text-gray-500,
+  .text-gray-400
+) {
+  color: var(--dark-text-muted) !important;
+}
+
+html[data-theme="dark"] :is(
+  [class*="border-slate-"],
+  [class*="border-gray-"],
+  [class*="border-[#"]
+) {
+  border-color: var(--dark-border) !important;
+}
+
+html[data-theme="dark"] :is(
+  .hover\:bg-slate-50:hover,
+  .hover\:bg-slate-100:hover,
+  .hover\:bg-gray-50:hover,
+  .hover\:bg-gray-100:hover
+) {
+  background-color: var(--dark-surface-raised) !important;
+}
+
+html[data-theme="dark"] :is(table thead, thead tr) {
+  background-color: var(--dark-shell) !important;
+}
+
+html[data-theme="dark"] :is(table tbody td, table tbody th) {
+  color: var(--dark-text-secondary);
+}
+
+/* Profile is the most visible example of the legacy light-surface problem;
+ * give its sections a clear elevation hierarchy rather than a flat slab. */
+html[data-theme="dark"] [data-testid^="profile-section-"] {
+  background-color: var(--dark-surface) !important;
+  border-color: var(--dark-border-strong) !important;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16) !important;
+}
+
+html[data-theme="dark"] [data-testid^="profile-section-"] [class*="bg-[#"],
+html[data-theme="dark"] [data-testid^="profile-section-"] [class*="bg-slate-50"],
+html[data-theme="dark"] [data-testid^="profile-section-"] [class~="bg-white"] {
+  background-color: var(--dark-surface-raised) !important;
+}
+
+/* Brand assets must remain source-colored; dark mode should never invert or
+ * dim the logo. */
+html[data-theme="dark"] img[src*="logo"],
+html[data-theme="dark"] img[alt*="logo" i],
+html[data-theme="dark"] svg[data-brand-logo] {
+  filter: none !important;
+  opacity: 1 !important;
+  mix-blend-mode: normal !important;
+}

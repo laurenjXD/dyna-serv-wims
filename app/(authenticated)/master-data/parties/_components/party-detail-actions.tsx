@@ -159,6 +159,19 @@ import {
   X,
   AlertCircle,
   Sparkles,
+  Minimize2,
+  Maximize2,
+  Bold,
+  Italic,
+  Underline,
+  AlignLeft,
+  List,
+  ListOrdered,
+  Link2,
+  Smile,
+  Image,
+  MoreVertical,
+  Strikethrough,
 } from "lucide-react";
 
 function ContactPartyModal({
@@ -306,21 +319,18 @@ function ContactPartyModal({
       onClick={onClose}
     >
       <div
-        className="flex max-h-[92vh] w-full max-w-3xl flex-col rounded-2xl border border-border bg-surface shadow-elevation-3 overflow-hidden animate-in zoom-in-95"
+        className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-elevation-3 animate-in zoom-in-95"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="flex items-start justify-between border-b border-border bg-surface-light-grey/40 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-border bg-surface-light-grey/60 px-5 py-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-navy/10 text-brand-navy">
-              <Mail className="h-5 w-5" />
-            </div>
             <div>
               <h2
                 id="contact-party-title"
-                className="font-heading text-title-md font-bold text-on-surface"
+                className="font-heading text-base font-bold text-on-surface"
               >
-                Transactional Email Dispatch
+                New Message
               </h2>
               <div className="mt-0.5 flex flex-wrap items-center gap-2 font-body text-body-xs text-text-grey">
                 <span>To: <strong className="text-on-surface">{partyName}</strong> ({partyEmail || "on record"})</span>
@@ -330,17 +340,15 @@ function ContactPartyModal({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-text-grey hover:bg-surface-light-grey hover:text-on-surface transition-colors"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-1 text-text-grey">
+            <button type="button" aria-label="Minimize composer" className="hidden h-9 w-9 items-center justify-center rounded-lg hover:bg-surface-light-grey hover:text-on-surface sm:flex"><Minimize2 size={16} /></button>
+            <button type="button" aria-label="Expand composer" className="hidden h-9 w-9 items-center justify-center rounded-lg hover:bg-surface-light-grey hover:text-on-surface sm:flex"><Maximize2 size={16} /></button>
+            <button type="button" onClick={onClose} aria-label="Close composer" className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-surface-light-grey hover:text-on-surface transition-colors"><X size={18} /></button>
+          </div>
         </div>
 
         {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <div className="flex-1 overflow-y-auto px-5 py-3 sm:px-6 sm:py-4">
           {state.error && (
             <div
               role="alert"
@@ -381,18 +389,22 @@ function ContactPartyModal({
               <input type="hidden" name="templateKey" value={selectedTemplateId} />
               <input type="hidden" name="templateCategory" value={selectedTemplate?.category ?? "general"} />
 
-              {/* Template Selector & Composer Controls Bar */}
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface-light-grey/60 p-3">
-                <div className="flex items-center gap-2 flex-1 min-w-[240px]">
+              {/* Suggested draft selector stays available without taking over
+                  the familiar mail-client composition flow. */}
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface-light-grey/60 px-3 py-2.5">
+                <div className="flex min-w-[240px] flex-1 items-center gap-2">
                   <Sparkles size={16} className="text-brand-navy shrink-0" />
-                  <label htmlFor="template-selector" className="font-label text-label-xs font-bold uppercase text-text-grey shrink-0">
-                    Template:
-                  </label>
+                  <div className="min-w-0">
+                    <label htmlFor="template-selector" className="block font-label text-label-xs font-bold uppercase text-text-grey">
+                      Suggested draft
+                    </label>
+                    <span className="hidden font-body text-[11px] text-text-grey sm:block">Choose a prepared operational message</span>
+                  </div>
                   <select
                     id="template-selector"
                     value={selectedTemplateId}
                     onChange={(e) => handleTemplateChange(e.target.value)}
-                    className="h-9 flex-1 rounded-lg border border-border bg-surface px-3 font-body text-body-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                    className="h-9 min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 font-body text-body-xs font-semibold text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
                   >
                     {EMAIL_TEMPLATES.map((tmpl) => (
                       <option key={tmpl.id} value={tmpl.id}>
@@ -433,12 +445,19 @@ function ContactPartyModal({
 
               {activeTab === "compose" ? (
                 <div className="space-y-4">
-                  {/* Subject Line & CC */}
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  {/* Familiar mail-client recipient, subject, and CC rows. */}
+                  <div className="flex min-h-11 items-center gap-2 border-b border-border">
+                    <span className="font-body text-body-sm text-text-grey">To</span>
+                    <span className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-brand-navy/10 px-2.5 py-1 font-body text-body-sm text-on-surface">
+                      <span className="max-w-[220px] truncate font-semibold">{partyName}</span>
+                      <span className="max-w-[260px] truncate text-text-grey">&lt;{partyEmail || "email on record"}&gt;</span>
+                    </span>
+                  </div>
+                  <div className="grid gap-0 border-b border-border sm:grid-cols-2">
                     <div>
                       <label
                         htmlFor="email-subject"
-                        className="block font-label text-label-xs font-bold uppercase tracking-wider text-text-grey"
+                        className="sr-only"
                       >
                         Email Subject Line <span className="text-brand-red">*</span>
                       </label>
@@ -450,14 +469,14 @@ function ContactPartyModal({
                         value={subject}
                         onChange={(e) => setSubject(e.target.value)}
                         placeholder="Enter email subject line…"
-                        className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3.5 font-body text-body-md font-semibold text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                        className="h-12 w-full rounded-none border-0 bg-transparent px-0 font-body text-body-md font-semibold text-on-surface focus:outline-none focus:ring-0"
                       />
                     </div>
 
                     <div>
                       <label
                         htmlFor="email-cc"
-                        className="block font-label text-label-xs font-bold uppercase tracking-wider text-text-grey"
+                        className="sr-only"
                       >
                         CC (Optional)
                       </label>
@@ -468,7 +487,7 @@ function ContactPartyModal({
                         value={cc}
                         onChange={(e) => setCc(e.target.value)}
                         placeholder="e.g. accounting@dyna-serv.com, ops@client.com"
-                        className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3.5 font-body text-body-md text-on-surface placeholder:text-text-grey/60 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                        className="h-12 w-full rounded-none border-0 bg-transparent px-0 font-body text-body-md text-on-surface placeholder:text-text-grey/60 focus:outline-none focus:ring-0"
                       />
                     </div>
                   </div>
@@ -478,7 +497,7 @@ function ContactPartyModal({
                     <div className="flex items-center justify-between">
                       <label
                         htmlFor="email-message"
-                        className="block font-label text-label-xs font-bold uppercase tracking-wider text-text-grey"
+                        className="sr-only"
                       >
                         Message Body <span className="text-brand-red">*</span>
                       </label>
@@ -496,13 +515,22 @@ function ContactPartyModal({
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
                       placeholder="Write your operational message to the organization here…"
-                      className="mt-1 block w-full rounded-xl border border-border bg-surface p-3.5 font-body text-body-sm text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy leading-relaxed"
+                      className="mt-2 block min-h-[260px] w-full resize-y rounded-none border-0 bg-transparent p-0 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-0 leading-relaxed"
                     />
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-1 border-t border-border pt-2 text-text-grey">
+                    {[Bold, Italic, Underline, Strikethrough, AlignLeft, List, ListOrdered, Link2, Smile, Image].map((Icon, index) => (
+                      <span key={index} aria-hidden="true" className="flex h-9 w-9 items-center justify-center rounded-lg">
+                        <Icon size={17} />
+                      </span>
+                    ))}
+                    <span aria-hidden="true" className="flex h-9 w-9 items-center justify-center rounded-lg"><MoreVertical size={17} /></span>
                   </div>
 
                   {/* File Upload / Attachments Area */}
                   <div>
-                    <label className="block font-label text-label-xs font-bold uppercase tracking-wider text-text-grey">
+                    <label className="sr-only">
                       Attachments (PDF, Images, Excel up to 10MB)
                     </label>
 
@@ -519,10 +547,11 @@ function ContactPartyModal({
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="inline-flex h-9 items-center gap-2 rounded-lg border border-dashed border-border bg-surface-light-grey/40 px-3.5 font-label text-label-xs font-bold text-brand-navy hover:border-brand-navy hover:bg-brand-navy/5 transition-all"
+                        aria-label="Add attachment"
+                        className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-transparent px-2.5 font-label text-label-xs font-bold text-brand-navy hover:border-brand-navy hover:bg-brand-navy/5 transition-all"
                       >
                         <Paperclip size={14} />
-                        <span>Add Attachment</span>
+                        <span className="hidden sm:inline">Add Attachment</span>
                       </button>
 
                       {attachedFiles.map((file, idx) => (
@@ -552,11 +581,11 @@ function ContactPartyModal({
               ) : (
                 /* Live HTML Preview Container */
                 <div className="rounded-xl border border-border bg-surface-light-grey/30 p-2">
-                  <div className="mb-2 flex items-center justify-between px-2 text-text-grey text-[11px] font-label uppercase font-semibold">
-                    <span>Simulated Recipient Inbox View</span>
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-2 text-text-grey text-[11px] font-label uppercase font-semibold">
+                    <span>Live inbox preview</span>
                     <span className="text-emerald-700 font-bold">● Brand Compliant</span>
                   </div>
-                  <div className="overflow-hidden rounded-lg border border-border bg-white shadow-xs max-h-[420px] overflow-y-auto">
+                  <div className="max-h-[420px] overflow-y-auto overflow-hidden rounded-lg border border-border bg-white shadow-xs">
                     <iframe
                       srcDoc={previewHtml}
                       title="Email Preview"
@@ -571,7 +600,7 @@ function ContactPartyModal({
 
         {/* Modal Footer */}
         {!state.ok && (
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-surface-light-grey/40 px-6 py-4">
+          <div className="flex flex-row-reverse flex-wrap items-center justify-between gap-3 border-t border-border bg-surface-light-grey/40 px-5 py-3 sm:px-6">
             <button
               type="button"
               onClick={handleDiscardDraft}
@@ -596,7 +625,7 @@ function ContactPartyModal({
                 className="flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-5 font-label text-label-xs font-bold text-surface-white hover:bg-primary-hover active:scale-95 shadow-sm transition-all disabled:opacity-50"
               >
                 <Mail size={14} />
-                <span>{isPending ? "Sending via Resend…" : "Send Email Dispatch"}</span>
+                <span>{isPending ? "Sending…" : "Send"}</span>
               </button>
             </div>
           </div>
