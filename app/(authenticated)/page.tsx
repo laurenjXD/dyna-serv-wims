@@ -53,8 +53,6 @@ import {
   getDashboardMonthlyFlow,
   getDashboardLocationOccupancy,
   getDashboardDeliveryPerformance,
-  getDashboardHeatmapData,
-  getDashboardMasterInventory,
 } from "@/lib/db/queries/dashboard";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -295,8 +293,6 @@ export default async function Home() {
     dashboardMonthlyFlow,
     dashboardLocationOccupancy,
     dashboardDeliveryPerformance,
-    dashboardHeatmapData,
-    dashboardMasterInventory,
   ] = await withDashboardDataTimeout(Promise.all([
     // Low Stock Items KPI — operational stock-count metric, gated
     // reporting.read (NOT reporting.financial_read — that gate was wrong
@@ -358,8 +354,6 @@ export default async function Home() {
       chartData: [],
       miniMetrics: { avgLeadTimeHours: 0, firstAttemptDeliveryRatePct: 0, freightDamageClaimsPct: 0, slaTargetPct: 95 },
     }),
-    withDashboardDataFallback(getDashboardHeatmapData(), []),
-    withDashboardDataFallback(getDashboardMasterInventory({ limit: 100 }), { items: [], total: 0 }),
   ]));
 
   // Build top-5 inventory preview from stock rows.
@@ -492,8 +486,6 @@ export default async function Home() {
       dashboardMonthlyFlow={dashboardMonthlyFlow}
       dashboardLocationOccupancy={dashboardLocationOccupancy}
       dashboardDeliveryPerformance={dashboardDeliveryPerformance}
-      dashboardHeatmapData={dashboardHeatmapData}
-      dashboardMasterInventory={dashboardMasterInventory.items}
     />
   );
 }

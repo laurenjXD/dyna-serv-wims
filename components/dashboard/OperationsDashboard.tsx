@@ -6,8 +6,7 @@ import { KpiGrid } from "./KpiGrid";
 import { FlowMovementChart } from "./FlowMovementChart";
 import { DeliveryPerformanceChart } from "./DeliveryPerformanceChart";
 import { LocationOccupancyChart } from "./LocationOccupancyChart";
-import { MonthlyHeatmap } from "./MonthlyHeatmap";
-import { MasterInventoryTable } from "./MasterInventoryTable";
+import { DashboardOmniSearch } from "./DashboardOmniSearch";
 import { useRouter } from "next/navigation";
 import type {
   DashboardKpiData,
@@ -15,8 +14,6 @@ import type {
   DeliveryPerformanceDatum,
   DeliveryPerformanceMiniMetrics,
   LocationOccupancyDatum,
-  HeatmapCellDatum,
-  MasterInventoryItem,
 } from "./types";
 import {
   CheckCircle2,
@@ -33,8 +30,7 @@ export interface OperationsDashboardProps {
     chartData: DeliveryPerformanceDatum[];
     miniMetrics: DeliveryPerformanceMiniMetrics;
   };
-  heatmapGrid?: HeatmapCellDatum[][];
-  masterInventory?: MasterInventoryItem[];
+  recentActivity?: Array<{ id: string; description: string; timestamp?: string }>;
 }
 
 const DEFAULT_KPIS: DashboardKpiData = {
@@ -49,8 +45,7 @@ export function OperationsDashboard({
   flowData,
   occupancyData,
   deliveryPerformance,
-  heatmapGrid,
-  masterInventory,
+  recentActivity = [],
 }: OperationsDashboardProps) {
   const router = useRouter();
   const [dateHorizon, setDateHorizon] = useState<DateHorizon>("30D MTD");
@@ -106,7 +101,7 @@ export function OperationsDashboard({
   };
 
   return (
-    <div className="mx-auto max-w-container bg-background px-4 py-6 pb-24 sm:px-6 lg:px-8 lg:pb-8 space-y-6">
+    <div className="mx-auto max-w-container bg-background px-4 py-6 pb-32 sm:px-6 lg:px-8 lg:pb-8 space-y-6">
       {/* ── 1. Header & Global Toolbar ────────────────────────────────────── */}
       <DashboardHeader
         dateHorizon={dateHorizon}
@@ -114,6 +109,8 @@ export function OperationsDashboard({
         onRefresh={handleRefresh}
         onGenerateReport={handleGenerateReport}
       />
+
+      <DashboardOmniSearch />
 
       {/* Report Generation Notification Toast */}
       {reportSuccessMessage && (
@@ -218,11 +215,24 @@ export function OperationsDashboard({
         </div>
       </div>
 
-      {/* ── 4. Monthly Location Heatmap with Interactive Audit Drawer ─────── */}
-      <MonthlyHeatmap initialGrid={heatmapGrid} />
-
-      {/* ── 5. Master Inventory Live Positions ────────────────────────────── */}
-      <MasterInventoryTable initialData={masterInventory} statusFilter={activeStockFilter} />
+      <section aria-labelledby="recent-activity-heading" className="rounded-2xl border border-border bg-surface p-4 shadow-card sm:p-5">
+        <div className="flex items-center justify-between gap-3">
+          <h2 id="recent-activity-heading" className="font-heading text-title-md font-bold text-brand-navy">Recent activity</h2>
+          <span className="font-label text-label-xs font-bold uppercase tracking-wide text-text-grey">Live feed</span>
+        </div>
+        {recentActivity.length > 0 ? (
+          <ol className="mt-3 divide-y divide-border">
+            {recentActivity.map((activity) => (
+              <li key={activity.id} className="flex min-w-0 items-start justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                <span className="min-w-0 font-body text-body-sm text-on-surface">{activity.description}</span>
+                {activity.timestamp && <time dateTime={activity.timestamp} className="shrink-0 font-mono text-label-xs text-text-grey">{new Date(activity.timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</time>}
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="mt-3 font-body text-body-sm text-text-grey">No recent warehouse activity.</p>
+        )}
+      </section>
 
     </div>
   );

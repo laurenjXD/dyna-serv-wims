@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { OperationsDashboard } from "@/components/dashboard/OperationsDashboard";
 import { WeeklyTrendChart, type WeeklyTrendDatum } from "@/components/analytics/WeeklyTrendChart";
 import type { WrrDocumentRow } from "@/lib/db/queries/receiving";
 import type { PickListRow } from "@/lib/db/queries/withdrawals";
@@ -13,8 +14,6 @@ import type {
   DeliveryPerformanceDatum,
   DeliveryPerformanceMiniMetrics,
   LocationOccupancyDatum,
-  HeatmapCellDatum,
-  MasterInventoryItem,
 } from "@/components/dashboard/types";
 
 export type ItemPreviewRow = {
@@ -72,8 +71,6 @@ export function OfficeLanding({
   dashboardMonthlyFlow,
   dashboardLocationOccupancy,
   dashboardDeliveryPerformance,
-  dashboardHeatmapData,
-  dashboardMasterInventory,
 }: {
   dateString: string;
   openWrrs: number;
@@ -109,12 +106,18 @@ export function OfficeLanding({
     chartData: DeliveryPerformanceDatum[];
     miniMetrics: DeliveryPerformanceMiniMetrics;
   };
-  dashboardHeatmapData?: HeatmapCellDatum[][];
-  dashboardMasterInventory?: MasterInventoryItem[];
 }) {
   return (
     <div className="space-y-6">
       {/* ── Direct WMS Operations Dashboard Suite ─────────────────────────────── */}
+      <OperationsDashboard
+        kpis={dashboardKpis}
+        flowData={dashboardMonthlyFlow}
+        occupancyData={dashboardLocationOccupancy}
+        deliveryPerformance={dashboardDeliveryPerformance}
+        recentActivity={recentActivity}
+      />
+
       {/* ── Accessible Metadata for Tests (Screen Reader / Headless Assertions) ── */}
       <div className="sr-only" aria-hidden="true">
         <span aria-label={`Low Stock Items: ${hasReportingAccess && inventoryKpis ? inventoryKpis.lowStockItemsCount : "—"}`}>
