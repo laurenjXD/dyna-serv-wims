@@ -129,8 +129,74 @@ html[data-theme="dark"] :is(.border-border, .border-outline-variant) {
 }
 
 html[data-theme="dark"] :is(input, select, textarea) {
-  background-color: #0f172a;
+  background-color: #111c2e;
   color: #f8fafc;
+  border-color: #334155;
+}
+
+/* Dark mode is a separate surface system, not a color inversion. Older
+ * screens still carry literal Tailwind slate/white utilities, so normalize
+ * those utilities here until each feature is fully tokenized. */
+html[data-theme="dark"] body {
+  background: #0b1220;
+}
+
+html[data-theme="dark"] :is(.bg-white, .bg-surface, .bg-surface-white) {
+  background-color: #162033 !important;
+}
+
+html[data-theme="dark"] :is(.bg-background, .bg-surface-light-grey, .bg-slate-50, .bg-slate-100, .bg-gray-50, .bg-gray-100) {
+  background-color: #111c2e !important;
+}
+
+html[data-theme="dark"] :is(.bg-slate-200, .bg-gray-200, .bg-blue-50, .bg-indigo-50) {
+  background-color: #22314a !important;
+}
+
+html[data-theme="dark"] :is(.text-slate-950, .text-slate-900, .text-slate-800, .text-gray-900, .text-gray-800, .text-black) {
+  color: #f8fafc !important;
+}
+
+html[data-theme="dark"] :is(.text-slate-700, .text-slate-600, .text-gray-700, .text-gray-600) {
+  color: #cbd5e1 !important;
+}
+
+html[data-theme="dark"] :is(.text-slate-500, .text-slate-400, .text-gray-500, .text-gray-400) {
+  color: #94a3b8 !important;
+}
+
+html[data-theme="dark"] :is(.border-slate-100, .border-slate-200, .border-slate-300, .border-gray-200, .border-gray-300, .divide-slate-200 > :not([hidden]) ~ :not([hidden])) {
+  border-color: #334155 !important;
+}
+
+html[data-theme="dark"] :is(.hover\:bg-slate-50:hover, .hover\:bg-slate-100:hover, .hover\:bg-gray-50:hover, .hover\:bg-gray-100:hover) {
+  background-color: #22314a !important;
+}
+
+html[data-theme="dark"] :is(table tbody td, table tbody th) {
+  color: #dbe5f0;
+}
+
+html[data-theme="dark"] :is(table thead, thead tr) {
+  background-color: #111c2e !important;
+}
+
+html[data-theme="dark"] ::placeholder {
+  color: #71819a !important;
+  opacity: 1;
+}
+
+/* Brand assets stay in their source colors on every theme. In particular,
+ * never apply an inherited dark-mode filter or blend mode to the logo. */
+html[data-theme="dark"] img[src*="logo"],
+html[data-theme="dark"] svg[data-brand-logo] {
+  filter: none !important;
+  opacity: 1 !important;
+  mix-blend-mode: normal !important;
+}
+
+html[data-theme="dark"] :is(.bg-white\/10, .bg-white\/15, .bg-black\/5) {
+  background-color: #22314a !important;
 }
 
 html[data-density="compact"] :is(table th, table td) {

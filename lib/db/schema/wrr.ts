@@ -37,6 +37,7 @@ export const wrrItems = pgTable("wrr_items", {
   customerItemCode: varchar("customer_item_code", { length: 100 }), // Customer Part Number from CIPL
   lotNumber: varchar("lot_number", { length: 100 }).notNull(), // Source business lot number from the WRR
   manufactureDate: date("manufacture_date"), // Supplier-declared date, copied to lots on receipt
+  expiryDate: date("expiry_date"), // Required for perishable items; copied to lots on receipt
   remarks: text("remarks"), // CIPL/receiving note; never an inventory adjustment
   expectedQty: integer("expected_qty").notNull(),
   scannedQty: integer("scanned_qty").default(0).notNull(),

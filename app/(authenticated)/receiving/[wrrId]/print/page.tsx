@@ -268,6 +268,7 @@ export default async function WrrPrintPage({ params }: PageProps) {
                       <th className="border border-slate-300 px-2 py-1.5 text-left uppercase font-bold tracking-wider">
                         Mfg. Date
                       </th>
+                      <th className="border border-slate-300 px-2 py-1.5 text-left uppercase font-bold tracking-wider">Expiry Date</th>
                       <th className="border border-slate-300 px-2 py-1.5 text-right uppercase font-bold tracking-wider">
                         Expected Qty
                       </th>
@@ -305,6 +306,7 @@ export default async function WrrPrintPage({ params }: PageProps) {
                             {item.lotNumber}
                           </td>
                           <td className="border border-slate-300 px-2 py-1.5 text-slate-600">{item.manufactureDate ?? "—"}</td>
+                          <td className="border border-slate-300 px-2 py-1.5 text-slate-600">{item.expiryDate ?? "—"}</td>
                           <td className="border border-slate-300 px-2 py-1.5 text-right">
                             <span className="font-bold block text-slate-900">{item.expectedQty} Boxes</span>
                             <span className="text-slate-500 text-[10px]">({(item.expectedQty * spq).toLocaleString()} {item.uom || "PCS"})</span>

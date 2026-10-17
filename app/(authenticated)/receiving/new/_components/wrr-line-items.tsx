@@ -39,6 +39,7 @@ interface LineState {
   itemDescription: string;
   customerItemCode: string;
   manufactureDate: string;
+  expiryDate: string;
   remarks: string;
   itemId: string;
   disposition: "store" | "inspect";
@@ -53,6 +54,7 @@ const EMPTY_LINE: LineState = {
   itemDescription: "",
   customerItemCode: "",
   manufactureDate: "",
+  expiryDate: "",
   remarks: "",
   itemId: "",
   disposition: "store",
@@ -99,6 +101,7 @@ export function WrrLineItems({
           itemDescription: item ? item.name : (imp.description || ""),
           customerItemCode: imp.customerItemCode || (item ? (item.customerItemCode ?? "") : ""),
           manufactureDate: imp.mfgDate || "",
+          expiryDate: imp.expiryDate || "",
           remarks: imp.remarks || "",
           itemId: imp.itemId || "",
           disposition: imp.disposition || "store",
@@ -137,6 +140,7 @@ export function WrrLineItems({
       customerItemCode: item.customerItemCode ?? "",
       uom: item.uom,
       unitCbm: item.volumeCbm,
+      expiryDate: item.isPerishable ? line.expiryDate : "",
     } : line));
   }
 
@@ -163,6 +167,8 @@ export function WrrLineItems({
 
       {lines.map((line, index) => {
         const isImported = Boolean(importedLines && importedLines.length > 0 && line.lotNumber);
+        const selectedItem = itemOptions.find((item) => item.id === line.itemId);
+        const isPerishable = Boolean(selectedItem?.isPerishable);
         return (
           <div
             key={index}
@@ -285,6 +291,23 @@ export function WrrLineItems({
                   onChange={(e) => updateLine(index, "manufactureDate", e.target.value)}
                   className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 />
+              </div>
+
+              {/* Col 3: Expiry Date — mandatory for perishable items */}
+              <div>
+                <label htmlFor={`line-${index}-expiryDate`} className="block font-label text-label text-text-grey">
+                  Expiry Date {isPerishable && <span aria-hidden="true" className="text-brand-red">*</span>}
+                </label>
+                <input
+                  id={`line-${index}-expiryDate`}
+                  name={`line_${index}_expiryDate`}
+                  type="date"
+                  required={isPerishable}
+                  value={line.expiryDate}
+                  onChange={(e) => updateLine(index, "expiryDate", e.target.value)}
+                  className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                />
+                {isPerishable && <p className="mt-1 text-xs text-status-warning">Required for perishable inventory.</p>}
               </div>
 
               {/* Col 3: Remarks */}

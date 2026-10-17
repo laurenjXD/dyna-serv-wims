@@ -188,6 +188,7 @@ export default async function PreAlertExportPage({ params }: PageProps) {
                   <th className="border border-slate-300 px-2 py-1.5 uppercase font-bold tracking-wider font-body">Description</th>
                   <th className="border border-slate-300 px-2 py-1.5 uppercase font-bold tracking-wider">Lot Number</th>
                   <th className="border border-slate-300 px-2 py-1.5 uppercase font-bold tracking-wider">Mfg Date</th>
+                  <th className="border border-slate-300 px-2 py-1.5 uppercase font-bold tracking-wider">Expiry Date</th>
                   <th className="border border-slate-300 px-2 py-1.5 text-right uppercase font-bold tracking-wider">Expected Qty</th>
                   <th className="border border-slate-300 px-2 py-1.5 uppercase font-bold tracking-wider">UOM</th>
                   <th className="border border-slate-300 px-2 py-1.5 uppercase font-bold tracking-wider">Remarks</th>
@@ -204,6 +205,7 @@ export default async function PreAlertExportPage({ params }: PageProps) {
                     <td className="border border-slate-300 px-2 py-1.5 font-body text-[11px] text-slate-900">{item.itemName ?? item.itemCode ?? item.supplierItemCode ?? "—"}</td>
                     <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-900">{item.lotNumber}</td>
                     <td className="border border-slate-300 px-2 py-1.5 text-slate-600">{item.manufactureDate ?? "—"}</td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-slate-600">{item.expiryDate ?? "—"}</td>
                     <td className="border border-slate-300 px-2 py-1.5 text-right font-bold text-slate-900">
                       {item.expectedQty.toLocaleString()}
                     </td>

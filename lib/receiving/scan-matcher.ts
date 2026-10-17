@@ -24,6 +24,8 @@ export type WrrLine = {
   itemCode?: string | null;
   lotNumber: string;
   manufactureDate?: string | null;
+  expiryDate?: string | null;
+  isPerishable?: boolean;
   expectedQty: number;
   scannedQty: number;
   disposition: "store" | "inspect";

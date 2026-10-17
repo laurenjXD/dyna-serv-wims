@@ -396,6 +396,7 @@ export default async function WrrDetailPage({ params }: PageProps) {
                       <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                         Mfg. Date
                       </th>
+                      <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Expiry Date</th>
                       <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
                         Expected Qty
                       </th>
@@ -429,6 +430,7 @@ export default async function WrrDetailPage({ params }: PageProps) {
                           </td>
                           <td className="px-4 py-3 font-mono text-mono-md text-on-surface">{item.customerItemCode ?? "—"}</td>
                           <td className="px-4 py-3 font-body text-body-md text-on-surface">{item.manufactureDate ?? "—"}</td>
+                          <td className="px-4 py-3 font-body text-body-md text-on-surface">{item.expiryDate ?? "—"}</td>
                           <td className="px-4 py-3 text-right font-body text-body-md text-on-surface">
                             <span className="font-mono font-bold block">{item.expectedQty} Boxes</span>
                             <span className="text-text-grey font-mono text-body-xs">({(item.expectedQty * spq).toLocaleString()} {item.uom || "PCS"})</span>

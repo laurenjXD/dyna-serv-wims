@@ -53,6 +53,8 @@ async function handleCreateWrr(formData: FormData): Promise<void> {
         (formData.get(`line_${i}_customerItemCode`) as string | null) || null,
       manufactureDate:
         (formData.get(`line_${i}_manufactureDate`) as string | null) || null,
+      expiryDate:
+        (formData.get(`line_${i}_expiryDate`) as string | null) || null,
       remarks:
         (formData.get(`line_${i}_remarks`) as string | null) || null,
     });

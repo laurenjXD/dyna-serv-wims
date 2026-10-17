@@ -83,6 +83,7 @@ export type WrrItemOption = {
   uom: string;
   volumeCbm: string;
   spq: number;
+  isPerishable: boolean;
 };
 
 /**
@@ -105,6 +106,7 @@ export async function listActiveWrrItemOptions(db: DbLike): Promise<WrrItemOptio
         uom: items.uom,
         volumeCbm: items.volumeCbm,
         spq: items.spq,
+        isPerishable: items.isPerishable,
       })
       .from(items)
       .where(eq(items.isActive, true))

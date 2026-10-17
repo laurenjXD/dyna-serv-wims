@@ -94,6 +94,7 @@ export type UpdateWrrLineInput = {
   itemCode?: string | null;
   customerItemCode?: string | null;
   manufactureDate?: string | null;
+  expiryDate?: string | null;
   remarks?: string | null;
 };
 
@@ -155,6 +156,8 @@ async function fetchWrrForAction(
       itemCode: (enrolledItem?.code ?? line.itemCode ?? null) as string | null,
       lotNumber: line.lotNumber as string,
       manufactureDate: (line.manufactureDate ?? null) as string | null,
+      expiryDate: (line.expiryDate ?? null) as string | null,
+      isPerishable: Boolean(enrolledItem?.isPerishable),
       expectedQty: line.expectedQty as number,
       scannedQty: line.scannedQty as number,
       disposition: line.disposition as "store" | "inspect",
@@ -232,6 +235,50 @@ export async function createWrr(
     rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
       const db = tx.db as DbLike;
 
+      const selectedItemIds = data.lines
+        .map((line) => line.itemId)
+        .filter((id): id is string => Boolean(id));
+      if (selectedItemIds.length > 0) {
+        const catalogRows = await db
+          .select({ id: itemCatalog.id, isPerishable: itemCatalog.isPerishable })
+          .from(itemCatalog)
+          .where(or(...selectedItemIds.map((id) => eq(itemCatalog.id, id))));
+        const perishableById = new Map(
+          catalogRows.map((row: { id: string; isPerishable: boolean }) => [row.id as string, Boolean(row.isPerishable)]),
+        );
+        if (data.lines.some((line) => Boolean(line.itemId && perishableById.get(line.itemId) && !line.expiryDate))) {
+          return { ok: false, errors: ["Expiry date is required for every perishable item."] } satisfies CreateWrrActionResult;
+        }
+      }
+
+      const resolvedLines = await Promise.all(
+        data.lines.map(async (line) => {
+          if (line.itemId || !line.itemCode) return line;
+          const catalogMatches = await db
+            .select({ id: itemCatalog.id })
+            .from(itemCatalog)
+            .where(or(
+              eq(itemCatalog.code, line.itemCode),
+              eq(itemCatalog.supplierItemCode, line.itemCode),
+              eq(itemCatalog.dsgcItemNumber, line.itemCode),
+              eq(itemCatalog.barcode, line.itemCode),
+            ))
+            .limit(1);
+          return catalogMatches.length === 1 ? { ...line, itemId: catalogMatches[0].id as string } : line;
+        }),
+      );
+      const resolvedItemIds = resolvedLines.map((line) => line.itemId).filter((id): id is string => Boolean(id));
+      if (resolvedItemIds.length > 0) {
+        const catalogRows = await db
+          .select({ id: itemCatalog.id, isPerishable: itemCatalog.isPerishable })
+          .from(itemCatalog)
+          .where(or(...resolvedItemIds.map((id) => eq(itemCatalog.id, id))));
+        const perishableById = new Map(catalogRows.map((row: { id: string; isPerishable: boolean }) => [row.id, Boolean(row.isPerishable)]));
+        if (resolvedLines.some((line) => Boolean(line.itemId && perishableById.get(line.itemId) && !line.expiryDate))) {
+          return { ok: false, errors: ["Expiry date is required for every perishable item."] } satisfies CreateWrrActionResult;
+        }
+      }
+
       const [inserted] = await db
         .insert(wrrDocuments)
         .values({
@@ -261,27 +308,6 @@ export async function createWrr(
       // floor scan against that line is rejected as unknown_item
       // (scan-matcher.ts requires a non-null itemId to accept a match).
       // Skip the lookup when the caller already supplied itemId directly.
-      const resolvedLines = await Promise.all(
-        data.lines.map(async (line) => {
-          if (line.itemId || !line.itemCode) return line;
-          const catalogMatches = await db
-            .select({ id: itemCatalog.id })
-            .from(itemCatalog)
-            .where(
-              or(
-                eq(itemCatalog.code, line.itemCode),
-                eq(itemCatalog.supplierItemCode, line.itemCode),
-                eq(itemCatalog.dsgcItemNumber, line.itemCode),
-                eq(itemCatalog.barcode, line.itemCode),
-              ),
-            )
-            .limit(1);
-          return catalogMatches.length === 1
-            ? { ...line, itemId: catalogMatches[0].id as string }
-            : line;
-        }),
-      );
-
       await db.insert(wrrItems).values(
         resolvedLines.map((line) => ({
           wrrId: inserted.id,
@@ -290,6 +316,7 @@ export async function createWrr(
           customerItemCode: line.customerItemCode ?? null,
           lotNumber: line.lotNumber,
           manufactureDate: line.manufactureDate ?? null,
+          expiryDate: line.expiryDate ?? null,
           remarks: line.remarks ?? null,
           expectedQty: line.expectedQty,
           unitCbm: String(line.unitCbm),
@@ -400,6 +427,9 @@ export async function updateWrrLines(
     if (line.manufactureDate && !/^\d{4}-\d{2}-\d{2}$/.test(line.manufactureDate)) {
       return { ok: false, errors: ["Manufacturing dates must use YYYY-MM-DD."] };
     }
+    if (line.expiryDate && !/^\d{4}-\d{2}-\d{2}$/.test(line.expiryDate)) {
+      return { ok: false, errors: ["Expiry dates must use YYYY-MM-DD."] };
+    }
   }
 
   const result = await withRlsTransaction(rlsDeps, async (tx) => {
@@ -412,7 +442,7 @@ export async function updateWrrLines(
       const changed = await database.update(wrrItems).set({
         lotNumber: line.lotNumber.trim(), expectedQty: line.expectedQty, unitCbm: String(line.unitCbm), uom: line.uom.trim(),
         itemCode: line.itemCode?.trim() || null, customerItemCode: line.customerItemCode?.trim() || null,
-        manufactureDate: line.manufactureDate || null, remarks: line.remarks?.trim() || null,
+        manufactureDate: line.manufactureDate || null, expiryDate: line.expiryDate || null, remarks: line.remarks?.trim() || null,
       }).where(and(eq(wrrItems.id, line.id), eq(wrrItems.wrrId, wrrId))).returning({ id: wrrItems.id });
       if (changed.length !== 1) return { ok: false, errors: ["One or more expected lines no longer belong to this WRR."] } satisfies UpdateWrrResult;
     }
@@ -864,6 +894,10 @@ export async function commitWrrLine(
         return { ok: false, errors: ["not_found"] } satisfies CommitWrrLineResult;
       }
 
+      if (line.isPerishable && !line.expiryDate) {
+        return { ok: false, errors: ["Expiry date is required before receiving a perishable item."] } satisfies CommitWrrLineResult;
+      }
+
       // Idempotency short-circuit (R7.5): once a line has committed, its own
       // committed_at is authoritative on its own, independent of the WRR's
       // current status (which may have already advanced to 'confirmed' once
@@ -975,6 +1009,7 @@ export async function commitWrrLine(
             commercialInvoiceNo: doc.commercialInvoiceNo,
             ipNumber: doc.ipNumber,
             manufactureDate: line.manufactureDate,
+            expiryDate: line.expiryDate,
           })
           .returning({ id: lots.id });
 

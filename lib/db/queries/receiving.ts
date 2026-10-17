@@ -80,6 +80,7 @@ export type WrrItemRow = {
   supplierItemCode: string | null;
   customerItemCode: string | null;
   manufactureDate: string | null;
+  expiryDate: string | null;
   remarks: string | null;
   // wrr_items.uom — not resolved via a join, a native column on this table.
   uom: string;
@@ -128,6 +129,7 @@ type RawJoinRow = {
   itemSupplierItemCode: string | null;
   itemCustomerItemCode: string | null;
   itemManufactureDate: string | null;
+  itemExpiryDate: string | null;
   itemRemarks: string | null;
   itemUom: string | null;
   itemUnitCbm: string | number | null;
@@ -285,6 +287,7 @@ export async function getWrrDocument(
       itemSupplierItemCode: wrrItems.itemCode,
       itemCustomerItemCode: wrrItems.customerItemCode,
       itemManufactureDate: wrrItems.manufactureDate,
+      itemExpiryDate: wrrItems.expiryDate,
       itemRemarks: wrrItems.remarks,
       itemUom: wrrItems.uom,
       itemUnitCbm: wrrItems.unitCbm,
@@ -321,6 +324,7 @@ export async function getWrrDocument(
       supplierItemCode: row.itemSupplierItemCode,
       customerItemCode: row.itemCustomerItemCode,
       manufactureDate: row.itemManufactureDate,
+      expiryDate: row.itemExpiryDate,
       remarks: row.itemRemarks,
       uom: row.itemUom ?? "",
       unitCbm: Number(row.itemUnitCbm ?? 0),
