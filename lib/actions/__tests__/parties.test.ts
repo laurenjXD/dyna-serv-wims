@@ -540,7 +540,7 @@ describe("addPartyRole — authorization (R6.1, design.md §4: parties.manage re
     const result = await addPartyRole(
       unauthenticatedResolver(),
       "party-1",
-      "vendor",
+      "supplier",
     );
     expect(result.ok).toBe(false);
   });
@@ -573,7 +573,7 @@ describe("addPartyRole — role validation (R1.4, R1.5, design.md §5 Create ste
 describe("addPartyRole — duplicate prevention (R1.4, design.md §2 party_roles: no DB-level unique constraint — server action must enforce)", () => {
   it("returns { ok: false, error: '...' } when checkDuplicatePartyRole detects the party already has that role", async () => {
     // DB returns existing party_roles that include 'vendor'
-    const existingRoles = [{ id: "role-row-1", party_id: "party-1", role: "vendor" }];
+    const existingRoles = [{ id: "role-row-1", party_id: "party-1", role: "supplier" }];
     const db = {
       select: vi.fn().mockReturnValue(makeSelectChain(existingRoles)),
       insert: vi.fn().mockReturnValue({
@@ -585,7 +585,7 @@ describe("addPartyRole — duplicate prevention (R1.4, design.md §2 party_roles
     const result = await addPartyRole(
       authorizedResolver(),
       "party-1",
-      "vendor", // already present
+      "supplier", // already present
       mockRlsDeps(db).deps,
     );
 
@@ -611,7 +611,7 @@ describe("addPartyRole — duplicate prevention (R1.4, design.md §2 party_roles
     const result = await addPartyRole(
       authorizedResolver(),
       "party-1",
-      "vendor", // not yet assigned
+      "customer", // not yet assigned
       mockRlsDeps(db).deps,
     );
 

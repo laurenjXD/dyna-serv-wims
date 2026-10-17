@@ -334,7 +334,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
             </button>
           )}
           <img src="/logo-hd.png" alt="Dyna-Serv WIMS" className="h-8 w-8 shrink-0 object-contain" />
-          <span className="font-label text-body-md font-semibold uppercase tracking-wide text-text-primary truncate">
+          <span className="min-w-0 truncate font-body text-xs font-semibold leading-tight tracking-normal text-text-primary">
             {pathname !== "/" ? pageTitle : "Dyna-Serv WIMS"}
           </span>
           <span
@@ -431,7 +431,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
 
           <div className="min-w-0 shrink-0">
             <p
-              className="truncate font-heading text-[23px] font-bold leading-tight tracking-[-0.02em] text-text-primary"
+              className="truncate font-heading text-[20px] font-bold leading-tight tracking-[-0.015em] text-text-primary"
               title={pageTitle}
             >
               {pageTitle}

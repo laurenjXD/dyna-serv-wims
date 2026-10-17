@@ -3,22 +3,19 @@
 // Traceability:
 //   specs/06-party-and-item-enrollment/requirements.md R1.4, R1.5
 //   specs/06-party-and-item-enrollment/design.md §2 (party_roles), §5 Create step 4
-//   lib/db/schema/enums.ts — partyRoleEnum: vendor, supplier, customer,
-//     end_customer, internal_warehouse
+//   lib/db/schema/enums.ts — canonical partyRoleEnum values
 
 export type PartyRoleValue =
-  | "vendor"
   | "supplier"
   | "customer"
   | "end_customer"
-  | "internal_warehouse";
+  | "internal_supplies";
 
 const APPROVED_PARTY_ROLES: readonly PartyRoleValue[] = [
-  "vendor",
   "supplier",
   "customer",
   "end_customer",
-  "internal_warehouse",
+  "internal_supplies",
 ];
 
 export type DuplicateRoleCheck =
@@ -48,7 +45,7 @@ export type RoleValidationResult =
   | { valid: false; reason: string };
 
 /**
- * Validates that the given value is one of the five approved business party role
+ * Validates that the given value is one of the four approved business party role
  * enum values. Application-user role names (administrator, supervisor,
  * warehouse_staff) are explicitly rejected — R1.5.
  */

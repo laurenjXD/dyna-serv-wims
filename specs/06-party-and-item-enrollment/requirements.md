@@ -1,7 +1,7 @@
 # Organization & Item Enrollment — Requirements
 
 Status: Approved
-Updated: 2026-08-14 (Aligned with Unified UI/UX & Visual Design System)
+Updated: 2026-10-14 (Phase 2 amendment: canonical roles, RBE, Data Management, and billing boundary)
 
 ## 1. Purpose and scope
 
@@ -14,12 +14,16 @@ Across all user-facing enrollment forms, tables, headers, and UI screens:
 - **Organization** replaces Party.
 - **Inventory Model** replaces Flow Type. Form hierarchy: Inventory Model dropdown → Category → Subcategory → Item identity/code.
 - **Organization Portal** replaces Party Portal.
+- **Internal Supplies** replaces Internal Warehouse in user-facing terminology.
+- **Material** replaces Items in the enrollment UI; the canonical database table remains `items`.
+- **Compliance Fee** groups PEZA compliance, LOA, and Bond fields in user-facing fee forms.
+- The enrollment navigation/page may be labeled **Data Management** while retaining `/enrollment` as the stable route during migration.
 
 *(Note: `parties` and `flow_type` remain canonical database identifiers.)*
 
 ## 2. Terminology and ownership boundaries
 
-- An `Organization` (`party`) is a vendor, supplier, customer, end-customer, or internal warehouse entity in the `parties` table. `party_roles` are business classifications, not application-user roles.
+- An `Organization` (`party`) has one or more canonical business classifications: Supplier, Customer, End-Customer, or Internal Supplies. `party_roles` are business classifications, not application-user roles. Legacy `vendor` maps to Supplier and legacy `internal_warehouse` maps to Internal Supplies during migration; neither legacy label is offered for new enrollment.
 - An `item` is the shared product master record. The form hierarchy starts with the **Inventory Model** (`vmi`, `trading`, `supplies`) dropdown, followed by Category and Subcategory.
 - A `location` is a physical warehouse storage slot (`zone`, `rack`, `level`, `position`, formatted `label`, `location_type`, `max_cbm_capacity`, `is_active`).
 - `item_categories` are selected as reference data; hierarchy management belongs to `17-product-categorization-and-classification`.
@@ -40,10 +44,19 @@ Across all user-facing enrollment forms, tables, headers, and UI screens:
 1. An authorized user SHALL be able to create an Organization with `code`, `name`, contact person, email, phone, tax ID, address lines, payment terms, and notes.
 2. Organization code SHALL be required, normalized, and unique.
 3. Organization name SHALL be required and validated.
-4. Business roles (`vendor`, `supplier`, `customer`, `end_customer`) SHALL be assigned with duplicate checks.
+4. Business roles (Supplier, Customer, End-Customer, Internal Supplies) SHALL be assigned with duplicate checks and server-side validation.
 5. Form SHALL distinguish business roles from application-user RBAC roles.
 6. Organization deactivation SHALL prevent new operational use while preserving historical audit logs.
 7. An authorized user (`parties.manage`) SHALL be able to send transactional operational emails to an Organization's contact person via `04`'s Resend pipeline.
+8. Customer enrollment SHALL expose RBE classifications (EE, ELSE, ETC) as checkboxes, require at least one when applicable, and reject more than three selections in the UI, server action, and database constraint.
+9. Role-conditioned fields and actions SHALL be enforced server-side: End-Customers SHALL not receive billing or SOA records; Suppliers are billed directly by Dyna Serv's supplier relationship and are not SOA recipients; only VMI and Customers are eligible for SOA rules, with billing applying to VMI only.
+10. Email generation SHALL support an optional CC field, validated and persisted only through the approved email-delivery pipeline.
+
+### R1a. Data Management and export
+
+1. The enrollment/Data Management surface SHALL provide dedicated subtabs for Organizations, Material, Locations, and authorized exports.
+2. Export SHALL be a server-backed action gated by the relevant read capability and SHALL return the complete authorized dataset, not the current page or visible columns only.
+3. Exports SHALL use canonical role labels and RBE classifications, exclude data outside the actor's scope, and never grant application access.
 
 ### R2. Item enrollment & Inventory Model hierarchy
 
@@ -72,6 +85,10 @@ Across all user-facing enrollment forms, tables, headers, and UI screens:
 ## 5. Acceptance criteria
 
 - [ ] Administrators can create, edit, search, and deactivate Organizations, items, and locations.
+- [ ] New enrollment uses only Supplier, Customer, End-Customer, and Internal Supplies; legacy values are migrated and not offered for new records.
+- [ ] Customer RBE selection accepts no more than three of EE, ELSE, and ETC, with the same rule enforced server-side and in the database.
+- [ ] End-Customers have no billing/SOA output, and SOA eligibility is restricted to VMI and Customers with billing limited to VMI.
+- [ ] Data Management exports contain the complete authorized result set and preserve canonical role/RBE values.
 - [ ] Item enrollment enforces the form order: Inventory Model → Category → Subcategory → Item identity/code.
 - [ ] Location labels are auto-generated in `Rack+Level-Position` format with unique DB constraint.
 - [ ] User-facing UI labels use Organization, Inventory Model, Organization Portal, and Inspection exclusively.

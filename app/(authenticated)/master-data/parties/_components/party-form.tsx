@@ -8,7 +8,7 @@
 //   specs/06-party-and-item-enrollment/design.md §5
 //   specs/00-steering/brand-design-system.md §2, §3, §9, §11
 
-import { useActionState, useState, useMemo, useEffect } from "react";
+import { useActionState, useState, useMemo } from "react";
 import Link from "next/link";
 import type { PartyFormState } from "../_actions";
 import type { PartyDetail } from "@/lib/db/queries/parties";
@@ -19,7 +19,7 @@ const PARTY_ROLES = [
   { value: "supplier", label: "Supplier" },
   { value: "customer", label: "Customer" },
   { value: "end_customer", label: "End Customer" },
-  { value: "internal_warehouse", label: "Internal Supplies" },
+  { value: "internal_supplies", label: "Internal Supplies" },
 ] as const;
 
 export const RBE_OPTIONS = [
@@ -45,8 +45,6 @@ export function PartyForm({ action, party, initialCode, existingCodes = [], canc
   const [state, formAction, isPending] = useActionState(action, {});
 
   const isEdit = !!party;
-  const assignedRoleValues = useMemo(() => new Set(party?.roles.map((r) => r.role) ?? []), [party]);
-
   // Selected business roles state - empty by default for new organizations
   const [selectedRoles, setSelectedRoles] = useState<string[]>(() => {
     if (party && party.roles.length > 0) {
@@ -57,6 +55,7 @@ export function PartyForm({ action, party, initialCode, existingCodes = [], canc
 
   // Parse existing RBE and clean notes
   const initialRbe = useMemo(() => {
+    if (party?.rbeClassifications?.length) return party.rbeClassifications;
     if (!party?.notes) return [];
     const match = party.notes.match(/^\[RBE:\s*([^\]]+)\]/i);
     if (!match) return [];
@@ -64,7 +63,7 @@ export function PartyForm({ action, party, initialCode, existingCodes = [], canc
       .split(",")
       .map((s) => s.trim().toUpperCase())
       .filter((s) => ["EE", "ELSE", "ETC"].includes(s));
-  }, [party?.notes]);
+  }, [party?.notes, party?.rbeClassifications]);
 
   const [selectedRbe, setSelectedRbe] = useState<string[]>(initialRbe);
 
@@ -185,6 +184,7 @@ export function PartyForm({ action, party, initialCode, existingCodes = [], canc
                       name="rbe"
                       value={value}
                       checked={selectedRbe.includes(value)}
+                      disabled={!selectedRbe.includes(value) && selectedRbe.length >= 3}
                       onChange={(e) => {
                         const checked = e.target.checked;
                         setSelectedRbe((prev) =>

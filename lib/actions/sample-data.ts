@@ -188,14 +188,14 @@ export async function seedSampleData(
           .where(
             and(
               eq(partyRoles.partyId, organizationId),
-              eq(partyRoles.role, "vendor"),
+              eq(partyRoles.role, "supplier"),
             ),
           )
           .limit(1);
         if (vendorRole.length === 0) {
           await db
             .insert(partyRoles)
-            .values({ partyId: organizationId, role: "vendor" });
+            .values({ partyId: organizationId, role: "supplier" });
         }
       }
 

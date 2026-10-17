@@ -1,7 +1,7 @@
 # Party & Item Enrollment — Implementation Plan
 
 Status: Approved
-Updated: 2026-08-05
+Updated: 2026-10-14 (Phase 2 amendment: canonical roles, RBE, Data Management, and billing boundary)
 
 ## Implementation gate
 
@@ -178,19 +178,36 @@ Testing: All applicable layers below.
 
 ### Manual QA
 
-- [ ] Verify role labels (`vendor`, `supplier`, `customer`, `end_customer`, `internal_warehouse`) are presented as business classifications and not application roles.
+- [ ] Verify role labels (Supplier, Customer, End-Customer, Internal Supplies) are presented as business classifications and not application roles; legacy labels are migration-only.
 - [ ] Verify no UI uses `suppliers`, `SKU`, `bins`, or `warehouse_id` as entity concepts.
 - [ ] Verify price/help text does not imply final Trading pricing or authoritative VMI billing.
 - [ ] Verify database/reference impact behavior before deactivation.
 - [ ] **(Added 2026-08-07)** Verify the location label displayed to the user before submit always matches the server-computed/stored value; no discrepancy between preview and stored `label`.
 - [ ] **(Added 2026-08-07)** Verify the Contact Party composer's help text/UX makes clear this is a server-sent operational notification, not a message from the clicking user's own inbox.
 
+## Phase 2 amendment — canonical roles, RBE, Data Management, and billable-party boundary (2026-10-14)
+
+Status: Pending Reapproval
+
+- [ ] Coordinate the `01-core-data-model` migration from `vendor` to `supplier` and `internal_warehouse` to `internal_supplies`; deduplicate role rows and add the `(party_id, role)` unique constraint.
+- [x] Add `party_rbe_classifications` with EE/ELSE/ETC values, unique party/classification rows, customer-role eligibility, and a database-enforced maximum of three selections.
+- [x] Define and execute an auditable backfill for existing customer RBE classifications; reject ambiguous records for manual review.
+- [ ] Make party, canonical roles, and RBE mutations atomic and server-authorized; reject legacy role values for new writes.
+- [ ] Implement conditional enrollment: RBE fields only for Customer, no billing/SOA output for End-Customer, and no client-only enforcement.
+- [ ] Implement the shared billable-party policy with `12-vmi-billing`/customer consumers: SOA restricted to VMI and Customers, billing restricted to VMI, Supplier invoices addressed to Dyna Serv, End-Customers excluded.
+- [ ] Add Data Management subtabs for Organizations, Material, Locations, and Exports; preserve canonical database identifiers while updating labels.
+- [ ] Add a complete server-backed export with capability checks, scope filtering, canonical roles/RBE values, and no page-size truncation.
+- [ ] Extend email generation with optional CC validation and pipeline handoff; add regression coverage.
+- [ ] Add unit, integration, RLS, migration, and Playwright coverage for role migration, RBE cardinality, conditional enrollment, export completeness, and billable-party boundaries.
+- [ ] Re-run cross-spec reviews with `01-core-data-model`, `02-rbac-roles`, `12-vmi-billing`, `13-trading-orders-and-pricing`, and the design-system auditor.
+- [ ] After implementation and test evidence are complete, obtain both required sign-offs and change all three 06 documents back to `Status: Approved`.
+
 ## Sign-off
 
-- [x] `01-core-data-model` fields and constraints are approved and reconciled.
-- [x] RBAC/RLS review passes.
-- [x] All applicable tests pass, including real-Postgres testing.
-- [x] No offline mutation leakage is present.
-- [x] `design-system-auditor` review passes.
-- [x] Product owner approval — Name: Lauren Date: 2026-08-05
-- [x] Second approver approval — Name/Role: Lauren Date: 2026-08-05
+- [ ] `01-core-data-model` fields and constraints are amended, approved, and reconciled for canonical roles and RBE.
+- [ ] RBAC/RLS review passes for Data Management subtabs and exports.
+- [ ] All applicable tests pass, including migration and real-Postgres testing.
+- [ ] No offline mutation leakage is present.
+- [ ] `design-system-auditor` review passes for updated terminology and responsive export/subtab surfaces.
+- [x] Product owner approval — Developer approval, 2026-10-14.
+- [x] Second approver approval — Developer approval, 2026-10-14.

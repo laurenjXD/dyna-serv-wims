@@ -23,7 +23,7 @@ export default async function NewPartyPage({ searchParams }: { searchParams: Pro
           New Organization
         </h1>
         <p className="mt-1 font-body text-body-md text-text-grey">
-          Enroll a new vendor, supplier, customer, or other business organization.
+          Enroll a new Supplier, Customer, End-Customer, or Internal Supplies organization.
         </p>
       </div>
 

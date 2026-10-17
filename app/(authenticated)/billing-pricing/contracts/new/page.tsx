@@ -56,6 +56,7 @@ export default async function NewContractPage() {
     const paymentTerms = String(formData.get("paymentTerms") ?? "Net 30");
     const warehousesCovered = String(formData.get("warehousesCovered") ?? "Main Warehouse");
     const billingCycle = String(formData.get("billingCycle") ?? "weekly_sun_sat");
+    const billingFrequency = String(formData.get("billingFrequency") ?? "monthly") as "weekly" | "monthly" | "daily" | "per_ar" | "per_transaction";
     const notes = String(formData.get("notes") ?? "");
 
     if (!partyId) {
@@ -113,6 +114,7 @@ export default async function NewContractPage() {
       paymentTerms,
       warehousesCovered,
       billingCycle,
+      billingFrequency,
       notes,
       vmiOwnership,
       vmiBillingTrigger,

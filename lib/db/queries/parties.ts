@@ -5,7 +5,7 @@
 //   specs/06-party-and-item-enrollment/tasks.md §3
 
 import { eq, ilike, or, desc, sql, inArray } from "drizzle-orm";
-import { parties, partyRoles } from "@/lib/db/schema";
+import { parties, partyRoles, partyRbeClassifications } from "@/lib/db/schema";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type DbLike = { select: (...args: any[]) => any };
@@ -47,6 +47,7 @@ export type PartyDetail = {
   createdAt: Date;
   updatedAt: Date;
   roles: PartyRoleRow[];
+  rbeClassifications: string[];
 };
 
 export type ListResult<T> = {
@@ -189,9 +190,16 @@ export async function getPartyWithRoles(
     .where(eq(partyRoles.partyId, id))
     .orderBy(partyRoles.role);
 
+  const rbeRows = await db
+    .select({ classification: partyRbeClassifications.classification })
+    .from(partyRbeClassifications)
+    .where(eq(partyRbeClassifications.partyId, id))
+    .orderBy(partyRbeClassifications.classification);
+
   return {
     ...party,
     roles: roleRows as PartyRoleRow[],
+    rbeClassifications: (rbeRows as Array<{ classification: string }>).map((row) => row.classification.toUpperCase()),
   };
 }
 
@@ -211,35 +219,31 @@ export async function getAllPartyCodes(db: DbLike): Promise<string[]> {
 }
 
 export const PARTY_ROLE_CODE_PREFIXES: Record<string, string[]> = {
-  vendor: ["VENDOR", "VND", "VEN"],
   supplier: ["SUPPLIER", "SUP"],
   customer: ["CUSTOMER", "CUST"],
   end_customer: ["ENDCUST", "END_CUST", "ECUST"],
-  internal_warehouse: ["WH", "WAREHOUSE"],
+  internal_supplies: ["WH", "WAREHOUSE"],
 };
 
 const CANONICAL_ROLE_ORDER = [
   "supplier",
   "customer",
   "end_customer",
-  "internal_warehouse",
-  "vendor",
+  "internal_supplies",
 ];
 
 const ROLE_SHORT_TAGS: Record<string, string> = {
   supplier: "SUP",
   customer: "CUST",
   end_customer: "ENDCUST",
-  internal_warehouse: "WH",
-  vendor: "VEN",
+  internal_supplies: "WH",
 };
 
 const ROLE_FULL_TAGS: Record<string, string> = {
   supplier: "SUPPLIER",
   customer: "CUSTOMER",
   end_customer: "ENDCUST",
-  internal_warehouse: "WH",
-  vendor: "VENDOR",
+  internal_supplies: "WH",
 };
 
 /**

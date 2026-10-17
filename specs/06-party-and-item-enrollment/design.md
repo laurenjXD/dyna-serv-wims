@@ -1,7 +1,7 @@
 # Party & Item Enrollment — Design
 
 Status: Approved
-Updated: 2026-08-05
+Updated: 2026-10-14 (Phase 2 amendment: canonical roles, RBE, Data Management, and billing boundary)
 
 ## 1. Design intent
 
@@ -43,7 +43,9 @@ The following column names are final per the approved `01` schema. All forms, va
 
 **`parties`** — `id`, `code` (varchar 50, NOT NULL UNIQUE), `name` (varchar 255, NOT NULL), `contact_person` (varchar 255), `email` (varchar 255), `phone` (varchar 50), `tax_id` (varchar 50), `address_1` (text), `address_2` (text), `payment_terms` (varchar 100), `notes` (text), `is_active` (boolean NOT NULL, default `true`), `created_at`, `updated_at`. **(2026-08-08: `address` split into `address_1`/`address_2`; `payment_terms` added — see revision-log.md)**
 
-**`party_roles`** — `id`, `party_id` (FK → `parties.id`, CASCADE on delete, NOT NULL), `role` (enum NOT NULL — approved values: `vendor`, `supplier`, `customer`, `end_customer`, `internal_warehouse`), `created_at`. No `updated_at`. No database-level unique constraint on `(party_id, role)` in the approved schema; the server action must enforce no duplicate role assignment per party.
+**`party_roles`** — `id`, `party_id` (FK → `parties.id`, CASCADE on delete, NOT NULL), `role` (canonical enum values: `supplier`, `customer`, `end_customer`, `internal_supplies`), `created_at`. The `01-core-data-model` amendment owns the enum migration: `vendor` → `supplier` and `internal_warehouse` → `internal_supplies`, followed by duplicate cleanup and a database-level unique constraint on `(party_id, role)`. New enrollment never emits legacy values. This section depends on coordinated approval from `01` and `02` before migration.
+
+**`party_rbe_classifications`** — dedicated customer-enrollment relation with `id`, `party_id` (FK → `parties.id`, CASCADE on delete, NOT NULL), `classification` (enum: `ee`, `else`, `etc`), and `created_at`. A unique constraint on `(party_id, classification)` prevents duplicates; a database trigger or equivalent constraint path enforces at most three rows per party. The server requires the party to have the `customer` role before inserting classifications. Existing values are backfilled only through an approved migration with audit notes.
 
 **`item_categories`** — `id`, `name` (varchar 100, NOT NULL), `flow_type` (nullable enum: `vmi`, `trading`, `supplies`), `parent_id` (self-referential FK, null for top-level categories), `description` (text), `created_at`. No `updated_at`; category management belongs exclusively to `17-product-categorization-and-classification`.
 
@@ -113,9 +115,22 @@ The client may send a requested record identifier, but the server resolves the a
 
 1. User opens the party create route through an authorized capability (`parties.manage`).
 2. The form collects `code` (required, normalized, unique), `name` (required), `contact_person`, `email`, `phone`, `tax_id`, `address_1`, `address_2`, `payment_terms`, and `notes` using the exact column names from the approved `parties` schema. `is_active` defaults to `true`.
-3. The user selects one or more business roles from the canonical `partyRoleEnum`: `vendor`, `supplier`, `customer`, `end_customer`, or `internal_warehouse`. These are business classifications only; they do not grant application access.
-4. The server revalidates uniqueness of `code`, role validity (no duplicate `(party_id, role)` pairs), and actor capability in one transaction.
-5. The `parties` row and any `party_roles` rows are committed, with an audit event if required by the approved audit design.
+3. The user selects one or more canonical business roles: `supplier`, `customer`, `end_customer`, or `internal_supplies`. These are business classifications only; they do not grant application access.
+4. If `customer` is selected, the form exposes EE/ELSE/ETC RBE checkboxes with a maximum of three; otherwise RBE input is hidden and rejected if supplied.
+5. The server revalidates code uniqueness, canonical role validity, duplicate roles, RBE eligibility/cardinality, and actor capability in one transaction.
+6. The `parties`, `party_roles`, and applicable `party_rbe_classifications` rows are committed atomically, with an audit event if required by the approved audit design.
+
+### 5b. Role-conditioned enrollment and billing boundary
+
+- Supplier enrollment supports the supplier relationship and purchase documents. Supplier invoices bill Dyna Serv directly; Supplier is not an SOA recipient by this feature.
+- Customer enrollment supports RBE classification and customer-facing operational records. Customers are eligible for SOA rules, but billing is not enabled for Customers.
+- End-Customer enrollment is a customer-of-customer reference and produces no billing or SOA records.
+- Internal Supplies is for internal-use organization classification and is not a billable party.
+- A shared server-side policy function, owned by the billing/financial specs, is the only source of truth for SOA eligibility and billing eligibility; client role labels are display-only.
+
+### 5c. Data Management subtabs and export
+
+The enrollment route may present a Data Management label and dedicated subtabs for Organizations, Material, Locations, and Exports. The export action is server-backed, capability-gated, scope-aware, and streams the complete authorized result set using canonical roles and RBE classifications. Pagination, filters, and visible columns affect presentation only and must not truncate an export. Export does not expose unauthorized records or create application-user access.
 
 ### Edit/deactivate
 

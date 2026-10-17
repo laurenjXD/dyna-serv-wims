@@ -20,7 +20,7 @@ import {
   buildContactPartyPayload,
 } from "@/lib/enrollment/contact-party";
 import type { ContactPartyEmailPayload } from "@/lib/enrollment/contact-party";
-import { parties, partyRoles } from "@/lib/db/schema/parties";
+import { parties, partyRoles, partyRbeClassifications } from "@/lib/db/schema/parties";
 import { withRlsTransaction } from "@/lib/db/rls-transaction";
 import type { RlsTransactionDeps } from "@/lib/db/rls-transaction";
 import { rlsPool } from "@/lib/db/rls-pool";
@@ -344,6 +344,33 @@ export async function addPartyRole(
     return { ok: false, error: "Forbidden" };
   }
   return rlsResult.value;
+}
+
+export async function setPartyRbeClassifications(
+  resolver: RequestAuthorizationResolver,
+  partyId: string,
+  classifications: readonly string[],
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+): Promise<ActionSimpleResult> {
+  const denied = await checkPermission(resolver, "parties.manage");
+  if (denied) return denied;
+  const values = [...new Set(classifications.map((value) => value.toLowerCase()))];
+  if (values.length > 3 || values.some((value) => !["ee", "else", "etc"].includes(value))) {
+    return { ok: false, error: "RBE classifications must be unique and limited to EE, ELSE, and ETC (maximum three)." };
+  }
+  const result = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
+    const roleRows = await db.select({ role: partyRoles.role }).from(partyRoles).where(eq(partyRoles.partyId, partyId));
+    if (!(roleRows as Array<{ role: string }>).some((row) => row.role === "customer")) {
+      return { ok: false, error: "RBE classifications are available only for Customer enrollment." } satisfies ActionSimpleResult;
+    }
+    await db.delete(partyRbeClassifications).where(eq(partyRbeClassifications.partyId, partyId));
+    if (values.length > 0) {
+      await db.insert(partyRbeClassifications).values(values.map((classification) => ({ partyId, classification: classification as "ee" | "else" | "etc" })));
+    }
+    return { ok: true } satisfies ActionSimpleResult;
+  });
+  return result.kind === "unauthenticated" ? { ok: false, error: "Forbidden" } : result.value;
 }
 
 // ---------------------------------------------------------------------------

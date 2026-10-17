@@ -2,11 +2,16 @@
 import { pgEnum } from "drizzle-orm/pg-core";
 
 export const partyRoleEnum = pgEnum("party_role", [
-  "vendor",
   "supplier",
   "customer",
   "end_customer",
-  "internal_warehouse",
+  "internal_supplies",
+]);
+
+export const rbeClassificationEnum = pgEnum("rbe_classification", [
+  "ee",
+  "else",
+  "etc",
 ]);
 
 export const flowTypeEnum = pgEnum("flow_type", ["vmi", "trading", "supplies"]);

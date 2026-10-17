@@ -25,8 +25,10 @@ import {
   addPartyRole,
   removePartyRole,
   contactParty,
+  setPartyRbeClassifications,
 } from "@/lib/actions/parties";
 import type { ContactPartyEmailPayload } from "@/lib/actions/parties";
+import { validateRbeSelection } from "@/lib/enrollment/rbe";
 
 // ---------------------------------------------------------------------------
 // FormState — shared across all party forms
@@ -48,11 +50,14 @@ function nullableString(value: FormDataEntryValue | null): string | null {
   return trimmed === "" ? null : trimmed;
 }
 
-function formatNotesWithRbe(notes: string | null, rbeList: string[]): string | null {
-  const cleanNotes = notes ? notes.replace(/^\[RBE:\s*[^\]]+\]\s*\n?/i, "").trim() : "";
-  if (rbeList.length === 0) return cleanNotes || null;
-  const header = `[RBE: ${rbeList.join(", ")}]`;
-  return cleanNotes ? `${header}\n${cleanNotes}` : header;
+function readEnrollmentRolesAndRbe(formData: FormData) {
+  const roles = formData
+    .getAll("roles")
+    .filter((value): value is string => typeof value === "string" && value.trim() !== "")
+    .map((role) => role.trim().toLowerCase());
+  const rbe = validateRbeSelection(formData.getAll("rbe"), roles.includes("customer"));
+  if (!rbe.valid) return { error: rbe.reason } as const;
+  return { roles, rbe: rbe.values } as const;
 }
 
 // ---------------------------------------------------------------------------
@@ -65,11 +70,11 @@ export async function createPartyAction(
 ): Promise<PartyFormState> {
   const resolver = await createPageResolver();
 
+  const enrollment = readEnrollmentRolesAndRbe(formData);
+  if ("error" in enrollment) return { error: enrollment.error };
+
   const rawNotes = nullableString(formData.get("notes"));
-  const rbeValues = formData
-    .getAll("rbe")
-    .filter((v): v is string => typeof v === "string" && ["EE", "ELSE", "ETC"].includes(v.toUpperCase()));
-  const formattedNotes = formatNotesWithRbe(rawNotes, rbeValues.map((v) => v.toUpperCase()));
+  const formattedNotes = rawNotes;
 
   const input = {
     code: formData.get("code"),
@@ -97,12 +102,11 @@ export async function createPartyAction(
   const partyId = result.data.id;
 
   // Add selected roles (best-effort; roles can be added on the detail page)
-  const roleValues = formData.getAll("roles");
-  for (const role of roleValues) {
-    if (typeof role === "string" && role.trim()) {
-      await addPartyRole(resolver, partyId, role);
-    }
+  for (const role of enrollment.roles) {
+    await addPartyRole(resolver, partyId, role);
   }
+  const rbeResult = await setPartyRbeClassifications(resolver, partyId, enrollment.rbe);
+  if (!rbeResult.ok) return { error: rbeResult.error };
 
   revalidatePath("/master-data/parties");
   revalidatePath("/enrollment");
@@ -122,11 +126,11 @@ export async function updatePartyAction(
   const id = formData.get("id") as string;
   const submittedUpdatedAt = formData.get("updatedAt") as string;
 
+  const enrollment = readEnrollmentRolesAndRbe(formData);
+  if ("error" in enrollment) return { error: enrollment.error };
+
   const rawNotes = nullableString(formData.get("notes"));
-  const rbeValues = formData
-    .getAll("rbe")
-    .filter((v): v is string => typeof v === "string" && ["EE", "ELSE", "ETC"].includes(v.toUpperCase()));
-  const formattedNotes = formatNotesWithRbe(rawNotes, rbeValues.map((v) => v.toUpperCase()));
+  const formattedNotes = rawNotes;
 
   const input = {
     code: formData.get("code"),
@@ -158,9 +162,7 @@ export async function updatePartyAction(
   }
 
   // Reconcile business roles across party_roles
-  const submittedRoles = formData
-    .getAll("roles")
-    .filter((r): r is string => typeof r === "string" && r.trim() !== "");
+  const submittedRoles = enrollment.roles;
 
   try {
     const existingRoles = await db
@@ -186,6 +188,9 @@ export async function updatePartyAction(
   } catch (err) {
     console.error("Failed to reconcile party roles on update:", err);
   }
+
+  const rbeResult = await setPartyRbeClassifications(resolver, id, enrollment.rbe);
+  if (!rbeResult.ok) return { error: rbeResult.error };
 
   revalidatePath("/master-data/parties");
   revalidatePath("/enrollment");
@@ -308,6 +313,10 @@ export async function contactPartyAction(
   const message = nullableString(formData.get("message"));
   const subject = nullableString(formData.get("subject"));
   const cc = nullableString(formData.get("cc"));
+  const ccRecipients = cc ? cc.split(",").map((s) => s.trim()).filter(Boolean) : [];
+  if (ccRecipients.some((recipient) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient))) {
+    return { error: "Every CC recipient must be a valid email address." };
+  }
   const templateKey = (formData.get("templateKey") as string | null) ?? "custom_message";
   const templateCategory = (formData.get("templateCategory") as string | null) ?? "general";
 
@@ -338,7 +347,7 @@ export async function contactPartyAction(
       subject,
       templateKey,
       templateCategory,
-      cc: cc ? cc.split(",").map((s) => s.trim()).filter(Boolean) : undefined,
+      cc: ccRecipients.length > 0 ? ccRecipients : undefined,
       attachments,
     },
   );

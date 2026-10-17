@@ -132,7 +132,7 @@ export async function getVmiBillingReconciliationReport(): Promise<VmiBillingRow
       .leftJoin(partyRoles, eq(parties.id, partyRoles.partyId))
       .leftJoin(vmiContractTerms, and(eq(parties.id, vmiContractTerms.partyId), eq(vmiContractTerms.isActive, true)))
       .leftJoin(vmiDailyBalanceLedger, eq(parties.id, vmiDailyBalanceLedger.partyId))
-      .where(sql`${partyRoles.role} IN ('vendor', 'customer')`)
+      .where(sql`${partyRoles.role} = 'customer'`)
       .groupBy(parties.id, parties.name, parties.code, parties.contactPerson, vmiContractTerms.storageRatePerCbmDay, vmiContractTerms.cbmThreshold, vmiContractTerms.billingCurrency);
 
     if (rawClients.length > 0) {

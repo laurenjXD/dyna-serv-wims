@@ -314,11 +314,10 @@ export async function getActiveSupplierParties(
       and(
         eq(parties.isActive, true),
         or(
-          eq(partyRoles.role, "vendor" as const),
           eq(partyRoles.role, "supplier" as const),
           eq(partyRoles.role, "customer" as const),
           eq(partyRoles.role, "end_customer" as const),
-          eq(partyRoles.role, "internal_warehouse" as const),
+          eq(partyRoles.role, "internal_supplies" as const),
         ),
       ),
     )
@@ -357,13 +356,10 @@ export async function getActiveSupplierParties(
       defaultInventoryModel = "vmi";
     } else if (p.roles.includes("supplier")) {
       defaultInventoryModel = "trading";
-    } else if (p.roles.includes("internal_warehouse")) {
+    } else if (p.roles.includes("internal_supplies")) {
       defaultInventoryModel = "supplies";
     } else if (p.roles.includes("end_customer")) {
       defaultInventoryModel = "trading";
-    } else if (p.roles.includes("vendor")) {
-      // Legacy fallback for previously enrolled vendors
-      defaultInventoryModel = "vmi";
     }
 
     return {

@@ -55,17 +55,17 @@ import {
 
 describe("checkDuplicatePartyRole — duplicate detection (R1.4, design.md §2 party_roles, §5 Create step 4)", () => {
   it("returns isDuplicate=false when existingRoles is empty (first role for party)", () => {
-    const result = checkDuplicatePartyRole([], "vendor");
+    const result = checkDuplicatePartyRole([], "supplier");
     expect(result.isDuplicate).toBe(false);
   });
 
   it("returns isDuplicate=false when newRole is not in existingRoles", () => {
-    const result = checkDuplicatePartyRole(["vendor", "supplier"], "customer");
+    const result = checkDuplicatePartyRole(["supplier"], "customer");
     expect(result.isDuplicate).toBe(false);
   });
 
   it("returns isDuplicate=true when newRole exactly matches an existing role (R1.4: reject duplicate)", () => {
-    const result = checkDuplicatePartyRole(["vendor"], "vendor");
+    const result = checkDuplicatePartyRole(["supplier"], "supplier");
     expect(result.isDuplicate).toBe(true);
     if (result.isDuplicate) {
       expect(typeof result.reason).toBe("string");
@@ -74,7 +74,7 @@ describe("checkDuplicatePartyRole — duplicate detection (R1.4, design.md §2 p
   });
 
   it("returns isDuplicate=true for 'supplier' duplicate", () => {
-    const result = checkDuplicatePartyRole(["vendor", "supplier"], "supplier");
+    const result = checkDuplicatePartyRole(["supplier"], "supplier");
     expect(result.isDuplicate).toBe(true);
   });
 
@@ -88,16 +88,16 @@ describe("checkDuplicatePartyRole — duplicate detection (R1.4, design.md §2 p
     expect(result.isDuplicate).toBe(true);
   });
 
-  it("returns isDuplicate=true for 'internal_warehouse' duplicate", () => {
+  it("returns isDuplicate=true for 'internal_supplies' duplicate", () => {
     const result = checkDuplicatePartyRole(
-      ["vendor", "internal_warehouse"],
-      "internal_warehouse"
+      ["supplier", "internal_supplies"],
+      "internal_supplies"
     );
     expect(result.isDuplicate).toBe(true);
   });
 
   it("returns isDuplicate=false when role appears similar but is different (no false positive)", () => {
-    const result = checkDuplicatePartyRole(["vendor"], "supplier");
+    const result = checkDuplicatePartyRole(["supplier"], "customer");
     expect(result.isDuplicate).toBe(false);
   });
 
@@ -109,10 +109,10 @@ describe("checkDuplicatePartyRole — duplicate detection (R1.4, design.md §2 p
   });
 
   it("provides a human-readable reason string when a duplicate is detected", () => {
-    const result = checkDuplicatePartyRole(["vendor"], "vendor");
+    const result = checkDuplicatePartyRole(["supplier"], "supplier");
     expect(result.isDuplicate).toBe(true);
     if (result.isDuplicate) {
-      expect(result.reason).toMatch(/vendor/i);
+      expect(result.reason).toMatch(/supplier/i);
     }
   });
 });
@@ -122,8 +122,8 @@ describe("checkDuplicatePartyRole — duplicate detection (R1.4, design.md §2 p
 // ---------------------------------------------------------------------------
 
 describe("validatePartyRoleValue — approved business role values (R1.4, R1.5, design.md §2 partyRoleEnum)", () => {
-  it("accepts 'vendor' (approved role from partyRoleEnum)", () => {
-    expect(validatePartyRoleValue("vendor").valid).toBe(true);
+  it("accepts 'supplier' (approved role from partyRoleEnum)", () => {
+    expect(validatePartyRoleValue("supplier").valid).toBe(true);
   });
 
   it("accepts 'supplier'", () => {
@@ -138,8 +138,8 @@ describe("validatePartyRoleValue — approved business role values (R1.4, R1.5, 
     expect(validatePartyRoleValue("end_customer").valid).toBe(true);
   });
 
-  it("accepts 'internal_warehouse'", () => {
-    expect(validatePartyRoleValue("internal_warehouse").valid).toBe(true);
+  it("accepts 'internal_supplies'", () => {
+    expect(validatePartyRoleValue("internal_supplies").valid).toBe(true);
   });
 
   it("rejects 'administrator' (application-user role, not a business party role — R1.5)", () => {

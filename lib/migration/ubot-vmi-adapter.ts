@@ -131,7 +131,7 @@ export function parseUbotVmiWorkbook(buffer: Buffer, openingDate = "2026-10-09")
       address2: text(row["address 2"]) || undefined,
       paymentTerms: text(row.terms) || undefined,
       active: text(row["active?"]).toUpperCase() !== "N",
-      role: name.toLowerCase() === "ubot incorporated limited" ? "vendor" : "end_customer",
+      role: name.toLowerCase() === "ubot incorporated limited" ? "supplier" : "end_customer",
     });
   }
 

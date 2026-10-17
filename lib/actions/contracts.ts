@@ -31,6 +31,7 @@ export interface CreateContractInput {
   warehousesCovered?: string;
   notes?: string;
   billingCycle?: string;
+  billingFrequency?: "weekly" | "monthly" | "daily" | "per_ar" | "per_transaction";
 
   // Optional VMI Policy & Terms
   vmiOwnership?: "supplier_owned" | "customer_owned" | "warehouse_owned";
@@ -225,6 +226,7 @@ export async function createContract(
         currency: input.currency ?? "USD",
         exchangeRatePolicy: input.exchangeRatePolicy ?? "monthly_rate",
         paymentTerms: input.paymentTerms ?? "Net 30",
+        billingFrequency: input.billingFrequency ?? "monthly",
         warehousesCovered: input.warehousesCovered ?? "Main Warehouse",
         notes: finalNotes,
         createdByUserId: userId,
