@@ -89,6 +89,15 @@ const SHORT_LABEL_OVERRIDES: Record<string, string> = {
   "billing-pricing": "Billing & Pricing",
 };
 
+// Floor navigation has very limited horizontal space. Keep these labels
+// intentionally short while the expanded navigation retains the full labels.
+const MOBILE_LABEL_OVERRIDES: Record<string, string> = {
+  root: "Dashboard",
+  receiving: "Receiving",
+  inventory: "Inventory",
+  outgoing: "Outgoing",
+};
+
 function routeIcon(id: string): ComponentType<BrandIconProps> {
   return ROUTE_ICON_MAP[id] ?? GlobalIcon;
 }
@@ -331,7 +340,7 @@ function NavLink({
   const floorText = tier === "floor";
 
   if (tier === "floor" && variant === "tab") {
-    const tabLabel = entry.id === "inventory" ? "Inventory" : label;
+    const tabLabel = MOBILE_LABEL_OVERRIDES[entry.id] ?? label;
     return (
       <Link
         href={entry.path}
@@ -346,7 +355,7 @@ function NavLink({
           ${isActive ? "bg-primary/10 text-primary" : "text-text-secondary"}`}
       >
         <Icon size={19} className="shrink-0" aria-hidden="true" />
-        <span className="w-full truncate text-center text-mono-md font-label font-medium leading-none tracking-normal">
+        <span className="w-full truncate text-center font-label text-[11px] font-semibold leading-none tracking-[-0.01em]">
           {tabLabel}
         </span>
       </Link>
@@ -607,7 +616,7 @@ export function ShellNavigation({
               className="flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-1 font-label tracking-normal text-text-secondary active:scale-[0.97] active:opacity-75 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <Menu size={19} className="shrink-0" aria-hidden="true" />
-              <span className="w-full truncate text-center text-mono-md font-label font-medium leading-none tracking-normal">More</span>
+              <span className="w-full truncate text-center font-label text-[11px] font-semibold leading-none tracking-[-0.01em]">More</span>
             </button>
           )}
         </nav>

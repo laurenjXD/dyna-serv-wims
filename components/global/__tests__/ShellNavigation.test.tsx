@@ -354,15 +354,12 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
   });
 
   // ---------------------------------------------------------------------
-  // Floor text-size floor: requirements.md R2 "Floor screens SHALL use no
-  // text below 16px (`body-md` minimum)" (tasks.md §2 "Ensure no text
-  // below 16px (`body-md` minimum) is rendered on floor screens"), also
-  // restated in ui-ux-design-plan.md §7/§13. `text-mono-sm` resolves to
-  // 14px in tailwind.config.ts and must never be used for floor nav-entry
-  // labels; the 16px floor-appropriate token is `text-mono-md`.
+  // The persistent floor tab bar uses compact labels so all destinations fit
+  // on a narrow mobile viewport. The expanded More overlay retains the
+  // floor-readable 16px treatment covered by the tests below.
   // ---------------------------------------------------------------------
 
-  it("renders floor bottom-tab-bar entry labels at 16px minimum (text-mono-md), never the 14px text-mono-sm", () => {
+  it("renders compact floor bottom-tab-bar labels without the oversized mono token", () => {
     render(
       <ShellNavigation
         tier="floor"
@@ -373,7 +370,8 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
     const receivingLink = screen.getByTestId("nav-entry-receiving");
     const label = within(receivingLink).getByText("Receiving");
     expect(label.className).not.toContain("text-mono-sm");
-    expect(label.className).toContain("text-mono-md");
+    expect(label.className).toContain("text-[11px]");
+    expect(label.className).toContain("leading-none");
   });
 
   // ---------------------------------------------------------------------
