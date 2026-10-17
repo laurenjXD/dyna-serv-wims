@@ -95,18 +95,18 @@ export function PartyForm({ action, party, initialCode, existingCodes = [], canc
       <p
         id={`${name}-error`}
         role="alert"
-        className="mt-1 font-body text-body-sm text-brand-red"
+        className="mt-1 font-body text-xs text-brand-red"
       >
         {state.fieldErrors[name]}
       </p>
     ) : null;
 
   const inputClass = (name: string) =>
-    `mt-1 block w-full rounded border ${
+    `mt-1 block h-10 w-full rounded-xl border ${
       state.fieldErrors?.[name]
         ? "border-brand-red"
         : "border-outline-variant/30"
-    } bg-surface-white px-3 py-2 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy`;
+    } bg-surface-white px-3.5 font-body text-sm leading-5 text-on-surface placeholder:text-status-neutral focus:border-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy/20`;
 
   const ariaProps = (name: string) =>
     state.fieldErrors?.[name]
@@ -137,18 +137,18 @@ export function PartyForm({ action, party, initialCode, existingCodes = [], canc
         </div>
       )}
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-5 md:grid-cols-2">
         {/* Business roles (available in both create and edit mode) */}
         <div className="md:col-span-2">
           <fieldset>
-            <legend className="font-label text-label text-on-surface">
+            <legend className="font-body text-sm font-semibold text-on-surface">
               Business Roles
             </legend>
             <div className="mt-2 flex flex-wrap gap-4">
               {PARTY_ROLES.map(({ value, label }) => (
                 <label
                   key={value}
-                  className="flex cursor-pointer items-center gap-2 font-body text-body-md text-on-surface"
+                  className="flex cursor-pointer items-center gap-2 font-body text-sm text-on-surface"
                 >
                   <input
                     type="checkbox"
@@ -429,11 +429,11 @@ export function PartyForm({ action, party, initialCode, existingCodes = [], canc
                 hiddenInput.value = e.currentTarget.checked ? "true" : "false";
               }
             }}
-            className="h-5 w-5 rounded border-outline-variant/30 text-brand-navy focus:ring-2 focus:ring-brand-navy"
+            className="h-5 w-5 rounded-md border-slate-300 text-brand-navy focus:ring-2 focus:ring-brand-navy/20"
           />
           <label
             htmlFor="isActive"
-            className="font-label text-label text-on-surface"
+            className="font-body text-sm font-semibold text-on-surface"
           >
             Active
           </label>
@@ -449,14 +449,14 @@ export function PartyForm({ action, party, initialCode, existingCodes = [], canc
       <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-end">
         <Link
           href={cancelHref}
-          className="flex h-11 items-center justify-center rounded bg-brand-navy px-6 font-label text-label text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-red"
+          className="flex h-10 items-center justify-center rounded-xl bg-brand-navy px-5 font-body text-sm font-semibold text-surface-white hover:opacity-90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-red"
         >
           Cancel
         </Link>
         <button
           type="submit"
           disabled={isPending}
-          className="flex h-11 items-center justify-center rounded bg-primary px-6 font-label text-label text-surface-white hover:bg-primary-hover active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:opacity-50"
+          className="flex h-10 items-center justify-center rounded-xl bg-primary px-5 font-body text-sm font-semibold text-surface-white hover:bg-primary-hover active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:opacity-50"
         >
           {isPending
             ? "Saving…"
