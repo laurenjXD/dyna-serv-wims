@@ -63,9 +63,9 @@ export function DashboardHeader({
         </div>
 
         {/* Global Toolbar Controls */}
-        <div className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center lg:w-auto">
+        <div className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center md:flex-nowrap lg:w-auto">
           {/* Date Horizon Switcher */}
-          <div className="grid w-full grid-cols-2 gap-1 rounded-xl bg-surface-light-grey p-1 font-label text-label font-bold sm:flex sm:w-auto">
+          <div className="grid w-full grid-cols-2 gap-1 rounded-xl bg-surface-light-grey p-1 font-body text-sm font-bold tracking-normal sm:flex sm:w-auto">
             {presets.map((preset) => (
               <button
                 key={preset}
@@ -87,7 +87,7 @@ export function DashboardHeader({
             type="button"
             onClick={handleManualSync}
             disabled={isSyncing}
-            className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-3 font-label text-label font-bold text-text-grey hover:text-on-surface hover:bg-surface-light-grey transition-colors focus:outline-none sm:h-11 sm:min-h-0"
+            className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-3 font-body text-sm font-bold tracking-normal text-text-grey hover:text-on-surface hover:bg-surface-light-grey transition-colors focus:outline-none sm:h-11 sm:min-h-0"
             title="Refresh dashboard data"
           >
             <RefreshCw size={13} className={isSyncing ? "animate-spin text-brand-navy" : ""} />
@@ -99,7 +99,7 @@ export function DashboardHeader({
             type="button"
             onClick={handleReportClick}
             disabled={isGeneratingPdf}
-            className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-brand-navy px-3.5 font-label text-label font-bold text-white shadow-sm hover:bg-brand-navy/90 active:scale-98 focus:outline-none transition-all cursor-pointer sm:h-11 sm:min-h-0"
+            className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-brand-navy px-3.5 font-body text-sm font-bold tracking-normal text-white shadow-sm hover:bg-brand-navy/90 active:scale-98 focus:outline-none transition-all cursor-pointer sm:h-11 sm:min-h-0"
           >
             {isGeneratingPdf ? (
               <>

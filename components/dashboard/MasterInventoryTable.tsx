@@ -291,19 +291,19 @@ export function MasterInventoryTable({ initialData = [], statusFilter = "all" }:
             <h2 className="font-heading text-title-md font-bold text-brand-navy dark:text-zinc-100">
               Master Inventory Live Positions
             </h2>
-            <span className="rounded-md bg-slate-100 dark:bg-zinc-800 px-2.5 py-0.5 font-mono text-[11px] font-bold text-slate-700 dark:text-zinc-300">
+            <span className="whitespace-nowrap rounded-md bg-slate-100 dark:bg-zinc-800 px-2.5 py-1 font-body text-sm font-bold tracking-normal text-slate-700 dark:text-zinc-300">
               {filteredData.length} SKUs Listed
             </span>
           </div>
-          <p className="mt-0.5 font-body text-xs text-text-grey">
+          <p className="mt-1 font-body text-sm text-text-grey">
             Authoritative SKU stock levels, reorder thresholds, and active warehouse allocations
           </p>
         </div>
 
         {/* Filter Toolbar Controls */}
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5 lg:flex-nowrap">
           {/* Flow Type Filter Pills */}
-          <div className="flex items-center gap-1 rounded-xl bg-slate-100 dark:bg-zinc-800 p-1 font-label text-xs font-semibold">
+          <div className="flex items-center gap-1 rounded-xl bg-slate-100 dark:bg-zinc-800 p-1 font-body text-sm font-semibold tracking-normal">
             {flowPills.map((pill) => (
               <button
                 key={pill.key}
@@ -312,7 +312,7 @@ export function MasterInventoryTable({ initialData = [], statusFilter = "all" }:
                   setFlowFilter(pill.key);
                   setPagination((prev) => ({ ...prev, pageIndex: 0 }));
                 }}
-                className={`rounded-lg px-2.5 py-1 transition-all ${
+                  className={`whitespace-nowrap rounded-lg px-2.5 py-1.5 transition-all ${
                   flowFilter === pill.key
                     ? "bg-white dark:bg-zinc-700 text-brand-navy dark:text-white font-bold shadow-2xs"
                     : "text-slate-600 dark:text-zinc-400 hover:text-slate-900"
@@ -324,7 +324,7 @@ export function MasterInventoryTable({ initialData = [], statusFilter = "all" }:
           </div>
 
           {/* Search Bar */}
-          <div className="relative min-w-[220px]">
+          <div className="relative min-w-[220px] flex-1 lg:min-w-[260px]">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
@@ -334,14 +334,14 @@ export function MasterInventoryTable({ initialData = [], statusFilter = "all" }:
                 setGlobalFilter(e.target.value);
                 setPagination((prev) => ({ ...prev, pageIndex: 0 }));
               }}
-              className="h-9 w-full rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 pl-9 pr-3 font-body text-xs text-slate-900 dark:text-zinc-100 placeholder:text-slate-400 focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy shadow-2xs"
+              className="h-11 w-full rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 pl-9 pr-3 font-body text-sm text-slate-900 dark:text-zinc-100 placeholder:text-slate-400 focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy shadow-2xs"
             />
           </div>
 
           {/* View All Master Inventory CTA */}
           <Link
             href="/inventory"
-            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 px-3 font-label text-xs font-bold text-brand-navy dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors shadow-2xs"
+            className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 px-3 font-body text-sm font-bold tracking-normal text-brand-navy dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors shadow-2xs"
           >
             <span>Stock View</span>
             <ExternalLink size={12} />
