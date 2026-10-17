@@ -211,7 +211,7 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
               href={`/documents?tab=${tab.key}`}
               role="tab"
               aria-selected={isActive}
-              className={`flex min-w-0 min-h-11 items-center justify-center gap-1 border-b-2 px-2 text-center font-body text-sm font-bold leading-tight tracking-normal transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy lg:flex-1 lg:px-1 ${
+              className={`flex min-h-11 min-w-0 items-center justify-center gap-1 whitespace-nowrap border-b-2 px-1.5 text-center font-body text-xs font-bold leading-none tracking-normal transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy sm:px-2 lg:flex-1 lg:px-1 ${
                 isActive
                   ? "border-brand-navy text-brand-navy font-extrabold"
                   : "border-transparent text-text-grey hover:border-slate-300 hover:text-on-surface"
@@ -231,7 +231,7 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
                 <span className="hidden sm:inline">{tab.label}</span>
               </span>
               <span
-                className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-bold ${
+                className={`shrink-0 rounded-full px-1.5 py-0.5 font-mono text-[10px] font-bold ${
                   isActive
                     ? "bg-brand-navy text-white"
                     : "bg-slate-100 text-slate-600"
