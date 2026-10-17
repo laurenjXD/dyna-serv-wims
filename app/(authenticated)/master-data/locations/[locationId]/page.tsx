@@ -11,6 +11,7 @@ import { getLocation, getLocationInventory } from "@/lib/db/queries/locations";
 import { getLocationTransactionLedger } from "@/lib/db/queries/ledgers";
 import { DeactivateLocationSection } from "../_components/location-deactivate";
 import { UrlTablePagination } from "@/components/ui/UrlTablePagination";
+import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 
 const LEDGER_PAGE_SIZE = 20;
 
@@ -74,7 +75,12 @@ export default async function LocationDetailPage({
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <nav className="mb-2" aria-label="Breadcrumb">
+          <PageBreadcrumb
+            backHref="/enrollment?tab=locations"
+            backLabel="Locations"
+            currentLabel={location.label}
+          />
+          {/*
             <ol className="flex items-center gap-1 font-body text-body-sm text-text-grey">
               <li>
                 <Link
@@ -89,7 +95,7 @@ export default async function LocationDetailPage({
                 {location.label}
               </li>
             </ol>
-          </nav>
+          </nav>*/}
           <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
             {location.label}
           </h1>

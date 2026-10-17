@@ -22,6 +22,7 @@ import { db } from "@/lib/db/client";
 import { getTransferRequest } from "@/lib/db/queries/transfers";
 import { updateTransferStatus } from "@/lib/actions/transfers";
 import type { TransferLineRow } from "@/lib/db/queries/transfers";
+import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -128,8 +129,9 @@ export default async function TransferDetailPage({
 
   return (
     <div className="mx-auto max-w-container">
+      <PageBreadcrumb backHref="/transfers" backLabel="Transfer Queue" currentLabel={transferId} monoCurrent />
       {/* Breadcrumb */}
-      <nav aria-label="Breadcrumb" className="mb-4">
+      {/*
         <ol className="flex items-center gap-1 font-body text-body-sm text-text-grey">
           <li>
             <Link
@@ -147,7 +149,7 @@ export default async function TransferDetailPage({
             {transferId}
           </li>
         </ol>
-      </nav>
+      </nav>*/}
 
       {/* Page heading + status badge */}
       <div className="flex flex-wrap items-center gap-3">

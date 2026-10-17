@@ -16,6 +16,7 @@ import {
   DeactivatePartySection,
 } from "../_components/party-detail-actions";
 import { UrlTablePagination } from "@/components/ui/UrlTablePagination";
+import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 
 const LEDGER_PAGE_SIZE = 20;
 
@@ -77,22 +78,11 @@ export default async function PartyDetailPage({
       {/* Page header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <nav className="mb-2" aria-label="Breadcrumb">
-            <ol className="flex items-center gap-1 font-body text-body-sm text-text-grey">
-              <li>
-                <Link
-                  href="/enrollment?tab=parties"
-                  className="inline-flex h-11 items-center rounded hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                >
-                  Organizations
-                </Link>
-              </li>
-              <li aria-hidden="true">/</li>
-              <li aria-current="page" className="text-on-surface">
-                {party.name}
-              </li>
-            </ol>
-          </nav>
+          <PageBreadcrumb
+            backHref="/enrollment?tab=parties"
+            backLabel="Organizations"
+            currentLabel={party.name}
+          />
           <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
             {party.name}
           </h1>
