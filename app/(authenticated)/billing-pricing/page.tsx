@@ -358,7 +358,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
                   </div>
                   <div>
                     <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                      Parties Billed
+                      Organizations Billed
                     </p>
                     <p className="mt-1 font-heading text-data-display font-semibold text-on-surface">
                       {vmiSummaryRows.length}

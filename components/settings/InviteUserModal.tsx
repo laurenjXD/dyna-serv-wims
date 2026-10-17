@@ -168,7 +168,7 @@ export function InviteUserModal({
                 onChange={(e) => setPartyId(e.target.value)}
                 className="rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
               >
-                <option value="">Select a party…</option>
+                <option value="">Select an organization…</option>
                 {parties.map((party) => (
                   <option key={party.id} value={party.id}>
                     {party.name}

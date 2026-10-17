@@ -280,7 +280,7 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
             </div>
             {vendorParties.length === 0 && (
               <p className="mt-1 font-body text-body-sm text-status-held">
-                Create an active Party with the Vendor or Supplier role before creating a WRR.
+                Create an active organization with the Vendor or Supplier role before creating a WRR.
               </p>
             )}
           </div>

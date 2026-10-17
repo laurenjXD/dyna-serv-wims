@@ -38,7 +38,7 @@ export function OrganizationsEnrollmentTable({
       ),
     },
 
-    // 2. Organization / Party Name
+    // 2. Organization Name
     {
       accessorKey: "name",
       header: "Organization Name",

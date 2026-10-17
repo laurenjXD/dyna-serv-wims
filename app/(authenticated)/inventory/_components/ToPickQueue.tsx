@@ -330,7 +330,7 @@ export function ToPickQueue({ rows, isDeleted = false }: ToPickQueueProps) {
                         </Link>
                       </td>
 
-                      {/* Flow Type / Inventory Model */}
+                      {/* Inventory Model */}
                       <td className="px-5 py-4">
                         <span
                           className={`inline-flex items-center rounded-full border px-2.5 py-0.5 font-label text-label-xs font-bold uppercase tracking-wider ${flowConfig.style}`}

@@ -101,7 +101,7 @@ export default async function PortalPage() {
     return (
       <div className="mx-auto max-w-container px-8 py-12 text-center">
         <p className="font-body text-body-md text-text-grey">
-          No party assignment is linked to your account.
+          No organization assignment is linked to your account.
         </p>
         <p className="mt-2 font-body text-body-sm text-text-grey">
           Contact your administrator to request portal access.

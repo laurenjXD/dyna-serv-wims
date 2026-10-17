@@ -71,7 +71,7 @@ const DIMENSION_DATA: Record<
     { name: "Precision Fasteners & Structural Parts", flow: "Trading", cbm: 140.8, valuation: 275000, marginPct: 26.1, volumeQty: 11200, otifPct: 99.1, dwellDays: 9, accrualUsd: 0 },
     { name: "Industrial Electrical Switchgear", flow: "VMI", cbm: 260.0, valuation: 685000, marginPct: 21.0, volumeQty: 940, otifPct: 95.8, dwellDays: 28, accrualUsd: 3980 },
   ],
-  "Consignor / Vendor Party": [
+  "Consignor / Vendor Organization": [
     { name: "United Philippine Industrial (UPI)", flow: "VMI", cbm: 382.0, valuation: 920000, marginPct: 23.0, volumeQty: 5400, otifPct: 98.5, dwellDays: 15, accrualUsd: 5684 },
     { name: "Siemens AG Industrial Systems", flow: "VMI", cbm: 215.0, valuation: 610000, marginPct: 21.5, volumeQty: 2100, otifPct: 96.2, dwellDays: 19, accrualUsd: 3332 },
     { name: "ABB Power & Distribution", flow: "VMI", cbm: 198.0, valuation: 540000, marginPct: 20.0, volumeQty: 1800, otifPct: 95.0, dwellDays: 24, accrualUsd: 2823 },
@@ -84,7 +84,7 @@ const DIMENSION_DATA: Record<
     { name: "Zone C — Temperature Controlled Cleanroom", flow: "VMI", cbm: 145.0, valuation: 762500, marginPct: 26.4, volumeQty: 3100, otifPct: 99.4, dwellDays: 14, accrualUsd: 4620 },
     { name: "Zone D — Fast-Pick & Cross-Dock Staging", flow: "Mixed", cbm: 134.5, valuation: 300000, marginPct: 20.2, volumeQty: 2410, otifPct: 96.0, dwellDays: 6, accrualUsd: 2010 },
   ],
-  "Flow Type (VMI vs Trading)": [
+  "Inventory Model (VMI vs Trading)": [
     { name: "VMI Consignment Storage Flow", flow: "VMI", cbm: 879.0, valuation: 2215000, marginPct: 22.0, volumeQty: 11650, otifPct: 97.6, dwellDays: 19, accrualUsd: 14050 },
     { name: "Direct Trading Commercial Flow", flow: "Trading", cbm: 500.5, valuation: 1467500, marginPct: 24.2, volumeQty: 9860, otifPct: 97.2, dwellDays: 12, accrualUsd: 0 },
   ],
@@ -157,7 +157,7 @@ export function CustomReportBuilderModal({
   const handleDownloadCsv = () => {
     const headers = [
       selectedDimension,
-      "Flow Type",
+      "Inventory Model",
       "Occupied CBM (m³)",
       "Valuation ($)",
       "Margin %",
@@ -414,9 +414,9 @@ export function CustomReportBuilderModal({
                 <div className="mt-1.5 grid grid-cols-1 gap-1.5">
                   {[
                     "Item Category",
-                    "Consignor / Vendor Party",
+                    "Consignor / Vendor Organization",
                     "Warehouse Zone",
-                    "Flow Type (VMI vs Trading)",
+                    "Inventory Model (VMI vs Trading)",
                   ].map((dim) => (
                     <button
                       key={dim}

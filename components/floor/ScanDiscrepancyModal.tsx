@@ -56,8 +56,8 @@ export function ScanDiscrepancyModal({
         };
       case "flow_type_mismatch":
         return {
-          title: "Flow Type Mismatch",
-          description: "The scanned item belongs to a different flow type (e.g. VMI vs. Trading vs. Supplies) than this document.",
+          title: "Inventory Model Mismatch",
+          description: "The scanned item belongs to a different inventory model (e.g. VMI vs. Trading vs. Supplies) than this document.",
           recommendation: "Segregate this carton into the appropriate flow staging lane.",
           canEnroll: false,
         };

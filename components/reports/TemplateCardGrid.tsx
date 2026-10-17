@@ -25,7 +25,7 @@ const DEFAULT_TEMPLATES: PreBuiltTemplate[] = [
   {
     id: "tpl-01",
     title: "Master Inventory Valuation & Balance Sheet",
-    description: "Executive valuation summary of all active VMI and Trading SKU lots with aging tier breakdown.",
+    description: "Executive valuation summary of all active VMI and Trading item lots with aging tier breakdown.",
     category: "Financial",
     lastRunDate: "Today at 08:30",
     scheduleFrequency: "Daily at 08:00 AM",

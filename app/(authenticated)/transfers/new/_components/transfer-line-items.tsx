@@ -5,7 +5,7 @@
 // Traceability:
 //   specs/11-transfer-and-inspection/design.md §2 (transfer_lines fields)
 //   specs/11-transfer-and-inspection/requirements.md R1.2 — request SHALL identify
-//     item, lot, flow type, quantity, source/destination.
+//     item, lot, inventory model, quantity, source/destination.
 //   specs/00-steering/brand-design-system.md §9 (forms), §3 (touch targets h-11)
 //
 // Manages a stateful array of lines. Each line is rendered as a group of

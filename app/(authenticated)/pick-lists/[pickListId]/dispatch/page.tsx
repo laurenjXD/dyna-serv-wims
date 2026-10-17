@@ -204,7 +204,7 @@ export default async function DispatchConfirmationPage({
   const errorReason = reasonParam ?? "";
   const isDispatchError = dispatchError;
 
-  // Derive flow type badge color from flowType value.
+  // Derive inventory model badge color from flowType value.
   const flowTypeBadgeClass =
     pickList.flowType === "vmi"
       ? "bg-status-pending/20 text-status-pending"
@@ -410,7 +410,7 @@ export default async function DispatchConfirmationPage({
                 {partyName}
               </p>
               <div className="mt-1 flex items-center gap-2">
-                {/* Flow type badge — color + text per §1.3, icon ensures non-color signal */}
+                {/* Inventory model badge — color + text per §1.3, icon ensures non-color signal */}
                 <span
                   className={`inline-flex items-center rounded-full px-3 py-1 font-label text-body-md uppercase tracking-wide ${flowTypeBadgeClass}`}
                 >

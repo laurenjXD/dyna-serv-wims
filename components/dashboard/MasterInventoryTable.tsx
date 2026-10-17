@@ -85,10 +85,10 @@ export function MasterInventoryTable({ initialData = [], statusFilter = "all" }:
         ),
       },
 
-      // 3. Flow Type
+      // 3. Inventory Model
       {
         accessorKey: "flowType",
-        header: "Flow Type",
+        header: "Inventory Model",
         cell: (info) => {
           const val = String(info.getValue());
           return (
@@ -107,10 +107,10 @@ export function MasterInventoryTable({ initialData = [], statusFilter = "all" }:
         },
       },
 
-      // 4. Party / Vendor
+      // 4. Organization / Vendor
       {
         accessorKey: "partyName",
-        header: "Party / Vendor",
+        header: "Organization / Vendor",
         cell: (info) => (
           <div className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-zinc-300">
             <Building2 size={13} className="text-slate-400 shrink-0" />
@@ -292,17 +292,17 @@ export function MasterInventoryTable({ initialData = [], statusFilter = "all" }:
               Master Inventory Live Positions
             </h2>
             <span className="whitespace-nowrap rounded-md bg-slate-100 dark:bg-zinc-800 px-2.5 py-1 font-body text-sm font-bold tracking-normal text-slate-700 dark:text-zinc-300">
-              {filteredData.length} SKUs Listed
+              {filteredData.length} Items Listed
             </span>
           </div>
           <p className="mt-1 font-body text-sm text-text-grey">
-            Authoritative SKU stock levels, reorder thresholds, and active warehouse allocations
+            Authoritative item stock levels, reorder thresholds, and active warehouse allocations
           </p>
         </div>
 
         {/* Filter Toolbar Controls */}
         <div className="grid min-w-0 gap-2.5 sm:grid-cols-[minmax(0,auto)_minmax(0,1fr)] lg:grid-cols-[minmax(0,auto)_minmax(0,1fr)_auto]">
-          {/* Flow Type Filter Pills */}
+          {/* Inventory Model Filter Pills */}
           <div className="grid min-w-0 grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1 font-body text-sm font-semibold tracking-normal dark:bg-zinc-800 sm:col-span-2 lg:col-span-1 lg:grid-cols-4">
             {flowPills.map((pill) => (
               <button
@@ -328,7 +328,7 @@ export function MasterInventoryTable({ initialData = [], statusFilter = "all" }:
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Search SKU, Description, Party..."
+              placeholder="Search item, description, organization..."
               value={globalFilter}
               onChange={(e) => {
                 setGlobalFilter(e.target.value);

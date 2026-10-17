@@ -155,7 +155,7 @@ export function OfficeLanding({
           </div>
         )}
         {hasPickListAccess && flowActivity && (
-          <div aria-label="Activity by Flow Type">
+          <div aria-label="Activity by Inventory Model">
             {flowActivity.map((f) => (
               <span key={f.flowType}>{FLOW_LABELS[f.flowType] ?? f.flowType}</span>
             ))}

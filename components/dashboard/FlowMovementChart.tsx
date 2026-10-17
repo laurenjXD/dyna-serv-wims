@@ -38,7 +38,7 @@ export function FlowMovementChart({ initialData }: FlowMovementChartProps) {
 
   return (
     <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-5 shadow-sm">
-      {/* Header with Title & Flow Type Filter Tabs */}
+      {/* Header with Title & Inventory Model Filter Tabs */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4">
         <div>
           <div className="flex flex-wrap items-center gap-2">

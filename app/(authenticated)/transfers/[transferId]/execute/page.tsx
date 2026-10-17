@@ -128,7 +128,7 @@ export default async function ExecuteTransferPage({
             <ArrowLeft size={18} aria-hidden="true" />
             <span>Back to Transfer</span>
           </Link>
-          {/* Flow type badge — Epilogue, floor-visible */}
+          {/* Inventory model badge — Epilogue, floor-visible */}
           <span className="font-label text-body-md text-white/70 uppercase">
             {transfer.flowType.toUpperCase()}
           </span>

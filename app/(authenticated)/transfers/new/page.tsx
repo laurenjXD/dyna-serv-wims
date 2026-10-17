@@ -267,13 +267,13 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
               </select>
             </div>
 
-            {/* Flow Type — required */}
+            {/* Inventory Model — required */}
             <div>
               <label
                 htmlFor="flowType"
                 className="block font-label text-label text-text-grey"
               >
-                Flow Type{" "}
+                Inventory Model{" "}
                 <span aria-hidden="true" className="text-brand-red">
                   *
                 </span>
@@ -286,7 +286,7 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
                 defaultValue={flowType ?? ""}
                 className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
               >
-                <option value="">Select flow type…</option>
+                <option value="">Select inventory model…</option>
                 <option value="vmi">VMI</option>
                 <option value="trading">Trading</option>
                 <option value="supplies">Supplies</option>

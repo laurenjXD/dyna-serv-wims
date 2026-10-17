@@ -72,7 +72,7 @@ function getScanErrorMessage(reason: string): string {
     case "unknown_item":
       return "Unknown item — barcode is not registered in the system. Contact a supervisor to enroll this item.";
     case "flow_type_mismatch":
-      return "This item does not belong to this WRR's flow type — contact a supervisor.";
+      return "This item does not belong to this WRR's inventory model — contact a supervisor.";
     case "duplicate_unit_scan":
       return "This exact label has already been scanned — if this carton is genuinely new, check for a duplicate printed label.";
     default:

@@ -50,13 +50,13 @@ export function WrrDocumentsTable({
       },
     },
 
-    // 2. FLOW TYPE
+    // 2. INVENTORY MODEL
     {
       accessorKey: "flowType",
-      header: "Flow Type",
+      header: "Inventory Model",
       meta: {
         filterVariant: "multi-select",
-        filterLabel: "Flow Type",
+        filterLabel: "Inventory Model",
         filterOptions: [
           { label: "VMI", value: "vmi" },
           { label: "Trading", value: "trading" },

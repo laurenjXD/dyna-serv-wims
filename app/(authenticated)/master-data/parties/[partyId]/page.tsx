@@ -240,7 +240,7 @@ export default async function PartyDetailPage({
             Danger Zone
           </h2>
           <p className="mt-1 font-body text-body-sm text-text-grey">
-            Deactivating a party prevents it from being selected in new
+            Deactivating an organization prevents it from being selected in new
             transactions. Existing linked records are not deleted.
           </p>
           <div className="mt-4">

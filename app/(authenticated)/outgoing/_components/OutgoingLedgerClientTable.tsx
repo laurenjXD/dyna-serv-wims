@@ -170,7 +170,7 @@ export function OutgoingLedgerClientTable({
       ),
     },
 
-    // 4. Flow Type
+    // 4. Inventory Model
     {
       accessorKey: "flowType",
       header: "Flow",

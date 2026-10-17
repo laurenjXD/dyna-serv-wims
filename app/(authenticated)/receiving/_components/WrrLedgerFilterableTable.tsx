@@ -37,7 +37,7 @@ export function WrrLedgerFilterableTable({ rows }: { rows: WrrDocumentRow[] }) {
       },
     },
 
-    // 2. Inventory Model / Flow Type
+    // 2. Inventory Model
     {
       accessorKey: "flowType",
       header: "Inventory Model",
@@ -169,7 +169,7 @@ export function WrrLedgerFilterableTable({ rows }: { rows: WrrDocumentRow[] }) {
       columns={columns}
       data={rows}
       title="Incoming Transaction Ledger"
-      subtitle="Immutable audit registry of confirmed warehouse receipts with multi-faceted filtering, flow types, and date ranges."
+      subtitle="Immutable audit registry of confirmed warehouse receipts with multi-faceted filtering, inventory models, and date ranges."
       icon={<FileSpreadsheet size={18} />}
       initialSorting={[{ id: "createdAt", desc: true }]}
       emptyMessage="No confirmed incoming receipts found."

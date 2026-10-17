@@ -114,7 +114,7 @@ export async function GET() {
     minute: "2-digit",
   });
 
-  const headings = ["ITEM CODE", "DESCRIPTION", "FLOW", "VENDOR / PARTY", "AVAILABLE QTY", "REORDER LVL", "STATUS", "LOCATION"];
+  const headings = ["ITEM CODE", "DESCRIPTION", "INVENTORY MODEL", "VENDOR / ORGANIZATION", "AVAILABLE QTY", "REORDER LVL", "STATUS", "LOCATION"];
   const widths = [85, 210, 50, 150, 90, 75, 65, 60.89];
 
   function renderPageHeader(page: PDFPage, pageNum: number, totalPages: number, isFirstPage: boolean): number {

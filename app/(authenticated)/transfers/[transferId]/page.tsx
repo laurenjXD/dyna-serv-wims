@@ -186,7 +186,7 @@ export default async function TransferDetailPage({
             </dd>
           </div>
           <div>
-            <dt className="font-label text-label text-text-grey">Flow Type</dt>
+            <dt className="font-label text-label text-text-grey">Inventory Model</dt>
             <dd className="mt-1 font-body text-body-md text-on-surface">
               {FLOW_LABELS[transfer.flowType] ?? transfer.flowType}
             </dd>

@@ -47,7 +47,7 @@ export function ThroughputSection({ initialData }: ThroughputSectionProps) {
                 </span>
               </div>
               <p className="mt-0.5 font-body text-xs text-text-grey">
-                Inbound intake vs. outbound withdrawal quantities with flow type distribution.
+                Inbound intake vs. outbound withdrawal quantities with inventory model distribution.
               </p>
             </div>
 
