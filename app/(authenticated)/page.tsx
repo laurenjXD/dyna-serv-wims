@@ -227,22 +227,27 @@ export default async function Home() {
     .from(userProfiles)
     .where(eq(userProfiles.id, context.userId))
     .limit(1);
-  const profileRows = await withDashboardDataFallback(profileRowsPromise, []);
-  const displayName = profileRows[0]?.displayName ?? "";
-  const firstName = displayName.split(" ")[0] || "there";
-
   const now = new Date();
   const greeting = getGreetingPeriod(now.getHours());
   const dateString = getTodayString();
 
-  // ─── Capability-gated count aggregates (all tiers) ───────────────────
-  const [openWrrResult, openPickListResult, pendingTransferResult, openInspectionResult, pendingApprovalResult] = await Promise.all([
+  // The greeting lookup and queue counts are independent. Waiting for the
+  // profile before starting the counts added up to five seconds to every
+  // dashboard render when the database was slow.
+  const [profileRows, [openWrrResult, openPickListResult, pendingTransferResult, openInspectionResult, pendingApprovalResult]] = await Promise.all([
+    withDashboardDataFallback(profileRowsPromise, []),
+    Promise.all([
     hasReceivingAccess ? withDashboardDataFallback(listWrrDocuments(db, { limit: 1, offset: 0, status: "receiving_in_progress" }), { rows: [] as WrrDocumentRow[], total: 0 }) : Promise.resolve({ rows: [] as WrrDocumentRow[], total: 0 }),
     hasPickListAccess ? withDashboardDataFallback(listPickLists(db, { limit: 1, offset: 0, status: "allocated" }), { rows: [] as PickListRow[], total: 0 }) : Promise.resolve({ rows: [] as PickListRow[], total: 0 }),
     hasTransferAccess ? withDashboardDataFallback(listTransferRequests(db, { limit: 1, offset: 0, status: "staged" }), { rows: [], total: 0 }) : Promise.resolve({ rows: [], total: 0 }),
     hasInspectionAccess ? withDashboardDataFallback(listInspectionCases(db, { status: "open", limit: 1 }), { rows: [] as InspectionCaseListRow[], total: 0 }) : Promise.resolve({ rows: [] as InspectionCaseListRow[], total: 0 }),
     hasApprovalAccess ? withDashboardDataFallback(listPendingApprovalRequests(db, { limit: 1, offset: 0 }), { rows: [] as ApprovalRequestRow[], total: 0 }) : Promise.resolve({ rows: [], total: 0 }),
+    ]),
   ]);
+  const displayName = profileRows[0]?.displayName ?? "";
+  const firstName = displayName.split(" ")[0] || "there";
+
+  // ─── Capability-gated count aggregates (all tiers) ───────────────────
   const openWrrs = openWrrResult.total;
   const openPickLists = openPickListResult.total;
   const pendingTransfers = pendingTransferResult.total;
