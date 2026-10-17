@@ -65,13 +65,13 @@ export function DashboardHeader({
         {/* Global Toolbar Controls */}
         <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
           {/* Date Horizon Switcher */}
-          <div className="flex w-full min-w-0 items-center gap-0 overflow-hidden rounded-xl bg-surface-light-grey p-1 font-label text-[11px] font-bold sm:w-auto sm:gap-1 sm:text-label-xs">
+          <div className="flex w-full min-w-0 items-center gap-1 overflow-x-auto rounded-xl bg-surface-light-grey p-1 font-label text-[11px] font-bold sm:w-auto sm:text-label-xs">
             {presets.map((preset) => (
               <button
                 key={preset}
                 type="button"
                 onClick={() => onDateHorizonChange(preset)}
-                className={`min-w-0 flex-1 whitespace-nowrap rounded-lg px-1 py-1.5 transition-all sm:flex-none sm:px-3 ${
+                className={`shrink-0 whitespace-nowrap rounded-lg px-2 py-1.5 transition-all sm:px-3 ${
                   dateHorizon === preset
                     ? "bg-brand-navy text-white shadow-sm font-extrabold"
                     : "text-text-grey hover:text-on-surface hover:bg-surface/60"

@@ -14,8 +14,6 @@ import type {
   DeliveryPerformanceDatum,
   DeliveryPerformanceMiniMetrics,
   LocationOccupancyDatum,
-  HeatmapCellDatum,
-  MasterInventoryItem,
 } from "@/components/dashboard/types";
 
 export type ItemPreviewRow = {
@@ -73,8 +71,6 @@ export function OfficeLanding({
   dashboardMonthlyFlow,
   dashboardLocationOccupancy,
   dashboardDeliveryPerformance,
-  dashboardHeatmapData,
-  dashboardMasterInventory,
 }: {
   dateString: string;
   openWrrs: number;
@@ -110,8 +106,6 @@ export function OfficeLanding({
     chartData: DeliveryPerformanceDatum[];
     miniMetrics: DeliveryPerformanceMiniMetrics;
   };
-  dashboardHeatmapData?: HeatmapCellDatum[][];
-  dashboardMasterInventory?: MasterInventoryItem[];
 }) {
   return (
     <div className="space-y-6">
@@ -121,8 +115,7 @@ export function OfficeLanding({
         flowData={dashboardMonthlyFlow}
         occupancyData={dashboardLocationOccupancy}
         deliveryPerformance={dashboardDeliveryPerformance}
-        heatmapGrid={dashboardHeatmapData}
-        masterInventory={dashboardMasterInventory}
+        recentActivity={recentActivity}
       />
 
       {/* ── Accessible Metadata for Tests (Screen Reader / Headless Assertions) ── */}

@@ -161,7 +161,7 @@ export function KpiGrid({
               Total Stock Valuation
             </p>
             <div className="mt-1 flex items-baseline justify-between">
-              <p className="font-mono text-2xl font-black text-brand-navy">
+              <p className="min-w-0 truncate font-mono text-xl font-black text-brand-navy sm:text-2xl">
                 ${valuation.total.toLocaleString()}
               </p>
               <span className="font-mono text-xs font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
@@ -211,7 +211,7 @@ export function KpiGrid({
                 Total Inventory Valuation
               </p>
               <div className="mt-1.5 flex flex-wrap items-baseline gap-2">
-                <h2 className="min-w-0 break-words font-mono text-2xl font-black text-brand-navy tracking-tight">
+                <h2 className="min-w-0 truncate font-mono text-xl font-black text-brand-navy tracking-tight sm:text-2xl">
                   ${valuation.total.toLocaleString()}
                 </h2>
                 <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-2 py-0.5 font-mono text-xs font-bold text-emerald-700 border border-emerald-200/60">
