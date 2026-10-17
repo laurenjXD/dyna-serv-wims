@@ -121,6 +121,7 @@ const EXPECTED_ROUTES: Array<{
   // links from within this hub's tabs — they just no longer have their own
   // top-level registry row. See revision-log.md.
   { id: "enrollment", path: "/enrollment", surface: "office", capability: "parties.read", featureSpecs: ["06-party-and-item-enrollment"], launchStatus: "launch" },
+  { id: "migration", path: "/migration", surface: "office", capability: "users.read", featureSpecs: ["24-data-migration-and-seeding"], launchStatus: "launch" },
   // 2026-08-09: added — was already in 05's design.md route table (Planned)
   // but had never been added to this registry. See revision-log.md.
   // 2026-08-24: launchStatus corrected planned -> launch — the page now
@@ -129,7 +130,7 @@ const EXPECTED_ROUTES: Array<{
   { id: "billing-pricing", path: "/billing-pricing", surface: "office", capability: "reporting.financial_read", featureSpecs: ["12-vmi-billing", "13-trading-orders-and-pricing"], launchStatus: "launch" },
   // 2026-08-17: launchStatus corrected planned -> launch — the page is
   // fully wired to real query modules, no TODO/mock markers. See revision-log.md.
-  { id: "reports", path: "/reports", surface: "office", capability: "reporting.read", featureSpecs: ["16-reporting-and-analytics"], launchStatus: "launch" },
+  { id: "reports", path: "/reports", surface: "office", capability: "reporting.financial_read", featureSpecs: ["16-reporting-and-analytics"], launchStatus: "launch" },
   { id: "profile", path: "/profile", surface: "shared", capability: "none", featureSpecs: ["21-user-profile-and-settings"], launchStatus: "launch" },
   { id: "settings", path: "/settings", surface: "office", capability: "users.read", featureSpecs: ["21-user-profile-and-settings"], launchStatus: "launch" },
   { id: "portal", path: "/portal", surface: "party", capability: "none", featureSpecs: ["22-parties-portal"], launchStatus: "launch" },

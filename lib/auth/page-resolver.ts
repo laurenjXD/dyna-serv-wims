@@ -25,6 +25,22 @@ import {
   userPartyScopes,
 } from "@/lib/db/schema";
 
+const AUTHORIZATION_QUERY_TIMEOUT_MS = 4000;
+
+function withAuthorizationTimeout<T>(request: Promise<T>): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(
+      () => reject(new Error("Authorization query timed out")),
+      AUTHORIZATION_QUERY_TIMEOUT_MS,
+    );
+  });
+
+  return Promise.race([request, timeout]).finally(() => {
+    if (timeoutId) clearTimeout(timeoutId);
+  });
+}
+
 async function loadAuthorizationRecordViaSupabase(
   userId: string,
 ): Promise<RawAuthorizationRecord | null> {
@@ -106,62 +122,55 @@ export async function createPageResolver() {
       userId: string,
     ): Promise<RawAuthorizationRecord | null> {
       try {
-      // Check user profile exists and is active
-      let timeoutId: ReturnType<typeof setTimeout> | undefined;
-      const queryPromise = db
+      const profileRows = await withAuthorizationTimeout(db
         .select({ status: userProfiles.status })
         .from(userProfiles)
         .where(eq(userProfiles.id, userId))
-        .limit(1);
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        timeoutId = setTimeout(() => reject(new Error("Database profile query timed out")), 6000);
-      });
-
-      const profileRows = await Promise.race([queryPromise, timeoutPromise]).finally(() => {
-        if (timeoutId) clearTimeout(timeoutId);
-      });
+        .limit(1));
 
       const profile = profileRows[0];
       if (!profile) return null;
 
       // Load grants: user_roles → roles → role_permissions → permissions
-      const grantRows = await db
-        .select({
-          roleKey: roles.key,
-          resource: permissions.resource,
-          action: permissions.action,
-          scopeKind: rolePermissions.scopeKind,
-        })
-        .from(userRoles)
-        .innerJoin(roles, eq(roles.id, userRoles.roleId))
-        .innerJoin(rolePermissions, eq(rolePermissions.roleId, roles.id))
-        .innerJoin(permissions, eq(permissions.id, rolePermissions.permissionId))
-        .where(
-          and(
-            eq(userRoles.userId, userId),
-            isNull(userRoles.revokedAt),
-            lte(userRoles.validFrom, new Date()),
-            or(isNull(userRoles.validUntil), gt(userRoles.validUntil, new Date())),
-            eq(roles.isActive, true),
-            eq(permissions.isActive, true),
-          ),
-        );
-
       // Load party scopes (active assignments only)
-      const scopeRows = await db
-        .select({
-          partyId: userPartyScopes.partyId,
-          flowType: userPartyScopes.flowType,
-        })
-        .from(userPartyScopes)
-        .where(
-          and(
-            eq(userPartyScopes.userId, userId),
-            isNull(userPartyScopes.revokedAt),
-            lte(userPartyScopes.validFrom, new Date()),
-            or(isNull(userPartyScopes.validUntil), gt(userPartyScopes.validUntil, new Date())),
-          ),
-        );
+      const now = new Date();
+      const [grantRows, scopeRows] = await Promise.all([
+        withAuthorizationTimeout(db
+          .select({
+            roleKey: roles.key,
+            resource: permissions.resource,
+            action: permissions.action,
+            scopeKind: rolePermissions.scopeKind,
+          })
+          .from(userRoles)
+          .innerJoin(roles, eq(roles.id, userRoles.roleId))
+          .innerJoin(rolePermissions, eq(rolePermissions.roleId, roles.id))
+          .innerJoin(permissions, eq(permissions.id, rolePermissions.permissionId))
+          .where(
+            and(
+              eq(userRoles.userId, userId),
+              isNull(userRoles.revokedAt),
+              lte(userRoles.validFrom, now),
+              or(isNull(userRoles.validUntil), gt(userRoles.validUntil, now)),
+              eq(roles.isActive, true),
+              eq(permissions.isActive, true),
+            ),
+          )),
+        withAuthorizationTimeout(db
+          .select({
+            partyId: userPartyScopes.partyId,
+            flowType: userPartyScopes.flowType,
+          })
+          .from(userPartyScopes)
+          .where(
+            and(
+              eq(userPartyScopes.userId, userId),
+              isNull(userPartyScopes.revokedAt),
+              lte(userPartyScopes.validFrom, now),
+              or(isNull(userPartyScopes.validUntil), gt(userPartyScopes.validUntil, now)),
+            ),
+          )),
+      ]);
 
       const activeRoleKeys = [...new Set(grantRows.map((r) => r.roleKey))];
 
@@ -186,7 +195,7 @@ export async function createPageResolver() {
         // current user's verified JWT and database RLS policies; it never
         // trusts browser-supplied role data.
         try {
-          return await loadAuthorizationRecordViaSupabase(userId);
+          return await withAuthorizationTimeout(loadAuthorizationRecordViaSupabase(userId));
         } catch (supabaseError) {
           console.error("[auth/page-resolver] both authorization sources failed", {
             databaseError,

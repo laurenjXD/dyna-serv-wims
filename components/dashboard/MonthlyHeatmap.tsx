@@ -3,10 +3,8 @@
 import React, { useState, useMemo } from "react";
 import {
   Calendar,
-  Layers,
   ChevronDown,
   Info,
-  SlidersHorizontal,
   Flame,
   Clock,
   AlertOctagon,
@@ -16,58 +14,28 @@ import { DayAuditDrawer } from "./DayAuditDrawer";
 
 interface MonthlyHeatmapProps {
   initialGrid?: HeatmapCellDatum[][];
+  preview?: boolean;
 }
 
-const DEFAULT_BIN_ROWS = ["A1-01", "A1-02", "A1-03", "A1-04", "A1-05", "A1-06"];
 const MONTHS = [
   { name: "Aug 2026", key: "Aug", year: 2026 },
   { name: "Jul 2026", key: "Jul", year: 2026 },
   { name: "Jun 2026", key: "Jun", year: 2026 },
 ];
 
-export function MonthlyHeatmap({ initialGrid }: MonthlyHeatmapProps) {
+export function MonthlyHeatmap({ initialGrid, preview = false }: MonthlyHeatmapProps) {
   const [selectedMonth, setSelectedMonth] = useState("Aug 2026");
   const [metricView, setMetricView] = useState<HeatmapMetricView>("pickActivity");
   const [selectedAuditRecord, setSelectedAuditRecord] = useState<BinAuditRecord | null>(null);
   const [showMonthMenu, setShowMonthMenu] = useState(false);
   const [mobileSelectedBin, setMobileSelectedBin] = useState("A1-01");
 
-  // Generate clean fallback grid if no server data
-  const fallbackGrid = useMemo(() => {
-    const grid: HeatmapCellDatum[][] = [];
-    const days = 31;
-    for (let r = 0; r < DEFAULT_BIN_ROWS.length; r++) {
-      const row: HeatmapCellDatum[] = [];
-      const binName = DEFAULT_BIN_ROWS[r];
-      for (let day = 1; day <= days; day++) {
-        const isWeekend = (day % 7 === 1 || day % 7 === 2);
-        row.push({
-          binRow: binName,
-          day,
-          isWeekend,
-          pickActivityCount: 0,
-          inventoryAgingDays: 0,
-          varianceRatePct: 0,
-          auditRecord: {
-            binId: binName,
-            date: `2026-08-${String(day).padStart(2, "0")}`,
-            dayNumber: day,
-            monthName: "August",
-            year: 2026,
-            metricType: "pickActivity",
-            metricValue: 0,
-            metricFormatted: "0 Picks",
-            status: "idle",
-            activities: [],
-          },
-        });
-      }
-      grid.push(row);
-    }
-    return grid;
-  }, []);
-
-  const gridData = initialGrid && initialGrid.length > 0 ? initialGrid : fallbackGrid;
+  const gridData = useMemo(() => {
+    const source = initialGrid ?? [];
+    return preview
+      ? source.slice(0, 4).map((row) => row.slice(0, 14))
+      : source;
+  }, [initialGrid, preview]);
   const binRowNames = gridData.map((r) => (r[0] ? r[0].binRow : "BIN"));
 
   // Group cells by bin row

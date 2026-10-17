@@ -22,6 +22,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
+import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { getTransferRequest } from "@/lib/db/queries/transfers";
@@ -160,8 +161,9 @@ export default async function InspectTransferPage({
 
   return (
     <div className="mx-auto max-w-container">
+      <PageBreadcrumb backHref={`/transfers/${transferId}`} backLabel="Transfer Request" currentLabel="Inspect" />
       {/* Breadcrumb */}
-      <nav aria-label="Breadcrumb" className="mb-4">
+      {/*
         <ol className="flex items-center gap-1 font-body text-body-sm text-text-grey">
           <li>
             <Link
@@ -185,7 +187,7 @@ export default async function InspectTransferPage({
             Inspect
           </li>
         </ol>
-      </nav>
+      </nav>*/}
 
       <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
         Transfer Inspection

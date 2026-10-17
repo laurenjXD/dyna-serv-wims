@@ -201,22 +201,22 @@ export function SoaDetailClient({
     (soaData.status as SoaStatus) || "Issued"
   );
 
-  const effectiveCbmRows = cbmRows && cbmRows.length > 0 ? cbmRows : DEMO_CBM_ROWS;
-  const effectiveDeliveryRows = deliveryRows && deliveryRows.length > 0 ? deliveryRows : DEMO_DELIVERY_ROWS;
-  const effectiveLoaRows = loaRows && loaRows.length > 0 ? loaRows : DEMO_LOA_ROWS;
-  const effectiveManpowerRows = manpowerRows && manpowerRows.length > 0 ? manpowerRows : DEMO_MANPOWER_ROWS;
-  const effectiveOtherChargeRows = otherChargeRows && otherChargeRows.length > 0 ? otherChargeRows : DEMO_OTHER_CHARGES;
+  const effectiveCbmRows = cbmRows ?? [];
+  const effectiveDeliveryRows = deliveryRows ?? [];
+  const effectiveLoaRows = loaRows ?? [];
+  const effectiveManpowerRows = manpowerRows ?? [];
+  const effectiveOtherChargeRows = otherChargeRows ?? [];
 
   const chargeLines = [
     { label: "Warehousing Charge", amount: soaData.categories.find((c) => c.sectionId === "section-7")?.amount ?? 0 },
-    { label: "Documentation", amount: soaData.categories.find((c) => c.code === "DOC-FEE")?.amount ?? 420.00 },
+    { label: "Documentation", amount: soaData.categories.find((c) => c.code === "DOC-FEE")?.amount ?? 0 },
     { label: "Delivery Charge", amount: soaData.categories.find((c) => c.sectionId === "section-2")?.amount ?? 0 },
     { label: "Handling and Stripping", amount: soaData.categories.find((c) => c.sectionId === "section-5")?.amount ?? 0 },
     { label: "Cargo Transfer Fee", amount: 0 },
     { label: "RTV", amount: 0 },
-    { label: "Admin Fee", amount: soaData.categories.find((c) => c.code === "TRUCK-ADMIN")?.amount ?? 200.00 },
+    { label: "Admin Fee", amount: soaData.categories.find((c) => c.code === "TRUCK-ADMIN")?.amount ?? 0 },
     { label: "Insurance", amount: 0 },
-    { label: "Man Power (Permits and Special Handling)", amount: soaData.categories.find((c) => c.sectionId === "section-3")?.amount ?? 36.00 },
+    { label: "Man Power (Permits and Special Handling)", amount: soaData.categories.find((c) => c.sectionId === "section-3")?.amount ?? 0 },
   ];
 
   const grandTotal = chargeLines.reduce((s, r) => s + r.amount, 0);
@@ -380,7 +380,7 @@ export function SoaDetailClient({
             <p className="font-bold uppercase tracking-widest text-slate-400 text-[9px] mb-1.5">Bill To</p>
             <p className="font-bold text-slate-900 text-sm">{soaData.customerName}</p>
             <p className="text-slate-500 mt-1 whitespace-pre-line leading-relaxed">
-              {soaData.customerAddress || "Unit 8, 35/F Cable TV Tower\n9 Hoi Shing Road, Tsuen Wan NT, HK"}
+              {soaData.customerAddress || "Address not recorded"}
             </p>
             <p className="text-slate-500 mt-1">Attn: Accounts Payable / Supply Chain Dept.</p>
           </div>
@@ -439,13 +439,13 @@ export function SoaDetailClient({
           <div className="grid grid-cols-2 gap-6">
             <div>
               <p className="text-slate-400 mb-6">Prepared By:</p>
-              <div className="border-b border-slate-900 pb-0.5 font-bold text-slate-900 text-xs">MARIA LOURDES REYES</div>
-              <p className="text-slate-400 text-[9px] mt-0.5">Billing and Finance Specialist</p>
+              <div className="border-b border-slate-900 pb-0.5 font-bold text-slate-500 text-xs">Not assigned</div>
+              <p className="text-slate-400 text-[9px] mt-0.5">Prepared by</p>
             </div>
             <div>
               <p className="text-slate-400 mb-6">Approved By:</p>
-              <div className="border-b border-slate-900 pb-0.5 font-bold text-slate-900 text-xs">JOSEPHINE TAN</div>
-              <p className="text-slate-400 text-[9px] mt-0.5">Warehouse Operations Manager</p>
+              <div className="border-b border-slate-900 pb-0.5 font-bold text-slate-500 text-xs">Not assigned</div>
+              <p className="text-slate-400 text-[9px] mt-0.5">Approved by</p>
             </div>
           </div>
         </div>

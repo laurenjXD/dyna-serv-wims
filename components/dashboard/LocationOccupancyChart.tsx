@@ -77,7 +77,7 @@ export function LocationOccupancyChart({ initialData }: LocationOccupancyChartPr
             </PieChart>
           </ResponsiveContainer>
 
-          {/* Center Metric */}
+            {/* Center Metric */}
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
             <span className="font-mono text-xl font-black text-brand-navy leading-none">
               {overallPct}%

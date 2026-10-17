@@ -49,12 +49,12 @@ function header(page: PDFPage, title: string, period: VmiPdfPeriod, regular: PDF
   page.drawImage(logo, { x: LEFT, y: 744 - logoSize, width: logoSize, height: logoSize });
   const textLeft = LEFT + logoSize + 10;
   text(page, "DYNA-SERV WAREHOUSE MANAGEMENT", textLeft, 755, bold, 11, true);
-  text(page, title.toUpperCase(), LEFT, 731, bold, 12, true);
-  text(page, `${period.partyName} (${period.partyCode})`, LEFT, 708, regular, 10);
-  text(page, `Reference: ${period.periodNumber}`, LEFT, 693, regular, 9);
-  text(page, `Billing period: ${period.periodStartDate} to ${period.periodEndDate}`, LEFT, 679, regular, 9);
-  line(page, 668);
-  return 646;
+  text(page, title.toUpperCase(), LEFT, 698, bold, 12, true);
+  text(page, `${period.partyName} (${period.partyCode})`, LEFT, 679, regular, 10);
+  text(page, `Reference: ${period.periodNumber}`, LEFT, 664, regular, 9);
+  text(page, `Billing period: ${period.periodStartDate} to ${period.periodEndDate}`, LEFT, 650, regular, 9);
+  line(page, 637);
+  return 615;
 }
 
 function row(page: PDFPage, y: number, label: string, value: string, regular: PDFFont, bold: PDFFont, strong = false): number {

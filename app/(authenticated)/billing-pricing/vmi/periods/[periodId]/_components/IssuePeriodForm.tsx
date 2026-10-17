@@ -7,9 +7,14 @@ const initialState: VmiPeriodIssueState = {};
 
 export function IssuePeriodForm({ periodId }: { periodId: string }) {
   const [state, formAction, isPending] = useActionState(issueVmiPeriodAction, initialState);
+  const friendlyError = state.error
+    ? state.error.includes("generated_documents") || state.error.includes("Failed query")
+      ? "The four document records could not be prepared. Ask an administrator to verify the VMI document database migration, then retry."
+      : state.error
+    : null;
   return (
     <div className="mt-4 border-t border-outline-variant/20 pt-4">
-      {state.error && <div className="mb-3 rounded-lg bg-status-held/10 p-3 font-body text-body-sm text-status-held">What happened: The period was not issued. Why it failed: {state.error}. Next action: Resolve the document issue and try again; this draft remains editable.</div>}
+      {friendlyError && <div className="mb-3 rounded-xl border border-status-held/30 bg-status-held/10 p-3 font-body text-body-sm text-status-held" role="alert"><p className="font-semibold">The period was not issued.</p><p className="mt-1">{friendlyError}</p><p className="mt-1">This draft remains editable.</p></div>}
       {state.ok && <div className="mb-3 rounded-lg bg-status-available/10 p-3 font-body text-body-sm text-status-available">All four private PDF artifacts were created and the period is now issued.</div>}
       <form action={formAction} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <input type="hidden" name="periodId" value={periodId} />

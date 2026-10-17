@@ -173,27 +173,21 @@ export async function listWrrDocuments(
     .select({ count: sql<string>`count(*)` })
     .from(wrrDocuments);
 
-  let rows: WrrDocumentRow[];
-  let countResult: Array<{ count: string }>;
-
   if (opts.status) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const whereExpr = eq(wrrDocuments.status, opts.status as any);
-    rows = (await dataBase
-      .where(whereExpr)
-      .orderBy(asc(wrrDocuments.createdAt))
-      .limit(opts.limit)
-      .offset(opts.offset)) as WrrDocumentRow[];
-    countResult = (await countBase.where(whereExpr)) as Array<{ count: string }>;
+    const [rows, countResult] = await Promise.all([
+      dataBase.where(whereExpr).orderBy(asc(wrrDocuments.createdAt)).limit(opts.limit).offset(opts.offset),
+      countBase.where(whereExpr),
+    ]);
+    return { rows: rows as WrrDocumentRow[], total: Number((countResult as Array<{ count: string }>)[0].count) };
   } else {
-    rows = (await dataBase
-      .orderBy(asc(wrrDocuments.createdAt))
-      .limit(opts.limit)
-      .offset(opts.offset)) as WrrDocumentRow[];
-    countResult = (await countBase) as Array<{ count: string }>;
+    const [rows, countResult] = await Promise.all([
+      dataBase.orderBy(asc(wrrDocuments.createdAt)).limit(opts.limit).offset(opts.offset),
+      countBase,
+    ]);
+    return { rows: rows as WrrDocumentRow[], total: Number((countResult as Array<{ count: string }>)[0].count) };
   }
-
-  return { rows, total: Number(countResult[0].count) };
 }
 
 // ---------------------------------------------------------------------------

@@ -191,6 +191,19 @@ html:not([data-theme="dark"]) .inspection-page [class~="bg-white/15"] {
  * (specs/00-steering/design.md & ui-ux-design-plan.md)
  */
 @layer components {
+  /* Shared typography guardrail: labels and body UI must not fall back to
+   * legacy monospace styling. Codes and IDs continue to opt into font-mono. */
+  [data-surface="office"] :is(.font-body, .font-label):not(.font-mono),
+  [data-surface="party"] :is(.font-body, .font-label):not(.font-mono) {
+    font-family: Inter, "Helvetica Neue", Arial, sans-serif !important;
+    letter-spacing: normal !important;
+  }
+
+  [data-surface="office"] :is(h1, h2, h3, h4, h5, h6),
+  [data-surface="party"] :is(h1, h2, h3, h4, h5, h6) {
+    font-family: "Avenir Next", Avenir, Arial, sans-serif !important;
+  }
+
   main[data-surface="office"],
   main[data-surface="party"] {
     @apply bg-background text-text-primary;

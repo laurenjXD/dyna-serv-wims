@@ -144,6 +144,15 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     group: "Master Data",
   },
   {
+    id: "migration",
+    path: "/migration",
+    surface: "office",
+    capability: "users.read",
+    featureSpecs: ["24-data-migration-and-seeding"],
+    launchStatus: "launch",
+    group: "Master Data",
+  },
+  {
     id: "reports",
     path: "/reports",
     surface: "office",

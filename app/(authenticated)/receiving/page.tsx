@@ -30,6 +30,31 @@ import { WrrLedgerFilterableTable } from "./_components/WrrLedgerFilterableTable
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const QUEUE_PAGE_SIZE = 20;
+const DATA_REQUEST_TIMEOUT_MS = 8000;
+
+function withDataRequestTimeout<T>(request: Promise<T>): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(
+      () => reject(new Error("Receiving data request timed out")),
+      DATA_REQUEST_TIMEOUT_MS,
+    );
+  });
+
+  return Promise.race([request, timeout]).finally(() => {
+    if (timeoutId) clearTimeout(timeoutId);
+  });
+}
+
+function ReceivingDataError() {
+  return (
+    <section className="mt-6 rounded-2xl border border-status-held/30 bg-surface-white p-6 text-center shadow-elevation-1" role="alert">
+      <h2 className="font-heading text-lg font-bold text-on-surface">Receiving data could not be loaded</h2>
+      <p className="mt-2 font-body text-sm text-text-grey">The database request took too long. Check the connection and try again.</p>
+      <a href="/receiving" className="mt-4 inline-flex min-h-10 items-center rounded-xl bg-brand-navy px-4 font-body text-sm font-semibold text-surface-white">Try again</a>
+    </section>
+  );
+}
 
 // Status badges — brand-design-system.md §1.3 semantic color mapping:
 // staged/in_progress → status-pending (amber); confirmed → status-available (green);
@@ -264,11 +289,18 @@ async function ReceiveTab({
   const status =
     statusFilter && statusFilter !== "" ? statusFilter : "receiving_in_progress";
 
-  const { rows, total } = await listWrrDocuments(db, {
-    limit: QUEUE_PAGE_SIZE,
-    offset,
-    status,
-  });
+  let rows: WrrDocumentRow[];
+  let total: number;
+  try {
+    ({ rows, total } = await withDataRequestTimeout(listWrrDocuments(db, {
+      limit: QUEUE_PAGE_SIZE,
+      offset,
+      status,
+    })));
+  } catch (error) {
+    console.error("[receiving] receive tab data failed", error);
+    return <ReceivingDataError />;
+  }
 
   const totalPages = Math.ceil(total / QUEUE_PAGE_SIZE);
   const inProgressCount = rows.filter((r) => r.status === "receiving_in_progress").length;
@@ -453,11 +485,18 @@ async function WrrsTab({
   const status =
     statusFilter && statusFilter !== "" ? statusFilter : undefined;
 
-  const { rows, total } = await listWrrDocuments(db, {
-    limit: QUEUE_PAGE_SIZE,
-    offset,
-    status,
-  });
+  let rows: WrrDocumentRow[];
+  let total: number;
+  try {
+    ({ rows, total } = await withDataRequestTimeout(listWrrDocuments(db, {
+      limit: QUEUE_PAGE_SIZE,
+      offset,
+      status,
+    })));
+  } catch (error) {
+    console.error("[receiving] WRR tab data failed", error);
+    return <ReceivingDataError />;
+  }
 
   const totalPages = Math.ceil(total / QUEUE_PAGE_SIZE);
 
@@ -479,11 +518,17 @@ async function WrrsTab({
 async function LedgerTab() {
   // Always confirmed — ledger shows only committed receipts.
   // Powered by TanStack DataTable with client-side sorting, pagination, search, and Google Sheets filters.
-  const { rows } = await listWrrDocuments(db, {
-    limit: 500,
-    offset: 0,
-    status: "confirmed",
-  });
+  let rows: WrrDocumentRow[];
+  try {
+    ({ rows } = await withDataRequestTimeout(listWrrDocuments(db, {
+      limit: 500,
+      offset: 0,
+      status: "confirmed",
+    })));
+  } catch (error) {
+    console.error("[receiving] ledger data failed", error);
+    return <ReceivingDataError />;
+  }
 
   return (
     <div className="mt-6">

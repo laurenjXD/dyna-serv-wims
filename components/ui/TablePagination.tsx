@@ -87,7 +87,7 @@ export function TablePagination({
 
   return (
     <div
-      className={`flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 text-xs font-body text-slate-600 dark:text-zinc-400 ${className}`}
+      className={`mt-4 flex min-h-10 flex-col items-center justify-between gap-3 rounded-xl bg-background px-1 py-1 text-xs font-body text-slate-600 dark:bg-zinc-950/40 dark:text-zinc-400 sm:flex-row ${className}`}
     >
       {/* ── Left: Range Information & Page Size Selector ──────────────── */}
       <div className="flex flex-wrap items-center gap-3">

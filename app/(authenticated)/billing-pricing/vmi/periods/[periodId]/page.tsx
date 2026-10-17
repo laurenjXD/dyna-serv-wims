@@ -156,21 +156,21 @@ export default async function VmiPeriodDetailPage({ params }: Props) {
       <section className="rounded-2xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="font-heading text-title-md font-bold text-on-surface">Required financial documents</h2>
-            <p className="mt-1 font-body text-body-sm text-text-grey">All four documents must be ready before the period can be issued.</p>
+            <h2 className="font-heading text-title-md font-bold text-on-surface">Issuance checklist</h2>
+            <p className="mt-1 max-w-2xl font-body text-body-sm text-text-grey">These four official PDFs are prepared and stored when the billing period is issued. Review a draft first, then issue to lock the period.</p>
           </div>
           <Link href="/documents?tab=soa" className="inline-flex w-fit items-center gap-1 font-label text-label font-bold text-brand-blue hover:underline"><FileText size={15} /> Documents Center</Link>
         </div>
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {artifactReferences.map(([label, type, artifactId]) => {
             const artifact = artifactId ? artifactsById.get(artifactId) : undefined;
-            const state = artifact?.status ?? "not generated";
+            const state = artifact?.status === "ready" ? "Ready to issue" : artifact?.status === "generating" ? "Preparing" : artifact?.status === "failed" ? "Needs attention" : "Not generated";
             return (
               <div key={label} className="rounded-xl border border-outline-variant/20 bg-surface-light-grey/40 p-4">
-                <p className="font-label text-label font-bold text-on-surface">{label}</p>
-                <p className={`mt-2 font-body text-body-sm font-bold ${artifact?.status === "ready" ? "text-status-available" : artifact?.status === "failed" ? "text-status-held" : "text-text-grey"}`}>{state}</p>
-                <p className="mt-1 truncate font-mono text-mono-sm text-text-grey">{artifact?.documentNumber ?? "Awaiting document pipeline"}</p>
-                <Link href={artifact?.status === "ready" ? `/api/documents/${artifact.id}/download` : `/api/billing/vmi/${period.id}/documents/${type}`} target="_blank" className="mt-3 inline-flex font-label text-label font-bold text-brand-blue hover:underline">{artifact?.status === "ready" ? "Open issued PDF" : "Preview draft PDF"}</Link>
+                <p className="font-heading text-sm font-semibold text-on-surface">{label}</p>
+                <p className={`mt-2 font-body text-sm font-semibold ${artifact?.status === "ready" ? "text-status-available" : artifact?.status === "failed" ? "text-status-held" : "text-text-grey"}`}>{state}</p>
+                <p className="mt-1 truncate font-mono text-xs text-text-grey">{artifact?.documentNumber ?? "Awaiting document preparation"}</p>
+                <Link href={artifact?.status === "ready" ? `/api/documents/${artifact.id}/download` : `/api/billing/vmi/${period.id}/documents/${type}`} target="_blank" className="mt-3 inline-flex font-label text-xs font-bold text-brand-blue hover:underline">{artifact?.status === "ready" ? "Open issued PDF" : "Preview draft PDF"}</Link>
               </div>
             );
           })}

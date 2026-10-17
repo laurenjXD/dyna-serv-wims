@@ -11,6 +11,8 @@ import { getLocation, getLocationInventory } from "@/lib/db/queries/locations";
 import { getLocationTransactionLedger } from "@/lib/db/queries/ledgers";
 import { DeactivateLocationSection } from "../_components/location-deactivate";
 import { UrlTablePagination } from "@/components/ui/UrlTablePagination";
+import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
+import { DetailCard, DetailPageHeader, DetailSectionHeading } from "@/components/global/DetailPage";
 
 const LEDGER_PAGE_SIZE = 20;
 
@@ -74,7 +76,12 @@ export default async function LocationDetailPage({
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <nav className="mb-2" aria-label="Breadcrumb">
+          <PageBreadcrumb
+            backHref="/enrollment?tab=locations"
+            backLabel="Locations"
+            currentLabel={location.label}
+          />
+          {/*
             <ol className="flex items-center gap-1 font-body text-body-sm text-text-grey">
               <li>
                 <Link
@@ -89,7 +96,7 @@ export default async function LocationDetailPage({
                 {location.label}
               </li>
             </ol>
-          </nav>
+          </nav>*/}
           <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
             {location.label}
           </h1>
@@ -120,10 +127,8 @@ export default async function LocationDetailPage({
       </div>
 
       {/* Location details */}
-      <div className="mt-6 rounded-xl bg-surface-white shadow-elevation-1 p-6">
-        <h2 className="font-heading font-semibold text-data-display text-on-surface">
-          Location Information
-        </h2>
+      <DetailCard>
+        <DetailSectionHeading title="Location Information" />
         <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <dt className="font-label text-label text-text-grey">Zone</dt>
@@ -172,10 +177,10 @@ export default async function LocationDetailPage({
             </dd>
           </div>
         </dl>
-      </div>
+      </DetailCard>
 
       {/* Location views */}
-      <div className="mt-6 flex flex-wrap gap-2 border-b border-outline-variant/40" role="tablist" aria-label="Location views">
+      <div className="flex flex-wrap gap-2 border-b border-outline-variant/40" role="tablist" aria-label="Location views">
         <Link
           href={`/master-data/locations/${locationId}?view=inventory`}
           role="tab"

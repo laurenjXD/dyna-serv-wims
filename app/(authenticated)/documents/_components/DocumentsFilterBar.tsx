@@ -1,8 +1,9 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Search, X, Calendar, Building2, Filter } from "lucide-react";
+import { Search, X, Calendar, Filter } from "lucide-react";
 import { useCallback, useTransition } from "react";
+import { FilterSelect } from "@/components/ui/FilterSelect";
 
 export interface FilterPartyOption {
   id: string;
@@ -75,7 +76,7 @@ export function DocumentsFilterBar({
             placeholder="Search document #, reference, lot, organization..."
             value={currentSearch}
             onChange={(e) => updateParam("q", e.target.value)}
-            className="h-8 w-full rounded-lg border border-slate-200 bg-surface-white pl-8 pr-7 font-body text-xs text-on-surface placeholder:text-text-grey/60 focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
+            className="h-10 w-full rounded-lg border border-slate-200 bg-surface-white pl-8 pr-7 font-body text-body-sm text-on-surface placeholder:text-text-grey/60 focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
           />
           {currentSearch && (
             <button
@@ -90,29 +91,20 @@ export function DocumentsFilterBar({
         </div>
 
         {/* Organization dropdown */}
-        <div className="relative min-w-[160px] max-w-[220px]">
-          <Building2
-            size={15}
-            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-text-grey"
-            aria-hidden="true"
-          />
-          <select
-            value={currentParty}
-            onChange={(e) => updateParam("partyId", e.target.value)}
-            className="h-8 w-full appearance-none rounded-lg border border-slate-200 bg-surface-white pl-8 pr-7 font-body text-xs text-on-surface focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy truncate"
-          >
-            <option value="">All Organizations</option>
-            {organizations.map((org) => (
-              <option key={org.id} value={org.id}>
-                {org.name} ({org.code})
-              </option>
-            ))}
-          </select>
-        </div>
+        <FilterSelect
+          label="Organization"
+          value={currentParty}
+          onChange={(value) => updateParam("partyId", value)}
+          options={[
+            { value: "", label: "All Organizations" },
+            ...organizations.map((org) => ({ value: org.id, label: `${org.name} (${org.code})` })),
+          ]}
+          className="sm:w-[320px]"
+        />
 
         {/* Date Range Inputs */}
-        <div className="flex items-center gap-1.5">
-          <div className="relative w-[130px]">
+        <div className="flex min-w-0 max-w-full items-center gap-1.5">
+          <div className="relative min-w-0 flex-1 sm:w-[130px] sm:flex-none">
             <Calendar
               size={13}
               className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-text-grey"
@@ -122,12 +114,12 @@ export function DocumentsFilterBar({
               type="date"
               value={currentFrom}
               onChange={(e) => updateParam("from", e.target.value)}
-              className="h-8 w-full rounded-lg border border-slate-200 bg-surface-white pl-6 pr-2 font-mono text-[11px] text-on-surface focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
+              className="h-10 w-full min-w-0 rounded-lg border border-slate-200 bg-surface-white px-2 pl-6 font-body !text-sm !leading-5 text-on-surface focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
               aria-label="Filter from date"
             />
           </div>
           <span className="text-xs text-text-grey font-mono">-</span>
-          <div className="relative w-[130px]">
+          <div className="relative min-w-0 flex-1 sm:w-[130px] sm:flex-none">
             <Calendar
               size={13}
               className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-text-grey"
@@ -137,7 +129,7 @@ export function DocumentsFilterBar({
               type="date"
               value={currentTo}
               onChange={(e) => updateParam("to", e.target.value)}
-              className="h-8 w-full rounded-lg border border-slate-200 bg-surface-white pl-6 pr-2 font-mono text-[11px] text-on-surface focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
+              className="h-10 w-full min-w-0 rounded-lg border border-slate-200 bg-surface-white px-2 pl-6 font-body !text-sm !leading-5 text-on-surface focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
               aria-label="Filter to date"
             />
           </div>
@@ -148,7 +140,7 @@ export function DocumentsFilterBar({
           <button
             type="button"
             onClick={clearAllFilters}
-            className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-200 px-2.5 font-label text-xs text-text-grey hover:bg-slate-50 hover:text-on-surface focus:outline-none focus:ring-1 focus:ring-brand-navy cursor-pointer transition-colors"
+            className="inline-flex h-10 items-center gap-1 rounded-lg border border-slate-200 px-2.5 font-body text-body-sm text-text-grey hover:bg-slate-50 hover:text-on-surface focus:outline-none focus:ring-1 focus:ring-brand-navy cursor-pointer transition-colors"
           >
             <X size={13} />
             Reset
@@ -159,13 +151,13 @@ export function DocumentsFilterBar({
       {/* Status filter pills */}
       {statusOptions.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-slate-100">
-          <span className="mr-1 inline-flex items-center gap-1 font-label text-[10px] font-bold uppercase tracking-wider text-text-grey">
+          <span className="mr-1 inline-flex items-center gap-1 font-body text-sm font-bold uppercase text-text-grey">
             <Filter size={11} /> STATUS:
           </span>
           <button
             type="button"
             onClick={() => updateParam("status", null)}
-            className={`h-6 rounded-full px-2.5 font-label text-[11px] transition-colors cursor-pointer ${
+            className={`h-8 rounded-full px-3 font-body text-sm transition-colors cursor-pointer ${
               !currentStatus
                 ? "bg-slate-900 text-surface-white font-bold"
                 : "border border-slate-200 bg-surface-white text-text-grey hover:bg-slate-50"
@@ -180,7 +172,7 @@ export function DocumentsFilterBar({
                 key={opt.value}
                 type="button"
                 onClick={() => updateParam("status", isSelected ? null : opt.value)}
-                className={`h-6 rounded-full px-2.5 font-label text-[11px] transition-colors cursor-pointer ${
+              className={`h-8 rounded-full px-3 font-body text-sm transition-colors cursor-pointer ${
                   isSelected
                     ? "bg-brand-navy text-surface-white font-bold"
                     : "border border-slate-200 bg-surface-white text-text-grey hover:bg-slate-50"

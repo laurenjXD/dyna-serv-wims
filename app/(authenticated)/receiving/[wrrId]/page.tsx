@@ -29,6 +29,7 @@ import { FlaskConical, ChevronRight } from "lucide-react";
 import { CiplDocumentLink, type SignedUrlResult } from "./_components/CiplDocumentLink";
 import { WrrDetailTabs } from "./_components/WrrDetailTabs";
 import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
+import { DetailCard, DetailPageHeader, DetailSectionHeading } from "@/components/global/DetailPage";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -149,25 +150,15 @@ export default async function WrrDetailPage({ params }: PageProps) {
 
   return (
     <div className="mx-auto max-w-container">
-      <PageBreadcrumb backHref="/receiving" backLabel="Receiving Queue" currentLabel={wrr.wrrNumber} monoCurrent />
-
-      {/* Page heading + status badge */}
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
-          {wrr.wrrNumber}
-        </h1>
-        <span
-          className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase ${STATUS_CLASSES[wrr.status] ?? "bg-status-neutral/10 text-status-neutral"}`}
-        >
-          {STATUS_LABELS[wrr.status] ?? wrr.status.toUpperCase()}
-        </span>
-      </div>
+      <DetailPageHeader
+        breadcrumb={<PageBreadcrumb backHref="/receiving" backLabel="Receiving Queue" currentLabel={wrr.wrrNumber} monoCurrent />}
+        title={wrr.wrrNumber}
+        badges={<span className={`inline-flex items-center rounded-full px-3 py-1 font-body text-sm uppercase ${STATUS_CLASSES[wrr.status] ?? "bg-status-neutral/10 text-status-neutral"}`}>{STATUS_LABELS[wrr.status] ?? wrr.status.toUpperCase()}</span>}
+      />
 
       {/* WRR summary card — Level 1 office elevation */}
-      <div className="mt-6 rounded-xl bg-surface-white shadow-elevation-1 p-6">
-        <h2 className="font-heading font-semibold text-data-display text-on-surface">
-          Document Details
-        </h2>
+      <DetailCard className="mt-6">
+        <DetailSectionHeading title="Document Details" />
         <dl className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
             <dt className="font-label text-label text-text-grey">WRR Number</dt>
@@ -220,7 +211,7 @@ export default async function WrrDetailPage({ params }: PageProps) {
             </dd>
           </div>
         </dl>
-      </div>
+      </DetailCard>
 
       {/* Action buttons — conditional on WRR status */}
       <div className="mt-6 rounded-xl bg-surface-white shadow-elevation-1 p-6">

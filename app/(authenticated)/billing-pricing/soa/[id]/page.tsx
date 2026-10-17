@@ -10,6 +10,7 @@
 //   7. Detailed Warehousing Charges (Daily CBM Schedule)
 
 import { FileText } from "lucide-react";
+import { notFound } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
@@ -51,15 +52,13 @@ export default async function SoaDetailPage({ params, searchParams }: PageProps)
   const isUuid = (val: string) =>
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(val);
 
+  if (id === "sample") notFound();
+
   let party = null;
-  const targetPartyId = searchPartyId || (id !== "sample" ? id : "");
+  const targetPartyId = searchPartyId || id;
   if (targetPartyId) {
     if (isUuid(targetPartyId)) {
-      try {
-        party = await getPartyWithRoles(db, targetPartyId);
-      } catch (err) {
-        console.warn("getPartyWithRoles note:", err);
-      }
+      party = await getPartyWithRoles(db, targetPartyId);
     } else {
       // Lookup by code or prefix
       const allParties = await listParties(db, { limit: 20 });
@@ -67,12 +66,14 @@ export default async function SoaDetailPage({ params, searchParams }: PageProps)
         p.code?.toLowerCase() === targetPartyId.toLowerCase() ||
         p.id.startsWith(targetPartyId) ||
         p.name.toLowerCase().includes(targetPartyId.toLowerCase())
-      ) ?? allParties.rows[0] ?? null;
+      ) ?? null;
     }
   } else {
     const allParties = await listParties(db, { limit: 1 });
     party = allParties.rows[0] ?? null;
   }
+
+  if (!party) notFound();
 
   const now = new Date();
   const monthIdx = searchMonth !== undefined ? parseInt(searchMonth, 10) : now.getMonth();
@@ -91,20 +92,18 @@ export default async function SoaDetailPage({ params, searchParams }: PageProps)
   const targetDate = `${year}-${monthPadded}-01`;
   const exchangeRate = await getDailyForexRate(targetDate);
 
-  // Defaults (sample preview fallback values)
-  let storageAmount = 1116.9;
-  let handlingInUsd = 220.05;
-  let handlingOutUsd = 368.14;
-  let deliveryUsd = Number((40896.0 / exchangeRate).toFixed(2));
-  let documentationUsd = 420.0;
-  let loaFeeUsd = 36.0;
-  let truckingAdminUsd = 200.0;
-  let suretyBondUsd = 0.0;
+  let storageAmount = 0;
+  let handlingInUsd = 0;
+  let handlingOutUsd = 0;
+  let deliveryUsd = 0;
+  let documentationUsd = 0;
+  let loaFeeUsd = 0;
+  let truckingAdminUsd = 0;
+  let suretyBondUsd = 0;
   const ctfUsd = 0.0;
   let customCbmRows: DailyStorageRow[] | undefined = undefined;
 
-  if (party) {
-    try {
+  {
       // 1. Warehousing CBM Daily Ledger Rows & Storage Sum
       const dailyRows = await getVmiDailyBalanceRows(party.id, monthIdx, year);
       if (dailyRows.length > 0) {
@@ -161,13 +160,10 @@ export default async function SoaDetailPage({ params, searchParams }: PageProps)
         if (truckLine) truckingAdminUsd = Number(truckLine.amountUsd.toFixed(2));
         if (suretyLine) suretyBondUsd = Number(suretyLine.amountUsd.toFixed(2));
       }
-    } catch (err) {
-      console.warn("Using sample calculation fallbacks for SOA preview:", err);
-    }
   }
 
-  const customerName = party ? party.name : "United Philippine Industrial";
-  const customerCode = party ? party.code : "UPI";
+  const customerName = party.name;
+  const customerCode = party.code ?? "UNASSIGNED";
   const soaNumber = `SOA-${year}-${monthPadded}-${customerCode}`;
 
   const totalAmount = Number(
@@ -188,8 +184,8 @@ export default async function SoaDetailPage({ params, searchParams }: PageProps)
     soaNumber,
     customerName,
     customerCode,
-    customerAddress: party ? "" : "Unit 8, 35/F Cable TV Tower\n9 Hoi Shing Road, Tsuen Wan NT, HK",
-    contractNumber: `DSGC-VMI-${year}-001`,
+    customerAddress: "",
+    contractNumber: "Not recorded",
     billingPeriod: `${monthName} 1 \u2013 ${monthName} ${daysInMonth}, ${year}`,
     billingPeriodStart: `${monthName} 1, ${year}`,
     billingPeriodEnd: `${monthName} ${daysInMonth}, ${year}`,

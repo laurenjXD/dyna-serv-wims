@@ -55,7 +55,7 @@ const config: Config = {
         // Dyna-Serv Brand Guidelines: Avenir Next / Inter / JetBrains Mono.
         heading: ["Avenir Next", "Avenir", "sans-serif"],
         body: ["Inter", "Helvetica Neue", "Arial", "sans-serif"],
-        label: ["JetBrains Mono", "SFMono-Regular", "monospace"],
+        label: ["Inter", "Helvetica Neue", "Arial", "sans-serif"],
         mono: ["JetBrains Mono", "SFMono-Regular", "monospace"],
       },
       fontSize: {
@@ -77,7 +77,7 @@ const config: Config = {
         "body-md": ["16px", { lineHeight: "24px", letterSpacing: "normal" }],
         "body-sm": ["14px", { lineHeight: "20px", letterSpacing: "normal" }],
         "body-xs": ["12px", { lineHeight: "16px", letterSpacing: "normal" }],
-        label: ["12px", { lineHeight: "16px", letterSpacing: "0.14em" }],
+        label: ["14px", { lineHeight: "20px", letterSpacing: "normal" }],
         "mono-sm": ["14px", { lineHeight: "20px", letterSpacing: "normal" }],
         "mono-md": ["16px", { lineHeight: "24px", letterSpacing: "normal" }],
         "mono-lg": ["18px", { lineHeight: "28px", letterSpacing: "normal" }],

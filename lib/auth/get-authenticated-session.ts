@@ -18,12 +18,24 @@ import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import type { AuthSession } from "@/lib/rbac/session";
 
+const SESSION_LOOKUP_TIMEOUT_MS = 6000;
+
 export async function getAuthenticatedSession(): Promise<AuthSession | null> {
   const supabase = await createClient();
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(
+      () => reject(new Error("Supabase session lookup timed out")),
+      SESSION_LOOKUP_TIMEOUT_MS,
+    );
+  });
+  const sessionResult = await Promise.race([supabase.auth.getUser(), timeout]).finally(() => {
+    if (timeoutId) clearTimeout(timeoutId);
+  });
   const {
     data: { user },
     error,
-  } = await supabase.auth.getUser();
+  } = sessionResult;
   if (!user) {
     // 2026-08-08 diagnostic addition, temporary pending root-cause
     // confirmation: session.ts's own catches never log, so this is the

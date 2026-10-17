@@ -285,25 +285,25 @@ export function MasterInventoryTable({ initialData = [], statusFilter = "all" }:
   return (
     <div className="rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-surface-white dark:bg-zinc-900/80 p-5 shadow-sm">
       {/* Table Toolbar */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-slate-100 dark:border-zinc-800 pb-4">
-        <div>
+      <div className="grid gap-4 border-b border-slate-100 pb-4 dark:border-zinc-800 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:items-center">
+        <div className="min-w-0">
           <div className="flex items-center gap-2">
             <h2 className="font-heading text-title-md font-bold text-brand-navy dark:text-zinc-100">
               Master Inventory Live Positions
             </h2>
-            <span className="rounded-md bg-slate-100 dark:bg-zinc-800 px-2.5 py-0.5 font-mono text-[11px] font-bold text-slate-700 dark:text-zinc-300">
+            <span className="whitespace-nowrap rounded-md bg-slate-100 dark:bg-zinc-800 px-2.5 py-1 font-body text-sm font-bold tracking-normal text-slate-700 dark:text-zinc-300">
               {filteredData.length} SKUs Listed
             </span>
           </div>
-          <p className="mt-0.5 font-body text-xs text-text-grey">
+          <p className="mt-1 font-body text-sm text-text-grey">
             Authoritative SKU stock levels, reorder thresholds, and active warehouse allocations
           </p>
         </div>
 
         {/* Filter Toolbar Controls */}
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="grid min-w-0 gap-2.5 sm:grid-cols-[minmax(0,auto)_minmax(0,1fr)] lg:grid-cols-[minmax(0,auto)_minmax(0,1fr)_auto]">
           {/* Flow Type Filter Pills */}
-          <div className="flex items-center gap-1 rounded-xl bg-slate-100 dark:bg-zinc-800 p-1 font-label text-xs font-semibold">
+          <div className="grid min-w-0 grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1 font-body text-sm font-semibold tracking-normal dark:bg-zinc-800 sm:col-span-2 lg:col-span-1 lg:grid-cols-4">
             {flowPills.map((pill) => (
               <button
                 key={pill.key}
@@ -312,7 +312,7 @@ export function MasterInventoryTable({ initialData = [], statusFilter = "all" }:
                   setFlowFilter(pill.key);
                   setPagination((prev) => ({ ...prev, pageIndex: 0 }));
                 }}
-                className={`rounded-lg px-2.5 py-1 transition-all ${
+                  className={`min-w-0 rounded-lg px-2 py-1.5 transition-all ${
                   flowFilter === pill.key
                     ? "bg-white dark:bg-zinc-700 text-brand-navy dark:text-white font-bold shadow-2xs"
                     : "text-slate-600 dark:text-zinc-400 hover:text-slate-900"
@@ -324,7 +324,7 @@ export function MasterInventoryTable({ initialData = [], statusFilter = "all" }:
           </div>
 
           {/* Search Bar */}
-          <div className="relative min-w-[220px]">
+          <div className="relative min-w-0">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
@@ -334,14 +334,14 @@ export function MasterInventoryTable({ initialData = [], statusFilter = "all" }:
                 setGlobalFilter(e.target.value);
                 setPagination((prev) => ({ ...prev, pageIndex: 0 }));
               }}
-              className="h-9 w-full rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 pl-9 pr-3 font-body text-xs text-slate-900 dark:text-zinc-100 placeholder:text-slate-400 focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy shadow-2xs"
+              className="h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-white pl-9 pr-3 font-body text-sm text-slate-900 shadow-2xs placeholder:text-slate-400 focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
             />
           </div>
 
           {/* View All Master Inventory CTA */}
           <Link
             href="/inventory"
-            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 px-3 font-label text-xs font-bold text-brand-navy dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors shadow-2xs"
+            className="inline-flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 font-body text-sm font-bold tracking-normal text-brand-navy shadow-2xs transition-colors hover:bg-slate-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-blue-400 dark:hover:bg-zinc-700"
           >
             <span>Stock View</span>
             <ExternalLink size={12} />

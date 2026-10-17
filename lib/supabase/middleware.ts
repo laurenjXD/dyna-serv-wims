@@ -7,6 +7,8 @@ export interface UpdateSessionResult {
   user: User | null;
 }
 
+const MIDDLEWARE_AUTH_TIMEOUT_MS = 3000;
+
 // Refreshes the Supabase Auth session on every request. Wired into the
 // root `middleware.ts` once route groups/auth flows exist — this helper is
 // the reusable piece per @supabase/ssr's documented Next.js pattern.
@@ -47,7 +49,7 @@ export async function updateSession(request: NextRequest): Promise<UpdateSession
     const timeoutPromise = new Promise<{ data: { user: User | null }; error: Error | null }>((resolve) => {
       timeoutId = setTimeout(() => {
         resolve({ data: { user: null }, error: new Error("Middleware auth timed out") });
-      }, 10_000);
+      }, MIDDLEWARE_AUTH_TIMEOUT_MS);
     });
 
     try {
