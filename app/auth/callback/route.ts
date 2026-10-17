@@ -1,14 +1,24 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse, type NextRequest } from "next/server";
+import { getSafeCallbackPath } from "@/lib/auth/invite-callback";
+
+const DEFAULT_INVITE_PATH = "/accept-invite";
+
+function invalidInvitationRedirect(request: NextRequest, message: string) {
+  const errorUrl = new URL("/login", request.url);
+  errorUrl.searchParams.set("error", message);
+  errorUrl.searchParams.set("next", DEFAULT_INVITE_PATH);
+  return NextResponse.redirect(errorUrl);
+}
 
 // Auth callback route handler for Supabase authentication redirects.
 // Used by email invitations, magic links, and password recovery.
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
-  const token_hash = requestUrl.searchParams.get("token_hash");
+  const tokenHash = requestUrl.searchParams.get("token_hash");
   const type = requestUrl.searchParams.get("type");
-  const next = requestUrl.searchParams.get("next") ?? "/accept-invite";
+  const next = getSafeCallbackPath(requestUrl.searchParams.get("next"));
 
   const supabase = await createClient();
 
@@ -16,25 +26,23 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) {
       console.error("[auth/callback] Failed to exchange code for session:", error.message);
-      // Redirect to login with error parameter if code exchange fails
-      const errorUrl = new URL("/login", request.url);
-      errorUrl.searchParams.set("error", "The invitation or auth link has expired or is invalid. Please ask your administrator to resend it.");
-      return NextResponse.redirect(errorUrl);
+      return invalidInvitationRedirect(request, "invitation_invalid");
     }
-  } else if (token_hash && (type === "invite" || type === "recovery" || type === "email" || type === "signup")) {
+  } else if (tokenHash && (type === "invite" || type === "recovery" || type === "email" || type === "signup")) {
     const { error } = await supabase.auth.verifyOtp({
-      token_hash,
+      token_hash: tokenHash,
       type: type as "invite" | "recovery" | "email" | "signup",
     });
     if (error) {
       console.error("[auth/callback] Failed to verify OTP token_hash:", error.message);
-      const errorUrl = new URL("/login", request.url);
-      errorUrl.searchParams.set("error", "The invitation or auth link has expired or is invalid.");
-      return NextResponse.redirect(errorUrl);
+      return invalidInvitationRedirect(request, "invitation_invalid");
     }
+  } else if (!code && !tokenHash) {
+    return invalidInvitationRedirect(request, "invitation_missing");
+  } else {
+    return invalidInvitationRedirect(request, "invitation_invalid");
   }
 
-  // URL to redirect to after sign in process completes
   const redirectUrl = new URL(next, request.url);
   return NextResponse.redirect(redirectUrl);
 }

@@ -29,6 +29,7 @@ export default function AcceptInvitePage() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [loadingInitial, setLoadingInitial] = useState(true);
+  const [hasInviteSession, setHasInviteSession] = useState<boolean | null>(null);
 
   // Attempt to load pre-assigned name from invite metadata and process tokens
   useEffect(() => {
@@ -47,7 +48,9 @@ export default function AcceptInvitePage() {
         supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
           if (error) {
             setError(error.message);
+            setHasInviteSession(false);
           } else if (data?.user) {
+            setHasInviteSession(true);
             const prefilled =
               data.user.user_metadata?.displayName ||
               data.user.user_metadata?.display_name ||
@@ -66,7 +69,9 @@ export default function AcceptInvitePage() {
           .then(({ data, error }) => {
             if (error) {
               setError(error.message);
+              setHasInviteSession(false);
             } else if (data?.user) {
+              setHasInviteSession(true);
               const prefilled =
                 data.user.user_metadata?.displayName ||
                 data.user.user_metadata?.display_name ||
@@ -82,6 +87,7 @@ export default function AcceptInvitePage() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      setHasInviteSession(Boolean(session?.user));
       if (session?.user) {
         const prefilled =
           session.user.user_metadata?.displayName ||
@@ -89,13 +95,14 @@ export default function AcceptInvitePage() {
           session.user.user_metadata?.full_name ||
           "";
         if (prefilled) setDisplayName(prefilled);
+        setLoadingInitial(false);
       }
-      setLoadingInitial(false);
     });
 
     async function loadUser() {
       try {
         const { data } = await supabase.auth.getUser();
+        setHasInviteSession(Boolean(data.user));
         if (data.user) {
           const prefilledName =
             data.user.user_metadata?.displayName ||
@@ -108,6 +115,7 @@ export default function AcceptInvitePage() {
         }
       } catch {
         // Ignore client session load error
+        setHasInviteSession(false);
       } finally {
         setLoadingInitial(false);
       }
@@ -118,6 +126,33 @@ export default function AcceptInvitePage() {
       subscription.unsubscribe();
     };
   }, []);
+
+  if (loadingInitial) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#F8FAFC] p-6">
+        <div className="rounded-2xl border border-slate-200 bg-white px-8 py-7 text-center shadow-xl">
+          <Warehouse className="mx-auto h-8 w-8 animate-pulse text-brand-navy" />
+          <h1 className="mt-4 font-heading text-lg font-bold text-slate-900">Verifying your invitation…</h1>
+          <p className="mt-1 font-body text-sm text-slate-500">Please wait while we prepare your onboarding page.</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (hasInviteSession === false) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#F8FAFC] p-6">
+        <div className="w-full max-w-md rounded-2xl border border-rose-200 bg-white p-8 text-center shadow-xl">
+          <AlertCircle className="mx-auto h-10 w-10 text-rose-600" />
+          <h1 className="mt-4 font-heading text-xl font-bold text-slate-900">Invitation link required</h1>
+          <p className="mt-2 font-body text-sm text-slate-600">
+            Open the invitation link from your email, or ask your administrator to resend it if it has expired.
+          </p>
+          {error && <p className="mt-4 rounded-xl bg-rose-50 p-3 text-xs text-rose-800">{error}</p>}
+        </div>
+      </main>
+    );
+  }
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();

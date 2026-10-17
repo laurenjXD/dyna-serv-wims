@@ -72,7 +72,11 @@ export default function LoginPage() {
     const code = searchParams.get("code");
     const errParam = searchParams.get("error_description") || searchParams.get("error");
     if (errParam) {
-      setError(errParam);
+      const invitationErrors: Record<string, string> = {
+        invitation_invalid: "This invitation link has expired or is invalid. Ask your administrator to resend it.",
+        invitation_missing: "Open the invitation link from your email to begin onboarding.",
+      };
+      setError(invitationErrors[errParam] ?? errParam);
     }
 
     if (code) {
