@@ -4,11 +4,13 @@ import { flowTypeEnum, lotStatusEnum } from "./enums";
 import { items } from "./items";
 import { parties } from "./parties";
 import { wrrItems } from "./wrr";
+import { migrationBatches } from "./migrations";
 
 export const lots = pgTable("lots", {
   id: uuid("id").primaryKey().defaultRandom(),
   lotNumber: varchar("lot_number", { length: 100 }).notNull(), // Business lot number copied from the WRR item
-  wrrItemId: uuid("wrr_item_id").references(() => wrrItems.id).notNull(), // Source WRR line
+  wrrItemId: uuid("wrr_item_id").references(() => wrrItems.id), // Source WRR line for operational receiving
+  migrationBatchId: uuid("migration_batch_id").references(() => migrationBatches.id), // Provenance for approved opening-balance migration
   itemId: uuid("item_id").references(() => items.id).notNull(),
   flowType: flowTypeEnum("flow_type").notNull(), // 'vmi' | 'trading' | 'supplies'
   ownerPartyId: uuid("owner_party_id").references(() => parties.id), // Required for VMI, optional for Trading/Supplies

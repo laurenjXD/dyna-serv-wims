@@ -27,3 +27,4 @@ export * from "./vmi_billing";
 export * from "./contracts";
 export * from "./billing_ledger";
 export * from "./inventory_units";
+export * from "./migrations";

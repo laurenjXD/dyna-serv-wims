@@ -60,7 +60,7 @@ The `01` canonical `lot_history_export` read-model contract refreshes daily, ret
 
 6. **WRR-Sourced Lot Number**:
    - `wrr_items.lot_number` MUST be the source business lot number from the WRR and MUST be required for receipt confirmation.
-   - `lots.lot_number` MUST be copied from the confirmed WRR item and linked by `lots.wrr_item_id`; it MUST NOT be system-generated.
+   - `lots.lot_number` MUST be copied from the confirmed WRR item and linked by `lots.wrr_item_id` for operational receipts. An approved opening-balance migration MAY instead link the lot to `migration_batches.migration_batch_id` and MUST create an `inventory_reconciliation` transaction; it MUST NOT invent a receiving WRR.
    - The internal UUID remains the database identity. `lot_number` MUST NOT be globally unique because the same business lot number may recur across distinct WRR receipts or items; uniqueness MUST be scoped to the relevant WRR item/lot context. No second vendor-lot field is permitted.
    - **Amended 2026-08-20, pending reapproval:** `wrr_items.putaway_location_id` MAY remain null and is not authoritative for a split receipt. `store`-disposition lines use one or more staged `wrr_item_putaway_allocations`; their positive quantities must total the line's expected quantity and target active `storage` locations before receipt confirmation. `inspect` lines leave it null and are posted to one active `inspection` location by `07`'s confirmation command.
    - **Amended 2026-08-24, pending reapproval:** `wrr_items` MUST retain optional `manufacture_date` and `remarks` entered during WRR staging. On receipt commit, `manufacture_date` MUST be copied to `lots.manufacture_date`. `remarks` remains WRR evidence and MUST NOT alter inventory quantity or availability.

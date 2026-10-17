@@ -20,12 +20,15 @@ describe("lots.ts — lots table (Req 5, 6, 11)", () => {
     expect(lotNumber.isUnique).toBe(false);
   });
 
-  it("has wrrItemId notNull referencing wrr_items.id (Req 6)", async () => {
+  it("has nullable operational wrrItemId referencing wrr_items.id for migration provenance support", async () => {
     const { lots } = await import("../lots");
-    expect(column(lots, "wrrItemId").notNull).toBe(true);
+    expect(column(lots, "wrrItemId").notNull).toBe(false);
     expect(referencesTable(lots, "wrr_item_id", "wrr_items", "id")).toBe(
       true,
     );
+    expect(hasColumn(lots, "migrationBatchId")).toBe(true);
+    expect(column(lots, "migrationBatchId").notNull).toBe(false);
+    expect(referencesTable(lots, "migration_batch_id", "migration_batches", "id")).toBe(true);
   });
 
   it("has itemId notNull referencing items.id", async () => {

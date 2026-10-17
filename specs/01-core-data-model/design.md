@@ -324,11 +324,13 @@ import { flowTypeEnum, lotStatusEnum } from "./enums";
 import { items } from "./items";
 import { parties } from "./parties";
 import { wrrItems } from "./wrr";
+import { migrationBatches } from "./migrations";
 
 export const lots = pgTable("lots", {
   id: uuid("id").primaryKey().defaultRandom(),
   lotNumber: varchar("lot_number", { length: 100 }).notNull(), // Business lot number copied from the WRR item
-  wrrItemId: uuid("wrr_item_id").references(() => wrrItems.id).notNull(), // Source WRR line
+  wrrItemId: uuid("wrr_item_id").references(() => wrrItems.id), // Source WRR line for operational receiving
+  migrationBatchId: uuid("migration_batch_id").references(() => migrationBatches.id), // Approved opening-balance provenance
   itemId: uuid("item_id").references(() => items.id).notNull(),
   flowType: flowTypeEnum("flow_type").notNull(), // 'vmi' | 'trading' | 'supplies'
   ownerPartyId: uuid("owner_party_id").references(() => parties.id), // Required for VMI, optional for Trading/Supplies
@@ -351,7 +353,12 @@ export const lots = pgTable("lots", {
 - **Regulatory/customs auditing**: `lots.peza_number`, `commercial_invoice_no`, and `ip_number` (this table) trace every physical lot back to the CIPL/PEZA/import-permit documentation it arrived under, satisfying the customs-auditing requirement that a pooled item balance cannot support (there would be nothing to trace back to a specific shipment).
 - **Financial costing granularity**: `lots.unit_cost` records a per-shipment cost figure rather than one averaged-away number across all receipts of an item. See the note immediately below for the boundary on what this field is — and is not — used for.
 
-This rationale is documentation/context only; it does not change the schema already defined above, and it does not reopen this document's `Approved` status.
+For an approved one-time opening-balance migration, `wrr_item_id` may be null
+when `migration_batch_id` is populated. This is provenance, not a second stock
+ledger: the migration creates an `inventory_reconciliation` transaction and
+keeps the same lot/location quantity authority. The two source columns are
+mutually exclusive. This amendment is approved 2026-10-17 with the
+`24-data-migration-and-seeding` feature.
 
 **Lot-level `unit_cost` is a costing/reference snapshot, not a billing record (added 2026-08-20).** `lots.unit_cost` (above) and any place it is surfaced downstream — the receiving/incoming ledger, a lot's detail view, or a per-release document — is a costing/reference snapshot tied to that one physical lot. Per the locked, non-negotiable decision in `specs/00-steering/CLAUDE.md` ("Trading's price on a document is final; VMI's is a per-release reference only — the real VMI bill is always the period average, never a single document's total"): for `flow_type = 'trading'` lots, `unit_cost` is a final, authoritative figure once it appears on a document. For `flow_type = 'vmi'` lots, `unit_cost` (optionally converted USD/PHP via `forex_rates`, below) is a reference/costing figure only, wherever it is displayed — it is **never** the VMI bill of record, no matter how "real-time" or "precise" the per-lot figure looks at receiving or on a release document. The authoritative VMI bill of record is always the period-average CBM-occupancy calculation owned by `12-vmi-billing` design.md §1–§2 (`vmi_cbm_ledger`/`vmi_billing_statements`), never a single lot's or single document's price total. See `12-vmi-billing` design.md §5 for the corresponding cross-reference and its explicit statement that VMI billing does not consume this field.
 
