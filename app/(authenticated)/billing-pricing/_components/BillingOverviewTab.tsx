@@ -157,7 +157,7 @@ export function BillingOverviewTab({
                     <td className="px-4 py-3.5 text-right">
                       <div className="inline-flex items-center gap-2">
                         <Link
-                          href={`/billing-pricing?tab=ledger&partyId=${row.id}&month=${selectedMonth}&year=${selectedYear}`}
+                          href={`/billing-pricing?section=ledger&subtab=vmi&partyId=${row.id}&month=${selectedMonth}&year=${selectedYear}`}
                           className="inline-flex items-center gap-1 rounded-lg border border-border bg-surface px-3 py-1.5 font-label text-label font-bold text-brand-navy hover:bg-background transition-colors"
                         >
                           View Ledger <ArrowRight size={14} />

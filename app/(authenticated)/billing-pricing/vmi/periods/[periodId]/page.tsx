@@ -108,7 +108,7 @@ export default async function VmiPeriodDetailPage({ params }: Props) {
   return (
     <div className="mx-auto max-w-container space-y-6 px-4 py-6 sm:px-6 lg:px-8">
       <div>
-        <Link href="/billing-pricing?section=vmi&tab=vmi" className="inline-flex items-center font-body text-body-sm text-text-grey hover:text-brand-navy">
+        <Link href="/billing-pricing?section=ledger&subtab=vmi" className="inline-flex items-center font-body text-body-sm text-text-grey hover:text-brand-navy">
           <ArrowLeft size={16} className="mr-1" /> Back to VMI Billing
         </Link>
         <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

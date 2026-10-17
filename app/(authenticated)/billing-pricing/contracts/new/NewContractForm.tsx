@@ -670,7 +670,7 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
 
       <div className="flex justify-end gap-3 pt-2">
         <Link
-          href="/billing-pricing?tab=configuration"
+          href="/billing-pricing?section=configuration&subtab=contracts"
           className="rounded-btn border border-border-medium px-4 py-2 font-body text-body-sm font-semibold text-text-grey hover:bg-surface-background"
         >
           Cancel

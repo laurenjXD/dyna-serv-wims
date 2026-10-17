@@ -151,7 +151,7 @@ export default async function NewContractPage() {
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-6 sm:px-6">
       <div>
         <Link
-          href="/billing-pricing?tab=configuration"
+          href="/billing-pricing?section=configuration&subtab=contracts"
           className="inline-flex items-center text-body-sm text-text-grey hover:text-brand-blue"
         >
           <ArrowLeft size={16} className="mr-1" /> Back to Commercial Contracts

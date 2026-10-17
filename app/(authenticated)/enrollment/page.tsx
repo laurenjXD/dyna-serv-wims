@@ -115,12 +115,12 @@ export default async function EnrollmentPage({ searchParams }: PageProps) {
       >
         {TABS.map((tab) => {
           const isActive = tab.key === activeTab;
-          const href =
-            tab.key === "parties"
-              ? "/enrollment"
-              : tab.key === "items"
-              ? "/enrollment?tab=items"
-              : "/enrollment?tab=locations";
+          const params = new URLSearchParams();
+          if (tab.key !== "parties") params.set("tab", tab.key);
+          if (search) params.set("search", search);
+          if (pageParam) params.set("page", pageParam);
+          const query = params.toString();
+          const href = query ? `/enrollment?${query}` : "/enrollment";
           return (
             <Link
               key={tab.key}

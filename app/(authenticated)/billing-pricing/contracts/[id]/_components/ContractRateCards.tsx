@@ -533,7 +533,7 @@ export function ContractRateCards({
           <div className="mt-4 flex items-center justify-between text-body-xs text-text-grey border-t border-outline-variant/20 pt-3">
             <span>Customer Pick-up: <strong className="text-emerald-700">₱0.00 (Free)</strong></span>
             <Link
-              href="/billing-pricing?tab=configuration&subtab=logistics"
+              href="/billing-pricing?section=configuration&subtab=logistics"
               className="inline-flex items-center gap-1 font-label text-label-xs font-bold text-brand-navy hover:underline"
             >
               <span>View Master Logistics Matrix</span>

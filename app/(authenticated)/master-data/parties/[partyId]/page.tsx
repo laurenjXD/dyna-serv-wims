@@ -35,14 +35,15 @@ export default async function PartyDetailPage({
 
   const resolver = await createPageResolver();
 
-  // Require parties.read for the page and inventory.read for the Transaction Ledger
-  // (inventory_transactions RLS policy gates on inventory.read, not parties.read)
+  // The master-data detail is owned by parties.read. The transaction ledger is
+  // an optional inventory.read view and must not make the organization itself
+  // look missing to users who can manage parties but cannot read movements.
   const [readPerm, inventoryPerm, financialPerm] = await Promise.all([
     requirePermission(resolver, "parties.read"),
     requirePermission(resolver, "inventory.read"),
     requirePermission(resolver, "reporting.financial_read"),
   ]);
-  if (readPerm.kind !== "authorized" || inventoryPerm.kind !== "authorized") {
+  if (readPerm.kind !== "authorized") {
     notFound();
   }
 
@@ -64,10 +65,13 @@ export default async function PartyDetailPage({
   );
   const ledgerOffset = (currentLedgerPage - 1) * LEDGER_PAGE_SIZE;
 
-  const ledger = await getPartyTransactionLedger(db, partyId, {
-    limit: LEDGER_PAGE_SIZE,
-    offset: ledgerOffset,
-  });
+  const canViewLedger = inventoryPerm.kind === "authorized";
+  const ledger = canViewLedger
+    ? await getPartyTransactionLedger(db, partyId, {
+        limit: LEDGER_PAGE_SIZE,
+        offset: ledgerOffset,
+      })
+    : { rows: [], total: 0 };
 
   const totalLedgerPages = Math.max(
     1,
@@ -256,7 +260,11 @@ export default async function PartyDetailPage({
         </p>
 
         <div className="mt-4 overflow-x-auto">
-          {ledger.rows.length === 0 ? (
+          {!canViewLedger ? (
+            <p className="py-8 text-center font-body text-body-md text-text-grey">
+              Transaction ledger access is not included for this role.
+            </p>
+          ) : ledger.rows.length === 0 ? (
             <p className="py-8 text-center font-body text-body-md text-text-grey">
               No transactions recorded yet.
             </p>

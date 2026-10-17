@@ -109,6 +109,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
 
   const activeSection = resolveBillingSection(sectionParam, tabParam);
   const ledgerSubtab = subtabParam === "trading" || tabParam === "trading" ? "trading" : "vmi";
+  const configurationSubtab = subtabParam === "logistics" ? "logistics" : "contracts";
 
   const currentYear = new Date().getFullYear();
   const selectedMonth = monthParam ? parseInt(monthParam, 10) : new Date().getMonth();
@@ -206,10 +207,10 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
         className="mt-6 flex flex-wrap gap-1 border-b border-outline-variant/30"
       >
         {([
-          ["overview", "Overview", `/billing-pricing?tab=overview${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`, LayoutDashboard],
-          ["ledger", "Ledger", `/billing-pricing?tab=ledger${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`, BookOpen],
-          ["soa", "Statement of Account (SOA)", `/billing-pricing?tab=soa${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`, FileText],
-          ["configuration", "Configuration", `/billing-pricing?tab=configuration${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`, Settings],
+          ["overview", "Overview", `/billing-pricing?section=overview${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`, LayoutDashboard],
+          ["ledger", "Ledger", `/billing-pricing?section=ledger&subtab=${ledgerSubtab}${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`, BookOpen],
+          ["soa", "Statement of Account (SOA)", `/billing-pricing?section=soa${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`, FileText],
+          ["configuration", "Configuration", `/billing-pricing?section=configuration&subtab=${configurationSubtab}${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}`, Settings],
         ] as const).map(([section, label, href, Icon]) => (
           <Link
             key={section}
@@ -246,7 +247,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
           {/* Sub-navigation for Ledger */}
           <div className="flex flex-wrap items-center gap-2">
             <Link
-              href={`/billing-pricing?tab=ledger&subtab=vmi${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}&month=${selectedMonth}&year=${selectedYear}`}
+              href={`/billing-pricing?section=ledger&subtab=vmi${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}&month=${selectedMonth}&year=${selectedYear}`}
               className={`rounded-full px-4 py-1.5 font-label text-body-sm font-semibold transition-colors ${
                 ledgerSubtab === "vmi"
                   ? "bg-brand-navy text-surface-white"
@@ -256,7 +257,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
               VMI Storage Ledger
             </Link>
             <Link
-              href={`/billing-pricing?tab=ledger&subtab=trading${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}&month=${selectedMonth}&year=${selectedYear}`}
+              href={`/billing-pricing?section=ledger&subtab=trading${selectedPartyId ? `&partyId=${selectedPartyId}` : ""}&month=${selectedMonth}&year=${selectedYear}`}
               className={`rounded-full px-4 py-1.5 font-label text-body-sm font-semibold transition-colors ${
                 ledgerSubtab === "trading"
                   ? "bg-brand-navy text-surface-white"
@@ -269,7 +270,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
 
           {/* Period & Customer Filters */}
           <form method="GET" className="flex flex-wrap items-end gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
-            <input type="hidden" name="tab" value="ledger" />
+            <input type="hidden" name="section" value="ledger" />
             <input type="hidden" name="subtab" value={ledgerSubtab} />
 
             {ledgerSubtab === "vmi" && (
@@ -416,6 +417,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
             contracts={contracts}
             parties={partyOptions}
             items={itemOptions}
+            initialSubTab={configurationSubtab}
           />
         </div>
       )}

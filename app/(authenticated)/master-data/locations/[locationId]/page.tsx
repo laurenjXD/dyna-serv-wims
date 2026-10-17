@@ -31,13 +31,14 @@ export default async function LocationDetailPage({
 
   const resolver = await createPageResolver();
 
-  // Require locations.read for the page and inventory.read for the Movement Ledger
-  // (inventory_transactions RLS policy gates on inventory.read, not locations.read)
+  // Location master data is owned by locations.read. Inventory and movement
+  // data are optional additions, so they must not turn a valid location detail
+  // link into a 404 for a role without inventory.read.
   const [readPerm, inventoryPerm] = await Promise.all([
     requirePermission(resolver, "locations.read"),
     requirePermission(resolver, "inventory.read"),
   ]);
-  if (readPerm.kind !== "authorized" || inventoryPerm.kind !== "authorized") {
+  if (readPerm.kind !== "authorized") {
     notFound();
   }
 
@@ -46,7 +47,9 @@ export default async function LocationDetailPage({
     requirePermission(resolver, "locations.manage").then(
       (r) => r.kind === "authorized",
     ),
-    getLocationInventory(db, locationId),
+    inventoryPerm.kind === "authorized"
+      ? getLocationInventory(db, locationId)
+      : Promise.resolve({ rows: [], itemCount: 0, totalUnits: 0, occupiedCbm: 0 }),
   ]);
 
   if (!location) notFound();
@@ -54,10 +57,13 @@ export default async function LocationDetailPage({
   const currentLedgerPage = Math.max(1, parseInt(ledgerPage ?? "1", 10));
   const ledgerOffset = (currentLedgerPage - 1) * LEDGER_PAGE_SIZE;
 
-  const ledger = await getLocationTransactionLedger(db, locationId, {
-    limit: LEDGER_PAGE_SIZE,
-    offset: ledgerOffset,
-  });
+  const canViewInventory = inventoryPerm.kind === "authorized";
+  const ledger = canViewInventory
+    ? await getLocationTransactionLedger(db, locationId, {
+        limit: LEDGER_PAGE_SIZE,
+        offset: ledgerOffset,
+      })
+    : { rows: [], total: 0 };
 
   const totalLedgerPages = Math.max(
     1,
