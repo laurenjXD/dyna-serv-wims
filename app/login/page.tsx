@@ -80,6 +80,19 @@ export default function LoginPage() {
       return;
     }
 
+    // Supabase can deliver invitations as a query-string OTP instead of a
+    // PKCE code. Route it through the server callback so the invite session
+    // is written to the SSR cookie before onboarding renders.
+    const tokenHash = searchParams.get("token_hash");
+    const tokenType = searchParams.get("type");
+    if (tokenHash && tokenType === "invite") {
+      const callbackUrl = new URL("/auth/callback", window.location.origin);
+      callbackUrl.search = searchParams.toString();
+      callbackUrl.searchParams.set("next", "/accept-invite");
+      window.location.replace(`${callbackUrl.pathname}${callbackUrl.search}`);
+      return;
+    }
+
     // 2. Check URL hash parameters (e.g. #access_token=...&type=invite)
     const hash = window.location.hash;
     if (hash && (hash.includes("type=invite") || hash.includes("type=recovery") || hash.includes("access_token"))) {
