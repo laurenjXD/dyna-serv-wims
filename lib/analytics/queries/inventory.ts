@@ -9,10 +9,11 @@ export async function getInventoryKpis(executor: AnalyticsExecutor = defaultAnal
     WITH low_stock AS (
       SELECT i.id
       FROM items i
-      JOIN lots l ON l.item_id = i.id AND l.status = 'available'::lot_status
-      JOIN lot_inventory_totals lit ON lit.lot_id = l.id
+      LEFT JOIN lots l ON l.item_id = i.id
+      LEFT JOIN lot_inventory_totals lit ON lit.lot_id = l.id
+      WHERE i.min_reorder_level > 0
       GROUP BY i.id, i.min_reorder_level
-      HAVING SUM(lit.qty_available) < i.min_reorder_level
+      HAVING COALESCE(SUM(CASE WHEN l.status = 'available'::lot_status THEN lit.qty_available ELSE 0 END), 0) <= i.min_reorder_level
     )
     SELECT
       (SELECT COUNT(*) FROM lots WHERE status = 'available'::lot_status) AS total_lots_in_stock,
@@ -43,11 +44,12 @@ export async function getLowStockItems(flow: AnalyticsFlow, executor: AnalyticsE
   return executor.execute(sql`
     SELECT i.id, i.code, i.name, l.flow_type, i.min_reorder_level, SUM(lit.qty_available) AS qty_available
     FROM items i
-    JOIN lots l ON l.item_id = i.id AND l.status = 'available'::lot_status
-    JOIN lot_inventory_totals lit ON lit.lot_id = l.id
+    LEFT JOIN lots l ON l.item_id = i.id
+    LEFT JOIN lot_inventory_totals lit ON lit.lot_id = l.id
     WHERE (${flow === "all" ? sql`TRUE` : sql`l.flow_type = ${flow}::flow_type`})
+      AND i.min_reorder_level > 0
     GROUP BY i.id, i.code, i.name, l.flow_type, i.min_reorder_level
-    HAVING SUM(lit.qty_available) < i.min_reorder_level
+    HAVING COALESCE(SUM(CASE WHEN l.status = 'available'::lot_status THEN lit.qty_available ELSE 0 END), 0) <= i.min_reorder_level
     ORDER BY qty_available ASC, i.code ASC
   `);
 }

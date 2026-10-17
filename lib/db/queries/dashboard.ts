@@ -75,16 +75,16 @@ export async function getDashboardKpis(): Promise<DashboardKpiData> {
       .where(inArray(lots.status, ["staged", "quarantined"]));
 
     // C. Stock Health
-    const [lowStockRow] = await db
+    const lowStockRows = await db
       .select({
-        count: sql<number>`count(distinct ${items.id})::int`,
+        itemId: items.id,
       })
       .from(items)
       .leftJoin(lots, eq(items.id, lots.itemId))
       .leftJoin(lotLocationBalances, eq(lots.id, lotLocationBalances.lotId))
       .where(sql`${items.minReorderLevel} > 0`)
       .groupBy(items.id, items.minReorderLevel)
-      .having(sql`coalesce(sum(${lotLocationBalances.qtyRemaining} - ${lotLocationBalances.qtyCommitted}), 0) <= ${items.minReorderLevel}`);
+      .having(sql`coalesce(sum(case when ${lots.status} = 'available' then ${lotLocationBalances.qtyRemaining} - ${lotLocationBalances.qtyCommitted} else 0 end), 0) <= ${items.minReorderLevel}`);
 
     const [heldLotsRow] = await db
       .select({
@@ -141,7 +141,7 @@ export async function getDashboardKpis(): Promise<DashboardKpiData> {
         pendingQcInspections: qcPendingRow?.count ?? 0,
       },
       stockHealth: {
-        lowStockCount: lowStockRow?.count ?? 0,
+        lowStockCount: lowStockRows.length,
         heldLotsCount: heldLotsRow?.count ?? 0,
         qcPassRatePct: passRate,
       },

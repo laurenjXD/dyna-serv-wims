@@ -46,6 +46,7 @@ import type { RlsTransactionDeps } from "@/lib/db/rls-transaction";
 import { rlsPool } from "@/lib/db/rls-pool";
 import { getAuthenticatedSession } from "@/lib/auth/get-authenticated-session";
 import { getStorageClient } from "@/lib/supabase/storage";
+import { emitLowStockAlerts } from "@/lib/notifications/low-stock";
 import { validateCiplFile, buildCiplObjectPath } from "@/lib/receiving/cipl-upload";
 import { randomUUID } from "node:crypto";
 
@@ -345,6 +346,7 @@ export async function createWrr(
   if (rlsResult.kind === "unauthenticated") {
     return { ok: false, errors: ["forbidden"] };
   }
+  if (rlsResult.value.ok) await emitLowStockAlerts();
   return rlsResult.value;
 }
 
@@ -1116,6 +1118,7 @@ export async function commitWrrLine(
   if (rlsResult.kind === "unauthenticated") {
     return { ok: false, errors: ["forbidden"] };
   }
+  if (rlsResult.value.ok) await emitLowStockAlerts();
   return rlsResult.value;
 }
 

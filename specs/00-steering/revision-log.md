@@ -1727,3 +1727,16 @@ The Product Owner's direction establishes the business intent but does not yet d
 
 `06-party-and-item-enrollment`, `12-vmi-billing`, and `13-trading-orders-and-pricing` must update their requirements/design/tasks documents and obtain the required approvals before code or migrations are written. Until then, the current implementation may be audited and tested, but no role-enum rename, RBE schema, billing-frequency column, or application-fee migration should be added.
 
+## Low-stock alert operating contract (2026-10-17)
+
+The low-stock alert flow is enabled for internal operations. An item's
+`min_reorder_level` is authoritative when greater than zero; General Settings'
+unit and CBM thresholds are fallbacks for catalog items without an item-level
+threshold. Dashboard and analytics use the item-level threshold so business
+stock status is not silently changed by a global preference. After receiving,
+reservation, dispatch, or threshold-setting changes, the system evaluates
+available quantity and creates scoped in-app `low_stock` notifications for
+active Supervisor and Administrator users. Duplicate alerts for the same item
+and recipient are suppressed for 24 hours. Notification delivery is advisory
+and never changes the authoritative inventory transaction outcome.
+

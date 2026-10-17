@@ -10,6 +10,7 @@ import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { withSettingsTimeout } from "@/lib/user-settings/with-timeout";
 import { DEFAULT_DOCUMENT_TEMPLATE, type DocumentTemplate } from "@/lib/documents/document-template";
+import { emitLowStockAlerts } from "@/lib/notifications/low-stock";
 
 export interface GeneralSettingsData {
   facility: {
@@ -147,5 +148,7 @@ export async function saveGeneralSettings(settings: GeneralSettingsData): Promis
   }
 
   revalidatePath("/settings/general");
+  revalidatePath("/");
+  await emitLowStockAlerts();
   return { ok: true };
 }

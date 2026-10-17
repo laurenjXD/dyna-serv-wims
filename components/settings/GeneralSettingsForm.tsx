@@ -499,7 +499,7 @@ export function GeneralSettingsForm({ initialSettings }: { initialSettings: Gene
               Notification &amp; Floor Alerts
             </h2>
             <p className="font-body text-xs text-slate-500">
-              Configure inventory threshold triggers, QC quarantine dispatches, and daily report deliveries.
+              Configure alert thresholds and delivery preferences. Item-level reorder levels remain the authoritative stock threshold; low-stock notification delivery is not enabled yet.
             </p>
           </div>
         </div>

@@ -58,6 +58,7 @@ import type {
 import { rlsPool } from "@/lib/db/rls-pool";
 import { getAuthenticatedSession } from "@/lib/auth/get-authenticated-session";
 import { cartonIdFromUnitId } from "@/lib/barcode/carton";
+import { emitLowStockAlerts } from "@/lib/notifications/low-stock";
 
 const defaultRlsDeps: RlsTransactionDeps = {
   getAuthenticatedSession,
@@ -590,6 +591,7 @@ export async function commitWithdrawal(
   if (rlsResult.kind === "unauthenticated") {
     return { ok: false, errors: ["forbidden"] };
   }
+  if (rlsResult.value.ok) await emitLowStockAlerts();
   return rlsResult.value;
 }
 
@@ -1259,6 +1261,7 @@ export async function dispatchPickList(
   if (rlsResult.kind === "unauthenticated") {
     return { ok: false, errors: ["forbidden"] };
   }
+  if (rlsResult.value.ok) await emitLowStockAlerts();
   return rlsResult.value;
 }
 
