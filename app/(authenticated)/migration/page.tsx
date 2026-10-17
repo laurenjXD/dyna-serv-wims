@@ -14,12 +14,12 @@ export default async function MigrationPage() {
   }
 
   return (
-    <div className="mx-auto max-w-container">
-      <div>
-        <h1 className="font-heading font-extrabold text-headline-md text-on-surface">Data Migration</h1>
-        <p className="mt-1 font-body text-body-md text-text-grey">Seed the simulation from an approved opening inventory workbook.</p>
+    <div className="mx-auto max-w-5xl px-4 py-8 lg:px-8">
+      <div className="text-center">
+        <h1 className="font-heading text-headline-lg font-bold text-on-surface">Data Migration</h1>
+        <p className="mx-auto mt-2 max-w-2xl font-body text-body-md text-text-grey">Move the approved UBoT VMI opening snapshot into the warehouse system in four controlled steps.</p>
       </div>
-      <div className="mt-6"><MigrationUploadForm /></div>
+      <div className="mt-8"><MigrationUploadForm /></div>
     </div>
   );
 }
