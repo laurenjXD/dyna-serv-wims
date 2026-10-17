@@ -88,9 +88,14 @@ export function FlowMovementChart({ initialData }: FlowMovementChartProps) {
       </div>
 
       {/* Recharts Grouped Bar Chart */}
-      <div className="mt-4 h-64 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+      {data.length === 0 ? (
+        <div className="mt-4 flex h-36 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 text-center font-body text-body-sm text-text-grey">
+          No movement recorded for this period.
+        </div>
+      ) : (
+        <div className="mt-4 h-48 w-full lg:h-56">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
             <XAxis
               dataKey="month"
@@ -148,9 +153,10 @@ export function FlowMovementChart({ initialData }: FlowMovementChartProps) {
             />
             <Bar dataKey="inbound" name="Inbound Receiving" fill="#002060" radius={[4, 4, 0, 0]} maxBarSize={28} />
             <Bar dataKey="outbound" name="Outbound Dispatch" fill="#2563EB" radius={[4, 4, 0, 0]} maxBarSize={28} />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </div>
   );
 }
