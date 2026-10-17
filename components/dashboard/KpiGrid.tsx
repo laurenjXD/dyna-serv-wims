@@ -101,11 +101,11 @@ export function KpiGrid({
         </div>
 
         {/* Alert Row: High-Contrast Amber (Low Stock) & Rose (Held Lots) Touch Cards */}
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <button
             type="button"
             onClick={() => onFilterStockHealth?.(activeStockFilter === "low_stock" ? "all" : "low_stock")}
-            className={`flex min-h-[52px] items-center justify-between rounded-xl border p-3 text-left transition-all active:scale-[0.98] ${
+            className={`flex min-h-14 items-center justify-between rounded-xl border p-3 text-left transition-all active:scale-[0.98] ${
               activeStockFilter === "low_stock"
                 ? "border-amber-500 bg-amber-100/80 ring-2 ring-amber-400"
                 : "border-amber-200 bg-amber-50/80 hover:bg-amber-100/60"
@@ -114,15 +114,15 @@ export function KpiGrid({
             <div className="flex items-center gap-2">
               <AlertTriangle size={18} className="text-amber-600 shrink-0" />
               <div>
-                <p className="font-label text-[11px] font-black uppercase text-amber-950">
+                <p className="font-label text-base font-black uppercase text-amber-950">
                   Low Stock
                 </p>
-                <p className="font-mono text-xs font-extrabold text-amber-800">
+                <p className="font-mono text-base font-extrabold text-amber-800">
                   {stockHealth.lowStockCount} SKUs
                 </p>
               </div>
             </div>
-            <span className="font-mono text-[11px] font-bold text-amber-900 bg-amber-200/80 px-1.5 py-0.5 rounded">
+            <span className="font-mono text-sm font-bold text-amber-900 bg-amber-200/80 px-1.5 py-0.5 rounded">
               DEFICIT
             </span>
           </button>
@@ -139,56 +139,56 @@ export function KpiGrid({
             <div className="flex items-center gap-2">
               <Lock size={18} className="text-rose-600 shrink-0" />
               <div>
-                <p className="font-label text-[11px] font-black uppercase text-rose-950">
+                <p className="font-label text-base font-black uppercase text-rose-950">
                   Quarantine
                 </p>
-                <p className="font-mono text-xs font-extrabold text-rose-800">
+                <p className="font-mono text-base font-extrabold text-rose-800">
                   {stockHealth.heldLotsCount} Lots
                 </p>
               </div>
             </div>
-            <span className="font-mono text-[11px] font-bold text-rose-900 bg-rose-200/80 px-1.5 py-0.5 rounded">
+            <span className="font-mono text-sm font-bold text-rose-900 bg-rose-200/80 px-1.5 py-0.5 rounded">
               HELD
             </span>
           </button>
         </div>
 
-        {/* Valuation & Capacity: Horizontal Swipe Carousel */}
-        <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2 scrollbar-none">
+        {/* Valuation & Capacity: Stacked on mobile to avoid horizontal scrolling. */}
+        <div className="grid gap-3 sm:grid-cols-2">
           {/* Card 1: Valuation */}
-          <div className="min-w-[260px] flex-1 snap-start rounded-2xl border border-black/5 bg-white/90 p-4 shadow-sm backdrop-blur-md">
-            <p className="font-label text-[11px] font-bold uppercase tracking-wider text-text-grey">
+          <div className="min-w-0 rounded-2xl border border-black/5 bg-white/90 p-4 shadow-sm backdrop-blur-md">
+            <p className="font-label text-sm font-bold uppercase tracking-wider text-text-grey sm:text-base">
               Total Stock Valuation
             </p>
             <div className="mt-1 flex items-baseline justify-between">
               <p className="font-mono text-2xl font-black text-brand-navy">
                 ${valuation.total.toLocaleString()}
               </p>
-              <span className="font-mono text-xs font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                <span className="font-mono text-sm font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
                 +{valuation.trendPct}% MTD
               </span>
             </div>
             <div className="mt-2.5 flex items-center gap-2 pt-2 border-t border-slate-100">
-              <span className="text-[11px] font-bold text-slate-700">
+              <span className="text-sm font-bold text-slate-700">
                 VMI: ${(valuation.vmiAmount / 1000000).toFixed(1)}M
               </span>
               <span className="text-slate-300">|</span>
-              <span className="text-[11px] font-bold text-blue-700">
+              <span className="text-sm font-bold text-blue-700">
                 Trading: ${(valuation.tradingAmount / 1000).toFixed(0)}K
               </span>
             </div>
           </div>
 
           {/* Card 2: Stock Health */}
-          <div className="min-w-[260px] flex-1 snap-start rounded-2xl border border-black/5 bg-white/90 p-4 shadow-sm backdrop-blur-md">
-            <p className="font-label text-[11px] font-bold uppercase tracking-wider text-text-grey">
+          <div className="min-w-0 rounded-2xl border border-black/5 bg-white/90 p-4 shadow-sm backdrop-blur-md">
+            <p className="font-label text-sm font-bold uppercase tracking-wider text-text-grey sm:text-base">
               Stock Health & QC Gate
             </p>
             <div className="mt-1 flex items-baseline justify-between">
               <p className="font-mono text-2xl font-black text-slate-900">
                 {stockHealth.qcPassRatePct}% Pass
               </p>
-              <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
+                <span className="font-mono text-sm font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
                 Live QC
               </span>
             </div>

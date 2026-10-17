@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { AlertTriangle, Check, CheckCircle2, Circle, FileSpreadsheet, Loader2, LockKeyhole, Upload } from "lucide-react";
 import { commitUbotMigration, getMigrationSummary, resolveMigrationException, type MigrationExceptionSummary, type MigrationResult } from "@/lib/actions/data-migration";
+import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type StageResult = MigrationResult;
 type WorkflowStep = { label: string; detail: string };
@@ -36,11 +37,17 @@ export function MigrationUploadForm() {
   function stage() {
     if (!file) return;
     const formData = new FormData();
-    formData.set("file", file);
     formData.set("openingDate", "2026-10-09");
     startTransition(async () => {
       setCommitMessage(null);
       try {
+        const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const sourcePath = `ubot-vmi-v1/${crypto.randomUUID()}/${safeFileName}`;
+        const supabase = createSupabaseBrowserClient();
+        const upload = await supabase.storage.from("migration-source-files").upload(sourcePath, file, { contentType: file.type || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", upsert: false });
+        if (upload.error) throw new Error(`The workbook could not be uploaded: ${upload.error.message}`);
+        formData.set("sourcePath", sourcePath);
+        formData.set("sourceFileName", file.name);
         const response = await fetch("/api/migration/ubot", { method: "POST", body: formData });
         const responseText = await response.text();
         let staged: MigrationResult;

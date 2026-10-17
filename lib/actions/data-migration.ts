@@ -66,28 +66,41 @@ export async function stageUbotMigration(formData: FormData): Promise<MigrationR
   try {
 
   const file = formData.get("file");
-  if (!(file instanceof File)) return { ok: false, error: "Select the UBoT Excel workbook first." };
-  if (!file.name.toLowerCase().endsWith(".xlsx")) return { ok: false, error: "The UBoT migration currently accepts .xlsx workbooks." };
+  const sourcePathInput = String(formData.get("sourcePath") || "");
+  const sourceFileName = String(formData.get("sourceFileName") || (file instanceof File ? file.name : ""));
+  if (!sourceFileName.toLowerCase().endsWith(".xlsx")) return { ok: false, error: "The UBoT migration currently accepts .xlsx workbooks." };
 
-  const buffer = Buffer.from(await file.arrayBuffer());
+  let buffer: Buffer;
+  if (file instanceof File) {
+    buffer = Buffer.from(await file.arrayBuffer());
+  } else if (sourcePathInput) {
+    const supabase = await createClient();
+    const download = await supabase.storage.from(SOURCE_BUCKET).download(sourcePathInput);
+    if (download.error || !download.data) return { ok: false, error: `The staged workbook could not be read: ${download.error?.message ?? "file not found"}` };
+    buffer = Buffer.from(await download.data.arrayBuffer());
+  } else {
+    return { ok: false, error: "Select the UBoT Excel workbook first." };
+  }
   const openingDate = String(formData.get("openingDate") || "2026-10-09");
   const draft = parseUbotVmiWorkbook(buffer, openingDate);
   const blockingIssues = draft.issues.filter((issue) => issue.severity === "blocking").length;
   const warningIssues = draft.issues.filter((issue) => issue.severity === "warning").length;
   const batchId = randomUUID();
   const hash = createHash("sha256").update(buffer).digest("hex");
-  const sourcePath = `${draft.profileKey}/${batchId}/${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+  const sourcePath = sourcePathInput || `${draft.profileKey}/${batchId}/${sourceFileName.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
 
-  const supabase = await createClient();
-  const upload = await supabase.storage.from(SOURCE_BUCKET).upload(sourcePath, buffer, { contentType: file.type || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", upsert: false });
-  if (upload.error) return { ok: false, error: `The workbook could not be retained: ${upload.error.message}` };
+  if (!sourcePathInput) {
+    const supabase = await createClient();
+    const upload = await supabase.storage.from(SOURCE_BUCKET).upload(sourcePath, buffer, { contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", upsert: false });
+    if (upload.error) return { ok: false, error: `The workbook could not be retained: ${upload.error.message}` };
+  }
 
   const result = await withRlsTransaction(defaultRlsDeps, async (tx, session) => {
     const db = tx.db as typeof defaultDb;
     const duplicate = await db.select({ id: migrationBatches.id }).from(migrationBatches).where(and(eq(migrationBatches.sourceFileHash, hash), eq(migrationBatches.profileKey, draft.profileKey))).limit(1);
     if (duplicate.length > 0) return { ok: false as const, error: "This workbook has already been staged for this adapter profile." };
 
-    await db.insert(migrationBatches).values({ id: batchId, organizationName: draft.organizationName, flowType: draft.flowType, profileKey: draft.profileKey, openingDate: draft.openingDate, sourceFileName: file.name, sourceFileHash: hash, sourceFileUrl: sourcePath, status: blockingIssues > 0 ? "needs_review" : "staged", uploadedByUserId: session.userId });
+    await db.insert(migrationBatches).values({ id: batchId, organizationName: draft.organizationName, flowType: draft.flowType, profileKey: draft.profileKey, openingDate: draft.openingDate, sourceFileName, sourceFileHash: hash, sourceFileUrl: sourcePath, status: blockingIssues > 0 ? "needs_review" : "staged", uploadedByUserId: session.userId });
     const rows = sourceRows(draft);
     if (rows.length > 0) await db.insert(migrationSourceRows).values(rows.map((row) => ({ batchId, sheetName: row.sheetName, sourceRowNumber: row.sourceRowNumber, rowKey: row.rowKey, phase: row.phase, rawData: row.value, normalizedData: row.value, validationErrors: null })));
     if (draft.issues.length > 0) await db.insert(migrationExceptions).values(draft.issues.map((issue) => ({ batchId, severity: issue.severity, code: issue.code, message: `${issue.message}${issue.sheet ? ` (${issue.sheet}${issue.row ? ` row ${issue.row}` : ""})` : ""}`, resolutionStatus: "open" })));

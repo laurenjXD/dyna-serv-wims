@@ -41,27 +41,27 @@ export function FlowMovementChart({ initialData }: FlowMovementChartProps) {
       {/* Header with Title & Flow Type Filter Tabs */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="font-heading text-title-md font-bold text-brand-navy">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="font-heading text-2xl leading-8 font-bold text-brand-navy sm:text-title-md">
               Monthly Flow Movement
             </h2>
-            <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-[10px] font-bold text-slate-700">
+            <span className="rounded-md bg-slate-100 px-2 py-1 font-mono text-sm font-bold text-slate-700">
               Live Movement Ledger
             </span>
           </div>
-          <p className="mt-0.5 font-body text-xs text-text-grey">
+          <p className="mt-1 font-body text-base leading-6 text-text-grey">
             Inbound Receiving vs. Outbound Dispatch volumes (0 – 600 unit scale)
           </p>
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex items-center gap-1 rounded-xl bg-slate-100 p-1 font-label text-xs font-semibold">
+        <div className="grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1 font-label text-base font-semibold sm:flex">
           {flowTabs.map((tab) => (
             <button
               key={tab.key}
               type="button"
               onClick={() => setActiveFlow(tab.key)}
-              className={`rounded-lg px-2.5 py-1 transition-all ${
+              className={`min-h-11 rounded-lg px-2 py-2 text-center transition-all sm:px-2.5 sm:py-1 ${
                 activeFlow === tab.key
                   ? "bg-white text-brand-navy font-bold shadow-2xs"
                   : "text-slate-600 hover:text-slate-900"
