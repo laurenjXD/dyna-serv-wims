@@ -164,12 +164,10 @@ import {
   Bold,
   Italic,
   Underline,
-  AlignLeft,
   List,
   ListOrdered,
   Link2,
   Smile,
-  Image,
   MoreVertical,
   Strikethrough,
 } from "lucide-react";
@@ -200,6 +198,7 @@ function ContactPartyModal({
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const messageRef = useRef<HTMLTextAreaElement>(null);
 
   const draftKey = `wims_email_draft_${partyId}`;
 
@@ -298,6 +297,43 @@ function ContactPartyModal({
 
   const handleRemoveFile = (index: number) => {
     setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const applyMessageMarkup = (prefix: string, suffix = prefix, fallback = "") => {
+    const textarea = messageRef.current;
+    const start = textarea?.selectionStart ?? message.length;
+    const end = textarea?.selectionEnd ?? message.length;
+    const selected = message.slice(start, end);
+    const inserted = selected ? `${prefix}${selected}${suffix}` : fallback || `${prefix}${suffix}`;
+    setMessage(`${message.slice(0, start)}${inserted}${message.slice(end)}`);
+    requestAnimationFrame(() => {
+      textarea?.focus();
+      textarea?.setSelectionRange(start + prefix.length, start + prefix.length + (selected || fallback).length);
+    });
+  };
+
+  const prependMessageLines = (prefix: string) => {
+    const textarea = messageRef.current;
+    const start = textarea?.selectionStart ?? 0;
+    const end = textarea?.selectionEnd ?? message.length;
+    const selected = message.slice(start, end) || message.slice(start);
+    const inserted = selected.split("\n").map((line) => `${prefix}${line}`).join("\n");
+    setMessage(`${message.slice(0, start)}${inserted}${message.slice(end)}`);
+    requestAnimationFrame(() => textarea?.focus());
+  };
+
+  const insertMessageText = (text: string) => {
+    const textarea = messageRef.current;
+    const start = textarea?.selectionStart ?? message.length;
+    const end = textarea?.selectionEnd ?? message.length;
+    setMessage(`${message.slice(0, start)}${text}${message.slice(end)}`);
+    requestAnimationFrame(() => textarea?.focus());
+  };
+
+  const insertLink = () => {
+    const url = window.prompt("Enter the link URL");
+    if (!url || !/^https?:\/\//i.test(url)) return;
+    applyMessageMarkup("[", `](${url})`, "link");
   };
 
   const selectedTemplate = EMAIL_TEMPLATES.find((t) => t.id === selectedTemplateId);
@@ -449,11 +485,13 @@ function ContactPartyModal({
                   <div className="flex min-h-11 items-center gap-2 border-b border-border">
                     <span className="font-body text-body-sm text-text-grey">To</span>
                     <span className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-brand-navy/10 px-2.5 py-1 font-body text-body-sm text-on-surface">
-                      <span className="max-w-[220px] truncate font-semibold">{partyName}</span>
-                      <span className="max-w-[260px] truncate text-text-grey">&lt;{partyEmail || "email on record"}&gt;</span>
+                      <span className="max-w-[220px] truncate font-semibold text-sm">{partyName}</span>
+                      <span className="max-w-[260px] truncate text-sm text-text-grey">&lt;{partyEmail || "email on record"}&gt;</span>
+                      <span className="ml-auto font-body text-sm text-text-grey">Cc</span>
+                      <input id="email-cc-inline" name="cc" type="text" value={cc} onChange={(e) => setCc(e.target.value)} placeholder="Add Cc" className="h-9 w-36 border-0 bg-transparent px-1 font-body text-sm text-on-surface placeholder:text-text-grey focus:outline-none focus:ring-0" />
                     </span>
                   </div>
-                  <div className="grid gap-0 border-b border-border sm:grid-cols-2">
+                  <div className="border-b border-border">
                     <div>
                       <label
                         htmlFor="email-subject"
@@ -469,11 +507,11 @@ function ContactPartyModal({
                         value={subject}
                         onChange={(e) => setSubject(e.target.value)}
                         placeholder="Enter email subject line…"
-                        className="h-12 w-full rounded-none border-0 bg-transparent px-0 font-body text-body-md font-semibold text-on-surface focus:outline-none focus:ring-0"
+                        className="h-11 w-full rounded-none border-0 bg-transparent px-0 font-body text-sm font-semibold text-on-surface focus:outline-none focus:ring-0"
                       />
                     </div>
 
-                    <div>
+                    <div className="hidden">
                       <label
                         htmlFor="email-cc"
                         className="sr-only"
@@ -482,7 +520,7 @@ function ContactPartyModal({
                       </label>
                       <input
                         id="email-cc"
-                        name="cc"
+                        name="cc-legacy"
                         type="text"
                         value={cc}
                         onChange={(e) => setCc(e.target.value)}
@@ -508,6 +546,7 @@ function ContactPartyModal({
                       )}
                     </div>
                     <textarea
+                      ref={messageRef}
                       id="email-message"
                       name="message"
                       rows={7}
@@ -515,17 +554,22 @@ function ContactPartyModal({
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
                       placeholder="Write your operational message to the organization here…"
-                      className="mt-2 block min-h-[260px] w-full resize-y rounded-none border-0 bg-transparent p-0 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-0 leading-relaxed"
+                      className="mt-2 block min-h-[260px] w-full resize-y rounded-none border-0 bg-transparent p-0 font-body text-sm text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-0 leading-7"
                     />
                   </div>
 
                   <div className="flex flex-wrap items-center gap-1 border-t border-border pt-2 text-text-grey">
-                    {[Bold, Italic, Underline, Strikethrough, AlignLeft, List, ListOrdered, Link2, Smile, Image].map((Icon, index) => (
-                      <span key={index} aria-hidden="true" className="flex h-9 w-9 items-center justify-center rounded-lg">
-                        <Icon size={17} />
-                      </span>
-                    ))}
-                    <span aria-hidden="true" className="flex h-9 w-9 items-center justify-center rounded-lg"><MoreVertical size={17} /></span>
+                    <button type="button" aria-label="Bold" onClick={() => applyMessageMarkup("**")} className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-surface-light-grey hover:text-on-surface"><Bold size={17} /></button>
+                    <button type="button" aria-label="Italic" onClick={() => applyMessageMarkup("*")} className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-surface-light-grey hover:text-on-surface"><Italic size={17} /></button>
+                    <button type="button" aria-label="Underline" onClick={() => applyMessageMarkup("__")} className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-surface-light-grey hover:text-on-surface"><Underline size={17} /></button>
+                    <button type="button" aria-label="Strikethrough" onClick={() => applyMessageMarkup("~~")} className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-surface-light-grey hover:text-on-surface"><Strikethrough size={17} /></button>
+                    <button type="button" aria-label="Bulleted list" onClick={() => prependMessageLines("• ")} className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-surface-light-grey hover:text-on-surface"><List size={17} /></button>
+                    <button type="button" aria-label="Numbered list" onClick={() => prependMessageLines("1. ")} className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-surface-light-grey hover:text-on-surface"><ListOrdered size={17} /></button>
+                    <button type="button" aria-label="Insert link" onClick={insertLink} className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-surface-light-grey hover:text-on-surface"><Link2 size={17} /></button>
+                    <button type="button" aria-label="Insert emoji" onClick={() => insertMessageText("🙂")} className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-surface-light-grey hover:text-on-surface"><Smile size={17} /></button>
+                    <button type="button" aria-label="Add attachment" onClick={() => fileInputRef.current?.click()} className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-surface-light-grey hover:text-on-surface"><Paperclip size={17} /></button>
+                    <span className="mx-1 h-5 w-px bg-border" aria-hidden="true" />
+                    <span className="flex h-9 w-9 items-center justify-center rounded-lg" aria-hidden="true"><MoreVertical size={17} /></span>
                   </div>
 
                   {/* File Upload / Attachments Area */}

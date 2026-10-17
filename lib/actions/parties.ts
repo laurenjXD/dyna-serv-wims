@@ -491,12 +491,15 @@ export async function contactParty(
       options,
     );
 
-    // Invoke 04's existing Resend pipeline — fail-open (design.md §5a step 5)
+    // Invoke the Resend pipeline. Delivery failure is returned safely to the
+    // composer and never mutates the organization record.
     try {
       await sendEmail(payload);
     } catch {
-      // Silently swallow send errors — party record state is never altered by
-      // a send failure. Retry is handled by 04's async-retry infrastructure.
+      return {
+        ok: false,
+        error: "The email could not be delivered. Check the Resend configuration and try again.",
+      } satisfies ActionSimpleResult;
     }
 
     return { ok: true } satisfies ActionSimpleResult;

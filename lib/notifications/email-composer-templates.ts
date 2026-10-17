@@ -101,6 +101,29 @@ export interface BrandedEmailProps {
   attachmentNames?: string[];
 }
 
+function escapeEmailText(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+/**
+ * Supports the small, safe formatting vocabulary used by the composer.
+ * Text is escaped before the supported markers are expanded so message input
+ * can never become arbitrary email HTML.
+ */
+function renderEmailInlineMarkdown(value: string): string {
+  return escapeEmailText(value)
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" style="color:#1239b8;text-decoration:underline;">$1</a>')
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/__(.+?)__/g, "<u>$1</u>")
+    .replace(/~~(.+?)~~/g, "<s>$1</s>")
+    .replace(/\*([^*\n]+)\*/g, "<em>$1</em>");
+}
+
 export function generateBrandedEmailHtml({
   partyName,
   contactPerson,
@@ -109,10 +132,10 @@ export function generateBrandedEmailHtml({
   messageBody,
   attachmentNames = [],
 }: BrandedEmailProps): string {
-  // Convert newlines to paragraphs / line breaks for email HTML
+  // Convert newlines and the composer’s safe formatting markers to email HTML.
   const formattedBody = messageBody
     .split("\n\n")
-    .map((paragraph) => `<p style="margin: 0 0 16px 0; line-height: 1.6; color: #1e293b; font-size: 15px;">${paragraph.replace(/\n/g, "<br/>")}</p>`)
+    .map((paragraph) => `<p style="margin: 0 0 16px 0; line-height: 1.6; color: #1e293b; font-size: 15px;">${renderEmailInlineMarkdown(paragraph).replace(/\n/g, "<br/>")}</p>`)
     .join("");
 
   const categoryBadgeColor =
