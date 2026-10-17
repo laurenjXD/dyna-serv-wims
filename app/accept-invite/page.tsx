@@ -4,24 +4,20 @@
 "use client";
 
 import { useState, useEffect, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
 import { completeInvitationAcceptance } from "./actions";
 import { createClient } from "@/lib/supabase/client";
 import {
   Warehouse,
   User,
   Lock,
-  Phone,
   ShieldCheck,
   CheckCircle2,
   AlertCircle,
   ArrowRight,
-  Sparkles,
 } from "lucide-react";
 import { PhoneInputField } from "@/components/global/PhoneInputField";
 
 export default function AcceptInvitePage() {
-  const router = useRouter();
   const [displayName, setDisplayName] = useState("");
   const [phone, setPhone] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -29,94 +25,51 @@ export default function AcceptInvitePage() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [loadingInitial, setLoadingInitial] = useState(true);
+  const [authenticated, setAuthenticated] = useState(false);
 
-  // Attempt to load pre-assigned name from invite metadata and process tokens
+  // Establish the invite session in the browser. Supabase implicit invite
+  // tokens live in the URL fragment and are therefore invisible to servers.
   useEffect(() => {
     const supabase = createClient();
-
-    // 1. Process URL search parameters: errors, PKCE code, OTP token_hash
-    if (typeof window !== "undefined") {
-      const searchParams = new URLSearchParams(window.location.search);
-      const errParam = searchParams.get("error_description") || searchParams.get("error");
-      if (errParam) {
-        setError(errParam);
-      }
-
-      const code = searchParams.get("code");
-      if (code) {
-        supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
-          if (error) {
-            setError(error.message);
-          } else if (data?.user) {
-            const prefilled =
-              data.user.user_metadata?.displayName ||
-              data.user.user_metadata?.display_name ||
-              data.user.user_metadata?.full_name ||
-              "";
-            if (prefilled) setDisplayName(prefilled);
-          }
-        });
-      }
-
-      const tokenHash = searchParams.get("token_hash");
-      const type = searchParams.get("type");
-      if (tokenHash && (type === "invite" || type === "recovery" || type === "email" || type === "signup")) {
-        supabase.auth
-          .verifyOtp({ token_hash: tokenHash, type: type as "invite" | "recovery" | "email" | "signup" })
-          .then(({ data, error }) => {
-            if (error) {
-              setError(error.message);
-            } else if (data?.user) {
-              const prefilled =
-                data.user.user_metadata?.displayName ||
-                data.user.user_metadata?.display_name ||
-                data.user.user_metadata?.full_name ||
-                "";
-              if (prefilled) setDisplayName(prefilled);
-            }
-          });
-      }
-    }
-
-    // 2. Subscribe to auth state changes for hash tokens (#access_token=...)
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        const prefilled =
-          session.user.user_metadata?.displayName ||
-          session.user.user_metadata?.display_name ||
-          session.user.user_metadata?.full_name ||
-          "";
-        if (prefilled) setDisplayName(prefilled);
-      }
-      setLoadingInitial(false);
-    });
-
-    async function loadUser() {
+    let active = true;
+    async function establishInviteSession() {
       try {
-        const { data } = await supabase.auth.getUser();
-        if (data.user) {
-          const prefilledName =
-            data.user.user_metadata?.displayName ||
-            data.user.user_metadata?.display_name ||
-            data.user.user_metadata?.full_name ||
-            "";
-          if (prefilledName) {
-            setDisplayName(prefilledName);
-          }
+        const params = new URLSearchParams(window.location.search);
+        const linkError = params.get("error_description") || params.get("error");
+        if (linkError) throw new Error(linkError);
+
+        // PKCE invite links return `?code=...`. The browser client does not
+        // establish the session from that code until this explicit exchange.
+        const code = params.get("code");
+        if (code) {
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError) throw exchangeError;
         }
-      } catch {
-        // Ignore client session load error
+
+        const tokenHash = params.get("token_hash");
+        const type = params.get("type");
+        if (tokenHash && (type === "invite" || type === "recovery")) {
+          const { error: verifyError } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
+          if (verifyError) throw verifyError;
+        }
+
+        const { data, error: userError } = await supabase.auth.getUser();
+        if (userError || !data.user) throw userError ?? new Error("No invitation session found.");
+        if (!active) return;
+        const name = data.user.user_metadata?.displayName || data.user.user_metadata?.display_name || data.user.user_metadata?.full_name || "";
+        if (name) setDisplayName(name);
+        setAuthenticated(true);
+        window.history.replaceState(null, "", "/accept-invite");
+      } catch (cause) {
+        if (active) setError(cause instanceof Error && cause.message !== "No invitation session found."
+          ? `Invitation link could not be opened: ${cause.message}. Ask your administrator to resend it.`
+          : "Open the invitation link from your email to set up your account. If it has expired, ask your administrator to resend it.");
       } finally {
-        setLoadingInitial(false);
+        if (active) setLoadingInitial(false);
       }
     }
-    loadUser();
-
-    return () => {
-      subscription.unsubscribe();
-    };
+    void establishInviteSession();
+    return () => { active = false; };
   }, []);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -133,21 +86,29 @@ export default function AcceptInvitePage() {
       return;
     }
 
-    setPending(true);
-
-    const result = await completeInvitationAcceptance({
-      displayName,
-      phone,
-      newPassword,
-      confirmPassword,
-    });
-
-    setPending(false);
-    if (!result.ok) {
-      setError(result.error);
+    if (loadingInitial || !authenticated) {
+      setError("Your invitation session is not ready. Open the link from your invitation email again.");
       return;
     }
-    router.push("/");
+
+    setPending(true);
+    try {
+      const result = await completeInvitationAcceptance({
+        displayName,
+        phone,
+        newPassword,
+        confirmPassword,
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      window.location.replace("/");
+    } catch {
+      setError("Account setup could not be completed. Please try again.");
+    } finally {
+      setPending(false);
+    }
   }
 
   const passwordsMatch = Boolean(confirmPassword && newPassword === confirmPassword);
@@ -300,10 +261,12 @@ export default function AcceptInvitePage() {
           <button
             type="submit"
             data-testid="accept-invite-submit"
-            disabled={pending || !displayName.trim() || !newPassword || !confirmPassword}
+            disabled={loadingInitial || !authenticated || pending || !displayName.trim() || !newPassword || !confirmPassword}
             className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-brand-navy px-5 font-label text-xs font-bold text-white shadow-sm hover:bg-brand-navy/90 transition-colors disabled:opacity-50"
           >
-            {pending ? (
+            {loadingInitial ? (
+              "Checking invitation..."
+            ) : pending ? (
               "Activating Account..."
             ) : (
               <>

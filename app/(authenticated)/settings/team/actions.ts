@@ -11,7 +11,6 @@ import {
   roles,
   userPartyScopes,
   parties,
-  rbacSecurityEvents,
   auditLog,
 } from "@/lib/db/schema";
 import { createServiceRoleClient } from "@/lib/supabase/server";
@@ -50,7 +49,10 @@ async function getInviteRedirectUrl(): Promise<string> {
   try {
     const url = new URL(resolvedOrigin);
     if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("Unsupported URL protocol");
-    return `${url.origin}/auth/callback?next=%2Faccept-invite`;
+    // Invite links return the session in the browser URL fragment. A server
+    // callback cannot read that fragment, so deliver the link directly to
+    // the client onboarding page.
+    return `${url.origin}/accept-invite`;
   } catch {
     throw new Error("The application URL is invalid. Set NEXT_PUBLIC_SITE_URL or NEXT_PUBLIC_APP_URL before sending invitations.");
   }
@@ -146,20 +148,36 @@ export async function listTeamMembers(): Promise<ActionResult<TeamMember[]>> {
 
   try {
     const serviceClient = createServiceRoleClient();
-    const loaded = await withSettingsTimeout(
-      Promise.all([
+    // Keep the profile directory independent from optional enrichment. A
+    // slow Auth admin request or an unavailable auth.sessions view must not
+    // turn a populated directory into an empty one.
+    const [profiles, activeRoleRows, activeScopeRows, authUsersRes, sessionRows] = await Promise.all([
+      withSettingsTimeout(
         db.select({ id: userProfiles.id, displayName: userProfiles.displayName, status: userProfiles.status }).from(userProfiles),
+        [],
+      ),
+      withSettingsTimeout(
         db
           .select({ userId: userRoles.userId, roleKey: roles.key })
           .from(userRoles)
           .innerJoin(roles, eq(userRoles.roleId, roles.id))
           .where(isNull(userRoles.revokedAt)),
+        [],
+      ),
+      withSettingsTimeout(
         db
           .select({ userId: userPartyScopes.userId, partyName: parties.name })
           .from(userPartyScopes)
           .innerJoin(parties, eq(userPartyScopes.partyId, parties.id))
           .where(isNull(userPartyScopes.revokedAt)),
+        [],
+      ),
+      withSettingsTimeout(
         serviceClient.auth.admin.listUsers().catch(() => ({ data: { users: [] } })),
+        { data: { users: [] } },
+        5000,
+      ),
+      withSettingsTimeout(
         db.execute(sql`
           SELECT DISTINCT ON (user_id)
             id, user_id, updated_at, user_agent, ip::text as ip_address
@@ -172,13 +190,9 @@ export async function listTeamMembers(): Promise<ActionResult<TeamMember[]>> {
           user_agent: string | null;
           ip_address: string | null;
         }>>,
-      ]),
-      null,
-    );
-
-    if (!loaded) return { ok: true, data: [] };
-
-    const [profiles, activeRoleRows, activeScopeRows, authUsersRes, sessionRows] = loaded;
+        [],
+      ),
+    ]);
 
     const authUserMap = new Map((authUsersRes?.data?.users ?? []).map((u) => [u.id, u]));
     const sessionMap = new Map((sessionRows as Array<{ user_id: string; id: string; updated_at: string | Date; user_agent: string | null }>).map((s) => [s.user_id, s]));
@@ -735,16 +749,18 @@ export async function resendInvite(userId: string): Promise<ActionResult> {
     return { ok: false, error: error instanceof Error ? error.message : "The invitation redirect URL is invalid." };
   }
 
-  const { error: inviteError } = await serviceClient.auth.admin.inviteUserByEmail(
-    authUser.user.email,
-    {
-      data: {
-        displayName: profile.displayName,
-        employee_id: (authUser.user.user_metadata?.employee_id as string) || `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
-      },
-      redirectTo,
-    },
-  );
+  // Once the invite link has been opened, Supabase may mark the email as
+  // confirmed even though our local profile is still "invited". A second
+  // invite is rejected for that user, so send a recovery link instead.
+  const { error: inviteError } = authUser.user.email_confirmed_at
+    ? await serviceClient.auth.resetPasswordForEmail(authUser.user.email, { redirectTo })
+    : await serviceClient.auth.admin.inviteUserByEmail(authUser.user.email, {
+        data: {
+          displayName: profile.displayName,
+          employee_id: (authUser.user.user_metadata?.employee_id as string) || `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
+        },
+        redirectTo,
+      });
 
   if (inviteError) {
     return { ok: false, error: inviteError.message };
