@@ -34,11 +34,11 @@ function getDb(): Db {
     // DATABASE_URL_RUNTIME is the canonical serverless connection setting
     // (specs/04-services-and-infrastructure). Keep legacy/integration names
     // as fallbacks so existing local and Vercel environments remain valid.
-    const configuredConnectionString =
-      process.env.DATABASE_URL_RUNTIME ??
-      process.env.DATABASE_URL ??
-      process.env.POSTGRES_URL ??
-      "";
+    const configuredConnectionString = [
+      process.env.DATABASE_URL_RUNTIME,
+      process.env.DATABASE_URL,
+      process.env.POSTGRES_URL,
+    ].find((value) => Boolean(value?.trim()))?.trim() ?? "";
     if (!configuredConnectionString) {
       throw new Error(
         "DATABASE_URL environment variable is missing. Please configure it in your Vercel Project Settings > Environment Variables."
