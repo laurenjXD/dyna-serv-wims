@@ -151,10 +151,8 @@ export default async function Home() {
   const { context } = resolution;
   const tier = resolveSessionPresentationTier(context.activeRoleKeys);
 
-  // Office users have a dedicated dashboard route. Keeping the root landing
-  // route for floor users avoids making sign-in wait for two overlapping
-  // dashboard implementations and the root route's larger queue/reporting
-  // query set.
+  // The root route is the canonical landing page for both floor and office
+  // users; the resolved presentation tier selects the dashboard content below.
   // ─── Capability flags ────────────────────────────────────────────────
   const hasReceivingAccess =
     (await requirePermission(resolver, "receiving.view")).kind === "authorized";
