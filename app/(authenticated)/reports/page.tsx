@@ -8,7 +8,7 @@
 //   specs/00-steering/revision-log.md (2026-08-07: /reports owns KPI dashboard,
 //     not /; 2026-08-07: reporting.financial_read added for supervisor + admin)
 //
-// Surface: Office. Capability gate: reporting.read.
+// Surface: Office. Capability gate: reporting.read or reporting.financial_read.
 // Financial section gate: reporting.financial_read (supervisor/administrator only).
 // Offline: all analytics are Tier 2 — online only, never cached.
 // Aggregate queries MUST read lot_inventory_totals, never raw lot_location_balances.
@@ -27,11 +27,42 @@ import {
   getWarehouseZonesList,
 } from "@/lib/db/queries/reports";
 
+const REPORT_QUERY_TIMEOUT_MS = 8_000;
+
+async function withReportFallback<T>(
+  query: Promise<T>,
+  fallback: T,
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<T>((resolve) => {
+    timeoutId = setTimeout(() => resolve(fallback), REPORT_QUERY_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([query.catch(() => fallback), timeout]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
+const EMPTY_REPORT_KPIS = {
+  valuationTotal: 0,
+  vmiAccruedStorage: 0,
+  tradingGrossRevenue: 0,
+  tradingMarginPct: 0,
+  tradingCogs: 0,
+  otifRatePct: 0,
+  activeLotsCount: 0,
+};
+
 export default async function ReportsPage() {
   const resolver = await createPageResolver();
   const permResult = await requirePermission(resolver, "reporting.read");
+  const financialPerm = await requirePermission(resolver, "reporting.financial_read");
+  const canReadReports =
+    permResult.kind === "authorized" || financialPerm.kind === "authorized";
 
-  if (permResult.kind !== "authorized") {
+  if (!canReadReports) {
     return (
       <div className="mx-auto max-w-container px-8 py-12 text-center">
         <BarChart2 size={40} className="mx-auto mb-3 text-text-grey" aria-hidden="true" />
@@ -40,14 +71,14 @@ export default async function ReportsPage() {
         </p>
         <p className="mt-2 font-body text-body-sm text-text-grey">
           This page requires the{" "}
-          <span className="font-mono text-mono-md">reporting.read</span>{" "}
+          <span className="font-mono text-mono-md">reporting.read</span> or{" "}
+          <span className="font-mono text-mono-md">reporting.financial_read</span>{" "}
           capability.
         </p>
       </div>
     );
   }
 
-  const financialPerm = await requirePermission(resolver, "reporting.financial_read");
   const canReadFinancial = financialPerm.kind === "authorized";
 
   // Fetch live reports datasets in parallel
@@ -60,13 +91,17 @@ export default async function ReportsPage() {
     archiveItems,
     availableZones,
   ] = await Promise.all([
-    getReportsExecutiveKpis(),
-    canReadFinancial ? getVmiBillingReconciliationReport() : Promise.resolve([]),
-    canReadFinancial ? getTradingMarginReport() : Promise.resolve(undefined),
-    getThroughputReport("daily"),
-    getDeliveryPerformanceReport(),
-    getReportArchiveList(),
-    getWarehouseZonesList(),
+    withReportFallback(getReportsExecutiveKpis(), EMPTY_REPORT_KPIS),
+    canReadFinancial
+      ? withReportFallback(getVmiBillingReconciliationReport(), [])
+      : Promise.resolve([]),
+    canReadFinancial
+      ? withReportFallback(getTradingMarginReport(), undefined)
+      : Promise.resolve(undefined),
+    withReportFallback(getThroughputReport("daily"), []),
+    withReportFallback(getDeliveryPerformanceReport(), []),
+    withReportFallback(getReportArchiveList(), []),
+    withReportFallback(getWarehouseZonesList(), []),
   ]);
 
   return (

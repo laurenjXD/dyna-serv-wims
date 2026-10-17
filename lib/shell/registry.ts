@@ -156,7 +156,11 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     id: "reports",
     path: "/reports",
     surface: "office",
-    capability: "reporting.read",
+    // Financial reporting access is an office-level reporting grant and is
+    // assigned to Supervisor/Administrator alongside reporting.read. Using it
+    // here keeps the Reports entry available when an older role assignment
+    // has only the financial grant applied.
+    capability: "reporting.financial_read",
     featureSpecs: ["16-reporting-and-analytics"],
     // Was "planned" — confirmed stale (2026-08-17): the page is fully wired
     // to real query modules (getInventoryKpis, getWrrVolumeTrend,
