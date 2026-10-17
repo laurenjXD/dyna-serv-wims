@@ -65,6 +65,14 @@ export function WarehouseReportsHub({
   const [startDate, setStartDate] = useState("2026-08-14");
   const [endDate, setEndDate] = useState("2026-09-12");
   const [activeSection, setActiveSection] = useState<"all" | "financial" | "operations" | "heatmap" | "archive">("all");
+  const [isSectionPending, startSectionTransition] = React.useTransition();
+
+  // Report sections contain charts, tables, and responsive layout measurements.
+  // Keep the navigation click itself responsive while React swaps that heavier
+  // subtree in the background.
+  const handleSectionChange = (section: "all" | "financial" | "operations" | "heatmap" | "archive") => {
+    startSectionTransition(() => setActiveSection(section));
+  };
 
   const handleHorizonChange = (h: DateHorizon) => {
     setHorizon(h);
@@ -319,11 +327,14 @@ export function WarehouseReportsHub({
       <ReportKpis kpis={activeKpis} />
 
       {/* ── Section Quick Navigation Filter Bar ───────────────────────────── */}
-      <div className="overflow-x-auto border-b border-slate-200/80 pb-2">
+      <div
+        className="overflow-x-auto border-b border-slate-200/80 pb-2"
+        aria-busy={isSectionPending}
+      >
         <div className="flex min-w-max items-center gap-1.5 font-label text-xs font-semibold">
           <button
             type="button"
-            onClick={() => setActiveSection("all")}
+            onClick={() => handleSectionChange("all")}
             className={`rounded-xl px-3.5 py-1.5 transition-all ${
               activeSection === "all"
                 ? "bg-brand-navy text-white font-bold shadow-2xs"
@@ -336,7 +347,7 @@ export function WarehouseReportsHub({
           {canReadFinancial && (
             <button
               type="button"
-              onClick={() => setActiveSection("financial")}
+              onClick={() => handleSectionChange("financial")}
               className={`rounded-xl px-3.5 py-1.5 transition-all flex items-center gap-1.5 ${
                 activeSection === "financial"
                   ? "bg-brand-navy text-white font-bold shadow-2xs"
@@ -350,7 +361,7 @@ export function WarehouseReportsHub({
 
           <button
             type="button"
-            onClick={() => setActiveSection("operations")}
+            onClick={() => handleSectionChange("operations")}
             className={`rounded-xl px-3.5 py-1.5 transition-all flex items-center gap-1.5 ${
               activeSection === "operations"
                 ? "bg-brand-navy text-white font-bold shadow-2xs"
@@ -363,7 +374,7 @@ export function WarehouseReportsHub({
 
           <button
             type="button"
-            onClick={() => setActiveSection("heatmap")}
+            onClick={() => handleSectionChange("heatmap")}
             className={`rounded-xl px-3.5 py-1.5 transition-all flex items-center gap-1.5 ${
               activeSection === "heatmap"
                 ? "bg-brand-navy text-white font-bold shadow-2xs"
@@ -376,7 +387,7 @@ export function WarehouseReportsHub({
 
           <button
             type="button"
-            onClick={() => setActiveSection("archive")}
+            onClick={() => handleSectionChange("archive")}
             className={`rounded-xl px-3.5 py-1.5 transition-all flex items-center gap-1.5 ${
               activeSection === "archive"
                 ? "bg-brand-navy text-white font-bold shadow-2xs"
@@ -391,7 +402,7 @@ export function WarehouseReportsHub({
 
       {/* ── 3. Dedicated Financial Settlement & Margin Reports ─────────────── */}
       {canReadFinancial && (activeSection === "all" || activeSection === "financial") && (
-        <section className="space-y-5 animate-in fade-in">
+        <section className="space-y-5">
           {/* A. VMI Client Storage & CBM Billing Reconciliation */}
           <VmiBillingTable
             initialData={activeVmiBillingRows}
@@ -406,7 +417,7 @@ export function WarehouseReportsHub({
 
       {/* ── 4. Throughput, Delivery & Storage Reports ──────────────────────── */}
       {(activeSection === "all" || activeSection === "operations") && (
-        <section className="space-y-5 animate-in fade-in">
+        <section className="space-y-5">
           {/* A & C. Movement Volume Throughput & Location Occupancy */}
           <ThroughputSection initialData={activeThroughput} />
 
@@ -417,14 +428,14 @@ export function WarehouseReportsHub({
 
       {/* ── 5. Monthly Location Intelligence Heatmap (31-Day View) ────────── */}
       {(activeSection === "all" || activeSection === "heatmap") && (
-        <section className="animate-in fade-in">
+        <section>
           <MonthlyHeatmap />
         </section>
       )}
 
       {/* ── 6 & 7. Templates Grid & Reports Archive Log ───────────────────── */}
       {(activeSection === "all" || activeSection === "archive") && (
-        <section className="space-y-5 animate-in fade-in">
+        <section className="space-y-5">
           {/* Pre-built Templates Grid */}
           <TemplateCardGrid
             onRunTemplate={handleRunTemplate}

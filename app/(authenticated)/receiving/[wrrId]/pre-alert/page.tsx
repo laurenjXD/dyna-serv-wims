@@ -179,7 +179,7 @@ export default async function PreAlertExportPage({ params }: PageProps) {
           </div>
 
           <div className="overflow-x-auto print:overflow-visible">
-            <table className="w-full border-collapse border border-slate-300 text-left font-mono text-[11px]">
+            <table data-document-table className="w-full border-collapse border border-slate-300 text-left font-mono text-[11px]">
               <thead>
                 <tr className="bg-slate-100 text-slate-700 text-[10px] border-b border-slate-300">
                   <th className="border border-slate-300 px-2 py-1.5 uppercase font-bold tracking-wider">#</th>

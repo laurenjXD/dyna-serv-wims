@@ -247,7 +247,7 @@ export default async function WrrPrintPage({ params }: PageProps) {
               </p>
             ) : (
               <div className="overflow-x-auto print:overflow-visible">
-                <table className="w-full border-collapse border border-slate-300 text-left font-mono text-[11px]">
+                <table data-document-table className="w-full border-collapse border border-slate-300 text-left font-mono text-[11px]">
                   <thead>
                     <tr className="bg-slate-100 text-slate-700 border-b border-slate-300 text-[10px]">
                       <th className="border border-slate-300 px-2 py-1.5 text-left uppercase font-bold tracking-wider">

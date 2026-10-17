@@ -64,6 +64,14 @@ export function DocumentPrintStyles({ orientation = "portrait" }: DocumentPrintS
           table {
             page-break-inside: auto;
           }
+          [data-document-table] {
+            border-radius: 0 !important;
+            border-collapse: collapse !important;
+          }
+          [data-document-table] th,
+          [data-document-table] td {
+            border-radius: 0 !important;
+          }
         }
       `,
     }} />

@@ -45,6 +45,14 @@ async function withReportFallback<T>(
   }
 }
 
+async function loadReport<T>(loader: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await withReportFallback(loader(), fallback);
+  } catch {
+    return fallback;
+  }
+}
+
 const EMPTY_REPORT_KPIS = {
   valuationTotal: 0,
   vmiAccruedStorage: 0,
@@ -91,17 +99,17 @@ export default async function ReportsPage() {
     archiveItems,
     availableZones,
   ] = await Promise.all([
-    withReportFallback(getReportsExecutiveKpis(), EMPTY_REPORT_KPIS),
+    loadReport(getReportsExecutiveKpis, EMPTY_REPORT_KPIS),
     canReadFinancial
-      ? withReportFallback(getVmiBillingReconciliationReport(), [])
+      ? loadReport(getVmiBillingReconciliationReport, [])
       : Promise.resolve([]),
     canReadFinancial
-      ? withReportFallback(getTradingMarginReport(), undefined)
+      ? loadReport(getTradingMarginReport, undefined)
       : Promise.resolve(undefined),
-    withReportFallback(getThroughputReport("daily"), []),
-    withReportFallback(getDeliveryPerformanceReport(), []),
-    withReportFallback(getReportArchiveList(), []),
-    withReportFallback(getWarehouseZonesList(), []),
+    loadReport(() => getThroughputReport("daily"), []),
+    loadReport(getDeliveryPerformanceReport, []),
+    loadReport(getReportArchiveList, []),
+    loadReport(getWarehouseZonesList, []),
   ]);
 
   return (

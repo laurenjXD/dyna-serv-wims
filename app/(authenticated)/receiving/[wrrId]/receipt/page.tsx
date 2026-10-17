@@ -168,7 +168,7 @@ export default async function InboundTurnoverReceiptPage({ params }: PageProps) 
             </span>
           </div>
 
-          <table className="w-full border-collapse border border-slate-300 font-mono text-[11px]">
+          <table data-document-table className="w-full border-collapse border border-slate-300 font-mono text-[11px]">
             <thead>
               <tr className="bg-slate-100 text-[10px]">
                 <th className="border border-slate-300 px-2 py-1.5 text-left uppercase font-bold tracking-wider text-slate-700">

@@ -423,7 +423,7 @@ export function SoaDetailClient({
 
         {/* Charges table */}
         <div className="mt-7 border border-slate-300 print-avoid-break">
-          <table className="w-full text-left border-collapse text-sm">
+          <table data-document-table className="w-full text-left border-collapse text-sm">
             <thead className="soa-main-header" style={{backgroundColor:"#1e293b"}}>
               <tr>
                 <th className="w-12 py-2.5 px-4 text-center text-xs uppercase tracking-widest font-bold" style={{ border: "1px solid #334155", color: "#ffffff" }}>No.</th>

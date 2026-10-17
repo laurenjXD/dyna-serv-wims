@@ -1083,23 +1083,23 @@ export function GeneralSettingsForm({ initialSettings }: { initialSettings: Gene
               />
 
               {/* Sample Document Body Content */}
-              <div className="space-y-3 pt-2">
-                <div className="grid grid-cols-2 gap-3 text-[11px]">
+              <div className="space-y-2.5 pt-1.5">
+                <div className="grid grid-cols-2 gap-2.5 text-[9px]">
                   <div className="rounded border border-slate-200 p-2 bg-slate-50/50">
-                    <span className="font-bold text-slate-500 block uppercase text-[10px]">Supplier / Principal</span>
-                    <strong className="text-slate-900 text-[11px]">UNIVERSAL COMPONENTS ASIA LTD.</strong>
-                    <p className="text-slate-500 text-[10px]">Ecozone Logistics Supplier</p>
+                    <span className="font-bold text-slate-500 block uppercase text-[8px]">Supplier / Principal</span>
+                    <strong className="text-slate-900 text-[9px]">UNIVERSAL COMPONENTS ASIA LTD.</strong>
+                    <p className="text-slate-500 text-[8px]">Ecozone Logistics Supplier</p>
                   </div>
                   <div className="rounded border border-slate-200 p-2 bg-slate-50/50">
-                    <span className="font-bold text-slate-500 block uppercase text-[10px]">Storage Model &amp; Terms</span>
-                    <strong className="text-slate-900 text-[11px]">VMI Bonded Storage (Zone A)</strong>
-                    <p className="text-slate-500 text-[10px]">LOA Reference: PEZA-LOA-2026-0891</p>
+                    <span className="font-bold text-slate-500 block uppercase text-[8px]">Storage Model &amp; Terms</span>
+                    <strong className="text-slate-900 text-[9px]">VMI Bonded Storage (Zone A)</strong>
+                    <p className="text-slate-500 text-[8px]">LOA Reference: PEZA-LOA-2026-0891</p>
                   </div>
                 </div>
 
-                <div className="overflow-hidden rounded border border-slate-200">
-                  <table className="w-full text-left text-[11px]">
-                    <thead className="bg-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-700">
+                <div className="overflow-hidden border border-slate-200">
+                  <table data-document-table className="w-full text-left text-[9px]">
+                    <thead className="bg-slate-100 text-[8px] font-bold uppercase tracking-wider text-slate-700">
                       <tr>
                         <th className="p-2">Item Code</th>
                         <th className="p-2">Description</th>
@@ -1108,7 +1108,7 @@ export function GeneralSettingsForm({ initialSettings }: { initialSettings: Gene
                         <th className="p-2 text-right">Volume (CBM)</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200 font-mono text-[11px]">
+                    <tbody className="divide-y divide-slate-200 font-mono text-[9px]">
                       <tr>
                         <td className="p-2 font-bold text-slate-900">RES-10K-0805</td>
                         <td className="p-2 font-sans font-medium text-slate-700">SMD Resistor 10K Ohm 0805 Reel</td>
