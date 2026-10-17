@@ -82,7 +82,7 @@ export function MasterDocumentHeader({
               className="h-6 w-auto max-w-[120px] object-contain mb-1 print:h-6"
             />
           ) : null}
-          <h1 className="font-heading text-[11px] leading-[14px] font-bold tracking-tight text-slate-900 uppercase">
+          <h1 className="font-heading text-[9px] leading-[11px] font-bold tracking-tight text-slate-900 uppercase">
             {companyName}
           </h1>
           <p className="font-heading text-[8px] leading-[11px] font-semibold uppercase tracking-[0.08em] text-slate-600">
@@ -149,7 +149,7 @@ export function MasterDocumentHeader({
                   className="h-6 w-auto max-w-[120px] shrink-0 object-contain print:h-6"
                 />
               ) : null}
-              <h1 className="font-heading text-[11px] leading-[14px] font-bold tracking-tight text-slate-900 uppercase">
+            <h1 className="font-heading text-[9px] leading-[11px] font-bold tracking-tight text-slate-900 uppercase">
                 {companyName}
               </h1>
             </div>
@@ -218,7 +218,7 @@ export function MasterDocumentHeader({
             : "justify-between"
         }`}
       >
-        <h2 className="font-heading text-[10px] leading-[13px] font-bold uppercase tracking-[0.06em] text-slate-900">
+        <h2 className="font-heading text-[8px] leading-[10px] font-bold uppercase tracking-[0.04em] text-slate-900">
           {documentTitle}
         </h2>
         <span className="font-mono text-[8px] leading-[11px] font-medium text-slate-500">

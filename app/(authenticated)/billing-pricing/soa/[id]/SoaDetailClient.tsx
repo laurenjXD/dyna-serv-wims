@@ -162,7 +162,7 @@ function AppendixSection({
 }) {
   return (
     <div id={id} className={`mt-6 ${pageBreakBefore ? "print-page-break" : "print-avoid-break"}`}>
-      <h3 className="font-mono text-[10px] leading-4 font-bold text-slate-600 uppercase tracking-[0.14em] mb-2 print:text-black print:mb-1">
+      <h3 className="font-mono text-[9px] leading-3 font-bold text-slate-600 uppercase tracking-[0.1em] mb-2 print:text-black print:mb-1">
         {title}
       </h3>
       <div className="border border-slate-300 overflow-x-auto print:overflow-visible print:border-slate-400">
@@ -336,7 +336,7 @@ export function SoaDetailClient({
             Back to Billing
           </Link>
           <div className="mt-1 flex flex-wrap items-center gap-3">
-            <h1 className="text-lg leading-6 font-bold text-slate-900">
+            <h1 className="text-base leading-5 font-bold text-slate-900">
               Statement of Account &mdash; {soaData.soaNumber}
             </h1>
             <div className="flex items-center gap-2 bg-surface-white px-2.5 py-1 rounded-full border border-slate-200 shadow-2xs">

@@ -146,7 +146,15 @@ export async function updatePartyAction(
     isActive: formData.get("isActive") !== "false",
   };
 
-  const result = await updateParty(resolver, id, input, submittedUpdatedAt);
+  let result;
+  try {
+    result = await updateParty(resolver, id, input, submittedUpdatedAt);
+  } catch (error) {
+    console.error("Failed to update organization:", error);
+    return {
+      error: "The organization could not be saved. Please try again. No changes were confirmed.",
+    };
+  }
 
   if (!result.ok) {
     if ("fieldErrors" in result) {
@@ -189,7 +197,15 @@ export async function updatePartyAction(
     console.error("Failed to reconcile party roles on update:", err);
   }
 
-  const rbeResult = await setPartyRbeClassifications(resolver, id, enrollment.rbe);
+  let rbeResult;
+  try {
+    rbeResult = await setPartyRbeClassifications(resolver, id, enrollment.rbe);
+  } catch (error) {
+    console.error("Failed to reconcile organization RBE classifications:", error);
+    return {
+      error: "The organization details were saved, but its role classifications could not be updated. Please retry.",
+    };
+  }
   if (!rbeResult.ok) return { error: rbeResult.error };
 
   revalidatePath("/master-data/parties");
