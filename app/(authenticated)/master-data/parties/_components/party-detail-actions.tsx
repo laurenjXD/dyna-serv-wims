@@ -191,6 +191,7 @@ function ContactPartyModal({
   const [selectedTemplateId, setSelectedTemplateId] = useState("custom_message");
   const [subject, setSubject] = useState("Message from Dyna-Serv Operations");
   const [cc, setCc] = useState("");
+  const [showCc, setShowCc] = useState(false);
   const [message, setMessage] = useState("");
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
@@ -206,7 +207,10 @@ function ContactPartyModal({
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed.subject) setSubject(parsed.subject);
-        if (parsed.cc) setCc(parsed.cc);
+        if (parsed.cc) {
+          setCc(parsed.cc);
+          setShowCc(true);
+        }
         if (parsed.message) setMessage(parsed.message);
         if (parsed.templateId) setSelectedTemplateId(parsed.templateId);
         if (parsed.savedAt) setLastSavedTime(parsed.savedAt);
@@ -478,14 +482,40 @@ function ContactPartyModal({
               {activeTab === "compose" ? (
                  <div className="space-y-3">
                   {/* Familiar mail-client recipient, subject, and CC rows. */}
-                   <div className="flex min-h-10 items-center gap-2 border-b border-border">
-                     <span className="font-body text-xs text-text-grey">To</span>
-                     <span className="inline-flex max-w-full items-center gap-1 rounded-md bg-brand-navy/10 px-2 py-1 font-body text-xs text-on-surface">
-                       <span className="max-w-[190px] truncate font-semibold">{partyName}</span>
-                       <span className="max-w-[220px] truncate text-text-grey">&lt;{partyEmail || "email on record"}&gt;</span>
-                       <span className="ml-auto font-body text-xs text-text-grey">Cc</span>
-                       <input id="email-cc-inline" name="cc" type="text" value={cc} onChange={(e) => setCc(e.target.value)} placeholder="Add Cc" className="email-composer-field h-7 w-32 border-0 bg-transparent px-1 font-body text-xs text-on-surface placeholder:text-text-grey focus:outline-none focus:ring-0" />
-                    </span>
+                  <div className="border-b border-border">
+                    <div className="flex min-h-10 items-center gap-2">
+                      <span className="font-body text-xs text-text-grey">To</span>
+                      <span className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-md bg-brand-navy/10 px-2 py-1 font-body text-xs text-on-surface">
+                        <span className="max-w-[190px] truncate font-semibold">{partyName}</span>
+                        <span className="max-w-[220px] truncate text-text-grey">&lt;{partyEmail || "email on record"}&gt;</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowCc((visible) => !visible)}
+                        aria-expanded={showCc}
+                        aria-controls="email-cc-row"
+                        className="shrink-0 font-body text-xs font-semibold text-text-grey underline-offset-2 hover:text-brand-navy hover:underline"
+                      >
+                        Cc
+                      </button>
+                    </div>
+
+                    {showCc && (
+                      <div id="email-cc-row" className="flex min-h-10 items-center gap-2 border-t border-border">
+                        <label htmlFor="email-cc" className="font-body text-xs text-text-grey">Cc</label>
+                        <input
+                          id="email-cc"
+                          name="cc"
+                          type="text"
+                          inputMode="email"
+                          autoComplete="email"
+                          value={cc}
+                          onChange={(e) => setCc(e.target.value)}
+                          placeholder="Add email addresses, separated by commas"
+                          className="email-composer-field h-9 min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 font-body text-sm text-on-surface placeholder:text-text-grey focus:outline-none focus:ring-0"
+                        />
+                      </div>
+                    )}
                   </div>
                   <div className="border-b border-border">
                     <div>
@@ -507,23 +537,6 @@ function ContactPartyModal({
                       />
                     </div>
 
-                    <div className="hidden">
-                      <label
-                        htmlFor="email-cc"
-                        className="sr-only"
-                      >
-                        CC (Optional)
-                      </label>
-                      <input
-                        id="email-cc"
-                        name="cc-legacy"
-                        type="text"
-                        value={cc}
-                        onChange={(e) => setCc(e.target.value)}
-                        placeholder="e.g. accounting@dyna-serv.com, ops@client.com"
-                        className="h-12 w-full rounded-none border-0 bg-transparent px-0 font-body text-body-md text-on-surface placeholder:text-text-grey/60 focus:outline-none focus:ring-0"
-                      />
-                    </div>
                   </div>
 
                   {/* Message Body */}
