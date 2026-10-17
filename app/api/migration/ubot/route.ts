@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("[migration/ubot] upload failed", error);
     return NextResponse.json(
-      { ok: false, error: error instanceof Error ? error.message : "The workbook upload failed." },
+      { ok: false, error: error instanceof Error ? error.cause instanceof Error ? error.cause.message : error.message : "The workbook upload failed." },
       { status: 500 },
     );
   }

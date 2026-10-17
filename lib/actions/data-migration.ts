@@ -23,6 +23,14 @@ import type { UbotMigrationDraft } from "@/lib/migration/types";
 const defaultRlsDeps = { getAuthenticatedSession, pool: rlsPool };
 const SOURCE_BUCKET = "migration-source-files";
 
+function errorMessage(error: unknown): string {
+  if (!(error instanceof Error)) return "Unknown migration error.";
+  const cause = error.cause;
+  if (cause instanceof Error && cause.message) return cause.message;
+  if (cause && typeof cause === "object" && "message" in cause && typeof cause.message === "string") return cause.message;
+  return error.message;
+}
+
 export type MigrationResult =
   | { ok: true; batchId: string; status: string; blockingIssues: number; warningIssues: number; sourceRows: number }
   | { ok: false; error: string };
@@ -57,6 +65,12 @@ function sourceRows(draft: UbotMigrationDraft) {
     ...draft.openingBalances.map((value) => ({ sheetName: "Location Matrix", sourceRowNumber: value.sourceRow, rowKey: `${value.itemCode}/${value.lotNumber}/${value.locationLabel}`, phase: "opening_balances", value })),
     ...draft.rates.map((value) => ({ sheetName: "Rates", sourceRowNumber: value.sourceRow, rowKey: `${value.partyName}/${value.chargeType}/${value.rate}`, phase: "rates", value })),
   ];
+}
+
+function chunks<T>(values: T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let index = 0; index < values.length; index += size) result.push(values.slice(index, index + size));
+  return result;
 }
 
 export async function stageUbotMigration(formData: FormData): Promise<MigrationResult> {
@@ -102,7 +116,9 @@ export async function stageUbotMigration(formData: FormData): Promise<MigrationR
 
     await db.insert(migrationBatches).values({ id: batchId, organizationName: draft.organizationName, flowType: draft.flowType, profileKey: draft.profileKey, openingDate: draft.openingDate, sourceFileName, sourceFileHash: hash, sourceFileUrl: sourcePath, status: blockingIssues > 0 ? "needs_review" : "staged", uploadedByUserId: session.userId });
     const rows = sourceRows(draft);
-    if (rows.length > 0) await db.insert(migrationSourceRows).values(rows.map((row) => ({ batchId, sheetName: row.sheetName, sourceRowNumber: row.sourceRowNumber, rowKey: row.rowKey, phase: row.phase, rawData: row.value, normalizedData: row.value, validationErrors: null })));
+    for (const rowChunk of chunks(rows, 250)) {
+      await db.insert(migrationSourceRows).values(rowChunk.map((row) => ({ batchId, sheetName: row.sheetName, sourceRowNumber: row.sourceRowNumber, rowKey: row.rowKey, phase: row.phase, rawData: row.value, normalizedData: row.value, validationErrors: null })));
+    }
     if (draft.issues.length > 0) await db.insert(migrationExceptions).values(draft.issues.map((issue) => ({ batchId, severity: issue.severity, code: issue.code, message: `${issue.message}${issue.sheet ? ` (${issue.sheet}${issue.row ? ` row ${issue.row}` : ""})` : ""}`, resolutionStatus: "open" })));
     return { ok: true as const, batchId, status: blockingIssues > 0 ? "needs_review" : "staged", blockingIssues, warningIssues, sourceRows: rows.length };
   });
@@ -112,7 +128,7 @@ export async function stageUbotMigration(formData: FormData): Promise<MigrationR
   return result.value;
   } catch (error) {
     console.error("[data-migration] staging failed", error);
-    return { ok: false, error: error instanceof Error ? `The workbook could not be staged: ${error.message}` : "The workbook could not be staged. Check the server logs for details." };
+    return { ok: false, error: `The workbook could not be staged: ${errorMessage(error)}` };
   }
 }
 
