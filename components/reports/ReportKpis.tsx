@@ -108,7 +108,7 @@ export function ReportKpis({ kpis }: ReportKpisProps) {
       {/* ─────────────────────────────────────────────────────────────────── */}
       <div className="hidden lg:grid grid-cols-4 gap-4">
         {/* ── CARD 1: Total Inventory Valuation Report Summary ──────────────── */}
-        <div className="relative min-w-0 overflow-hidden rounded-2xl border border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-900/80 p-5 shadow-sm backdrop-blur-md transition-all hover:shadow-md flex flex-col justify-between">
+        <div className="relative min-h-[190px] min-w-0 overflow-hidden rounded-2xl border border-black/5 bg-white/80 p-4 shadow-sm backdrop-blur-md transition-all hover:shadow-md dark:border-white/10 dark:bg-zinc-900/80 flex flex-col justify-between">
           <div>
             <div className="flex min-w-0 items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
@@ -145,7 +145,7 @@ export function ReportKpis({ kpis }: ReportKpisProps) {
         </div>
 
         {/* ── CARD 2: Floor Execution & Queue Summary ───────────────────────── */}
-        <div className="relative overflow-hidden rounded-2xl border border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-900/80 p-5 shadow-sm backdrop-blur-md transition-all hover:shadow-md flex flex-col justify-between">
+        <div className="relative min-h-[190px] overflow-hidden rounded-2xl border border-black/5 bg-white/80 p-4 shadow-sm backdrop-blur-md transition-all hover:shadow-md dark:border-white/10 dark:bg-zinc-900/80 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
               <p className="font-label text-[11px] font-bold uppercase tracking-wider text-text-grey">
@@ -187,7 +187,7 @@ export function ReportKpis({ kpis }: ReportKpisProps) {
         </div>
 
         {/* ── CARD 3: Inventory Reorder & Risk Summary ──────────────────────── */}
-        <div className="relative overflow-hidden rounded-2xl border border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-900/80 p-5 shadow-sm backdrop-blur-md transition-all hover:shadow-md flex flex-col justify-between">
+        <div className="relative min-h-[190px] overflow-hidden rounded-2xl border border-black/5 bg-white/80 p-4 shadow-sm backdrop-blur-md transition-all hover:shadow-md dark:border-white/10 dark:bg-zinc-900/80 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
               <p className="font-label text-[11px] font-bold uppercase tracking-wider text-text-grey">
@@ -227,7 +227,7 @@ export function ReportKpis({ kpis }: ReportKpisProps) {
         </div>
 
         {/* ── CARD 4: Settlement & Billing Summary ──────────────────────────── */}
-        <div className="relative overflow-hidden rounded-2xl border border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-900/80 p-5 shadow-sm backdrop-blur-md transition-all hover:shadow-md flex flex-col justify-between">
+        <div className="relative min-h-[190px] overflow-hidden rounded-2xl border border-black/5 bg-white/80 p-4 shadow-sm backdrop-blur-md transition-all hover:shadow-md dark:border-white/10 dark:bg-zinc-900/80 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
               <p className="font-label text-[11px] font-bold uppercase tracking-wider text-text-grey">

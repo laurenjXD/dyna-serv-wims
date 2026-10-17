@@ -50,7 +50,7 @@ export function ReportsHeader({
   const [mobileSearch, setMobileSearch] = useState("");
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* ─────────────────────────────────────────────────────────────────── */}
       {/* 📱 MOBILE STICKY TITLE & FAST CONTROLS (< 1024px)                   */}
       {/* ─────────────────────────────────────────────────────────────────── */}
@@ -103,7 +103,7 @@ export function ReportsHeader({
         </div>
 
         {/* Action Buttons Toolbar */}
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex shrink-0 items-center gap-2.5 whitespace-nowrap">
           <div className="relative">
             <button
               type="button"
@@ -163,8 +163,8 @@ export function ReportsHeader({
       </div>
 
       {/* ── Global Filters Toolbar ────────────────────────────────────────── */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-900/80 p-3 shadow-2xs backdrop-blur-md">
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="overflow-x-auto rounded-2xl border border-black/5 bg-white/80 p-2.5 shadow-2xs backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/80">
+        <div className="flex min-w-max items-center gap-3 whitespace-nowrap">
           {/* Storage Zone Selector (Warehouse 1 Single Facility) */}
           <div className="flex items-center gap-1.5">
             <Warehouse size={15} className="text-brand-navy/70 shrink-0 ml-1" />
@@ -197,7 +197,7 @@ export function ReportsHeader({
           <div className="h-4 w-px bg-slate-200 hidden sm:block" />
 
           {/* Date Horizon & Preset Switcher */}
-          <div className="flex items-center gap-1 rounded-xl bg-slate-100 p-1 font-label text-xs font-semibold">
+          <div className="flex shrink-0 items-center gap-1 rounded-xl bg-slate-100 p-1 font-label text-xs font-semibold">
             <button
               type="button"
               onClick={() => onHorizonChange("7D")}
@@ -237,7 +237,7 @@ export function ReportsHeader({
           </div>
 
           {/* Active Date Span Pill */}
-          <span className="hidden md:inline-flex items-center rounded-lg bg-slate-50 border border-slate-200 px-2.5 py-1 font-mono text-[11px] font-semibold text-slate-700">
+          <span className="inline-flex shrink-0 items-center rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 font-mono text-[11px] font-semibold text-slate-700">
             {horizon === "7D"
               ? "Sep 05 – Sep 12, 2026"
               : horizon === "30D"
@@ -250,7 +250,7 @@ export function ReportsHeader({
 
         {/* Inline Date Range Picker for Custom Horizon */}
         {horizon === "custom" && (
-          <div className="flex items-center gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+          <div className="flex shrink-0 items-center gap-2 border-l border-slate-100 pl-3">
             <div className="flex items-center gap-1.5">
               <span className="font-label text-[11px] font-bold text-text-grey">From:</span>
               <input

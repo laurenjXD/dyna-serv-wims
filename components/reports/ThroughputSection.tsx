@@ -31,10 +31,10 @@ export function ThroughputSection({ initialData }: ThroughputSectionProps) {
   const netDelta = totalInbound - totalOutbound;
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-6">
+    <div className="space-y-5">
+      <div className="grid grid-cols-1 gap-5">
         {/* ── Movement Volume & Flow Throughput ─────────────────── */}
-        <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
           <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-100 pb-4">
             <div>
               <div className="flex items-center gap-2">

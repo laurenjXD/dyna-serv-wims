@@ -121,10 +121,10 @@ export function TradingCapitalSection({
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* ── KPI Strip: GMROI & Capital Velocity ─────────────────────────────────── */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
+        <div className="min-h-[132px] rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
           <div className="flex items-center justify-between">
             <span className="font-label text-xs font-semibold uppercase tracking-wider text-text-grey">
               GMROI Score
@@ -141,7 +141,7 @@ export function TradingCapitalSection({
           </p>
         </div>
 
-        <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
+        <div className="min-h-[132px] rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
           <div className="flex items-center justify-between">
             <span className="font-label text-xs font-semibold uppercase tracking-wider text-text-grey">
               Inventory Turnover
@@ -158,7 +158,7 @@ export function TradingCapitalSection({
           </p>
         </div>
 
-        <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
+        <div className="min-h-[132px] rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
           <div className="flex items-center justify-between">
             <span className="font-label text-xs font-semibold uppercase tracking-wider text-text-grey">
               Owned Stock Value
@@ -175,7 +175,7 @@ export function TradingCapitalSection({
           </p>
         </div>
 
-        <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
+        <div className="min-h-[132px] rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
           <div className="flex items-center justify-between">
             <span className="font-label text-xs font-semibold uppercase tracking-wider text-text-grey">
               Dead Stock Exposure
@@ -194,8 +194,8 @@ export function TradingCapitalSection({
       </div>
 
       {/* ── Charts: Landed Cost Waterfall & Capital Portfolio Matrix ───────────── */}
-      <div className="grid gap-6 lg:grid-cols-12">
-        <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1 lg:col-span-6">
+      <div className="grid gap-5 lg:grid-cols-12">
+        <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1 lg:col-span-6">
           <div className="mb-4">
             <h3 className="font-heading text-headline-md font-semibold text-on-surface">
               Trading Landed Cost Build-Up
@@ -209,7 +209,7 @@ export function TradingCapitalSection({
           </div>
         </div>
 
-        <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1 lg:col-span-6">
+        <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1 lg:col-span-6">
           <div className="mb-4">
             <h3 className="font-heading text-headline-md font-semibold text-on-surface">
               Capital Portfolio Matrix (Stars vs. Dogs)
@@ -230,7 +230,7 @@ export function TradingCapitalSection({
       </div>
 
       {/* ── Aging Inventory Breakdown Table (Powered by TanStack Table) ────────── */}
-      <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">
+      <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="font-heading text-headline-md font-semibold text-on-surface">

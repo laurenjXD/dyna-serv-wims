@@ -38,7 +38,7 @@ export function SpatialAnalyticsSection({
     <div className="space-y-6">
       {/* ── KPI Summary Strip ─────────────────────────────────────────────────── */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
+        <div className="min-h-[132px] rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
           <div className="flex items-center justify-between">
             <span className="font-label text-xs font-semibold uppercase tracking-wider text-text-grey">
               Warehouse Capacity
@@ -55,7 +55,7 @@ export function SpatialAnalyticsSection({
           </p>
         </div>
 
-        <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
+        <div className="min-h-[132px] rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
           <div className="flex items-center justify-between">
             <span className="font-label text-xs font-semibold uppercase tracking-wider text-text-grey">
               100% Full Forecast
@@ -72,7 +72,7 @@ export function SpatialAnalyticsSection({
           </p>
         </div>
 
-        <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
+        <div className="min-h-[132px] rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
           <div className="flex items-center justify-between">
             <span className="font-label text-xs font-semibold uppercase tracking-wider text-text-grey">
               Avg TDC per Unit
@@ -89,7 +89,7 @@ export function SpatialAnalyticsSection({
           </p>
         </div>
 
-        <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
+        <div className="min-h-[132px] rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
           <div className="flex items-center justify-between">
             <span className="font-label text-xs font-semibold uppercase tracking-wider text-text-grey">
               Active Storage Aisles
@@ -133,7 +133,7 @@ export function SpatialAnalyticsSection({
       {/* ── Visualizations: Total Distribution Cost (TDC) & Capacity Forecast ── */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Total Distribution Cost (TDC) Line Graph */}
-        <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">
+        <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
           <div className="mb-4">
             <h3 className="font-heading text-headline-md font-semibold text-on-surface">
               Total Distribution Cost (TDC) Trend
@@ -172,7 +172,7 @@ export function SpatialAnalyticsSection({
         </div>
 
         {/* Space Utilization Forecasting Chart */}
-        <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">
+        <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
           <div className="mb-4">
             <h3 className="font-heading text-headline-md font-semibold text-on-surface">
               Space Utilization &amp; Capacity Forecast

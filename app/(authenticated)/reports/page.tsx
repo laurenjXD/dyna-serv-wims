@@ -105,7 +105,7 @@ export default async function ReportsPage() {
   ]);
 
   return (
-    <div className="mx-auto max-w-container px-4 sm:px-6 lg:px-8 py-6">
+    <div className="mx-auto max-w-container px-4 py-4 sm:px-6 lg:px-8 lg:py-5">
       <WarehouseReportsHub
         kpis={kpis}
         vmiBillingRows={vmiBillingRows}

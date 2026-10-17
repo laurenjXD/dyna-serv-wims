@@ -204,10 +204,10 @@ export function VmiConsignmentSection({
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* ── KPI Summary Strip ─────────────────────────────────────────────────── */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
+        <div className="min-h-[132px] rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
           <div className="flex items-center justify-between">
             <span className="font-label text-xs font-semibold uppercase tracking-wider text-text-grey">
               Consignment Liability
@@ -224,7 +224,7 @@ export function VmiConsignmentSection({
           </p>
         </div>
 
-        <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
+        <div className="min-h-[132px] rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
           <div className="flex items-center justify-between">
             <span className="font-label text-xs font-semibold uppercase tracking-wider text-text-grey">
               Avg Vendor Fill Rate
@@ -247,7 +247,7 @@ export function VmiConsignmentSection({
           </p>
         </div>
 
-        <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
+        <div className="min-h-[132px] rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
           <div className="flex items-center justify-between">
             <span className="font-label text-xs font-semibold uppercase tracking-wider text-text-grey">
               Active VMI Vendors
@@ -264,7 +264,7 @@ export function VmiConsignmentSection({
           </p>
         </div>
 
-        <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
+        <div className="min-h-[132px] rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
           <div className="flex items-center justify-between">
             <span className="font-label text-xs font-semibold uppercase tracking-wider text-text-grey">
               VMI Stockout Risks
@@ -283,7 +283,7 @@ export function VmiConsignmentSection({
       </div>
 
       {/* ── Sell-Through Rate by Ownership Chart ─────────────────────────────── */}
-      <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">
+      <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
         <div className="mb-4">
           <h3 className="font-heading text-headline-md font-semibold text-on-surface">
             Sell-Through &amp; Depletion Velocity by Ownership
@@ -315,7 +315,7 @@ export function VmiConsignmentSection({
       </div>
 
       {/* ── Consignment Liability Aging Report Table ─────────────────────────── */}
-      <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">
+      <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
         <div className="mb-4">
           <h3 className="font-heading text-headline-md font-semibold text-on-surface">
             Consignment Liability Aging Report
@@ -377,7 +377,7 @@ export function VmiConsignmentSection({
       </div>
 
       {/* ── Vendor Scorecards Table ──────────────────────────────────────────── */}
-      <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">
+      <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
         <div className="mb-4">
           <h3 className="font-heading text-headline-md font-semibold text-on-surface">
             Vendor Scorecards (Fill Rate &amp; Inbound Accuracy)

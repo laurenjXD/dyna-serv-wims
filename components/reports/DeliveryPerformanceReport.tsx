@@ -28,7 +28,7 @@ export function DeliveryPerformanceReport({ initialData }: DeliveryPerformanceRe
   const latest = data.length > 0 ? data[data.length - 1] : undefined;
 
   return (
-    <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1">
       {/* ── Header & KPI Highlights ─────────────────────────────────────── */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-4">
         <div>

@@ -264,7 +264,7 @@ export function WarehouseReportsHub({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* ── 1. Global Header & Control Toolbar ────────────────────────────── */}
       <ReportsHeader
         facility={facility}
@@ -319,8 +319,8 @@ export function WarehouseReportsHub({
       <ReportKpis kpis={activeKpis} />
 
       {/* ── Section Quick Navigation Filter Bar ───────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 pb-2">
-        <div className="flex flex-wrap items-center gap-1.5 font-label text-xs font-semibold">
+      <div className="overflow-x-auto border-b border-slate-200/80 pb-2">
+        <div className="flex min-w-max items-center gap-1.5 font-label text-xs font-semibold">
           <button
             type="button"
             onClick={() => setActiveSection("all")}
@@ -391,7 +391,7 @@ export function WarehouseReportsHub({
 
       {/* ── 3. Dedicated Financial Settlement & Margin Reports ─────────────── */}
       {canReadFinancial && (activeSection === "all" || activeSection === "financial") && (
-        <section className="space-y-6 animate-in fade-in">
+        <section className="space-y-5 animate-in fade-in">
           {/* A. VMI Client Storage & CBM Billing Reconciliation */}
           <VmiBillingTable
             initialData={activeVmiBillingRows}
@@ -406,7 +406,7 @@ export function WarehouseReportsHub({
 
       {/* ── 4. Throughput, Delivery & Storage Reports ──────────────────────── */}
       {(activeSection === "all" || activeSection === "operations") && (
-        <section className="space-y-6 animate-in fade-in">
+        <section className="space-y-5 animate-in fade-in">
           {/* A & C. Movement Volume Throughput & Location Occupancy */}
           <ThroughputSection initialData={activeThroughput} />
 
@@ -424,7 +424,7 @@ export function WarehouseReportsHub({
 
       {/* ── 6 & 7. Templates Grid & Reports Archive Log ───────────────────── */}
       {(activeSection === "all" || activeSection === "archive") && (
-        <section className="space-y-6 animate-in fade-in">
+        <section className="space-y-5 animate-in fade-in">
           {/* Pre-built Templates Grid */}
           <TemplateCardGrid
             onRunTemplate={handleRunTemplate}

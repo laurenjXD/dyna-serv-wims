@@ -118,7 +118,7 @@ export function TemplateCardGrid({
           return (
             <div
               key={tpl.id}
-              className="rounded-2xl border border-slate-200/80 bg-surface-white p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+              className="rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-1 hover:shadow-md transition-all flex min-h-[180px] flex-col justify-between"
             >
               <div>
                 <div className="flex items-start justify-between gap-2">
