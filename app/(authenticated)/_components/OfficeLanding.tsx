@@ -2,7 +2,6 @@
 
 import React from "react";
 import { WeeklyTrendChart, type WeeklyTrendDatum } from "@/components/analytics/WeeklyTrendChart";
-import { OperationsDashboard } from "@/components/dashboard/OperationsDashboard";
 import type { WrrDocumentRow } from "@/lib/db/queries/receiving";
 import type { PickListRow } from "@/lib/db/queries/withdrawals";
 import type { InspectionCaseListRow } from "@/lib/db/queries/transfers";
@@ -116,15 +115,6 @@ export function OfficeLanding({
   return (
     <div className="space-y-6">
       {/* ── Direct WMS Operations Dashboard Suite ─────────────────────────────── */}
-      <OperationsDashboard
-        kpis={dashboardKpis}
-        flowData={dashboardMonthlyFlow}
-        occupancyData={dashboardLocationOccupancy}
-        deliveryPerformance={dashboardDeliveryPerformance}
-        heatmapGrid={dashboardHeatmapData}
-        masterInventory={dashboardMasterInventory}
-      />
-
       {/* ── Accessible Metadata for Tests (Screen Reader / Headless Assertions) ── */}
       <div className="sr-only" aria-hidden="true">
         <span aria-label={`Low Stock Items: ${hasReportingAccess && inventoryKpis ? inventoryKpis.lowStockItemsCount : "—"}`}>
