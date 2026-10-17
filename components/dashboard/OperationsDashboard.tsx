@@ -8,7 +8,6 @@ import { DeliveryPerformanceChart } from "./DeliveryPerformanceChart";
 import { LocationOccupancyChart } from "./LocationOccupancyChart";
 import { MonthlyHeatmap } from "./MonthlyHeatmap";
 import { MasterInventoryTable } from "./MasterInventoryTable";
-import { verifyBarcodeAction } from "@/lib/actions/scanner";
 import { useRouter } from "next/navigation";
 import type {
   DashboardKpiData,
@@ -22,13 +21,8 @@ import type {
 import {
   CheckCircle2,
   AlertCircle,
-  FileText,
-  Scan,
-  Camera,
-  X,
   PieChart,
   Activity,
-  Loader2,
 } from "lucide-react";
 
 export interface OperationsDashboardProps {
@@ -63,9 +57,6 @@ export function OperationsDashboard({
   const [reportSuccessMessage, setReportSuccessMessage] = useState<string | null>(null);
   const [reportErrorMessage, setReportErrorMessage] = useState<string | null>(null);
   const [mobilePerfTab, setMobilePerfTab] = useState<"otif" | "occupancy">("otif");
-  const [isScanModalOpen, setIsScanModalOpen] = useState(false);
-  const [customScanInput, setCustomScanInput] = useState("");
-  const [isScanning, setIsScanning] = useState(false);
   const [activeStockFilter, setActiveStockFilter] = useState<"all" | "low_stock" | "held">("all");
 
   const handleRefresh = async () => {
@@ -111,32 +102,6 @@ export function OperationsDashboard({
     } catch (err) {
       console.error(err);
       setReportErrorMessage("Failed to generate and download PDF report.");
-    }
-  };
-
-  const handleExecuteScan = async (code: string) => {
-    if (!code || isScanning) return;
-    setIsScanning(true);
-    try {
-      const res = await verifyBarcodeAction(code);
-      if (res.success) {
-        setReportErrorMessage(null);
-        setReportSuccessMessage(`Live Barcode Verified: ${res.data?.title} (${res.data?.code}) · ${res.data?.details}`);
-      } else {
-        setReportSuccessMessage(null);
-        setReportErrorMessage(res.message);
-      }
-      setIsScanModalOpen(false);
-      setCustomScanInput("");
-      setTimeout(() => {
-        setReportSuccessMessage(null);
-        setReportErrorMessage(null);
-      }, 5000);
-    } catch (err) {
-      console.error(err);
-      setReportErrorMessage("Failed to verify barcode with server.");
-    } finally {
-      setIsScanning(false);
     }
   };
 
@@ -259,121 +224,6 @@ export function OperationsDashboard({
       {/* ── 5. Master Inventory Live Positions ────────────────────────────── */}
       <MasterInventoryTable initialData={masterInventory} statusFilter={activeStockFilter} />
 
-      {/* ─────────────────────────────────────────────────────────────────── */}
-      {/* 📱 FIXED FLOATING BOTTOM ACTION DOCK (< 1024px)                     */}
-      {/* ─────────────────────────────────────────────────────────────────── */}
-      <div className="fixed bottom-[calc(3.5rem+0.75rem)] inset-x-3 z-40 lg:hidden flex items-center justify-between gap-2.5 bg-brand-navy/95 text-white p-2 rounded-2xl shadow-2xl backdrop-blur-lg border border-white/20">
-        {/* Prominent Scan Barcode/QR Camera Button */}
-        <button
-          type="button"
-          onClick={() => setIsScanModalOpen(true)}
-          className="flex-1 flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-primary hover:bg-primary-hover px-4 font-heading text-sm font-bold text-white shadow-md active:scale-95 transition-transform"
-        >
-          <Camera size={19} />
-          <span>Scan Barcode / QR</span>
-        </button>
-
-        {/* Quick PDF Export */}
-        <button
-          type="button"
-          onClick={handleGenerateReport}
-          aria-label="Generate Quick PDF Report"
-          className="flex min-h-[48px] w-12 items-center justify-center rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/10 active:scale-95 transition-transform shrink-0"
-        >
-          <FileText size={18} />
-        </button>
-      </div>
-
-      {/* ── Interactive Scan Modal / Drawer ───────────────────────────────── */}
-      {isScanModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
-          <div className="w-full max-w-md rounded-t-3xl sm:rounded-3xl bg-surface-white p-6 shadow-elevation-4 border border-slate-200 animate-in slide-in-from-bottom-6">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-brand-navy">
-                  <Scan size={18} />
-                </div>
-                <div>
-                  <h3 className="font-heading text-headline-sm font-extrabold text-brand-navy">
-                    Live Barcode Scanner
-                  </h3>
-                  <p className="font-body text-[11px] text-text-grey">
-                    Query live SKU, Bin Location, or Lot Number
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsScanModalOpen(false)}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Viewfinder simulation */}
-            <div className="mt-4 relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-primary/50 bg-slate-950 p-6 text-center text-white overflow-hidden min-h-[160px]">
-              <div className="absolute inset-0 bg-gradient-to-b from-primary/10 via-transparent to-primary/10 animate-pulse pointer-events-none"></div>
-              <div className="h-24 w-24 rounded-xl border-2 border-primary relative flex items-center justify-center">
-                <div className="h-0.5 w-full bg-red-500 shadow-[0_0_8px_#ef4444] animate-bounce"></div>
-              </div>
-              <p className="mt-3 font-mono text-xs text-slate-300">
-                Ready for physical handheld or camera scanner
-              </p>
-            </div>
-
-            {/* Manual Code Entry */}
-            <div className="mt-4 space-y-2">
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleExecuteScan(customScanInput);
-                }}
-                className="flex items-center gap-2"
-              >
-                <input
-                  type="text"
-                  placeholder="Enter SKU, Bin, or Lot..."
-                  value={customScanInput}
-                  onChange={(e) => setCustomScanInput(e.target.value)}
-                  className="flex-1 h-11 rounded-xl border border-slate-200 px-3 font-mono text-xs text-slate-900 focus:border-brand-navy focus:outline-none"
-                />
-                <button
-                  type="submit"
-                  disabled={isScanning || !customScanInput.trim()}
-                  className="h-11 px-4 rounded-xl bg-brand-navy text-white font-label text-xs font-bold disabled:opacity-50 flex items-center gap-1.5"
-                >
-                  {isScanning && <Loader2 size={13} className="animate-spin" />}
-                  <span>Verify</span>
-                </button>
-              </form>
-
-              {/* Quick Preset Buttons */}
-              <div className="pt-2 border-t border-slate-100">
-                <p className="font-label text-[11px] font-bold uppercase tracking-wider text-text-grey mb-2">
-                  Sample Master SKU Lookups:
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleExecuteScan("SKU-DSGC-8841")}
-                    className="flex min-h-[40px] items-center justify-center rounded-xl border border-slate-200 bg-slate-50 font-mono text-xs font-bold text-slate-800 hover:bg-blue-50 active:scale-95"
-                  >
-                    SKU-DSGC-8841
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleExecuteScan("A1-01")}
-                    className="flex min-h-[40px] items-center justify-center rounded-xl border border-slate-200 bg-slate-50 font-mono text-xs font-bold text-slate-800 hover:bg-blue-50 active:scale-95"
-                  >
-                    BIN-A1-01
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

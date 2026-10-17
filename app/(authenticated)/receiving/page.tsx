@@ -64,10 +64,10 @@ const STATUS_FILTER_OPTIONS = [
 
 type TabKey = "receive" | "wrrs" | "ledger";
 
-const TABS: Array<{ key: TabKey; label: string }> = [
-  { key: "wrrs", label: "WRRs (Work Queue)" },
-  { key: "receive", label: "Receive" },
-  { key: "ledger", label: "Incoming Ledger" },
+const TABS: Array<{ key: TabKey; label: string; mobileLabel: string }> = [
+  { key: "wrrs", label: "WRRs (Work Queue)", mobileLabel: "WRRs" },
+  { key: "receive", label: "Receive", mobileLabel: "Receive" },
+  { key: "ledger", label: "Incoming Ledger", mobileLabel: "Incoming" },
 ];
 
 function WrrMobileCards({
@@ -202,7 +202,7 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
       <div
         role="tablist"
         aria-label="Receiving sections"
-        className="mt-6 flex w-full gap-0 overflow-hidden border-b border-outline-variant/30"
+        className="mt-6 flex w-full min-w-0 gap-0 overflow-x-clip overflow-y-hidden border-b border-outline-variant/30"
       >
         {TABS.map((tab) => {
           const isActive = tab.key === activeTab;
@@ -218,13 +218,14 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
               href={href}
               role="tab"
               aria-selected={isActive}
-              className={`flex h-11 min-w-0 flex-1 items-center justify-center whitespace-nowrap border-b-2 px-0 font-label text-[11px] font-semibold leading-none sm:text-label focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
+              className={`flex h-11 min-w-0 flex-1 items-center justify-center overflow-hidden whitespace-nowrap border-b-2 px-0 font-label text-[11px] font-semibold leading-none sm:text-label focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
                 isActive
                   ? "border-on-surface text-on-surface"
                   : "border-transparent text-text-grey hover:text-on-surface"
               }`}
             >
-              {tab.label}
+              <span className="truncate sm:hidden">{tab.mobileLabel}</span>
+              <span className="hidden truncate sm:inline">{tab.label}</span>
             </Link>
           );
         })}
