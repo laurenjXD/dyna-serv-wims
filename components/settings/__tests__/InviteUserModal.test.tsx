@@ -97,4 +97,20 @@ describe("InviteUserModal (design.md §2.1, FR-4.2/FR-4.3)", () => {
     expect(await screen.findByText("Email already invited")).toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();
   });
+
+  it("recovers from a rejected invite request instead of staying in Sending state", async () => {
+    const onInvite = vi.fn(async () => {
+      throw new Error("Invitation service unavailable");
+    });
+    const user = userEvent.setup();
+    render(<InviteUserModal parties={parties} onClose={() => {}} onInvite={onInvite} />);
+
+    await user.type(screen.getByTestId("invite-email-input"), "staff@example.com");
+    await user.type(screen.getByTestId("invite-display-name-input"), "Jane Staff");
+    await user.click(screen.getByTestId("invite-submit"));
+
+    expect(await screen.findByText("Invitation service unavailable")).toBeInTheDocument();
+    expect(screen.getByTestId("invite-submit")).not.toBeDisabled();
+    expect(screen.getByTestId("invite-submit")).toHaveTextContent("Send invite");
+  });
 });

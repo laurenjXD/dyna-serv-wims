@@ -23,6 +23,22 @@ import { headers } from "next/headers";
 import { parseUserAgentDevice } from "@/lib/user-settings/device-parser";
 import { withSettingsTimeout } from "@/lib/user-settings/with-timeout";
 
+const INVITE_PROVIDER_TIMEOUT_MS = 15_000;
+
+async function withInviteProviderTimeout<T>(request: Promise<T>): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(
+      () => reject(new Error("The invitation provider timed out. Check Supabase Auth configuration and try again.")),
+      INVITE_PROVIDER_TIMEOUT_MS,
+    );
+  });
+
+  return Promise.race([request, timeout]).finally(() => {
+    if (timeoutId) clearTimeout(timeoutId);
+  });
+}
+
 export type ActionResult<T = undefined> =
   | { ok: true; data: T }
   | { ok: false; error: string };
@@ -564,16 +580,24 @@ export async function inviteUser(input: InviteUserInput): Promise<ActionResult<{
   }
 
   const serviceClient = createServiceRoleClient();
-  const { data: authData, error: authError } = await serviceClient.auth.admin.inviteUserByEmail(
-    parsed.data.email,
-    {
-      data: {
-        displayName: parsed.data.displayName,
-        employee_id: `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
-      },
-      redirectTo,
-    },
-  );
+  let authData: Awaited<ReturnType<typeof serviceClient.auth.admin.inviteUserByEmail>>["data"];
+  let authError: Awaited<ReturnType<typeof serviceClient.auth.admin.inviteUserByEmail>>["error"];
+  try {
+    ({ data: authData, error: authError } = await withInviteProviderTimeout(
+      serviceClient.auth.admin.inviteUserByEmail(parsed.data.email, {
+        data: {
+          displayName: parsed.data.displayName,
+          employee_id: `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
+        },
+        redirectTo,
+      }),
+    ));
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Failed to send invitation email.",
+    };
+  }
 
   if (authError || !authData?.user) {
     return { ok: false, error: authError?.message ?? "Failed to send invitation email." };

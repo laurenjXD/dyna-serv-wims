@@ -17,6 +17,22 @@ import {
 import { SYSTEM_ROLE_OPTIONS } from "@/lib/user-settings/roles";
 import type { ActivePartyOption } from "@/app/(authenticated)/settings/team/actions";
 
+const INVITE_REQUEST_TIMEOUT_MS = 20_000;
+
+function withInviteTimeout<T>(request: Promise<T>): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(
+      () => reject(new Error("The invitation request timed out. Check the server configuration and try again.")),
+      INVITE_REQUEST_TIMEOUT_MS,
+    );
+  });
+
+  return Promise.race([request, timeout]).finally(() => {
+    if (timeoutId) clearTimeout(timeoutId);
+  });
+}
+
 export function InviteUserModal({
   parties,
   onClose,
@@ -58,13 +74,24 @@ export function InviteUserModal({
     }
     setErrors({});
     setSubmitting(true);
-    const result = await onInvite(parsed.data);
-    setSubmitting(false);
-    if (!result.ok) {
-      setServerError(result.error ?? "Failed to send invitation.");
-      return;
+    try {
+      const result = await withInviteTimeout(onInvite(parsed.data));
+      if (!result.ok) {
+        setServerError(result.error ?? "Failed to send invitation.");
+        return;
+      }
+      onClose();
+    } catch (error) {
+      setServerError(
+        error instanceof Error
+          ? error.message
+          : "The invitation request failed. Please try again.",
+      );
+    } finally {
+      // A rejected or timed-out Server Action must never leave the modal
+      // permanently disabled in the SENDING state.
+      setSubmitting(false);
     }
-    onClose();
   }
 
   return (
