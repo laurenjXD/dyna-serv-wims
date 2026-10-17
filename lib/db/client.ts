@@ -41,7 +41,7 @@ function getDb(): Db {
     ].find((value) => Boolean(value?.trim()))?.trim() ?? "";
     if (!configuredConnectionString) {
       throw new Error(
-        "DATABASE_URL environment variable is missing. Please configure it in your Vercel Project Settings > Environment Variables."
+        "Database connection is not configured. Set DATABASE_URL_RUNTIME, DATABASE_URL, or POSTGRES_URL in the server environment."
       );
     }
     const isServerless = process.env.VERCEL === "1" || process.env.NODE_ENV === "production";

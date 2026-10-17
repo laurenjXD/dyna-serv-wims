@@ -25,28 +25,50 @@ import postgres, { type Sql } from "postgres";
 import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import type { RlsConnection, RlsPool } from "./rls-transaction";
 import * as schema from "./schema";
+import { normalizeDatabaseConnectionString } from "./connection-string";
 
 // Keep this in sync with lib/db/client.ts. Vercel's Supabase integration
 // supplies POSTGRES_URL, while local development and CI use DATABASE_URL.
 // This pool is used exclusively by protected writes, so accepting only the
 // latter made every party/item creation fail in the deployed environment
 // even though server-rendered reads could connect successfully.
-const connectionString =
-  process.env.DATABASE_URL_RUNTIME ??
-  process.env.DATABASE_URL ??
-  process.env.POSTGRES_URL ??
-  "";
+let sqlClient: Sql | null = null;
 
-// `prepare: false` matches lib/db/client.ts's existing rationale: required
-// for Supabase's connection pooler (pgbouncer, transaction mode).
-const sql: Sql = postgres(connectionString, {
-  prepare: false,
-  connect_timeout: 10,
-  idle_timeout: 20,
-  max: 10,
-});
+function getSqlClient(): Sql {
+  if (sqlClient) return sqlClient;
+
+  const configuredConnectionString = [
+    process.env.DATABASE_URL_RUNTIME,
+    process.env.DATABASE_URL,
+    process.env.POSTGRES_URL,
+  ].find((value) => Boolean(value?.trim()))?.trim() ?? "";
+
+  if (!configuredConnectionString) {
+    throw new Error(
+      "Database connection is not configured. Set DATABASE_URL_RUNTIME, DATABASE_URL, or POSTGRES_URL in the server environment.",
+    );
+  }
+
+  const isServerless = process.env.VERCEL === "1" || process.env.NODE_ENV === "production";
+  const connectionString = normalizeDatabaseConnectionString(
+    configuredConnectionString,
+    isServerless,
+  );
+
+  // `prepare: false` matches lib/db/client.ts's existing rationale: required
+  // for Supabase's connection pooler (pgbouncer, transaction mode).
+  sqlClient = postgres(connectionString, {
+    prepare: false,
+    connect_timeout: 10,
+    idle_timeout: 20,
+    max: isServerless ? 5 : 10,
+    ssl: connectionString.includes("supabase") ? "require" : undefined,
+  });
+  return sqlClient;
+}
 
 function buildConnection(): RlsConnection {
+  const sql = getSqlClient();
   let resolveBegun: (tx: unknown) => void;
   let rejectBegun: ((err: unknown) => void) | undefined;
   let settleOuter: (() => void) | undefined;
