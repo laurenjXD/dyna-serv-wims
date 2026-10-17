@@ -22,11 +22,15 @@ export function MigrationUploadForm() {
     formData.set("openingDate", "2026-10-09");
     startTransition(async () => {
       setCommitMessage(null);
-      const staged = await stageUbotMigration(formData);
-      setResult(staged);
-      if (staged.ok) {
-        const summary = await getMigrationSummary(staged.batchId);
-        if (summary.ok) setExceptions(summary.exceptions);
+      try {
+        const staged = await stageUbotMigration(formData);
+        setResult(staged);
+        if (staged.ok) {
+          const summary = await getMigrationSummary(staged.batchId);
+          if (summary.ok) setExceptions(summary.exceptions);
+        }
+      } catch (error) {
+        setResult({ ok: false, error: error instanceof Error ? error.message : "The workbook could not be staged." });
       }
     });
   }

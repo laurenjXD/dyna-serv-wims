@@ -63,6 +63,8 @@ export async function stageUbotMigration(formData: FormData): Promise<MigrationR
   const access = await canManageMigration();
   if (!access) return { ok: false, error: "You do not have permission to stage a data migration." };
 
+  try {
+
   const file = formData.get("file");
   if (!(file instanceof File)) return { ok: false, error: "Select the UBoT Excel workbook first." };
   if (!file.name.toLowerCase().endsWith(".xlsx")) return { ok: false, error: "The UBoT migration currently accepts .xlsx workbooks." };
@@ -95,6 +97,10 @@ export async function stageUbotMigration(formData: FormData): Promise<MigrationR
   if (result.kind === "unauthenticated") return { ok: false, error: "Your session is no longer authenticated." };
   if (!result.value.ok) return result.value;
   return result.value;
+  } catch (error) {
+    console.error("[data-migration] staging failed", error);
+    return { ok: false, error: error instanceof Error ? `The workbook could not be staged: ${error.message}` : "The workbook could not be staged. Check the server logs for details." };
+  }
 }
 
 export async function getMigrationSummary(batchId: string): Promise<MigrationSummaryResult> {
