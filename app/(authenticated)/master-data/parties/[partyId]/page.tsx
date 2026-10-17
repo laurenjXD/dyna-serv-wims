@@ -137,6 +137,23 @@ export default async function PartyDetailPage({
               {party.paymentTerms ?? "—"}
             </dd>
           </div>
+          {party.roles.some((role) => role.role === "customer") && party.rbeClassifications.length > 0 && (
+            <div className="sm:col-span-2 lg:col-span-3">
+              <dt className="font-label text-label text-text-grey">
+                Customer PEZA / RBE Classification
+              </dt>
+              <dd className="mt-1 flex flex-wrap gap-2">
+                {party.rbeClassifications.map((classification) => (
+                  <span
+                    key={classification}
+                    className="inline-flex items-center rounded border border-emerald-200 bg-emerald-50 px-2.5 py-1 font-mono text-label font-bold text-emerald-800"
+                  >
+                    {classification}
+                  </span>
+                ))}
+              </dd>
+            </div>
+          )}
           {(() => {
             const clean = party.notes ? party.notes.replace(/^\[RBE:\s*[^\]]+\]\s*\n?/i, "").trim() : "";
             if (!clean) return null;

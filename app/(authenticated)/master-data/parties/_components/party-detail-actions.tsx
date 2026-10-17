@@ -738,13 +738,10 @@ export function PartyDetailActions({
           )}
         </div>
 
-        {canManage && (
-          <div className="mt-4">
-            <AddRoleForm
-              partyId={partyId}
-              existingRoles={roles.map((r) => r.role)}
-            />
-          </div>
+        {canManage && roles.length === 0 && (
+          <p className="mt-3 font-body text-body-sm text-text-grey">
+            Assign business roles from Edit Organization.
+          </p>
         )}
       </section>
 

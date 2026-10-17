@@ -81,6 +81,9 @@ export function PartyForm({ action, party, initialCode, existingCodes = [], canc
   const [codeValue, setCodeValue] = useState<string>(party?.code ?? initialCode ?? "");
 
   const handleRoleToggle = (roleVal: string, isChecked: boolean) => {
+    if (roleVal === "customer" && !isChecked) {
+      setSelectedRbe([]);
+    }
     setSelectedRoles((prev) => {
       if (isChecked) {
         return prev.includes(roleVal) ? prev : [...prev, roleVal];

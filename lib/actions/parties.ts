@@ -362,7 +362,11 @@ export async function setPartyRbeClassifications(
     const db = tx.db as DbLike;
     const roleRows = await db.select({ role: partyRoles.role }).from(partyRoles).where(eq(partyRoles.partyId, partyId));
     if (!(roleRows as Array<{ role: string }>).some((row) => row.role === "customer")) {
-      return { ok: false, error: "RBE classifications are available only for Customer enrollment." } satisfies ActionSimpleResult;
+      // RBE is customer-only. If an organization is changed from Customer to
+      // Supplier, remove any legacy classifications instead of blocking the
+      // otherwise valid role update.
+      await db.delete(partyRbeClassifications).where(eq(partyRbeClassifications.partyId, partyId));
+      return { ok: true } satisfies ActionSimpleResult;
     }
     await db.delete(partyRbeClassifications).where(eq(partyRbeClassifications.partyId, partyId));
     if (values.length > 0) {
