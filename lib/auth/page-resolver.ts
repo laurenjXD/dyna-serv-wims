@@ -25,6 +25,22 @@ import {
   userPartyScopes,
 } from "@/lib/db/schema";
 
+const AUTHORIZATION_QUERY_TIMEOUT_MS = 6000;
+
+function withAuthorizationTimeout<T>(request: Promise<T>): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(
+      () => reject(new Error("Authorization query timed out")),
+      AUTHORIZATION_QUERY_TIMEOUT_MS,
+    );
+  });
+
+  return Promise.race([request, timeout]).finally(() => {
+    if (timeoutId) clearTimeout(timeoutId);
+  });
+}
+
 async function loadAuthorizationRecordViaSupabase(
   userId: string,
 ): Promise<RawAuthorizationRecord | null> {
@@ -125,7 +141,7 @@ export async function createPageResolver() {
       if (!profile) return null;
 
       // Load grants: user_roles → roles → role_permissions → permissions
-      const grantRows = await db
+      const grantRows = await withAuthorizationTimeout(db
         .select({
           roleKey: roles.key,
           resource: permissions.resource,
@@ -145,10 +161,10 @@ export async function createPageResolver() {
             eq(roles.isActive, true),
             eq(permissions.isActive, true),
           ),
-        );
+        ));
 
       // Load party scopes (active assignments only)
-      const scopeRows = await db
+      const scopeRows = await withAuthorizationTimeout(db
         .select({
           partyId: userPartyScopes.partyId,
           flowType: userPartyScopes.flowType,
@@ -161,7 +177,7 @@ export async function createPageResolver() {
             lte(userPartyScopes.validFrom, new Date()),
             or(isNull(userPartyScopes.validUntil), gt(userPartyScopes.validUntil, new Date())),
           ),
-        );
+        ));
 
       const activeRoleKeys = [...new Set(grantRows.map((r) => r.roleKey))];
 
@@ -186,7 +202,7 @@ export async function createPageResolver() {
         // current user's verified JWT and database RLS policies; it never
         // trusts browser-supplied role data.
         try {
-          return await loadAuthorizationRecordViaSupabase(userId);
+          return await withAuthorizationTimeout(loadAuthorizationRecordViaSupabase(userId));
         } catch (supabaseError) {
           console.error("[auth/page-resolver] both authorization sources failed", {
             databaseError,
