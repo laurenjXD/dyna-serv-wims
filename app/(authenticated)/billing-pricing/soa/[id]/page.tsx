@@ -14,7 +14,7 @@ import { notFound } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
-import { getPartyWithRoles, listParties } from "@/lib/db/queries/parties";
+import { listParties } from "@/lib/db/queries/parties";
 import { getVmiDailyBalanceRows } from "@/lib/billing/queries/vmi-ledger";
 import { getDailyForexRate } from "@/lib/billing/forex-service";
 import { getVmiHandlingForPeriod } from "@/lib/billing/vmi-handling";
@@ -55,20 +55,19 @@ export default async function SoaDetailPage({ params, searchParams }: PageProps)
 
   if (id === "sample") notFound();
 
-  let party = null;
+  let party: { id: string; code: string; name: string } | null = null;
   const targetPartyId = searchPartyId || id;
   if (targetPartyId) {
-    if (isUuid(targetPartyId)) {
-      party = await getPartyWithRoles(db, targetPartyId);
-    } else {
-      // Lookup by code or prefix
-      const allParties = await listParties(db, { limit: 20 });
-      party = allParties.rows.find((p) =>
-        p.code?.toLowerCase() === targetPartyId.toLowerCase() ||
-        p.id.startsWith(targetPartyId) ||
-        p.name.toLowerCase().includes(targetPartyId.toLowerCase())
-      ) ?? null;
-    }
+    // The detail view only needs the organization identity. Avoid loading
+    // optional role/RBE relations here: a problem with those supporting
+    // tables must not prevent an SOA from opening.
+    const allParties = await listParties(db, { limit: 100 });
+    party = allParties.rows.find((p) =>
+      (isUuid(targetPartyId) && p.id === targetPartyId) ||
+      p.code?.toLowerCase() === targetPartyId.toLowerCase() ||
+      p.id.startsWith(targetPartyId) ||
+      p.name.toLowerCase().includes(targetPartyId.toLowerCase())
+    ) ?? null;
   } else {
     const allParties = await listParties(db, { limit: 1 });
     party = allParties.rows[0] ?? null;
@@ -125,41 +124,49 @@ export default async function SoaDetailPage({ params, searchParams }: PageProps)
       }
 
       // 2. Handling In / Out Movement Aggregation
-      const handling = await getVmiHandlingForPeriod(
-        db,
-        party.id,
-        periodStartDate,
-        periodEndDate
-      );
-      handlingInUsd = Number(handling.handlingInUsd.toFixed(2));
-      handlingOutUsd = Number(handling.handlingOutUsd.toFixed(2));
+      try {
+        const handling = await getVmiHandlingForPeriod(
+          db,
+          party.id,
+          periodStartDate,
+          periodEndDate
+        );
+        handlingInUsd = Number(handling.handlingInUsd.toFixed(2));
+        handlingOutUsd = Number(handling.handlingOutUsd.toFixed(2));
+      } catch (error) {
+        console.error("SOA detail: handling data unavailable", error);
+      }
 
       // 3. Documentation, Delivery & Ad-hoc Charges
-      const charges = await getVmiChargeAggregationForPeriod(db, {
-        partyId: party.id,
-        periodStartDate,
-        periodEndDate,
-        lockedExchangeRatePhp: exchangeRate,
-      });
-      if (charges.documentationUsd > 0 || charges.deliveryUsd > 0) {
+      try {
+        const charges = await getVmiChargeAggregationForPeriod(db, {
+          partyId: party.id,
+          periodStartDate,
+          periodEndDate,
+          lockedExchangeRatePhp: exchangeRate,
+        });
         documentationUsd = Number(charges.documentationUsd.toFixed(2));
         deliveryUsd = Number(charges.deliveryUsd.toFixed(2));
+      } catch (error) {
+        console.error("SOA detail: charge data unavailable", error);
       }
 
       // 4. Recurring Fees (LOA, Trucking Admin, Surety Bond, Manpower)
-      const recurring = await getVmiRecurringFeeAggregationForPeriod(db, {
-        partyId: party.id,
-        periodStartDate,
-        periodEndDate,
-        lockedExchangeRatePhp: exchangeRate,
-      });
-      if (recurring.lines.length > 0) {
+      try {
+        const recurring = await getVmiRecurringFeeAggregationForPeriod(db, {
+          partyId: party.id,
+          periodStartDate,
+          periodEndDate,
+          lockedExchangeRatePhp: exchangeRate,
+        });
         const loaLine = recurring.lines.find((l) => l.feeType === "loa");
         const truckLine = recurring.lines.find((l) => l.feeType === "trucking_admin_fee");
         const suretyLine = recurring.lines.find((l) => l.feeType === "surety_bond");
         if (loaLine) loaFeeUsd = Number(loaLine.amountUsd.toFixed(2));
         if (truckLine) truckingAdminUsd = Number(truckLine.amountUsd.toFixed(2));
         if (suretyLine) suretyBondUsd = Number(suretyLine.amountUsd.toFixed(2));
+      } catch (error) {
+        console.error("SOA detail: recurring fee data unavailable", error);
       }
   }
 
