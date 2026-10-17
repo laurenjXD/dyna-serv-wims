@@ -254,7 +254,22 @@ export function OperationsDashboard({
       </div>
 
       {/* ── 4. Monthly Location Heatmap with Interactive Audit Drawer ─────── */}
-      <MonthlyHeatmap initialGrid={heatmapGrid} />
+      <details
+        className="rounded-2xl border border-slate-200/80 bg-surface-white shadow-sm"
+        open={Boolean(heatmapGrid && heatmapGrid.length > 0)}
+      >
+        <summary className="cursor-pointer list-none px-4 py-3 font-heading text-data-display font-bold text-brand-navy focus:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:px-5">
+          <span className="flex items-center justify-between gap-3">
+            <span>Location Analytics</span>
+            <span className="font-body text-body-sm font-normal text-text-grey">
+              View heatmap
+            </span>
+          </span>
+        </summary>
+        <div className="border-t border-slate-100 p-3 sm:p-4">
+          <MonthlyHeatmap initialGrid={heatmapGrid} preview />
+        </div>
+      </details>
 
       {/* ── 5. Master Inventory Live Positions ────────────────────────────── */}
       <MasterInventoryTable initialData={masterInventory} statusFilter={activeStockFilter} />

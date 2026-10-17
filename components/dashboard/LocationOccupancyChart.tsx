@@ -41,13 +41,8 @@ export function LocationOccupancyChart({ initialData }: LocationOccupancyChartPr
         </div>
 
         {/* Donut Chart with Center Metric */}
-        {data.length === 0 ? (
-          <div className="mt-3 flex h-24 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 text-center font-body text-body-sm text-text-grey">
-            No occupancy data available.
-          </div>
-        ) : (
-          <div className="relative mt-2 h-36 w-full">
-            <ResponsiveContainer width="100%" height="100%">
+        <div className="relative mt-2 h-44 w-full">
+          <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
                 data={data}
@@ -80,23 +75,22 @@ export function LocationOccupancyChart({ initialData }: LocationOccupancyChartPr
                 }}
               />
             </PieChart>
-            </ResponsiveContainer>
+          </ResponsiveContainer>
 
             {/* Center Metric */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="font-mono text-xl font-black text-brand-navy leading-none">
-                {overallPct}%
-              </span>
-              <span className="text-[10px] font-label font-bold uppercase tracking-wider text-text-grey mt-0.5">
-                UTILIZED
-              </span>
-            </div>
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <span className="font-mono text-xl font-black text-brand-navy leading-none">
+              {overallPct}%
+            </span>
+            <span className="text-[10px] font-label font-bold uppercase tracking-wider text-text-grey mt-0.5">
+              UTILIZED
+            </span>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Breakdown Legend Grid */}
-      {data.length > 0 && <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs">
+      <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs">
         {data.map((zone) => (
           <div
             key={zone.name}
@@ -111,7 +105,7 @@ export function LocationOccupancyChart({ initialData }: LocationOccupancyChartPr
             </span>
           </div>
         ))}
-      </div>}
+      </div>
     </div>
   );
 }

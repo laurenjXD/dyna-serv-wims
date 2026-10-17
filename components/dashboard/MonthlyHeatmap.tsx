@@ -14,6 +14,7 @@ import { DayAuditDrawer } from "./DayAuditDrawer";
 
 interface MonthlyHeatmapProps {
   initialGrid?: HeatmapCellDatum[][];
+  preview?: boolean;
 }
 
 const MONTHS = [
@@ -22,14 +23,19 @@ const MONTHS = [
   { name: "Jun 2026", key: "Jun", year: 2026 },
 ];
 
-export function MonthlyHeatmap({ initialGrid }: MonthlyHeatmapProps) {
+export function MonthlyHeatmap({ initialGrid, preview = false }: MonthlyHeatmapProps) {
   const [selectedMonth, setSelectedMonth] = useState("Aug 2026");
   const [metricView, setMetricView] = useState<HeatmapMetricView>("pickActivity");
   const [selectedAuditRecord, setSelectedAuditRecord] = useState<BinAuditRecord | null>(null);
   const [showMonthMenu, setShowMonthMenu] = useState(false);
   const [mobileSelectedBin, setMobileSelectedBin] = useState("A1-01");
 
-  const gridData = useMemo(() => initialGrid ?? [], [initialGrid]);
+  const gridData = useMemo(() => {
+    const source = initialGrid ?? [];
+    return preview
+      ? source.slice(0, 4).map((row) => row.slice(0, 14))
+      : source;
+  }, [initialGrid, preview]);
   const binRowNames = gridData.map((r) => (r[0] ? r[0].binRow : "BIN"));
 
   // Group cells by bin row
@@ -74,22 +80,6 @@ export function MonthlyHeatmap({ initialGrid }: MonthlyHeatmapProps) {
     if (metricView === "inventoryAging") return `${cell.inventoryAgingDays}d`;
     return cell.varianceRatePct > 0 ? `${cell.varianceRatePct}%` : "—";
   };
-
-  if (gridData.length === 0) {
-    return (
-      <section className="rounded-2xl border border-slate-200/80 bg-surface-white p-4 shadow-sm">
-        <div className="flex items-center gap-2">
-          <Flame size={18} className="text-amber-500" />
-          <h2 className="font-heading text-title-md font-bold text-brand-navy">
-            Location Activity
-          </h2>
-        </div>
-        <p className="mt-1 font-body text-body-sm text-text-grey">
-          Heatmap insights will appear after location activity is recorded.
-        </p>
-      </section>
-    );
-  }
 
   return (
     <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-5 shadow-sm space-y-4">
