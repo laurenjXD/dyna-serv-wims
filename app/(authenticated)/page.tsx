@@ -227,7 +227,7 @@ export default async function Home() {
     .from(userProfiles)
     .where(eq(userProfiles.id, context.userId))
     .limit(1);
-  const profileRows = await profileRowsPromise;
+  const profileRows = await withDashboardDataFallback(profileRowsPromise, []);
   const displayName = profileRows[0]?.displayName ?? "";
   const firstName = displayName.split(" ")[0] || "there";
 
@@ -237,11 +237,11 @@ export default async function Home() {
 
   // ─── Capability-gated count aggregates (all tiers) ───────────────────
   const [openWrrResult, openPickListResult, pendingTransferResult, openInspectionResult, pendingApprovalResult] = await Promise.all([
-    hasReceivingAccess ? listWrrDocuments(db, { limit: 1, offset: 0, status: "receiving_in_progress" }) : Promise.resolve({ total: 0 }),
-    hasPickListAccess ? listPickLists(db, { limit: 1, offset: 0, status: "allocated" }) : Promise.resolve({ total: 0 }),
-    hasTransferAccess ? listTransferRequests(db, { limit: 1, offset: 0, status: "staged" }) : Promise.resolve({ total: 0 }),
-    hasInspectionAccess ? listInspectionCases(db, { status: "open", limit: 1 }) : Promise.resolve({ total: 0 }),
-    hasApprovalAccess ? listPendingApprovalRequests(db, { limit: 1, offset: 0 }) : Promise.resolve({ total: 0 }),
+    hasReceivingAccess ? withDashboardDataFallback(listWrrDocuments(db, { limit: 1, offset: 0, status: "receiving_in_progress" }), { rows: [] as WrrDocumentRow[], total: 0 }) : Promise.resolve({ rows: [] as WrrDocumentRow[], total: 0 }),
+    hasPickListAccess ? withDashboardDataFallback(listPickLists(db, { limit: 1, offset: 0, status: "allocated" }), { rows: [] as PickListRow[], total: 0 }) : Promise.resolve({ rows: [] as PickListRow[], total: 0 }),
+    hasTransferAccess ? withDashboardDataFallback(listTransferRequests(db, { limit: 1, offset: 0, status: "staged" }), { rows: [], total: 0 }) : Promise.resolve({ rows: [], total: 0 }),
+    hasInspectionAccess ? withDashboardDataFallback(listInspectionCases(db, { status: "open", limit: 1 }), { rows: [] as InspectionCaseListRow[], total: 0 }) : Promise.resolve({ rows: [] as InspectionCaseListRow[], total: 0 }),
+    hasApprovalAccess ? withDashboardDataFallback(listPendingApprovalRequests(db, { limit: 1, offset: 0 }), { rows: [] as ApprovalRequestRow[], total: 0 }) : Promise.resolve({ rows: [], total: 0 }),
   ]);
   const openWrrs = openWrrResult.total;
   const openPickLists = openPickListResult.total;
