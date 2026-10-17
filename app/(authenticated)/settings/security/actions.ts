@@ -384,7 +384,7 @@ export async function getSystemAuditEvents(): Promise<{ ok: true; data: SystemAu
         }
 
         const entity = e.entityType.toLowerCase();
-        const module: SystemAuditEvent["module"] =
+        const auditModule: SystemAuditEvent["module"] =
           entity.includes("wrr") || entity.includes("lot") || entity.includes("item") || entity.includes("pick")
             ? "Floor & Stock"
             : entity.includes("billing") || entity.includes("margin") || entity.includes("soa") || entity.includes("tariff")
@@ -400,7 +400,7 @@ export async function getSystemAuditEvents(): Promise<{ ok: true; data: SystemAu
           action: e.action,
           targetEntity: `${e.entityType.toUpperCase()}-${e.entityId ? e.entityId.substring(0, 8) : "REF"}`,
           targetId: e.entityId,
-          module,
+          module: auditModule,
           severity: (e.action.toLowerCase().includes("error") || e.action.toLowerCase().includes("block") || e.action.toLowerCase().includes("revoke")
             ? "critical"
             : e.action.toLowerCase().includes("override") || e.action.toLowerCase().includes("suspend")
