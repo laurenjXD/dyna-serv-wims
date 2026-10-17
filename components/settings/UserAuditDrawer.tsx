@@ -26,17 +26,22 @@ interface UserAuditDrawerProps {
 export function UserAuditDrawer({ user, onClose }: UserAuditDrawerProps) {
   const [auditItems, setAuditItems] = useState<UserAuditItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [auditError, setAuditError] = useState<string | null>(null);
   const [revoking, setRevoking] = useState(false);
   const [revokedMessage, setRevokedMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
     setLoading(true);
+    setAuditError(null);
     setRevokedMessage(null);
     getUserAuditTrail(user.id).then((res) => {
       setLoading(false);
       if (res.ok) {
         setAuditItems(res.data);
+      } else {
+        setAuditItems([]);
+        setAuditError(res.error);
       }
     });
   }, [user]);
@@ -175,6 +180,10 @@ export function UserAuditDrawer({ user, onClose }: UserAuditDrawerProps) {
 
               {loading ? (
                 <div className="py-8 text-center text-xs text-slate-400">Loading user audit history...</div>
+              ) : auditError ? (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 p-6 text-center text-xs text-rose-800">
+                  {auditError}
+                </div>
               ) : auditItems.length === 0 ? (
                 <div className="rounded-xl border border-slate-200 p-6 text-center text-xs text-slate-500">
                   No floor activities recorded for this user yet.

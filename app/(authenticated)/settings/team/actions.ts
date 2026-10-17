@@ -461,41 +461,17 @@ export async function getUserAuditTrail(userId: string): Promise<ActionResult<Us
             entityType: r.entityType,
             entityId: r.entityId,
             timestamp: r.createdAt.toISOString(),
-            deviceContext: "BYOD · Floor Session",
+            deviceContext: "Recorded audit event",
             details,
           };
         }),
       };
     }
+    return { ok: true, data: [] };
   } catch {
-    // Database empty or initial state
+    // Never fabricate audit activity when the database is empty or unavailable.
+    return { ok: true, data: [] };
   }
-
-  // Fallback operational activity baseline for active accounts
-  const shortId = userId.replace(/-/g, "").substring(0, 4).toUpperCase();
-  return {
-    ok: true,
-    data: [
-      {
-        id: `audit-init-1-${shortId}`,
-        action: "Shift QR Check-In Bound",
-        entityType: "session",
-        entityId: "ZONE-A-STAGING",
-        timestamp: new Date().toISOString(),
-        deviceContext: "BYOD Mobile · Zone A (Wi-Fi)",
-        details: "Operator badge scanned and shift session initialized.",
-      },
-      {
-        id: `audit-init-2-${shortId}`,
-        action: "Dynamic Role Assigned",
-        entityType: "user_roles",
-        entityId: `ROLE-${shortId}`,
-        timestamp: new Date(Date.now() - 7200000).toISOString(),
-        deviceContext: "Admin Console · Office Hub",
-        details: "Granular warehouse floor capabilities provisioned.",
-      },
-    ],
-  };
 }
 
 export async function revokeUserSession(userId: string): Promise<ActionResult> {
