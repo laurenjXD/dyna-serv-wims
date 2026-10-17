@@ -74,6 +74,22 @@ function getTodayString(): string {
   });
 }
 
+const DASHBOARD_DATA_TIMEOUT_MS = 8000;
+
+function withDashboardDataTimeout<T>(request: Promise<T>): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(
+      () => reject(new Error("Dashboard data request timed out")),
+      DASHBOARD_DATA_TIMEOUT_MS,
+    );
+  });
+
+  return Promise.race([request, timeout]).finally(() => {
+    if (timeoutId) clearTimeout(timeoutId);
+  });
+}
+
 // ─── Derived inventory preview (top N items by total available stock) ──────────
 // Groups listStockView rows by item, sums qtyRemaining, sorts descending, takes
 // top N. Returns items with their FIFO/FEFO-ordered lot summary.
@@ -281,7 +297,7 @@ export default async function Home() {
     dashboardDeliveryPerformance,
     dashboardHeatmapData,
     dashboardMasterInventory,
-  ] = await Promise.all([
+  ] = await withDashboardDataTimeout(Promise.all([
     // Low Stock Items KPI — operational stock-count metric, gated
     // reporting.read (NOT reporting.financial_read — that gate was wrong
     // for a non-financial count; see specs/05 R11.5 gate-fix decision).
@@ -336,7 +352,7 @@ export default async function Home() {
     getDashboardDeliveryPerformance(),
     getDashboardHeatmapData(),
     getDashboardMasterInventory({ limit: 100 }),
-  ]);
+  ]));
 
   // Build top-5 inventory preview from stock rows.
   const inventoryPreview = buildInventoryPreview(stockRows, 5);
