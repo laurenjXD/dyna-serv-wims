@@ -101,25 +101,35 @@ export function UserManagementGrid({
   async function handleResendInvite(member: TeamMember) {
     setResendingId(member.id);
     setFeedback(null);
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
     try {
-      const res = await resendInvite(member.id);
+      const res = await Promise.race([
+        resendInvite(member.id),
+        new Promise<never>((_, reject) => {
+          timeoutId = setTimeout(
+            () => reject(new Error("The account setup request timed out. Check the mailbox before trying again.")),
+            45_000,
+          );
+        }),
+      ]);
       if (res.ok) {
         setFeedback({
           type: "success",
-          message: `Invitation link successfully resent to ${member.email || member.displayName}.`,
+          message: `Account setup link sent to ${member.email || member.displayName}.`,
         });
       } else {
         setFeedback({
           type: "error",
-          message: res.error ?? "Failed to resend invitation link.",
+          message: res.error ?? "Failed to send account setup link.",
         });
       }
-    } catch {
+    } catch (error) {
       setFeedback({
         type: "error",
-        message: "An unexpected error occurred while resending the invite.",
+        message: error instanceof Error ? error.message : "The account setup request failed. Check the mailbox before trying again.",
       });
     } finally {
+      if (timeoutId) clearTimeout(timeoutId);
       setResendingId(null);
     }
   }
@@ -245,14 +255,14 @@ export function UserManagementGrid({
                     disabled={resendingId === member.id}
                     onClick={() => handleResendInvite(member)}
                     className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 font-label text-xs font-semibold text-brand-navy hover:bg-slate-50 shadow-2xs transition-colors disabled:opacity-50"
-                    title="Resend invitation link"
+                    title="Send account setup link"
                   >
                     {resendingId === member.id ? (
                       <Loader2 className="h-3 w-3 animate-spin text-brand-navy" />
                     ) : (
                       <Mail className="h-3 w-3 text-brand-navy" />
                     )}
-                    <span>{resendingId === member.id ? "Sending…" : "Resend Invite"}</span>
+                    <span>{resendingId === member.id ? "Sending…" : "Send Setup Link"}</span>
                   </button>
                   <button
                     type="button"

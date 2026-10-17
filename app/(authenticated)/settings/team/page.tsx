@@ -18,6 +18,11 @@ import {
   cancelInvite,
 } from "./actions";
 
+// Team actions include an Auth email request plus account setup writes.
+// Allow that bounded work to finish on deployments with a short function
+// default, rather than terminating the request while the UI says "Sending".
+export const maxDuration = 60;
+
 export default async function SettingsTeamPage() {
   const [membersResult, partiesResult] = await Promise.all([
     listTeamMembers(),

@@ -560,6 +560,32 @@ export async function inviteUser(input: InviteUserInput): Promise<ActionResult<{
   if (configurationError) return { ok: false, error: configurationError };
 
   try {
+    // Supabase cannot invite an email that already belongs to a confirmed
+    // user. Check before calling the email provider so the UI can direct the
+    // admin to the existing account instead of appearing to hang.
+    const existingAccounts = (await db.execute(sql`
+      select p.status as profile_status, u.email_confirmed_at
+      from auth.users u
+      left join public.user_profiles p on p.id = u.id
+      where lower(u.email) = lower(${parsed.data.email})
+      limit 1
+    `)) as Array<{ profile_status: string | null; email_confirmed_at: string | Date | null }>;
+    const existingAccount = existingAccounts[0];
+    if (existingAccount) {
+      if (existingAccount.profile_status === "invited") {
+        return {
+          ok: false,
+          error: existingAccount.email_confirmed_at
+            ? "This email already has an account that opened its invitation. Use Send Setup Link on that team member to finish onboarding."
+            : "This email already has a pending invitation. Use Send Setup Link on that team member instead.",
+        };
+      }
+      if (existingAccount.profile_status === "inactive") {
+        return { ok: false, error: "This email belongs to an inactive account. Reactivate that team member instead of inviting them again." };
+      }
+      return { ok: false, error: "This email already has an account. Ask the user to sign in or reset their password." };
+    }
+
     const [roleRow] = await db
       .select({ id: roles.id })
       .from(roles)
@@ -569,7 +595,7 @@ export async function inviteUser(input: InviteUserInput): Promise<ActionResult<{
       return { ok: false, error: "The selected role is not available. Refresh the page and try again." };
     }
   } catch {
-    return { ok: false, error: "Unable to verify the selected role. Please try again." };
+    return { ok: false, error: "Unable to verify the account and selected role. Please try again." };
   }
 
   let redirectTo: string;
@@ -771,7 +797,13 @@ export async function resendInvite(userId: string): Promise<ActionResult> {
   }
 
   const serviceClient = createServiceRoleClient();
-  const { data: authUser, error: getUserError } = await serviceClient.auth.admin.getUserById(userId);
+  let authUser: Awaited<ReturnType<typeof serviceClient.auth.admin.getUserById>>["data"];
+  let getUserError: Awaited<ReturnType<typeof serviceClient.auth.admin.getUserById>>["error"];
+  try {
+    ({ data: authUser, error: getUserError } = await withInviteProviderTimeout(serviceClient.auth.admin.getUserById(userId)));
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Could not check the invited account." };
+  }
   if (getUserError || !authUser?.user?.email) {
     return { ok: false, error: "Could not locate user account to resend invite." };
   }
@@ -783,19 +815,33 @@ export async function resendInvite(userId: string): Promise<ActionResult> {
     return { ok: false, error: error instanceof Error ? error.message : "The invitation redirect URL is invalid." };
   }
 
-  const { error: inviteError } = await serviceClient.auth.admin.inviteUserByEmail(
-    authUser.user.email,
-    {
-      data: {
-        displayName: profile.displayName,
-        employee_id: (authUser.user.user_metadata?.employee_id as string) || `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
-      },
-      redirectTo,
-    },
-  );
-
-  if (inviteError) {
-    return { ok: false, error: inviteError.message };
+  try {
+    if (authUser.user.email_confirmed_at) {
+      // A confirmed user cannot receive another Supabase invitation. A
+      // recovery email creates a session that lands on the same onboarding
+      // page, where the invited profile can set its password and activate.
+      // Recovery links may return access tokens in the URL fragment; a
+      // server route cannot read that fragment, but /accept-invite can.
+      const onboardingUrl = new URL("/accept-invite", redirectTo).toString();
+      const { error } = await withInviteProviderTimeout(
+        serviceClient.auth.resetPasswordForEmail(authUser.user.email, { redirectTo: onboardingUrl }),
+      );
+      if (error) return { ok: false, error: error.message };
+    } else {
+      const { error } = await withInviteProviderTimeout(serviceClient.auth.admin.inviteUserByEmail(
+        authUser.user.email,
+        {
+          data: {
+            displayName: profile.displayName,
+            employee_id: (authUser.user.user_metadata?.employee_id as string) || `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
+          },
+          redirectTo,
+        },
+      ));
+      if (error) return { ok: false, error: error.message };
+    }
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Could not send the account setup email." };
   }
 
   // Audit log

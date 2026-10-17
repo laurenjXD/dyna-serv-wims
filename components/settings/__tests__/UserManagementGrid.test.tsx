@@ -184,7 +184,7 @@ describe("UserManagementGrid (FR-3.1, Task 21.6/21.8)", () => {
     await waitFor(() => expect(within(janeRow).getByText("active")).toBeInTheDocument());
   });
 
-  it("resends an invite link for an invited user", async () => {
+  it("sends a setup link for an invited user", async () => {
     const resendInvite = vi.fn(async () => ({ ok: true }));
     const user = userEvent.setup();
     render(
@@ -201,11 +201,12 @@ describe("UserManagementGrid (FR-3.1, Task 21.6/21.8)", () => {
 
     const resendBtn = screen.getByTestId("resend-invite-u2");
     expect(resendBtn).toBeInTheDocument();
+    expect(resendBtn).toHaveTextContent("Send Setup Link");
     await user.click(resendBtn);
 
     await waitFor(() => expect(resendInvite).toHaveBeenCalledWith("u2"));
     expect(
-      screen.getByText(/Invitation link successfully resent to vendor@example\.com/i),
+      screen.getByText(/Account setup link sent to vendor@example\.com/i),
     ).toBeInTheDocument();
   });
 
