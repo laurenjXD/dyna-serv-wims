@@ -32,7 +32,7 @@ Never ignore an error modal or attempt repeated random scanning without consulti
 * **Why It Failed**: The scanned barcode does not map to any active item in the master catalog.
 * **Next Action**: The floor screen pauses. Silent or offline item creation is forbidden. An administrator or catalog lead must enroll the item online via **Master Data** $\rightarrow$ **Item Enrollment** (`06-party-and-item-enrollment`). Once enrolled, the operator must re-scan the carton.
 
-#### Scenario 2.3: Inventory Model (Flow-Type) Mismatch
+#### Scenario 2.3: Inventory Model Mismatch
 * **What Happened**: Scan rejected with `"Inventory Model Mismatch"`.
 * **Why It Failed**: The physical item’s enrolled model (`Trading`, `VMI`, or `Supplies`) does not match the active WRR’s model. (e.g., scanning a Trading item during a VMI intake).
 * **Next Action**: Verify the physical shipment against the packing list. If the item was shipped under the wrong commercial flow, set it aside for supervisor review. Do not attempt to force the intake.

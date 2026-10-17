@@ -27,7 +27,7 @@ graph LR
 1. Navigate to **Receiving** $\rightarrow$ **+ New WRR** (`/receiving/new`).
 2. **Select Inbound Mode**:
    * **CIPL / Pre-Alert Upload**: Upload the supplier's Commercial Invoice and Packing List (`.xlsx`, `.csv`, `.pdf`). The parsing engine extracts Item Codes, Lot Numbers, Box Quantities, Dimensions, and declared SPQ.
-   * **Manual Entry**: Select the Source Organization (Supplier/Vendor), enter the Reference Invoice / Packing List Number, select the Inventory Model (`Trading`, `VMI`, or `Supplies`), and add declared lot lines.
+   * **Manual Entry**: Select the Source Organization, enter the Reference Invoice / Packing List Number, select the Inventory Model (`Trading`, `VMI`, or `Supplies`), and add declared lot lines.
 3. Click **Create WRR**.
 
 ---
@@ -50,7 +50,7 @@ Floor receiving is optimized for handheld mobile scanners, tablets, and forklift
 
 2. **Single-Scan Pallet / Batch Recognition**:
    * Point your handheld barcode scanner (or tap **Open Camera Scanner**) at **one** carton label from the pallet.
-   * Scanning one carton automatically identifies the item code, lot number, flow type, and expected carton count for the entire line, immediately unlocking the putaway location selector.
+   * Scanning one carton automatically identifies the item code, lot number, inventory model, and expected carton count for the entire line, immediately unlocking the putaway location selector.
 
 3. **Disposition (Store vs. Inspect)**:
    * **STORE**: Standard inventory placement into active storage racks.
@@ -88,7 +88,6 @@ Floor receiving is optimized for handheld mobile scanners, tablets, and forklift
 ---
 
 ### 6. Related Operating Guides
-* **Troubleshooting & Edge Cases**: See [Chapter 6: Edge Cases, Error Handling & System Exception Guide](./edge-cases-and-troubleshooting.md#2-inbound-receiving-edge-cases--sops) for handling unregistered items, flow-type mismatches, unconfirmed advance notices, visual damage splits, and storage rack capacity overfills.
+* **Troubleshooting & Edge Cases**: See [Chapter 6: Edge Cases, Error Handling & System Exception Guide](./edge-cases-and-troubleshooting.md#2-inbound-receiving-edge-cases--sops) for handling unregistered items, inventory-model mismatches, unconfirmed advance notices, visual damage splits, and storage rack capacity overfills.
 * **Document Printing & Sign-Offs**: See [Chapter 5: Warehouse Document Printing, Signatures & Compliance Standards](./document-printing-and-compliance.md) for WRR printing, 3-tier signature block accountability, and page-break rules.
-
 

@@ -12,7 +12,7 @@ $$\mathbf{Total\ Quantity\ (Available\ Balance)} = \mathbf{Boxes\ On\ Hand} \tim
 
 * **Base Unit of Measure (UOM)**: The smallest physical counting unit enrolled in Master Data (e.g., `PCS`, `ROLL`, `KG`, `METER`).
 * **Standard Pack Quantity (SPQ)**: The number of base units packed into a standard master carton / box (e.g. `50 PCS/box`).
-* **Boxes On Hand**: The physical carton / box count currently located in warehouse storage bins.
+* **Boxes On Hand**: The physical carton / box count currently located in warehouse storage locations.
 * **Current Net Balance**: Displayed across all inventory cards as the **Total Quantity** (in base UOM) as the primary headline metric, with the **Box Count** and **SPQ factor** underneath as the descriptive subtitle.
 
 ```
