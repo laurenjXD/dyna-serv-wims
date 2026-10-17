@@ -11,7 +11,6 @@ import {
   roles,
   userPartyScopes,
   parties,
-  rbacSecurityEvents,
   auditLog,
 } from "@/lib/db/schema";
 import { createServiceRoleClient } from "@/lib/supabase/server";
@@ -50,7 +49,10 @@ async function getInviteRedirectUrl(): Promise<string> {
   try {
     const url = new URL(resolvedOrigin);
     if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("Unsupported URL protocol");
-    return `${url.origin}/auth/callback?next=%2Faccept-invite`;
+    // Invite links return the session in the browser URL fragment. A server
+    // callback cannot read that fragment, so deliver the link directly to
+    // the client onboarding page.
+    return `${url.origin}/accept-invite`;
   } catch {
     throw new Error("The application URL is invalid. Set NEXT_PUBLIC_SITE_URL or NEXT_PUBLIC_APP_URL before sending invitations.");
   }
@@ -759,16 +761,18 @@ export async function resendInvite(userId: string): Promise<ActionResult> {
     return { ok: false, error: error instanceof Error ? error.message : "The invitation redirect URL is invalid." };
   }
 
-  const { error: inviteError } = await serviceClient.auth.admin.inviteUserByEmail(
-    authUser.user.email,
-    {
-      data: {
-        displayName: profile.displayName,
-        employee_id: (authUser.user.user_metadata?.employee_id as string) || `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
-      },
-      redirectTo,
-    },
-  );
+  // Once the invite link has been opened, Supabase may mark the email as
+  // confirmed even though our local profile is still "invited". A second
+  // invite is rejected for that user, so send a recovery link instead.
+  const { error: inviteError } = authUser.user.email_confirmed_at
+    ? await serviceClient.auth.resetPasswordForEmail(authUser.user.email, { redirectTo })
+    : await serviceClient.auth.admin.inviteUserByEmail(authUser.user.email, {
+        data: {
+          displayName: profile.displayName,
+          employee_id: (authUser.user.user_metadata?.employee_id as string) || `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
+        },
+        redirectTo,
+      });
 
   if (inviteError) {
     return { ok: false, error: inviteError.message };
