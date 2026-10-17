@@ -12,6 +12,7 @@ import { getLocationTransactionLedger } from "@/lib/db/queries/ledgers";
 import { DeactivateLocationSection } from "../_components/location-deactivate";
 import { UrlTablePagination } from "@/components/ui/UrlTablePagination";
 import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
+import { DetailCard, DetailPageHeader, DetailSectionHeading } from "@/components/global/DetailPage";
 
 const LEDGER_PAGE_SIZE = 20;
 
@@ -126,10 +127,8 @@ export default async function LocationDetailPage({
       </div>
 
       {/* Location details */}
-      <div className="mt-6 rounded-xl bg-surface-white shadow-elevation-1 p-6">
-        <h2 className="font-heading font-semibold text-data-display text-on-surface">
-          Location Information
-        </h2>
+      <DetailCard>
+        <DetailSectionHeading title="Location Information" />
         <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <dt className="font-label text-label text-text-grey">Zone</dt>
@@ -178,10 +177,10 @@ export default async function LocationDetailPage({
             </dd>
           </div>
         </dl>
-      </div>
+      </DetailCard>
 
       {/* Location views */}
-      <div className="mt-6 flex flex-wrap gap-2 border-b border-outline-variant/40" role="tablist" aria-label="Location views">
+      <div className="flex flex-wrap gap-2 border-b border-outline-variant/40" role="tablist" aria-label="Location views">
         <Link
           href={`/master-data/locations/${locationId}?view=inventory`}
           role="tab"

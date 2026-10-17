@@ -131,9 +131,9 @@ export default function LoginPage() {
         return;
       }
 
-      // Go directly to the authenticated dashboard. Keep pending true so
+      // Go directly to the authenticated landing page. Keep pending true so
       // button shows feedback while the browser executes the navigation.
-      window.location.replace("/dashboard");
+      window.location.replace("/");
     } catch {
       setError("An unexpected error occurred. Please try again.");
       setPending(false);

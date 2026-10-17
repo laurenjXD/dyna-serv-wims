@@ -23,6 +23,7 @@ import { getTransferRequest } from "@/lib/db/queries/transfers";
 import { updateTransferStatus } from "@/lib/actions/transfers";
 import type { TransferLineRow } from "@/lib/db/queries/transfers";
 import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
+import { DetailCard, DetailPageHeader, DetailSectionHeading } from "@/components/global/DetailPage";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -129,7 +130,11 @@ export default async function TransferDetailPage({
 
   return (
     <div className="mx-auto max-w-container">
-      <PageBreadcrumb backHref="/transfers" backLabel="Transfer Queue" currentLabel={transferId} monoCurrent />
+      <DetailPageHeader
+        breadcrumb={<PageBreadcrumb backHref="/transfers" backLabel="Transfer Queue" currentLabel={transferId} monoCurrent />}
+        title="Transfer Request"
+        badges={<span className={`inline-flex items-center rounded-full px-3 py-1 font-body text-sm uppercase ${STATUS_CLASSES[transfer.status] ?? "bg-status-neutral/10 text-status-neutral"}`}>{STATUS_LABELS[transfer.status] ?? transfer.status.toUpperCase()}</span>}
+      />
       {/* Breadcrumb */}
       {/*
         <ol className="flex items-center gap-1 font-body text-body-sm text-text-grey">
@@ -151,18 +156,6 @@ export default async function TransferDetailPage({
         </ol>
       </nav>*/}
 
-      {/* Page heading + status badge */}
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="font-heading font-extrabold text-headline-md text-on-surface">
-          Transfer Request
-        </h1>
-        <span
-          className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-label uppercase ${STATUS_CLASSES[transfer.status] ?? "bg-status-neutral/10 text-status-neutral"}`}
-        >
-          {STATUS_LABELS[transfer.status] ?? transfer.status.toUpperCase()}
-        </span>
-      </div>
-
       {/* Action error banner */}
       {actionErrorMsg && (
         <div
@@ -179,10 +172,8 @@ export default async function TransferDetailPage({
       )}
 
       {/* Transfer summary card — Level 1 office elevation */}
-      <div className="mt-6 rounded-xl bg-surface-white shadow-elevation-1 p-6">
-        <h2 className="font-heading font-semibold text-data-display text-on-surface">
-          Transfer Details
-        </h2>
+      <DetailCard className="mt-6">
+        <DetailSectionHeading title="Transfer Details" />
         <dl className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
             <dt className="font-label text-label text-text-grey">Status</dt>
@@ -239,7 +230,7 @@ export default async function TransferDetailPage({
             </dd>
           </div>
         </dl>
-      </div>
+      </DetailCard>
 
       {/* Action buttons — conditional on transfer status and execute capability */}
       {canExecute && (

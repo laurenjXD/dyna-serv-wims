@@ -155,10 +155,6 @@ export default async function Home() {
   // route for floor users avoids making sign-in wait for two overlapping
   // dashboard implementations and the root route's larger queue/reporting
   // query set.
-  if (tier !== "floor") {
-    redirect("/dashboard");
-  }
-
   // ─── Capability flags ────────────────────────────────────────────────
   const hasReceivingAccess =
     (await requirePermission(resolver, "receiving.view")).kind === "authorized";

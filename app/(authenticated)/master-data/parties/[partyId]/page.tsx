@@ -17,6 +17,7 @@ import {
 } from "../_components/party-detail-actions";
 import { UrlTablePagination } from "@/components/ui/UrlTablePagination";
 import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
+import { DetailCard, DetailPageHeader, DetailSectionHeading } from "@/components/global/DetailPage";
 
 const LEDGER_PAGE_SIZE = 20;
 
@@ -75,65 +76,17 @@ export default async function PartyDetailPage({
 
   return (
     <div className="mx-auto max-w-container space-y-6">
-      {/* Page header */}
-      <div className="flex flex-col gap-5 rounded-2xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1 sm:flex-row sm:items-start sm:justify-between sm:p-6">
-        <div>
-          <PageBreadcrumb
-            backHref="/enrollment?tab=parties"
-            backLabel="Organizations"
-            currentLabel={party.name}
-          />
-          <h1 className="font-heading text-2xl font-extrabold text-on-surface sm:text-3xl">
-            {party.name}
-          </h1>
-          <p className="mt-1 font-mono text-mono-md text-text-grey">
-            {party.code}
-          </p>
-        </div>
-        {canManage && (
-          <div className="flex gap-3">
-            <Link
-              href={`/master-data/parties/${partyId}/edit`}
-            className="inline-flex h-10 items-center justify-center rounded-xl bg-brand-navy px-5 font-body text-sm font-semibold text-surface-white hover:bg-brand-navy/90 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-red"
-            >
-              Edit
-            </Link>
-          </div>
-        )}
-      </div>
-
-      {/* Status & RBE Classification badges */}
-      <div className="flex flex-wrap items-center gap-2">
-        {party.isActive ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-status-available/10 px-3 py-1 font-label text-label text-status-available">
-            Active
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1 rounded-full bg-status-neutral/10 px-3 py-1 font-label text-label text-status-neutral">
-            Inactive
-          </span>
-        )}
-
-        {(() => {
-          const rbeMatch = party.notes?.match(/^\[RBE:\s*([^\]]+)\]/i);
-          if (!rbeMatch) return null;
-          const tags = rbeMatch[1].split(",").map((s) => s.trim().toUpperCase());
-          return tags.map((tag) => (
-            <span
-              key={tag}
-              className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-800"
-            >
-              PEZA RBE: {tag}
-            </span>
-          ));
-        })()}
-      </div>
+      <DetailPageHeader
+        breadcrumb={<PageBreadcrumb backHref="/enrollment?tab=parties" backLabel="Organizations" currentLabel={party.name} />}
+        title={party.name}
+        subtitle={<span className="font-mono">{party.code}</span>}
+        actions={canManage ? <Link href={`/master-data/parties/${partyId}/edit`} className="inline-flex h-10 items-center justify-center rounded-xl bg-brand-navy px-5 font-body text-sm font-semibold text-surface-white hover:bg-brand-navy/90 focus:outline-none focus:ring-2 focus:ring-brand-red">Edit</Link> : undefined}
+        badges={party.isActive ? <span className="inline-flex items-center rounded-full bg-status-available/10 px-3 py-1 font-body text-sm text-status-available">Active</span> : <span className="inline-flex items-center rounded-full bg-status-neutral/10 px-3 py-1 font-body text-sm text-status-neutral">Inactive</span>}
+      />
 
       {/* Master data */}
-      <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1 sm:p-6">
-        <h2 className="font-heading text-xl font-bold text-on-surface">
-          Organization Information
-        </h2>
+      <DetailCard>
+        <DetailSectionHeading title="Organization Information" />
         <dl className="mt-5 grid gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <dt className="font-label text-label text-text-grey">
@@ -202,10 +155,10 @@ export default async function PartyDetailPage({
             </dd>
           </div>
         </dl>
-      </div>
+      </DetailCard>
 
       {/* Business roles + Contact Party action (interactive, client component) */}
-      <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1 sm:p-6">
+      <DetailCard>
         <PartyDetailActions
           partyId={partyId}
           partyName={party.name}
@@ -215,7 +168,7 @@ export default async function PartyDetailPage({
           canManage={canManage}
           hasEmail={!!party.email}
         />
-      </div>
+      </DetailCard>
 
       {/* Billing & Financial Overview Card — Contextual shortcut to Central Billing Hub (Design System Level 1 Elevation) */}
       {canViewFinancials && (() => {
@@ -363,8 +316,8 @@ export default async function PartyDetailPage({
             pageParamName="ledgerPage"
             className="mt-4 border-t border-outline-variant/30 pt-4"
           />
-        )}
+          )}
+        </div>
       </div>
-    </div>
   );
 }

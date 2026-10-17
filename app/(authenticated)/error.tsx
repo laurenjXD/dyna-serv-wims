@@ -41,7 +41,7 @@ export default function AuthenticatedError({
             Try again
           </button>
           <a
-            href="/dashboard"
+            href="/"
             className="inline-flex min-h-11 items-center rounded border border-brand-navy px-5 font-label text-label uppercase tracking-wide text-brand-navy"
           >
             Go to dashboard
