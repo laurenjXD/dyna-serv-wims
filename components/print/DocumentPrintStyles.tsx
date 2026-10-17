@@ -25,6 +25,7 @@ export function DocumentPrintStyles({ orientation = "portrait" }: DocumentPrintS
           body {
             background: #ffffff !important;
             color: #000000 !important;
+            font-family: Inter, "Helvetica Neue", Arial, sans-serif !important;
             margin: 0 !important;
             padding: 0 !important;
             width: 100% !important;
@@ -36,6 +37,14 @@ export function DocumentPrintStyles({ orientation = "portrait" }: DocumentPrintS
             max-width: none !important;
             width: 100% !important;
             background: #ffffff !important;
+          }
+          [data-document-header] h1,
+          [data-document-header] h2,
+          [data-document-header] p.font-heading {
+            font-family: "Avenir Next", Avenir, Arial, sans-serif !important;
+          }
+          [data-document-header] .font-mono {
+            font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace !important;
           }
           thead {
             display: table-header-group !important;

@@ -242,7 +242,7 @@ export function SoaDetailClient({
             background: #fff !important;
             color: #000 !important;
             color-scheme: light !important;
-            font-family: system-ui, -apple-system, sans-serif !important;
+            font-family: Inter, "Helvetica Neue", Arial, sans-serif !important;
             font-size: 9pt !important;
             line-height: 1.3 !important;
             width: 100% !important;
