@@ -13,6 +13,8 @@
 // server action how many lines to parse.
 
 import { useState } from "react";
+import { Camera, X } from "lucide-react";
+import { MobileQRScanner } from "@/components/barcode/MobileQRScanner";
 
 interface LineState {
   lotId: string;
@@ -34,6 +36,10 @@ export function TransferLineItems({
   const [lines, setLines] = useState<LineState[]>(
     initialLines && initialLines.length > 0 ? initialLines : [{ ...EMPTY_LINE }]
   );
+  const [scanTarget, setScanTarget] = useState<{
+    index: number;
+    field: "lotId" | "itemId";
+  } | null>(null);
 
   function addLine() {
     setLines((prev) => [...prev, { ...EMPTY_LINE }]);
@@ -49,6 +55,12 @@ export function TransferLineItems({
         i === index ? { ...line, [field]: value } : line
       )
     );
+  }
+
+  function handleScan(payload: string) {
+    if (!scanTarget) return;
+    updateLine(scanTarget.index, scanTarget.field, payload);
+    setScanTarget(null);
   }
 
   return (
@@ -89,16 +101,26 @@ export function TransferLineItems({
                 </span>
                 <span className="sr-only">(required)</span>
               </label>
-              <input
-                id={`line-${index}-lotId`}
-                name={`line_${index}_lotId`}
-                type="text"
-                required
-                value={line.lotId}
-                onChange={(e) => updateLine(index, "lotId", e.target.value)}
-                placeholder="Scan or enter lot number"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              />
+              <div className="mt-1 flex gap-2">
+                <input
+                  id={`line-${index}-lotId`}
+                  name={`line_${index}_lotId`}
+                  type="text"
+                  required
+                  value={line.lotId}
+                  onChange={(e) => updateLine(index, "lotId", e.target.value)}
+                  placeholder="Scan or enter lot number"
+                  className="h-11 min-w-0 flex-1 rounded border border-outline-variant/30 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                />
+                <button
+                  type="button"
+                  onClick={() => setScanTarget({ index, field: "lotId" })}
+                  aria-label={`Scan lot for line ${index + 1}`}
+                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded border border-outline-variant bg-surface-light-grey text-brand-navy hover:bg-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                >
+                  <Camera size={19} />
+                </button>
+              </div>
             </div>
 
             {/* Workers use the item code/barcode; the server resolves it to the internal UUID. */}
@@ -113,16 +135,26 @@ export function TransferLineItems({
                 </span>
                 <span className="sr-only">(required)</span>
               </label>
-              <input
-                id={`line-${index}-itemId`}
-                name={`line_${index}_itemId`}
-                type="text"
-                required
-                value={line.itemId}
-                onChange={(e) => updateLine(index, "itemId", e.target.value)}
-                placeholder="Scan barcode or enter item code"
-                className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              />
+              <div className="mt-1 flex gap-2">
+                <input
+                  id={`line-${index}-itemId`}
+                  name={`line_${index}_itemId`}
+                  type="text"
+                  required
+                  value={line.itemId}
+                  onChange={(e) => updateLine(index, "itemId", e.target.value)}
+                  placeholder="Scan barcode or enter item code"
+                  className="h-11 min-w-0 flex-1 rounded border border-outline-variant/30 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                />
+                <button
+                  type="button"
+                  onClick={() => setScanTarget({ index, field: "itemId" })}
+                  aria-label={`Scan item for line ${index + 1}`}
+                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded border border-outline-variant bg-surface-light-grey text-brand-navy hover:bg-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                >
+                  <Camera size={19} />
+                </button>
+              </div>
             </div>
 
             {/* Qty Requested — required; must be > 0 */}
@@ -164,6 +196,32 @@ export function TransferLineItems({
       >
         + Add Line
       </button>
+
+      {scanTarget && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/70 p-0 sm:items-center sm:p-4">
+          <div className="w-full max-w-lg rounded-t-2xl bg-surface-white p-4 shadow-elevation-3 sm:rounded-2xl">
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <h2 className="font-heading text-data-display font-bold text-on-surface">
+                  Scan {scanTarget.field === "itemId" ? "Item" : "Lot"}
+                </h2>
+                <p className="font-body text-body-sm text-text-grey">
+                  Align the barcode or QR code inside the frame.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setScanTarget(null)}
+                aria-label="Close scanner"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-surface-light-grey text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <MobileQRScanner onScan={handleScan} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
