@@ -180,26 +180,39 @@ export async function getPartyWithRoles(
   const party = partyRows[0] as PartyDetail | undefined;
   if (!party) return null;
 
-  const roleRows = await db
-    .select({
-      id: partyRoles.id,
-      role: partyRoles.role,
-      createdAt: partyRoles.createdAt,
-    })
-    .from(partyRoles)
-    .where(eq(partyRoles.partyId, id))
-    .orderBy(partyRoles.role);
+  // The organization record is still useful when optional relationship
+  // tables are unavailable during a staggered deployment. Treat these
+  // supporting reads as best-effort instead of failing the entire detail page.
+  let roleRows: PartyRoleRow[] = [];
+  try {
+    roleRows = (await db
+      .select({
+        id: partyRoles.id,
+        role: partyRoles.role,
+        createdAt: partyRoles.createdAt,
+      })
+      .from(partyRoles)
+      .where(eq(partyRoles.partyId, id))
+      .orderBy(partyRoles.role)) as PartyRoleRow[];
+  } catch {
+    // Role data is optional for rendering the organization identity.
+  }
 
-  const rbeRows = await db
-    .select({ classification: partyRbeClassifications.classification })
-    .from(partyRbeClassifications)
-    .where(eq(partyRbeClassifications.partyId, id))
-    .orderBy(partyRbeClassifications.classification);
+  let rbeRows: Array<{ classification: string }> = [];
+  try {
+    rbeRows = (await db
+      .select({ classification: partyRbeClassifications.classification })
+      .from(partyRbeClassifications)
+      .where(eq(partyRbeClassifications.partyId, id))
+      .orderBy(partyRbeClassifications.classification)) as Array<{ classification: string }>;
+  } catch {
+    // RBE classifications are optional for rendering the organization detail.
+  }
 
   return {
     ...party,
-    roles: roleRows as PartyRoleRow[],
-    rbeClassifications: (rbeRows as Array<{ classification: string }>).map((row) => row.classification.toUpperCase()),
+    roles: roleRows,
+    rbeClassifications: rbeRows.map((row) => row.classification.toUpperCase()),
   };
 }
 

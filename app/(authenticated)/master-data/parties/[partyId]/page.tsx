@@ -66,12 +66,17 @@ export default async function PartyDetailPage({
   const ledgerOffset = (currentLedgerPage - 1) * LEDGER_PAGE_SIZE;
 
   const canViewLedger = inventoryPerm.kind === "authorized";
-  const ledger = canViewLedger
-    ? await getPartyTransactionLedger(db, partyId, {
+  let ledger: Awaited<ReturnType<typeof getPartyTransactionLedger>> = { rows: [], total: 0 };
+  if (canViewLedger) {
+    try {
+      ledger = await getPartyTransactionLedger(db, partyId, {
         limit: LEDGER_PAGE_SIZE,
         offset: ledgerOffset,
-      })
-    : { rows: [], total: 0 };
+      });
+    } catch (error) {
+      console.error("Organization detail: transaction ledger unavailable", error);
+    }
+  }
 
   const totalLedgerPages = Math.max(
     1,

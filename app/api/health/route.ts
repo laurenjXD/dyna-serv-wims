@@ -57,7 +57,7 @@ export async function GET() {
 
     if (missingTables.length > 0 || missingColumns.length > 0) {
       return NextResponse.json(
-        { status: "not_ready", database: "schema_incomplete", missingTables, missingColumns },
+        { status: "not_ready", database: "schema_incomplete" },
         { status: 503 },
       );
     }
