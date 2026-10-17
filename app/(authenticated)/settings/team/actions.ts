@@ -21,6 +21,7 @@ import { inviteUserSchema, suspendUserSchema, type InviteUserInput } from "@/lib
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { parseUserAgentDevice } from "@/lib/user-settings/device-parser";
+import { withSettingsTimeout } from "@/lib/user-settings/with-timeout";
 
 export type ActionResult<T = undefined> =
   | { ok: true; data: T }
@@ -29,6 +30,42 @@ export type ActionResult<T = undefined> =
 async function requireUsersCapability(action: "read" | "invite" | "activate" | "deactivate") {
   const resolver = await createPageResolver();
   return requirePermission(resolver, `users.${action}`);
+}
+
+async function getInviteRedirectUrl(): Promise<string> {
+  let origin = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXT_PUBLIC_APP_URL;
+
+  if (!origin) {
+    try {
+      const headersList = await headers();
+      const host = headersList.get("x-forwarded-host") ?? headersList.get("host");
+      const proto = headersList.get("x-forwarded-proto") ?? "http";
+      if (host) origin = `${proto}://${host}`;
+    } catch {
+      // Server actions invoked outside a request use the local development URL.
+    }
+  }
+
+  const resolvedOrigin = (origin ?? "http://localhost:3000").replace(/\/+$/, "");
+  try {
+    const url = new URL(resolvedOrigin);
+    if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("Unsupported URL protocol");
+    return `${url.origin}/auth/callback?next=%2Faccept-invite`;
+  } catch {
+    throw new Error("The application URL is invalid. Set NEXT_PUBLIC_SITE_URL or NEXT_PUBLIC_APP_URL before sending invitations.");
+  }
+}
+
+function getInvitationConfigurationError(): string | null {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY === "placeholder-service-key") {
+    return "Invitation email is not configured on the server. Add SUPABASE_SERVICE_ROLE_KEY in the deployment environment.";
+  }
+
+  if (!process.env.DATABASE_URL_RUNTIME && !process.env.DATABASE_URL && !process.env.POSTGRES_URL) {
+    return "Invitation setup is not configured on the server. Add DATABASE_URL_RUNTIME, DATABASE_URL, or POSTGRES_URL in the deployment environment.";
+  }
+
+  return null;
 }
 
 export interface TeamMember {
@@ -86,10 +123,13 @@ export async function listActiveParties(): Promise<ActionResult<ActivePartyOptio
   }
 
   try {
-    const rows = await db
-      .select({ id: parties.id, name: parties.name })
-      .from(parties)
-      .where(eq(parties.isActive, true));
+    const rows = await withSettingsTimeout(
+      db
+        .select({ id: parties.id, name: parties.name })
+        .from(parties)
+        .where(eq(parties.isActive, true)),
+      [],
+    );
 
     return { ok: true, data: rows };
   } catch (err) {
@@ -106,32 +146,39 @@ export async function listTeamMembers(): Promise<ActionResult<TeamMember[]>> {
 
   try {
     const serviceClient = createServiceRoleClient();
-    const [profiles, activeRoleRows, activeScopeRows, authUsersRes, sessionRows] = await Promise.all([
-      db.select({ id: userProfiles.id, displayName: userProfiles.displayName, status: userProfiles.status }).from(userProfiles),
-      db
-        .select({ userId: userRoles.userId, roleKey: roles.key })
-        .from(userRoles)
-        .innerJoin(roles, eq(userRoles.roleId, roles.id))
-        .where(isNull(userRoles.revokedAt)),
-      db
-        .select({ userId: userPartyScopes.userId, partyName: parties.name })
-        .from(userPartyScopes)
-        .innerJoin(parties, eq(userPartyScopes.partyId, parties.id))
-        .where(isNull(userPartyScopes.revokedAt)),
-      serviceClient.auth.admin.listUsers().catch(() => ({ data: { users: [] } })),
-      db.execute(sql`
-        SELECT DISTINCT ON (user_id)
-          id, user_id, updated_at, user_agent, ip::text as ip_address
-        FROM auth.sessions
-        ORDER BY user_id, updated_at DESC;
-      `).catch(() => []) as Promise<Array<{
-        id: string;
-        user_id: string;
-        updated_at: string | Date;
-        user_agent: string | null;
-        ip_address: string | null;
-      }>>,
-    ]);
+    const loaded = await withSettingsTimeout(
+      Promise.all([
+        db.select({ id: userProfiles.id, displayName: userProfiles.displayName, status: userProfiles.status }).from(userProfiles),
+        db
+          .select({ userId: userRoles.userId, roleKey: roles.key })
+          .from(userRoles)
+          .innerJoin(roles, eq(userRoles.roleId, roles.id))
+          .where(isNull(userRoles.revokedAt)),
+        db
+          .select({ userId: userPartyScopes.userId, partyName: parties.name })
+          .from(userPartyScopes)
+          .innerJoin(parties, eq(userPartyScopes.partyId, parties.id))
+          .where(isNull(userPartyScopes.revokedAt)),
+        serviceClient.auth.admin.listUsers().catch(() => ({ data: { users: [] } })),
+        db.execute(sql`
+          SELECT DISTINCT ON (user_id)
+            id, user_id, updated_at, user_agent, ip::text as ip_address
+          FROM auth.sessions
+          ORDER BY user_id, updated_at DESC;
+        `).catch(() => []) as Promise<Array<{
+          id: string;
+          user_id: string;
+          updated_at: string | Date;
+          user_agent: string | null;
+          ip_address: string | null;
+        }>>,
+      ]),
+      null,
+    );
+
+    if (!loaded) return { ok: true, data: [] };
+
+    const [profiles, activeRoleRows, activeScopeRows, authUsersRes, sessionRows] = loaded;
 
     const authUserMap = new Map((authUsersRes?.data?.users ?? []).map((u) => [u.id, u]));
     const sessionMap = new Map((sessionRows as Array<{ user_id: string; id: string; updated_at: string | Date; user_agent: string | null }>).map((s) => [s.user_id, s]));
@@ -493,20 +540,28 @@ export async function inviteUser(input: InviteUserInput): Promise<ActionResult<{
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
-  let origin = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXT_PUBLIC_APP_URL;
-  if (!origin) {
-    try {
-      const headersList = await headers();
-      const host = headersList.get("x-forwarded-host") ?? headersList.get("host");
-      const proto = headersList.get("x-forwarded-proto") ?? "http";
-      if (host) {
-        origin = `${proto}://${host}`;
-      }
-    } catch {
-      // ignore in test or background environments
+  const configurationError = getInvitationConfigurationError();
+  if (configurationError) return { ok: false, error: configurationError };
+
+  try {
+    const [roleRow] = await db
+      .select({ id: roles.id })
+      .from(roles)
+      .where(and(eq(roles.key, parsed.data.role), eq(roles.isActive, true)))
+      .limit(1);
+    if (!roleRow) {
+      return { ok: false, error: "The selected role is not available. Refresh the page and try again." };
     }
+  } catch {
+    return { ok: false, error: "Unable to verify the selected role. Please try again." };
   }
-  const redirectTo = `${origin ?? "http://localhost:3000"}/auth/callback?next=/accept-invite`;
+
+  let redirectTo: string;
+  try {
+    redirectTo = await getInviteRedirectUrl();
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "The invitation redirect URL is invalid." };
+  }
 
   const serviceClient = createServiceRoleClient();
   const { data: authData, error: authError } = await serviceClient.auth.admin.inviteUserByEmail(
@@ -526,29 +581,29 @@ export async function inviteUser(input: InviteUserInput): Promise<ActionResult<{
 
   const newUserId = authData.user.id;
 
-  // 1. Insert user_profiles row
-  await db.insert(userProfiles).values({
-    id: newUserId,
-    displayName: parsed.data.displayName,
-    status: "invited",
-    activatedByUserId: permission.context.userId,
-  });
-
-  // 2. Assign role in user_roles table
   try {
+    // Persist the local account before reporting success. If this fails after
+    // Supabase created/sent the invite, remove the orphaned auth user.
+    await db.insert(userProfiles).values({
+      id: newUserId,
+      displayName: parsed.data.displayName,
+      status: "invited",
+      activatedByUserId: permission.context.userId,
+    });
+
+    // Assign the pre-validated role and optional party scope.
     const [roleRow] = await db
       .select({ id: roles.id })
       .from(roles)
-      .where(eq(roles.key, parsed.data.role))
+      .where(and(eq(roles.key, parsed.data.role), eq(roles.isActive, true)))
       .limit(1);
 
-    if (roleRow) {
-      await db.insert(userRoles).values({
-        userId: newUserId,
-        roleId: roleRow.id,
-        grantedByUserId: permission.context.userId,
-      });
-    }
+    if (!roleRow) throw new Error("Selected role is no longer available.");
+    await db.insert(userRoles).values({
+      userId: newUserId,
+      roleId: roleRow.id,
+      grantedByUserId: permission.context.userId,
+    });
 
     // 3. Assign party scope if provided
     if (parsed.data.partyId) {
@@ -559,7 +614,8 @@ export async function inviteUser(input: InviteUserInput): Promise<ActionResult<{
       });
     }
 
-    // 4. Log to audit_log
+    // Log to audit_log; an audit failure must not invalidate an otherwise
+    // complete invitation.
     await db.insert(auditLog).values({
       actorUserId: permission.context.userId,
       actorRole: permission.context.activeRoleKeys[0] ?? "administrator",
@@ -573,8 +629,12 @@ export async function inviteUser(input: InviteUserInput): Promise<ActionResult<{
       },
       correlationId: `INVITE-${Date.now()}`,
     }).catch(() => {});
-  } catch {
-    // ignore secondary mapping errors
+  } catch (error) {
+    await db.delete(userPartyScopes).where(eq(userPartyScopes.userId, newUserId)).catch(() => {});
+    await db.delete(userRoles).where(eq(userRoles.userId, newUserId)).catch(() => {});
+    await db.delete(userProfiles).where(eq(userProfiles.id, newUserId)).catch(() => {});
+    await serviceClient.auth.admin.deleteUser(newUserId).catch(() => {});
+    return { ok: false, error: error instanceof Error ? error.message : "Unable to finish setting up the invited account." };
   }
 
   revalidatePath("/settings/team");
@@ -673,6 +733,9 @@ export async function resendInvite(userId: string): Promise<ActionResult> {
     return { ok: false, error: "You don't have access to invite team members." };
   }
 
+  const configurationError = getInvitationConfigurationError();
+  if (configurationError) return { ok: false, error: configurationError };
+
   const [profile] = await db
     .select({ id: userProfiles.id, displayName: userProfiles.displayName, status: userProfiles.status })
     .from(userProfiles)
@@ -689,18 +752,12 @@ export async function resendInvite(userId: string): Promise<ActionResult> {
     return { ok: false, error: "Could not locate user account to resend invite." };
   }
 
-  let origin = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXT_PUBLIC_APP_URL;
-  if (!origin) {
-    try {
-      const headersList = await headers();
-      const host = headersList.get("x-forwarded-host") ?? headersList.get("host");
-      const proto = headersList.get("x-forwarded-proto") ?? "http";
-      if (host) origin = `${proto}://${host}`;
-    } catch {
-      // ignore
-    }
+  let redirectTo: string;
+  try {
+    redirectTo = await getInviteRedirectUrl();
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "The invitation redirect URL is invalid." };
   }
-  const redirectTo = `${origin ?? "http://localhost:3000"}/auth/callback?next=/accept-invite`;
 
   const { error: inviteError } = await serviceClient.auth.admin.inviteUserByEmail(
     authUser.user.email,

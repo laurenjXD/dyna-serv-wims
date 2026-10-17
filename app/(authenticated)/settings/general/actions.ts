@@ -8,6 +8,7 @@ import { auditLog, systemSettings } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
+import { withSettingsTimeout } from "@/lib/user-settings/with-timeout";
 
 export interface GeneralSettingsData {
   facility: {
@@ -116,7 +117,10 @@ export async function getGeneralSettings(): Promise<{ ok: true; data: GeneralSet
     return { ok: false, error: "Access restricted to administrators." };
   }
 
-  const [stored] = await db.select({ value: systemSettings.value }).from(systemSettings).where(eq(systemSettings.key, "general"));
+  const [stored] = await withSettingsTimeout(
+    db.select({ value: systemSettings.value }).from(systemSettings).where(eq(systemSettings.key, "general")),
+    [],
+  );
   return { ok: true, data: stored?.value ? ({ ...DEFAULT_SETTINGS, ...(stored.value as Partial<GeneralSettingsData>) } as GeneralSettingsData) : DEFAULT_SETTINGS };
 }
 
