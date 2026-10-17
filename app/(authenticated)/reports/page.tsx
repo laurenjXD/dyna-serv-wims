@@ -27,6 +27,34 @@ import {
   getWarehouseZonesList,
 } from "@/lib/db/queries/reports";
 
+const REPORT_QUERY_TIMEOUT_MS = 8_000;
+
+async function withReportFallback<T>(
+  query: Promise<T>,
+  fallback: T,
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<T>((resolve) => {
+    timeoutId = setTimeout(() => resolve(fallback), REPORT_QUERY_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([query.catch(() => fallback), timeout]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
+const EMPTY_REPORT_KPIS = {
+  valuationTotal: 0,
+  vmiAccruedStorage: 0,
+  tradingGrossRevenue: 0,
+  tradingMarginPct: 0,
+  tradingCogs: 0,
+  otifRatePct: 0,
+  activeLotsCount: 0,
+};
+
 export default async function ReportsPage() {
   const resolver = await createPageResolver();
   const permResult = await requirePermission(resolver, "reporting.read");
@@ -63,13 +91,17 @@ export default async function ReportsPage() {
     archiveItems,
     availableZones,
   ] = await Promise.all([
-    getReportsExecutiveKpis(),
-    canReadFinancial ? getVmiBillingReconciliationReport() : Promise.resolve([]),
-    canReadFinancial ? getTradingMarginReport() : Promise.resolve(undefined),
-    getThroughputReport("daily"),
-    getDeliveryPerformanceReport(),
-    getReportArchiveList(),
-    getWarehouseZonesList(),
+    withReportFallback(getReportsExecutiveKpis(), EMPTY_REPORT_KPIS),
+    canReadFinancial
+      ? withReportFallback(getVmiBillingReconciliationReport(), [])
+      : Promise.resolve([]),
+    canReadFinancial
+      ? withReportFallback(getTradingMarginReport(), undefined)
+      : Promise.resolve(undefined),
+    withReportFallback(getThroughputReport("daily"), []),
+    withReportFallback(getDeliveryPerformanceReport(), []),
+    withReportFallback(getReportArchiveList(), []),
+    withReportFallback(getWarehouseZonesList(), []),
   ]);
 
   return (

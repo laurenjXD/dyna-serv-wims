@@ -41,7 +41,7 @@ export function LocationOccupancyChart({ initialData }: LocationOccupancyChartPr
         </div>
 
         {/* Donut Chart with Center Metric */}
-        <div className="relative mt-2 h-44 w-full">
+        <div className="relative mt-2 min-h-44 w-full flex-1">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
