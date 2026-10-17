@@ -30,31 +30,43 @@ export function DashboardOmniSearch() {
   }
 
   return (
-    <section aria-label="Warehouse search" className="rounded-2xl border border-border bg-surface p-3 shadow-card sm:p-4">
-      <form onSubmit={handleSubmit} className="flex min-w-0 items-center gap-2">
-        <Search size={18} className="shrink-0 text-text-grey" aria-hidden="true" />
-        <input
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-          placeholder="Search item, lot, location..."
-          aria-label="Search item, lot, or location"
-          className="min-w-0 flex-1 bg-transparent font-body text-body-sm text-on-surface outline-none placeholder:text-text-grey"
-        />
-        <button
-          type="button"
-          aria-label={isCameraOpen ? "Close barcode scanner" : "Scan barcode or QR code"}
-          onClick={() => {
-            setIsCameraOpen((open) => !open);
-            setResult(null);
-          }}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border text-brand-navy active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        >
-          {isCameraOpen ? <X size={19} aria-hidden="true" /> : <Barcode size={19} aria-hidden="true" />}
-        </button>
+    <section aria-label="Warehouse search" className="rounded-2xl border border-[#dbe4f7] bg-surface p-2.5 shadow-card sm:p-3">
+      <form onSubmit={handleSubmit} className="flex min-w-0 items-center gap-2 sm:gap-3">
+        <div className="flex h-12 min-w-0 flex-1 items-center gap-2 rounded-2xl border-2 border-[#dbe4f7] bg-white px-3 shadow-[0_2px_5px_rgba(94,116,170,0.08)] focus-within:border-[#91a8df] focus-within:ring-4 focus-within:ring-[#91a8df]/15 sm:h-14 sm:px-4">
+          <Search size={21} className="shrink-0 text-[#647ba8] sm:h-6 sm:w-6" aria-hidden="true" />
+          <input
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+            placeholder="Search item, lot, location..."
+            aria-label="Search item, lot, or location"
+            className="min-w-0 flex-1 bg-transparent font-body text-sm text-on-surface outline-none placeholder:text-[#8ea1c4] sm:text-base"
+          />
+          {value && (
+            <button
+              type="button"
+              aria-label="Clear search"
+              onClick={() => { setValue(""); setResult(null); }}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#647ba8] active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <X size={19} aria-hidden="true" />
+            </button>
+          )}
+          <button
+            type="button"
+            aria-label={isCameraOpen ? "Close barcode scanner" : "Scan barcode or QR code"}
+            onClick={() => {
+              setIsCameraOpen((open) => !open);
+              setResult(null);
+            }}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#647ba8] active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            {isCameraOpen ? <X size={18} aria-hidden="true" /> : <Barcode size={19} aria-hidden="true" />}
+          </button>
+        </div>
         <button
           type="submit"
           disabled={isVerifying || !value.trim()}
-          className="hidden h-11 shrink-0 items-center rounded-xl bg-primary px-4 font-label text-label-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50 sm:inline-flex"
+          className="inline-flex h-12 shrink-0 items-center rounded-2xl bg-[#8299d6] px-4 font-heading text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#7189ca] active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8299d6]/40 disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:px-7 sm:text-base"
         >
           {isVerifying ? "Checking..." : "Search"}
         </button>
