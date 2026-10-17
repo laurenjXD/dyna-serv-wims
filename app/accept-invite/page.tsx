@@ -38,6 +38,14 @@ export default function AcceptInvitePage() {
         const linkError = params.get("error_description") || params.get("error");
         if (linkError) throw new Error(linkError);
 
+        // PKCE invite links return `?code=...`. The browser client does not
+        // establish the session from that code until this explicit exchange.
+        const code = params.get("code");
+        if (code) {
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError) throw exchangeError;
+        }
+
         const tokenHash = params.get("token_hash");
         const type = params.get("type");
         if (tokenHash && (type === "invite" || type === "recovery")) {

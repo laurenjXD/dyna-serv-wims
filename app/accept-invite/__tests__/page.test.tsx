@@ -5,9 +5,10 @@ import AcceptInvitePage from "../page";
 
 const getUser = vi.fn();
 const verifyOtp = vi.fn();
+const exchangeCodeForSession = vi.fn();
 
 vi.mock("@/lib/supabase/client", () => ({
-  createClient: () => ({ auth: { getUser, verifyOtp } }),
+  createClient: () => ({ auth: { getUser, verifyOtp, exchangeCodeForSession } }),
 }));
 vi.mock("../actions", () => ({ completeInvitationAcceptance: vi.fn() }));
 
@@ -25,6 +26,15 @@ describe("invitation onboarding", () => {
     await waitFor(() => expect(verifyOtp).toHaveBeenCalledWith({ token_hash: "one-time-token", type: "invite" }));
     expect(await screen.findByDisplayValue("New Operator")).toBeInTheDocument();
     expect(window.location.search).toBe("");
+  });
+
+  it("exchanges a PKCE invite code before enabling account setup", async () => {
+    window.history.replaceState(null, "", "/accept-invite?code=pkce-code");
+    exchangeCodeForSession.mockResolvedValue({ error: null });
+    getUser.mockResolvedValue({ data: { user: { user_metadata: { displayName: "PKCE Operator" } } }, error: null });
+    render(<AcceptInvitePage />);
+    await waitFor(() => expect(exchangeCodeForSession).toHaveBeenCalledWith("pkce-code"));
+    expect(await screen.findByDisplayValue("PKCE Operator")).toBeInTheDocument();
   });
 
   it("keeps setup disabled when the link has no authenticated session", async () => {
