@@ -90,6 +90,20 @@ function withDashboardDataTimeout<T>(request: Promise<T>): Promise<T> {
   });
 }
 
+function withDashboardDataFallback<T>(request: Promise<T>, fallback: T): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<T>((resolve) => {
+    timeoutId = setTimeout(() => resolve(fallback), 5000);
+  });
+
+  return Promise.race([request.catch((error) => {
+    console.error("[dashboard] widget data unavailable", error);
+    return fallback;
+  }), timeout]).finally(() => {
+    if (timeoutId) clearTimeout(timeoutId);
+  });
+}
+
 // ─── Derived inventory preview (top N items by total available stock) ──────────
 // Groups listStockView rows by item, sums qtyRemaining, sorts descending, takes
 // top N. Returns items with their FIFO/FEFO-ordered lot summary.
@@ -170,20 +184,30 @@ export default async function Home() {
   // The root route is the canonical landing page for both floor and office
   // users; the resolved presentation tier selects the dashboard content below.
   // ─── Capability flags ────────────────────────────────────────────────
-  const hasReceivingAccess =
-    (await requirePermission(resolver, "receiving.view")).kind === "authorized";
-  const hasPickListAccess =
-    (await requirePermission(resolver, "pick_list.read")).kind === "authorized";
-  const hasTransferAccess =
-    (await requirePermission(resolver, "transfer.view")).kind === "authorized";
-  const hasInspectionAccess =
-    (await requirePermission(resolver, "inspection.perform")).kind === "authorized";
-  const hasApprovalAccess =
-    (await requirePermission(resolver, "fifo_override.approve")).kind === "authorized";
-  const hasReportingAccess =
-    (await requirePermission(resolver, "reporting.read")).kind === "authorized";
-  const hasFinancialAccess =
-    (await requirePermission(resolver, "reporting.financial_read")).kind === "authorized";
+  const [
+    receivingPermission,
+    pickListPermission,
+    transferPermission,
+    inspectionPermission,
+    approvalPermission,
+    reportingPermission,
+    financialPermission,
+  ] = await Promise.all([
+    requirePermission(resolver, "receiving.view"),
+    requirePermission(resolver, "pick_list.read"),
+    requirePermission(resolver, "transfer.view"),
+    requirePermission(resolver, "inspection.perform"),
+    requirePermission(resolver, "fifo_override.approve"),
+    requirePermission(resolver, "reporting.read"),
+    requirePermission(resolver, "reporting.financial_read"),
+  ]);
+  const hasReceivingAccess = receivingPermission.kind === "authorized";
+  const hasPickListAccess = pickListPermission.kind === "authorized";
+  const hasTransferAccess = transferPermission.kind === "authorized";
+  const hasInspectionAccess = inspectionPermission.kind === "authorized";
+  const hasApprovalAccess = approvalPermission.kind === "authorized";
+  const hasReportingAccess = reportingPermission.kind === "authorized";
+  const hasFinancialAccess = financialPermission.kind === "authorized";
 
   async function handleQuickJump(formData: FormData): Promise<void> {
     "use server";
@@ -198,11 +222,12 @@ export default async function Home() {
   }
 
   // ─── Display name for greeting ───────────────────────────────────────
-  const profileRows = await db
+  const profileRowsPromise = db
     .select({ displayName: userProfiles.displayName })
     .from(userProfiles)
     .where(eq(userProfiles.id, context.userId))
     .limit(1);
+  const profileRows = await profileRowsPromise;
   const displayName = profileRows[0]?.displayName ?? "";
   const firstName = displayName.split(" ")[0] || "there";
 
@@ -211,48 +236,18 @@ export default async function Home() {
   const dateString = getTodayString();
 
   // ─── Capability-gated count aggregates (all tiers) ───────────────────
-  const openWrrs = hasReceivingAccess
-    ? (
-        await listWrrDocuments(db, {
-          limit: 1,
-          offset: 0,
-          status: "receiving_in_progress",
-        })
-      ).total
-    : 0;
-
-  const openPickLists = hasPickListAccess
-    ? (
-        await listPickLists(db, {
-          limit: 1,
-          offset: 0,
-          status: "allocated",
-        })
-      ).total
-    : 0;
-
-  const pendingTransfers = hasTransferAccess
-    ? (
-        await listTransferRequests(db, {
-          limit: 1,
-          offset: 0,
-          status: "staged",
-        })
-      ).total
-    : 0;
-
-  const openInspections = hasInspectionAccess
-    ? (
-        await listInspectionCases(db, {
-          status: "open",
-          limit: 1,
-        })
-      ).total
-    : 0;
-
-  const pendingApprovals = hasApprovalAccess
-    ? (await listPendingApprovalRequests(db, { limit: 1, offset: 0 })).total
-    : 0;
+  const [openWrrResult, openPickListResult, pendingTransferResult, openInspectionResult, pendingApprovalResult] = await Promise.all([
+    hasReceivingAccess ? listWrrDocuments(db, { limit: 1, offset: 0, status: "receiving_in_progress" }) : Promise.resolve({ total: 0 }),
+    hasPickListAccess ? listPickLists(db, { limit: 1, offset: 0, status: "allocated" }) : Promise.resolve({ total: 0 }),
+    hasTransferAccess ? listTransferRequests(db, { limit: 1, offset: 0, status: "staged" }) : Promise.resolve({ total: 0 }),
+    hasInspectionAccess ? listInspectionCases(db, { status: "open", limit: 1 }) : Promise.resolve({ total: 0 }),
+    hasApprovalAccess ? listPendingApprovalRequests(db, { limit: 1, offset: 0 }) : Promise.resolve({ total: 0 }),
+  ]);
+  const openWrrs = openWrrResult.total;
+  const openPickLists = openPickListResult.total;
+  const pendingTransfers = pendingTransferResult.total;
+  const openInspections = openInspectionResult.total;
+  const pendingApprovals = pendingApprovalResult.total;
 
   // ─── Floor variant ────────────────────────────────────────────────────
   if (tier === "floor") {
@@ -301,57 +296,65 @@ export default async function Home() {
     // Low Stock Items KPI — operational stock-count metric, gated
     // reporting.read (NOT reporting.financial_read — that gate was wrong
     // for a non-financial count; see specs/05 R11.5 gate-fix decision).
-    hasReportingAccess ? getInventoryKpis() : Promise.resolve(null),
+    hasReportingAccess ? withDashboardDataFallback(getInventoryKpis(), null) : Promise.resolve(null),
     // Master inventory preview — uses listStockView (lot_inventory_totals-backed)
     // Gated reporting.financial_read so only supervisors/admins see it.
-    hasFinancialAccess ? listStockView(db) : Promise.resolve([] as StockViewRow[]),
+    hasFinancialAccess ? withDashboardDataFallback(listStockView(db), [] as StockViewRow[]) : Promise.resolve([] as StockViewRow[]),
     // Action queue rows (max 3 each)
     hasReceivingAccess
-      ? listWrrDocuments(db, { limit: 3, offset: 0, status: "receiving_in_progress" })
+      ? withDashboardDataFallback(listWrrDocuments(db, { limit: 3, offset: 0, status: "receiving_in_progress" }), { rows: [] as WrrDocumentRow[], total: 0 })
       : Promise.resolve({ rows: [] as WrrDocumentRow[], total: 0 }),
     hasPickListAccess
-      ? listPickLists(db, { limit: 3, offset: 0, status: "allocated" })
+      ? withDashboardDataFallback(listPickLists(db, { limit: 3, offset: 0, status: "allocated" }), { rows: [] as PickListRow[], total: 0 })
       : Promise.resolve({ rows: [] as PickListRow[], total: 0 }),
     hasInspectionAccess
-      ? listInspectionCases(db, { status: "open", limit: 3 })
+      ? withDashboardDataFallback(listInspectionCases(db, { status: "open", limit: 3 }), { rows: [] as InspectionCaseListRow[], total: 0 })
       : Promise.resolve({ rows: [] as InspectionCaseListRow[], total: 0 }),
     hasApprovalAccess
-      ? listPendingApprovalRequests(db, { limit: 3, offset: 0 })
+      ? withDashboardDataFallback(listPendingApprovalRequests(db, { limit: 3, offset: 0 }), { rows: [] as ApprovalRequestRow[], total: 0 })
       : Promise.resolve({ rows: [] as ApprovalRequestRow[], total: 0 }),
     // Weekly transaction line graph (R11.3/R11.5 — outgoing qty + CBM only)
     hasPickListAccess
-      ? getPickListQtyAndCbmTrend({ startDate: weekStart, endDate: now }, "all", "day")
+      ? withDashboardDataFallback(getPickListQtyAndCbmTrend({ startDate: weekStart, endDate: now }, "all", "day"), [])
       : Promise.resolve([] as Array<{ period: string; total_qty: string; total_cbm: string }>),
     // Monthly outgoing KPI summary (month-to-date) — daily granularity
     // (2026-08-19: was period="month", collapsing the whole range into one
     // bucket; changed to "day" so the total can be shown as a bar graph,
     // not just a single number).
     hasPickListAccess
-      ? getPickListQtyAndCbmTrend({ startDate: monthStart, endDate: now }, "all", "day")
+      ? withDashboardDataFallback(getPickListQtyAndCbmTrend({ startDate: monthStart, endDate: now }, "all", "day"), [])
       : Promise.resolve([] as Array<{ period: string; total_qty: string; total_cbm: string }>),
     // Recent Activity feed source — genuinely recency-sorted (createdAt
     // DESC), distinct from the oldest-first action-queue rows above.
     hasReceivingAccess
-      ? listRecentWrrDocuments(db, { limit: 5 })
+      ? withDashboardDataFallback(listRecentWrrDocuments(db, { limit: 5 }), [] as WrrDocumentRow[])
       : Promise.resolve([] as WrrDocumentRow[]),
     hasPickListAccess
-      ? listRecentPickLists(db, { limit: 5 })
+      ? withDashboardDataFallback(listRecentPickLists(db, { limit: 5 }), [] as PickListRow[])
       : Promise.resolve([] as PickListRow[]),
     // Dispatch rate ring + flow-type activity bar chart (2026-08-17 restyle)
     // — same weekly range as the Weekly Outgoing Trend chart they sit next to.
     hasPickListAccess
-      ? getDispatchRate({ startDate: weekStart, endDate: now })
+      ? withDashboardDataFallback(getDispatchRate({ startDate: weekStart, endDate: now }), null)
       : Promise.resolve(null as { dispatched: string; not_dispatched: string } | null),
     hasPickListAccess
-      ? getPickListCountByFlow({ startDate: weekStart, endDate: now })
+      ? withDashboardDataFallback(getPickListCountByFlow({ startDate: weekStart, endDate: now }), [])
       : Promise.resolve([] as Array<{ flow_type: string; count: string }>),
     // Real-time WMS Operations Dashboard queries
-    getDashboardKpis(),
-    getDashboardMonthlyFlow(),
-    getDashboardLocationOccupancy(),
-    getDashboardDeliveryPerformance(),
-    getDashboardHeatmapData(),
-    getDashboardMasterInventory({ limit: 100 }),
+    withDashboardDataFallback(getDashboardKpis(), {
+      valuation: { total: 0, trendPct: 0, trendDirection: "flat" as const, vmiAmount: 0, tradingAmount: 0 },
+      floorQueues: { pendingReceivingWrrs: 0, activePickLists: 0, pendingQcInspections: 0 },
+      stockHealth: { lowStockCount: 0, heldLotsCount: 0, qcPassRatePct: 0 },
+      financialSummary: { vmiDailyCbmRate: 0, vmiClientCount: 0, tradingMarginPct: 0, tradingMarginTargetPct: 0, pendingBillingAmount: 0, pendingInvoicesCount: 0 },
+    }),
+    withDashboardDataFallback(getDashboardMonthlyFlow(), { all: [], vmi: [], trading: [], supplies: [] }),
+    withDashboardDataFallback(getDashboardLocationOccupancy(), []),
+    withDashboardDataFallback(getDashboardDeliveryPerformance(), {
+      chartData: [],
+      miniMetrics: { avgLeadTimeHours: 0, firstAttemptDeliveryRatePct: 0, freightDamageClaimsPct: 0, slaTargetPct: 95 },
+    }),
+    withDashboardDataFallback(getDashboardHeatmapData(), []),
+    withDashboardDataFallback(getDashboardMasterInventory({ limit: 100 }), { items: [], total: 0 }),
   ]));
 
   // Build top-5 inventory preview from stock rows.

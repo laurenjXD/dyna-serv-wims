@@ -113,27 +113,21 @@ export async function listTransferRequests(
     .select({ count: sql<string>`count(*)` })
     .from(transferRequests);
 
-  let rows: TransferRequestRow[];
-  let countResult: Array<{ count: string }>;
-
   if (opts.status) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const whereExpr = eq(transferRequests.status, opts.status as any);
-    rows = (await dataBase
-      .where(whereExpr)
-      .orderBy(asc(transferRequests.createdAt))
-      .limit(opts.limit)
-      .offset(opts.offset)) as TransferRequestRow[];
-    countResult = (await countBase.where(whereExpr)) as Array<{ count: string }>;
+    const [rows, countResult] = await Promise.all([
+      dataBase.where(whereExpr).orderBy(asc(transferRequests.createdAt)).limit(opts.limit).offset(opts.offset),
+      countBase.where(whereExpr),
+    ]);
+    return { rows: rows as TransferRequestRow[], total: Number((countResult as Array<{ count: string }>)[0].count) };
   } else {
-    rows = (await dataBase
-      .orderBy(asc(transferRequests.createdAt))
-      .limit(opts.limit)
-      .offset(opts.offset)) as TransferRequestRow[];
-    countResult = (await countBase) as Array<{ count: string }>;
+    const [rows, countResult] = await Promise.all([
+      dataBase.orderBy(asc(transferRequests.createdAt)).limit(opts.limit).offset(opts.offset),
+      countBase,
+    ]);
+    return { rows: rows as TransferRequestRow[], total: Number((countResult as Array<{ count: string }>)[0].count) };
   }
-
-  return { rows, total: Number(countResult[0].count) };
 }
 
 // ---------------------------------------------------------------------------
@@ -323,27 +317,21 @@ export async function listInspectionCases(
     .select({ count: sql<string>`count(*)` })
     .from(inspectionCases);
 
-  let rows: InspectionCaseListRow[];
-  let countResult: Array<{ count: string }>;
-
   if (opts.status) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const whereExpr = eq(inspectionCases.status, opts.status as any);
-    rows = (await dataBase
-      .where(whereExpr)
-      .orderBy(asc(inspectionCases.openedAt))
-      .limit(limit)
-      .offset(offset)) as InspectionCaseListRow[];
-    countResult = (await countBase.where(whereExpr)) as Array<{ count: string }>;
+    const [rows, countResult] = await Promise.all([
+      dataBase.where(whereExpr).orderBy(asc(inspectionCases.openedAt)).limit(limit).offset(offset),
+      countBase.where(whereExpr),
+    ]);
+    return { rows: rows as InspectionCaseListRow[], total: Number((countResult as Array<{ count: string }>)[0].count) };
   } else {
-    rows = (await dataBase
-      .orderBy(asc(inspectionCases.openedAt))
-      .limit(limit)
-      .offset(offset)) as InspectionCaseListRow[];
-    countResult = (await countBase) as Array<{ count: string }>;
+    const [rows, countResult] = await Promise.all([
+      dataBase.orderBy(asc(inspectionCases.openedAt)).limit(limit).offset(offset),
+      countBase,
+    ]);
+    return { rows: rows as InspectionCaseListRow[], total: Number((countResult as Array<{ count: string }>)[0].count) };
   }
-
-  return { rows, total: Number(countResult[0].count) };
 }
 
 // ---------------------------------------------------------------------------

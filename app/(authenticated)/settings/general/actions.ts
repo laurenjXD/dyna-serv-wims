@@ -109,6 +109,22 @@ const DEFAULT_SETTINGS: GeneralSettingsData = {
   },
 };
 
+const SETTINGS_QUERY_TIMEOUT_MS = 8000;
+
+async function withSettingsQueryTimeout<T>(request: Promise<T>): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(
+      () => reject(new Error("General settings query timed out")),
+      SETTINGS_QUERY_TIMEOUT_MS,
+    );
+  });
+
+  return Promise.race([request, timeout]).finally(() => {
+    if (timeoutId) clearTimeout(timeoutId);
+  });
+}
+
 export async function getGeneralSettings(): Promise<{ ok: true; data: GeneralSettingsData } | { ok: false; error: string }> {
   const resolver = await createPageResolver();
   const permission = await requirePermission(resolver, "users.read");
@@ -116,8 +132,22 @@ export async function getGeneralSettings(): Promise<{ ok: true; data: GeneralSet
     return { ok: false, error: "Access restricted to administrators." };
   }
 
-  const [stored] = await db.select({ value: systemSettings.value }).from(systemSettings).where(eq(systemSettings.key, "general"));
-  return { ok: true, data: stored?.value ? ({ ...DEFAULT_SETTINGS, ...(stored.value as Partial<GeneralSettingsData>) } as GeneralSettingsData) : DEFAULT_SETTINGS };
+  try {
+    const [stored] = await withSettingsQueryTimeout(
+      db.select({ value: systemSettings.value })
+        .from(systemSettings)
+        .where(eq(systemSettings.key, "general")),
+    );
+    return {
+      ok: true,
+      data: stored?.value
+        ? ({ ...DEFAULT_SETTINGS, ...(stored.value as Partial<GeneralSettingsData>) } as GeneralSettingsData)
+        : DEFAULT_SETTINGS,
+    };
+  } catch (error) {
+    console.error("[settings/general] failed to load settings", error);
+    return { ok: false, error: "General settings could not be loaded." };
+  }
 }
 
 export async function saveGeneralSettings(settings: GeneralSettingsData): Promise<{ ok: true } | { ok: false; error: string }> {

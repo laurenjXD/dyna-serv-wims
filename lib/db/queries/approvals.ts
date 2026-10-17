@@ -146,7 +146,8 @@ export async function listPendingApprovalRequests(
     : eq(approvalRequests.status, "pending");
 
   // Data query — paginated, oldest first
-  const rows: ApprovalRequestRow[] = await db
+  const [rows, countRows] = await Promise.all([
+    db
     .select({
       id: approvalRequests.id,
       requestNumber: approvalRequests.requestNumber,
@@ -164,13 +165,15 @@ export async function listPendingApprovalRequests(
     .where(whereClause)
     .orderBy(asc(approvalRequests.createdAt))
     .limit(opts.limit)
-    .offset(opts.offset);
+    .offset(opts.offset),
 
   // Count query — same WHERE; no pagination
-  const [countRow] = await db
+    db
     .select({ count: sql<string>`count(*)` })
     .from(approvalRequests)
-    .where(whereClause);
+    .where(whereClause),
+  ]);
+  const countRow = countRows[0];
 
   return { rows, total: Number(countRow.count) };
 }

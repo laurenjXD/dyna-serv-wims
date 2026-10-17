@@ -139,9 +139,6 @@ export async function listPickLists(
     .select({ count: sql<string>`count(*)` })
     .from(pickLists);
 
-  let rows: PickListRow[];
-  let countResult: Array<{ count: string }>;
-
   const statusFilter = opts.status
     ? eq(pickLists.status, opts.status as "allocated" | "picked" | "dispatched")
     : undefined;
@@ -150,18 +147,12 @@ export async function listPickLists(
     : sql`${pickLists.deletedAt} IS NULL`;
   const whereExpr = statusFilter ? and(statusFilter, deletedFilter) : deletedFilter;
 
-  {
-    rows = (await dataBase
-      .where(whereExpr)
-      .orderBy(asc(pickLists.createdAt))
-      .limit(opts.limit)
-      .offset(opts.offset)) as PickListRow[];
-    countResult = (await countBase.where(whereExpr)) as Array<{
-      count: string;
-    }>;
-  }
+  const [rows, countResult] = await Promise.all([
+    dataBase.where(whereExpr).orderBy(asc(pickLists.createdAt)).limit(opts.limit).offset(opts.offset),
+    countBase.where(whereExpr),
+  ]);
 
-  return { rows, total: Number(countResult[0]?.count ?? 0) };
+  return { rows: rows as PickListRow[], total: Number((countResult as Array<{ count: string }>)[0]?.count ?? 0) };
 }
 
 // ---------------------------------------------------------------------------
