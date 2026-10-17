@@ -23,7 +23,7 @@ import type { UbotMigrationDraft } from "@/lib/migration/types";
 const defaultRlsDeps = { getAuthenticatedSession, pool: rlsPool };
 const SOURCE_BUCKET = "migration-source-files";
 
-type MigrationResult =
+export type MigrationResult =
   | { ok: true; batchId: string; status: string; blockingIssues: number; warningIssues: number; sourceRows: number }
   | { ok: false; error: string };
 

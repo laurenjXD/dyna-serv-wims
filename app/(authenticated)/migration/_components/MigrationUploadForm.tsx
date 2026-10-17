@@ -2,9 +2,9 @@
 
 import { useRef, useState, useTransition } from "react";
 import { AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2, Upload } from "lucide-react";
-import { commitUbotMigration, getMigrationSummary, resolveMigrationException, stageUbotMigration, type MigrationExceptionSummary } from "@/lib/actions/data-migration";
+import { commitUbotMigration, getMigrationSummary, resolveMigrationException, type MigrationExceptionSummary, type MigrationResult } from "@/lib/actions/data-migration";
 
-type StageResult = Awaited<ReturnType<typeof stageUbotMigration>>;
+type StageResult = MigrationResult;
 
 export function MigrationUploadForm() {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -23,7 +23,9 @@ export function MigrationUploadForm() {
     startTransition(async () => {
       setCommitMessage(null);
       try {
-        const staged = await stageUbotMigration(formData);
+        const response = await fetch("/api/migration/ubot", { method: "POST", body: formData });
+        const staged = await response.json() as MigrationResult;
+        if (!response.ok && !("error" in staged)) throw new Error("The migration upload failed.");
         setResult(staged);
         if (staged.ok) {
           const summary = await getMigrationSummary(staged.batchId);
