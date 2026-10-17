@@ -99,7 +99,7 @@ export function DocumentsFilterBar({
             { value: "", label: "All Organizations" },
             ...organizations.map((org) => ({ value: org.id, label: `${org.name} (${org.code})` })),
           ]}
-          className="min-w-[160px] max-w-[260px]"
+          className="sm:w-[320px]"
         />
 
         {/* Date Range Inputs */}
@@ -114,7 +114,7 @@ export function DocumentsFilterBar({
               type="date"
               value={currentFrom}
               onChange={(e) => updateParam("from", e.target.value)}
-              className="h-10 w-full min-w-0 rounded-lg border border-slate-200 bg-surface-white px-2 pl-6 font-body text-[14px] leading-5 text-on-surface focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
+              className="h-10 w-full min-w-0 rounded-lg border border-slate-200 bg-surface-white px-2 pl-6 font-body !text-sm !leading-5 text-on-surface focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
               aria-label="Filter from date"
             />
           </div>
@@ -129,7 +129,7 @@ export function DocumentsFilterBar({
               type="date"
               value={currentTo}
               onChange={(e) => updateParam("to", e.target.value)}
-              className="h-10 w-full min-w-0 rounded-lg border border-slate-200 bg-surface-white px-2 pl-6 font-body text-[14px] leading-5 text-on-surface focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
+              className="h-10 w-full min-w-0 rounded-lg border border-slate-200 bg-surface-white px-2 pl-6 font-body !text-sm !leading-5 text-on-surface focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
               aria-label="Filter to date"
             />
           </div>

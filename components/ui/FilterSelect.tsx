@@ -17,13 +17,13 @@ interface FilterSelectProps {
 
 export function FilterSelect({ label, value, options, onChange, className = "" }: FilterSelectProps) {
   return (
-    <label className={`inline-flex h-10 min-w-0 items-center gap-1.5 rounded-xl border border-border bg-surface px-3 shadow-2xs ${className}`}>
-      <span className="shrink-0 font-body text-[14px] font-bold uppercase leading-5 text-text-grey">{label}:</span>
-      <span className="relative min-w-0 flex-1">
+    <label className={`inline-flex h-10 w-full min-w-0 max-w-full items-center gap-2 rounded-xl border border-border bg-surface px-3 shadow-2xs sm:w-[280px] ${className}`}>
+      <span className="shrink-0 font-body !text-xs font-semibold uppercase leading-4 text-text-grey">{label}:</span>
+      <span className="relative min-w-0 flex-1 overflow-hidden">
         <select
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className="h-8 w-full min-w-0 appearance-none bg-transparent pr-5 font-body text-[14px] font-semibold leading-5 text-on-surface focus:outline-none"
+          className="h-8 w-full min-w-0 appearance-none truncate bg-transparent pr-5 font-body !text-sm font-semibold leading-5 text-on-surface focus:outline-none"
         >
           {options.map((option) => (
             <option key={option.value} value={option.value}>
