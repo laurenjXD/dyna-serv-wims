@@ -533,6 +533,22 @@ html[data-theme="dark"] :is(
   border-color: var(--dark-border) !important;
 }
 
+/* The mail composer uses the same compact, border-led input treatment as the
+ * rest of the application. Keep global form control defaults from turning
+ * its subject/body rows into large nested cards, in either theme. */
+[data-email-composer] .email-composer-field {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+[data-email-composer] :is(input, textarea).email-composer-field {
+  border-color: transparent !important;
+}
+
+[data-email-composer] textarea.email-composer-field {
+  border-radius: 0 !important;
+}
+
 html[data-theme="dark"] :is(
   .hover\:bg-slate-50:hover,
   .hover\:bg-slate-100:hover,

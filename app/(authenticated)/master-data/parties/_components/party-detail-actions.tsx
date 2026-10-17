@@ -159,8 +159,6 @@ import {
   X,
   AlertCircle,
   Sparkles,
-  Minimize2,
-  Maximize2,
   Bold,
   Italic,
   Underline,
@@ -168,7 +166,6 @@ import {
   ListOrdered,
   Link2,
   Smile,
-  MoreVertical,
   Strikethrough,
 } from "lucide-react";
 
@@ -355,20 +352,21 @@ function ContactPartyModal({
       onClick={onClose}
     >
       <div
-        className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-elevation-3 animate-in zoom-in-95"
+        data-email-composer
+        className="flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-elevation-3 animate-in zoom-in-95"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-border bg-surface-light-grey/60 px-5 py-3">
+        <div className="flex items-center justify-between border-b border-border bg-surface px-4 py-3">
           <div className="flex items-center gap-3">
             <div>
               <h2
                 id="contact-party-title"
-                className="font-heading text-base font-bold text-on-surface"
+                className="font-heading text-sm font-bold text-on-surface"
               >
                 New Message
               </h2>
-              <div className="mt-0.5 flex flex-wrap items-center gap-2 font-body text-body-xs text-text-grey">
+              <div className="mt-0.5 flex flex-wrap items-center gap-1.5 font-body text-[11px] text-text-grey">
                 <span>To: <strong className="text-on-surface">{partyName}</strong> ({partyEmail || "on record"})</span>
                 <span>•</span>
                 <span>From: <code className="font-mono text-brand-navy">operations@dyna-serv.com</code></span>
@@ -376,15 +374,13 @@ function ContactPartyModal({
             </div>
           </div>
 
-          <div className="flex items-center gap-1 text-text-grey">
-            <button type="button" aria-label="Minimize composer" className="hidden h-9 w-9 items-center justify-center rounded-lg hover:bg-surface-light-grey hover:text-on-surface sm:flex"><Minimize2 size={16} /></button>
-            <button type="button" aria-label="Expand composer" className="hidden h-9 w-9 items-center justify-center rounded-lg hover:bg-surface-light-grey hover:text-on-surface sm:flex"><Maximize2 size={16} /></button>
-            <button type="button" onClick={onClose} aria-label="Close composer" className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-surface-light-grey hover:text-on-surface transition-colors"><X size={18} /></button>
+          <div className="flex items-center text-text-grey">
+            <button type="button" onClick={onClose} aria-label="Close composer" className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-surface-light-grey hover:text-on-surface transition-colors"><X size={17} /></button>
           </div>
         </div>
 
         {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto px-5 py-3 sm:px-6 sm:py-4">
+        <div className="flex-1 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
           {state.error && (
             <div
               role="alert"
@@ -427,20 +423,20 @@ function ContactPartyModal({
 
               {/* Suggested draft selector stays available without taking over
                   the familiar mail-client composition flow. */}
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface-light-grey/60 px-3 py-2.5">
-                <div className="flex min-w-[240px] flex-1 items-center gap-2">
-                  <Sparkles size={16} className="text-brand-navy shrink-0" />
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+                <div className="flex min-w-[220px] flex-1 items-center gap-2">
+                  <Sparkles size={14} className="text-brand-navy shrink-0" />
                   <div className="min-w-0">
-                    <label htmlFor="template-selector" className="block font-label text-label-xs font-bold uppercase text-text-grey">
+                    <label htmlFor="template-selector" className="block font-label text-[10px] font-bold uppercase tracking-wide text-text-grey">
                       Suggested draft
                     </label>
-                    <span className="hidden font-body text-[11px] text-text-grey sm:block">Choose a prepared operational message</span>
+                   <span className="hidden font-body text-[10px] text-text-grey sm:block">Choose a prepared operational message</span>
                   </div>
                   <select
                     id="template-selector"
                     value={selectedTemplateId}
                     onChange={(e) => handleTemplateChange(e.target.value)}
-                    className="h-9 min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 font-body text-body-xs font-semibold text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                     className="email-composer-field h-8 min-w-0 flex-1 rounded-md border border-border bg-surface px-2.5 font-body text-xs font-semibold text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
                   >
                     {EMAIL_TEMPLATES.map((tmpl) => (
                       <option key={tmpl.id} value={tmpl.id}>
@@ -451,11 +447,11 @@ function ContactPartyModal({
                 </div>
 
                 {/* Tab Switcher: Compose vs Live Preview */}
-                <div className="flex items-center rounded-lg border border-border bg-surface p-1">
+                <div className="flex items-center rounded-md border border-border bg-surface p-0.5">
                   <button
                     type="button"
                     onClick={() => setActiveTab("compose")}
-                    className={`flex items-center gap-1.5 rounded-md px-3 py-1 font-label text-label-xs font-bold transition-colors ${
+                     className={`flex items-center gap-1 rounded px-2.5 py-1 font-label text-[10px] font-bold transition-colors ${
                       activeTab === "compose"
                         ? "bg-brand-navy text-white shadow-xs"
                         : "text-text-grey hover:text-on-surface"
@@ -467,7 +463,7 @@ function ContactPartyModal({
                   <button
                     type="button"
                     onClick={() => setActiveTab("preview")}
-                    className={`flex items-center gap-1.5 rounded-md px-3 py-1 font-label text-label-xs font-bold transition-colors ${
+                     className={`flex items-center gap-1 rounded px-2.5 py-1 font-label text-[10px] font-bold transition-colors ${
                       activeTab === "preview"
                         ? "bg-brand-navy text-white shadow-xs"
                         : "text-text-grey hover:text-on-surface"
@@ -480,15 +476,15 @@ function ContactPartyModal({
               </div>
 
               {activeTab === "compose" ? (
-                <div className="space-y-4">
+                 <div className="space-y-3">
                   {/* Familiar mail-client recipient, subject, and CC rows. */}
-                  <div className="flex min-h-11 items-center gap-2 border-b border-border">
-                    <span className="font-body text-body-sm text-text-grey">To</span>
-                    <span className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-brand-navy/10 px-2.5 py-1 font-body text-body-sm text-on-surface">
-                      <span className="max-w-[220px] truncate font-semibold text-sm">{partyName}</span>
-                      <span className="max-w-[260px] truncate text-sm text-text-grey">&lt;{partyEmail || "email on record"}&gt;</span>
-                      <span className="ml-auto font-body text-sm text-text-grey">Cc</span>
-                      <input id="email-cc-inline" name="cc" type="text" value={cc} onChange={(e) => setCc(e.target.value)} placeholder="Add Cc" className="h-9 w-36 border-0 bg-transparent px-1 font-body text-sm text-on-surface placeholder:text-text-grey focus:outline-none focus:ring-0" />
+                   <div className="flex min-h-10 items-center gap-2 border-b border-border">
+                     <span className="font-body text-xs text-text-grey">To</span>
+                     <span className="inline-flex max-w-full items-center gap-1 rounded-md bg-brand-navy/10 px-2 py-1 font-body text-xs text-on-surface">
+                       <span className="max-w-[190px] truncate font-semibold">{partyName}</span>
+                       <span className="max-w-[220px] truncate text-text-grey">&lt;{partyEmail || "email on record"}&gt;</span>
+                       <span className="ml-auto font-body text-xs text-text-grey">Cc</span>
+                       <input id="email-cc-inline" name="cc" type="text" value={cc} onChange={(e) => setCc(e.target.value)} placeholder="Add Cc" className="email-composer-field h-7 w-32 border-0 bg-transparent px-1 font-body text-xs text-on-surface placeholder:text-text-grey focus:outline-none focus:ring-0" />
                     </span>
                   </div>
                   <div className="border-b border-border">
@@ -507,7 +503,7 @@ function ContactPartyModal({
                         value={subject}
                         onChange={(e) => setSubject(e.target.value)}
                         placeholder="Enter email subject line…"
-                        className="h-11 w-full rounded-none border-0 bg-transparent px-0 font-body text-sm font-semibold text-on-surface focus:outline-none focus:ring-0"
+                         className="email-composer-field h-10 w-full rounded-none border-0 bg-transparent px-0 font-body text-sm font-semibold text-on-surface focus:outline-none focus:ring-0"
                       />
                     </div>
 
@@ -554,7 +550,7 @@ function ContactPartyModal({
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
                       placeholder="Write your operational message to the organization here…"
-                      className="mt-2 block min-h-[260px] w-full resize-y rounded-none border-0 bg-transparent p-0 font-body text-sm text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-0 leading-7"
+                       className="email-composer-field mt-1 block min-h-[220px] w-full resize-y rounded-none border-0 bg-transparent p-0 font-body text-sm text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-0 leading-6"
                     />
                   </div>
 
@@ -568,8 +564,6 @@ function ContactPartyModal({
                     <button type="button" aria-label="Insert link" onClick={insertLink} className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-surface-light-grey hover:text-on-surface"><Link2 size={17} /></button>
                     <button type="button" aria-label="Insert emoji" onClick={() => insertMessageText("🙂")} className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-surface-light-grey hover:text-on-surface"><Smile size={17} /></button>
                     <button type="button" aria-label="Add attachment" onClick={() => fileInputRef.current?.click()} className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-surface-light-grey hover:text-on-surface"><Paperclip size={17} /></button>
-                    <span className="mx-1 h-5 w-px bg-border" aria-hidden="true" />
-                    <span className="flex h-9 w-9 items-center justify-center rounded-lg" aria-hidden="true"><MoreVertical size={17} /></span>
                   </div>
 
                   {/* File Upload / Attachments Area */}
@@ -624,12 +618,12 @@ function ContactPartyModal({
                 </div>
               ) : (
                 /* Live HTML Preview Container */
-                <div className="rounded-xl border border-border bg-surface-light-grey/30 p-2">
+                 <div className="border-t border-border pt-3">
                   <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-2 text-text-grey text-[11px] font-label uppercase font-semibold">
                     <span>Live inbox preview</span>
                     <span className="text-emerald-700 font-bold">● Brand Compliant</span>
                   </div>
-                  <div className="max-h-[420px] overflow-y-auto overflow-hidden rounded-lg border border-border bg-white shadow-xs">
+                   <div className="max-h-[380px] overflow-y-auto overflow-hidden rounded-md border border-border bg-white shadow-xs">
                     <iframe
                       srcDoc={previewHtml}
                       title="Email Preview"
@@ -644,7 +638,7 @@ function ContactPartyModal({
 
         {/* Modal Footer */}
         {!state.ok && (
-          <div className="flex flex-row-reverse flex-wrap items-center justify-between gap-3 border-t border-border bg-surface-light-grey/40 px-5 py-3 sm:px-6">
+           <div className="flex flex-row-reverse flex-wrap items-center justify-between gap-3 border-t border-border bg-surface-light-grey/40 px-4 py-3 sm:px-5">
             <button
               type="button"
               onClick={handleDiscardDraft}
@@ -658,7 +652,7 @@ function ContactPartyModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="flex h-10 items-center justify-center rounded-lg border border-border bg-surface px-4 font-label text-label-xs font-bold text-on-surface hover:bg-surface-light-grey transition-colors"
+                 className="flex h-9 items-center justify-center rounded-md border border-border bg-surface px-3.5 font-label text-[11px] font-bold text-on-surface hover:bg-surface-light-grey transition-colors"
               >
                 Cancel
               </button>
@@ -666,7 +660,7 @@ function ContactPartyModal({
                 type="submit"
                 form="email-dispatch-form"
                 disabled={isPending}
-                className="flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-5 font-label text-label-xs font-bold text-surface-white hover:bg-primary-hover active:scale-95 shadow-sm transition-all disabled:opacity-50"
+                 className="flex h-9 items-center justify-center gap-1.5 rounded-md bg-primary px-4 font-label text-[11px] font-bold text-surface-white hover:bg-primary-hover active:scale-95 shadow-sm transition-all disabled:opacity-50"
               >
                 <Mail size={14} />
                 <span>{isPending ? "Sending…" : "Send"}</span>
