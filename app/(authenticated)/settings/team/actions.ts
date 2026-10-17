@@ -148,20 +148,36 @@ export async function listTeamMembers(): Promise<ActionResult<TeamMember[]>> {
 
   try {
     const serviceClient = createServiceRoleClient();
-    const loaded = await withSettingsTimeout(
-      Promise.all([
+    // Keep the profile directory independent from optional enrichment. A
+    // slow Auth admin request or an unavailable auth.sessions view must not
+    // turn a populated directory into an empty one.
+    const [profiles, activeRoleRows, activeScopeRows, authUsersRes, sessionRows] = await Promise.all([
+      withSettingsTimeout(
         db.select({ id: userProfiles.id, displayName: userProfiles.displayName, status: userProfiles.status }).from(userProfiles),
+        [],
+      ),
+      withSettingsTimeout(
         db
           .select({ userId: userRoles.userId, roleKey: roles.key })
           .from(userRoles)
           .innerJoin(roles, eq(userRoles.roleId, roles.id))
           .where(isNull(userRoles.revokedAt)),
+        [],
+      ),
+      withSettingsTimeout(
         db
           .select({ userId: userPartyScopes.userId, partyName: parties.name })
           .from(userPartyScopes)
           .innerJoin(parties, eq(userPartyScopes.partyId, parties.id))
           .where(isNull(userPartyScopes.revokedAt)),
+        [],
+      ),
+      withSettingsTimeout(
         serviceClient.auth.admin.listUsers().catch(() => ({ data: { users: [] } })),
+        { data: { users: [] } },
+        5000,
+      ),
+      withSettingsTimeout(
         db.execute(sql`
           SELECT DISTINCT ON (user_id)
             id, user_id, updated_at, user_agent, ip::text as ip_address
@@ -174,13 +190,9 @@ export async function listTeamMembers(): Promise<ActionResult<TeamMember[]>> {
           user_agent: string | null;
           ip_address: string | null;
         }>>,
-      ]),
-      null,
-    );
-
-    if (!loaded) return { ok: true, data: [] };
-
-    const [profiles, activeRoleRows, activeScopeRows, authUsersRes, sessionRows] = loaded;
+        [],
+      ),
+    ]);
 
     const authUserMap = new Map((authUsersRes?.data?.users ?? []).map((u) => [u.id, u]));
     const sessionMap = new Map((sessionRows as Array<{ user_id: string; id: string; updated_at: string | Date; user_agent: string | null }>).map((s) => [s.user_id, s]));
