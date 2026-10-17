@@ -330,30 +330,36 @@ export function AccountTab({ profile }: { profile: OwnProfile }) {
           </span>
         </div>
 
-        <div className="divide-y divide-slate-100">
-          {profile.recentActivity.map((act) => (
-            <div key={act.id} className="py-3 flex items-start justify-between gap-3 text-xs first:pt-0 last:pb-0">
-              <div className="space-y-0.5 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-heading font-bold text-slate-900">
-                    {act.action}
-                  </span>
-                  {act.entityId && (
-                    <span className="font-mono text-[10px] font-bold text-primary bg-blue-50 px-1.5 py-0.2 rounded border border-blue-100">
-                      {act.entityId}
+        {profile.recentActivity.length === 0 ? (
+          <p className="py-6 text-center text-xs text-slate-500 font-body">
+            No personal activity records logged yet. Your physical floor scans, intakes, and profile changes will appear here.
+          </p>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {profile.recentActivity.map((act) => (
+              <div key={act.id} className="py-3 flex items-start justify-between gap-3 text-xs first:pt-0 last:pb-0">
+                <div className="space-y-0.5 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-heading font-bold text-slate-900">
+                      {act.action}
                     </span>
-                  )}
+                    {act.entityId && (
+                      <span className="font-mono text-[10px] font-bold text-primary bg-blue-50 px-1.5 py-0.2 rounded border border-blue-100">
+                        {act.entityId}
+                      </span>
+                    )}
+                  </div>
+                  <p className="font-body text-slate-600 text-[11px] line-clamp-1">
+                    {act.details}
+                  </p>
                 </div>
-                <p className="font-body text-slate-600 text-[11px] line-clamp-1">
-                  {act.details}
-                </p>
+                <span className="font-mono text-[10px] text-slate-400 shrink-0 mt-0.5">
+                  {new Date(act.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
               </div>
-              <span className="font-mono text-[10px] text-slate-400 shrink-0 mt-0.5">
-                {new Date(act.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </span>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Effective Permissions Dialog */}

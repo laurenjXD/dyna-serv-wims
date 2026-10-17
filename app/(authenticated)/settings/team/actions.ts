@@ -3,7 +3,7 @@
 // Server Actions backing `/settings/team` — Team directory, Dynamic RBAC roles,
 // granular permission matrix, and per-user audit trails.
 
-import { eq, isNull, and, desc } from "drizzle-orm";
+import { eq, isNull, and, desc, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import {
   userProfiles,
@@ -20,6 +20,7 @@ import { createPageResolver } from "@/lib/auth/page-resolver";
 import { inviteUserSchema, suspendUserSchema, type InviteUserInput } from "@/lib/user-settings/schemas";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
+import { parseUserAgentDevice } from "@/lib/user-settings/device-parser";
 
 export type ActionResult<T = undefined> =
   | { ok: true; data: T }
@@ -105,7 +106,7 @@ export async function listTeamMembers(): Promise<ActionResult<TeamMember[]>> {
 
   try {
     const serviceClient = createServiceRoleClient();
-    const [profiles, activeRoleRows, activeScopeRows, authUsersRes] = await Promise.all([
+    const [profiles, activeRoleRows, activeScopeRows, authUsersRes, sessionRows] = await Promise.all([
       db.select({ id: userProfiles.id, displayName: userProfiles.displayName, status: userProfiles.status }).from(userProfiles),
       db
         .select({ userId: userRoles.userId, roleKey: roles.key })
@@ -118,28 +119,61 @@ export async function listTeamMembers(): Promise<ActionResult<TeamMember[]>> {
         .innerJoin(parties, eq(userPartyScopes.partyId, parties.id))
         .where(isNull(userPartyScopes.revokedAt)),
       serviceClient.auth.admin.listUsers().catch(() => ({ data: { users: [] } })),
+      db.execute(sql`
+        SELECT DISTINCT ON (user_id)
+          id, user_id, updated_at, user_agent, ip::text as ip_address
+        FROM auth.sessions
+        ORDER BY user_id, updated_at DESC;
+      `).catch(() => []) as Promise<Array<{
+        id: string;
+        user_id: string;
+        updated_at: string | Date;
+        user_agent: string | null;
+        ip_address: string | null;
+      }>>,
     ]);
 
     const authUserMap = new Map((authUsersRes?.data?.users ?? []).map((u) => [u.id, u]));
+    const sessionMap = new Map((sessionRows as Array<{ user_id: string; id: string; updated_at: string | Date; user_agent: string | null }>).map((s) => [s.user_id, s]));
+    const now = Date.now();
 
     const members: TeamMember[] = profiles.map((p) => {
       const auth = authUserMap.get(p.id);
       const shortId = p.id.replace(/-/g, "").substring(0, 4).toUpperCase();
       const userRoleList = activeRoleRows.filter((r) => r.userId === p.id).map((r) => r.roleKey);
+      const latestSession = sessionMap.get(p.id);
+
+      let activeDevice = "No Active Session";
+      let sessionStatus: "connected" | "idle" | "offline" = "offline";
+      let sessionUuid = "—";
+
+      if (latestSession) {
+        const parsed = parseUserAgentDevice(latestSession.user_agent);
+        activeDevice = parsed.deviceAlias;
+        sessionUuid = `SESS-${latestSession.id.substring(0, 8).toUpperCase()}`;
+        const diffMinutes = (now - new Date(latestSession.updated_at).getTime()) / (60 * 1000);
+        if (diffMinutes <= 15) {
+          sessionStatus = "connected";
+        } else if (diffMinutes <= 60) {
+          sessionStatus = "idle";
+        } else {
+          sessionStatus = "offline";
+        }
+      }
 
       return {
         id: p.id,
         displayName: p.displayName || auth?.user_metadata?.displayName || "Team Member",
         email: auth?.email ?? null,
         employeeId: (auth?.user_metadata?.employee_id as string) || `EMP-${shortId}`,
-        phone: (auth?.user_metadata?.phone as string) || "+63 917 555 " + shortId,
+        phone: (auth?.user_metadata?.phone as string) || (auth?.phone ?? "—"),
         avatarUrl: (auth?.user_metadata?.avatar_url as string) || null,
         status: p.status,
         roleKeys: userRoleList.length > 0 ? userRoleList : ["warehouse_staff"],
         partyNames: activeScopeRows.filter((s) => s.userId === p.id).map((s) => s.partyName),
-        activeDevice: "BYOD Mobile · Android Chrome",
-        sessionStatus: p.status === "active" ? "connected" : "offline",
-        sessionUuid: `SESS-${shortId}-${p.id.substring(p.id.length - 4).toUpperCase()}`,
+        activeDevice,
+        sessionStatus,
+        sessionUuid,
         lastSignInAt: auth?.last_sign_in_at ?? null,
       };
     });
