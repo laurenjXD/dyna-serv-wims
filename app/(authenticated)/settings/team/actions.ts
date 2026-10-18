@@ -21,6 +21,9 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { parseUserAgentDevice } from "@/lib/user-settings/device-parser";
 import { withSettingsTimeout } from "@/lib/user-settings/with-timeout";
+import { Resend } from "resend";
+import { generateTeamInvitationEmailHtml } from "@/lib/notifications/email-composer-templates";
+import { roleLabel } from "@/lib/user-settings/roles";
 
 export type ActionResult<T = undefined> =
   | { ok: true; data: T }
@@ -67,7 +70,59 @@ function getInvitationConfigurationError(): string | null {
     return "Invitation setup is not configured on the server. Add DATABASE_URL_RUNTIME, DATABASE_URL, or POSTGRES_URL in the deployment environment.";
   }
 
+  if (!process.env.RESEND_API_KEY || !process.env.RESEND_FROM_EMAIL) {
+    return "Invitation email is not configured on the server. Add RESEND_API_KEY and RESEND_FROM_EMAIL in the deployment environment.";
+  }
+
   return null;
+}
+
+async function generateAndSendInvitationEmail({
+  serviceClient,
+  email,
+  displayName,
+  role,
+  redirectTo,
+  linkType,
+}: {
+  serviceClient: ReturnType<typeof createServiceRoleClient>;
+  email: string;
+  displayName: string;
+  role: string;
+  redirectTo: string;
+  linkType: "invite" | "recovery";
+}) {
+  const { data: linkData, error: linkError } = await serviceClient.auth.admin.generateLink({
+    type: linkType,
+    email,
+    options: { redirectTo },
+  });
+
+  const actionLink = linkData?.properties?.action_link;
+  if (linkError || !actionLink) {
+    return { ok: false as const, error: linkError?.message ?? "Failed to generate the invitation link." };
+  }
+
+  const resendApiKey = process.env.RESEND_API_KEY;
+  const resendFrom = process.env.RESEND_FROM_EMAIL;
+  if (!resendApiKey || !resendFrom) {
+    return { ok: false as const, error: "Invitation email is not configured on the server." };
+  }
+
+  const resend = new Resend(resendApiKey);
+  const { error: sendError } = await resend.emails.send({
+    from: resendFrom,
+    to: [email],
+    subject: "Your Dyna-Serv WIMS invitation",
+    html: generateTeamInvitationEmailHtml({
+      displayName,
+      roleName: roleLabel(role),
+      inviteUrl: actionLink,
+    }),
+  });
+
+  if (sendError) return { ok: false as const, error: sendError.message };
+  return { ok: true as const };
 }
 
 export interface TeamMember {
@@ -554,19 +609,33 @@ export async function inviteUser(input: InviteUserInput): Promise<ActionResult<{
   }
 
   const serviceClient = createServiceRoleClient();
-  const { data: authData, error: authError } = await serviceClient.auth.admin.inviteUserByEmail(
-    parsed.data.email,
-    {
+  const { data: authData, error: authError } = await serviceClient.auth.admin.generateLink({
+    type: "invite",
+    email: parsed.data.email,
+    options: {
       data: {
         displayName: parsed.data.displayName,
         employee_id: `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
       },
       redirectTo,
     },
-  );
+  });
 
   if (authError || !authData?.user) {
-    return { ok: false, error: authError?.message ?? "Failed to send invitation email." };
+    return { ok: false, error: authError?.message ?? "Failed to create the invited account." };
+  }
+
+  const inviteEmail = await generateAndSendInvitationEmail({
+    serviceClient,
+    email: parsed.data.email,
+    displayName: parsed.data.displayName,
+    role: parsed.data.role,
+    redirectTo,
+    linkType: "invite",
+  });
+  if (!inviteEmail.ok) {
+    await serviceClient.auth.admin.deleteUser(authData.user.id).catch(() => {});
+    return { ok: false, error: inviteEmail.error };
   }
 
   const newUserId = authData.user.id;
@@ -749,22 +818,19 @@ export async function resendInvite(userId: string): Promise<ActionResult> {
     return { ok: false, error: error instanceof Error ? error.message : "The invitation redirect URL is invalid." };
   }
 
-  // Once the invite link has been opened, Supabase may mark the email as
-  // confirmed even though our local profile is still "invited". A second
-  // invite is rejected for that user, so send a recovery link instead.
-  const { error: inviteError } = authUser.user.email_confirmed_at
-    ? await serviceClient.auth.resetPasswordForEmail(authUser.user.email, { redirectTo })
-    : await serviceClient.auth.admin.inviteUserByEmail(authUser.user.email, {
-        data: {
-          displayName: profile.displayName,
-          employee_id: (authUser.user.user_metadata?.employee_id as string) || `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
-        },
-        redirectTo,
-      });
-
-  if (inviteError) {
-    return { ok: false, error: inviteError.message };
-  }
+  // If Supabase has already confirmed the email, use a recovery action link
+  // as the secure credential-reset mechanism, but deliver it inside the same
+  // branded onboarding email through Resend. Supabase generates the token;
+  // Resend only transports our custom message and never receives credentials.
+  const inviteEmail = await generateAndSendInvitationEmail({
+    serviceClient,
+    email: authUser.user.email,
+    displayName: profile.displayName,
+    role: "warehouse_staff",
+    redirectTo,
+    linkType: authUser.user.email_confirmed_at ? "recovery" : "invite",
+  });
+  if (!inviteEmail.ok) return { ok: false, error: inviteEmail.error };
 
   // Audit log
   await db.insert(auditLog).values({
