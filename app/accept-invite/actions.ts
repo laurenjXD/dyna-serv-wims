@@ -26,10 +26,7 @@
 // admin-scoped `users.activate` capability, which is the wrong tool for
 // "did I accept my own invite."
 
-import { eq } from "drizzle-orm";
-import { db } from "@/lib/db/client";
-import { userProfiles, rbacSecurityEvents, auditLog } from "@/lib/db/schema";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { displayNameSchema, changePasswordSchema } from "@/lib/user-settings/schemas";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -107,13 +104,14 @@ export async function completeInvitationAcceptance(input: {
     return { ok: false, error: "Your invitation link has expired or is invalid. Ask your administrator to resend it." };
   }
 
-  const [profile] = await db
-    .select({ id: userProfiles.id, status: userProfiles.status })
-    .from(userProfiles)
-    .where(eq(userProfiles.id, data.user.id))
-    .limit(1);
+  const admin = createServiceRoleClient();
+  const { data: profile, error: profileError } = await admin
+    .from("user_profiles")
+    .select("id, status")
+    .eq("id", data.user.id)
+    .maybeSingle();
 
-  if (!profile || profile.status !== "invited") {
+  if (profileError || !profile || profile.status !== "invited") {
     return { ok: false, error: "This invitation has already been used or is not valid." };
   }
 
@@ -128,40 +126,43 @@ export async function completeInvitationAcceptance(input: {
     return { ok: false, error: passwordError.message };
   }
 
-  await db
-    .update(userProfiles)
-    .set({
-      displayName: nameParsed.data.displayName,
+  const { error: profileUpdateError } = await admin
+    .from("user_profiles")
+    .update({
+      display_name: nameParsed.data.displayName,
       status: "active",
-      activatedAt: new Date(),
-      activatedByUserId: data.user.id,
-      updatedAt: new Date(),
+      activated_at: new Date().toISOString(),
+      activated_by_user_id: data.user.id,
+      updated_at: new Date().toISOString(),
     })
-    .where(eq(userProfiles.id, data.user.id));
+    .eq("id", data.user.id);
+  if (profileUpdateError) {
+    return { ok: false, error: "Your password was updated, but account activation could not be saved. Please try again." };
+  }
 
-  await db.insert(rbacSecurityEvents).values({
-    eventType: "user_activated",
-    actorUserId: data.user.id,
-    executorType: "user",
-    targetType: "user_profiles",
-    targetId: data.user.id,
+  await admin.from("rbac_security_events").insert({
+    event_type: "user_activated",
+    actor_user_id: data.user.id,
+    executor_type: "user",
+    target_type: "user_profiles",
+    target_id: data.user.id,
     reason: "Self-service invitation acceptance & onboarding completion",
   });
 
   // Write to immutable audit_log
   try {
-    await db.insert(auditLog).values({
-      actorUserId: data.user.id,
-      actorRole: "warehouse_staff",
+    await admin.from("audit_log").insert({
+      actor_user_id: data.user.id,
+      actor_role: "warehouse_staff",
       action: "user_onboarded_and_activated",
-      entityType: "user_profiles",
-      entityId: data.user.id,
-      diffData: {
+      entity_type: "user_profiles",
+      entity_id: data.user.id,
+      diff_data: {
         status: { before: "invited", after: "active" },
         displayName: nameParsed.data.displayName,
         phone: input.phone || "—",
       },
-      correlationId: `ONBOARD-${Date.now()}`,
+      correlation_id: `ONBOARD-${Date.now()}`,
     });
   } catch {
     // ignore logging failure
