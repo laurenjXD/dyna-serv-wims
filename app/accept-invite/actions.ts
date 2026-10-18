@@ -34,6 +34,40 @@ import { displayNameSchema, changePasswordSchema } from "@/lib/user-settings/sch
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
+/**
+ * Persist a browser-established invite session into the SSR cookie jar.
+ *
+ * Supabase invite/recovery links can deliver their session in the URL
+ * fragment. The browser client can consume that fragment, but the following
+ * Server Action request may not yet have the same auth cookies. Establishing
+ * the session server-side here makes the subsequent onboarding mutation use
+ * the normal server-validated session path.
+ */
+export async function establishInvitationSession(input: {
+  accessToken: string;
+  refreshToken: string;
+}): Promise<ActionResult> {
+  if (!input.accessToken || !input.refreshToken) {
+    return { ok: false, error: "Your invitation session is incomplete. Open the latest invitation link again." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.setSession({
+    access_token: input.accessToken,
+    refresh_token: input.refreshToken,
+  });
+  if (error) {
+    return { ok: false, error: "Your invitation link has expired or is invalid. Ask your administrator to resend it." };
+  }
+
+  const { data, error: userError } = await supabase.auth.getUser();
+  if (userError || !data.user) {
+    return { ok: false, error: "Your invitation link has expired or is invalid. Ask your administrator to resend it." };
+  }
+
+  return { ok: true };
+}
+
 export async function completeInvitationAcceptance(input: {
   displayName: string;
   phone?: string;

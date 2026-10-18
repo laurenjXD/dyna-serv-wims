@@ -4,7 +4,7 @@
 "use client";
 
 import { useState, useEffect, type FormEvent } from "react";
-import { completeInvitationAcceptance } from "./actions";
+import { completeInvitationAcceptance, establishInvitationSession } from "./actions";
 import { createClient } from "@/lib/supabase/client";
 import {
   Warehouse,
@@ -56,6 +56,20 @@ export default function AcceptInvitePage() {
         const { data, error: userError } = await supabase.auth.getUser();
         if (userError || !data.user) throw userError ?? new Error("No invitation session found.");
         if (!active) return;
+
+        // Invite/recovery links can establish the session in the browser from
+        // a URL fragment without immediately making the SSR cookie available
+        // to a Server Action. Bridge the current, already-authenticated
+        // session into the server cookie jar before allowing submission.
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData.session) {
+          const bridgeResult = await establishInvitationSession({
+            accessToken: sessionData.session.access_token,
+            refreshToken: sessionData.session.refresh_token,
+          });
+          if (!bridgeResult.ok) throw new Error(bridgeResult.error);
+        }
+
         const name = data.user.user_metadata?.displayName || data.user.user_metadata?.display_name || data.user.user_metadata?.full_name || "";
         if (name) setDisplayName(name);
         setAuthenticated(true);

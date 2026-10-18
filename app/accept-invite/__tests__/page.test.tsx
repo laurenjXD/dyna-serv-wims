@@ -3,19 +3,46 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import AcceptInvitePage from "../page";
 
-const getUser = vi.fn();
-const verifyOtp = vi.fn();
-const exchangeCodeForSession = vi.fn();
+const {
+  getUser,
+  getSession,
+  verifyOtp,
+  exchangeCodeForSession,
+  establishInvitationSession,
+} = vi.hoisted(() => ({
+  getUser: vi.fn(),
+  getSession: vi.fn(),
+  verifyOtp: vi.fn(),
+  exchangeCodeForSession: vi.fn(),
+  establishInvitationSession: vi.fn(),
+}));
 
 vi.mock("@/lib/supabase/client", () => ({
-  createClient: () => ({ auth: { getUser, verifyOtp, exchangeCodeForSession } }),
+  createClient: () => ({ auth: { getUser, getSession, verifyOtp, exchangeCodeForSession } }),
 }));
-vi.mock("../actions", () => ({ completeInvitationAcceptance: vi.fn() }));
+vi.mock("../actions", () => ({ completeInvitationAcceptance: vi.fn(), establishInvitationSession }));
 
 describe("invitation onboarding", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getSession.mockResolvedValue({ data: { session: null } });
     window.history.replaceState(null, "", "/accept-invite");
+  });
+
+  it("bridges the browser invite session into the server cookie before onboarding", async () => {
+    window.history.replaceState(null, "", "/accept-invite#access_token=access-token&type=invite");
+    getUser.mockResolvedValue({ data: { user: { user_metadata: { displayName: "New Operator" } } }, error: null });
+    getSession.mockResolvedValue({
+      data: { session: { access_token: "access-token", refresh_token: "refresh-token" } },
+    });
+    establishInvitationSession.mockResolvedValue({ ok: true });
+    render(<AcceptInvitePage />);
+    await waitFor(() =>
+      expect(establishInvitationSession).toHaveBeenCalledWith({
+        accessToken: "access-token",
+        refreshToken: "refresh-token",
+      }),
+    );
   });
 
   it("verifies a token-hash invite before enabling account setup", async () => {
