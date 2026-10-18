@@ -1,6 +1,11 @@
-import "dotenv/config";
+import dotenv from "dotenv";
 import postgres from "postgres";
 import { createClient } from "@supabase/supabase-js";
+
+// Prefer the local developer environment, then fall back to .env. The
+// command-line variables below intentionally override either file.
+dotenv.config({ path: ".env.local" });
+dotenv.config({ path: ".env" });
 
 if (process.env.ALLOW_TEST_INVITE_SETUP !== "1") {
   throw new Error("Refusing to modify Auth/database. Set ALLOW_TEST_INVITE_SETUP=1 explicitly for a test environment.");
