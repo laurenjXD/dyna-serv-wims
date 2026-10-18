@@ -27,6 +27,7 @@ export default function AcceptInvitePage() {
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
   const [completed, setCompleted] = useState(false);
+  const [previewMode, setPreviewMode] = useState(false);
 
   // Establish the invite session in the browser. Supabase implicit invite
   // tokens live in the URL fragment and are therefore invisible to servers.
@@ -36,6 +37,14 @@ export default function AcceptInvitePage() {
     async function establishInviteSession() {
       try {
         const params = new URLSearchParams(window.location.search);
+        const isDevelopmentPreview = process.env.NODE_ENV !== "production" && params.get("preview") === "1";
+        if (isDevelopmentPreview) {
+          setPreviewMode(true);
+          setDisplayName("Preview Operator");
+          setAuthenticated(true);
+          return;
+        }
+
         const linkError = params.get("error_description") || params.get("error");
         if (linkError) throw new Error(linkError);
 
@@ -106,6 +115,11 @@ export default function AcceptInvitePage() {
       return;
     }
 
+    if (previewMode) {
+      setCompleted(true);
+      return;
+    }
+
     setPending(true);
     try {
       const supabase = createClient();
@@ -165,6 +179,12 @@ export default function AcceptInvitePage() {
             </p>
           </div>
         </div>
+
+        {previewMode && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs font-medium text-amber-900">
+            Development preview mode: this form is safe to use for visual testing and will not create or change an account.
+          </div>
+        )}
 
         {/* Onboarding Form */}
         <form onSubmit={handleSubmit} noValidate className="space-y-5">
@@ -301,7 +321,7 @@ export default function AcceptInvitePage() {
               "Activating Account..."
             ) : (
               <>
-                <span>Complete Onboarding &amp; Enter WIMS</span>
+                <span>{previewMode ? "Preview Completion State" : "Complete Onboarding & Enter WIMS"}</span>
                 <ArrowRight className="h-4 w-4" />
               </>
             )}
