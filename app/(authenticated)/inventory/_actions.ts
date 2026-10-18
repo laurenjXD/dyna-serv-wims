@@ -73,28 +73,30 @@ export async function parseDraDocumentAction(formData: FormData) {
 }
 
 export async function getItemAuditDetailAction(itemId: string) {
-  if (!itemId) return { ok: false, error: "Invalid item ID" };
+  if (!itemId) return { ok: false as const, error: "Invalid item ID" };
 
   try {
     const { db } = await import("@/lib/db/client");
     const { getItem } = await import("@/lib/db/queries/items");
-    const { getItemMovementHistory } = await import("@/lib/db/queries/inventory");
+    const { getItemMovementHistory, listStockView } = await import("@/lib/db/queries/inventory");
     const item = await getItem(db, itemId);
     if (!item) {
-      return { ok: false, error: "Item not found in master records." };
+      return { ok: false as const, error: "Item not found in master records." };
     }
 
     const movements = await getItemMovementHistory(db, itemId);
+    const stockRows = (await listStockView(db)).filter((row) => row.itemId === itemId);
 
     return {
-      ok: true,
+      ok: true as const,
       item,
       movements,
+      stockRows,
     };
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     return {
-      ok: false,
+      ok: false as const,
       error: `Failed to load item audit details: ${errorMsg}`,
     };
   }

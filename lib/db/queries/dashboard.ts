@@ -530,6 +530,7 @@ export async function getDashboardMasterInventory(params?: {
 export async function lookupBarcodeOrQr(code: string): Promise<{
   found: boolean;
   type: "item" | "location" | "lot";
+  id: string;
   title: string;
   code: string;
   details: string;
@@ -554,6 +555,7 @@ export async function lookupBarcodeOrQr(code: string): Promise<{
       return {
         found: true,
         type: "item",
+        id: itemMatch.id,
         title: itemMatch.name,
         code: itemMatch.code,
         details: `Barcode: ${itemMatch.barcode} · UOM: ${itemMatch.uom}`,
@@ -576,6 +578,7 @@ export async function lookupBarcodeOrQr(code: string): Promise<{
       return {
         found: true,
         type: "location",
+        id: locMatch.id,
         title: `Bin Location ${locMatch.label}`,
         code: locMatch.label,
         details: `Zone ${locMatch.zone} · Rack ${locMatch.rack}`,
@@ -598,6 +601,7 @@ export async function lookupBarcodeOrQr(code: string): Promise<{
       return {
         found: true,
         type: "lot",
+        id: lotMatch.id,
         title: `Lot ${lotMatch.lotNumber}`,
         code: lotMatch.lotNumber,
         details: `Flow: ${lotMatch.flowType.toUpperCase()} · Status: ${lotMatch.status}`,

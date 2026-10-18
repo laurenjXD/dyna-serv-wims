@@ -10,9 +10,10 @@ import { lookupBarcodeOrQr } from "@/lib/db/queries/dashboard";
 export interface ScanVerificationResult {
   success: boolean;
   message: string;
-  data?: {
-    type: "item" | "location" | "lot";
-    title: string;
+    data?: {
+      type: "item" | "location" | "lot";
+      id: string;
+      title: string;
     code: string;
     details: string;
   };
