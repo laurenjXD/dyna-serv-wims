@@ -18,7 +18,7 @@ const {
 }));
 
 vi.mock("@/lib/supabase/client", () => ({
-  createClient: () => ({ auth: { getUser, getSession, verifyOtp, exchangeCodeForSession } }),
+  createClient: () => ({ auth: { getUser, getSession, signOut: vi.fn(), verifyOtp, exchangeCodeForSession } }),
 }));
 vi.mock("../actions", () => ({ completeInvitationAcceptance: vi.fn(), establishInvitationSession }));
 

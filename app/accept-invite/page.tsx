@@ -26,6 +26,7 @@ export default function AcceptInvitePage() {
   const [pending, setPending] = useState(false);
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
+  const [completed, setCompleted] = useState(false);
 
   // Establish the invite session in the browser. Supabase implicit invite
   // tokens live in the URL fragment and are therefore invisible to servers.
@@ -107,17 +108,23 @@ export default function AcceptInvitePage() {
 
     setPending(true);
     try {
+      const supabase = createClient();
+      const { data: sessionData } = await supabase.auth.getSession();
       const result = await completeInvitationAcceptance({
         displayName,
         phone,
         newPassword,
         confirmPassword,
+        accessToken: sessionData.session?.access_token,
+        refreshToken: sessionData.session?.refresh_token,
       });
       if (!result.ok) {
         setError(result.error);
         return;
       }
-      window.location.replace("/");
+      await supabase.auth.signOut();
+      setCompleted(true);
+      window.setTimeout(() => window.location.replace("/login?activated=1"), 1800);
     } catch {
       setError("Account setup could not be completed. Please try again.");
     } finally {
@@ -262,7 +269,17 @@ export default function AcceptInvitePage() {
             </div>
           </div>
 
-          {error && (
+          {completed && (
+            <div
+              role="status"
+              className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs font-medium text-emerald-800"
+            >
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+              <span>Your account was created successfully. Redirecting you to the login page…</span>
+            </div>
+          )}
+
+          {error && !completed && (
             <div
               role="alert"
               className="flex items-center gap-2 rounded-xl bg-rose-50 p-3.5 text-xs font-medium text-rose-800 border border-rose-200"
@@ -275,7 +292,7 @@ export default function AcceptInvitePage() {
           <button
             type="submit"
             data-testid="accept-invite-submit"
-            disabled={loadingInitial || !authenticated || pending || !displayName.trim() || !newPassword || !confirmPassword}
+            disabled={loadingInitial || !authenticated || pending || completed || !displayName.trim() || !newPassword || !confirmPassword}
             className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-brand-navy px-5 font-label text-xs font-bold text-white shadow-sm hover:bg-brand-navy/90 transition-colors disabled:opacity-50"
           >
             {loadingInitial ? (

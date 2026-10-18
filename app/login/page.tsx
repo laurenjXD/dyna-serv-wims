@@ -61,6 +61,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   // Detect invite link tokens, hash parameters, or invited user sessions
@@ -69,6 +70,9 @@ export default function LoginPage() {
 
     // 1. Check URL query parameters (e.g. ?code=... or ?error=...)
     const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get("activated") === "1") {
+      setSuccess("Your account was created successfully. You can now sign in.");
+    }
     const code = searchParams.get("code");
     const errParam = searchParams.get("error_description") || searchParams.get("error");
     if (errParam) {
@@ -221,6 +225,15 @@ export default function LoginPage() {
               className="font-body text-body-md text-status-held"
             >
               {error}
+            </p>
+          )}
+
+          {success && (
+            <p
+              role="status"
+              className="font-body text-body-md text-emerald-700"
+            >
+              {success}
             </p>
           )}
 

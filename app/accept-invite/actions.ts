@@ -73,6 +73,8 @@ export async function completeInvitationAcceptance(input: {
   phone?: string;
   newPassword: string;
   confirmPassword: string;
+  accessToken?: string;
+  refreshToken?: string;
 }): Promise<ActionResult> {
   const nameParsed = displayNameSchema.safeParse({ displayName: input.displayName });
   if (!nameParsed.success) {
@@ -84,7 +86,23 @@ export async function completeInvitationAcceptance(input: {
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.getUser();
+  let { data, error } = await supabase.auth.getUser();
+
+  // The invite/recovery session may exist only in the browser client's
+  // storage when this Server Action is called. If so, validate the current
+  // browser session with Supabase and establish it in the SSR cookie jar
+  // before continuing. The identity still comes from Supabase's validated
+  // getUser() response, never from a client-supplied user id.
+  if ((!data.user || error) && input.accessToken && input.refreshToken) {
+    const { error: sessionError } = await supabase.auth.setSession({
+      access_token: input.accessToken,
+      refresh_token: input.refreshToken,
+    });
+    if (!sessionError) {
+      ({ data, error } = await supabase.auth.getUser());
+    }
+  }
+
   if (error || !data.user) {
     return { ok: false, error: "Your invitation link has expired or is invalid. Ask your administrator to resend it." };
   }
