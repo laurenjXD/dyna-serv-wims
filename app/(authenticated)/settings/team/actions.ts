@@ -29,6 +29,12 @@ export type ActionResult<T = undefined> =
   | { ok: true; data: T }
   | { ok: false; error: string };
 
+type InvitationEmailProvider = "supabase" | "resend";
+
+function getInvitationEmailProvider(): InvitationEmailProvider {
+  return process.env.INVITATION_EMAIL_PROVIDER === "supabase" ? "supabase" : "resend";
+}
+
 async function requireUsersCapability(action: "read" | "invite" | "activate" | "deactivate") {
   const resolver = await createPageResolver();
   return requirePermission(resolver, `users.${action}`);
@@ -70,7 +76,7 @@ function getInvitationConfigurationError(): string | null {
     return "Invitation setup is not configured on the server. Add DATABASE_URL_RUNTIME, DATABASE_URL, or POSTGRES_URL in the deployment environment.";
   }
 
-  if (!process.env.RESEND_API_KEY || !process.env.RESEND_FROM_EMAIL) {
+  if (getInvitationEmailProvider() === "resend" && (!process.env.RESEND_API_KEY || !process.env.RESEND_FROM_EMAIL)) {
     return "Invitation email is not configured on the server. Add RESEND_API_KEY and RESEND_FROM_EMAIL in the deployment environment.";
   }
 
@@ -609,33 +615,40 @@ export async function inviteUser(input: InviteUserInput): Promise<ActionResult<{
   }
 
   const serviceClient = createServiceRoleClient();
-  const { data: authData, error: authError } = await serviceClient.auth.admin.generateLink({
-    type: "invite",
-    email: parsed.data.email,
-    options: {
-      data: {
-        displayName: parsed.data.displayName,
-        employee_id: `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
-      },
-      redirectTo,
-    },
-  });
+  const provider = getInvitationEmailProvider();
+  const userMetadata = {
+    displayName: parsed.data.displayName,
+    employee_id: `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
+  };
+  const inviteResult = provider === "supabase"
+    ? await serviceClient.auth.admin.inviteUserByEmail(parsed.data.email, {
+        data: userMetadata,
+        redirectTo,
+      })
+    : await serviceClient.auth.admin.generateLink({
+        type: "invite",
+        email: parsed.data.email,
+        options: { data: userMetadata, redirectTo },
+      });
+  const { data: authData, error: authError } = inviteResult;
 
   if (authError || !authData?.user) {
     return { ok: false, error: authError?.message ?? "Failed to create the invited account." };
   }
 
-  const inviteEmail = await generateAndSendInvitationEmail({
-    serviceClient,
-    email: parsed.data.email,
-    displayName: parsed.data.displayName,
-    role: parsed.data.role,
-    redirectTo,
-    linkType: "invite",
-  });
-  if (!inviteEmail.ok) {
-    await serviceClient.auth.admin.deleteUser(authData.user.id).catch(() => {});
-    return { ok: false, error: inviteEmail.error };
+  if (provider === "resend") {
+    const inviteEmail = await generateAndSendInvitationEmail({
+      serviceClient,
+      email: parsed.data.email,
+      displayName: parsed.data.displayName,
+      role: parsed.data.role,
+      redirectTo,
+      linkType: "invite",
+    });
+    if (!inviteEmail.ok) {
+      await serviceClient.auth.admin.deleteUser(authData.user.id).catch(() => {});
+      return { ok: false, error: inviteEmail.error };
+    }
   }
 
   const newUserId = authData.user.id;
@@ -822,15 +835,29 @@ export async function resendInvite(userId: string): Promise<ActionResult> {
   // as the secure credential-reset mechanism, but deliver it inside the same
   // branded onboarding email through Resend. Supabase generates the token;
   // Resend only transports our custom message and never receives credentials.
-  const inviteEmail = await generateAndSendInvitationEmail({
-    serviceClient,
-    email: authUser.user.email,
-    displayName: profile.displayName,
-    role: "warehouse_staff",
-    redirectTo,
-    linkType: authUser.user.email_confirmed_at ? "recovery" : "invite",
-  });
-  if (!inviteEmail.ok) return { ok: false, error: inviteEmail.error };
+  const provider = getInvitationEmailProvider();
+  if (provider === "supabase") {
+    const { error: emailError } = authUser.user.email_confirmed_at
+      ? await serviceClient.auth.resetPasswordForEmail(authUser.user.email, { redirectTo })
+      : await serviceClient.auth.admin.inviteUserByEmail(authUser.user.email, {
+          data: {
+            displayName: profile.displayName,
+            employee_id: (authUser.user.user_metadata?.employee_id as string) || `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
+          },
+          redirectTo,
+        });
+    if (emailError) return { ok: false, error: emailError.message };
+  } else {
+    const inviteEmail = await generateAndSendInvitationEmail({
+      serviceClient,
+      email: authUser.user.email,
+      displayName: profile.displayName,
+      role: "warehouse_staff",
+      redirectTo,
+      linkType: authUser.user.email_confirmed_at ? "recovery" : "invite",
+    });
+    if (!inviteEmail.ok) return { ok: false, error: inviteEmail.error };
+  }
 
   // Audit log
   await db.insert(auditLog).values({
