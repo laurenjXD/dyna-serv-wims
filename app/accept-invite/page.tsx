@@ -63,6 +63,21 @@ export default function AcceptInvitePage() {
           if (verifyError) throw verifyError;
         }
 
+        // Implicit invite/recovery links return the session in the URL hash.
+        // The hash is not sent to the server, and relying only on the browser
+        // client's automatic URL detection is not reliable across deployed
+        // environments, so establish it explicitly.
+        const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+        const accessToken = hashParams.get("access_token");
+        const refreshToken = hashParams.get("refresh_token");
+        if (accessToken && refreshToken) {
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (sessionError) throw sessionError;
+        }
+
         const { data, error: userError } = await supabase.auth.getUser();
         if (userError || !data.user) throw userError ?? new Error("No invitation session found.");
         if (!active) return;

@@ -6,19 +6,21 @@ import AcceptInvitePage from "../page";
 const {
   getUser,
   getSession,
+  setSession,
   verifyOtp,
   exchangeCodeForSession,
   establishInvitationSession,
 } = vi.hoisted(() => ({
   getUser: vi.fn(),
   getSession: vi.fn(),
+  setSession: vi.fn(),
   verifyOtp: vi.fn(),
   exchangeCodeForSession: vi.fn(),
   establishInvitationSession: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/client", () => ({
-  createClient: () => ({ auth: { getUser, getSession, signOut: vi.fn(), verifyOtp, exchangeCodeForSession } }),
+  createClient: () => ({ auth: { getUser, getSession, setSession, signOut: vi.fn(), verifyOtp, exchangeCodeForSession } }),
 }));
 vi.mock("../actions", () => ({ completeInvitationAcceptance: vi.fn(), establishInvitationSession }));
 
@@ -41,6 +43,20 @@ describe("invitation onboarding", () => {
       expect(establishInvitationSession).toHaveBeenCalledWith({
         accessToken: "access-token",
         refreshToken: "refresh-token",
+      }),
+    );
+  });
+
+  it("explicitly establishes an implicit invite session from URL hash tokens", async () => {
+    window.history.replaceState(null, "", "/accept-invite#access_token=access-token&refresh_token=refresh-token&type=invite");
+    setSession.mockResolvedValue({ error: null });
+    getUser.mockResolvedValue({ data: { user: { user_metadata: { displayName: "Hash Operator" } } }, error: null });
+    getSession.mockResolvedValue({ data: { session: null } });
+    render(<AcceptInvitePage />);
+    await waitFor(() =>
+      expect(setSession).toHaveBeenCalledWith({
+        access_token: "access-token",
+        refresh_token: "refresh-token",
       }),
     );
   });
