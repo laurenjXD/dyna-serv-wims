@@ -1,7 +1,7 @@
 "use server";
 
 import { createHash, randomUUID } from "node:crypto";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
@@ -201,7 +201,10 @@ export async function listMigrationBatches(): Promise<MigrationBatchListResult> 
 
     const result = await withRlsTransaction(defaultRlsDeps, async (tx) => {
       const db = tx.db as typeof defaultDb;
-      const batches = await db.select({ id: migrationBatches.id, status: migrationBatches.status, sourceFileName: migrationBatches.sourceFileName, openingDate: migrationBatches.openingDate, createdAt: migrationBatches.createdAt }).from(migrationBatches).orderBy(desc(migrationBatches.createdAt)).limit(20);
+      // Committed batches remain in the database as immutable audit/history,
+      // but they are no longer resumable migration stages and should not be
+      // offered in the review list.
+      const batches = await db.select({ id: migrationBatches.id, status: migrationBatches.status, sourceFileName: migrationBatches.sourceFileName, openingDate: migrationBatches.openingDate, createdAt: migrationBatches.createdAt }).from(migrationBatches).where(ne(migrationBatches.status, "committed")).orderBy(desc(migrationBatches.createdAt)).limit(20);
       const summaries: MigrationBatchListItem[] = [];
       for (const batch of batches) {
         const [sourceRowCount] = await db.select({ count: sql<number>`count(*)` }).from(migrationSourceRows).where(eq(migrationSourceRows.batchId, batch.id));
