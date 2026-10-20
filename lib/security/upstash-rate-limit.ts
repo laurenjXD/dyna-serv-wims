@@ -30,27 +30,20 @@ function getLimiter(): Ratelimit | null {
 }
 
 /**
- * Privileged endpoints remain protected in production when Upstash is
- * configured. Local development must still be usable without a cloud Redis
- * account; the endpoint's authentication, administrator checks, and 50 MB
- * upload limit remain active there.
+ * Upstash is an optional distributed throttle, not the authorization boundary.
+ * If it is unavailable, the endpoint still enforces authentication,
+ * administrator checks, and its 50 MB upload limit.
  */
 export async function limitPrivilegedRequest(identifier: string): Promise<LimitResult> {
   const activeLimiter = getLimiter();
   if (!activeLimiter) {
-    if (process.env.NODE_ENV !== "production") {
-      return { success: true, limit: 5, remaining: 5, reset: 0 };
-    }
-    return { success: false, limit: 0, remaining: 0, reset: 0 };
+    return { success: true, limit: 5, remaining: 5, reset: 0 };
   }
 
   try {
     return await activeLimiter.limit(identifier);
   } catch (error) {
     console.error("[security] privileged rate limiter unavailable", error);
-    if (process.env.NODE_ENV !== "production") {
-      return { success: true, limit: 5, remaining: 5, reset: 0 };
-    }
     return { success: false, limit: 0, remaining: 0, reset: 0 };
   }
 }
