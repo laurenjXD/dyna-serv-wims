@@ -38,12 +38,20 @@ export function MigrationUploadForm() {
   const activeStep = workflowIndex(file, result, isCommitted, isPending);
 
   async function refreshPreviousBatches() {
-    const response = await listMigrationBatches();
-    if (response.ok) {
-      setPreviousBatches(response.batches);
-      setPreviousBatchesError(null);
-    } else {
-      setPreviousBatchesError(response.error);
+    try {
+      const response = await listMigrationBatches();
+      if (response.ok) {
+        setPreviousBatches(response.batches);
+        setPreviousBatchesError(null);
+      } else {
+        setPreviousBatchesError(response.error);
+      }
+    } catch (error) {
+      // Previous-stage history is optional. A failed authorization/database
+      // lookup must not become an unhandled rejection that replaces the
+      // whole authenticated workspace with the global error screen.
+      console.error("[migration] previous stages could not be loaded", error);
+      setPreviousBatchesError("Previous stages are temporarily unavailable. You can still import a workbook.");
     }
   }
 

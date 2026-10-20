@@ -187,28 +187,34 @@ export async function getMigrationSummary(batchId: string): Promise<MigrationSum
 }
 
 export async function listMigrationBatches(): Promise<MigrationBatchListResult> {
-  const access = await canManageMigration();
-  if (!access) return { ok: false, error: "You do not have permission to view previous migration stages." };
+  try {
+    const access = await canManageMigration();
+    if (!access) return { ok: false, error: "You do not have permission to view previous migration stages." };
 
-  const result = await withRlsTransaction(defaultRlsDeps, async (tx) => {
-    const db = tx.db as typeof defaultDb;
-    const batches = await db.select({ id: migrationBatches.id, status: migrationBatches.status, sourceFileName: migrationBatches.sourceFileName, openingDate: migrationBatches.openingDate, createdAt: migrationBatches.createdAt }).from(migrationBatches).orderBy(desc(migrationBatches.createdAt)).limit(20);
-    const summaries = await Promise.all(batches.map(async (batch) => {
-      const [sourceRowCount] = await db.select({ count: sql<number>`count(*)` }).from(migrationSourceRows).where(eq(migrationSourceRows.batchId, batch.id));
-      const issueRows = await db.select({ severity: migrationExceptions.severity, resolutionStatus: migrationExceptions.resolutionStatus }).from(migrationExceptions).where(eq(migrationExceptions.batchId, batch.id));
-      return {
-        ...batch,
-        createdAt: batch.createdAt.toISOString(),
-        sourceRows: Number(sourceRowCount?.count ?? 0),
-        blockingIssues: issueRows.filter((issue) => issue.severity === "blocking" && issue.resolutionStatus === "open").length,
-        warningIssues: issueRows.filter((issue) => issue.severity === "warning").length,
-      } satisfies MigrationBatchListItem;
-    }));
-    return { ok: true as const, batches: summaries };
-  });
+    const result = await withRlsTransaction(defaultRlsDeps, async (tx) => {
+      const db = tx.db as typeof defaultDb;
+      const batches = await db.select({ id: migrationBatches.id, status: migrationBatches.status, sourceFileName: migrationBatches.sourceFileName, openingDate: migrationBatches.openingDate, createdAt: migrationBatches.createdAt }).from(migrationBatches).orderBy(desc(migrationBatches.createdAt)).limit(20);
+      const summaries: MigrationBatchListItem[] = [];
+      for (const batch of batches) {
+        const [sourceRowCount] = await db.select({ count: sql<number>`count(*)` }).from(migrationSourceRows).where(eq(migrationSourceRows.batchId, batch.id));
+        const issueRows = await db.select({ severity: migrationExceptions.severity, resolutionStatus: migrationExceptions.resolutionStatus }).from(migrationExceptions).where(eq(migrationExceptions.batchId, batch.id));
+        summaries.push({
+          ...batch,
+          createdAt: batch.createdAt.toISOString(),
+          sourceRows: Number(sourceRowCount?.count ?? 0),
+          blockingIssues: issueRows.filter((issue) => issue.severity === "blocking" && issue.resolutionStatus === "open").length,
+          warningIssues: issueRows.filter((issue) => issue.severity === "warning").length,
+        });
+      }
+      return { ok: true as const, batches: summaries };
+    });
 
-  if (result.kind === "unauthenticated") return { ok: false, error: "Your session is no longer authenticated." };
-  return result.value;
+    if (result.kind === "unauthenticated") return { ok: false, error: "Your session is no longer authenticated." };
+    return result.value;
+  } catch (error) {
+    console.error("[data-migration] listing previous stages failed", error);
+    return { ok: false, error: "Previous migration stages are temporarily unavailable." };
+  }
 }
 
 export async function resolveMigrationException(exceptionId: string, resolutionNote: string): Promise<{ ok: true } | { ok: false; error: string }> {
