@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { AlertTriangle, Check, CheckCircle2, Circle, FileSpreadsheet, Loader2, LockKeyhole, Upload } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { AlertTriangle, ArrowLeft, Check, CheckCircle2, Circle, FileSpreadsheet, Loader2, LockKeyhole, Upload } from "lucide-react";
 import { approveUbotMigration, commitUbotMigration, getMigrationSummary, listMigrationBatches, resolveMigrationException, type MigrationBatchListItem, type MigrationExceptionSummary, type MigrationResult } from "@/lib/actions/data-migration";
 import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -25,6 +26,7 @@ function workflowIndex(file: File | null, result: StageResult | null, isCommitte
 }
 
 export function MigrationUploadForm() {
+  const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<StageResult | null>(null);
@@ -34,6 +36,7 @@ export function MigrationUploadForm() {
   const [previousBatchesError, setPreviousBatchesError] = useState<string | null>(null);
   const [resolutionNotes, setResolutionNotes] = useState<Record<string, string>>({});
   const [isCommitted, setIsCommitted] = useState(false);
+  const [reviewOnly, setReviewOnly] = useState(false);
   const [isPending, startTransition] = useTransition();
   const activeStep = workflowIndex(file, result, isCommitted, isPending);
 
@@ -70,6 +73,7 @@ export function MigrationUploadForm() {
       const warningIssues = summary.exceptions.filter((exception) => exception.severity === "warning").length;
       if (inputRef.current) inputRef.current.value = "";
       setFile(null);
+      setReviewOnly(true);
       setResult({ ok: true, batchId: summary.batch.id, status: summary.batch.status, blockingIssues, warningIssues, sourceRows: summary.batch.sourceRows });
       setExceptions(summary.exceptions);
       setResolutionNotes({});
@@ -83,6 +87,7 @@ export function MigrationUploadForm() {
     const formData = new FormData();
     formData.set("openingDate", "2026-10-09");
     startTransition(async () => {
+      setReviewOnly(false);
       setCommitMessage(null);
       try {
         const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -118,9 +123,7 @@ export function MigrationUploadForm() {
     startTransition(async () => {
       const response = await commitUbotMigration(result.batchId);
       if (response.ok) {
-        setIsCommitted(true);
-        setCommitMessage(`Opening seed confirmed. ${response.committedRows} opening balance row(s) committed.`);
-        await refreshPreviousBatches();
+        router.push(`/migration/success?rows=${response.committedRows}`);
       } else {
         setCommitMessage(response.error);
       }
@@ -159,6 +162,17 @@ export function MigrationUploadForm() {
     });
   }
 
+  function leaveReview() {
+    if (inputRef.current) inputRef.current.value = "";
+    setReviewOnly(false);
+    setFile(null);
+    setResult(null);
+    setExceptions([]);
+    setResolutionNotes({});
+    setCommitMessage(null);
+    setIsCommitted(false);
+  }
+
   const canApprove = result?.ok && result.status === "staged" && result.blockingIssues === 0;
   const canCommit = result?.ok && result.status === "approved" && result.blockingIssues === 0;
   const openBlocking = exceptions.filter((exception) => exception.severity === "blocking" && exception.resolutionStatus === "open").length;
@@ -184,7 +198,12 @@ export function MigrationUploadForm() {
         </ol>
       </nav>
 
-      <section className="rounded-2xl border border-outline-variant/40 bg-surface-white p-6 shadow-elevation-1 sm:p-8" aria-labelledby="previous-migration-stages">
+      {reviewOnly && <section className="rounded-2xl border border-brand-blue/20 bg-brand-blue/5 p-4 shadow-elevation-1" aria-label="Review navigation">
+        <button type="button" onClick={leaveReview} disabled={isPending} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-brand-blue px-5 font-label text-label font-bold text-brand-blue disabled:opacity-50"><ArrowLeft size={18} /> Back</button>
+        <p className="mt-3 font-body text-body-sm text-text-grey">You are reviewing a saved migration stage. Back returns to the migration workspace.</p>
+      </section>}
+
+      {!reviewOnly && <section className="rounded-2xl border border-outline-variant/40 bg-surface-white p-6 shadow-elevation-1 sm:p-8" aria-labelledby="previous-migration-stages">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="font-label text-label font-bold uppercase text-brand-blue">Continue an existing migration</p>
@@ -195,9 +214,9 @@ export function MigrationUploadForm() {
         </div>
         {previousBatchesError && <p className="mt-4 rounded-lg bg-error/5 p-3 font-body text-body-sm text-error" role="alert">{previousBatchesError}</p>}
         {previousBatches.length === 0 ? <p className="mt-5 font-body text-body-sm text-text-grey">No saved migration stages found.</p> : <div className="mt-5 space-y-3">{previousBatches.map((batch) => <div key={batch.id} className="flex flex-col gap-4 rounded-xl border border-outline-variant/40 bg-surface-grey/40 p-4 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="break-all font-label text-label font-bold text-on-surface">{batch.sourceFileName}</p><span className="rounded-full bg-brand-blue/10 px-2.5 py-1 font-label text-label font-bold text-brand-blue">{statusLabel(batch.status)}</span></div><p className="mt-1 font-body text-body-sm text-text-grey">{batch.sourceRows} source rows · {batch.blockingIssues} open blocking · {batch.warningIssues} warning(s)</p><p className="mt-1 font-mono text-mono-sm text-text-grey">Saved {new Date(batch.createdAt).toLocaleString()}</p></div><button type="button" onClick={() => openPreviousBatch(batch)} disabled={isPending} className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full border border-brand-blue px-5 font-label text-label font-bold text-brand-blue disabled:opacity-50">Open review</button></div>)}</div>}
-      </section>
+      </section>}
 
-      <section className="rounded-2xl border border-outline-variant/40 bg-surface-white p-6 shadow-elevation-1 sm:p-8">
+      {!reviewOnly && <section className="rounded-2xl border border-outline-variant/40 bg-surface-white p-6 shadow-elevation-1 sm:p-8">
         <div className="flex items-start gap-4">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-blue/10 text-brand-blue"><FileSpreadsheet size={22} /></span>
           <div>
@@ -208,12 +227,12 @@ export function MigrationUploadForm() {
         </div>
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <input ref={inputRef} type="file" accept=".xlsx" className="sr-only" onChange={(event) => { setFile(event.target.files?.[0] ?? null); setResult(null); setExceptions([]); setCommitMessage(null); setIsCommitted(false); }} />
+          <input ref={inputRef} type="file" accept=".xlsx" className="sr-only" onChange={(event) => { setReviewOnly(false); setFile(event.target.files?.[0] ?? null); setResult(null); setExceptions([]); setCommitMessage(null); setIsCommitted(false); }} />
           <button type="button" onClick={() => inputRef.current?.click()} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-brand-blue px-5 font-label text-label font-bold text-brand-blue hover:bg-brand-blue/10 focus:outline-none focus:ring-2 focus:ring-brand-blue"><Upload size={18} /> Select workbook</button>
           <span className="min-w-0 flex-1 truncate font-mono text-body-sm text-text-grey">{file?.name ?? "No workbook selected"}</span>
           <button type="button" onClick={stage} disabled={!file || isPending || isCommitted} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-brand-blue px-5 font-label text-label font-bold text-white hover:bg-brand-navy disabled:cursor-not-allowed disabled:opacity-50">{isPending ? <Loader2 size={18} className="animate-spin" /> : <FileSpreadsheet size={18} />} Migrate workbook</button>
         </div>
-      </section>
+      </section>}
 
       {result?.ok && <section className="rounded-2xl border border-outline-variant/40 bg-surface-white p-6 shadow-elevation-1 sm:p-8" aria-live="polite">
         <div className="flex items-start gap-4">
