@@ -31,6 +31,10 @@ describe("UBoT VMI migration adapter", () => {
     expect(normalizeItemCode("3.40010007485E11")).toBe("340010007485");
   });
 
+  it("preserves alphanumeric item codes that contain an E suffix", () => {
+    expect(normalizeItemCode("CX01E05201")).toBe("CX01E05201");
+  });
+
   it("maps the current-state workbook into master data, opening balances, and rates", () => {
     const draft = parseUbotVmiWorkbook(workbookBuffer());
     expect(draft.profileKey).toBe("ubot-vmi-v1");

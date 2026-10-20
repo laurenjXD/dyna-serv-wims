@@ -40,7 +40,10 @@ function normalizeHeader(value: Cell): string {
 function normalizeItemCode(value: Cell): string {
   const raw = text(value).replace(/\s+/g, "");
   if (!raw) return "";
-  if (!/[eE][+-]?\d+$/.test(raw)) return raw;
+  // Only expand values whose entire token is numeric scientific notation.
+  // Codes such as CX01E05201 contain an E followed by digits but are valid
+  // alphanumeric item codes and must remain unchanged.
+  if (!/^[+-]?(?:\d+\.?\d*|\.\d+)[eE][+-]?\d+$/.test(raw)) return raw;
 
   const [mantissa, exponentText] = raw.toUpperCase().split("E");
   const exponent = Number(exponentText);
