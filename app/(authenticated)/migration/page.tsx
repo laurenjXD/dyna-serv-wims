@@ -4,13 +4,12 @@ import { MigrationUploadForm } from "./_components/MigrationUploadForm";
 
 export default async function MigrationPage() {
   const resolver = await createPageResolver();
-  const [partyPermission, itemPermission, locationPermission, contractPermission] = await Promise.all([
+  const [partyPermission, itemPermission, locationPermission] = await Promise.all([
     requirePermission(resolver, "parties.manage"),
     requirePermission(resolver, "items.manage"),
     requirePermission(resolver, "locations.manage"),
-    requirePermission(resolver, "vmi_contract_terms.manage"),
   ]);
-  if (partyPermission.kind !== "authorized" || itemPermission.kind !== "authorized" || locationPermission.kind !== "authorized" || contractPermission.kind !== "authorized" || !partyPermission.context.activeRoleKeys.includes("administrator")) {
+  if (partyPermission.kind !== "authorized" || itemPermission.kind !== "authorized" || locationPermission.kind !== "authorized" || !partyPermission.context.activeRoleKeys.includes("administrator")) {
     return (
       <div className="mx-auto max-w-container px-4 py-12 text-center">
         <p className="font-body text-body-md text-text-grey">You do not have permission to run a data migration.</p>

@@ -48,15 +48,19 @@ export type MigrationSummaryResult =
 
 async function canManageMigration() {
   const resolver = await createPageResolver();
-  const [partiesPermission, itemsPermission, locationsPermission, contractPermission] = await Promise.all([
+  const [partiesPermission, itemsPermission, locationsPermission] = await Promise.all([
     requirePermission(resolver, "parties.manage"),
     requirePermission(resolver, "items.manage"),
     requirePermission(resolver, "locations.manage"),
-    requirePermission(resolver, "vmi_contract_terms.manage"),
   ]);
-  if ([partiesPermission, itemsPermission, locationsPermission, contractPermission].some((result) => result.kind !== "authorized")) return null;
+  if ([partiesPermission, itemsPermission, locationsPermission].some((result) => result.kind !== "authorized")) return null;
   if (partiesPermission.kind !== "authorized" || !partiesPermission.context.activeRoleKeys.includes("administrator")) return null;
-  return { resolver, userId: partiesPermission.kind === "authorized" ? partiesPermission.context.userId : "" };
+  const ratePermission = await requirePermission(resolver, "vmi_contract_terms.manage");
+  return {
+    resolver,
+    userId: partiesPermission.context.userId,
+    canManageRates: ratePermission.kind === "authorized",
+  };
 }
 
 function sourceRows(draft: UbotMigrationDraft) {
@@ -202,6 +206,7 @@ function rowsByPhase<T>(rows: Array<{ phase: string; normalizedData: unknown }>,
 export async function commitUbotMigration(batchId: string): Promise<{ ok: true; committedRows: number; batchId: string } | { ok: false; error: string }> {
   const access = await canManageMigration();
   if (!access) return { ok: false, error: "You do not have permission to commit a data migration." };
+  if (!access.canManageRates) return { ok: false, error: "Your administrator account is missing VMI rate-card permission. Ask an administrator to apply the billing permissions before committing this migration." };
 
   const result = await withRlsTransaction(defaultRlsDeps, async (tx, session) => {
     const db = tx.db as typeof defaultDb;
