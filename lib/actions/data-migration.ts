@@ -291,6 +291,14 @@ export async function commitUbotMigration(batchId: string): Promise<{ ok: true; 
     const draftBalances = rowsByPhase<UbotMigrationDraft["openingBalances"][number]>(rows, "opening_balances");
     const draftRates = rowsByPhase<UbotMigrationDraft["rates"][number]>(rows, "rates");
 
+    // Older staged batches were created before the synthetic RCV location was
+    // persisted in source rows. Preserve those batches without requiring a
+    // re-upload: if opening stock references RCV, add the canonical receiving
+    // bay to the commit-time map.
+    if (draftBalances.some((balance) => balance.locationLabel === "RCV") && !draftLocations.some((location) => location.label === "RCV")) {
+      draftLocations.push({ sourceRow: 0, label: "RCV", zone: "RCV", rack: "RCV", level: "0", position: "0", locationType: "receiving_bay" });
+    }
+
     const partyIds = new Map<string, string>();
     for (const party of draftParties) {
       const existing = await db.select({ id: parties.id }).from(parties).where(eq(parties.name, party.name)).limit(1);

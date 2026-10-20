@@ -42,6 +42,7 @@ describe("UBoT VMI migration adapter", () => {
     expect(draft.items[0].code).toBe("340010007485");
     expect(draft.locations.map((location) => location.label)).toEqual(expect.arrayContaining(["B06-2"]));
     expect(draft.locations.find((location) => location.label === "RCV")?.locationType).toBe("receiving_bay");
+    expect(draft.sourceRows.find((row) => row.phase === "locations" && row.rowKey === "RCV")?.normalizedData).toMatchObject({ label: "RCV", locationType: "receiving_bay" });
     expect(draft.openingBalances[0]).toMatchObject({ itemCode: "82012CP138", lotNumber: "C202509003", quantity: 4500, flowType: "vmi" });
     expect(draft.rates[0]).toMatchObject({ rate: 0.38, currency: "USD" });
     expect(draft.referenceSheets).toContain("IN");

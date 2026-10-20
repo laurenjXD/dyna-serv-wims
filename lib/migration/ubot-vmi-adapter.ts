@@ -215,7 +215,8 @@ export function parseUbotVmiWorkbook(buffer: Buffer, openingDate = "2026-10-09")
   }
   // RCV is a known temporary receiving location in the UBoT profile even when
   // the current snapshot has no stock staged there.
-  locations.set("RCV", { sourceRow: 0, label: "RCV", ...locationParts("RCV") });
+  const receivingLocation = { sourceRow: 0, label: "RCV", ...locationParts("RCV") } satisfies UbotLocationDraft;
+  locations.set("RCV", receivingLocation);
 
   const openingBalances: UbotOpeningBalanceDraft[] = [];
   for (const { rowNumber, row } of locationRows) {
@@ -261,7 +262,14 @@ export function parseUbotVmiWorkbook(buffer: Buffer, openingDate = "2026-10-09")
   for (const balance of openingBalances) if (!locations.has(balance.locationLabel)) addIssue(issues, { severity: "blocking", code: "opening_location_unmatched", message: `Opening balance location ${balance.locationLabel} is not defined.`, sheet: "Location Matrix", row: balance.sourceRow });
 
   for (const location of locations.values()) {
-    if (location.sourceRow > 0) sourceRows.push({ sheetName: "Location Matrix", sourceRowNumber: location.sourceRow, rowKey: location.label, phase: "locations", rawData: locationRawRows.get(location.label) ?? {}, normalizedData: location });
+    if (location.sourceRow > 0) {
+      sourceRows.push({ sheetName: "Location Matrix", sourceRowNumber: location.sourceRow, rowKey: location.label, phase: "locations", rawData: locationRawRows.get(location.label) ?? {}, normalizedData: location });
+    } else if (location.label === "RCV") {
+      // RCV is synthetic when it is not present in the workbook's location
+      // matrix, but it still has to survive staging so a later commit can
+      // resolve opening balances stored against the receiving bay.
+      sourceRows.push({ sheetName: "Location Matrix", sourceRowNumber: 0, rowKey: location.label, phase: "locations", rawData: {}, normalizedData: location });
+    }
   }
   return { profileKey: "ubot-vmi-v1", organizationName: "UBoT Incorporated Limited", flowType: "vmi", openingDate, parties, items, locations: [...locations.values()], openingBalances, rates, sourceRows, referenceSheets: REFERENCE_SHEETS.filter((sheet) => availableSheets.has(sheet)), issues };
 }
