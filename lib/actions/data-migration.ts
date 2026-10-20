@@ -107,6 +107,17 @@ function rateLabel(rate: UbotMigrationDraft["rates"][number]): string {
   return `Imported ${rate.chargeType}${basis}`.slice(0, 200);
 }
 
+function blockingIssueMessage(issues: UbotMigrationDraft["issues"]): string {
+  const blocking = issues.filter((issue) => issue.severity === "blocking");
+  const details = blocking.slice(0, 8).map((issue) => {
+    const source = issue.sheet ? ` [${issue.sheet}${issue.row ? ` row ${issue.row}` : ""}]` : "";
+    return `• ${issue.message}${source}`;
+  });
+  const remaining = blocking.length - details.length;
+  if (remaining > 0) details.push(`• ${remaining} more blocking error(s) are in the workbook.`);
+  return `Workbook rejected. Fix these errors in Excel and upload the file again:\n${details.join("\n")}`;
+}
+
 export async function stageUbotMigration(formData: FormData): Promise<MigrationResult> {
   const access = await canManageMigration();
   if (!access) return { ok: false, error: "You do not have permission to stage a data migration." };
@@ -133,6 +144,14 @@ export async function stageUbotMigration(formData: FormData): Promise<MigrationR
   const draft = parseUbotVmiWorkbook(buffer, openingDate);
   const blockingIssues = draft.issues.filter((issue) => issue.severity === "blocking").length;
   const warningIssues = draft.issues.filter((issue) => issue.severity === "warning").length;
+  if (blockingIssues > 0) {
+    if (sourcePathInput) {
+      const cleanup = await createClient();
+      const removed = await cleanup.storage.from(SOURCE_BUCKET).remove([sourcePathInput]);
+      if (removed.error) console.warn("[data-migration] rejected workbook cleanup failed", removed.error);
+    }
+    return { ok: false, error: blockingIssueMessage(draft.issues) };
+  }
   const batchId = randomUUID();
   const hash = createHash("sha256").update(buffer).digest("hex");
   const sourcePath = sourcePathInput || `${draft.profileKey}/${batchId}/${sourceFileName.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
@@ -238,8 +257,10 @@ export async function resolveMigrationException(exceptionId: string, resolutionC
 
   const result = await withRlsTransaction(defaultRlsDeps, async (tx, session) => {
     const db = tx.db as typeof defaultDb;
-    const [exception] = await db.select({ id: migrationExceptions.id, batchId: migrationExceptions.batchId }).from(migrationExceptions).where(eq(migrationExceptions.id, exceptionId)).limit(1);
+    const [exception] = await db.select({ id: migrationExceptions.id, batchId: migrationExceptions.batchId, severity: migrationExceptions.severity, resolutionStatus: migrationExceptions.resolutionStatus }).from(migrationExceptions).where(eq(migrationExceptions.id, exceptionId)).limit(1);
     if (!exception) return { ok: false as const, error: "Migration exception not found." };
+    if (exception.severity === "blocking") return { ok: false as const, error: "This is a blocking error. Fix the workbook and upload it again; it cannot be approved here." };
+    if (exception.resolutionStatus !== "open") return { ok: false as const, error: "This migration issue has already been resolved." };
     await db.update(migrationExceptions).set({ resolutionStatus: "resolved", resolutionCategory: category as MigrationResolutionCategory, resolutionNote: note || null, resolvedByUserId: session.userId, resolvedAt: new Date() }).where(eq(migrationExceptions.id, exceptionId));
     const openBlocking = await db.select({ id: migrationExceptions.id }).from(migrationExceptions).where(and(eq(migrationExceptions.batchId, exception.batchId), eq(migrationExceptions.severity, "blocking"), eq(migrationExceptions.resolutionStatus, "open"))).limit(1);
     if (openBlocking.length === 0) await db.update(migrationBatches).set({ status: "staged", updatedAt: new Date() }).where(and(eq(migrationBatches.id, exception.batchId), eq(migrationBatches.status, "needs_review")));

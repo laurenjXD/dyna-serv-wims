@@ -4,10 +4,8 @@ import { isMigrationResolutionCategory, MIGRATION_RESOLUTION_CATEGORIES } from "
 describe("migration exception resolution categories", () => {
   it("exposes a controlled category list", () => {
     expect(MIGRATION_RESOLUTION_CATEGORIES.map((category) => category.value)).toEqual([
-      "source_corrected",
       "fallback_accepted",
-      "matched_record",
-      "intentionally_excluded",
+      "accepted_as_is",
       "other",
     ]);
   });
