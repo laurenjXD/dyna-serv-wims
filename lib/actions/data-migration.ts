@@ -20,6 +20,7 @@ import { vmiContractTerms, vmiRecurringFeeLines } from "@/lib/db/schema/vmi_bill
 import { migrationBatches, migrationExceptions, migrationSourceRows } from "@/lib/db/schema/migrations";
 import { parseUbotVmiWorkbook } from "@/lib/migration/ubot-vmi-adapter";
 import { selectEffectiveUbotRates } from "@/lib/migration/rate-selection";
+import { migrationVolumeCbm } from "@/lib/migration/volume";
 import type { UbotMigrationDraft } from "@/lib/migration/types";
 
 const defaultRlsDeps = { getAuthenticatedSession, pool: rlsPool };
@@ -376,7 +377,7 @@ export async function commitUbotMigration(batchId: string): Promise<{ ok: true; 
       if (item.code.length > 100) throw new Error(`Item code ${item.code.slice(0, 40)}… exceeds the 100-character canonical limit.`);
       const existing = await db.select({ id: items.id }).from(items).where(eq(items.code, item.code)).limit(1);
       const itemId = existing[0]?.id ?? randomUUID();
-      if (!existing[0]) await db.insert(items).values({ id: itemId, code: item.code, name: item.name, barcode: item.code, itemType: "standard", uom: "piece", currency: "USD", spq: Math.max(1, Math.round(item.spq ?? 1)), spqMeter: item.spqMeter?.toFixed(2), lengthCm: item.lengthCm?.toFixed(2), widthCm: item.widthCm?.toFixed(2), heightCm: item.heightCm?.toFixed(2), volumeCm3: item.volumeCm3?.toFixed(2), volumeCbm: (item.volumeCbm ?? 0.0001).toFixed(4), boxesPerPallet: item.boxesPerPallet ? Math.round(item.boxesPerPallet) : null, isActive: true });
+      if (!existing[0]) await db.insert(items).values({ id: itemId, code: item.code, name: item.name, barcode: item.code, itemType: "standard", uom: "piece", currency: "USD", spq: Math.max(1, Math.round(item.spq ?? 1)), spqMeter: item.spqMeter?.toFixed(2), lengthCm: item.lengthCm?.toFixed(2), widthCm: item.widthCm?.toFixed(2), heightCm: item.heightCm?.toFixed(2), volumeCm3: item.volumeCm3?.toFixed(2), volumeCbm: migrationVolumeCbm(item.volumeCbm), boxesPerPallet: item.boxesPerPallet ? Math.round(item.boxesPerPallet) : null, isActive: true });
       itemIds.set(item.code, itemId);
     }
 
