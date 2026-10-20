@@ -16,9 +16,10 @@ import { locations } from "@/lib/db/schema/locations";
 import { lots } from "@/lib/db/schema/lots";
 import { lotLocationBalances } from "@/lib/db/schema/lot_location_balances";
 import { inventoryTransactions } from "@/lib/db/schema/transactions";
-import { vmiContractTerms } from "@/lib/db/schema/vmi_billing";
+import { vmiContractTerms, vmiRecurringFeeLines } from "@/lib/db/schema/vmi_billing";
 import { migrationBatches, migrationExceptions, migrationSourceRows } from "@/lib/db/schema/migrations";
 import { parseUbotVmiWorkbook } from "@/lib/migration/ubot-vmi-adapter";
+import { selectEffectiveUbotRates } from "@/lib/migration/rate-selection";
 import type { UbotMigrationDraft } from "@/lib/migration/types";
 
 const defaultRlsDeps = { getAuthenticatedSession, pool: rlsPool };
@@ -97,6 +98,11 @@ function chunks<T>(values: T[], size: number): T[][] {
   const result: T[][] = [];
   for (let index = 0; index < values.length; index += size) result.push(values.slice(index, index + size));
   return result;
+}
+
+function rateLabel(rate: UbotMigrationDraft["rates"][number]): string {
+  const basis = rate.basis ? ` (${rate.basis})` : "";
+  return `Imported ${rate.chargeType}${basis}`.slice(0, 200);
 }
 
 export async function stageUbotMigration(formData: FormData): Promise<MigrationResult> {
@@ -262,9 +268,10 @@ function rowsByPhase<T>(rows: Array<{ phase: string; normalizedData: unknown }>,
 }
 
 export async function commitUbotMigration(batchId: string): Promise<{ ok: true; committedRows: number; batchId: string } | { ok: false; error: string }> {
-  const access = await canManageMigration();
-  if (!access) return { ok: false, error: "You do not have permission to commit a data migration." };
-  if (!access.canManageRates) return { ok: false, error: "Your administrator account is missing VMI rate-card permission. Ask an administrator to apply the billing permissions before committing this migration." };
+  try {
+    const access = await canManageMigration();
+    if (!access) return { ok: false, error: "You do not have permission to commit a data migration." };
+    if (!access.canManageRates) return { ok: false, error: "Your administrator account is missing VMI rate-card permission. Ask an administrator to apply the billing permissions before committing this migration." };
 
   const result = await withRlsTransaction(defaultRlsDeps, async (tx, session) => {
     const db = tx.db as typeof defaultDb;
@@ -294,8 +301,7 @@ export async function commitUbotMigration(batchId: string): Promise<{ ok: true; 
     }
 
     const rateGroups = new Map<string, UbotMigrationDraft["rates"]>();
-    for (const rate of draftRates) {
-      if (!rate.active) continue;
+    for (const rate of selectEffectiveUbotRates(draftRates, String(batch.openingDate))) {
       const group = rateGroups.get(rate.partyName) ?? [];
       group.push(rate);
       rateGroups.set(rate.partyName, group);
@@ -303,11 +309,11 @@ export async function commitUbotMigration(batchId: string): Promise<{ ok: true; 
     for (const [partyName, partyRates] of rateGroups) {
       const partyId = partyIds.get(partyName);
       if (!partyId) throw new Error(`Migration rate party mapping disappeared for ${partyName}.`);
-      const unsupported = partyRates.find((rate) => !/warehousing|storage|handling\s*(in|inbound|out|outbound)|documentation/i.test(rate.chargeType));
-      if (unsupported) throw new Error(`Unsupported migration rate charge type: ${unsupported.chargeType}.`);
       const currency = partyRates[0]?.currency || "USD";
+      if (!/^[A-Z]{3}$/.test(currency)) throw new Error(`Migration rates for ${partyName} use invalid currency '${currency}'.`);
       if (partyRates.some((rate) => rate.currency && rate.currency !== currency)) throw new Error(`Migration rates for ${partyName} use multiple currencies.`);
       const valueFor = (pattern: RegExp, fallback: string) => String(partyRates.find((rate) => pattern.test(rate.chargeType))?.rate ?? fallback);
+      const handlingFallback = valueFor(/handling/i, "0");
       const existingContract = await db.select({ id: vmiContractTerms.id }).from(vmiContractTerms).where(eq(vmiContractTerms.partyId, partyId)).limit(1);
       if (existingContract.length > 0) throw new Error(`VMI contract terms already exist for ${partyName}; resolve the existing rate card before committing.`);
       const earliestEffectiveFrom = partyRates.map((rate) => rate.effectiveFrom).filter((value): value is string => Boolean(value)).sort()[0];
@@ -316,14 +322,53 @@ export async function commitUbotMigration(batchId: string): Promise<{ ok: true; 
         storageRatePerCbmDay: valueFor(/warehousing|storage/i, "0"),
         billingTiming: "beginning_of_day",
         cbmThresholdType: "none",
-        handlingInRatePerCbm: valueFor(/handling\s*(in|inbound)/i, "0"),
-        handlingOutRatePerCbm: valueFor(/handling\s*(out|outbound)/i, "0"),
+        handlingInRatePerCbm: valueFor(/handling\s*(in|inbound)/i, handlingFallback),
+        handlingOutRatePerCbm: valueFor(/handling\s*(out|outbound)/i, handlingFallback),
         documentationDefaultRateUsd: valueFor(/documentation/i, "0"),
         billingCurrency: currency,
         isActive: true,
         effectiveFrom: earliestEffectiveFrom ? new Date(`${earliestEffectiveFrom}T00:00:00.000Z`) : new Date(batch.openingDate),
         createdByUserId: session.userId,
       });
+
+      for (const rate of partyRates) {
+        const chargeType = rate.chargeType.toLowerCase();
+        if (/warehousing|storage|documentation|handling/.test(chargeType)) continue;
+        if (/man\s*power|manpower/.test(chargeType)) {
+          await db.insert(vmiRecurringFeeLines).values({
+            partyId,
+            feeType: "manpower",
+            label: rateLabel(rate),
+            manpowerRatePerHour: rate.rate.toFixed(2),
+            manpowerCurrency: rate.currency,
+            isActive: true,
+          });
+          continue;
+        }
+        if (/admin\s*fee/.test(chargeType)) {
+          if (rate.currency !== "USD") throw new Error(`The Admin Fee for ${partyName} is recorded in ${rate.currency}; the recurring fee table requires USD.`);
+          await db.insert(vmiRecurringFeeLines).values({
+            partyId,
+            feeType: "trucking_admin_fee",
+            label: rateLabel(rate),
+            flatAmountUsd: rate.rate.toFixed(4),
+            isActive: true,
+          });
+          continue;
+        }
+        if (/insurance/.test(chargeType)) {
+          if (rate.currency !== "USD") throw new Error(`The Insurance rate for ${partyName} is recorded in ${rate.currency}; the recurring fee table requires USD.`);
+          await db.insert(vmiRecurringFeeLines).values({
+            partyId,
+            feeType: "other",
+            label: rateLabel(rate),
+            flatAmountUsd: rate.rate.toFixed(4),
+            isActive: true,
+          });
+          continue;
+        }
+        throw new Error(`The opening-date rate '${rate.chargeType}' for ${partyName} has no safe canonical billing mapping.`);
+      }
     }
 
     const itemIds = new Map<string, string>();
@@ -359,9 +404,16 @@ export async function commitUbotMigration(batchId: string): Promise<{ ok: true; 
     return { ok: true as const, committedRows, batchId };
   });
 
-  if (result.kind === "unauthenticated") return { ok: false, error: "Your session is no longer authenticated." };
-  if (!result.value.ok) return result.value;
-  revalidatePath("/inventory");
-  revalidatePath("/enrollment");
-  return result.value;
+    if (result.kind === "unauthenticated") return { ok: false, error: "Your session is no longer authenticated." };
+    if (!result.value.ok) return result.value;
+    revalidatePath("/inventory");
+    revalidatePath("/enrollment");
+    return result.value;
+  } catch (error) {
+    // withRlsTransaction rolls back every canonical write before this result
+    // is returned. Keep the failure inside the migration workflow so a DB
+    // constraint or mapping error cannot replace the authenticated workspace.
+    console.error("[data-migration] commit failed", error);
+    return { ok: false, error: `The migration could not be committed: ${errorMessage(error)}` };
+  }
 }
