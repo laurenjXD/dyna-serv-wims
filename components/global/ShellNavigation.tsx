@@ -57,6 +57,7 @@ const ROUTE_ICON_MAP: Record<string, ComponentType<BrandIconProps>> = {
   "inventory-pick-list-execute": OutgoingIcon,
   "inventory-pick-list-dispatch": OutgoingIcon,
   enrollment: EnrollmentIcon,
+  migration: DocumentIcon,
   transfers: TestingIcon,
   inspection: QualityIcon,
   "inspection-detail": QualityIcon,
@@ -85,6 +86,7 @@ const SHORT_LABEL_OVERRIDES: Record<string, string> = {
   reports: "Reports & Analytics",
   documents: "Documents",
   enrollment: "Data Management",
+  migration: "Data Migration",
   portal: "Organization Portal",
   "billing-pricing": "Billing & Pricing",
 };
@@ -168,6 +170,7 @@ function resolveNavigationActiveId(currentPath: string, activeId: string | null)
   ) {
     return "enrollment";
   }
+  if (path === "/migration" || path.startsWith("/migration/")) return "migration";
   if (path === "/billing-pricing" || path.startsWith("/billing-pricing/")) return "billing-pricing";
   if (path === "/settings" || path.startsWith("/settings/")) return "settings";
   if (path === "/profile" || path.startsWith("/profile/")) return "profile";

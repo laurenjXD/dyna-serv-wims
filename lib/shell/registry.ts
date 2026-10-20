@@ -147,7 +147,10 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     id: "migration",
     path: "/migration",
     surface: "office",
-    capability: "vmi_contract_terms.manage",
+    // Keep the route discoverable to administrators with the migration's
+    // operational master-data grant. The page and server actions perform the
+    // stricter administrator + item/location/rate-card checks themselves.
+    capability: "parties.manage",
     featureSpecs: ["24-data-migration-and-seeding"],
     launchStatus: "launch",
     group: "Master Data",

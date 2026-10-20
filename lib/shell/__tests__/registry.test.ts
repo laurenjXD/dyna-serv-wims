@@ -121,7 +121,7 @@ const EXPECTED_ROUTES: Array<{
   // links from within this hub's tabs — they just no longer have their own
   // top-level registry row. See revision-log.md.
   { id: "enrollment", path: "/enrollment", surface: "office", capability: "parties.read", featureSpecs: ["06-party-and-item-enrollment"], launchStatus: "launch" },
-  { id: "migration", path: "/migration", surface: "office", capability: "vmi_contract_terms.manage", featureSpecs: ["24-data-migration-and-seeding"], launchStatus: "launch" },
+  { id: "migration", path: "/migration", surface: "office", capability: "parties.manage", featureSpecs: ["24-data-migration-and-seeding"], launchStatus: "launch" },
   // 2026-08-09: added — was already in 05's design.md route table (Planned)
   // but had never been added to this registry. See revision-log.md.
   // 2026-08-24: launchStatus corrected planned -> launch — the page now

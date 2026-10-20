@@ -300,6 +300,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
       inventory: "Master Inventory",
       portal: "Organization Portal",
       "billing-pricing": "Billing & Pricing",
+      migration: "Data Migration",
     };
     return labels[id] ?? id.split("-").map((part) => part[0].toUpperCase() + part.slice(1)).join(" ");
   }
