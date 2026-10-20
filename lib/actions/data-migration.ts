@@ -16,6 +16,7 @@ import { locations } from "@/lib/db/schema/locations";
 import { lots } from "@/lib/db/schema/lots";
 import { lotLocationBalances } from "@/lib/db/schema/lot_location_balances";
 import { inventoryTransactions } from "@/lib/db/schema/transactions";
+import { vmiContractTerms } from "@/lib/db/schema/vmi_billing";
 import { migrationBatches, migrationExceptions, migrationSourceRows } from "@/lib/db/schema/migrations";
 import { parseUbotVmiWorkbook } from "@/lib/migration/ubot-vmi-adapter";
 import type { UbotMigrationDraft } from "@/lib/migration/types";
@@ -47,24 +48,19 @@ export type MigrationSummaryResult =
 
 async function canManageMigration() {
   const resolver = await createPageResolver();
-  const [partiesPermission, itemsPermission, locationsPermission] = await Promise.all([
+  const [partiesPermission, itemsPermission, locationsPermission, contractPermission] = await Promise.all([
     requirePermission(resolver, "parties.manage"),
     requirePermission(resolver, "items.manage"),
     requirePermission(resolver, "locations.manage"),
+    requirePermission(resolver, "vmi_contract_terms.manage"),
   ]);
-  if ([partiesPermission, itemsPermission, locationsPermission].some((result) => result.kind !== "authorized")) return null;
+  if ([partiesPermission, itemsPermission, locationsPermission, contractPermission].some((result) => result.kind !== "authorized")) return null;
   if (partiesPermission.kind !== "authorized" || !partiesPermission.context.activeRoleKeys.includes("administrator")) return null;
   return { resolver, userId: partiesPermission.kind === "authorized" ? partiesPermission.context.userId : "" };
 }
 
 function sourceRows(draft: UbotMigrationDraft) {
-  return [
-    ...draft.parties.map((value) => ({ sheetName: "Customers", sourceRowNumber: value.sourceRow, rowKey: value.name, phase: "parties", value })),
-    ...draft.items.map((value) => ({ sheetName: "CODES", sourceRowNumber: value.sourceRow, rowKey: value.code, phase: "items", value })),
-    ...draft.locations.map((value) => ({ sheetName: "Location Matrix", sourceRowNumber: value.sourceRow, rowKey: value.label, phase: "locations", value })),
-    ...draft.openingBalances.map((value) => ({ sheetName: "Location Matrix", sourceRowNumber: value.sourceRow, rowKey: `${value.itemCode}/${value.lotNumber}/${value.locationLabel}`, phase: "opening_balances", value })),
-    ...draft.rates.map((value) => ({ sheetName: "Rates", sourceRowNumber: value.sourceRow, rowKey: `${value.partyName}/${value.chargeType}/${value.rate}`, phase: "rates", value })),
-  ];
+  return draft.sourceRows;
 }
 
 function chunks<T>(values: T[], size: number): T[][] {
@@ -116,10 +112,21 @@ export async function stageUbotMigration(formData: FormData): Promise<MigrationR
 
     await db.insert(migrationBatches).values({ id: batchId, organizationName: draft.organizationName, flowType: draft.flowType, profileKey: draft.profileKey, openingDate: draft.openingDate, sourceFileName, sourceFileHash: hash, sourceFileUrl: sourcePath, status: blockingIssues > 0 ? "needs_review" : "staged", uploadedByUserId: session.userId });
     const rows = sourceRows(draft);
+    let insertedSourceRows: Array<{ id: string; sheetName: string; sourceRowNumber: number; phase: string }> = [];
     for (const rowChunk of chunks(rows, 250)) {
-      await db.insert(migrationSourceRows).values(rowChunk.map((row) => ({ batchId, sheetName: row.sheetName, sourceRowNumber: row.sourceRowNumber, rowKey: row.rowKey, phase: row.phase, rawData: row.value, normalizedData: row.value, validationErrors: null })));
+      const inserted = await db.insert(migrationSourceRows).values(rowChunk.map((row) => ({ batchId, sheetName: row.sheetName, sourceRowNumber: row.sourceRowNumber, rowKey: row.rowKey, phase: row.phase, rawData: row.rawData, normalizedData: row.normalizedData, validationErrors: null }))).returning({ id: migrationSourceRows.id, sheetName: migrationSourceRows.sheetName, sourceRowNumber: migrationSourceRows.sourceRowNumber, phase: migrationSourceRows.phase });
+      insertedSourceRows = [...insertedSourceRows, ...inserted];
     }
-    if (draft.issues.length > 0) await db.insert(migrationExceptions).values(draft.issues.map((issue) => ({ batchId, severity: issue.severity, code: issue.code, message: `${issue.message}${issue.sheet ? ` (${issue.sheet}${issue.row ? ` row ${issue.row}` : ""})` : ""}`, resolutionStatus: "open" })));
+    if (draft.issues.length > 0) await db.insert(migrationExceptions).values(draft.issues.map((issue) => ({
+      batchId,
+      sourceRowId: issue.sheet && issue.row
+        ? insertedSourceRows.find((row) => row.sheetName === issue.sheet && row.sourceRowNumber === issue.row)?.id ?? null
+        : null,
+      severity: issue.severity,
+      code: issue.code,
+      message: `${issue.message}${issue.sheet ? ` (${issue.sheet}${issue.row ? ` row ${issue.row}` : ""})` : ""}`,
+      resolutionStatus: "open",
+    })));
     return { ok: true as const, batchId, status: blockingIssues > 0 ? "needs_review" : "staged", blockingIssues, warningIssues, sourceRows: rows.length };
   });
 
@@ -168,6 +175,26 @@ export async function resolveMigrationException(exceptionId: string, resolutionN
   return result.value;
 }
 
+export async function approveUbotMigration(batchId: string): Promise<{ ok: true; batchId: string } | { ok: false; error: string }> {
+  const access = await canManageMigration();
+  if (!access) return { ok: false, error: "You do not have permission to approve a data migration." };
+
+  const result = await withRlsTransaction(defaultRlsDeps, async (tx, session) => {
+    const db = tx.db as typeof defaultDb;
+    const [batch] = await db.select({ id: migrationBatches.id, status: migrationBatches.status }).from(migrationBatches).where(eq(migrationBatches.id, batchId)).limit(1);
+    if (!batch) return { ok: false as const, error: "Migration batch not found." };
+    if (batch.status === "approved" || batch.status === "committed") return { ok: true as const, batchId };
+    if (batch.status !== "staged") return { ok: false as const, error: "Resolve all blocking migration exceptions before approval." };
+    const openBlocking = await db.select({ id: migrationExceptions.id }).from(migrationExceptions).where(and(eq(migrationExceptions.batchId, batchId), eq(migrationExceptions.severity, "blocking"), eq(migrationExceptions.resolutionStatus, "open"))).limit(1);
+    if (openBlocking.length > 0) return { ok: false as const, error: "Resolve all blocking migration exceptions before approval." };
+    await db.update(migrationBatches).set({ status: "approved", approvedByUserId: session.userId, updatedAt: new Date() }).where(and(eq(migrationBatches.id, batchId), eq(migrationBatches.status, "staged")));
+    return { ok: true as const, batchId };
+  });
+
+  if (result.kind === "unauthenticated") return { ok: false, error: "Your session is no longer authenticated." };
+  return result.value;
+}
+
 function rowsByPhase<T>(rows: Array<{ phase: string; normalizedData: unknown }>, phase: string): T[] {
   return rows.filter((row) => row.phase === phase).map((row) => row.normalizedData as T);
 }
@@ -181,7 +208,7 @@ export async function commitUbotMigration(batchId: string): Promise<{ ok: true; 
     const [batch] = await db.select().from(migrationBatches).where(eq(migrationBatches.id, batchId)).limit(1);
     if (!batch) return { ok: false as const, error: "Migration batch not found." };
     if (batch.status === "committed") return { ok: true as const, committedRows: 0, batchId };
-    if (batch.status === "needs_review") return { ok: false as const, error: "Resolve all blocking migration exceptions before committing." };
+    if (batch.status !== "approved") return { ok: false as const, error: "Approve the staged migration report before committing." };
 
     const openExceptions = await db.select({ id: migrationExceptions.id }).from(migrationExceptions).where(and(eq(migrationExceptions.batchId, batchId), eq(migrationExceptions.resolutionStatus, "open"), eq(migrationExceptions.severity, "blocking"))).limit(1);
     if (openExceptions.length > 0) return { ok: false as const, error: "Resolve all blocking migration exceptions before committing." };
@@ -191,6 +218,7 @@ export async function commitUbotMigration(batchId: string): Promise<{ ok: true; 
     const draftItems = rowsByPhase<UbotMigrationDraft["items"][number]>(rows, "items");
     const draftLocations = rowsByPhase<UbotMigrationDraft["locations"][number]>(rows, "locations");
     const draftBalances = rowsByPhase<UbotMigrationDraft["openingBalances"][number]>(rows, "opening_balances");
+    const draftRates = rowsByPhase<UbotMigrationDraft["rates"][number]>(rows, "rates");
 
     const partyIds = new Map<string, string>();
     for (const party of draftParties) {
@@ -200,6 +228,39 @@ export async function commitUbotMigration(batchId: string): Promise<{ ok: true; 
       partyIds.set(party.name, partyId);
       const existingRole = await db.select({ id: partyRoles.id }).from(partyRoles).where(and(eq(partyRoles.partyId, partyId), eq(partyRoles.role, party.role))).limit(1);
       if (!existingRole[0]) await db.insert(partyRoles).values({ partyId, role: party.role });
+    }
+
+    const rateGroups = new Map<string, UbotMigrationDraft["rates"]>();
+    for (const rate of draftRates) {
+      if (!rate.active) continue;
+      const group = rateGroups.get(rate.partyName) ?? [];
+      group.push(rate);
+      rateGroups.set(rate.partyName, group);
+    }
+    for (const [partyName, partyRates] of rateGroups) {
+      const partyId = partyIds.get(partyName);
+      if (!partyId) throw new Error(`Migration rate party mapping disappeared for ${partyName}.`);
+      const unsupported = partyRates.find((rate) => !/warehousing|storage|handling\s*(in|inbound|out|outbound)|documentation/i.test(rate.chargeType));
+      if (unsupported) throw new Error(`Unsupported migration rate charge type: ${unsupported.chargeType}.`);
+      const currency = partyRates[0]?.currency || "USD";
+      if (partyRates.some((rate) => rate.currency && rate.currency !== currency)) throw new Error(`Migration rates for ${partyName} use multiple currencies.`);
+      const valueFor = (pattern: RegExp, fallback: string) => String(partyRates.find((rate) => pattern.test(rate.chargeType))?.rate ?? fallback);
+      const existingContract = await db.select({ id: vmiContractTerms.id }).from(vmiContractTerms).where(eq(vmiContractTerms.partyId, partyId)).limit(1);
+      if (existingContract.length > 0) throw new Error(`VMI contract terms already exist for ${partyName}; resolve the existing rate card before committing.`);
+      const earliestEffectiveFrom = partyRates.map((rate) => rate.effectiveFrom).filter((value): value is string => Boolean(value)).sort()[0];
+      await db.insert(vmiContractTerms).values({
+        partyId,
+        storageRatePerCbmDay: valueFor(/warehousing|storage/i, "0"),
+        billingTiming: "beginning_of_day",
+        cbmThresholdType: "none",
+        handlingInRatePerCbm: valueFor(/handling\s*(in|inbound)/i, "0"),
+        handlingOutRatePerCbm: valueFor(/handling\s*(out|outbound)/i, "0"),
+        documentationDefaultRateUsd: valueFor(/documentation/i, "0"),
+        billingCurrency: currency,
+        isActive: true,
+        effectiveFrom: earliestEffectiveFrom ? new Date(`${earliestEffectiveFrom}T00:00:00.000Z`) : new Date(batch.openingDate),
+        createdByUserId: session.userId,
+      });
     }
 
     const itemIds = new Map<string, string>();

@@ -147,7 +147,7 @@ export const ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     id: "migration",
     path: "/migration",
     surface: "office",
-    capability: "users.read",
+    capability: "vmi_contract_terms.manage",
     featureSpecs: ["24-data-migration-and-seeding"],
     launchStatus: "launch",
     group: "Master Data",

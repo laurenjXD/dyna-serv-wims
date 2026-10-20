@@ -67,6 +67,15 @@ export interface UbotRateDraft {
   effectiveTo?: string;
 }
 
+export interface UbotSourceRow {
+  sheetName: string;
+  sourceRowNumber: number;
+  rowKey: string;
+  phase: string;
+  rawData: Record<string, unknown>;
+  normalizedData: unknown;
+}
+
 export interface UbotMigrationDraft {
   profileKey: "ubot-vmi-v1";
   organizationName: "UBoT Incorporated Limited";
@@ -77,6 +86,7 @@ export interface UbotMigrationDraft {
   locations: UbotLocationDraft[];
   openingBalances: UbotOpeningBalanceDraft[];
   rates: UbotRateDraft[];
+  sourceRows: UbotSourceRow[];
   referenceSheets: string[];
   issues: MigrationIssue[];
 }

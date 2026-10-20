@@ -7,6 +7,7 @@ import type {
   UbotOpeningBalanceDraft,
   UbotPartyDraft,
   UbotRateDraft,
+  UbotSourceRow,
 } from "./types";
 
 type Cell = string | number | boolean | Date | null | undefined;
@@ -114,6 +115,7 @@ function addIssue(issues: MigrationIssue[], issue: MigrationIssue): void {
 export function parseUbotVmiWorkbook(buffer: Buffer, openingDate = "2026-10-09"): UbotMigrationDraft {
   const workbook = XLSX.read(buffer, { type: "buffer", cellDates: true, raw: true });
   const issues: MigrationIssue[] = [];
+  const sourceRows: UbotSourceRow[] = [];
   const availableSheets = new Set(workbook.SheetNames);
   const requiredSheets = ["Customers", "CODES", "Location Matrix", "Rates"];
   for (const sheet of requiredSheets) {
@@ -121,10 +123,11 @@ export function parseUbotVmiWorkbook(buffer: Buffer, openingDate = "2026-10-09")
   }
 
   const parties: UbotPartyDraft[] = [];
+  const partyKeys = new Set<string>();
   for (const { rowNumber, row } of tabularRows(workbook, "Customers", ["CUSTOMER NAME"])) {
     const name = text(row["customer name"]);
     if (!name) continue;
-    parties.push({
+    const party = {
       sourceRow: rowNumber,
       name,
       address1: text(row["address 1"]) || undefined,
@@ -132,10 +135,16 @@ export function parseUbotVmiWorkbook(buffer: Buffer, openingDate = "2026-10-09")
       paymentTerms: text(row.terms) || undefined,
       active: text(row["active?"]).toUpperCase() !== "N",
       role: name.toLowerCase() === "ubot incorporated limited" ? "supplier" : "end_customer",
-    });
+    } satisfies UbotPartyDraft;
+    const partyKey = name.toLowerCase();
+    if (partyKeys.has(partyKey)) addIssue(issues, { severity: "blocking", code: "duplicate_party", message: `Party ${name} appears more than once.`, sheet: "Customers", row: rowNumber });
+    partyKeys.add(partyKey);
+    parties.push(party);
+    sourceRows.push({ sheetName: "Customers", sourceRowNumber: rowNumber, rowKey: name, phase: "parties", rawData: row, normalizedData: party });
   }
 
   const items: UbotItemDraft[] = [];
+  const itemKeys = new Set<string>();
   for (const { rowNumber, row } of tabularRows(workbook, "CODES", ["ITEM CODE", "CATEGORY", "DESCRIPTION"])) {
     const code = normalizeItemCode(row["item code"]);
     const name = text(row.description);
@@ -159,21 +168,31 @@ export function parseUbotVmiWorkbook(buffer: Buffer, openingDate = "2026-10-09")
       spqMeter: numberValue(row["spq meter (from roll)"]),
     };
     if (!item.volumeCbm || item.volumeCbm <= 0) addIssue(issues, { severity: "blocking", code: "item_missing_cbm", message: `Item ${code} has no positive CBM per box.`, sheet: "CODES", row: rowNumber });
+    if (itemKeys.has(code)) addIssue(issues, { severity: "blocking", code: "duplicate_item", message: `Item ${code} appears more than once.`, sheet: "CODES", row: rowNumber });
+    itemKeys.add(code);
     items.push(item);
+    sourceRows.push({ sheetName: "CODES", sourceRowNumber: rowNumber, rowKey: code, phase: "items", rawData: row, normalizedData: item });
   }
 
   const locations = new Map<string, UbotLocationDraft>();
+  const locationRawRows = new Map<string, Row>();
   const locationRows = tabularRows(workbook, "Location Matrix", ["LOCATION ID", "ITEM CODE", "LOT NO.", "QTY"]);
   for (const { rowNumber, row } of locationRows) {
     const label = text(row["location id"]);
     if (!label) continue;
-    if (!locations.has(label)) locations.set(label, { sourceRow: rowNumber, label, ...locationParts(label) });
+    if (!locations.has(label)) {
+      locations.set(label, { sourceRow: rowNumber, label, ...locationParts(label) });
+      locationRawRows.set(label, row);
+    }
   }
   for (const { rowNumber, row } of sheetRows(workbook, "Racking ID")) {
     for (const value of Object.values(row)) {
       const label = text(value);
       if (!label || /^rack /i.test(label) || !/^[A-Za-z]+\d+-\d+$/.test(label)) continue;
-      if (!locations.has(label)) locations.set(label, { sourceRow: rowNumber, label, ...locationParts(label) });
+      if (!locations.has(label)) {
+        locations.set(label, { sourceRow: rowNumber, label, ...locationParts(label) });
+        locationRawRows.set(label, row);
+      }
     }
   }
   // RCV is a known temporary receiving location in the UBoT profile even when
@@ -192,24 +211,41 @@ export function parseUbotVmiWorkbook(buffer: Buffer, openingDate = "2026-10-09")
       continue;
     }
     if (quantity < 0) addIssue(issues, { severity: "blocking", code: "opening_balance_negative", message: `Opening quantity cannot be negative for ${itemCode}/${lotNumber}.`, sheet: "Location Matrix", row: rowNumber });
-    openingBalances.push({ sourceRow: rowNumber, locationLabel, itemCode, lotNumber, quantity, boxes: numberValue(row["boxes on hand"]), ownerPartyName: "UBoT Incorporated Limited", flowType: "vmi" });
+    const balance = { sourceRow: rowNumber, locationLabel, itemCode, lotNumber, quantity, boxes: numberValue(row["boxes on hand"]), ownerPartyName: "UBoT Incorporated Limited", flowType: "vmi" } satisfies UbotOpeningBalanceDraft;
+    openingBalances.push(balance);
+    sourceRows.push({ sheetName: "Location Matrix", sourceRowNumber: rowNumber, rowKey: `${itemCode}/${lotNumber}/${locationLabel}`, phase: "opening_balances", rawData: row, normalizedData: balance });
   }
 
   const rates: UbotRateDraft[] = [];
+  const rateKeys = new Set<string>();
   for (const { rowNumber, row } of tabularRows(workbook, "Rates", ["CUSTOMER", "CHARGE TYPE", "RATE", "CURRENCY"])) {
-    const rate = numberValue(row.rate);
-    if (rate === undefined) {
+    const numericRate = numberValue(row.rate);
+    if (numericRate === undefined) {
       addIssue(issues, { severity: "blocking", code: "rate_invalid", message: "Rate must be numeric.", sheet: "Rates", row: rowNumber });
       continue;
     }
-    rates.push({ sourceRow: rowNumber, partyName: text(row.customer), chargeType: text(row["charge type"]), basis: text(row.basis) || undefined, rate, currency: text(row.currency), active: text(row.active).toUpperCase() !== "N", effectiveFrom: excelDate(row["effective from"]), effectiveTo: excelDate(row["effective to"]) });
+    const rate = { sourceRow: rowNumber, partyName: text(row.customer), chargeType: text(row["charge type"]), basis: text(row.basis) || undefined, rate: numericRate, currency: text(row.currency), active: text(row.active).toUpperCase() !== "N", effectiveFrom: excelDate(row["effective from"]), effectiveTo: excelDate(row["effective to"]) } satisfies UbotRateDraft;
+    const rateKey = `${rate.partyName.toLowerCase()}/${rate.chargeType.toLowerCase()}/${rate.effectiveFrom ?? ""}`;
+    if (rateKeys.has(rateKey)) addIssue(issues, { severity: "blocking", code: "duplicate_rate", message: `Rate ${rate.chargeType} for ${rate.partyName} appears more than once for the same effective date.`, sheet: "Rates", row: rowNumber });
+    rateKeys.add(rateKey);
+    rates.push(rate);
+    sourceRows.push({ sheetName: "Rates", sourceRowNumber: rowNumber, rowKey: `${rate.partyName}/${rate.chargeType}/${rate.rate}`, phase: "rates", rawData: row, normalizedData: rate });
   }
 
   const itemCodes = new Set(items.map((item) => item.code));
+  const balanceKeys = new Set<string>();
+  for (const balance of openingBalances) {
+    const key = `${balance.itemCode}/${balance.lotNumber}/${balance.locationLabel}`;
+    if (balanceKeys.has(key)) addIssue(issues, { severity: "blocking", code: "duplicate_opening_balance", message: `Opening balance ${key} appears more than once.`, sheet: "Location Matrix", row: balance.sourceRow });
+    balanceKeys.add(key);
+  }
   for (const balance of openingBalances) if (!itemCodes.has(balance.itemCode)) addIssue(issues, { severity: "blocking", code: "opening_item_unmatched", message: `Opening balance item ${balance.itemCode} is not enrolled in CODES.`, sheet: "Location Matrix", row: balance.sourceRow });
   for (const balance of openingBalances) if (!locations.has(balance.locationLabel)) addIssue(issues, { severity: "blocking", code: "opening_location_unmatched", message: `Opening balance location ${balance.locationLabel} is not defined.`, sheet: "Location Matrix", row: balance.sourceRow });
 
-  return { profileKey: "ubot-vmi-v1", organizationName: "UBoT Incorporated Limited", flowType: "vmi", openingDate, parties, items, locations: [...locations.values()], openingBalances, rates, referenceSheets: REFERENCE_SHEETS.filter((sheet) => availableSheets.has(sheet)), issues };
+  for (const location of locations.values()) {
+    if (location.sourceRow > 0) sourceRows.push({ sheetName: "Location Matrix", sourceRowNumber: location.sourceRow, rowKey: location.label, phase: "locations", rawData: locationRawRows.get(location.label) ?? {}, normalizedData: location });
+  }
+  return { profileKey: "ubot-vmi-v1", organizationName: "UBoT Incorporated Limited", flowType: "vmi", openingDate, parties, items, locations: [...locations.values()], openingBalances, rates, sourceRows, referenceSheets: REFERENCE_SHEETS.filter((sheet) => availableSheets.has(sheet)), issues };
 }
 
 export { normalizeItemCode };

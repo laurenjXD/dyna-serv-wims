@@ -41,5 +41,18 @@ describe("UBoT VMI migration adapter", () => {
     expect(draft.openingBalances[0]).toMatchObject({ itemCode: "82012CP138", lotNumber: "C202509003", quantity: 4500, flowType: "vmi" });
     expect(draft.rates[0]).toMatchObject({ rate: 0.38, currency: "USD" });
     expect(draft.referenceSheets).toContain("IN");
+    expect(draft.sourceRows.find((row) => row.phase === "items")?.rawData).toMatchObject({ "item code": "3.40010007485E11" });
+    expect(draft.sourceRows.find((row) => row.phase === "items")?.normalizedData).toMatchObject({ code: "340010007485" });
+  });
+
+  it("blocks duplicate opening-balance keys instead of creating duplicate stock", () => {
+    const workbook = XLSX.read(workbookBuffer(), { type: "buffer" });
+    const locationSheet = workbook.Sheets["Location Matrix"];
+    const rows = XLSX.utils.sheet_to_json<unknown[]>(locationSheet, { header: 1 });
+    XLSX.utils.sheet_add_aoa(locationSheet, [rows[1]], { origin: -1 });
+    const draft = parseUbotVmiWorkbook(Buffer.from(XLSX.write(workbook, { type: "buffer", bookType: "xlsx" })));
+    expect(draft.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: "duplicate_opening_balance", severity: "blocking" }),
+    ]));
   });
 });
