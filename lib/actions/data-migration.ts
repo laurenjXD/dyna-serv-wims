@@ -64,7 +64,10 @@ async function canManageMigration() {
 }
 
 function sourceRows(draft: UbotMigrationDraft) {
-  return draft.sourceRows;
+  return draft.sourceRows.map((row) => ({
+    ...row,
+    rowKey: row.rowKey.length <= 255 ? row.rowKey : `${row.rowKey.slice(0, 240)}…[${row.rowKey.length} chars]`,
+  }));
 }
 
 function chunks<T>(values: T[], size: number): T[][] {
@@ -270,6 +273,7 @@ export async function commitUbotMigration(batchId: string): Promise<{ ok: true; 
 
     const itemIds = new Map<string, string>();
     for (const item of draftItems) {
+      if (item.code.length > 100) throw new Error(`Item code ${item.code.slice(0, 40)}… exceeds the 100-character canonical limit.`);
       const existing = await db.select({ id: items.id }).from(items).where(eq(items.code, item.code)).limit(1);
       const itemId = existing[0]?.id ?? randomUUID();
       if (!existing[0]) await db.insert(items).values({ id: itemId, code: item.code, name: item.name, barcode: item.code, itemType: "standard", uom: "piece", currency: "USD", spq: Math.max(1, Math.round(item.spq ?? 1)), spqMeter: item.spqMeter?.toFixed(2), lengthCm: item.lengthCm?.toFixed(2), widthCm: item.widthCm?.toFixed(2), heightCm: item.heightCm?.toFixed(2), volumeCm3: item.volumeCm3?.toFixed(2), volumeCbm: (item.volumeCbm ?? 0.0001).toFixed(4), boxesPerPallet: item.boxesPerPallet ? Math.round(item.boxesPerPallet) : null, isActive: true });

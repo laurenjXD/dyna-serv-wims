@@ -55,4 +55,15 @@ describe("UBoT VMI migration adapter", () => {
       expect.objectContaining({ code: "duplicate_opening_balance", severity: "blocking" }),
     ]));
   });
+
+  it("keeps oversized source keys stageable and reports an explicit item-code error", () => {
+    const workbook = XLSX.read(workbookBuffer(), { type: "buffer" });
+    const codesSheet = workbook.Sheets.CODES;
+    XLSX.utils.sheet_add_aoa(codesSheet, [["X".repeat(101), "Cover Tape", "Too long code", 1, 1, 1, 1, 1, 1, 0.000001]], { origin: -1 });
+    const draft = parseUbotVmiWorkbook(Buffer.from(XLSX.write(workbook, { type: "buffer", bookType: "xlsx" })));
+    expect(draft.sourceRows.every((row) => row.rowKey.length <= 255)).toBe(true);
+    expect(draft.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: "item_code_too_long", severity: "blocking" }),
+    ]));
+  });
 });

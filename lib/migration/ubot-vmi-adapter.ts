@@ -112,6 +112,11 @@ function addIssue(issues: MigrationIssue[], issue: MigrationIssue): void {
   issues.push(issue);
 }
 
+function sourceRowKey(value: string): string {
+  if (value.length <= 255) return value;
+  return `${value.slice(0, 240)}…[${value.length} chars]`;
+}
+
 export function parseUbotVmiWorkbook(buffer: Buffer, openingDate = "2026-10-09"): UbotMigrationDraft {
   const workbook = XLSX.read(buffer, { type: "buffer", cellDates: true, raw: true });
   const issues: MigrationIssue[] = [];
@@ -153,6 +158,7 @@ export function parseUbotVmiWorkbook(buffer: Buffer, openingDate = "2026-10-09")
       addIssue(issues, { severity: "blocking", code: "item_missing_identity", message: "Item code and description are both required.", sheet: "CODES", row: rowNumber });
       continue;
     }
+    if (code.length > 100) addIssue(issues, { severity: "blocking", code: "item_code_too_long", message: `Item code exceeds the 100-character canonical limit (${code.length} characters).`, sheet: "CODES", row: rowNumber });
     const item: UbotItemDraft = {
       sourceRow: rowNumber,
       code,
@@ -171,7 +177,7 @@ export function parseUbotVmiWorkbook(buffer: Buffer, openingDate = "2026-10-09")
     if (itemKeys.has(code)) addIssue(issues, { severity: "blocking", code: "duplicate_item", message: `Item ${code} appears more than once.`, sheet: "CODES", row: rowNumber });
     itemKeys.add(code);
     items.push(item);
-    sourceRows.push({ sheetName: "CODES", sourceRowNumber: rowNumber, rowKey: code, phase: "items", rawData: row, normalizedData: item });
+    sourceRows.push({ sheetName: "CODES", sourceRowNumber: rowNumber, rowKey: sourceRowKey(code), phase: "items", rawData: row, normalizedData: item });
   }
 
   const locations = new Map<string, UbotLocationDraft>();
@@ -213,7 +219,7 @@ export function parseUbotVmiWorkbook(buffer: Buffer, openingDate = "2026-10-09")
     if (quantity < 0) addIssue(issues, { severity: "blocking", code: "opening_balance_negative", message: `Opening quantity cannot be negative for ${itemCode}/${lotNumber}.`, sheet: "Location Matrix", row: rowNumber });
     const balance = { sourceRow: rowNumber, locationLabel, itemCode, lotNumber, quantity, boxes: numberValue(row["boxes on hand"]), ownerPartyName: "UBoT Incorporated Limited", flowType: "vmi" } satisfies UbotOpeningBalanceDraft;
     openingBalances.push(balance);
-    sourceRows.push({ sheetName: "Location Matrix", sourceRowNumber: rowNumber, rowKey: `${itemCode}/${lotNumber}/${locationLabel}`, phase: "opening_balances", rawData: row, normalizedData: balance });
+    sourceRows.push({ sheetName: "Location Matrix", sourceRowNumber: rowNumber, rowKey: sourceRowKey(`${itemCode}/${lotNumber}/${locationLabel}`), phase: "opening_balances", rawData: row, normalizedData: balance });
   }
 
   const rates: UbotRateDraft[] = [];
@@ -229,7 +235,7 @@ export function parseUbotVmiWorkbook(buffer: Buffer, openingDate = "2026-10-09")
     if (rateKeys.has(rateKey)) addIssue(issues, { severity: "blocking", code: "duplicate_rate", message: `Rate ${rate.chargeType} for ${rate.partyName} appears more than once for the same effective date.`, sheet: "Rates", row: rowNumber });
     rateKeys.add(rateKey);
     rates.push(rate);
-    sourceRows.push({ sheetName: "Rates", sourceRowNumber: rowNumber, rowKey: `${rate.partyName}/${rate.chargeType}/${rate.rate}`, phase: "rates", rawData: row, normalizedData: rate });
+    sourceRows.push({ sheetName: "Rates", sourceRowNumber: rowNumber, rowKey: sourceRowKey(`${rate.partyName}/${rate.chargeType}/${rate.rate}`), phase: "rates", rawData: row, normalizedData: rate });
   }
 
   const itemCodes = new Set(items.map((item) => item.code));
