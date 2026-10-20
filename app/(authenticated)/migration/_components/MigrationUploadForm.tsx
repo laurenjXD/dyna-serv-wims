@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AlertTriangle, ArrowLeft, Check, CheckCircle2, Circle, FileSpreadsheet, Loader2, LockKeyhole, Upload } from "lucide-react";
 import { approveUbotMigration, commitUbotMigration, getMigrationSummary, listMigrationBatches, resolveMigrationException, type MigrationBatchListItem, type MigrationExceptionSummary, type MigrationResult } from "@/lib/actions/data-migration";
 import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { MIGRATION_RESOLUTION_CATEGORIES } from "@/lib/migration/exception-resolution";
 
 type StageResult = MigrationResult;
 type WorkflowStep = { label: string; detail: string };
@@ -35,6 +36,7 @@ export function MigrationUploadForm() {
   const [previousBatches, setPreviousBatches] = useState<MigrationBatchListItem[]>([]);
   const [previousBatchesError, setPreviousBatchesError] = useState<string | null>(null);
   const [resolutionNotes, setResolutionNotes] = useState<Record<string, string>>({});
+  const [resolutionCategories, setResolutionCategories] = useState<Record<string, string>>({});
   const [isCommitted, setIsCommitted] = useState(false);
   const [reviewOnly, setReviewOnly] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -77,6 +79,7 @@ export function MigrationUploadForm() {
       setResult({ ok: true, batchId: summary.batch.id, status: summary.batch.status, blockingIssues, warningIssues, sourceRows: summary.batch.sourceRows });
       setExceptions(summary.exceptions);
       setResolutionNotes({});
+      setResolutionCategories(Object.fromEntries(summary.exceptions.filter((exception) => exception.resolutionCategory).map((exception) => [exception.id, exception.resolutionCategory ?? ""])));
       setCommitMessage(null);
       setIsCommitted(summary.batch.status === "committed");
     });
@@ -146,7 +149,7 @@ export function MigrationUploadForm() {
 
   function resolve(exceptionId: string) {
     startTransition(async () => {
-      const response = await resolveMigrationException(exceptionId, resolutionNotes[exceptionId] ?? "");
+      const response = await resolveMigrationException(exceptionId, resolutionCategories[exceptionId] ?? "", resolutionNotes[exceptionId] ?? "");
       if (!response.ok) {
         setCommitMessage(response.error);
         return;
@@ -155,6 +158,7 @@ export function MigrationUploadForm() {
         const summary = await getMigrationSummary(result.batchId);
         if (summary.ok) {
           setExceptions(summary.exceptions);
+          setResolutionCategories(Object.fromEntries(summary.exceptions.filter((exception) => exception.resolutionCategory).map((exception) => [exception.id, exception.resolutionCategory ?? ""])));
           setResult((current) => current?.ok ? { ...current, status: summary.batch.status, blockingIssues: summary.exceptions.filter((item) => item.severity === "blocking" && item.resolutionStatus === "open").length } : current);
           await refreshPreviousBatches();
         }
@@ -168,6 +172,7 @@ export function MigrationUploadForm() {
     setFile(null);
     setResult(null);
     setExceptions([]);
+    setResolutionCategories({});
     setResolutionNotes({});
     setCommitMessage(null);
     setIsCommitted(false);
@@ -227,7 +232,7 @@ export function MigrationUploadForm() {
         </div>
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <input ref={inputRef} type="file" accept=".xlsx" className="sr-only" onChange={(event) => { setReviewOnly(false); setFile(event.target.files?.[0] ?? null); setResult(null); setExceptions([]); setCommitMessage(null); setIsCommitted(false); }} />
+          <input ref={inputRef} type="file" accept=".xlsx" className="sr-only" onChange={(event) => { setReviewOnly(false); setFile(event.target.files?.[0] ?? null); setResult(null); setExceptions([]); setResolutionCategories({}); setCommitMessage(null); setIsCommitted(false); }} />
           <button type="button" onClick={() => inputRef.current?.click()} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-brand-blue px-5 font-label text-label font-bold text-brand-blue hover:bg-brand-blue/10 focus:outline-none focus:ring-2 focus:ring-brand-blue"><Upload size={18} /> Select workbook</button>
           <span className="min-w-0 flex-1 truncate font-mono text-body-sm text-text-grey">{file?.name ?? "No workbook selected"}</span>
           <button type="button" onClick={stage} disabled={!file || isPending || isCommitted} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-brand-blue px-5 font-label text-label font-bold text-white hover:bg-brand-navy disabled:cursor-not-allowed disabled:opacity-50">{isPending ? <Loader2 size={18} className="animate-spin" /> : <FileSpreadsheet size={18} />} Migrate workbook</button>
@@ -239,7 +244,7 @@ export function MigrationUploadForm() {
           <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${openBlocking > 0 ? "bg-warning/15 text-warning" : "bg-success/15 text-success"}`}>{openBlocking > 0 ? <AlertTriangle size={22} /> : <CheckCircle2 size={22} />}</span>
           <div className="min-w-0 flex-1"><p className="font-label text-label font-bold uppercase text-brand-blue">Step 3 · Stage</p><h2 className="mt-1 font-heading text-title-md font-bold text-on-surface">{isCommitted ? "Opening seed confirmed" : openBlocking > 0 ? "Review before approval" : result.status === "approved" ? "Approved for confirmation" : "Ready for approval"}</h2><p className="mt-2 font-body text-body-md text-text-grey">{result.sourceRows} source rows {isCommitted ? "committed" : "staged"} · {openBlocking} blocking issue(s) open · {result.warningIssues} warning(s)</p><p className="mt-2 truncate font-mono text-mono-sm text-text-grey">Batch {result.batchId}</p></div>
         </div>
-        {exceptions.length > 0 && <div className="mt-6 border-t border-outline-variant/40 pt-6"><div className="flex items-center justify-between gap-3"><h3 className="font-heading text-title-sm font-bold text-on-surface">Review queue</h3><span className="rounded-full bg-warning/15 px-3 py-1 font-label text-label font-bold text-warning">{openBlocking} open blocking</span></div><div className="mt-4 space-y-3">{exceptions.map((exception) => <div key={exception.id} className="rounded-xl border border-outline-variant/40 bg-surface-grey/40 p-4"><div className="flex items-start justify-between gap-4"><div className="min-w-0"><p className="font-label text-label font-bold uppercase text-on-surface">{exception.severity} · {exception.code}</p><p className="mt-1 break-all font-body text-body-sm text-text-grey">{exception.message}</p></div><span className="shrink-0 font-label text-label text-text-grey">{exception.severity === "warning" ? "informational" : exception.resolutionStatus}</span></div>{exception.severity === "blocking" && exception.resolutionStatus === "open" && <div className="mt-3 flex flex-col gap-2 sm:flex-row"><input value={resolutionNotes[exception.id] ?? ""} onChange={(event) => setResolutionNotes((current) => ({ ...current, [exception.id]: event.target.value }))} placeholder="Resolution note" className="min-h-11 flex-1 rounded-lg border border-outline px-3 font-body text-body-sm focus:outline-none focus:ring-2 focus:ring-brand-blue" /><button type="button" onClick={() => resolve(exception.id)} disabled={isPending} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-brand-blue px-4 font-label text-label font-bold text-brand-blue disabled:opacity-50">Resolve issue</button></div>}</div>)}</div></div>}
+        {exceptions.length > 0 && <div className="mt-6 border-t border-outline-variant/40 pt-6"><div className="flex items-center justify-between gap-3"><h3 className="font-heading text-title-sm font-bold text-on-surface">Review queue</h3><span className="rounded-full bg-warning/15 px-3 py-1 font-label text-label font-bold text-warning">{openBlocking} open blocking</span></div><div className="mt-4 space-y-3">{exceptions.map((exception) => <div key={exception.id} className="rounded-xl border border-outline-variant/40 bg-surface-grey/40 p-4"><div className="flex items-start justify-between gap-4"><div className="min-w-0"><p className="font-label text-label font-bold uppercase text-on-surface">{exception.severity} · {exception.code}</p><p className="mt-1 break-all font-body text-body-sm text-text-grey">{exception.message}</p></div><span className="shrink-0 font-label text-label text-text-grey">{exception.severity === "warning" ? "informational" : exception.resolutionStatus}</span></div>{exception.severity === "blocking" && exception.resolutionStatus === "open" && <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"><label className="sr-only" htmlFor={`resolution-category-${exception.id}`}>Resolution category</label><select id={`resolution-category-${exception.id}`} required value={resolutionCategories[exception.id] ?? ""} onChange={(event) => setResolutionCategories((current) => ({ ...current, [exception.id]: event.target.value }))} className="min-h-11 rounded-lg border border-outline px-3 font-body text-body-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"><option value="">Choose category</option>{MIGRATION_RESOLUTION_CATEGORIES.map((category) => <option key={category.value} value={category.value}>{category.label}</option>)}</select><label className="sr-only" htmlFor={`resolution-note-${exception.id}`}>Optional resolution note</label><input id={`resolution-note-${exception.id}`} value={resolutionNotes[exception.id] ?? ""} onChange={(event) => setResolutionNotes((current) => ({ ...current, [exception.id]: event.target.value }))} placeholder="Optional resolution note" className="min-h-11 rounded-lg border border-outline px-3 font-body text-body-sm focus:outline-none focus:ring-2 focus:ring-brand-blue" /><button type="button" onClick={() => resolve(exception.id)} disabled={isPending || !resolutionCategories[exception.id]} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-brand-blue px-4 font-label text-label font-bold text-brand-blue disabled:opacity-50">Resolve issue</button></div>}</div>)}</div></div>}
         {!isCommitted && <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-outline-variant/40 pt-6"><LockKeyhole size={18} className="text-text-grey" /><p className="font-body text-body-sm text-text-grey">{canApprove ? "Approval is required before the opening seed can be committed." : canCommit ? "The migration report is approved and ready to commit." : "Confirmation stays locked until the migration report is approved."}</p>{canApprove && <button type="button" onClick={approve} disabled={isPending} className="ml-auto inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-brand-blue px-5 font-label text-label font-bold text-brand-blue disabled:opacity-50">{isPending && <Loader2 size={18} className="animate-spin" />} Approve migration</button>}{canCommit && <button type="button" onClick={commit} disabled={isPending} className="ml-auto inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-success px-5 font-label text-label font-bold text-white hover:bg-emerald-700 disabled:opacity-50">{isPending && <Loader2 size={18} className="animate-spin" />} Confirm opening seed</button>}</div>}
       </section>}
 

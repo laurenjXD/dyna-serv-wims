@@ -21,6 +21,7 @@ import { migrationBatches, migrationExceptions, migrationSourceRows } from "@/li
 import { parseUbotVmiWorkbook } from "@/lib/migration/ubot-vmi-adapter";
 import { selectEffectiveUbotRates } from "@/lib/migration/rate-selection";
 import { migrationVolumeCbm } from "@/lib/migration/volume";
+import { isMigrationResolutionCategory, type MigrationResolutionCategory } from "@/lib/migration/exception-resolution";
 import type { UbotMigrationDraft } from "@/lib/migration/types";
 
 const defaultRlsDeps = { getAuthenticatedSession, pool: rlsPool };
@@ -38,7 +39,7 @@ export type MigrationResult =
   | { ok: true; batchId: string; status: string; blockingIssues: number; warningIssues: number; sourceRows: number }
   | { ok: false; error: string };
 
-export type MigrationExceptionSummary = { id: string; severity: string; code: string; message: string; resolutionStatus: string; resolutionNote: string | null };
+export type MigrationExceptionSummary = { id: string; severity: string; code: string; message: string; resolutionStatus: string; resolutionCategory: string | null; resolutionNote: string | null };
 
 export type MigrationSummaryResult =
   | {
@@ -185,7 +186,7 @@ export async function getMigrationSummary(batchId: string): Promise<MigrationSum
     const [batch] = await db.select({ id: migrationBatches.id, status: migrationBatches.status, sourceFileName: migrationBatches.sourceFileName, openingDate: migrationBatches.openingDate }).from(migrationBatches).where(eq(migrationBatches.id, batchId)).limit(1);
     if (!batch) return { ok: false as const, error: "Migration batch not found." };
     const [sourceRowCount] = await db.select({ count: sql<number>`count(*)` }).from(migrationSourceRows).where(eq(migrationSourceRows.batchId, batchId));
-    const exceptions = await db.select({ id: migrationExceptions.id, severity: migrationExceptions.severity, code: migrationExceptions.code, message: migrationExceptions.message, resolutionStatus: migrationExceptions.resolutionStatus, resolutionNote: migrationExceptions.resolutionNote }).from(migrationExceptions).where(eq(migrationExceptions.batchId, batchId));
+    const exceptions = await db.select({ id: migrationExceptions.id, severity: migrationExceptions.severity, code: migrationExceptions.code, message: migrationExceptions.message, resolutionStatus: migrationExceptions.resolutionStatus, resolutionCategory: migrationExceptions.resolutionCategory, resolutionNote: migrationExceptions.resolutionNote }).from(migrationExceptions).where(eq(migrationExceptions.batchId, batchId));
     return { ok: true as const, batch: { ...batch, sourceRows: Number(sourceRowCount?.count ?? 0) }, exceptions };
   });
 
@@ -224,17 +225,19 @@ export async function listMigrationBatches(): Promise<MigrationBatchListResult> 
   }
 }
 
-export async function resolveMigrationException(exceptionId: string, resolutionNote: string): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function resolveMigrationException(exceptionId: string, resolutionCategory: string, resolutionNote: string): Promise<{ ok: true } | { ok: false; error: string }> {
   const access = await canManageMigration();
   if (!access) return { ok: false, error: "You do not have permission to resolve migration exceptions." };
+  const category = resolutionCategory.trim();
+  if (!isMigrationResolutionCategory(category)) return { ok: false, error: "Choose a resolution category before resolving this exception." };
   const note = resolutionNote.trim();
-  if (!note) return { ok: false, error: "Add a short resolution note before resolving this exception." };
+  if (category === "other" && !note) return { ok: false, error: "Add a short note when using the Other category." };
 
   const result = await withRlsTransaction(defaultRlsDeps, async (tx, session) => {
     const db = tx.db as typeof defaultDb;
     const [exception] = await db.select({ id: migrationExceptions.id, batchId: migrationExceptions.batchId }).from(migrationExceptions).where(eq(migrationExceptions.id, exceptionId)).limit(1);
     if (!exception) return { ok: false as const, error: "Migration exception not found." };
-    await db.update(migrationExceptions).set({ resolutionStatus: "resolved", resolutionNote: note, resolvedByUserId: session.userId, resolvedAt: new Date() }).where(eq(migrationExceptions.id, exceptionId));
+    await db.update(migrationExceptions).set({ resolutionStatus: "resolved", resolutionCategory: category as MigrationResolutionCategory, resolutionNote: note || null, resolvedByUserId: session.userId, resolvedAt: new Date() }).where(eq(migrationExceptions.id, exceptionId));
     const openBlocking = await db.select({ id: migrationExceptions.id }).from(migrationExceptions).where(and(eq(migrationExceptions.batchId, exception.batchId), eq(migrationExceptions.severity, "blocking"), eq(migrationExceptions.resolutionStatus, "open"))).limit(1);
     if (openBlocking.length === 0) await db.update(migrationBatches).set({ status: "staged", updatedAt: new Date() }).where(and(eq(migrationBatches.id, exception.batchId), eq(migrationBatches.status, "needs_review")));
     return { ok: true as const };

@@ -49,6 +49,7 @@ export const migrationExceptions = pgTable("migration_exceptions", {
   code: varchar("code", { length: 80 }).notNull(),
   message: text("message").notNull(),
   resolutionStatus: varchar("resolution_status", { length: 30 }).notNull().default("open"),
+  resolutionCategory: varchar("resolution_category", { length: 80 }),
   resolutionNote: text("resolution_note"),
   resolvedByUserId: uuid("resolved_by_user_id"),
   resolvedAt: timestamp("resolved_at"),
