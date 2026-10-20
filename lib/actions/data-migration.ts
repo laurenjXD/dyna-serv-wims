@@ -223,7 +223,7 @@ export async function listMigrationBatches(): Promise<MigrationBatchListResult> 
       // Committed batches remain in the database as immutable audit/history,
       // but they are no longer resumable migration stages and should not be
       // offered in the review list.
-      const batches = await db.select({ id: migrationBatches.id, status: migrationBatches.status, sourceFileName: migrationBatches.sourceFileName, openingDate: migrationBatches.openingDate, createdAt: migrationBatches.createdAt }).from(migrationBatches).where(ne(migrationBatches.status, "committed")).orderBy(desc(migrationBatches.createdAt)).limit(20);
+      const batches = await db.select({ id: migrationBatches.id, status: migrationBatches.status, sourceFileName: migrationBatches.sourceFileName, openingDate: migrationBatches.openingDate, createdAt: migrationBatches.createdAt }).from(migrationBatches).where(and(ne(migrationBatches.status, "committed"), ne(migrationBatches.status, "cancelled"))).orderBy(desc(migrationBatches.createdAt)).limit(20);
       const summaries: MigrationBatchListItem[] = [];
       for (const batch of batches) {
         const [sourceRowCount] = await db.select({ count: sql<number>`count(*)` }).from(migrationSourceRows).where(eq(migrationSourceRows.batchId, batch.id));
@@ -245,6 +245,25 @@ export async function listMigrationBatches(): Promise<MigrationBatchListResult> 
     console.error("[data-migration] listing previous stages failed", error);
     return { ok: false, error: "Previous migration stages are temporarily unavailable." };
   }
+}
+
+export async function cancelMigrationBatch(batchId: string): Promise<{ ok: true; batchId: string } | { ok: false; error: string }> {
+  const access = await canManageMigration();
+  if (!access) return { ok: false, error: "You do not have permission to cancel migration stages." };
+
+  const result = await withRlsTransaction(defaultRlsDeps, async (tx) => {
+    const db = tx.db as typeof defaultDb;
+    const [batch] = await db.select({ id: migrationBatches.id, status: migrationBatches.status }).from(migrationBatches).where(eq(migrationBatches.id, batchId)).limit(1);
+    if (!batch) return { ok: false as const, error: "Migration batch not found." };
+    if (batch.status === "committed") return { ok: false as const, error: "A committed migration cannot be cancelled." };
+    if (batch.status === "cancelled") return { ok: true as const, batchId };
+    await db.update(migrationBatches).set({ status: "cancelled", updatedAt: new Date() }).where(and(eq(migrationBatches.id, batchId), ne(migrationBatches.status, "committed")));
+    return { ok: true as const, batchId };
+  });
+
+  if (result.kind === "unauthenticated") return { ok: false, error: "Your session is no longer authenticated." };
+  if (result.value.ok) revalidatePath("/migration");
+  return result.value;
 }
 
 export async function resolveMigrationException(exceptionId: string, resolutionCategory: string, resolutionNote: string): Promise<{ ok: true } | { ok: false; error: string }> {

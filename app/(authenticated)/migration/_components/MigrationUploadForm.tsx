@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ArrowLeft, Check, CheckCircle2, Circle, FileSpreadsheet, Loader2, LockKeyhole, Upload } from "lucide-react";
-import { approveUbotMigration, commitUbotMigration, getMigrationSummary, listMigrationBatches, resolveMigrationException, type MigrationBatchListItem, type MigrationExceptionSummary, type MigrationResult } from "@/lib/actions/data-migration";
+import { AlertTriangle, ArrowLeft, Ban, Check, CheckCircle2, Circle, FileSpreadsheet, Loader2, LockKeyhole, Upload } from "lucide-react";
+import { approveUbotMigration, cancelMigrationBatch, commitUbotMigration, getMigrationSummary, listMigrationBatches, resolveMigrationException, type MigrationBatchListItem, type MigrationExceptionSummary, type MigrationResult } from "@/lib/actions/data-migration";
 import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { MIGRATION_RESOLUTION_CATEGORIES } from "@/lib/migration/exception-resolution";
 
@@ -82,6 +82,19 @@ export function MigrationUploadForm() {
       setResolutionCategories(Object.fromEntries(summary.exceptions.filter((exception) => exception.resolutionCategory).map((exception) => [exception.id, exception.resolutionCategory ?? ""])));
       setCommitMessage(null);
       setIsCommitted(summary.batch.status === "committed");
+    });
+  }
+
+  function cancelPreviousBatch(batch: MigrationBatchListItem) {
+    if (!window.confirm(`Cancel this saved migration stage?\n\n${batch.sourceFileName}\n\nIt will be removed from Previous stages and kept only for audit history.`)) return;
+    startTransition(async () => {
+      const response = await cancelMigrationBatch(batch.id);
+      if (response.ok) {
+        setPreviousBatches((current) => current.filter((item) => item.id !== batch.id));
+        setPreviousBatchesError(null);
+      } else {
+        setPreviousBatchesError(response.error);
+      }
     });
   }
 
@@ -219,7 +232,7 @@ export function MigrationUploadForm() {
           <button type="button" onClick={() => { void refreshPreviousBatches(); }} disabled={isPending} className="inline-flex min-h-10 items-center justify-center rounded-full border border-brand-blue px-4 font-label text-label font-bold text-brand-blue disabled:opacity-50">Refresh</button>
         </div>
         {previousBatchesError && <p className="mt-4 rounded-lg bg-error/5 p-3 font-body text-body-sm text-error" role="alert">{previousBatchesError}</p>}
-        {previousBatches.length === 0 ? <p className="mt-5 font-body text-body-sm text-text-grey">No saved migration stages found.</p> : <div className="mt-5 space-y-3">{previousBatches.map((batch) => <div key={batch.id} className="flex flex-col gap-4 rounded-xl border border-outline-variant/40 bg-surface-grey/40 p-4 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="break-all font-label text-label font-bold text-on-surface">{batch.sourceFileName}</p><span className="rounded-full bg-brand-blue/10 px-2.5 py-1 font-label text-label font-bold text-brand-blue">{statusLabel(batch.status)}</span></div><p className="mt-1 font-body text-body-sm text-text-grey">{batch.sourceRows} source rows · {batch.blockingIssues} open blocking · {batch.warningIssues} warning(s)</p><p className="mt-1 font-mono text-mono-sm text-text-grey">Saved {new Date(batch.createdAt).toLocaleString()}</p></div><button type="button" onClick={() => openPreviousBatch(batch)} disabled={isPending} className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full border border-brand-blue px-5 font-label text-label font-bold text-brand-blue disabled:opacity-50">Open review</button></div>)}</div>}
+        {previousBatches.length === 0 ? <p className="mt-5 font-body text-body-sm text-text-grey">No saved migration stages found.</p> : <div className="mt-5 space-y-3">{previousBatches.map((batch) => <div key={batch.id} className="flex flex-col gap-4 rounded-xl border border-outline-variant/40 bg-surface-grey/40 p-4 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="break-all font-label text-label font-bold text-on-surface">{batch.sourceFileName}</p><span className="rounded-full bg-brand-blue/10 px-2.5 py-1 font-label text-label font-bold text-brand-blue">{statusLabel(batch.status)}</span></div><p className="mt-1 font-body text-body-sm text-text-grey">{batch.sourceRows} source rows · {batch.blockingIssues} open blocking · {batch.warningIssues} warning(s)</p><p className="mt-1 font-mono text-mono-sm text-text-grey">Saved {new Date(batch.createdAt).toLocaleString()}</p></div><div className="flex flex-col gap-2 sm:flex-row"><button type="button" onClick={() => openPreviousBatch(batch)} disabled={isPending} className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full border border-brand-blue px-5 font-label text-label font-bold text-brand-blue disabled:opacity-50">Open review</button><button type="button" onClick={() => cancelPreviousBatch(batch)} disabled={isPending} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full border border-error/60 px-5 font-label text-label font-bold text-error disabled:opacity-50"><Ban size={16} /> Cancel stage</button></div></div>)}</div>}
       </section>}
 
       {!reviewOnly && <section className="rounded-2xl border border-outline-variant/40 bg-surface-white p-6 shadow-elevation-1 sm:p-8">
