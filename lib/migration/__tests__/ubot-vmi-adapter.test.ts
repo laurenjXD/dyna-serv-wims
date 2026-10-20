@@ -63,7 +63,7 @@ describe("UBoT VMI migration adapter", () => {
     const draft = parseUbotVmiWorkbook(Buffer.from(XLSX.write(workbook, { type: "buffer", bookType: "xlsx" })));
     expect(draft.sourceRows.every((row) => row.rowKey.length <= 255)).toBe(true);
     expect(draft.issues).toEqual(expect.arrayContaining([
-      expect.objectContaining({ code: "item_code_too_long", severity: "blocking" }),
+      expect.objectContaining({ code: "item_code_too_long", severity: "warning" }),
     ]));
   });
 });

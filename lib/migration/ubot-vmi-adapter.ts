@@ -117,6 +117,10 @@ function sourceRowKey(value: string): string {
   return `${value.slice(0, 240)}…[${value.length} chars]`;
 }
 
+function displayValue(value: string): string {
+  return value.length <= 80 ? value : `${value.slice(0, 72)}…[${value.length} chars]`;
+}
+
 export function parseUbotVmiWorkbook(buffer: Buffer, openingDate = "2026-10-09"): UbotMigrationDraft {
   const workbook = XLSX.read(buffer, { type: "buffer", cellDates: true, raw: true });
   const issues: MigrationIssue[] = [];
@@ -126,6 +130,12 @@ export function parseUbotVmiWorkbook(buffer: Buffer, openingDate = "2026-10-09")
   for (const sheet of requiredSheets) {
     if (!availableSheets.has(sheet)) addIssue(issues, { severity: "blocking", code: "missing_sheet", message: `Required sheet '${sheet}' is missing.`, sheet });
   }
+
+  const locationRows = tabularRows(workbook, "Location Matrix", ["LOCATION ID", "ITEM CODE", "LOT NO.", "QTY"]);
+  const openingItemCodes = new Set(locationRows
+    .filter(({ row }) => Boolean(text(row["location id"]) && text(row["item code"]) && text(row["lot no."]) && numberValue(row.qty) !== undefined))
+    .map(({ row }) => normalizeItemCode(row["item code"]))
+    .filter(Boolean));
 
   const parties: UbotPartyDraft[] = [];
   const partyKeys = new Set<string>();
@@ -155,10 +165,10 @@ export function parseUbotVmiWorkbook(buffer: Buffer, openingDate = "2026-10-09")
     const name = text(row.description);
     if (!code && !name) continue;
     if (!code || !name) {
-      addIssue(issues, { severity: "blocking", code: "item_missing_identity", message: "Item code and description are both required.", sheet: "CODES", row: rowNumber });
+      addIssue(issues, { severity: openingItemCodes.has(code) ? "blocking" : "warning", code: "item_missing_identity", message: "Item code and description are both required.", sheet: "CODES", row: rowNumber });
       continue;
     }
-    if (code.length > 100) addIssue(issues, { severity: "blocking", code: "item_code_too_long", message: `Item code exceeds the 100-character canonical limit (${code.length} characters).`, sheet: "CODES", row: rowNumber });
+    if (code.length > 100) addIssue(issues, { severity: openingItemCodes.has(code) ? "blocking" : "warning", code: "item_code_too_long", message: `Item code ${displayValue(code)} exceeds the 100-character canonical limit (${code.length} characters).`, sheet: "CODES", row: rowNumber });
     const item: UbotItemDraft = {
       sourceRow: rowNumber,
       code,
@@ -173,8 +183,8 @@ export function parseUbotVmiWorkbook(buffer: Buffer, openingDate = "2026-10-09")
       volumeCbm: numberValue(row["cbm per box"]),
       spqMeter: numberValue(row["spq meter (from roll)"]),
     };
-    if (!item.volumeCbm || item.volumeCbm <= 0) addIssue(issues, { severity: "blocking", code: "item_missing_cbm", message: `Item ${code} has no positive CBM per box.`, sheet: "CODES", row: rowNumber });
-    if (itemKeys.has(code)) addIssue(issues, { severity: "blocking", code: "duplicate_item", message: `Item ${code} appears more than once.`, sheet: "CODES", row: rowNumber });
+    if (!item.volumeCbm || item.volumeCbm <= 0) addIssue(issues, { severity: "warning", code: "item_missing_cbm", message: `Item ${displayValue(code)} has no positive CBM per box; the migration fallback will be used unless corrected before commit.`, sheet: "CODES", row: rowNumber });
+    if (itemKeys.has(code)) addIssue(issues, { severity: openingItemCodes.has(code) ? "blocking" : "warning", code: "duplicate_item", message: `Item ${displayValue(code)} appears more than once.`, sheet: "CODES", row: rowNumber });
     itemKeys.add(code);
     items.push(item);
     sourceRows.push({ sheetName: "CODES", sourceRowNumber: rowNumber, rowKey: sourceRowKey(code), phase: "items", rawData: row, normalizedData: item });
@@ -182,7 +192,6 @@ export function parseUbotVmiWorkbook(buffer: Buffer, openingDate = "2026-10-09")
 
   const locations = new Map<string, UbotLocationDraft>();
   const locationRawRows = new Map<string, Row>();
-  const locationRows = tabularRows(workbook, "Location Matrix", ["LOCATION ID", "ITEM CODE", "LOT NO.", "QTY"]);
   for (const { rowNumber, row } of locationRows) {
     const label = text(row["location id"]);
     if (!label) continue;
