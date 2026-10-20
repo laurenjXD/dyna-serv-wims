@@ -70,11 +70,19 @@ async function canManageMigration() {
   ]);
   if ([partiesPermission, itemsPermission, locationsPermission].some((result) => result.kind !== "authorized")) return null;
   if (partiesPermission.kind !== "authorized" || !partiesPermission.context.activeRoleKeys.includes("administrator")) return null;
-  const ratePermission = await requirePermission(resolver, "vmi_contract_terms.manage");
+  const [ratePermission, financialPermission] = await Promise.all([
+    requirePermission(resolver, "vmi_contract_terms.manage"),
+    requirePermission(resolver, "reporting.financial_read"),
+  ]);
   return {
     resolver,
     userId: partiesPermission.context.userId,
-    canManageRates: ratePermission.kind === "authorized",
+    // Older deployed databases gate the VMI contract table through the
+    // administrator financial capability, while the newer catalog exposes
+    // the narrower vmi_contract_terms.manage capability. Keep migration
+    // commit compatible with both RLS versions; the migration is already
+    // restricted to administrator users above.
+    canManageRates: ratePermission.kind === "authorized" || financialPermission.kind === "authorized",
   };
 }
 
