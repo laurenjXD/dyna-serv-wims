@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import type { Column, Table, RowData } from "@tanstack/react-table";
 import {
   Filter,
@@ -45,20 +46,46 @@ export function ColumnFilter<TData extends RowData>({
   const filterLabel = meta?.filterLabel || columnHeader;
 
   const [isOpen, setIsOpen] = useState(false);
-  const [placement, setPlacement] = useState<"left" | "right">("left");
+  const [popoverPosition, setPopoverPosition] = useState<{ top: number; left: number } | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
-  // Dynamically calculate whether popover should open left or right based on viewport & column position
+  // Render the popover against the document viewport rather than inside the
+  // horizontally scrolling table wrapper. That wrapper clips vertical
+  // overflow, which otherwise hides lower filter options.
   useEffect(() => {
-    if (isOpen && popoverRef.current) {
-      const rect = popoverRef.current.getBoundingClientRect();
-      const spaceRight = window.innerWidth - rect.right;
-      if (spaceRight < 300 || meta?.align === "right") {
-        setPlacement("right");
-      } else {
-        setPlacement("left");
-      }
+    if (!isOpen) {
+      setPopoverPosition(null);
+      return;
     }
+
+    const updatePosition = () => {
+      const trigger = triggerRef.current;
+      if (!trigger) return;
+
+      const rect = trigger.getBoundingClientRect();
+      const width = 280;
+      const margin = 16;
+      const preferredHeight = 360;
+      const alignRight = meta?.align === "right" || rect.left + width > window.innerWidth - margin;
+      const left = alignRight
+        ? Math.max(margin, Math.min(rect.right - width, window.innerWidth - width - margin))
+        : Math.max(margin, rect.left);
+      const opensBelow = rect.bottom + 8 + preferredHeight <= window.innerHeight - margin;
+      const top = opensBelow
+        ? rect.bottom + 8
+        : Math.max(margin, rect.top - preferredHeight - 8);
+
+      setPopoverPosition({ top, left });
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
   }, [isOpen, meta?.align]);
 
   // Determine if column currently has an active filter
@@ -77,7 +104,11 @@ export function ColumnFilter<TData extends RowData>({
   // Click outside listener
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        !popoverRef.current?.contains(target) &&
+        !triggerRef.current?.contains(target)
+      ) {
         setIsOpen(false);
       }
     }
@@ -95,10 +126,11 @@ export function ColumnFilter<TData extends RowData>({
   };
 
   return (
-    <div className="relative inline-flex items-center ml-1.5" ref={popoverRef}>
+    <div className="relative inline-flex items-center ml-1.5">
       {/* Funnel Trigger Button */}
       <button
         type="button"
+        ref={triggerRef}
         onClick={(e) => {
           e.stopPropagation();
           setIsOpen(!isOpen);
@@ -115,13 +147,14 @@ export function ColumnFilter<TData extends RowData>({
       </button>
 
       {/* Glassmorphic Popover Menu */}
-      {isOpen && (
+      {isOpen && popoverPosition && typeof document !== "undefined" && createPortal(
         <div
+          ref={popoverRef}
           onClick={(e) => e.stopPropagation()}
-          className={`absolute top-full mt-2 z-[999] w-[280px] max-w-[calc(100vw-32px)] rounded-2xl border border-slate-200/90 bg-surface-white p-4 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100 ${
-            placement === "right" ? "right-0" : "left-0"
-          }`}
+          className="fixed z-[1000] w-[280px] max-w-[calc(100vw-32px)] max-h-[calc(100vh-32px)] overflow-y-auto overscroll-contain rounded-2xl border border-slate-200/90 bg-surface-white p-4 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
           style={{
+            top: popoverPosition.top,
+            left: popoverPosition.left,
             boxShadow:
               "0 20px 25px -5px rgba(0, 32, 96, 0.12), 0 8px 10px -6px rgba(0, 32, 96, 0.06), inset 0 1px 1px rgba(255, 255, 255, 0.9)",
           }}
@@ -173,7 +206,8 @@ export function ColumnFilter<TData extends RowData>({
               <BooleanFilterContent column={column} filterLabel={filterLabel} />
             )}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

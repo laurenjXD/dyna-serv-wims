@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import React from "react";
 import { MasterInventoryTable, type MasterInventoryRow } from "../MasterInventoryTable";
 import { TransactionLedgerTable, type TransactionLedgerRow } from "../TransactionLedgerTable";
@@ -139,12 +139,17 @@ describe("MasterInventoryTable & Universal DataTable", () => {
     expect(screen.getAllByText("TRD-PUMP-01")[0]).toBeInTheDocument();
   });
 
-  it("renders the Business Roles filter trigger for array-valued roles", () => {
+  it("renders the Business Roles filter trigger for array-valued roles", async () => {
     render(<OrganizationsEnrollmentTable data={mockOrganizationData} />);
 
-    expect(
-      screen.getByRole("button", { name: /Filter by Business Roles/i }),
-    ).toBeInTheDocument();
+    const filterButton = screen.getByRole("button", { name: /Filter by Business Roles/i });
+    expect(filterButton).toBeInTheDocument();
+
+    fireEvent.click(filterButton);
+    await waitFor(() => {
+      expect(screen.getAllByText("Supplier").length).toBeGreaterThan(1);
+      expect(screen.getByText("Vendor")).toBeInTheDocument();
+    });
   });
 });
 
