@@ -69,6 +69,9 @@ export function OrganizationsEnrollmentTable({
     // 3. Business Roles
     {
       id: "roles",
+      // The roles value is an array on the row model. Defining an accessor is
+      // required for TanStack Table to mark this id-only column filterable.
+      accessorFn: (row) => row.roles ?? [],
       header: "Business Roles",
       meta: {
         filterVariant: "multi-select",

@@ -4,6 +4,8 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import React from "react";
 import { MasterInventoryTable, type MasterInventoryRow } from "../MasterInventoryTable";
 import { TransactionLedgerTable, type TransactionLedgerRow } from "../TransactionLedgerTable";
+import { OrganizationsEnrollmentTable } from "../OrganizationsEnrollmentTable";
+import type { PartyListRow } from "@/lib/db/queries/parties";
 import { customFilterFns } from "../DataTable";
 
 const mockInventoryData: MasterInventoryRow[] = [
@@ -77,6 +79,19 @@ const mockLedgerData: TransactionLedgerRow[] = [
   },
 ];
 
+const mockOrganizationData: PartyListRow[] = [
+  {
+    id: "org-1",
+    code: "ORG-001",
+    name: "Supplier One",
+    contactPerson: null,
+    email: "supplier@example.com",
+    isActive: true,
+    createdAt: new Date("2026-01-01"),
+    roles: ["supplier"],
+  },
+];
+
 describe("MasterInventoryTable & Universal DataTable", () => {
   it("filters multi-valued cells when any selected value matches", () => {
     const row = {
@@ -122,6 +137,14 @@ describe("MasterInventoryTable & Universal DataTable", () => {
     expect(screen.getAllByText("Mechanical")[0]).toBeInTheDocument();
     expect(screen.getAllByText("Pumps")[0]).toBeInTheDocument();
     expect(screen.getAllByText("TRD-PUMP-01")[0]).toBeInTheDocument();
+  });
+
+  it("renders the Business Roles filter trigger for array-valued roles", () => {
+    render(<OrganizationsEnrollmentTable data={mockOrganizationData} />);
+
+    expect(
+      screen.getByRole("button", { name: /Filter by Business Roles/i }),
+    ).toBeInTheDocument();
   });
 });
 
