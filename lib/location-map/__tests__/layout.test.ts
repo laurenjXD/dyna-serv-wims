@@ -3,6 +3,7 @@ import {
   buildWarehouseMapCells,
   canonicalLocationLabel,
   WAREHOUSE_MAP_CELLS,
+  WAREHOUSE_RACK_LAYOUT,
 } from "@/lib/location-map/layout";
 
 describe("warehouse map layout", () => {
@@ -11,12 +12,20 @@ describe("warehouse map layout", () => {
     expect(canonicalLocationLabel("G", 14, 4)).toBe("G14-04");
   });
 
-  it("renders the Excel Racking ID footprint as 776 rack cells", () => {
-    expect(WAREHOUSE_MAP_CELLS).toHaveLength(776);
-    expect(WAREHOUSE_MAP_CELLS.filter((cell) => cell.rack === "F")).toHaveLength(120);
-    expect(WAREHOUSE_MAP_CELLS.filter((cell) => cell.rack === "G")).toHaveLength(120);
-    expect(WAREHOUSE_MAP_CELLS.filter((cell) => cell.rack === "H")).toHaveLength(112);
-    expect(WAREHOUSE_MAP_CELLS.filter((cell) => cell.rack === "I")).toHaveLength(112);
+  it("renders the visible RACKING sheet footprint as 480 rack cells", () => {
+    expect(WAREHOUSE_MAP_CELLS).toHaveLength(480);
+    expect(WAREHOUSE_MAP_CELLS.filter((cell) => cell.rack === "A")).toHaveLength(120);
+    for (const rack of ["B", "C", "D", "E", "F", "G"]) {
+      expect(WAREHOUSE_MAP_CELLS.filter((cell) => cell.rack === rack)).toHaveLength(60);
+    }
+  });
+
+  it("uses the physical column order A, F/B, G/C, D/E", () => {
+    expect(WAREHOUSE_RACK_LAYOUT.map((layout) => layout.rack)).toEqual([
+      "A", "F", "B", "G", "C", "D", "E",
+    ]);
+    expect(WAREHOUSE_RACK_LAYOUT[0]).toMatchObject({ levels: 4, positions: 30 });
+    expect(WAREHOUSE_RACK_LAYOUT[1]).toMatchObject({ levels: 4, positions: 15 });
   });
 
   it("keeps level one at the bottom of a rack", () => {

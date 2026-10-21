@@ -287,7 +287,7 @@ async function LocationsTab({
   }
 
   // Both views use the map read model so the table contains exactly the same
-  // Excel-backed Rack A–I locations as the SVG. Legacy/non-rack records remain
+  // Workbook-backed Rack A–G locations as the SVG. Legacy/non-rack records remain
   // in the database for operational history, but are intentionally excluded
   // from this aligned rack registry until they have confirmed geometry.
   const mapRows = await listLocationMapRows(db);

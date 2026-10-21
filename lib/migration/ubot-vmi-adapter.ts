@@ -203,7 +203,10 @@ export function parseUbotVmiWorkbook(buffer: Buffer, openingDate = "2026-10-09")
       locationRawRows.set(label, row);
     }
   }
-  for (const { rowNumber, row } of sheetRows(workbook, "Racking ID")) {
+  // The visible RACKING tab is the current geometry source. Keep the hidden
+  // Racking ID fallback for older uploaded workbooks that predate the tab.
+  const rackSheetName = workbook.Sheets.RACKING ? "RACKING" : "Racking ID";
+  for (const { rowNumber, row } of sheetRows(workbook, rackSheetName)) {
     for (const value of Object.values(row)) {
       const label = text(value);
       if (!label || /^rack /i.test(label) || !/^[A-Za-z]+\d+-\d+$/.test(label)) continue;

@@ -308,4 +308,29 @@ describe("expandBulkLocationCandidates — cartesian generation over racks x lev
       ).toBeDefined();
     }
   });
+
+  it("enforces the workbook rack ranges", () => {
+    const rackA = parseBulkLocationGeneratorInput({
+      ...BASE_VALID,
+      racks: "A",
+      levelStart: "1",
+      levelEnd: "4",
+      positionStart: "1",
+      positionEnd: "30",
+    });
+    expect(rackA.success).toBe(true);
+
+    const rackB = parseBulkLocationGeneratorInput({
+      ...BASE_VALID,
+      racks: "B",
+      levelStart: "1",
+      levelEnd: "4",
+      positionStart: "1",
+      positionEnd: "16",
+    });
+    expect(rackB.success).toBe(false);
+    if (!rackB.success) {
+      expect(rackB.errors.some((error) => error.message.includes("positions 1-15"))).toBe(true);
+    }
+  });
 });

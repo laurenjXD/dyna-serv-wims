@@ -6,6 +6,8 @@
 //   lib/db/schema/locations.ts — locations table
 //   lib/db/schema/enums.ts — locationTypeEnum
 
+import { WAREHOUSE_RACK_LIMITS } from "@/lib/location-map/layout";
+
 export type LocationInput = {
   zone: string;
   rack: string;
@@ -284,6 +286,25 @@ export function parseBulkLocationGeneratorInput(
   const positionEnd = parsePositiveInt(raw["positionEnd"], "positionEnd", errors);
   if (positionStart !== null && positionEnd !== null && positionStart > positionEnd) {
     errors.push({ field: "positionEnd", message: "positionEnd must be greater than or equal to positionStart." });
+  }
+
+  if (levelStart !== null && levelEnd !== null && positionStart !== null && positionEnd !== null) {
+    for (const rack of rackList) {
+      const limit = WAREHOUSE_RACK_LIMITS[rack.toUpperCase() as keyof typeof WAREHOUSE_RACK_LIMITS];
+      if (!limit) continue;
+      if (levelStart < 1 || levelEnd > limit.levels) {
+        errors.push({
+          field: "levelEnd",
+          message: `Rack ${rack.toUpperCase()} supports levels 1-${limit.levels}. Generate the workbook rack range separately.`,
+        });
+      }
+      if (positionStart < 1 || positionEnd > limit.positions) {
+        errors.push({
+          field: "positionEnd",
+          message: `Rack ${rack.toUpperCase()} supports positions 1-${limit.positions}. Generate the workbook rack range separately.`,
+        });
+      }
+    }
   }
 
   const positionPaddingRaw = raw["positionPadding"];

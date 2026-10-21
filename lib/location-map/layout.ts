@@ -1,5 +1,5 @@
-export const WAREHOUSE_MAP_LAYOUT_VERSION = "v2-excel-racking-id-a-i";
-export const WAREHOUSE_MAP_SOURCE = "V2_UBOT HK_VMI System_Billing - Full Setup.xlsx / Racking ID";
+export const WAREHOUSE_MAP_LAYOUT_VERSION = "v3-racking-tab-a-g";
+export const WAREHOUSE_MAP_SOURCE = "V2_UBOT HK_VMI System_Billing - Full Setup.xlsx / RACKING";
 
 export type RackLayout = {
   rack: string;
@@ -25,25 +25,33 @@ export type WarehouseMapCell = {
 };
 
 /**
- * The workbook's Racking ID sheet is the current geometry reference. Its
- * position-first labels are normalized into WIMS's canonical level-position
- * labels before they reach this map. Capacity and inventory never come from
- * the workbook. Non-rack areas stay in Table View until they have a canonical
+ * The workbook's visible RACKING sheet is the current geometry reference:
+ * Rack A has four levels and thirty positions; Racks B-G have four levels
+ * and fifteen positions. Capacity and inventory never come from the
+ * workbook. Non-rack areas stay in Table View until they have a canonical
  * geometry decision.
  */
 export const WAREHOUSE_RACK_LAYOUT: readonly RackLayout[] = [
-  { rack: "A", levels: 30, positions: 4, x: 24, y: 92, width: 152, height: 620 },
-  { rack: "F", levels: 30, positions: 4, x: 238, y: 92, width: 152, height: 620 },
-  { rack: "G", levels: 30, positions: 4, x: 420, y: 92, width: 152, height: 620 },
-  { rack: "H", levels: 28, positions: 4, x: 718, y: 92, width: 152, height: 580 },
-  { rack: "I", levels: 28, positions: 4, x: 892, y: 92, width: 152, height: 580 },
-  { rack: "B", levels: 12, positions: 4, x: 238, y: 760, width: 152, height: 238 },
-  { rack: "C", levels: 12, positions: 4, x: 420, y: 760, width: 152, height: 238 },
-  { rack: "D", levels: 12, positions: 4, x: 634, y: 760, width: 152, height: 238 },
-  { rack: "E", levels: 12, positions: 4, x: 816, y: 760, width: 152, height: 238 },
+  { rack: "A", levels: 4, positions: 30, x: 24, y: 168, width: 720, height: 192 },
+  { rack: "F", levels: 4, positions: 15, x: 816, y: 110, width: 360, height: 160 },
+  { rack: "B", levels: 4, positions: 15, x: 816, y: 390, width: 360, height: 160 },
+  { rack: "G", levels: 4, positions: 15, x: 1248, y: 110, width: 360, height: 160 },
+  { rack: "C", levels: 4, positions: 15, x: 1248, y: 390, width: 360, height: 160 },
+  { rack: "D", levels: 4, positions: 15, x: 1680, y: 110, width: 360, height: 160 },
+  { rack: "E", levels: 4, positions: 15, x: 1680, y: 390, width: 360, height: 160 },
 ];
 
-export const WAREHOUSE_MAP_VIEWBOX = { width: 1100, height: 1050 } as const;
+export const WAREHOUSE_RACK_LIMITS = {
+  A: { levels: 4, positions: 30 },
+  B: { levels: 4, positions: 15 },
+  C: { levels: 4, positions: 15 },
+  D: { levels: 4, positions: 15 },
+  E: { levels: 4, positions: 15 },
+  F: { levels: 4, positions: 15 },
+  G: { levels: 4, positions: 15 },
+} as const;
+
+export const WAREHOUSE_MAP_VIEWBOX = { width: 2070, height: 610 } as const;
 
 export function canonicalLocationLabel(rack: string, level: number, position: number): string {
   return `${rack}${level}-${String(position).padStart(2, "0")}`;

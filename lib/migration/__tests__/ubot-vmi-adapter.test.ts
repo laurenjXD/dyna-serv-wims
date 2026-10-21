@@ -21,7 +21,7 @@ function workbookBuffer(): Buffer {
     ["CUSTOMER", "CHARGE TYPE", "BASIS", "RATE", "CURRENCY", "ACTIVE", "EFFECTIVE FROM", "EFFECTIVE TO"],
     ["UBoT Incorporated Limited", "Warehousing Charge", "per_cbm_day", 0.38, "USD", "Y", 46023, 46387],
   ]), "Rates");
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([["Location ID"], ["B06-2"], ["RCV"]]), "Racking ID");
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([["Location ID"], ["A4-01"], ["B4-15"]]), "RACKING");
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([["DATE IN"]]), "IN");
   return Buffer.from(XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }));
 }
@@ -41,6 +41,7 @@ describe("UBoT VMI migration adapter", () => {
     expect(draft.parties.map((party) => party.name)).toContain("UBoT Incorporated Limited");
     expect(draft.items[0].code).toBe("340010007485");
     expect(draft.locations.map((location) => location.label)).toEqual(expect.arrayContaining(["B06-2"]));
+    expect(draft.locations.map((location) => location.label)).toEqual(expect.arrayContaining(["A4-01", "B4-15"]));
     expect(draft.locations.find((location) => location.label === "RCV")?.locationType).toBe("receiving_bay");
     expect(draft.sourceRows.find((row) => row.phase === "locations" && row.rowKey === "RCV")?.normalizedData).toMatchObject({ label: "RCV", locationType: "receiving_bay" });
     expect(draft.openingBalances[0]).toMatchObject({ itemCode: "82012CP138", lotNumber: "C202509003", quantity: 4500, flowType: "vmi" });

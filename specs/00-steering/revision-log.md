@@ -1768,3 +1768,20 @@ The Product Owner selected the workbook `Copy of V2_UBOT HK_VMI System_Billing -
 
 Migration `0058_remap_excel_racking_id_f_i.sql` preserves referenced location IDs and stock, updates denormalized pick-list labels, removes only duplicate/unreferenced legacy rows, and completes the 464-cell F-I registry.
 
+## Visible RACKING tab geometry correction (2026-10-21)
+
+The Product Owner clarified that the visible `RACKING` tab supersedes the
+hidden `Racking ID` tab for the live warehouse map. Its canonical footprint is
+Rack A at four levels × thirty positions and Racks B-G at four levels × fifteen
+positions. The map column order is A, then stacked F/B, G/C, and D/E. The
+previous A-I map geometry was therefore transposed and included a source set
+not present in the visible tab.
+
+The map now renders the 480-cell A-G footprint. Migration
+`0059_align_racking_tab_a_g.sql` rotates the earlier stored level/position
+interpretation in place, preserves referenced location IDs and pick-list
+labels, removes only safe duplicate/out-of-grid rows, and fills any missing
+canonical cells. Legacy H/I records remain outside the aligned map registry so
+their operational history is not deleted without a separate source-backed
+decision.
+

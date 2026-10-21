@@ -206,6 +206,9 @@ export function BulkLocationGeneratorForm({
             className={inputClass("racks")}
           />
           {fieldError("racks")}
+          <p className="mt-1 font-body text-body-sm text-text-grey">
+            Workbook layout: Rack A uses levels 1–4 and positions 1–30. Racks B–G use levels 1–4 and positions 1–15.
+          </p>
         </div>
 
         <div>

@@ -119,7 +119,7 @@ export function LocationMapView({
             <h2 className="font-heading text-headline-md font-semibold text-on-surface">Warehouse map</h2>
           </div>
           <p className="mt-1 font-body text-body-sm text-text-grey">
-            Live location occupancy mapped to the Excel Racking ID arrangement. The workbook is a geometry reference, not a source of capacity or stock status.
+            Live location occupancy mapped to the workbook&apos;s RACKING arrangement. The workbook is a geometry reference, not a source of capacity or stock status.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 font-label text-label">
@@ -196,8 +196,8 @@ export function LocationMapView({
             <svg
               viewBox={`0 0 ${WAREHOUSE_MAP_VIEWBOX.width} ${WAREHOUSE_MAP_VIEWBOX.height}`}
               role="img"
-              aria-label="Warehouse rack layout for racks A through I"
-              className={`h-auto min-w-[620px] ${rackFilter === "all" ? "w-full" : "w-full max-w-[760px]"}`}
+              aria-label="Warehouse rack layout for racks A through G"
+              className={`h-auto ${rackFilter === "all" ? "min-w-[1500px] w-full" : "min-w-[620px] w-full max-w-[760px]"}`}
             >
               <text x="24" y="34" className="fill-slate-700 text-[22px] font-bold">DSGC WAREHOUSE</text>
               <text x="24" y="58" className="fill-slate-500 text-[13px]">Rack positions · live WIMS status</text>
