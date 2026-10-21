@@ -10,6 +10,7 @@ import {
   WAREHOUSE_MAP_LAYOUT_VERSION,
   WAREHOUSE_MAP_SOURCE,
   WAREHOUSE_MAP_VIEWBOX,
+  WAREHOUSE_RACK_LAYOUT,
   rackLabelsForMap,
 } from "@/lib/location-map/layout";
 import type { LocationMapStatus } from "@/lib/location-map/status";
@@ -237,11 +238,41 @@ export function LocationMapView({
                   </g>
                 );
               })}
-              {rackLabels.map((rack) => {
-                const rackLayout = visibleCells.find((cell) => cell.rack === rack);
-                if (!rackLayout) return null;
-                return <text key={rack} x={rackLayout.x} y={rack === "A" ? 82 : rack === "B" || rack === "C" || rack === "D" || rack === "E" ? 446 : 82} className="fill-slate-700 text-[18px] font-bold">RACK {rack}</text>;
-              })}
+              {WAREHOUSE_RACK_LAYOUT
+                .filter((layout) => rackFilter === "all" || layout.rack === rackFilter)
+                .map((layout) => {
+                  const levelHeight = layout.height / layout.levels;
+                  return (
+                    <g key={`${layout.rack}-labels`} className="pointer-events-none">
+                      <text
+                        x={layout.x}
+                        y={layout.y - 12}
+                        className="fill-slate-700 text-[18px] font-bold"
+                      >
+                        RACK {layout.rack}
+                      </text>
+                      <text
+                        x={layout.x - 7}
+                        y={layout.y - 2}
+                        textAnchor="end"
+                        className="fill-slate-500 text-[7px] font-bold"
+                      >
+                        LVL
+                      </text>
+                      {Array.from({ length: layout.levels }, (_, levelIndex) => (
+                        <text
+                          key={`${layout.rack}-level-${layout.levels - levelIndex}`}
+                          x={layout.x - 7}
+                          y={layout.y + levelIndex * levelHeight + levelHeight / 2 + 2.5}
+                          textAnchor="end"
+                          className="fill-slate-500 text-[8px] font-mono font-semibold"
+                        >
+                          {layout.levels - levelIndex}
+                        </text>
+                      ))}
+                    </g>
+                  );
+                })}
             </svg>
           </div>
         </section>
