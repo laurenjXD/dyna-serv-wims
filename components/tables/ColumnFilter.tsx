@@ -368,8 +368,12 @@ function MultiSelectFilterContent<TData extends RowData>({
     }
     const counts = new Map<string, number>();
     table.getCoreRowModel().rows.forEach((row) => {
-      const val = String(row.getValue(column.id) || "");
-      if (val) counts.set(val, (counts.get(val) || 0) + 1);
+      const rawValue = row.getValue(column.id);
+      const values = Array.isArray(rawValue) ? rawValue : [rawValue];
+      for (const value of values) {
+        const val = String(value || "");
+        if (val) counts.set(val, (counts.get(val) || 0) + 1);
+      }
     });
     return Array.from(counts.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))

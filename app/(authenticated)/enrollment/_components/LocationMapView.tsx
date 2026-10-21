@@ -53,10 +53,15 @@ export function LocationMapView({
   const [search, setSearch] = useState(initialSearch ?? "");
   const [statusFilter, setStatusFilter] = useState("all");
   const [rackFilter, setRackFilter] = useState("all");
+  const [organizationFilter, setOrganizationFilter] = useState("all");
   const [selectedLabel, setSelectedLabel] = useState(initialSelectedLabel ?? "");
 
   const rowByLabel = useMemo(() => new Map(rows.map((row) => [row.label, row])), [rows]);
   const normalizedSearch = search.trim().toLowerCase();
+  const organizationOptions = useMemo(
+    () => Array.from(new Set(rows.flatMap((row) => row.organizationNames))).sort((a, b) => a.localeCompare(b)),
+    [rows],
+  );
 
   const filteredRows = useMemo(() => rows.filter((row) => {
     const searchable = [
@@ -74,9 +79,10 @@ export function LocationMapView({
     return (
       (!normalizedSearch || searchable.includes(normalizedSearch)) &&
       (statusFilter === "all" || row.status === statusFilter) &&
-      (rackFilter === "all" || row.rack === rackFilter)
+      (rackFilter === "all" || row.rack === rackFilter) &&
+      (organizationFilter === "all" || row.organizationNames.includes(organizationFilter))
     );
-  }), [normalizedSearch, rackFilter, rows, statusFilter]);
+  }), [normalizedSearch, organizationFilter, rackFilter, rows, statusFilter]);
 
   const filteredByLabel = useMemo(
     () => new Map(filteredRows.map((row) => [row.label, row])),
@@ -146,6 +152,19 @@ export function LocationMapView({
               {rackLabels.map((rack) => <option key={rack} value={rack}>Rack {rack}</option>)}
             </select>
           </label>
+          <label>
+            <span className="sr-only">Filter by organization</span>
+            <select
+              value={organizationFilter}
+              onChange={(event) => setOrganizationFilter(event.target.value)}
+              className="h-11 max-w-[240px] rounded-xl border border-outline-variant bg-surface-white px-3 text-body-sm text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            >
+              <option value="all">All organizations</option>
+              {organizationOptions.map((organization) => (
+                <option key={organization} value={organization}>{organization}</option>
+              ))}
+            </select>
+          </label>
         </div>
       </div>
 
@@ -157,7 +176,7 @@ export function LocationMapView({
           </span>
         ))}
         <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 font-label text-label text-slate-600">
-          {mappedRows.length} mapped locations · {unmappedRows.length} unmapped matches
+          {mappedRows.length} mapped rack locations{unmappedRows.length > 0 ? ` · ${unmappedRows.length} unmapped matches` : ""}
         </span>
       </div>
 
@@ -280,32 +299,6 @@ export function LocationMapView({
         </section>
       )}
 
-      <section className="rounded-2xl bg-surface-white p-4 shadow-elevation-1" aria-label="Map location list">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h3 className="font-heading text-data-display font-semibold text-on-surface">Location list</h3>
-            <p className="font-body text-body-sm text-text-grey">Accessible fallback for the current map filters.</p>
-          </div>
-          <span className="font-label text-label text-text-grey">{filteredRows.length} result{filteredRows.length === 1 ? "" : "s"}</span>
-        </div>
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full min-w-[650px] border-collapse text-left font-body text-body-sm">
-            <thead><tr className="border-b border-outline-variant text-label text-text-grey"><th className="px-3 py-3">Location</th><th className="px-3 py-3">Type</th><th className="px-3 py-3">Status</th><th className="px-3 py-3">Utilization</th><th className="px-3 py-3">Stock</th></tr></thead>
-            <tbody>
-              {filteredRows.slice(0, 100).map((row) => (
-                <tr key={row.id} className="border-b border-outline-variant/50 last:border-0">
-                  <td className="px-3 py-3"><button type="button" onClick={() => selectLocation(row, row.label)} className="font-mono font-semibold text-brand-navy underline-offset-2 hover:underline">{row.label}</button></td>
-                  <td className="px-3 py-3 text-text-grey">{LOCATION_TYPE_LABELS[row.locationType] ?? row.locationType}</td>
-                  <td className="px-3 py-3"><span className={`rounded-full border px-2 py-1 font-label text-label ${STATUS_META[row.status].className}`}>{STATUS_META[row.status].label}</span></td>
-                  <td className="px-3 py-3 text-text-grey">{row.utilizationPct === null ? "Capacity missing" : `${formatNumber(row.utilizationPct, 1)}%`}</td>
-                  <td className="px-3 py-3 text-text-grey">{row.itemCount} item{row.itemCount === 1 ? "" : "s"} · {row.lotCount} lot{row.lotCount === 1 ? "" : "s"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {filteredRows.length > 100 && <p className="mt-3 font-body text-body-sm text-text-grey">Showing the first 100 filtered locations. Use search or rack filters to narrow the list.</p>}
-        </div>
-      </section>
     </div>
   );
 }

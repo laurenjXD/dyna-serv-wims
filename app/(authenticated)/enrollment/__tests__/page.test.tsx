@@ -79,7 +79,7 @@ describe("EnrollmentPage (app/(authenticated)/enrollment/page.tsx)", () => {
     const source = pageSource();
     expect(source).toContain("listParties");
     expect(source).toContain("listItems");
-    expect(source).toContain("listLocations");
+    expect(source).toContain("listLocationMapRows");
     expect(source).not.toContain("MOCK_");
     expect(source).not.toContain("TODO: wire");
   });
@@ -141,6 +141,11 @@ describe("EnrollmentPage (app/(authenticated)/enrollment/page.tsx)", () => {
     expect(source).toContain("bg-surface-white");
     expect(source).toContain("shadow-elevation-1");
     expect(source).not.toContain("backdrop-blur");
+  });
+
+  it("keeps map navigation focused on the map view", () => {
+    const source = pageSource();
+    expect(source).not.toContain("Return to table");
   });
 });
 

@@ -29,22 +29,7 @@ export function LocationsEnrollmentTable({
       ),
     },
 
-    // 2. Zone (Categorical Multi-Select)
-    {
-      accessorKey: "zone",
-      header: "Zone",
-      meta: {
-        filterVariant: "multi-select",
-        filterLabel: "Zone",
-      },
-      cell: (info) => (
-        <span className="rounded bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-800 border border-blue-200 uppercase">
-          Zone {String(info.getValue())}
-        </span>
-      ),
-    },
-
-    // 3. Rack — this is the same grouping used by the warehouse map.
+    // 2. Rack — this is the same grouping and identity used by the map.
     {
       accessorKey: "rack",
       header: "Rack",
@@ -55,7 +40,7 @@ export function LocationsEnrollmentTable({
       cell: (info) => <span className="font-mono text-sm font-semibold text-slate-800">{String(info.getValue())}</span>,
     },
 
-    // 4. Level & Position
+    // 3. Level & Position
     {
       id: "coordinates",
       header: "Level / Pos",
@@ -67,7 +52,7 @@ export function LocationsEnrollmentTable({
       cell: (info) => <span className="font-mono text-sm text-text-grey">{String(info.getValue())}</span>,
     },
 
-    // 5. Type (Floor, Rack, Staging, Quarantine)
+    // 4. Type (Floor, Rack, Staging, Quarantine)
     {
       accessorKey: "locationType",
       header: "Type",
@@ -88,7 +73,7 @@ export function LocationsEnrollmentTable({
       ),
     },
 
-    // 6. Max CBM Capacity (Numeric Range)
+    // 5. Max CBM Capacity (Numeric Range)
     {
       accessorKey: "maxCbmCapacity",
       header: "Max CBM",
@@ -104,7 +89,7 @@ export function LocationsEnrollmentTable({
       ),
     },
 
-    // 7. Status
+    // 6. Status
     {
       accessorKey: "isActive",
       header: "Status",
@@ -129,7 +114,7 @@ export function LocationsEnrollmentTable({
       },
     },
 
-    // 8. Actions
+    // 7. Actions
     {
       id: "actions",
       header: "Action",
@@ -166,7 +151,7 @@ export function LocationsEnrollmentTable({
       columns={columns}
       data={data}
       title="Warehouse Location Grid"
-      subtitle="Master directory of warehouse zones, aisles, rack bays, levels, and CBM volumetric limits"
+      subtitle="Master directory of warehouse racks, levels, positions, and CBM volumetric limits"
       icon={<MapPin size={18} />}
       enableGrouping={true}
       initialGrouping={["rack"]}
@@ -179,7 +164,6 @@ export function LocationsEnrollmentTable({
             buttonLabel="Export Locations"
             columns={[
               { header: "Location Label", key: "label" },
-              { header: "Zone", key: "zone" },
               { header: "Rack", key: "rack" },
               { header: "Level", key: "level" },
               { header: "Position", key: "position" },

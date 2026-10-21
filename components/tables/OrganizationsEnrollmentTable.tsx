@@ -15,6 +15,11 @@ const ROLE_BADGE_STYLES: Record<string, { label: string; bg: string; text: strin
   internal_supplies: { label: "Internal Supplies", bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200" },
 };
 
+const ROLE_FILTER_OPTIONS = Object.entries(ROLE_BADGE_STYLES).map(([value, style]) => ({
+  value,
+  label: style.label,
+}));
+
 import { ExportDataButton } from "@/components/shared/ExportDataButton";
 
 export function OrganizationsEnrollmentTable({
@@ -66,8 +71,9 @@ export function OrganizationsEnrollmentTable({
       id: "roles",
       header: "Business Roles",
       meta: {
-        filterVariant: "text",
-        filterLabel: "Role",
+        filterVariant: "multi-select",
+        filterLabel: "Business Roles",
+        filterOptions: ROLE_FILTER_OPTIONS,
       },
       cell: (info) => {
         const roles = info.row.original.roles ?? [];

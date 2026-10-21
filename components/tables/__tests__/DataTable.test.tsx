@@ -4,6 +4,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import React from "react";
 import { MasterInventoryTable, type MasterInventoryRow } from "../MasterInventoryTable";
 import { TransactionLedgerTable, type TransactionLedgerRow } from "../TransactionLedgerTable";
+import { customFilterFns } from "../DataTable";
 
 const mockInventoryData: MasterInventoryRow[] = [
   {
@@ -77,6 +78,15 @@ const mockLedgerData: TransactionLedgerRow[] = [
 ];
 
 describe("MasterInventoryTable & Universal DataTable", () => {
+  it("filters multi-valued cells when any selected value matches", () => {
+    const row = {
+      getValue: () => ["supplier", "end_customer"],
+    } as unknown as Parameters<typeof customFilterFns.multiSelect>[0];
+
+    expect(customFilterFns.multiSelect(row, "roles", ["supplier"], () => {})).toBe(true);
+    expect(customFilterFns.multiSelect(row, "roles", ["customer"], () => {})).toBe(false);
+  });
+
   it("renders table headers with Google Sheets-style filter trigger buttons", () => {
     render(<MasterInventoryTable data={mockInventoryData} />);
     expect(screen.getAllByText("Item Code")[0]).toBeInTheDocument();

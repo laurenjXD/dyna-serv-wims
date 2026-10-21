@@ -75,8 +75,9 @@ export const customFilterFns: Record<string, FilterFn<any>> = {
   // Multi-Select / Dependent Multi-Select
   multiSelect: (row, columnId, filterValues: string[]) => {
     if (!filterValues || filterValues.length === 0) return true;
-    const cellValue = String(row.getValue(columnId) || "");
-    return filterValues.includes(cellValue);
+    const rawValue = row.getValue(columnId);
+    const cellValues = Array.isArray(rawValue) ? rawValue : [rawValue];
+    return cellValues.some((value) => filterValues.includes(String(value)));
   },
 
   // Status Pill

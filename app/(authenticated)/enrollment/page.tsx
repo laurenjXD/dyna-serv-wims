@@ -24,8 +24,8 @@ import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { listParties } from "@/lib/db/queries/parties";
 import { listItems } from "@/lib/db/queries/items";
-import { listLocations } from "@/lib/db/queries/locations";
 import { listLocationMapRows } from "@/lib/db/queries/locations";
+import type { LocationMapRow } from "@/lib/db/queries/locations";
 import { LocationMapView } from "./_components/LocationMapView";
 import {
   OrganizationsEnrollmentTable,
@@ -34,7 +34,6 @@ import {
 } from "@/components/tables";
 
 const PAGE_SIZE = 25;
-const LOCATION_TABLE_LIMIT = 1000;
 
 type TabKey = "parties" | "items" | "locations";
 
@@ -265,7 +264,7 @@ async function LocationsTab({
   const isMapView = view === "map";
 
   if (isMapView) {
-    const rows = await listLocationMapRows(db);
+    const rows = (await listLocationMapRows(db)).filter((row) => row.isMapped);
     return (
       <div className="mt-4">
         <LocationViewSwitcher view="map" search={search} selectedLabel={selectedLabel} />
@@ -276,13 +275,12 @@ async function LocationsTab({
     );
   }
 
-  // DataTable owns client-side pagination and grouping for this registry. Load
-  // the complete location set so the rack groups and row counts match the map.
-  const { rows } = await listLocations(db, {
-    search,
-    limit: LOCATION_TABLE_LIMIT,
-    offset: 0,
-  });
+  // Both views use the map read model so the table contains exactly the same
+  // Excel-backed Rack A–I locations as the SVG. Legacy/non-rack records remain
+  // in the database for operational history, but are intentionally excluded
+  // from this aligned rack registry until they have confirmed geometry.
+  const mapRows = await listLocationMapRows(db);
+  const rows = mapRows.filter((row) => row.isMapped && matchesLocationSearch(row, search));
 
   return (
     <div className="mt-4">
@@ -292,6 +290,23 @@ async function LocationsTab({
       </div>
     </div>
   );
+}
+
+function matchesLocationSearch(row: LocationMapRow, search?: string): boolean {
+  const normalizedSearch = search?.trim().toLowerCase();
+  if (!normalizedSearch) return true;
+
+  return [
+    row.label,
+    row.zone,
+    row.rack,
+    row.level,
+    row.position,
+    row.locationType,
+    ...row.itemCodes,
+    ...row.lotNumbers,
+    ...row.organizationNames,
+  ].join(" ").toLowerCase().includes(normalizedSearch);
 }
 
 function LocationViewSwitcher({
@@ -320,7 +335,6 @@ function LocationViewSwitcher({
           Map View
         </Link>
       </div>
-      {view === "map" && <Link href={href("table")} className="font-label text-label text-brand-navy underline-offset-2 hover:underline">Return to table</Link>}
     </div>
   );
 }
