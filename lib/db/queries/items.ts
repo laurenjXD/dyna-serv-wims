@@ -89,7 +89,7 @@ export type WrrItemOption = {
 /**
  * Lists active catalog items with the owning/supplying organization relation.
  * The client filters this small office-form projection after the operator
- * chooses the Vendor Organization; the server action still resolves the item
+ * chooses the Organization; the server action still resolves the item
  * ID independently before staging the WRR.
  */
 export async function listActiveWrrItemOptions(db: DbLike): Promise<WrrItemOption[]> {
@@ -300,8 +300,12 @@ export async function getItemOperationalRecords(
 // ---------------------------------------------------------------------------
 
 /**
- * Returns active parties that hold the vendor or supplier business role.
- * Used in the item create/edit form's default supplier selector.
+ * Returns active organizations that may be selected as the source party for
+ * receiving and item setup. The role column is cast to text deliberately:
+ * party_role was canonicalized by migration 0049, and comparing it to a
+ * value that is no longer present in the live enum makes PostgreSQL reject
+ * the entire query (which previously made the WRR selector look empty).
+ *
  * design.md §6 Default supplier: "queries active authorized parties whose
  * party_roles include supplier or vendor".
  */
@@ -322,12 +326,11 @@ export async function getActiveSupplierParties(
       .where(
         and(
           eq(parties.isActive, true),
-          or(
-            eq(partyRoles.role, "supplier" as const),
-            eq(partyRoles.role, "customer" as const),
-            eq(partyRoles.role, "end_customer" as const),
-            eq(partyRoles.role, "internal_supplies" as const),
-          ),
+          // Keep this comparison enum-version tolerant. The live database's
+          // canonical enum does not contain the historical
+          // `internal_supplies` value, so binding that string as an enum
+          // parameter would fail the whole query before any rows are read.
+          sql`${partyRoles.role}::text IN ('vendor', 'supplier', 'customer', 'end_customer', 'internal_warehouse', 'internal_supplies')`,
         ),
       )
       .orderBy(parties.name)) as Array<{
@@ -344,17 +347,25 @@ export async function getActiveSupplierParties(
   // Group roles by party
   const map = new Map<string, { id: string; code: string; name: string; roles: string[] }>();
   for (const row of rows) {
+    // Normalize legacy role labels for the presentation model. Migration
+    // 0049 maps these values in the canonical database, but keeping this
+    // boundary tolerant also supports older environments during rollout.
+    const role = row.role === "vendor"
+      ? "supplier"
+      : row.role === "internal_warehouse"
+        ? "internal_supplies"
+        : row.role;
     const existing = map.get(row.id);
     if (!existing) {
       map.set(row.id, {
         id: row.id,
         code: row.code,
         name: row.name,
-        roles: [row.role],
+        roles: [role],
       });
     } else {
-      if (!existing.roles.includes(row.role)) {
-        existing.roles.push(row.role);
+      if (!existing.roles.includes(role)) {
+        existing.roles.push(role);
       }
     }
   }

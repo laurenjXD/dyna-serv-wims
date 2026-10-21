@@ -11,8 +11,12 @@ describe("warehouse map layout", () => {
     expect(canonicalLocationLabel("G", 14, 4)).toBe("G14-04");
   });
 
-  it("renders the PDF reference footprint as 472 rack cells", () => {
-    expect(WAREHOUSE_MAP_CELLS).toHaveLength(472);
+  it("renders the Excel Racking ID footprint as 776 rack cells", () => {
+    expect(WAREHOUSE_MAP_CELLS).toHaveLength(776);
+    expect(WAREHOUSE_MAP_CELLS.filter((cell) => cell.rack === "F")).toHaveLength(120);
+    expect(WAREHOUSE_MAP_CELLS.filter((cell) => cell.rack === "G")).toHaveLength(120);
+    expect(WAREHOUSE_MAP_CELLS.filter((cell) => cell.rack === "H")).toHaveLength(112);
+    expect(WAREHOUSE_MAP_CELLS.filter((cell) => cell.rack === "I")).toHaveLength(112);
   });
 
   it("keeps level one at the bottom of a rack", () => {

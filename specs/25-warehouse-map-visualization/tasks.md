@@ -8,9 +8,9 @@ Approved with both required sign-offs.
 
 ## Task Group A — Contract and layout fixture
 
-- [ ] Confirm the PDF is the initial visual reference and record its source
-      filename/hash in the fixture notes.
-- [ ] Confirm rack A-I level/position geometry against the PDF.
+- [ ] Confirm the workbook `Racking ID` sheet is the current location source
+      and record its filename/sheet in the fixture notes.
+- [ ] Confirm rack A-I level/position geometry against the workbook.
 - [ ] Confirm how non-rack/reference areas are represented or left unmapped.
 - [ ] Confirm that pallet-position counts are reference-only until a CBM
       capacity reconciliation is approved.
@@ -39,7 +39,7 @@ Approved with both required sign-offs.
 - [ ] Add unit tests for cell mapping, orientation, and status thresholds.
 - [ ] Add Playwright tests at 375px, 430px, 768px, and desktop widths.
 - [ ] Run design-system audit and accessibility review.
-- [ ] Compare rendered map against the PDF reference.
+- [ ] Compare rendered map against the workbook `Racking ID` reference.
 - [ ] Run the repository type-check, test suite, and build.
 - [ ] Obtain both required sign-offs and change all three documents to
       `Status: Approved` before implementation completion.

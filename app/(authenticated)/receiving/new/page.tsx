@@ -131,7 +131,7 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
   }
 
   // A WRR header holds a foreign key to parties.id. Showing the available
-  // vendor/supplier organizations prevents operators from having to discover
+  // source organizations prevents operators from having to discover
   // and paste an internal UUID (and avoids a database exception on submit).
   const [vendorParties, wrrItemOptions] = await Promise.all([
     getActiveSupplierParties(db),
@@ -175,7 +175,7 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
 
       {/* Create WRR form — standard office surface. WrrNewForm is a client
           component: it owns Inventory Model state (shared with WrrLineItems'
-          conditional Item Code label) and renders the Vendor Organization
+          conditional Item Code label) and renders the Organization
           dropdown, header fields (no PEZA Number — no longer collected),
           expected lines, and form actions. */}
       <WrrNewForm

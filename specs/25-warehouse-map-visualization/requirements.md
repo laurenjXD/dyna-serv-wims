@@ -6,8 +6,8 @@ Depends on: `specs/01-core-data-model/`, `specs/05-ui-shell-and-navigation/`, `s
 ## Purpose
 
 Provide an interactive, read-only visualization of the single Dyna-Serv
-warehouse layout using the supplied `DSGC PALLET POSITION.pdf` as the initial
-visual reference. The map helps authorized staff locate stock, understand
+warehouse layout using the `Racking ID` sheet in the supplied workbook as the
+current location source. The map helps authorized staff locate stock, understand
 location capacity, and navigate from a location record or Master Inventory.
 
 The map is a visualization of canonical WIMS data. It is not a second
@@ -24,9 +24,9 @@ as authoritative stock.
 
 ### R2. Initial layout
 
-The first layout SHALL represent the PDF's rack groups A through I and their
-visible level/position arrangement. Layout geometry SHALL be versioned in
-application configuration for v1; editing geometry in the browser is out of
+The first layout SHALL represent the workbook's rack groups A through I and
+their visible level/position arrangement. Layout geometry SHALL be versioned
+in application configuration for v1; editing geometry in the browser is out of
 scope.
 
 ### R3. Locations view
@@ -47,8 +47,9 @@ The map SHALL distinguish at least inactive/unmapped, available, occupied,
 near-capacity, and full states. Capacity thresholds SHALL reuse the approved
 location-detail thresholds: warning at 75% and critical at 90% utilization.
 
-PDF allocation colors SHALL remain a separate reference/overlay layer and MUST
-NOT be interpreted as live inventory status without an approved business rule.
+PDF allocation colors SHALL remain a separate older reference/overlay layer
+and MUST NOT be interpreted as live inventory status without an approved
+business rule.
 
 ### R6. Search and filtering
 
@@ -77,9 +78,9 @@ feature workflows and capabilities.
 
 ### R10. Reference artifact
 
-The supplied PDF MAY be available as a reference/download artifact. Its
-displayed rack capacity counts and allocation legend SHALL be labeled as
-reference information until reconciled with canonical location capacity data.
+The supplied PDF MAY be available as an older reference/download artifact.
+The workbook's location identifiers and geometry SHALL be treated as the
+current reference, while capacity and stock remain canonical WIMS data.
 
 ## Out of scope
 
@@ -87,7 +88,7 @@ reference information until reconciled with canonical location capacity data.
 - changing `locations` schema or adding `warehouse_id`;
 - adding new `location_type` enum values;
 - browser-based map editor or drag-and-drop geometry editing;
-- treating PDF color blocks as authoritative ownership or stock status;
+- treating PDF or workbook color blocks as authoritative ownership or stock status;
 - offline map mutations; and
 - a second inventory or capacity ledger.
 

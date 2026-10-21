@@ -7,9 +7,10 @@ Depends on: `specs/25-warehouse-map-visualization/requirements.md`
 
 The map is an office-first read surface with a floor-usable focused-location
 mode. It renders the physical layout as data-driven SVG so each location can
-be selected, highlighted, and linked to canonical WIMS data. The supplied PDF
-is used to establish the initial rack geometry and reference legend; it is not
-embedded as the interactive data model.
+be selected, highlighted, and linked to canonical WIMS data. The workbook's
+`Racking ID` sheet is the current rack-geometry reference; the previously
+supplied PDF is retained only as an older visual reference and is not embedded
+as the interactive data model.
 
 ## 2. Route and authorization
 
@@ -49,13 +50,14 @@ The initial layout configuration is versioned application data containing:
 - normalized SVG bounds and labels; and
 - explicit non-rack/reference regions where needed.
 
-The configuration maps a canonical label such as `A1-01` to one SVG cell.
-Unmapped canonical locations appear in an exceptions summary and remain
-available in Table View.
+The configuration maps a canonical WIMS label such as `A1-01` to one SVG
+cell. The workbook's position-level identifiers are normalized to WIMS's
+level-position convention before they are used as map keys. Unmapped canonical
+locations appear in an exceptions summary and remain available in Table View.
 
 The v1 configuration MUST NOT invent CBM capacity, ownership, or allocation
-status from the PDF. Capacity comes from canonical locations; the PDF's pallet
-position counts remain reference metadata until reconciled.
+status from the workbook. Capacity comes from canonical locations; the
+workbook's rack geometry remains reference metadata until reconciled.
 
 ## 5. Interaction model
 

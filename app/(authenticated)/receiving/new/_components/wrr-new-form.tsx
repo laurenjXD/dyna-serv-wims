@@ -4,8 +4,8 @@
 //
 // Split out from page.tsx (2026-08-19 user request) so Inventory Model
 // selection can be shared client-side state between the header select and
-// WrrLineItems' conditional Item Code label. Vendor Organization is a
-// dropdown of real parties (page.tsx fetches the list). PEZA Number is no
+// WrrLineItems' conditional Item Code label. Organization is a
+// dropdown of real organizations (page.tsx fetches the list). PEZA Number is no
 // longer collected on this form. CIPL is a real Storage upload (2026-08-19
 // follow-up request), not a pasted URL.
 //
@@ -196,13 +196,13 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
 
         {/* 2-column balanced grid */}
         <div className="mt-4 grid gap-4 md:grid-cols-2">
-          {/* Vendor Organization — dropdown of active vendor/supplier parties */}
+          {/* Organization — dropdown of active receiving source parties */}
           <div>
             <label
               htmlFor="vendorPartyId"
               className="block font-label text-label text-text-grey"
             >
-              Vendor Organization{" "}
+              Organization{" "}
               <span aria-hidden="true" className="text-brand-red">
                 *
               </span>
@@ -217,7 +217,7 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
                 required
                 disabled={vendorParties.length === 0}
                 value={vendorSearch || (selectedVendor ? `${selectedVendor.code} — ${selectedVendor.name}` : "")}
-                placeholder={vendorParties.length === 0 ? "No active vendor organizations available" : "Search vendor organization…"}
+                placeholder={vendorParties.length === 0 ? "No active organizations available" : "Search organization…"}
                 onFocus={() => vendorParties.length > 0 && setIsVendorOpen(true)}
                 onChange={(event) => {
                   setVendorSearch(event.target.value);
@@ -257,7 +257,7 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
                       )}
                     </button>
                   )) : (
-                    <p className="px-3 py-3 font-body text-body-sm text-text-grey">No matching vendor organizations.</p>
+                    <p className="px-3 py-3 font-body text-body-sm text-text-grey">No matching organizations.</p>
                   )}
                   <div className="border-t border-outline-variant/30 bg-[#F0F4FF] p-2.5">
                     <Link
@@ -280,7 +280,7 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
             </div>
             {vendorParties.length === 0 && (
               <p className="mt-1 font-body text-body-sm text-status-held">
-                Create an active organization with the Vendor or Supplier role before creating a WRR.
+                No active organizations are available for receiving. Activate an organization with a receiving role before creating a WRR.
               </p>
             )}
           </div>

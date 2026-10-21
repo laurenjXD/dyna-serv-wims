@@ -3,7 +3,7 @@
 import React, { useMemo } from "react";
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
-import { MapPin, Plus, Layers } from "lucide-react";
+import { MapPin, MapPinned, Plus, Layers } from "lucide-react";
 import { DataTable } from "./DataTable";
 import type { LocationListRow } from "@/lib/db/queries/locations";
 import { ExportDataButton } from "@/components/shared/ExportDataButton";
@@ -44,10 +44,10 @@ export function LocationsEnrollmentTable({
       ),
     },
 
-    // 3. Aisle / Rack
+    // 3. Rack — this is the same grouping used by the warehouse map.
     {
       accessorKey: "rack",
-      header: "Aisle / Rack",
+      header: "Rack",
       meta: {
         filterVariant: "text",
         filterLabel: "Rack",
@@ -141,6 +141,15 @@ export function LocationsEnrollmentTable({
         return (
           <div className="flex items-center justify-end gap-1.5">
             <Link
+              href={`/enrollment?tab=locations&view=map&label=${encodeURIComponent(loc.label)}`}
+              aria-label={`Locate ${loc.label} on map`}
+              title="Locate on map"
+              className="inline-flex items-center gap-1 rounded bg-blue-50 px-2.5 py-1 text-xs font-bold text-brand-navy transition-colors shadow-sm hover:bg-brand-navy hover:text-white"
+            >
+              <MapPinned size={13} aria-hidden="true" />
+              Map
+            </Link>
+            <Link
               href={`/master-data/locations/${loc.id}`}
               className="rounded bg-slate-100 hover:bg-brand-navy hover:text-white px-2.5 py-1 text-xs font-bold text-slate-800 transition-colors shadow-sm"
             >
@@ -160,7 +169,7 @@ export function LocationsEnrollmentTable({
       subtitle="Master directory of warehouse zones, aisles, rack bays, levels, and CBM volumetric limits"
       icon={<MapPin size={18} />}
       enableGrouping={true}
-      initialGrouping={["zone"]}
+      initialGrouping={["rack"]}
       actions={
         <div className="flex items-center gap-2">
           <ExportDataButton

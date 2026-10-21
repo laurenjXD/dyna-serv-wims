@@ -110,7 +110,7 @@ export function LocationMapView({
             <h2 className="font-heading text-headline-md font-semibold text-on-surface">Warehouse map</h2>
           </div>
           <p className="mt-1 font-body text-body-sm text-text-grey">
-            Live location occupancy mapped to the supplied rack arrangement. The PDF is a layout reference, not a source of capacity or stock status.
+            Live location occupancy mapped to the Excel Racking ID arrangement. The workbook is a geometry reference, not a source of capacity or stock status.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 font-label text-label">

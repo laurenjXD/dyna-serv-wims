@@ -1762,3 +1762,9 @@ operational references. The repeatable data migration is
 geometry, not CBM; existing CBM values were preserved and used for newly
 created empty slots until a capacity reconciliation is approved.
 
+## Excel Racking ID source for F-I map geometry (2026-10-21)
+
+The Product Owner selected the workbook `Copy of V2_UBOT HK_VMI System_Billing - Full Setup.xlsx`, `Racking ID` sheet, as the current source for F-I location geometry because the supplied PDF may be outdated. The map now renders F/G as 30 levels x 4 positions and H/I as 28 levels x 4 positions. The workbook's position-level labels are normalized into WIMS's canonical level-position labels (for example, workbook `F1-05` becomes WIMS `F5-01`).
+
+Migration `0058_remap_excel_racking_id_f_i.sql` preserves referenced location IDs and stock, updates denormalized pick-list labels, removes only duplicate/unreferenced legacy rows, and completes the 464-cell F-I registry.
+

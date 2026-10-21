@@ -34,6 +34,7 @@ import {
 } from "@/components/tables";
 
 const PAGE_SIZE = 25;
+const LOCATION_TABLE_LIMIT = 1000;
 
 type TabKey = "parties" | "items" | "locations";
 
@@ -160,8 +161,6 @@ export default async function EnrollmentPage({ searchParams }: PageProps) {
         <LocationsTab
           resolver={resolver}
           search={search}
-          currentPage={currentPage}
-          offset={offset}
           view={viewParam}
           selectedLabel={selectedLabel}
         />
@@ -238,15 +237,11 @@ async function ItemsTab({
 async function LocationsTab({
   resolver,
   search,
-  currentPage,
-  offset,
   view,
   selectedLabel,
 }: {
   resolver: Awaited<ReturnType<typeof createPageResolver>>;
   search?: string;
-  currentPage: number;
-  offset: number;
   view?: string;
   selectedLabel?: string;
 }) {
@@ -281,7 +276,13 @@ async function LocationsTab({
     );
   }
 
-  const { rows } = await listLocations(db, { search, limit: PAGE_SIZE, offset });
+  // DataTable owns client-side pagination and grouping for this registry. Load
+  // the complete location set so the rack groups and row counts match the map.
+  const { rows } = await listLocations(db, {
+    search,
+    limit: LOCATION_TABLE_LIMIT,
+    offset: 0,
+  });
 
   return (
     <div className="mt-4">
