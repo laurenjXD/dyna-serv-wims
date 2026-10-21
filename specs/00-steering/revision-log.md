@@ -1740,3 +1740,25 @@ active Supervisor and Administrator users. Duplicate alerts for the same item
 and recipient are suppressed for 24 hours. Notification delivery is advisory
 and never changes the authoritative inventory transaction outcome.
 
+## PDF-aligned A-E location normalization (2026-10-21)
+
+The Product Owner requested that the live location registry be aligned with
+the supplied `DSGC PALLET POSITION.pdf` layout. The existing A-E records were
+an earlier incorrect grid (for example, Rack A had four levels with thirty
+positions) alongside stock-bearing legacy labels such as `A01-1`.
+
+The live data was normalized to the approved map geometry:
+
+- Rack A: 30 levels × 4 positions = 120 locations.
+- Racks B-E: 12 levels × 4 positions = 48 locations each.
+- Total A-E: 312 active canonical locations.
+
+Stock-bearing and operationally referenced location IDs were preserved and
+renamed in place so balances, transactions, pick lists, receiving references,
+and carton history remain attached to the same records. Unused out-of-grid
+duplicates were removed only after reference checks confirmed they had no
+operational references. The repeatable data migration is
+`0057_align_pdf_rack_locations_a_e.sql`. The PDF provides pallet-position
+geometry, not CBM; existing CBM values were preserved and used for newly
+created empty slots until a capacity reconciliation is approved.
+
