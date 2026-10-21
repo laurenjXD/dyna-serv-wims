@@ -15,7 +15,7 @@ import { requirePermission } from "@/lib/rbac/guard";
 import { createWrr, uploadCiplFile } from "@/lib/actions/receiving";
 import type { UploadCiplFileResult } from "@/lib/actions/receiving";
 import { db } from "@/lib/db/client";
-import { getActiveSupplierParties, listActiveWrrItemOptions } from "@/lib/db/queries/items";
+import { getActiveWrrOrganizations, listActiveWrrItemOptions } from "@/lib/db/queries/items";
 import { WrrNewForm } from "./_components/wrr-new-form";
 import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 
@@ -134,7 +134,7 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
   // source organizations prevents operators from having to discover
   // and paste an internal UUID (and avoids a database exception on submit).
   const [vendorParties, wrrItemOptions] = await Promise.all([
-    getActiveSupplierParties(db),
+    getActiveWrrOrganizations(db),
     listActiveWrrItemOptions(db),
   ]);
 

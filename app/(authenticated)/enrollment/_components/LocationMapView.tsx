@@ -197,7 +197,7 @@ export function LocationMapView({
               viewBox={`0 0 ${WAREHOUSE_MAP_VIEWBOX.width} ${WAREHOUSE_MAP_VIEWBOX.height}`}
               role="img"
               aria-label="Warehouse rack layout for racks A through G"
-              className={`h-auto ${rackFilter === "all" ? "min-w-[1500px] w-full" : "min-w-[620px] w-full max-w-[760px]"}`}
+              className={`h-auto ${rackFilter === "all" ? "min-w-[760px] w-full" : "min-w-[520px] w-full max-w-[760px]"}`}
             >
               <text x="24" y="34" className="fill-slate-700 text-[22px] font-bold">DSGC WAREHOUSE</text>
               <text x="24" y="58" className="fill-slate-500 text-[13px]">Rack positions · live WIMS status</text>
@@ -243,7 +243,8 @@ export function LocationMapView({
               {WAREHOUSE_RACK_LAYOUT
                 .filter((layout) => rackFilter === "all" || layout.rack === rackFilter)
                 .map((layout) => {
-                  const levelHeight = layout.height / layout.levels;
+                  const cellWidth = layout.width / (layout.verticalPositions ? layout.levels : layout.positions);
+                  const cellHeight = layout.height / (layout.verticalPositions ? layout.positions : layout.levels);
                   return (
                     <g key={`${layout.rack}-labels`} className="pointer-events-none">
                       <text
@@ -253,25 +254,44 @@ export function LocationMapView({
                       >
                         RACK {layout.rack}
                       </text>
-                      <text
-                        x={layout.x - 7}
-                        y={layout.y - 2}
-                        textAnchor="end"
-                        className="fill-slate-500 text-[7px] font-bold"
-                      >
-                        LVL
-                      </text>
-                      {Array.from({ length: layout.levels }, (_, levelIndex) => (
-                        <text
-                          key={`${layout.rack}-level-${layout.levels - levelIndex}`}
-                          x={layout.x - 7}
-                          y={layout.y + levelIndex * levelHeight + levelHeight / 2 + 2.5}
-                          textAnchor="end"
-                          className="fill-slate-500 text-[8px] font-mono font-semibold"
-                        >
-                          {layout.levels - levelIndex}
-                        </text>
-                      ))}
+                      {layout.verticalPositions ? (
+                        <>
+                          <text x={layout.x - 7} y={layout.y - 24} textAnchor="end" className="fill-slate-500 text-[7px] font-bold">
+                            POS
+                          </text>
+                          {Array.from({ length: layout.positions }, (_, positionIndex) => (
+                            <text
+                              key={`${layout.rack}-position-${layout.positions - positionIndex}`}
+                              x={layout.x - 7}
+                              y={layout.y + positionIndex * cellHeight + cellHeight / 2 + 2.5}
+                              textAnchor="end"
+                              className="fill-slate-500 text-[8px] font-mono font-semibold"
+                            >
+                              {layout.positions - positionIndex}
+                            </text>
+                          ))}
+                          {Array.from({ length: layout.levels }, (_, levelIndex) => (
+                            <text
+                              key={`${layout.rack}-level-${layout.levels - levelIndex}`}
+                              x={layout.x + levelIndex * cellWidth + cellWidth / 2}
+                              y={layout.y - 8}
+                              textAnchor="middle"
+                              className="fill-slate-500 text-[8px] font-mono font-semibold"
+                            >
+                              L{layout.levels - levelIndex}
+                            </text>
+                          ))}
+                        </>
+                      ) : (
+                        <>
+                          <text x={layout.x - 7} y={layout.y - 2} textAnchor="end" className="fill-slate-500 text-[7px] font-bold">LVL</text>
+                          {Array.from({ length: layout.levels }, (_, levelIndex) => (
+                            <text key={`${layout.rack}-level-${layout.levels - levelIndex}`} x={layout.x - 7} y={layout.y + levelIndex * cellHeight + cellHeight / 2 + 2.5} textAnchor="end" className="fill-slate-500 text-[8px] font-mono font-semibold">
+                              {layout.levels - levelIndex}
+                            </text>
+                          ))}
+                        </>
+                      )}
                     </g>
                   );
                 })}

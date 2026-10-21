@@ -26,6 +26,13 @@ describe("warehouse map layout", () => {
     ]);
     expect(WAREHOUSE_RACK_LAYOUT[0]).toMatchObject({ levels: 4, positions: 30 });
     expect(WAREHOUSE_RACK_LAYOUT[1]).toMatchObject({ levels: 4, positions: 15 });
+    expect(WAREHOUSE_RACK_LAYOUT.every((layout) => layout.verticalPositions)).toBe(true);
+  });
+
+  it("keeps vertical display orientation linked to canonical level-position labels", () => {
+    const rackA = WAREHOUSE_MAP_CELLS.filter((cell) => cell.rack === "A");
+    expect(rackA[0]).toMatchObject({ label: "A4-01", level: "4", position: "01" });
+    expect(rackA.at(-1)).toMatchObject({ label: "A1-30", level: "1", position: "30" });
   });
 
   it("keeps level one at the bottom of a rack", () => {

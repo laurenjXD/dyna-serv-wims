@@ -529,6 +529,22 @@ describe("commitWithdrawal — success (R5.1, R5.3, design.md §6)", () => {
     expect(db.insert).not.toHaveBeenCalled();
   });
 
+  it("accepts the lot owner organization for migrated VMI stock", async () => {
+    const db = makeWithdrawalDb([], [[allocationRow({
+      defaultSupplierPartyId: null,
+      organizationPartyId: "party-uuid-owner",
+      lotFlowType: "vmi",
+    })]]);
+    const input = validCommitInput();
+    input.partyId = "party-uuid-owner";
+    input.flowType = "vmi";
+
+    const result = await commitWithdrawal(supervisorResolver(), input, mockRlsDeps(db).deps);
+
+    expect(result.ok).toBe(true);
+    expect(db.insert).toHaveBeenCalled();
+  });
+
   it("uses the exact alternate pallet only when an approval reference is supplied", async () => {
     const oldest = allocationRow({ lotId: "lot-oldest", lotNumber: "LOT-OLD", receivedAt: new Date("2026-01-01T00:00:00Z") });
     const newer = allocationRow({ balanceId: "balance-uuid-2", lotId: "lot-newer", lotNumber: "LOT-NEW", locationId: "loc-uuid-2", receivedAt: new Date("2026-02-01T00:00:00Z") });

@@ -4,6 +4,7 @@
 //   specs/06-party-and-item-enrollment/design.md §6 (Item model), §7
 
 import { eq, ilike, or, and, isNotNull, desc, sql } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
 import { items, itemCategories, parties, partyRoles, lots, wrrItems, inventoryTransactions } from "@/lib/db/schema";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -312,6 +313,33 @@ export async function getItemOperationalRecords(
 export async function getActiveSupplierParties(
   db: DbLike,
 ): Promise<SupplierPartyOption[]> {
+  return listActivePartyOptions(
+    db,
+    sql`${partyRoles.role}::text IN ('vendor', 'supplier', 'customer', 'end_customer', 'internal_warehouse', 'internal_supplies')`,
+  );
+}
+
+/**
+ * Returns the active organizations allowed as the source organization on a
+ * WRR. End customers and internal organizations are deliberately excluded:
+ * they may exist in the party directory, but they are not inbound source
+ * organizations for this form.
+ */
+export async function getActiveWrrOrganizations(
+  db: DbLike,
+): Promise<SupplierPartyOption[]> {
+  return listActivePartyOptions(
+    db,
+    sql`${partyRoles.role}::text IN ('vendor', 'supplier', 'customer')`,
+    new Set(["supplier", "customer"]),
+  );
+}
+
+async function listActivePartyOptions(
+  db: DbLike,
+  roleFilter: SQL<unknown>,
+  allowedRoles?: ReadonlySet<string>,
+): Promise<SupplierPartyOption[]> {
   let rows: Array<{ id: string; code: string; name: string; role: string }>;
   try {
     rows = (await db
@@ -330,7 +358,7 @@ export async function getActiveSupplierParties(
           // canonical enum does not contain the historical
           // `internal_supplies` value, so binding that string as an enum
           // parameter would fail the whole query before any rows are read.
-          sql`${partyRoles.role}::text IN ('vendor', 'supplier', 'customer', 'end_customer', 'internal_warehouse', 'internal_supplies')`,
+          roleFilter,
         ),
       )
       .orderBy(parties.name)) as Array<{
@@ -355,6 +383,7 @@ export async function getActiveSupplierParties(
       : row.role === "internal_warehouse"
         ? "internal_supplies"
         : row.role;
+    if (allowedRoles && !allowedRoles.has(role)) continue;
     const existing = map.get(row.id);
     if (!existing) {
       map.set(row.id, {

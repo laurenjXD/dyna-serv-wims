@@ -1,4 +1,4 @@
-export const WAREHOUSE_MAP_LAYOUT_VERSION = "v3-racking-tab-a-g";
+export const WAREHOUSE_MAP_LAYOUT_VERSION = "v4-racking-tab-vertical-a-g";
 export const WAREHOUSE_MAP_SOURCE = "V2_UBOT HK_VMI System_Billing - Full Setup.xlsx / RACKING";
 
 export type RackLayout = {
@@ -10,6 +10,8 @@ export type RackLayout = {
   width: number;
   height: number;
   reversePositions?: boolean;
+  /** Display the workbook's position run vertically while keeping labels canonical. */
+  verticalPositions?: boolean;
 };
 
 export type WarehouseMapCell = {
@@ -27,18 +29,19 @@ export type WarehouseMapCell = {
 /**
  * The workbook's visible RACKING sheet is the current geometry reference:
  * Rack A has four levels and thirty positions; Racks B-G have four levels
- * and fifteen positions. Capacity and inventory never come from the
- * workbook. Non-rack areas stay in Table View until they have a canonical
- * geometry decision.
+ * and fifteen positions. The display rotates the position run vertically so
+ * the map matches the physical reference: A occupies the full left side,
+ * followed by F/B, G/C, and D/E stacked columns. Canonical labels remain
+ * level-position labels, so map clicks continue to resolve live locations.
  */
 export const WAREHOUSE_RACK_LAYOUT: readonly RackLayout[] = [
-  { rack: "A", levels: 4, positions: 30, x: 24, y: 168, width: 720, height: 192 },
-  { rack: "F", levels: 4, positions: 15, x: 816, y: 110, width: 360, height: 160 },
-  { rack: "B", levels: 4, positions: 15, x: 816, y: 390, width: 360, height: 160 },
-  { rack: "G", levels: 4, positions: 15, x: 1248, y: 110, width: 360, height: 160 },
-  { rack: "C", levels: 4, positions: 15, x: 1248, y: 390, width: 360, height: 160 },
-  { rack: "D", levels: 4, positions: 15, x: 1680, y: 110, width: 360, height: 160 },
-  { rack: "E", levels: 4, positions: 15, x: 1680, y: 390, width: 360, height: 160 },
+  { rack: "A", levels: 4, positions: 30, x: 84, y: 92, width: 164, height: 600, verticalPositions: true },
+  { rack: "F", levels: 4, positions: 15, x: 316, y: 92, width: 164, height: 280, verticalPositions: true },
+  { rack: "B", levels: 4, positions: 15, x: 316, y: 412, width: 164, height: 280, verticalPositions: true },
+  { rack: "G", levels: 4, positions: 15, x: 548, y: 92, width: 164, height: 280, verticalPositions: true },
+  { rack: "C", levels: 4, positions: 15, x: 548, y: 412, width: 164, height: 280, verticalPositions: true },
+  { rack: "D", levels: 4, positions: 15, x: 780, y: 92, width: 164, height: 280, verticalPositions: true },
+  { rack: "E", levels: 4, positions: 15, x: 780, y: 412, width: 164, height: 280, verticalPositions: true },
 ];
 
 export const WAREHOUSE_RACK_LIMITS = {
@@ -51,7 +54,7 @@ export const WAREHOUSE_RACK_LIMITS = {
   G: { levels: 4, positions: 15 },
 } as const;
 
-export const WAREHOUSE_MAP_VIEWBOX = { width: 2070, height: 610 } as const;
+export const WAREHOUSE_MAP_VIEWBOX = { width: 1000, height: 760 } as const;
 
 export function canonicalLocationLabel(rack: string, level: number, position: number): string {
   return `${rack}${level}-${String(position).padStart(2, "0")}`;
@@ -61,15 +64,21 @@ export function buildWarehouseMapCells(
   layouts: readonly RackLayout[] = WAREHOUSE_RACK_LAYOUT,
 ): WarehouseMapCell[] {
   return layouts.flatMap((layout) => {
-    const cellWidth = layout.width / layout.positions;
-    const cellHeight = layout.height / layout.levels;
+    const cellWidth = layout.width / (layout.verticalPositions ? layout.levels : layout.positions);
+    const cellHeight = layout.height / (layout.verticalPositions ? layout.positions : layout.levels);
 
-    return Array.from({ length: layout.levels }, (_, levelIndex) => {
-      const level = layout.levels - levelIndex;
-      return Array.from({ length: layout.positions }, (_, positionIndex) => {
-        const position = layout.reversePositions
-          ? layout.positions - positionIndex
-          : positionIndex + 1;
+    return Array.from({ length: layout.verticalPositions ? layout.positions : layout.levels }, (_, rowIndex) => {
+      const rowLevel = layout.verticalPositions ? undefined : layout.levels - rowIndex;
+      const rowPosition = layout.verticalPositions
+        ? (layout.reversePositions ? layout.positions - rowIndex : rowIndex + 1)
+        : undefined;
+      return Array.from({ length: layout.verticalPositions ? layout.levels : layout.positions }, (_, columnIndex) => {
+        const level = layout.verticalPositions ? layout.levels - columnIndex : rowLevel!;
+        const position = layout.verticalPositions
+          ? rowPosition!
+          : layout.reversePositions
+            ? layout.positions - columnIndex
+            : columnIndex + 1;
         const label = canonicalLocationLabel(layout.rack, level, position);
 
         return {
@@ -78,8 +87,8 @@ export function buildWarehouseMapCells(
           level: String(level),
           position: String(position).padStart(2, "0"),
           label,
-          x: layout.x + positionIndex * cellWidth,
-          y: layout.y + levelIndex * cellHeight,
+          x: layout.x + columnIndex * cellWidth,
+          y: layout.y + rowIndex * cellHeight,
           width: cellWidth,
           height: cellHeight,
         };

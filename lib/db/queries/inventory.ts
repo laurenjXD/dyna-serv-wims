@@ -82,8 +82,12 @@ export async function listStockView(db: DbLike): Promise<StockViewRow[]> {
       subcategoryName: sql<string | null>`CASE WHEN ${itemCategories.parentId} IS NOT NULL THEN ${itemCategories.name} ELSE NULL END`,
       inventoryModel: sql<string>`UPPER(${lots.flowType}::text)`,
       customerName: parties.name,
-      organizationName: defaultSupplierParties.name,
-      organizationId: items.defaultSupplierPartyId,
+      // VMI stock is owned by the organization on the lot. Trading/Supplies
+      // legacy rows may not have an owner party, so retain the item's default
+      // organization as the fallback. Pick List UI and server validation use
+      // this same resolved organization identity.
+      organizationName: sql<string | null>`COALESCE(${parties.name}, ${defaultSupplierParties.name})`,
+      organizationId: sql<string | null>`COALESCE(${lots.ownerPartyId}, ${items.defaultSupplierPartyId})`,
       defaultSupplierPartyId: items.defaultSupplierPartyId,
       uom: items.uom,
       spq: items.spq,

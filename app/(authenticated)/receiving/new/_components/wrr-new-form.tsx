@@ -25,6 +25,19 @@ import { ChevronDown, ExternalLink, FileSpreadsheet, PlusCircle, Search, Upload 
 
 const CIPL_ACCEPT = "application/pdf,image/png,image/jpeg";
 
+const BUSINESS_ROLE_LABELS: Record<string, string> = {
+  supplier: "Supplier",
+  vendor: "Supplier",
+  customer: "Customer",
+};
+
+function getBusinessRoleLabel(party: SupplierPartyOption): string {
+  return (party.roles ?? [])
+    .map((role) => BUSINESS_ROLE_LABELS[role] ?? role)
+    .filter(Boolean)
+    .join(" / ") || "Organization";
+}
+
 interface WrrNewFormProps {
   action: (formData: FormData) => void;
   vendorParties: SupplierPartyOption[];
@@ -186,10 +199,10 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
               General commercial shipping references and source organization.
             </p>
           </div>
-          {selectedVendor?.defaultInventoryModel && (
+          {selectedVendor?.roles?.length && (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-brand-navy border border-blue-200">
               <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
-              Role: {selectedVendor.roles?.join(" / ") ?? "Assigned"}
+              Role: {getBusinessRoleLabel(selectedVendor)}
             </span>
           )}
         </div>
@@ -250,9 +263,9 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
                         <span className="font-mono font-bold text-brand-navy">{party.code}</span>
                         <span className="ml-2 truncate text-slate-700">— {party.name}</span>
                       </div>
-                      {party.defaultInventoryModel && (
-                        <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold uppercase text-slate-700 border border-slate-200 shrink-0">
-                          {party.defaultInventoryModel}
+                      {party.roles?.length && (
+                        <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-700 border border-slate-200 shrink-0">
+                          {getBusinessRoleLabel(party)}
                         </span>
                       )}
                     </button>

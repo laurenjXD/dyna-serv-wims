@@ -79,6 +79,16 @@ type DbLike = {
 type AnyRecord = Record<string, any>;
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
+/**
+ * Resolves the organization that owns/scopes an outbound stock row.
+ *
+ * VMI rows carry the organization on lots.owner_party_id. Older
+ * Trading/Supplies rows use items.default_supplier_party_id instead.
+ */
+function stockOrganizationId(row: AnyRecord): string | null {
+  return row.organizationPartyId ?? row.defaultSupplierPartyId ?? null;
+}
+
 function hashSnapshot(data: unknown): string {
   return createHash("sha256").update(JSON.stringify(data)).digest("hex");
 }
@@ -166,6 +176,7 @@ export async function requestFifoOverride(
           qtyCommitted: lotLocationBalances.qtyCommitted,
           itemId: items.id,
           itemCode: items.code,
+          organizationPartyId: sql<string | null>`COALESCE(${lots.ownerPartyId}, ${items.defaultSupplierPartyId})`,
           defaultSupplierPartyId: items.defaultSupplierPartyId,
           isPerishable: items.isPerishable,
           lotId: lots.id,
@@ -191,7 +202,7 @@ export async function requestFifoOverride(
       const selected = rows.find((row) =>
         row.lotId === requested.lotId && row.locationId === requested.locationId,
       );
-      if (!selected || selected.defaultSupplierPartyId !== data.partyId) {
+      if (!selected || stockOrganizationId(selected) !== data.partyId) {
         throw new Error("unable_to_reserve_stock");
       }
       const available = selected.qtyRemaining - selected.qtyCommitted;
@@ -335,6 +346,7 @@ export async function commitWithdrawal(
           customerItemCode: items.customerItemCode,
           dsgcItemNumber: items.dsgcItemNumber,
           supplierItemCode: items.supplierItemCode,
+          organizationPartyId: sql<string | null>`COALESCE(${lots.ownerPartyId}, ${items.defaultSupplierPartyId})`,
           defaultSupplierPartyId: items.defaultSupplierPartyId,
           isPerishable: items.isPerishable,
           spq: items.spq,
@@ -360,7 +372,7 @@ export async function commitWithdrawal(
         .orderBy(asc(lots.expiryDate), asc(lots.createdAt))) as AnyRecord[];
 
       const item = rows[0];
-      if (!item || item.defaultSupplierPartyId !== data.partyId) {
+      if (!item || stockOrganizationId(item) !== data.partyId) {
         throw new Error("unable_to_reserve_stock");
       }
       const itemCodeIsProvisional =
