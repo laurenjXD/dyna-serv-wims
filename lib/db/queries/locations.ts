@@ -13,7 +13,9 @@
 //     not create a second capacity calculation")
 
 import { and, eq, ilike, or, desc, gt, inArray, sql } from "drizzle-orm";
-import { locations, lotLocationBalances, lots, items } from "@/lib/db/schema";
+import { locations, lotLocationBalances, lots, items, parties } from "@/lib/db/schema";
+import { WAREHOUSE_MAP_CELLS } from "@/lib/location-map/layout";
+import { getLocationMapStatus, getLocationUtilizationPct } from "@/lib/location-map/status";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type DbLike = { select: (...args: any[]) => any };
@@ -46,6 +48,19 @@ export type LocationDetail = {
   maxCbmCapacity: string;
   isActive: boolean;
   createdAt: Date;
+};
+
+export type LocationMapRow = LocationListRow & {
+  occupiedCbm: number;
+  utilizationPct: number | null;
+  status: ReturnType<typeof getLocationMapStatus>;
+  itemCount: number;
+  lotCount: number;
+  totalUnits: number;
+  itemCodes: string[];
+  lotNumbers: string[];
+  organizationNames: string[];
+  isMapped: boolean;
 };
 
 export type ListResult<T> = {
@@ -117,6 +132,121 @@ export async function listLocations(
     rows: rawRows as LocationListRow[],
     total: Number(countRow?.count ?? 0),
   };
+}
+
+/**
+ * Returns the complete read model used by the warehouse map. The map is
+ * intentionally backed by the same lot-location balances as detail and
+ * putaway screens; it does not maintain a second inventory projection.
+ *
+ * Callers must gate by locations.read before invoking.
+ */
+export async function listLocationMapRows(db: DbLike): Promise<LocationMapRow[]> {
+  const mappedLabels = new Set(WAREHOUSE_MAP_CELLS.map((cell) => cell.label));
+  const occupiedCbmExpr = sql<string>`coalesce(sum(case when ${lotLocationBalances.qtyRemaining} > 0 then ${lotLocationBalances.qtyRemaining} * coalesce(${items.volumeCbm}, 0) else 0 end), 0)`;
+  const totalUnitsExpr = sql<string>`coalesce(sum(case when ${lotLocationBalances.qtyRemaining} > 0 then ${lotLocationBalances.qtyRemaining} else 0 end), 0)`;
+  const itemCountExpr = sql<string>`count(distinct ${items.id})`;
+  const lotCountExpr = sql<string>`count(distinct ${lots.id})`;
+  const itemCodesExpr = sql<string[]>`coalesce(array_agg(distinct ${items.code}) filter (where ${items.code} is not null), '{}')`;
+  const lotNumbersExpr = sql<string[]>`coalesce(array_agg(distinct ${lots.lotNumber}) filter (where ${lots.lotNumber} is not null), '{}')`;
+  const organizationNamesExpr = sql<string[]>`coalesce(array_agg(distinct ${parties.name}) filter (where ${parties.name} is not null), '{}')`;
+
+  const rawRows = await db
+    .select({
+      id: locations.id,
+      zone: locations.zone,
+      rack: locations.rack,
+      level: locations.level,
+      position: locations.position,
+      label: locations.label,
+      locationType: locations.locationType,
+      maxCbmCapacity: locations.maxCbmCapacity,
+      isActive: locations.isActive,
+      createdAt: locations.createdAt,
+      occupiedCbm: occupiedCbmExpr,
+      totalUnits: totalUnitsExpr,
+      itemCount: itemCountExpr,
+      lotCount: lotCountExpr,
+      itemCodes: itemCodesExpr,
+      lotNumbers: lotNumbersExpr,
+      organizationNames: organizationNamesExpr,
+    })
+    .from(locations)
+    .leftJoin(
+      lotLocationBalances,
+      and(
+        eq(lotLocationBalances.locationId, locations.id),
+        gt(lotLocationBalances.qtyRemaining, 0),
+      ),
+    )
+    .leftJoin(lots, eq(lots.id, lotLocationBalances.lotId))
+    .leftJoin(items, eq(items.id, lots.itemId))
+    .leftJoin(parties, eq(parties.id, lots.ownerPartyId))
+    .groupBy(
+      locations.id,
+      locations.zone,
+      locations.rack,
+      locations.level,
+      locations.position,
+      locations.label,
+      locations.locationType,
+      locations.maxCbmCapacity,
+      locations.isActive,
+      locations.createdAt,
+    )
+    .orderBy(locations.label);
+
+  return (rawRows as Array<{
+    id: string;
+    zone: string;
+    rack: string;
+    level: string;
+    position: string;
+    label: string;
+    locationType: string;
+    maxCbmCapacity: string | number;
+    isActive: boolean;
+    createdAt: Date;
+    occupiedCbm: string | number | null;
+    totalUnits: string | number | null;
+    itemCount: string | number | null;
+    lotCount: string | number | null;
+    itemCodes: string[] | null;
+    lotNumbers: string[] | null;
+    organizationNames: string[] | null;
+  }>).map((row) => {
+    const maxCbmCapacity = Number(row.maxCbmCapacity ?? 0);
+    const occupiedCbm = Number(row.occupiedCbm ?? 0);
+    const isMapped = mappedLabels.has(row.label);
+
+    return {
+      id: row.id,
+      zone: row.zone,
+      rack: row.rack,
+      level: row.level,
+      position: row.position,
+      label: row.label,
+      locationType: row.locationType,
+      maxCbmCapacity: String(row.maxCbmCapacity),
+      isActive: row.isActive,
+      createdAt: row.createdAt,
+      occupiedCbm,
+      utilizationPct: getLocationUtilizationPct(maxCbmCapacity, occupiedCbm),
+      status: getLocationMapStatus({
+        isActive: row.isActive,
+        maxCbmCapacity,
+        occupiedCbm,
+        isMapped,
+      }),
+      itemCount: Number(row.itemCount ?? 0),
+      lotCount: Number(row.lotCount ?? 0),
+      totalUnits: Number(row.totalUnits ?? 0),
+      itemCodes: row.itemCodes ?? [],
+      lotNumbers: row.lotNumbers ?? [],
+      organizationNames: row.organizationNames ?? [],
+      isMapped,
+    } satisfies LocationMapRow;
+  });
 }
 
 // ---------------------------------------------------------------------------

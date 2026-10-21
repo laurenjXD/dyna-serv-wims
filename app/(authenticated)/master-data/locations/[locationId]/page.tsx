@@ -3,6 +3,7 @@
 // Traceability: specs/06-party-and-item-enrollment/design.md §6a, §6a Movement Ledger
 
 import Link from "next/link";
+import { MapPinned } from "lucide-react";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db/client";
 import { createPageResolver } from "@/lib/auth/page-resolver";
@@ -118,6 +119,13 @@ export default async function LocationDetailPage({
             Edit
           </Link>
         )}
+        <Link
+          href={`/enrollment?tab=locations&view=map&label=${encodeURIComponent(location.label)}`}
+          className="inline-flex h-11 items-center justify-center gap-2 rounded border border-outline-variant bg-surface-white px-4 font-label text-label text-brand-navy hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+        >
+          <MapPinned size={16} aria-hidden="true" />
+          View on map
+        </Link>
       </div>
 
       <div className="mt-4">

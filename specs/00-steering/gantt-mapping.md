@@ -54,6 +54,7 @@ The current Gantt timeline tracks the **Spec Definition Phase** (Drafting Requir
 | 3.7 | Inventory dashboard performance optimization | Cross-cutting perf, `04/05` | **Not Started** | Not Started |
 | 3.8 | Cross-module inventory integration testing | `testing.md` | **Process Approved** | Not Started |
 | 3.9 | Milestone 3 inventory control review and launch | Sign-off gate | **Not Started** | Not Started |
+| 3.10 | Warehouse map visualization | `25-warehouse-map-visualization` | **Approved** (2026-10-21) | Ready for Dev |
 
 ---
 

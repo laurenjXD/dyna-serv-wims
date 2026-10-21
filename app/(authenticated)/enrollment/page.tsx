@@ -23,11 +23,10 @@ import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { listParties } from "@/lib/db/queries/parties";
-import type { PartyListRow } from "@/lib/db/queries/parties";
 import { listItems } from "@/lib/db/queries/items";
-import type { ItemListRow } from "@/lib/db/queries/items";
 import { listLocations } from "@/lib/db/queries/locations";
-import type { LocationListRow } from "@/lib/db/queries/locations";
+import { listLocationMapRows } from "@/lib/db/queries/locations";
+import { LocationMapView } from "./_components/LocationMapView";
 import {
   OrganizationsEnrollmentTable,
   ItemsEnrollmentTable,
@@ -51,6 +50,8 @@ interface PageProps {
     tab?: string;
     search?: string;
     page?: string;
+    view?: string;
+    label?: string;
   }>;
 }
 
@@ -59,6 +60,8 @@ export default async function EnrollmentPage({ searchParams }: PageProps) {
     tab: tabParam,
     search,
     page: pageParam,
+    view: viewParam,
+    label: selectedLabel,
   } = await searchParams;
 
   const activeTab: TabKey =
@@ -159,6 +162,8 @@ export default async function EnrollmentPage({ searchParams }: PageProps) {
           search={search}
           currentPage={currentPage}
           offset={offset}
+          view={viewParam}
+          selectedLabel={selectedLabel}
         />
       )}
     </div>
@@ -235,11 +240,15 @@ async function LocationsTab({
   search,
   currentPage,
   offset,
+  view,
+  selectedLabel,
 }: {
   resolver: Awaited<ReturnType<typeof createPageResolver>>;
   search?: string;
   currentPage: number;
   offset: number;
+  view?: string;
+  selectedLabel?: string;
 }) {
   const [canManage, locReadResult] = await Promise.all([
     requirePermission(resolver, "locations.manage").then(
@@ -258,11 +267,59 @@ async function LocationsTab({
     );
   }
 
+  const isMapView = view === "map";
+
+  if (isMapView) {
+    const rows = await listLocationMapRows(db);
+    return (
+      <div className="mt-4">
+        <LocationViewSwitcher view="map" search={search} selectedLabel={selectedLabel} />
+        <div className="mt-4">
+          <LocationMapView rows={rows} initialSelectedLabel={selectedLabel} initialSearch={search} />
+        </div>
+      </div>
+    );
+  }
+
   const { rows } = await listLocations(db, { search, limit: PAGE_SIZE, offset });
 
   return (
     <div className="mt-4">
+      <LocationViewSwitcher view="table" search={search} />
+      <div className="mt-4">
       <LocationsEnrollmentTable data={rows} canManage={canManage} />
+      </div>
+    </div>
+  );
+}
+
+function LocationViewSwitcher({
+  view,
+  search,
+  selectedLabel,
+}: {
+  view: "table" | "map";
+  search?: string;
+  selectedLabel?: string;
+}) {
+  function href(nextView: "table" | "map") {
+    const params = new URLSearchParams({ tab: "locations", view: nextView });
+    if (search) params.set("search", search);
+    if (nextView === "map" && selectedLabel) params.set("label", selectedLabel);
+    return `/enrollment?${params.toString()}`;
+  }
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="inline-flex rounded-xl border border-outline-variant bg-surface-white p-1 shadow-sm" aria-label="Location view">
+        <Link href={href("table")} className={`inline-flex h-10 items-center rounded-lg px-4 font-label text-label ${view === "table" ? "bg-brand-navy text-white" : "text-text-grey hover:text-on-surface"}`} aria-current={view === "table" ? "page" : undefined}>
+          Table View
+        </Link>
+        <Link href={href("map")} className={`inline-flex h-10 items-center rounded-lg px-4 font-label text-label ${view === "map" ? "bg-brand-navy text-white" : "text-text-grey hover:text-on-surface"}`} aria-current={view === "map" ? "page" : undefined}>
+          Map View
+        </Link>
+      </div>
+      {view === "map" && <Link href={href("table")} className="font-label text-label text-brand-navy underline-offset-2 hover:underline">Return to table</Link>}
     </div>
   );
 }
