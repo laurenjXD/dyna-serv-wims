@@ -128,6 +128,27 @@ export function DocumentIcon(props: BrandIconProps) {
   );
 }
 
+/** Navigation companion icon: importing data into the system. */
+export function ImportIcon(props: BrandIconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M9 30v8h30v-8" />
+      <path d="M24 8v21M16 21l8 8 8-8" />
+    </Icon>
+  );
+}
+
+/** Navigation companion icon: organizing files and master-data records. */
+export function FileOrganizerIcon(props: BrandIconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M7 13h13l4 4h17v24H7z" />
+      <path d="M24 24h10M24 30h10M24 36h7" />
+      <path d="M13 23h4M13 29h4M13 35h4" />
+    </Icon>
+  );
+}
+
 /** Navigation companion icon: reporting and analytics. */
 export function ReportsIcon(props: BrandIconProps) {
   return (
