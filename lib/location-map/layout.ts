@@ -35,13 +35,14 @@ export type WarehouseMapCell = {
  * level-position labels, so map clicks continue to resolve live locations.
  */
 export const WAREHOUSE_RACK_LAYOUT: readonly RackLayout[] = [
-  { rack: "A", levels: 4, positions: 30, x: 84, y: 92, width: 164, height: 600, verticalPositions: true },
-  { rack: "F", levels: 4, positions: 15, x: 316, y: 92, width: 164, height: 280, verticalPositions: true },
-  { rack: "B", levels: 4, positions: 15, x: 316, y: 412, width: 164, height: 280, verticalPositions: true },
-  { rack: "G", levels: 4, positions: 15, x: 548, y: 92, width: 164, height: 280, verticalPositions: true },
-  { rack: "C", levels: 4, positions: 15, x: 548, y: 412, width: 164, height: 280, verticalPositions: true },
-  { rack: "D", levels: 4, positions: 15, x: 780, y: 92, width: 164, height: 280, verticalPositions: true },
-  { rack: "E", levels: 4, positions: 15, x: 780, y: 412, width: 164, height: 280, verticalPositions: true },
+  // Keep the first rack title below the warehouse subtitle with a clear gap.
+  { rack: "A", levels: 4, positions: 30, x: 84, y: 124, width: 164, height: 600, verticalPositions: true },
+  { rack: "F", levels: 4, positions: 15, x: 316, y: 124, width: 164, height: 280, verticalPositions: true },
+  { rack: "B", levels: 4, positions: 15, x: 316, y: 444, width: 164, height: 280, verticalPositions: true },
+  { rack: "G", levels: 4, positions: 15, x: 548, y: 124, width: 164, height: 280, verticalPositions: true },
+  { rack: "C", levels: 4, positions: 15, x: 548, y: 444, width: 164, height: 280, verticalPositions: true },
+  { rack: "D", levels: 4, positions: 15, x: 780, y: 124, width: 164, height: 280, verticalPositions: true },
+  { rack: "E", levels: 4, positions: 15, x: 780, y: 444, width: 164, height: 280, verticalPositions: true },
 ];
 
 export const WAREHOUSE_RACK_LIMITS = {
