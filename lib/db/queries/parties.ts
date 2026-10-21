@@ -71,17 +71,29 @@ export type ListPartiesOpts = {
  */
 export async function listPartyOrganizationNames(db: DbLike): Promise<string[]> {
   const rows = await db
-    .select({ name: parties.name })
+    .select({ name: parties.name, role: partyRoles.role })
     .from(parties)
+    .leftJoin(partyRoles, eq(partyRoles.partyId, parties.id))
     .orderBy(parties.name);
 
+  const rolesByName = new Map<string, Set<string>>();
+  for (const row of rows as Array<{ name: string | null; role: string | null }>) {
+    const name = row.name?.trim();
+    if (!name) continue;
+    const roles = rolesByName.get(name) ?? new Set<string>();
+    if (row.role) roles.add(row.role);
+    rolesByName.set(name, roles);
+  }
+
   return Array.from(
-    new Set(
-      (rows as Array<{ name: string | null }>)
-        .map((row) => row.name?.trim())
-        .filter((name): name is string => Boolean(name)),
-    ),
-  ).sort((left, right) => left.localeCompare(right));
+    rolesByName.entries(),
+  )
+    // End Customers are recipients, not warehouse stock owners. Hybrid
+    // organizations remain available when they also hold a warehouse-side
+    // role such as supplier, customer, or internal supplies.
+    .filter(([, roles]) => roles.size === 0 || [...roles].some((role) => role !== "end_customer"))
+    .map(([name]) => name)
+    .sort((left, right) => left.localeCompare(right));
 }
 
 // ---------------------------------------------------------------------------

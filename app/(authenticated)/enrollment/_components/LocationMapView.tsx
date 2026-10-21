@@ -62,11 +62,8 @@ export function LocationMapView({
   const rowByLabel = useMemo(() => new Map(rows.map((row) => [row.label, row])), [rows]);
   const normalizedSearch = search.trim().toLowerCase();
   const organizationOptions = useMemo(
-    () => Array.from(new Set([
-      ...suppliedOrganizationOptions,
-      ...rows.flatMap((row) => row.organizationNames),
-    ])).sort((a, b) => a.localeCompare(b)),
-    [rows, suppliedOrganizationOptions],
+    () => Array.from(new Set(suppliedOrganizationOptions)).sort((a, b) => a.localeCompare(b)),
+    [suppliedOrganizationOptions],
   );
 
   const filteredRows = useMemo(() => rows.filter((row) => {
