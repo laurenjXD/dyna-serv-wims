@@ -61,6 +61,29 @@ export type ListPartiesOpts = {
   offset?: number;
 };
 
+/**
+ * Returns the complete organization directory used by cross-master-data
+ * filters. This intentionally is not paginated: callers use it to keep
+ * organization selectors aligned with the full Organizations tab, including
+ * organizations that do not currently own stock at a mapped location.
+ *
+ * Callers must gate by parties.read before invoking.
+ */
+export async function listPartyOrganizationNames(db: DbLike): Promise<string[]> {
+  const rows = await db
+    .select({ name: parties.name })
+    .from(parties)
+    .orderBy(parties.name);
+
+  return Array.from(
+    new Set(
+      (rows as Array<{ name: string | null }>)
+        .map((row) => row.name?.trim())
+        .filter((name): name is string => Boolean(name)),
+    ),
+  ).sort((left, right) => left.localeCompare(right));
+}
+
 // ---------------------------------------------------------------------------
 // listParties
 // ---------------------------------------------------------------------------

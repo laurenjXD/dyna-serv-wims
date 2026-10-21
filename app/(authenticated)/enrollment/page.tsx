@@ -22,7 +22,7 @@ import Link from "next/link";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
-import { listParties } from "@/lib/db/queries/parties";
+import { listParties, listPartyOrganizationNames } from "@/lib/db/queries/parties";
 import { listItems } from "@/lib/db/queries/items";
 import { listLocationMapRows } from "@/lib/db/queries/locations";
 import type { LocationMapRow } from "@/lib/db/queries/locations";
@@ -264,12 +264,23 @@ async function LocationsTab({
   const isMapView = view === "map";
 
   if (isMapView) {
-    const rows = (await listLocationMapRows(db)).filter((row) => row.isMapped);
+    const [mapRows, organizationNames] = await Promise.all([
+      listLocationMapRows(db),
+      requirePermission(resolver, "parties.read").then((result) =>
+        result.kind === "authorized" ? listPartyOrganizationNames(db) : [],
+      ),
+    ]);
+    const rows = mapRows.filter((row) => row.isMapped);
     return (
       <div className="mt-4">
         <LocationViewSwitcher view="map" search={search} selectedLabel={selectedLabel} />
         <div className="mt-4">
-          <LocationMapView rows={rows} initialSelectedLabel={selectedLabel} initialSearch={search} />
+          <LocationMapView
+            rows={rows}
+            organizationOptions={organizationNames}
+            initialSelectedLabel={selectedLabel}
+            initialSearch={search}
+          />
         </div>
       </div>
     );

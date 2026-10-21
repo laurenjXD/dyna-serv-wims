@@ -42,10 +42,12 @@ function statusForCell(row: LocationMapRow | undefined): { color: string; label:
 
 export function LocationMapView({
   rows,
+  organizationOptions: suppliedOrganizationOptions = [],
   initialSelectedLabel,
   initialSearch,
 }: {
   rows: LocationMapRow[];
+  organizationOptions?: string[];
   initialSelectedLabel?: string;
   initialSearch?: string;
 }) {
@@ -60,8 +62,11 @@ export function LocationMapView({
   const rowByLabel = useMemo(() => new Map(rows.map((row) => [row.label, row])), [rows]);
   const normalizedSearch = search.trim().toLowerCase();
   const organizationOptions = useMemo(
-    () => Array.from(new Set(rows.flatMap((row) => row.organizationNames))).sort((a, b) => a.localeCompare(b)),
-    [rows],
+    () => Array.from(new Set([
+      ...suppliedOrganizationOptions,
+      ...rows.flatMap((row) => row.organizationNames),
+    ])).sort((a, b) => a.localeCompare(b)),
+    [rows, suppliedOrganizationOptions],
   );
 
   const filteredRows = useMemo(() => rows.filter((row) => {
