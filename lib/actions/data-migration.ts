@@ -18,7 +18,7 @@ import { lotLocationBalances } from "@/lib/db/schema/lot_location_balances";
 import { inventoryTransactions } from "@/lib/db/schema/transactions";
 import { vmiContractTerms, vmiRecurringFeeLines } from "@/lib/db/schema/vmi_billing";
 import { migrationBatches, migrationExceptions, migrationSourceRows } from "@/lib/db/schema/migrations";
-import { parseUbotVmiWorkbook } from "@/lib/migration/ubot-vmi-adapter";
+import { parseUbotVmiWorkbook, ubotPartyRole } from "@/lib/migration/ubot-vmi-adapter";
 import { selectEffectiveUbotRates } from "@/lib/migration/rate-selection";
 import { migrationVolumeCbm } from "@/lib/migration/volume";
 import { isMigrationResolutionCategory, type MigrationResolutionCategory } from "@/lib/migration/exception-resolution";
@@ -351,8 +351,22 @@ export async function commitUbotMigration(batchId: string): Promise<{ ok: true; 
       const partyId = existing[0]?.id ?? randomUUID();
       if (!existing[0]) await db.insert(parties).values({ id: partyId, code: `MIG-${party.name.replace(/[^A-Z0-9]+/gi, "-").slice(0, 40).toUpperCase()}`, name: party.name, address1: party.address1, address2: party.address2, paymentTerms: party.paymentTerms, isActive: party.active });
       partyIds.set(party.name, partyId);
-      const existingRole = await db.select({ id: partyRoles.id }).from(partyRoles).where(and(eq(partyRoles.partyId, partyId), eq(partyRoles.role, party.role))).limit(1);
-      if (!existingRole[0]) await db.insert(partyRoles).values({ partyId, role: party.role });
+      const role = ubotPartyRole(party.name) === "customer" ? "customer" : party.role;
+
+      // UBoT was previously imported as a Supplier. Reconcile that incorrect
+      // role when an existing/staged migration is committed so VMI defaults
+      // to Customer and the WRR selector does not retain a stale Supplier role.
+      if (role === "customer") {
+        await db.delete(partyRoles).where(
+          and(
+            eq(partyRoles.partyId, partyId),
+            sql`${partyRoles.role}::text IN ('supplier', 'vendor')`,
+          ),
+        );
+      }
+
+      const existingRole = await db.select({ id: partyRoles.id }).from(partyRoles).where(and(eq(partyRoles.partyId, partyId), eq(partyRoles.role, role))).limit(1);
+      if (!existingRole[0]) await db.insert(partyRoles).values({ partyId, role });
     }
 
     const rateGroups = new Map<string, UbotMigrationDraft["rates"]>();

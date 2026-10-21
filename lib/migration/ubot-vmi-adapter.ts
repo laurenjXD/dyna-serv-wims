@@ -124,6 +124,11 @@ function displayValue(value: string): string {
   return value.length <= 80 ? value : `${value.slice(0, 72)}…[${value.length} chars]`;
 }
 
+/** The source workbook represents UBoT as the VMI customer. */
+export function ubotPartyRole(name: string): UbotPartyDraft["role"] {
+  return name.trim().toLowerCase() === "ubot incorporated limited" ? "customer" : "end_customer";
+}
+
 export function parseUbotVmiWorkbook(buffer: Buffer, openingDate = "2026-10-09"): UbotMigrationDraft {
   const workbook = XLSX.read(buffer, { type: "buffer", cellDates: true, raw: true });
   const issues: MigrationIssue[] = [];
@@ -152,7 +157,7 @@ export function parseUbotVmiWorkbook(buffer: Buffer, openingDate = "2026-10-09")
       address2: text(row["address 2"]) || undefined,
       paymentTerms: text(row.terms) || undefined,
       active: text(row["active?"]).toUpperCase() !== "N",
-      role: name.toLowerCase() === "ubot incorporated limited" ? "supplier" : "end_customer",
+      role: ubotPartyRole(name),
     } satisfies UbotPartyDraft;
     const partyKey = name.toLowerCase();
     if (partyKeys.has(partyKey)) addIssue(issues, { severity: "blocking", code: "duplicate_party", message: `Party ${name} appears more than once.`, sheet: "Customers", row: rowNumber });

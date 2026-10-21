@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getLocationMapStatus, getLocationUtilizationPct } from "@/lib/location-map/status";
+import { getLocationMapStatus, getLocationUtilizationPct, getMapCellDisplayStatus } from "@/lib/location-map/status";
 
 describe("warehouse map status", () => {
   it("treats inactive, unmapped, and missing-capacity locations as unavailable", () => {
@@ -19,6 +19,15 @@ describe("warehouse map status", () => {
     expect(getLocationUtilizationPct(0, 4)).toBeNull();
     expect(getLocationUtilizationPct(null, 4)).toBeNull();
     expect(getLocationUtilizationPct(8, 6)).toBe(75);
+  });
+
+  it("renders mapped empty cells as available instead of unavailable", () => {
+    expect(getMapCellDisplayStatus("unavailable", 0)).toBe("available");
+    expect(getMapCellDisplayStatus(undefined, null)).toBe("available");
+  });
+
+  it("renders stock-bearing cells as occupied when metadata is stale", () => {
+    expect(getMapCellDisplayStatus("unavailable", 4)).toBe("occupied");
   });
 });
 

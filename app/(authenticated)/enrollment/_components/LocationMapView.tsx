@@ -13,7 +13,7 @@ import {
   WAREHOUSE_RACK_LAYOUT,
   rackLabelsForMap,
 } from "@/lib/location-map/layout";
-import type { LocationMapStatus } from "@/lib/location-map/status";
+import { getMapCellDisplayStatus, type LocationMapStatus } from "@/lib/location-map/status";
 
 const STATUS_META: Record<LocationMapStatus, { label: string; color: string; className: string }> = {
   available: { label: "Available", color: "#10B981", className: "bg-emerald-50 text-emerald-800 border-emerald-200" },
@@ -36,8 +36,8 @@ function formatNumber(value: number, maximumFractionDigits = 2): string {
 }
 
 function statusForCell(row: LocationMapRow | undefined): { color: string; label: string } {
-  if (!row) return { color: "#F8FAFC", label: "No enrolled location" };
-  return { color: STATUS_META[row.status].color, label: STATUS_META[row.status].label };
+  const status = getMapCellDisplayStatus(row?.status, row?.occupiedCbm);
+  return { color: STATUS_META[status].color, label: STATUS_META[status].label };
 }
 
 export function LocationMapView({
@@ -81,7 +81,7 @@ export function LocationMapView({
 
     return (
       (!normalizedSearch || searchable.includes(normalizedSearch)) &&
-      (statusFilter === "all" || row.status === statusFilter) &&
+      (statusFilter === "all" || getMapCellDisplayStatus(row.status, row.occupiedCbm) === statusFilter) &&
       (rackFilter === "all" || row.rack === rackFilter) &&
       (organizationFilter === "all" || row.organizationNames.includes(organizationFilter))
     );
@@ -141,7 +141,7 @@ export function LocationMapView({
               className="h-11 rounded-xl border border-outline-variant bg-surface-white px-3 text-body-sm text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
             >
               <option value="all">All statuses</option>
-              {Object.entries(STATUS_META).map(([value, meta]) => <option key={value} value={value}>{meta.label}</option>)}
+              {Object.entries(STATUS_META).filter(([value]) => value !== "unavailable").map(([value, meta]) => <option key={value} value={value}>{meta.label}</option>)}
             </select>
           </label>
           <label>
@@ -172,7 +172,7 @@ export function LocationMapView({
       </div>
 
       <div className="flex flex-wrap gap-2" aria-label="Map status legend">
-        {Object.entries(STATUS_META).map(([value, meta]) => (
+        {Object.entries(STATUS_META).filter(([value]) => value !== "unavailable").map(([value, meta]) => (
           <span key={value} className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-label text-label ${meta.className}`}>
             <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: meta.color }} aria-hidden="true" />
             {meta.label}
@@ -182,6 +182,9 @@ export function LocationMapView({
           {mappedRows.length} mapped rack locations{unmappedRows.length > 0 ? ` · ${unmappedRows.length} unmapped matches` : ""}
         </span>
       </div>
+      <p className="font-body text-xs text-text-grey">
+        Empty mapped cells are <span className="font-semibold text-emerald-800">Available</span>; cells containing stock are <span className="font-semibold text-blue-800">Occupied</span>. Records outside the reference layout remain in the unmapped list below.
+      </p>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         <section className="min-w-0 rounded-2xl bg-surface-white p-3 shadow-elevation-1 sm:p-5" aria-label="Interactive warehouse rack map">
@@ -245,24 +248,26 @@ export function LocationMapView({
                 .map((layout) => {
                   const cellWidth = layout.width / (layout.verticalPositions ? layout.levels : layout.positions);
                   const cellHeight = layout.height / (layout.verticalPositions ? layout.positions : layout.levels);
+                    const rackTitleY = layout.y - 22;
+                    const headerY = layout.y - 8;
                   return (
                     <g key={`${layout.rack}-labels`} className="pointer-events-none">
                       <text
                         x={layout.x}
-                        y={layout.y - 12}
+                        y={rackTitleY}
                         className="fill-slate-700 text-[18px] font-bold"
                       >
                         RACK {layout.rack}
                       </text>
                       {layout.verticalPositions ? (
                         <>
-                          <text x={layout.x - 7} y={layout.y - 24} textAnchor="end" className="fill-slate-500 text-[7px] font-bold">
+                          <text x={layout.x - 14} y={headerY} textAnchor="end" className="fill-slate-500 text-[7px] font-bold">
                             POS
                           </text>
                           {Array.from({ length: layout.positions }, (_, positionIndex) => (
                             <text
                               key={`${layout.rack}-position-${layout.positions - positionIndex}`}
-                              x={layout.x - 7}
+                              x={layout.x - 14}
                               y={layout.y + positionIndex * cellHeight + cellHeight / 2 + 2.5}
                               textAnchor="end"
                               className="fill-slate-500 text-[8px] font-mono font-semibold"
@@ -274,7 +279,7 @@ export function LocationMapView({
                             <text
                               key={`${layout.rack}-level-${layout.levels - levelIndex}`}
                               x={layout.x + levelIndex * cellWidth + cellWidth / 2}
-                              y={layout.y - 8}
+                              y={headerY}
                               textAnchor="middle"
                               className="fill-slate-500 text-[8px] font-mono font-semibold"
                             >
@@ -307,8 +312,8 @@ export function LocationMapView({
                   <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">Selected location</p>
                   <h3 className="mt-1 font-mono text-data-display font-semibold text-brand-navy">{selectedRow.label}</h3>
                 </div>
-                <span className={`rounded-full border px-2.5 py-1 font-label text-label ${STATUS_META[selectedRow.status].className}`}>
-                  {STATUS_META[selectedRow.status].label}
+                <span className={`rounded-full border px-2.5 py-1 font-label text-label ${STATUS_META[getMapCellDisplayStatus(selectedRow.status, selectedRow.occupiedCbm)].className}`}>
+                  {STATUS_META[getMapCellDisplayStatus(selectedRow.status, selectedRow.occupiedCbm)].label}
                 </span>
               </div>
               <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4 font-body text-body-sm">

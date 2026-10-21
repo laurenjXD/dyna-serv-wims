@@ -1,6 +1,6 @@
 import * as XLSX from "xlsx";
 import { describe, expect, it } from "vitest";
-import { normalizeItemCode, parseUbotVmiWorkbook } from "../ubot-vmi-adapter";
+import { normalizeItemCode, parseUbotVmiWorkbook, ubotPartyRole } from "../ubot-vmi-adapter";
 
 function workbookBuffer(): Buffer {
   const workbook = XLSX.utils.book_new();
@@ -35,10 +35,16 @@ describe("UBoT VMI migration adapter", () => {
     expect(normalizeItemCode("CX01E05201")).toBe("CX01E05201");
   });
 
+  it("maps UBoT to the VMI customer role", () => {
+    expect(ubotPartyRole("UBoT Incorporated Limited")).toBe("customer");
+    expect(ubotPartyRole("Analog Devices Gen. Trias")).toBe("end_customer");
+  });
+
   it("maps the current-state workbook into master data, opening balances, and rates", () => {
     const draft = parseUbotVmiWorkbook(workbookBuffer());
     expect(draft.profileKey).toBe("ubot-vmi-v1");
     expect(draft.parties.map((party) => party.name)).toContain("UBoT Incorporated Limited");
+    expect(draft.parties.find((party) => party.name === "UBoT Incorporated Limited")?.role).toBe("customer");
     expect(draft.items[0].code).toBe("340010007485");
     expect(draft.locations.map((location) => location.label)).toEqual(expect.arrayContaining(["B06-2"]));
     expect(draft.locations.map((location) => location.label)).toEqual(expect.arrayContaining(["A4-01", "B4-15"]));

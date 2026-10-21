@@ -15,7 +15,7 @@ export interface UbotPartyDraft {
   address2?: string;
   paymentTerms?: string;
   active: boolean;
-  role: "supplier" | "end_customer";
+  role: "supplier" | "customer" | "end_customer";
 }
 
 export interface UbotItemDraft {

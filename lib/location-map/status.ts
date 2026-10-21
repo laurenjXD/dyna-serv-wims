@@ -12,6 +12,19 @@ export type LocationMapStatusInput = {
   isMapped?: boolean;
 };
 
+/**
+ * A mapped rack slot is usable when it is empty, even if an older location
+ * row has stale inactive/capacity metadata. Keep unavailable for records
+ * outside the reference geometry, but render mapped empty slots as available.
+ */
+export function getMapCellDisplayStatus(
+  status: LocationMapStatus | undefined,
+  occupiedCbm: number | string | null | undefined,
+): Exclude<LocationMapStatus, "unavailable"> {
+  if (status !== undefined && status !== "unavailable") return status;
+  return Number(occupiedCbm ?? 0) > 0 ? "occupied" : "available";
+}
+
 export function getLocationMapStatus({
   isActive,
   maxCbmCapacity,
