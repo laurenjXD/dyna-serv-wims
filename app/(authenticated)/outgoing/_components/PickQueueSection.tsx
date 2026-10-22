@@ -99,8 +99,8 @@ export function PickQueueSection({
                       {isDispatch ? "PICKED" : "ALLOCATED"}
                     </span>
                   </div>
-                  <p className="mt-1 truncate font-body text-xs font-semibold text-text-primary">
-                    {row.customerPartyName ?? row.customerPartyId}
+                  <p className="mt-1 truncate font-body text-xs font-semibold text-text-primary" title={row.flowType === "vmi" ? "End Customer" : "Customer / Recipient"}>
+                    {row.endCustomerPartyName ?? row.endCustomerPartyId}
                   </p>
                   <p className="mt-0.5 font-body text-xs text-text-grey">
                     <span className="font-mono">{FLOW_LABELS[row.flowType] ?? row.flowType}</span> · Created {row.createdAt.toLocaleString()}

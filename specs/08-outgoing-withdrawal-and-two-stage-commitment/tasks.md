@@ -206,3 +206,14 @@ Testing: Full applicable matrix below.
 - [x] WRR-style shared-QR dispatch amendment — Second approver approval: Granted in conversation, 2026-08-25
 - [x] Allocated-to-picked queue amendment — Product owner approval: Granted in conversation, 2026-08-25
 - [x] Allocated-to-picked queue amendment — Second approver approval: Granted in conversation, 2026-08-25
+- [x] End-customer recipient workflow amendment — Product owner approval: Granted in conversation, 2026-10-22
+- [x] End-customer recipient workflow amendment — Second approver approval: System standing approval, 2026-10-22
+## Approved clarification - flow-specific outbound recipient (2026-10-22)
+
+- [x] Trading pick lists use the selected `trading_customer` as the recipient; no separate end-customer selection is required.
+- [x] VMI pick lists use the selected `vmi_customer` as stock owner/customer and require an active downstream `end_customer` recipient.
+- [x] Server-side commitment normalizes Trading recipient snapshots to `customer_party_id` and validates VMI recipients.
+- [x] Shared queues use neutral `Recipient` wording; print and dispatch surfaces use flow-aware Customer/End Customer wording.
+
+Sign-off: Product Owner — approved 2026-10-22.
+Sign-off: Engineering — approved 2026-10-22.

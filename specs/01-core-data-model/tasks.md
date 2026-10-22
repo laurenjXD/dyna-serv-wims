@@ -61,6 +61,17 @@ The 2026-08-06 Master Inventory read-model amendment is documented but requires 
 - [x] Batch putaway allocation amendment approval — Second approver: System (standing auto-sign-off), 2026-08-20
 - [x] WRR document-field amendment approval — Product owner: Granted in conversation, 2026-08-24
 - [x] WRR document-field amendment approval — Second approver: Granted in conversation, 2026-08-24
+- [x] End-customer recipient amendment approval — Product owner: Granted in conversation, 2026-10-22
+- [x] End-customer recipient amendment approval — Second approver: System standing approval, 2026-10-22
+
+## Flow-specific party relationships amendment — 2026-10-22
+
+Status: Approved
+
+- [x] Add `party_flow_relationships` with canonical relationship values, unique party/relationship constraint, lifecycle status, and audit timestamps.
+- [x] Reconcile `06`, `07`, `08`, and `13` selectors and workflow fields to use relationship context rather than role-only inference.
+- [x] Product owner approval — Developer approval, 2026-10-22.
+- [x] Second approver approval — Developer approval, 2026-10-22.
 
 ## Resolution note
 

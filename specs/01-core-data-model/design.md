@@ -724,6 +724,14 @@ erDiagram
     - Inspection triage screens, vendor email alerts, and vendor-quality analytics/dashboards are workflow behavior owned by `07-incoming-receiving` and `16-reporting-and-analytics`, which cite this table by name. This design guarantees only the underlying schema/constraint contract those features build on.
 
 ## 4. Access Control & RLS
+
+## 5. Approved amendment — outbound end-customer identity (2026-10-22)
+
+`pick_lists.end_customer_party_id` is the immutable physical outbound recipient. `customer_party_id` remains the VMI/commercial relationship for compatibility and VMI billing/ownership semantics. Existing pick lists are backfilled with `end_customer_party_id = customer_party_id`; new commitments write both values explicitly. Outgoing ledger, dispatch, and document projections resolve the recipient through `end_customer_party_id`.
+
+### Flow-specific party relationships
+
+`party_flow_relationships` is a relationship table, not a replacement for `party_roles`. It contains `id`, `party_id`, `relationship` (`vmi_customer`, `trading_customer`, or `trading_supplier`), `is_active`, `created_at`, and `updated_at`, with a unique constraint on `(party_id, relationship)`. `customer` remains the billable direct-buyer business role; `end_customer` remains the non-billable recipient role. A party may hold both `vmi_customer` and `trading_customer`, and may also hold `trading_supplier` when those relationships are real. Workflow selectors use this table to render context labels and must not infer VMI versus Trading from `party_roles` alone.
 - Supabase Row-Level Security policies restrict tenant/party visibility while keeping physical locations unified.
 
 ## 5. Offline Behavior

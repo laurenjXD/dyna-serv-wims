@@ -154,11 +154,11 @@ export function OutgoingLedgerClientTable({
 
     // 3. Customer Organization
     {
-      accessorKey: "customerPartyName",
-      header: "Customer Organization",
+      accessorKey: "endCustomerPartyName",
+      header: "Recipient",
       meta: {
         filterVariant: "text",
-        filterLabel: "Customer",
+        filterLabel: "Recipient",
       },
       cell: (info) => (
         <div className="flex items-center gap-1.5 min-w-0 max-w-[180px]">
@@ -590,8 +590,8 @@ export function OutgoingLedgerClientTable({
             {/* DR Metadata Bar */}
             <div className="grid grid-cols-2 gap-4 border-b border-outline-variant/20 bg-[#F8FAFF] px-6 py-3 font-body text-body-sm sm:grid-cols-4">
               <div>
-                <span className="text-text-grey block text-xs">Customer:</span>
-                <strong className="text-on-surface">{activeDrMeta.customerPartyName ?? "—"}</strong>
+                <span className="text-text-grey block text-xs">Recipient:</span>
+                <strong className="text-on-surface">{activeDrMeta.endCustomerPartyName ?? "—"}</strong>
               </div>
               <div>
                 <span className="text-text-grey block text-xs">Pick List:</span>

@@ -494,6 +494,7 @@ describe("commitWithdrawal — success (R5.1, R5.3, design.md §6)", () => {
     expect(db.insert).toHaveBeenCalled();
     expect(db._inserted).toContainEqual(expect.objectContaining({
       status: "allocated",
+      endCustomerPartyId: "party-uuid-customer",
     }));
   });
 

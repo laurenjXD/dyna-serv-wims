@@ -231,3 +231,7 @@ No `trading_policies` write or price freeze is Tier 1. Cached price/policy reads
 - `08` retrieves the `TradingPriceSnapshot` via a server-side query keyed on `pick_list_item_id` before Stage 1 commitment; rejects a missing, stale, or hash-mismatched snapshot; never recomputes prices.
 - `10` embeds the same snapshot verbatim in `pick_list` and `acknowledgement_receipt`; stores `snapshot_hash` for tamper detection.
 - `12` remains solely authoritative for VMI period billing; this spec never touches it.
+
+### 9a. Approved amendment — Trading end-customer party (2026-10-22)
+
+For a Trading pick list, `party_id` in the pricing policy/snapshot resolves from the transaction's direct `customer_party_id`/bill-to customer. `end_customer_party_id` remains the physical ship-to recipient and may be the same party or a different downstream party. This preserves immutable pricing while separating the billable customer from the non-billable delivery recipient.

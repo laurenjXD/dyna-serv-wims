@@ -9,8 +9,10 @@ const allocatedRow: PickListRow = {
   id: "pick-allocated",
   pickListNumber: "PL-ALLOCATED-001",
   status: "allocated",
-  customerPartyId: "organization-1",
-  customerPartyName: "Summit Industrial Supply",
+      customerPartyId: "organization-1",
+      customerPartyName: "Summit Industrial Supply",
+      endCustomerPartyId: "organization-1",
+      endCustomerPartyName: "Summit Industrial Supply",
   flowType: "supplies",
   createdAt: new Date("2026-08-23T08:00:00Z"),
 };

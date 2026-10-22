@@ -87,7 +87,7 @@ export async function GET(
   const [lines, partyRows, permitRows] = await Promise.all([
     getPickListItems(db, pickListId),
     db.select({ name: parties.name, address1: parties.address1, address2: parties.address2 })
-      .from(parties).where(eq(parties.id, pickList.customerPartyId)).limit(1),
+      .from(parties).where(eq(parties.id, pickList.endCustomerPartyId)).limit(1),
     db.select({ permitNumber: vmiPermits.permitNumber })
       .from(vmiPermits)
       .where(and(eq(vmiPermits.partyId, pickList.customerPartyId), eq(vmiPermits.isActive, true)))
@@ -139,8 +139,8 @@ export async function GET(
       page.drawText(`PAGE ${pageNum} OF ${totalPages}`, { x: 730, y: 562, size: 7, font: bold, color: MUTED });
     }
 
-    page.drawText("DELIVERY TO (CUSTOMER):", { x: MARGIN, y: 486, size: 7.5, font: bold, color: INK });
-    page.drawText(party?.name ?? nonNullPickList.customerPartyId, { x: MARGIN, y: 474, size: 8.5, font: bold, color: INK });
+    page.drawText("DELIVERY TO (END CUSTOMER):", { x: MARGIN, y: 486, size: 7.5, font: bold, color: INK });
+    page.drawText(party?.name ?? nonNullPickList.endCustomerPartyId, { x: MARGIN, y: 474, size: 8.5, font: bold, color: INK });
     page.drawText([party?.address1, party?.address2].filter(Boolean).join(", ") || "Address on file", { x: MARGIN, y: 462, size: 7.5, font: regular, color: MUTED });
     page.drawText(`Inventory Model: ${nonNullPickList.flowType.toUpperCase()}`, { x: 630, y: 474, size: 7.5, font: bold, color: INK });
     page.drawLine({ start: { x: MARGIN, y: 450 }, end: { x: PAGE_WIDTH - MARGIN, y: 450 }, thickness: 1, color: GRID });

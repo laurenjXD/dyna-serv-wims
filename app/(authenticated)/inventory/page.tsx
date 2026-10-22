@@ -28,6 +28,7 @@ import { db } from "@/lib/db/client";
 import { listStockView, type StockViewRow } from "@/lib/db/queries/inventory";
 import { listPickLists } from "@/lib/db/queries/withdrawals";
 import type { PickListRow } from "@/lib/db/queries/withdrawals";
+import { listActiveEndCustomers, listActiveCustomerFlowParties } from "@/lib/db/queries/parties";
 import { listInspectionAndTransferQueue } from "@/lib/db/queries/transfers";
 import { resolveInventoryTab, type TabKey } from "./_lib/resolveInventoryTab";
 import { InspectionTab } from "./_components/InspectionTab";
@@ -310,6 +311,10 @@ async function PickListsTab({ createdPickListId, pickedPickListId, view }: { cre
     listPickLists(db, { limit: 50, offset: 0, ...(isDeleted ? { deleted: true } : { status: "allocated" }) }),
     listStockView(db),
   ]);
+  const [endCustomers, customers] = await Promise.all([
+    listActiveEndCustomers(db),
+    listActiveCustomerFlowParties(db),
+  ]);
 
   return (
     <div className="mt-6 space-y-6">
@@ -416,6 +421,8 @@ async function PickListsTab({ createdPickListId, pickedPickListId, view }: { cre
 
           <div id="draft-generator">
             <MultiItemPickListDraft
+              endCustomers={endCustomers}
+              customers={customers}
               stock={stockRows.map((row, index) => ({
                 itemId: row.itemId,
                 itemCode: row.itemCode,

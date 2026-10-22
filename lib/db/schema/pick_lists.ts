@@ -10,6 +10,7 @@ export const pickLists = pgTable("pick_lists", {
   id: uuid("id").primaryKey().defaultRandom(),
   pickListNumber: varchar("pick_list_number", { length: 50 }).notNull().unique(),
   customerPartyId: uuid("customer_party_id").references(() => parties.id).notNull(),
+  endCustomerPartyId: uuid("end_customer_party_id").references(() => parties.id).notNull(),
   flowType: flowTypeEnum("flow_type").notNull(),
   status: pickListStatusEnum("status").default("allocated").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),

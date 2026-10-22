@@ -32,6 +32,8 @@ describe("MultiItemPickListDraft organization selection", () => {
     render(
       <MultiItemPickListDraft
         stock={stock}
+        customers={[{ id: "party-customer", code: "CUST-1", name: "Test customer", relationship: "vmi_customer" }]}
+        endCustomers={[{ id: "party-end-customer", code: "END-1", name: "Test end customer" }]}
         createAction={vi.fn()}
         overrideAction={vi.fn()}
       />,

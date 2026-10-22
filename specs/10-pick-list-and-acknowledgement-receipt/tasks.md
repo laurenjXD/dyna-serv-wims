@@ -182,3 +182,5 @@ Testing: Full matrix below.
 - [x] WRR-style shared-QR dispatch amendment approval — Second approver: Granted in conversation, 2026-08-25
 - [x] Allocated-to-picked queue amendment approval — Product owner: Granted in conversation, 2026-08-25
 - [x] Allocated-to-picked queue amendment approval — Second approver: Granted in conversation, 2026-08-25
+- [x] End-customer recipient snapshot amendment approval — Product owner: Granted in conversation, 2026-10-22
+- [x] End-customer recipient snapshot amendment approval — Second approver: System standing approval, 2026-10-22

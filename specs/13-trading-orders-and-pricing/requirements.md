@@ -45,7 +45,7 @@ Trading pricing lives as Sub-tab 2 of Billing & Pricing (`/billing-pricing`):
 
 ### R2. Price resolution at pick-list generation
 
-1. When a pick list is generated for a Trading-flow line, the system resolves the active `trading_policies` row for `(customer_party_id, item_id)`. Missing row → block, per §2.
+1. When a pick list is generated for a Trading-flow line, the system resolves the active `trading_policies` row for `(customer_party_id, item_id)`, where `customer_party_id` is the direct billable buyer. Missing row → block, per §2.
 2. The resolved `buy_cost`, `sell_price`, and computed margin are frozen into an immutable, hashed `trading_invoice_lines` row (`direction = 'sale'`) at that moment — before `08` Stage 1 commitment, never recomputed afterward even if the underlying `trading_policies` row later changes.
 3. Price overrides at resolution time require `trading.price_override` and a mandatory written reason, appended to an immutable audit log.
 
@@ -68,3 +68,7 @@ Trading pricing lives as Sub-tab 2 of Billing & Pricing (`/billing-pricing`):
 - [ ] Margin (`buy_cost`, `sell_price`, margin, margin %) is visible only to `trading.margin_view` holders; Organization users never see cost/margin fields.
 - [ ] User-facing UI labels use Organization, Inventory Model, and Organization Portal exclusively.
 - [ ] 3-component error feedback is present on all pricing errors.
+
+## 6. Approved amendment — Trading recipient terminology (2026-10-22)
+
+For Trading, the pricing party is the selected direct `customer_party_id`, not the inbound supplier. The `end_customer_party_id` is the physical ship-to recipient and may be the same party or a different downstream recipient. The frozen Trading pricing snapshot continues to be keyed by customer and item.

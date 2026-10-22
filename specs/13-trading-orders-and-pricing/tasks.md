@@ -159,3 +159,5 @@ Testing: Full matrix below.
 - [ ] Product/finance and design-system reviews pass.
 - [x] Product owner approval — Name: User / System (auto-sign-off per standing instruction) Date: 2026-08-19 — approved with the tax/discount/returns/post-dispatch-corrections item (Task 1) explicitly still open, to be resolved as part of completing Task 4 rather than blocking approval.
 - [x] Second approver approval — Name/Role: User / System (auto-sign-off per standing instruction) Date: 2026-08-19
+- [x] End-customer pricing-party amendment approval — Product owner: Granted in conversation, 2026-10-22
+- [x] End-customer pricing-party amendment approval — Second approver: System standing approval, 2026-10-22

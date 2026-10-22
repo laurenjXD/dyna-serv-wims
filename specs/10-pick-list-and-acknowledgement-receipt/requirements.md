@@ -139,3 +139,4 @@ All sub-tabs share a unified office filtering and search interface:
 - [ ] Permanent tiered retention policy (3 years hot in Supabase, then archived off-platform) is enforced for all generated document artifacts.
 - [ ] 3-component error feedback is present on all document generation/download errors.
 - [ ] Pick-list detail and print views display Master Inventory-backed item/lot/location/package values without an editable line-data surface.
+- [ ] Pick-list and acknowledgement-receipt output displays the selected end-customer organization and address; same-party VMI output uses one combined Customer / End Customer label.

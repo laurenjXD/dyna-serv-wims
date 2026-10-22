@@ -221,6 +221,7 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
               </span>
               <span className="sr-only">(required)</span>
             </label>
+            <p className="mt-1 font-body text-xs text-text-grey">Select the organization named on the CIPL; the relationship label identifies VMI Customer or Trading Supplier.</p>
             <div className="relative mt-1" ref={vendorSearchRef}>
               <input type="hidden" name="vendorPartyId" value={vendorPartyId} />
               <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-text-grey" />
@@ -246,7 +247,7 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
                 <div className="absolute left-0 right-0 z-50 mt-1 max-h-64 overflow-y-auto rounded-xl border border-outline-variant/40 bg-surface-white p-1 shadow-elevation-4">
                   {filteredVendorParties.length > 0 ? filteredVendorParties.map((party) => (
                     <button
-                      key={party.id}
+                      key={`${party.id}:${party.relationship ?? "legacy"}`}
                       type="button"
                       onClick={() => {
                         setVendorPartyId(party.id);
@@ -265,7 +266,7 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
                       </div>
                       {party.roles?.length && (
                         <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-700 border border-slate-200 shrink-0">
-                          {getBusinessRoleLabel(party)}
+                          {getBusinessRoleLabel(party)}{party.relationship ? ` · ${party.relationship === "vmi_customer" ? "VMI" : party.relationship === "trading_customer" ? "Trading Customer" : "Trading Supplier"}` : ""}
                         </span>
                       )}
                     </button>

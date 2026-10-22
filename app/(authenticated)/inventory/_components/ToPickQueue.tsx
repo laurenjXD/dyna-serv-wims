@@ -46,7 +46,7 @@ export function ToPickQueue({ rows, isDeleted = false }: ToPickQueueProps) {
     const q = searchQuery.toLowerCase().trim();
     return rows.filter((row) => {
       const plMatch = (row.pickListNumber ?? "").toLowerCase().includes(q);
-      const partyMatch = (row.customerPartyName ?? "").toLowerCase().includes(q) ||
+      const partyMatch = (row.endCustomerPartyName ?? row.customerPartyName ?? "").toLowerCase().includes(q) ||
         (row.customerPartyId ?? "").toLowerCase().includes(q);
       const flowMatch = (row.flowType ?? "").toLowerCase().includes(q);
       return plMatch || partyMatch || flowMatch;
@@ -98,7 +98,7 @@ export function ToPickQueue({ rows, isDeleted = false }: ToPickQueueProps) {
                     Inventory Model
                   </th>
                   <th className="px-5 py-3 text-left font-label text-label-xs font-bold uppercase tracking-wider text-text-grey">
-                    Customer Organization
+                    Recipient
                   </th>
                   <th className="px-5 py-3 text-left font-label text-label-xs font-bold uppercase tracking-wider text-text-grey">
                     Deleted At
@@ -120,7 +120,7 @@ export function ToPickQueue({ rows, isDeleted = false }: ToPickQueueProps) {
                       </span>
                     </td>
                     <td className="px-5 py-3.5 font-body text-body-md font-semibold text-on-surface">
-                      {row.customerPartyName || row.customerPartyId}
+                      {row.endCustomerPartyName || row.endCustomerPartyId}
                     </td>
                     <td className="px-5 py-3.5 font-body text-body-sm text-text-grey">
                       {row.deletedAt ? new Date(row.deletedAt).toLocaleString() : "—"}
@@ -294,7 +294,7 @@ export function ToPickQueue({ rows, isDeleted = false }: ToPickQueueProps) {
                     Inventory Model
                   </th>
                   <th className="px-5 py-3.5 text-left font-label text-label-xs font-bold uppercase tracking-wider text-text-grey">
-                    Customer Organization
+                    End Customer
                   </th>
                   <th className="px-5 py-3.5 text-left font-label text-label-xs font-bold uppercase tracking-wider text-text-grey">
                     Allocated At
@@ -344,7 +344,7 @@ export function ToPickQueue({ rows, isDeleted = false }: ToPickQueueProps) {
                         <div className="flex items-center gap-2">
                           <Building2 size={15} className="text-text-grey shrink-0" />
                           <span className="font-body text-body-md font-semibold text-on-surface">
-                            {row.customerPartyName || row.customerPartyId}
+                            {row.endCustomerPartyName || row.endCustomerPartyId}
                           </span>
                         </div>
                       </td>

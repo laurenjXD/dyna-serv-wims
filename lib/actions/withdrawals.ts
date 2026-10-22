@@ -46,6 +46,7 @@ import { inventoryTransactions } from "@/lib/db/schema/transactions";
 import { generatedDocuments } from "@/lib/db/schema/documents";
 import { approvalRequests } from "@/lib/db/schema/approvals";
 import { inventoryUnits } from "@/lib/db/schema/inventory_units";
+import { parties, partyRoles } from "@/lib/db/schema/parties";
 import {
   listOutgoingLedger as queryListOutgoingLedger,
   type OutgoingLedgerRow,
@@ -319,6 +320,26 @@ export async function commitWithdrawal(
     rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
     const db = tx.db as DbLike;
 
+    // Trading always ships to its direct trading customer. VMI ships to the
+    // selected downstream end customer, which must be explicitly enrolled.
+    // The database column is the immutable recipient snapshot for both flows.
+    const recipientPartyId = data.flowType === "trading"
+      ? data.customerPartyId
+      : data.endCustomerPartyId;
+    if (data.flowType === "vmi") {
+      const recipientRows = (await db
+        .select({ id: parties.id })
+        .from(parties)
+        .innerJoin(partyRoles, eq(partyRoles.partyId, parties.id))
+        .where(and(
+          eq(parties.id, recipientPartyId),
+          eq(parties.isActive, true),
+          eq(partyRoles.role, "end_customer"),
+        ))
+        .limit(1)) as AnyRecord[];
+      if (recipientRows.length !== 1) throw new Error("invalid_end_customer");
+    }
+
     // The browser may suggest a quantity, but it must never choose the lots
     // that will be reserved. Rebuild each item's FIFO/FEFO allocation against
     // the current authoritative balances inside this transaction.
@@ -469,7 +490,8 @@ export async function commitWithdrawal(
       .values({
         ...(overridePickListId ? { id: overridePickListId } : {}),
         pickListNumber,
-        customerPartyId: data.partyId,
+        customerPartyId: data.customerPartyId,
+        endCustomerPartyId: recipientPartyId,
         flowType: data.flowType,
         // Commitment reserves the stock but does not certify that warehouse
         // picking is complete. The explicit Mark as Picked command is the
@@ -596,6 +618,8 @@ export async function commitWithdrawal(
       errors: [
         message === "provisional_item_code"
           ? "provisional_item_code"
+          : message === "invalid_end_customer"
+            ? "invalid_end_customer"
           : approvalError ?? "unable_to_reserve_stock",
       ],
     };

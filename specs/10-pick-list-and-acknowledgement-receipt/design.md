@@ -342,6 +342,10 @@ The Documents page consumes type-safe query functions that resolve joined metada
 - Email/notification delivery is separate from artifact generation and cannot determine inventory success.
 - Realtime may signal document readiness/attention; UI refetches authoritative status and falls back to polling/manual refresh.
 
+### 10a. Approved amendment — recipient snapshot (2026-10-22)
+
+Pick-list and acknowledgement-receipt templates render the immutable `end_customer_party_id` snapshot. The VMI customer/ownership party is rendered separately only when it differs. Reprints never replace historical recipient data from a mutable party master row; a correction creates a superseding document.
+
 ## 11. Design verification before approval
 
 - [ ] Reconcile final pick-list fields/statuses and source snapshot event with `01`/`08`.

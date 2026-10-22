@@ -1,5 +1,6 @@
 // `parties` & `party_roles` — specs/01-core-data-model/design.md §1.2
-import { pgTable, uuid, varchar, text, boolean, timestamp, unique } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, text, boolean, timestamp, unique, check } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { partyRoleEnum, rbeClassificationEnum } from "./enums";
 
 export const parties = pgTable("parties", {
@@ -25,6 +26,18 @@ export const partyRoles = pgTable("party_roles", {
   role: partyRoleEnum("role").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [unique("party_roles_party_role_unique").on(table.partyId, table.role)]);
+
+export const partyFlowRelationships = pgTable("party_flow_relationships", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  partyId: uuid("party_id").references(() => parties.id, { onDelete: "cascade" }).notNull(),
+  relationship: varchar("relationship", { length: 40 }).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  unique("party_flow_relationships_party_relationship_unique").on(table.partyId, table.relationship),
+  check("party_flow_relationships_relationship_check", sql`${table.relationship} IN ('vmi_customer', 'trading_customer', 'trading_supplier')`),
+]);
 
 export const partyRbeClassifications = pgTable("party_rbe_classifications", {
   id: uuid("id").primaryKey().defaultRandom(),

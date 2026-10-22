@@ -36,6 +36,7 @@ export async function generatePickList(
     const messages: Record<string, string> = {
       forbidden: "You do not have permission to generate pick lists.",
       provisional_item_code: "This item needs its DSGC/supplier item code before a pick list can be created.",
+      invalid_end_customer: "The selected end customer is inactive or is not enrolled with the End Customer role.",
       unable_to_reserve_stock: "Stock changed or is no longer available. Refresh the inventory and try again.",
     };
     return { ok: false, error: messages[result.errors[0]] ?? "Pick list was not created. Please try again." };

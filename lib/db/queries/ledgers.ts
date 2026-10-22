@@ -15,8 +15,8 @@
 // Reference resolution:
 //   Location "in"  → commercial_invoice_no (from WRR)
 //   Location "out" → ar_reference_no        (from pick list)
-//   Party vendor   → commercial_invoice_no
-//   Party customer → ar_reference_no
+//   Party supplier → commercial_invoice_no
+//   Party customer/end-customer → ar_reference_no
 //   Party vmi_owner→ commercial_invoice_no (owner linked through lot receipt)
 
 import { eq, or, desc, sql } from "drizzle-orm";
@@ -45,7 +45,7 @@ export type LocationLedgerRow = {
 
 export type PartyLedgerRow = {
   id: string;
-  partyRole: "vendor" | "customer" | "vmi_owner";
+  partyRole: "vendor" | "customer" | "end_customer" | "vmi_owner";
   reference: string | null;
   movementType: string;
   quantity: string;
@@ -85,7 +85,7 @@ type RawLocationRow = {
 
 type RawPartyRow = {
   id: string;
-  partyRole: "vendor" | "customer" | "vmi_owner";
+  partyRole: "vendor" | "customer" | "end_customer" | "vmi_owner";
   commercial_invoice_no: string | null;
   ar_reference_no: string | null;
   movement_type: string;
@@ -178,8 +178,9 @@ export async function getLocationTransactionLedger(
 
 /**
  * Fetches paginated inventory_transactions rows connected to partyId as
- * vendor (via wrr_documents.vendor_party_id), customer (via
- * pick_lists.customer_party_id), or VMI owner (via lots.owner_party_id).
+ * supplier (via wrr_documents.vendor_party_id), customer (via
+ * pick_lists.customer_party_id), end-customer (via
+ * pick_lists.end_customer_party_id), or VMI owner (via lots.owner_party_id).
  * Ordered by created_at DESC. Returns { rows, total } where total is the
  * unpaginated count.
  *
@@ -195,6 +196,7 @@ export async function getPartyTransactionLedger(
   const whereClause = or(
     eq(wrrDocuments.vendorPartyId, partyId),
     eq(pickLists.customerPartyId, partyId),
+    eq(pickLists.endCustomerPartyId, partyId),
     eq(lots.ownerPartyId, partyId),
   );
 
@@ -202,9 +204,10 @@ export async function getPartyTransactionLedger(
   const rawRows: RawPartyRow[] = await db
     .select({
       id: inventoryTransactions.id,
-      partyRole: sql<"vendor" | "customer" | "vmi_owner">`
+      partyRole: sql<"vendor" | "customer" | "end_customer" | "vmi_owner">`
         CASE
           WHEN ${wrrDocuments.vendorPartyId} = ${partyId} THEN 'vendor'
+          WHEN ${pickLists.endCustomerPartyId} = ${partyId} THEN 'end_customer'
           WHEN ${pickLists.customerPartyId} = ${partyId} THEN 'customer'
           ELSE 'vmi_owner'
         END
@@ -237,12 +240,12 @@ export async function getPartyTransactionLedger(
     .where(whereClause);
 
   // Map raw rows to typed output.
-  // Reference resolution: vendor → commercial_invoice_no;
-  //   customer → ar_reference_no; vmi_owner → commercial_invoice_no (receipt).
+  // Reference resolution: supplier/vendor → commercial_invoice_no;
+  //   customer/end-customer → ar_reference_no; vmi_owner → commercial_invoice_no (receipt).
   // Using coalesce to handle either field being present on the row.
   const rows: PartyLedgerRow[] = rawRows.map((raw) => {
     const reference =
-      raw.partyRole === "customer"
+      raw.partyRole === "customer" || raw.partyRole === "end_customer"
         ? (raw.ar_reference_no ?? null)
         : (raw.commercial_invoice_no ?? null);
     return {

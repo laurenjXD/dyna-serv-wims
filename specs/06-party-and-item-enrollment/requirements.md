@@ -1,7 +1,7 @@
 # Organization & Item Enrollment — Requirements
 
 Status: Approved
-Updated: 2026-10-14 (Phase 2 amendment: canonical roles, RBE, Data Management, and billing boundary)
+Updated: 2026-10-22 (role semantics and outbound recipient clarification)
 
 ## 1. Purpose and scope
 
@@ -28,6 +28,8 @@ Across all user-facing enrollment forms, tables, headers, and UI screens:
 - A `location` is a physical warehouse storage slot (`zone`, `rack`, `level`, `position`, formatted `label`, `location_type`, `max_cbm_capacity`, `is_active`).
 - `item_categories` are selected as reference data; hierarchy management belongs to `17-product-categorization-and-classification`.
 - Trading pricing belongs to `13-trading-orders-and-pricing`; VMI billing belongs to `12-vmi-billing`.
+- Role semantics are explicit: **Supplier** is the Trading-side inbound source/procurement relationship; **Customer** is the company's direct commercial buyer for VMI and Trading and the billable role when used as the commercial customer; **End-Customer** is the non-billable downstream delivery recipient; **Internal Supplies** is for internal warehouse use. A party may hold both Customer and End-Customer classifications, but billing is determined by the transaction's customer/bill-to role, not by the presence of an End-Customer classification. Supplier may also be an End-Customer in a separate relationship. These classifications do not grant application access.
+- Flow-specific relationships SHALL be managed separately from business roles: VMI Customer, Trading Customer, and Trading Supplier. A Customer organization may have both VMI Customer and Trading Customer relationships when active in both flows.
 - Offline Organization/item/location mutations are prohibited.
 
 ## 3. Actors and surfaces
@@ -49,7 +51,7 @@ Across all user-facing enrollment forms, tables, headers, and UI screens:
 6. Organization deactivation SHALL prevent new operational use while preserving historical audit logs.
 7. An authorized user (`parties.manage`) SHALL be able to send transactional operational emails to an Organization's contact person via `04`'s Resend pipeline.
 8. Customer enrollment SHALL expose RBE classifications (EE, ELSE, ETC) as checkboxes, require at least one when applicable, and reject more than three selections in the UI, server action, and database constraint.
-9. Role-conditioned fields and actions SHALL be enforced server-side: End-Customers SHALL not receive billing or SOA records; Suppliers are billed directly by Dyna Serv's supplier relationship and are not SOA recipients; only VMI and Customers are eligible for SOA rules, with billing applying to VMI only.
+9. Role-conditioned fields and actions SHALL be enforced server-side: End-Customers SHALL not receive billing or SOA records when used as the recipient; Suppliers are billed directly by Dyna Serv's supplier relationship and are not SOA recipients; Customers are eligible for commercial billing/SOA when they are the transaction's bill-to/customer party.
 10. Email generation SHALL support an optional CC field, validated and persisted only through the approved email-delivery pipeline.
 
 ### R1a. Data Management and export
@@ -64,7 +66,7 @@ Across all user-facing enrollment forms, tables, headers, and UI screens:
 2. Internal `code` and barcode SHALL be unique.
 3. Form SHALL validate positive packaging and dimensional metrics (`spq`, `volume_cbm`, weight, reorder level).
 4. Conditional fields (`spq_meter`, `boxes_per_pallet`, perishability data) SHALL show only when applicable to the selected Inventory Model and UOM.
-5. Default supplier Organization SHALL be selected from existing authorized Organizations.
+5. Default supplier Organization SHALL be selected only from active Organizations with the Supplier business classification (legacy `vendor` is accepted only during migration). Customer and End-Customer classifications SHALL not appear in this inbound-source selector.
 6. Item deactivation SHALL prevent new operational use while preserving historical records.
 
 ### R3. Location enrollment
@@ -87,7 +89,9 @@ Across all user-facing enrollment forms, tables, headers, and UI screens:
 - [ ] Administrators can create, edit, search, and deactivate Organizations, items, and locations.
 - [ ] New enrollment uses only Supplier, Customer, End-Customer, and Internal Supplies; legacy values are migrated and not offered for new records.
 - [ ] Customer RBE selection accepts no more than three of EE, ELSE, and ETC, with the same rule enforced server-side and in the database.
-- [ ] End-Customers have no billing/SOA output, and SOA eligibility is restricted to VMI and Customers with billing limited to VMI.
+- [ ] End-Customers have no billing/SOA output when used as recipients; billing/SOA is resolved from the transaction's Customer/bill-to party for both VMI and Trading.
+- [ ] Customer, Supplier, and End-Customer labels and selectors follow their defined relationship semantics; Customer and End-Customer may coexist, but only a transaction using the Customer/bill-to role is billable.
+- [ ] Organization management can activate/deactivate VMI Customer, Trading Customer, and Trading Supplier relationships without duplicating the organization.
 - [ ] Data Management exports contain the complete authorized result set and preserve canonical role/RBE values.
 - [ ] Item enrollment enforces the form order: Inventory Model → Category → Subcategory → Item identity/code.
 - [ ] Location labels are auto-generated in `Rack+Level-Position` format with unique DB constraint.

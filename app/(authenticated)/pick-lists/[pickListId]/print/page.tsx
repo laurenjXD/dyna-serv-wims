@@ -37,7 +37,7 @@ export default async function PickListPrintPage({
     db
       .select({ name: parties.name, address1: parties.address1, address2: parties.address2 })
       .from(parties)
-      .where(eq(parties.id, pickList.customerPartyId))
+    .where(eq(parties.id, pickList.endCustomerPartyId))
       .limit(1),
   ]);
 
@@ -136,8 +136,8 @@ export default async function PickListPrintPage({
           {/* Delivery & Shipment Info Grid */}
           <div className="mt-3 grid grid-cols-2 gap-2.5 rounded-lg border border-slate-200 bg-slate-50/70 p-2.5 font-mono text-[11px] sm:grid-cols-4">
             <div className="col-span-2">
-              <p className="text-[9px] font-bold uppercase text-slate-500">Delivery To (Customer)</p>
-              <p className="mt-0.5 font-bold text-slate-900">{party?.name ?? pickList.customerPartyId}</p>
+              <p className="text-[9px] font-bold uppercase text-slate-500">Delivery To ({pickList.flowType === "vmi" ? "End Customer" : "Customer"})</p>
+              <p className="mt-0.5 font-bold text-slate-900">{party?.name ?? pickList.endCustomerPartyId}</p>
               <p className="text-[10px] text-slate-500 truncate">
                 {[party?.address1, party?.address2].filter(Boolean).join(", ") || "Address on file"}
               </p>

@@ -20,6 +20,7 @@
 // Outgoing Ledger — only movement_type = 'pick' rows are included.
 
 import { eq, asc, desc, sql, and, gte, lte } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { pickLists, pickListItems } from "@/lib/db/schema/pick_lists";
 import { inventoryTransactions } from "@/lib/db/schema/transactions";
 import { items } from "@/lib/db/schema/items";
@@ -45,6 +46,8 @@ export type PickListRow = {
   status: string;
   customerPartyId: string;
   customerPartyName?: string | null;
+  endCustomerPartyId: string;
+  endCustomerPartyName?: string | null;
   flowType: string;
   createdAt: Date;
   deliveryReceiptPath?: string | null;
@@ -98,6 +101,7 @@ export type OutgoingLedgerRow = {
   fromLocationLabel: string;
   pickListNumber: string | null;
   customerPartyName: string | null;
+  endCustomerPartyName: string | null;
   performedByUserId: string;
   performedByDisplayName?: string | null;
   pickListId: string | null;
@@ -121,6 +125,7 @@ export async function listPickLists(
   db: DbLike,
   opts: { limit: number; offset: number; status?: string; deleted?: boolean },
 ): Promise<{ rows: PickListRow[]; total: number }> {
+  const endCustomerParties = alias(parties, "pick_list_end_customer_parties");
   const dataBase = db
     .select({
       id: pickLists.id,
@@ -128,12 +133,15 @@ export async function listPickLists(
       status: pickLists.status,
       customerPartyId: pickLists.customerPartyId,
       customerPartyName: parties.name,
+      endCustomerPartyId: pickLists.endCustomerPartyId,
+      endCustomerPartyName: endCustomerParties.name,
       flowType: pickLists.flowType,
       createdAt: pickLists.createdAt,
       deletedAt: pickLists.deletedAt,
     })
     .from(pickLists)
-    .leftJoin(parties, eq(parties.id, pickLists.customerPartyId));
+    .leftJoin(parties, eq(parties.id, pickLists.customerPartyId))
+    .leftJoin(endCustomerParties, eq(endCustomerParties.id, pickLists.endCustomerPartyId));
 
   const countBase = db
     .select({ count: sql<string>`count(*)` })
@@ -171,6 +179,7 @@ export async function listRecentPickLists(
   db: DbLike,
   opts: { limit: number },
 ): Promise<PickListRow[]> {
+  const endCustomerParties = alias(parties, "recent_pick_list_end_customer_parties");
   return (await db
     .select({
       id: pickLists.id,
@@ -178,11 +187,14 @@ export async function listRecentPickLists(
       status: pickLists.status,
       customerPartyId: pickLists.customerPartyId,
       customerPartyName: parties.name,
+      endCustomerPartyId: pickLists.endCustomerPartyId,
+      endCustomerPartyName: endCustomerParties.name,
       flowType: pickLists.flowType,
       createdAt: pickLists.createdAt,
     })
     .from(pickLists)
     .leftJoin(parties, eq(parties.id, pickLists.customerPartyId))
+    .leftJoin(endCustomerParties, eq(endCustomerParties.id, pickLists.endCustomerPartyId))
     .orderBy(desc(pickLists.createdAt))
     .limit(opts.limit)) as PickListRow[];
 }
@@ -260,6 +272,7 @@ export async function getPickList(
       pickListNumber: pickLists.pickListNumber,
       status: pickLists.status,
       customerPartyId: pickLists.customerPartyId,
+      endCustomerPartyId: pickLists.endCustomerPartyId,
       flowType: pickLists.flowType,
       createdAt: pickLists.createdAt,
     })
@@ -395,6 +408,7 @@ export async function listOutgoingLedger(
   db: DbLike,
   opts: { limit: number; offset: number; dateRange?: LedgerDateRange; deliveryReceiptStatus?: DeliveryReceiptStatus },
 ): Promise<{ rows: OutgoingLedgerRow[]; total: number }> {
+  const endCustomerParties = alias(parties, "outgoing_end_customer_parties");
   // movement_type = 'pick' filter — required by R9.1 and verified by the
   // test suite (where() call is expected on the data chain).
   const pickFilter = buildPickLedgerFilter(opts.dateRange, opts.deliveryReceiptStatus);
@@ -411,6 +425,7 @@ export async function listOutgoingLedger(
       fromLocationLabel: locations.label,
       pickListNumber: pickLists.pickListNumber,
       customerPartyName: parties.name,
+      endCustomerPartyName: endCustomerParties.name,
       performedByUserId: inventoryTransactions.performedByUserId,
       performedByDisplayName: userProfiles.displayName,
       pickListId: inventoryTransactions.pickListId,
@@ -424,6 +439,7 @@ export async function listOutgoingLedger(
     .leftJoin(locations, eq(locations.id, inventoryTransactions.fromLocationId))
     .leftJoin(pickLists, eq(pickLists.id, inventoryTransactions.pickListId))
     .leftJoin(parties, eq(parties.id, pickLists.customerPartyId))
+    .leftJoin(endCustomerParties, eq(endCustomerParties.id, pickLists.endCustomerPartyId))
     .leftJoin(userProfiles, eq(userProfiles.id, inventoryTransactions.performedByUserId))
     .where(pickFilter)
     .orderBy(asc(inventoryTransactions.createdAt))

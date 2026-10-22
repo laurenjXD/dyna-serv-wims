@@ -21,6 +21,8 @@ export type ValidatedWithdrawalLine = {
 
 export type ValidatedWithdrawal = {
   partyId: string;
+  customerPartyId: string;
+  endCustomerPartyId: string;
   flowType: "vmi" | "trading" | "supplies";
   lines: ValidatedWithdrawalLine[];
   idempotencyKey?: string;
@@ -60,6 +62,15 @@ export function validateWithdrawal(input: unknown): WithdrawalValidationResult {
   const flowType = raw["flowType"];
   if (typeof flowType !== "string" || !VALID_FLOW_TYPES.has(flowType)) {
     errors.push("flowType must be one of: vmi, trading, supplies");
+  }
+
+  const endCustomerPartyId = raw["endCustomerPartyId"];
+  if (endCustomerPartyId !== undefined && (typeof endCustomerPartyId !== "string" || endCustomerPartyId.trim() === "")) {
+    errors.push("endCustomerPartyId must be a non-empty string when provided");
+  }
+  const customerPartyId = raw["customerPartyId"];
+  if (customerPartyId !== undefined && (typeof customerPartyId !== "string" || customerPartyId.trim() === "")) {
+    errors.push("customerPartyId must be a non-empty string when provided");
   }
 
   // Validate idempotencyKey (optional)
@@ -106,6 +117,12 @@ export function validateWithdrawal(input: unknown): WithdrawalValidationResult {
 
   const data: ValidatedWithdrawal = {
     partyId: (raw["partyId"] as string).trim(),
+    customerPartyId: typeof customerPartyId === "string" && customerPartyId.trim() !== ""
+      ? customerPartyId.trim()
+      : (raw["partyId"] as string).trim(),
+    endCustomerPartyId: typeof endCustomerPartyId === "string" && endCustomerPartyId.trim() !== ""
+      ? endCustomerPartyId.trim()
+      : (raw["partyId"] as string).trim(),
     flowType: flowType as "vmi" | "trading" | "supplies",
     lines: validatedLines,
   };

@@ -56,7 +56,7 @@ type SortField =
   | "pickListNumber"
   | "status"
   | "flowType"
-  | "customerPartyId"
+  | "endCustomerPartyId"
   | "createdAt";
 
 type SortDirection = "asc" | "desc";
@@ -107,7 +107,7 @@ export function PickListsFilterableTable({
         // Omni search
         if (!searchQuery.trim()) return true;
         const q = searchQuery.toLowerCase().trim();
-        const searchCorpus = `${row.pickListNumber} ${row.customerPartyId ?? ""} ${row.flowType} ${row.status}`.toLowerCase();
+        const searchCorpus = `${row.pickListNumber} ${row.endCustomerPartyName ?? ""} ${row.endCustomerPartyId ?? ""} ${row.flowType} ${row.status}`.toLowerCase();
         return searchCorpus.includes(q);
       })
       .sort((a, b) => {
@@ -264,8 +264,8 @@ export function PickListsFilterableTable({
                   </div>
                   <dl className="grid grid-cols-2 gap-3 border-y border-outline-variant/30 py-3 font-body text-body-md">
                     <div>
-                      <dt className="font-label text-label uppercase tracking-wide text-text-grey">Organization</dt>
-                      <dd className="mt-1 truncate font-mono text-mono-md text-on-surface">{row.customerPartyId}</dd>
+                      <dt className="font-label text-label uppercase tracking-wide text-text-grey">Recipient</dt>
+                      <dd className="mt-1 truncate font-mono text-mono-md text-on-surface">{row.endCustomerPartyName ?? row.endCustomerPartyId}</dd>
                     </div>
                     <div>
                       <dt className="font-label text-label uppercase tracking-wide text-text-grey">Created</dt>
@@ -315,11 +315,11 @@ export function PickListsFilterableTable({
                     <th className="px-5 py-3 text-left font-label text-label uppercase tracking-wide text-text-grey">
                       <button
                         type="button"
-                        onClick={() => handleSort("customerPartyId")}
+                        onClick={() => handleSort("endCustomerPartyId")}
                         className="flex items-center gap-1 font-bold uppercase hover:text-brand-navy"
                       >
-                        <span>Organization</span>
-                        {renderSortIcon("customerPartyId")}
+                        <span>Recipient</span>
+                        {renderSortIcon("endCustomerPartyId")}
                       </button>
                     </th>
                     <th className="px-5 py-3 text-left font-label text-label uppercase tracking-wide text-text-grey">
@@ -345,7 +345,7 @@ export function PickListsFilterableTable({
                         </span>
                       </td>
                       <td className="px-5 py-4 font-body text-body-md text-on-surface">{FLOW_LABELS[row.flowType] ?? row.flowType}</td>
-                      <td className="px-5 py-4 font-mono text-mono-md text-on-surface">{row.customerPartyId}</td>
+                      <td className="px-5 py-4 font-mono text-mono-md text-on-surface">{row.endCustomerPartyName ?? row.endCustomerPartyId}</td>
                       <td className="px-5 py-4 font-body text-body-md text-text-grey">{row.createdAt.toLocaleString()}</td>
                       <td className="px-5 py-4 text-right"><PickListAction row={row} canExecute={canExecute} deleted={isDeleted} /></td>
                     </tr>

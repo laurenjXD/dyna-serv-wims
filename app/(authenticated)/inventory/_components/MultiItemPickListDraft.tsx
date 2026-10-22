@@ -37,10 +37,14 @@ type DraftLine = {
 
 export function MultiItemPickListDraft({
   stock,
+  customers,
+  endCustomers,
   createAction,
   overrideAction,
 }: {
   stock: StockSource[];
+  customers: Array<{ id: string; code: string; name: string; relationship: string }>;
+  endCustomers: Array<{ id: string; code: string; name: string }>;
   createAction: (formData: FormData) => void;
   overrideAction: (formData: FormData) => void;
 }) {
@@ -53,11 +57,17 @@ export function MultiItemPickListDraft({
   }, [stock]);
 
   const [organizationId, setOrganizationId] = useState("");
+  const [customerPartyId, setCustomerPartyId] = useState("");
+  const [endCustomerPartyId, setEndCustomerPartyId] = useState("");
   const [flowType, setFlowType] = useState<"" | "vmi" | "trading" | "supplies">("");
   const [lines, setLines] = useState<DraftLine[]>([]);
   const [overrideReason, setOverrideReason] = useState("");
   const [importingDra, setImportingDra] = useState(false);
   const [importSummary, setImportSummary] = useState<{ type: "success" | "warning" | "error"; message: string } | null>(null);
+  const visibleCustomers = useMemo(() => customers.filter((customer) =>
+    !flowType || flowType === "supplies" || customer.relationship === "customer" ||
+    (flowType === "vmi" ? customer.relationship === "vmi_customer" : customer.relationship === "trading_customer"),
+  ), [customers, flowType]);
 
   const catalog = useMemo(() => {
     const grouped = new Map<string, StockSource[]>();
@@ -109,7 +119,9 @@ export function MultiItemPickListDraft({
   };
 
   const request = useMemo(() => {
-    if (!organizationId || !flowType || lineDetails.length === 0) return "";
+    if (!organizationId || !customerPartyId || !flowType || lineDetails.length === 0) return "";
+    if (flowType === "vmi" && !endCustomerPartyId) return "";
+    const recipientPartyId = flowType === "trading" ? customerPartyId : endCustomerPartyId;
     const prepared = lineDetails.map(({ line, item, source }) => ({
       itemId: line.itemId,
       lotId: source?.lotId,
@@ -127,12 +139,14 @@ export function MultiItemPickListDraft({
     if (prepared.some((line) => !line.valid)) return "";
     return JSON.stringify({
       partyId: organizationId,
+      customerPartyId,
+      endCustomerPartyId: recipientPartyId,
       flowType,
       lines: prepared.map(({ valid: _valid, ...line }) => line),
       enforceSourceSelection: true,
       idempotencyKey: crypto.randomUUID(),
     });
-  }, [flowType, lineDetails, organizationId]);
+  }, [customerPartyId, endCustomerPartyId, flowType, lineDetails, organizationId]);
 
   const alternateLines = lineDetails.filter(({ source }) => (source?.priority ?? 1) > 1);
   const requiresOverride = alternateLines.length > 0;
@@ -140,20 +154,24 @@ export function MultiItemPickListDraft({
 
   const overrideRequest = useMemo(() => {
     const alternate = alternateLines[0];
-    if (!canRequestOverride || !organizationId || !flowType || !alternate?.source) return "";
+    if (!canRequestOverride || !organizationId || !customerPartyId || !flowType || !alternate?.source) return "";
+    if (flowType === "vmi" && !endCustomerPartyId) return "";
     const qty = Number(alternate.line.qty);
     if (
       !Number.isInteger(qty) ||
       qty <= 0 ||
       boxesToPieces(qty, alternate.item?.spq ?? 1) > alternate.source.availableQty
     ) return "";
+    const recipientPartyId = flowType === "trading" ? customerPartyId : endCustomerPartyId;
     return JSON.stringify({
       partyId: organizationId,
+      customerPartyId,
+      endCustomerPartyId: recipientPartyId,
       flowType,
       lines: [{ itemId: alternate.line.itemId, lotId: alternate.source.lotId, locationId: alternate.source.locationId, qty: boxesToPieces(qty, alternate.item?.spq ?? 1) }],
       idempotencyKey: crypto.randomUUID(),
     });
-  }, [alternateLines, canRequestOverride, flowType, organizationId]);
+  }, [alternateLines, canRequestOverride, customerPartyId, endCustomerPartyId, flowType, organizationId]);
 
   const addLine = () => setLines((current) => [...current, { id: crypto.randomUUID(), itemId: "", balanceId: "", qty: "" }]);
   const updateLine = (id: string, patch: Partial<DraftLine>) => setLines((current) => current.map((line) => line.id === id ? { ...line, ...patch } : line));
@@ -175,7 +193,19 @@ export function MultiItemPickListDraft({
       setFlowType("");
     }
   };
-  const handleFlow = (value: "" | "vmi" | "trading" | "supplies") => { setFlowType(value); resetDraft(); };
+  const handleFlow = (value: "" | "vmi" | "trading" | "supplies") => {
+    setFlowType(value);
+    resetDraft();
+    if (value === "trading" && customerPartyId) {
+      setEndCustomerPartyId(customerPartyId);
+    } else if (value === "vmi") {
+      setEndCustomerPartyId(
+        endCustomers.some((party) => party.id === customerPartyId) ? customerPartyId : "",
+      );
+    } else if (value !== "trading") {
+      setEndCustomerPartyId("");
+    }
+  };
 
   async function handleDraImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -400,6 +430,65 @@ export function MultiItemPickListDraft({
                 </option>
               ))}
             </select>
+          </label>
+
+          {flowType === "trading" ? (
+            <div className="grid gap-1 font-label text-xs font-bold text-slate-700">
+              Customer / Recipient
+              <div className="flex min-h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 font-body text-xs text-slate-700">
+                {customerPartyId
+                  ? visibleCustomers.find((party) => party.id === customerPartyId)?.name ?? "Selected trading customer"
+                  : "Select a trading customer below"}
+              </div>
+              <span className="font-body text-[11px] font-normal text-slate-500">Trading ships from Dyna-Serv to the selected trading customer.</span>
+            </div>
+          ) : (
+            <label className="grid gap-1 font-label text-xs font-bold text-slate-700">
+              End Customer / Recipient
+              <select
+                value={endCustomerPartyId}
+                onChange={(event) => setEndCustomerPartyId(event.target.value)}
+                disabled={!customerPartyId || flowType !== "vmi"}
+                required={flowType === "vmi"}
+                className="h-9 rounded-lg border border-slate-200 bg-white px-3 font-body text-xs text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
+              >
+                <option value="">Select end customer...</option>
+                {endCustomers.map((party) => (
+                  <option key={party.id} value={party.id}>{party.name} ({party.code})</option>
+                ))}
+              </select>
+              <span className="font-body text-[11px] font-normal text-slate-500">VMI releases require the downstream end customer who will receive the stock.</span>
+            </label>
+          )}
+
+          <label className="grid gap-1 font-label text-xs font-bold text-slate-700">
+            {flowType === "vmi" ? "VMI Customer / Stock Owner" : "Customer / Bill-to"}
+            <select
+              value={customerPartyId}
+              onChange={(event) => {
+                const nextCustomerId = event.target.value;
+                setCustomerPartyId(nextCustomerId);
+                setEndCustomerPartyId(
+                  flowType === "trading"
+                    ? nextCustomerId
+                    : endCustomers.some((party) => party.id === nextCustomerId) ? nextCustomerId : "",
+                );
+              }}
+              required
+              className="h-9 rounded-lg border border-slate-200 bg-white px-3 font-body text-xs text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
+            >
+              <option value="">Select customer…</option>
+              {visibleCustomers.map((customer) => (
+                <option key={`${customer.id}:${customer.relationship}`} value={customer.id}>
+                  {customer.name} — {customer.relationship === "vmi_customer" ? "Customer · VMI" : customer.relationship === "trading_customer" ? "Customer · Trading" : "Customer"}
+                </option>
+              ))}
+            </select>
+            <span className="font-body text-[11px] font-normal text-slate-500">
+              {flowType === "vmi"
+                ? "The VMI customer owns the selected stock; choose the downstream recipient above."
+                : "The trading customer is both the bill-to and delivery recipient."}
+            </span>
           </label>
 
           <div className="grid gap-1 font-label text-xs font-bold text-slate-700">

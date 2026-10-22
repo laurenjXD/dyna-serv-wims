@@ -100,3 +100,20 @@ The Outgoing page (`/outgoing`) features 2 primary sub-tabs:
 - [ ] Allocated and picked documents are visually separated into To Pick and To Dispatch queues and cannot expose the wrong phase action.
 - [ ] Generation creates an allocated list in To Pick; only the explicit non-scan Mark as Picked action moves it to To Dispatch and enables Dispatch.
 - [ ] Outgoing Ledger displays Delivery Conformance KPI card, live status filter dropdown, and direct link to dashboard conformance line graph.
+
+## 6. Approved amendment — end-customer recipient workflow (2026-10-22)
+
+1. Pick-list generation SHALL select an active enrolled `end_customer` organization before allocation is committed.
+2. For VMI, the VMI customer remains the commercial/ownership party and the end customer defaults to that same organization; a different end customer may be selected when the request identifies a downstream recipient.
+3. For Trading, the selected end customer is the sale recipient; the supplier is inbound procurement context and is not the dispatch recipient.
+4. The selected recipient SHALL be snapshotted in `pick_lists.end_customer_party_id` and shown in the ICL/Pick Lists queue, pick-list print, dispatch screen, Outgoing Ledger, and acknowledgement receipt.
+5. The recipient is locked after commitment. A correction requires release/reissue or an authorized superseding document; dispatch never accepts a new recipient from the floor client.
+6. If customer and end customer are the same party, the UI displays one combined `Customer / End Customer` value.
+## 13. Approved clarification - flow-specific outbound recipient (2026-10-22)
+
+The outbound recipient contract is flow-specific:
+
+1. **Trading**: Dyna-Serv ships warehouse-owned stock to the selected organization enrolled as `trading_customer`. `customer_party_id` and the recipient snapshot identify that trading customer. A separate `end_customer` selection is not shown or required.
+2. **VMI**: the organization enrolled as `vmi_customer` is the stock owner and commercial customer. The operator must select an active downstream organization enrolled as `end_customer`; that organization is the recipient snapshot.
+3. The immutable database column `pick_lists.end_customer_party_id` is retained as the physical-recipient snapshot for compatibility. For Trading it contains the direct trading customer; for VMI it contains the downstream end customer.
+4. Queue, pick-list, dispatch, ledger, print, and acknowledgement-receipt surfaces label the value as `Customer / Recipient` for Trading and `End Customer` for VMI (or the neutral `Recipient` where a shared table cannot use a flow-specific header).

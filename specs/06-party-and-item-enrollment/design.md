@@ -1,7 +1,7 @@
 # Party & Item Enrollment — Design
 
 Status: Approved
-Updated: 2026-10-14 (Phase 2 amendment: canonical roles, RBE, Data Management, and billing boundary)
+Updated: 2026-10-22 (role semantics and outbound recipient clarification)
 
 ## 1. Design intent
 
@@ -115,18 +115,22 @@ The client may send a requested record identifier, but the server resolves the a
 
 1. User opens the party create route through an authorized capability (`parties.manage`).
 2. The form collects `code` (required, normalized, unique), `name` (required), `contact_person`, `email`, `phone`, `tax_id`, `address_1`, `address_2`, `payment_terms`, and `notes` using the exact column names from the approved `parties` schema. `is_active` defaults to `true`.
-3. The user selects one or more canonical business roles: `supplier`, `customer`, `end_customer`, or `internal_supplies`. These are business classifications only; they do not grant application access.
+3. The user selects one or more canonical business roles: `supplier`, `customer`, `end_customer`, or `internal_supplies`. These are business classifications only; they do not grant application access. Their relationship meanings are fixed: `supplier` is the Trading inbound source, `customer` is the company's direct commercial buyer for VMI and Trading, `end_customer` is the non-billable outbound recipient, and `internal_supplies` is internal warehouse use. Customer and End-Customer may coexist on a party master record; the transaction's bill-to/customer and ship-to/end-customer roles determine how that party is used.
 4. If `customer` is selected, the form exposes EE/ELSE/ETC RBE checkboxes with a maximum of three; otherwise RBE input is hidden and rejected if supplied.
 5. The server revalidates code uniqueness, canonical role validity, duplicate roles, RBE eligibility/cardinality, and actor capability in one transaction.
 6. The `parties`, `party_roles`, and applicable `party_rbe_classifications` rows are committed atomically, with an audit event if required by the approved audit design.
 
 ### 5b. Role-conditioned enrollment and billing boundary
 
-- Supplier enrollment supports the supplier relationship and purchase documents. Supplier invoices bill Dyna Serv directly; Supplier is not an SOA recipient by this feature.
-- Customer enrollment supports RBE classification and customer-facing operational records. Customers are eligible for SOA rules, but billing is not enabled for Customers.
-- End-Customer enrollment is a customer-of-customer reference and produces no billing or SOA records.
+- Supplier enrollment supports the Trading inbound source/procurement relationship and purchase documents. Supplier invoices bill Dyna Serv directly; Supplier is not an SOA recipient by this feature.
+- Customer enrollment supports the direct commercial buyer relationship for VMI and Trading, RBE classification, ownership/billing scope, and customer-facing operational records. A Customer is not the Trading inbound source merely because it is a customer.
+- End-Customer enrollment identifies the non-billable outbound delivery recipient. It produces no billing or SOA records when used as the recipient; it may coexist with Customer and Supplier.
 - Internal Supplies is for internal-use organization classification and is not a billable party.
 - A shared server-side policy function, owned by the billing/financial specs, is the only source of truth for SOA eligibility and billing eligibility; client role labels are display-only.
+
+### 5d. Flow-specific party relationships
+
+The Organization form presents a separate relationship section backed by `01-core-data-model`'s `party_flow_relationships`: `VMI Customer`, `Trading Customer`, and `Trading Supplier`. The server requires the corresponding business role (`customer` for the first two, `supplier` for the third), rejects duplicate relationship rows, and allows both customer relationships on one organization. Selectors render the organization name with the relationship label; they do not create duplicate party records.
 
 ### 5c. Data Management subtabs and export
 
@@ -187,7 +191,7 @@ The following rules are derived from the approved `01-core-data-model` precision
 
 ### Default supplier
 
-The default supplier selector queries active authorized `parties` whose `party_roles` include `supplier` or `vendor`. It stores the selected party as `default_supplier_party_id` (FK to `parties.id`) on the `items` row. Inactive parties must not appear in the selector. The selector must not accept free-text party identifiers as the primary relation, and it must not create a party inline.
+The default supplier selector queries active authorized `parties` whose `party_roles` include `supplier` (or legacy `vendor` only while migration compatibility is required). It stores the selected party as `default_supplier_party_id` (FK to `parties.id`) on the `items` row. Customer, End-Customer, and Internal Supplies-only parties must not appear in this inbound-source selector. Inactive parties must not appear in the selector. The selector must not accept free-text party identifiers as the primary relation, and it must not create a party inline.
 
 ### Price boundary
 

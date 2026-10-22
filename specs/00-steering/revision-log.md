@@ -1784,4 +1784,9 @@ labels, removes only safe duplicate/out-of-grid rows, and fills any missing
 canonical cells. Legacy H/I records remain outside the aligned map registry so
 their operational history is not deleted without a separate source-backed
 decision.
+## End-customer recipient identity (2026-10-22)
+
+The Product Owner clarified that `customer` is the company's direct commercial buyer for both VMI and Trading. `supplier` is the Trading-side inbound source. `end_customer` is the non-billable outbound recipient and may also be classified as a supplier or customer. The approved amendment adds `pick_lists.end_customer_party_id`, backfills it from the legacy `customer_party_id`, requires recipient selection before commitment, keeps commercial customer/bill-to identity in `customer_party_id`, and displays the physical recipient in the ICL/Pick Lists queue, dispatch, Outgoing Ledger, pick-list print, and acknowledgement receipt. Same-party cases display one combined value; post-commitment changes require release/reissue or superseding documentation.
+
+The same role boundary applies to master-data enrollment: the default inbound-source/supplier selector admits only Supplier-classified organizations (legacy `vendor` only for migration compatibility); Customer is not a Trading supplier, and End-Customer is not an inbound source merely because it is an outbound recipient. Multi-role parties remain valid, but each workflow uses the relationship-specific role and field.
 

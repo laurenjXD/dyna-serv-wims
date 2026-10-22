@@ -109,3 +109,16 @@ The `01` canonical `lot_history_export` read-model contract refreshes daily, ret
 - Automated CBM billing rate calculation & period invoicing (specified in `12-vmi-billing`).
 - Withdrawal two-stage commitment & price margin logic (specified in `08` and `13`).
 - Specific printed form layout requirements for the WRR (handled in `07-incoming-receiving`).
+
+## 5. Approved amendment — outbound end-customer identity (2026-10-22)
+
+- `customer` means the company's direct commercial buyer for VMI and Trading.
+- `end_customer` is the outbound recipient classification. A party may also be a `supplier` or `customer`.
+- `pick_lists` SHALL retain the existing VMI/customer relationship and add a required `end_customer_party_id` for the physical recipient.
+- Existing rows SHALL be backfilled from `customer_party_id` before the new field becomes required. In the normal same-party case both IDs are equal.
+
+## 6. Approved amendment — flow-specific party relationships (2026-10-22)
+
+- A single `parties` row SHALL remain the organization master record.
+- The system SHALL store explicit active flow-specific relationships so one Customer organization can be selected distinctly as a VMI Customer or Trading Customer, and a Supplier can be selected as a Trading inbound source.
+- Relationship values SHALL be `vmi_customer`, `trading_customer`, and `trading_supplier`; they SHALL be unique per party and independently activatable without duplicating the organization.

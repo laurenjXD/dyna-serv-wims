@@ -130,9 +130,9 @@ export default async function DispatchConfirmationPage({
   const partyRows = (await db
     .select({ id: parties.id, name: parties.name })
     .from(parties)
-    .where(eq(parties.id, pickList.customerPartyId))
+    .where(eq(parties.id, pickList.endCustomerPartyId))
     .limit(1)) as Array<{ id: string; name: string }>;
-  const partyName = partyRows[0]?.name ?? "Unknown Organization";
+  const partyName = partyRows[0]?.name ?? (pickList.flowType === "vmi" ? "Unknown End Customer" : "Unknown Customer");
 
   const alreadyDispatched = pickList.status === "dispatched";
   const awaitingPickCompletion = pickList.status === "allocated";

@@ -20,7 +20,7 @@ import {
   buildContactPartyPayload,
 } from "@/lib/enrollment/contact-party";
 import type { ContactPartyEmailPayload } from "@/lib/enrollment/contact-party";
-import { parties, partyRoles, partyRbeClassifications } from "@/lib/db/schema/parties";
+import { parties, partyRoles, partyRbeClassifications, partyFlowRelationships } from "@/lib/db/schema/parties";
 import { withRlsTransaction } from "@/lib/db/rls-transaction";
 import type { RlsTransactionDeps } from "@/lib/db/rls-transaction";
 import { rlsPool } from "@/lib/db/rls-pool";
@@ -375,6 +375,44 @@ export async function setPartyRbeClassifications(
     return { ok: true } satisfies ActionSimpleResult;
   });
   return result.kind === "unauthenticated" ? { ok: false, error: "Forbidden" } : result.value;
+}
+
+export type PartyFlowRelationshipValue = "vmi_customer" | "trading_customer" | "trading_supplier";
+
+export async function setPartyFlowRelationships(
+  resolver: RequestAuthorizationResolver,
+  partyId: string,
+  relationships: readonly string[],
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+): Promise<ActionSimpleResult> {
+  const denied = await checkPermission(resolver, "parties.manage");
+  if (denied) return denied;
+  const requested = [...new Set(relationships)];
+  const valid = new Set<PartyFlowRelationshipValue>(["vmi_customer", "trading_customer", "trading_supplier"]);
+  if (requested.some((relationship) => !valid.has(relationship as PartyFlowRelationshipValue))) {
+    return { ok: false, error: "Invalid flow-specific organization relationship." };
+  }
+
+  const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
+    const roleRows = await db.select({ role: partyRoles.role }).from(partyRoles).where(eq(partyRoles.partyId, partyId));
+    const roles = new Set((roleRows as Array<{ role: string }>).map((row) => row.role));
+    if (requested.some((relationship) =>
+      (relationship === "vmi_customer" || relationship === "trading_customer") && !roles.has("customer") ||
+      relationship === "trading_supplier" && !roles.has("supplier"))) {
+      return { ok: false, error: "Each flow relationship requires its matching business role." } satisfies ActionSimpleResult;
+    }
+
+    await db.delete(partyFlowRelationships).where(eq(partyFlowRelationships.partyId, partyId));
+    if (requested.length > 0) {
+      await db.insert(partyFlowRelationships).values(requested.map((relationship) => ({
+        partyId,
+        relationship: relationship as PartyFlowRelationshipValue,
+      })));
+    }
+    return { ok: true } satisfies ActionSimpleResult;
+  });
+  return rlsResult.kind === "unauthenticated" ? { ok: false, error: "Forbidden" } : rlsResult.value;
 }
 
 // ---------------------------------------------------------------------------

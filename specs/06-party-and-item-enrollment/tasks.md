@@ -1,7 +1,7 @@
 # Party & Item Enrollment — Implementation Plan
 
 Status: Approved
-Updated: 2026-10-14 (Phase 2 amendment: canonical roles, RBE, Data Management, and billing boundary)
+Updated: 2026-10-22 (role semantics and outbound recipient clarification)
 
 ## Implementation gate
 
@@ -179,6 +179,7 @@ Testing: All applicable layers below.
 ### Manual QA
 
 - [ ] Verify role labels (Supplier, Customer, End-Customer, Internal Supplies) are presented as business classifications and not application roles; legacy labels are migration-only.
+- [ ] Verify Supplier is the only role admitted by the default inbound-source selector; Customer is the direct buyer for VMI and Trading; End-Customer is the non-billable recipient role, and billing follows the transaction's customer/bill-to role.
 - [ ] Verify no UI uses `suppliers`, `SKU`, `bins`, or `warehouse_id` as entity concepts.
 - [ ] Verify price/help text does not imply final Trading pricing or authoritative VMI billing.
 - [ ] Verify database/reference impact behavior before deactivation.
@@ -194,7 +195,7 @@ Status: Pending Reapproval
 - [x] Define and execute an auditable backfill for existing customer RBE classifications; reject ambiguous records for manual review.
 - [ ] Make party, canonical roles, and RBE mutations atomic and server-authorized; reject legacy role values for new writes.
 - [ ] Implement conditional enrollment: RBE fields only for Customer, no billing/SOA output for End-Customer, and no client-only enforcement.
-- [ ] Implement the shared billable-party policy with `12-vmi-billing`/customer consumers: SOA restricted to VMI and Customers, billing restricted to VMI, Supplier invoices addressed to Dyna Serv, End-Customers excluded.
+- [ ] Implement the shared billable-party policy with `12-vmi-billing`/customer consumers: SOA and billing follow the transaction's Customer/bill-to party for VMI and Trading, Supplier invoices are addressed to Dyna Serv, and End-Customers are excluded as recipients.
 - [ ] Add Data Management subtabs for Organizations, Material, Locations, and Exports; preserve canonical database identifiers while updating labels.
 - [ ] Add a complete server-backed export with capability checks, scope filtering, canonical roles/RBE values, and no page-size truncation.
 - [ ] Extend email generation with optional CC validation and pipeline handoff; add regression coverage.
@@ -211,3 +212,21 @@ Status: Pending Reapproval
 - [ ] `design-system-auditor` review passes for updated terminology and responsive export/subtab surfaces.
 - [x] Product owner approval — Developer approval, 2026-10-14.
 - [x] Second approver approval — Developer approval, 2026-10-14.
+
+## Flow-specific relationships amendment — 2026-10-22
+
+Status: Approved
+
+- [x] Add Organization-form management for VMI Customer, Trading Customer, and Trading Supplier relationships.
+- [x] Enforce role compatibility and duplicate prevention server-side.
+- [x] Product owner approval — Developer approval, 2026-10-22.
+- [x] Second approver approval — Developer approval, 2026-10-22.
+
+## Role semantics amendment — outbound recipient and relationship boundaries (2026-10-22)
+
+Status: Approved
+
+The canonical business classifications now have explicit relationship meanings: Supplier is the Trading-side inbound source; Customer is the company's direct buyer for VMI and Trading; End-Customer is the non-billable outbound recipient; Internal Supplies is internal warehouse use. Customer and End-Customer may coexist on a party master record, while each transaction selects its bill-to/customer and ship-to/end-customer roles. The item default-supplier selector is Supplier-only (with legacy `vendor` migration compatibility), and outbound recipient selection is governed by `end_customer_party_id` in the approved `08`/`10` contract.
+
+- [x] Product owner approval — Developer approval, 2026-10-22.
+- [x] Second approver approval — Developer approval, 2026-10-22.

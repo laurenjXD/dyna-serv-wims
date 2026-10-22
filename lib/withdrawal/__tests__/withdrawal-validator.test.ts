@@ -131,6 +131,23 @@ describe("validateWithdrawal — valid input (R1.1, R1.2, design.md §6)", () =>
       expect(result.data.idempotencyKey).toBe("idem-key-abc-123");
     }
   });
+
+  it("defaults the end customer to the VMI/customer party for the same-party case", () => {
+    const result = validateWithdrawal(validWithdrawalInput());
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data.endCustomerPartyId).toBe(result.data.partyId);
+  });
+
+  it("preserves an explicitly selected downstream end customer", () => {
+    const result = validateWithdrawal({
+      ...validWithdrawalInput(),
+      endCustomerPartyId: "party-uuid-end-customer",
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data.endCustomerPartyId).toBe("party-uuid-end-customer");
+  });
 });
 
 // ---------------------------------------------------------------------------

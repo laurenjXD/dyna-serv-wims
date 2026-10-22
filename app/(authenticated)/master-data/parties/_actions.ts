@@ -26,6 +26,7 @@ import {
   removePartyRole,
   contactParty,
   setPartyRbeClassifications,
+  setPartyFlowRelationships,
 } from "@/lib/actions/parties";
 import type { ContactPartyEmailPayload } from "@/lib/actions/parties";
 import { validateRbeSelection } from "@/lib/enrollment/rbe";
@@ -57,7 +58,16 @@ function readEnrollmentRolesAndRbe(formData: FormData) {
     .map((role) => role.trim().toLowerCase());
   const rbe = validateRbeSelection(formData.getAll("rbe"), roles.includes("customer"));
   if (!rbe.valid) return { error: rbe.reason } as const;
-  return { roles, rbe: rbe.values } as const;
+  const flowRelationships = formData
+    .getAll("flowRelationships")
+    .filter((value): value is string => typeof value === "string" && value.trim() !== "")
+    .map((relationship) => relationship.trim().toLowerCase());
+  if (flowRelationships.some((relationship) =>
+    (relationship === "vmi_customer" || relationship === "trading_customer") && !roles.includes("customer") ||
+    relationship === "trading_supplier" && !roles.includes("supplier"))) {
+    return { error: "Each operational relationship requires its matching business role." } as const;
+  }
+  return { roles, rbe: rbe.values, flowRelationships } as const;
 }
 
 // ---------------------------------------------------------------------------
@@ -107,6 +117,8 @@ export async function createPartyAction(
   }
   const rbeResult = await setPartyRbeClassifications(resolver, partyId, enrollment.rbe);
   if (!rbeResult.ok) return { error: rbeResult.error };
+  const relationshipResult = await setPartyFlowRelationships(resolver, partyId, enrollment.flowRelationships);
+  if (!relationshipResult.ok) return { error: relationshipResult.error };
 
   revalidatePath("/master-data/parties");
   revalidatePath("/enrollment");
@@ -207,6 +219,9 @@ export async function updatePartyAction(
     };
   }
   if (!rbeResult.ok) return { error: rbeResult.error };
+
+  const relationshipResult = await setPartyFlowRelationships(resolver, id, enrollment.flowRelationships);
+  if (!relationshipResult.ok) return { error: relationshipResult.error };
 
   revalidatePath("/master-data/parties");
   revalidatePath("/enrollment");

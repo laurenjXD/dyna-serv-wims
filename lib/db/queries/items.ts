@@ -5,7 +5,7 @@
 
 import { eq, ilike, or, and, isNotNull, desc, sql } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
-import { items, itemCategories, parties, partyRoles, lots, wrrItems, inventoryTransactions } from "@/lib/db/schema";
+import { items, itemCategories, parties, partyRoles, partyFlowRelationships, lots, wrrItems, inventoryTransactions } from "@/lib/db/schema";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type DbLike = { select: (...args: any[]) => any };
@@ -69,6 +69,7 @@ export type SupplierPartyOption = {
   code: string;
   name: string;
   roles?: string[];
+  relationship?: "vmi_customer" | "trading_customer" | "trading_supplier";
   defaultInventoryModel?: "vmi" | "trading" | "supplies";
 };
 
@@ -342,7 +343,7 @@ async function listActivePartyOptions(
   roleFilter: SQL<unknown>,
   allowedRoles?: ReadonlySet<string>,
 ): Promise<SupplierPartyOption[]> {
-  let rows: Array<{ id: string; code: string; name: string; role: string }>;
+  let rows: Array<{ id: string; code: string; name: string; role: string; relationship: string | null }>;
   try {
     rows = (await db
       .select({
@@ -350,9 +351,11 @@ async function listActivePartyOptions(
         code: parties.code,
         name: parties.name,
         role: partyRoles.role,
+        relationship: partyFlowRelationships.relationship,
       })
       .from(parties)
       .innerJoin(partyRoles, eq(partyRoles.partyId, parties.id))
+      .leftJoin(partyFlowRelationships, eq(partyFlowRelationships.partyId, parties.id))
       .where(
         and(
           eq(parties.isActive, true),
@@ -361,6 +364,7 @@ async function listActivePartyOptions(
           // `internal_supplies` value, so binding that string as an enum
           // parameter would fail the whole query before any rows are read.
           roleFilter,
+          sql`${partyFlowRelationships.id} IS NULL OR ${partyFlowRelationships.isActive} = true`,
         ),
       )
       .orderBy(parties.name)) as Array<{
@@ -368,14 +372,14 @@ async function listActivePartyOptions(
         code: string;
         name: string;
         role: string;
+        relationship: string | null;
       }>;
   } catch (error) {
     console.error("[items] active supplier parties unavailable", error);
     rows = [];
   }
 
-  // Group roles by party
-  const map = new Map<string, { id: string; code: string; name: string; roles: string[] }>();
+  const map = new Map<string, SupplierPartyOption>();
   for (const row of rows) {
     // Normalize legacy role labels for the presentation model. Migration
     // 0049 maps these values in the canonical database, but keeping this
@@ -385,46 +389,19 @@ async function listActivePartyOptions(
       : row.role === "internal_warehouse"
         ? "internal_supplies"
         : row.role;
+    const relationship = row.relationship === "trading_supplier" || role === "supplier"
+      ? "trading_supplier"
+      : row.relationship === "trading_customer" ? "trading_customer" : "vmi_customer";
     if (allowedRoles && !allowedRoles.has(role)) continue;
     const existing = map.get(row.id);
-    if (!existing) {
-      map.set(row.id, {
-        id: row.id,
-        code: row.code,
-        name: row.name,
-        roles: [role],
-      });
-    } else {
-      if (!existing.roles.includes(role)) {
-        existing.roles.push(role);
-      }
-    }
+    if (!existing) map.set(row.id, { id: row.id, code: row.code, name: row.name, roles: [role], relationship });
+    else if (!existing.roles?.includes(role)) existing.roles = [...(existing.roles ?? []), role];
   }
 
-  return Array.from(map.values()).map((p) => {
-    // Map assigned party role to automatic default inventory model:
-    // - Customer: VMI (receives warehouse services & billable) and trading buyer
-    // - Supplier: Trading only (goods supplier)
-    // - Internal Warehouse: Supplies
-    let defaultInventoryModel: "vmi" | "trading" | "supplies" | undefined;
-    if (p.roles.includes("customer")) {
-      defaultInventoryModel = "vmi";
-    } else if (p.roles.includes("supplier")) {
-      defaultInventoryModel = "trading";
-    } else if (p.roles.includes("internal_supplies")) {
-      defaultInventoryModel = "supplies";
-    } else if (p.roles.includes("end_customer")) {
-      defaultInventoryModel = "trading";
-    }
-
-    return {
-      id: p.id,
-      code: p.code,
-      name: p.name,
-      roles: p.roles,
-      defaultInventoryModel,
-    };
-  });
+  return Array.from(map.values()).map((p) => ({
+    ...p,
+    defaultInventoryModel: p.relationship === "vmi_customer" ? "vmi" : p.relationship === "trading_supplier" || p.relationship === "trading_customer" ? "trading" : "supplies",
+  }));
 }
 
 // ---------------------------------------------------------------------------

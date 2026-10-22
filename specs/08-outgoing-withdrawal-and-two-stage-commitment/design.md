@@ -222,7 +222,7 @@ Item code is the prominent first field in office review. Floor screens do not us
 | Qty | `inventory_transactions.qty` |
 | From location | `locations.label` via `inventory_transactions.from_location_id` |
 | Pick list # | `pick_lists.pick_list_number` via `inventory_transactions.pick_list_id` |
-| Customer party | `parties.name`/`code` via `pick_lists.customer_party_id` |
+| End customer | `parties.name`/`code` via `pick_lists.end_customer_party_id` |
 | Acknowledgement receipt # | `acknowledgement_receipts.document_number`, resolved via the same `pick_list_id` (per `10`) |
 | Performed by | `performed_by_user_id` resolved to display name |
 | Reference | `inventory_transactions.ar_reference_no` |
@@ -248,3 +248,10 @@ Item code is the prominent first field in office review. Floor screens do not us
 - [ ] Confirm document event/storage/print failure behavior with `10` and `04`.
 - [ ] Confirm route/floor interaction patterns with `05`.
 - [ ] Have `offline-sync-reviewer`, `rbac-rls-reviewer`, `design-system-auditor`, and `db-migration-verifier` review before approval.
+
+## 12. Approved amendment — end-customer selection and snapshot (2026-10-22)
+
+The Stage 1 request carries `endCustomerPartyId`. The server validates that the party is active and enrolled with `end_customer`, then writes it to `pick_lists.end_customer_party_id` inside the commitment transaction. VMI retains `customerPartyId` for customer/ownership and billing semantics. For the same-party default, both IDs are equal. The floor pick and dispatch commands only read this immutable snapshot; they cannot change the recipient.
+### 12.1 Flow-specific recipient interpretation
+
+The command normalizes the outbound recipient before writing the immutable snapshot. In Trading, the recipient is always `customerPartyId` and must represent the selected `trading_customer`; any separate end-customer value from a client is ignored. In VMI, the recipient is `endCustomerPartyId` and must be an active party with the `end_customer` role, while `customerPartyId` remains the VMI stock owner/customer. The UI therefore exposes one `Customer / Recipient` selector for Trading and separate `VMI Customer / Stock Owner` plus `End Customer / Recipient` selectors for VMI.

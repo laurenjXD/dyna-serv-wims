@@ -4,8 +4,8 @@
 //   specs/06-party-and-item-enrollment/design.md §7 (Search, list, and detail)
 //   specs/06-party-and-item-enrollment/tasks.md §3
 
-import { eq, ilike, or, desc, sql, inArray } from "drizzle-orm";
-import { parties, partyRoles, partyRbeClassifications } from "@/lib/db/schema";
+import { and, eq, ilike, or, desc, sql, inArray, isNull } from "drizzle-orm";
+import { parties, partyRoles, partyRbeClassifications, partyFlowRelationships } from "@/lib/db/schema";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type DbLike = { select: (...args: any[]) => any };
@@ -31,6 +31,13 @@ export type PartyRoleRow = {
   createdAt: Date;
 };
 
+export type PartyFlowRelationshipRow = {
+  id: string;
+  relationship: string;
+  isActive: boolean;
+  createdAt: Date;
+};
+
 export type PartyDetail = {
   id: string;
   code: string;
@@ -47,6 +54,7 @@ export type PartyDetail = {
   createdAt: Date;
   updatedAt: Date;
   roles: PartyRoleRow[];
+  flowRelationships: PartyFlowRelationshipRow[];
   rbeClassifications: string[];
 };
 
@@ -94,6 +102,53 @@ export async function listPartyOrganizationNames(db: DbLike): Promise<string[]> 
     .filter(([, roles]) => roles.size === 0 || [...roles].some((role) => role !== "end_customer"))
     .map(([name]) => name)
     .sort((left, right) => left.localeCompare(right));
+}
+
+/** Active organizations that may be selected as an outbound recipient. */
+export async function listActiveEndCustomers(db: DbLike): Promise<Array<Pick<PartyListRow, "id" | "code" | "name">>> {
+  const rows = await db
+    .select({ id: parties.id, code: parties.code, name: parties.name })
+    .from(parties)
+    .innerJoin(partyRoles, eq(partyRoles.partyId, parties.id))
+    .where(and(eq(parties.isActive, true), eq(partyRoles.role, "end_customer")))
+    .orderBy(parties.name);
+  return rows as Array<Pick<PartyListRow, "id" | "code" | "name">>;
+}
+
+export type FlowPartyOption = {
+  id: string;
+  code: string;
+  name: string;
+  relationship: "vmi_customer" | "trading_customer" | "trading_supplier" | "customer";
+};
+
+/** Active direct-customer relationships for flow-aware outbound selectors. */
+export async function listActiveCustomerFlowParties(db: DbLike): Promise<FlowPartyOption[]> {
+  const rows = await db
+    .select({
+      id: parties.id,
+      code: parties.code,
+      name: parties.name,
+      relationship: partyFlowRelationships.relationship,
+    })
+    .from(parties)
+    .innerJoin(partyRoles, eq(partyRoles.partyId, parties.id))
+    .leftJoin(partyFlowRelationships, eq(partyFlowRelationships.partyId, parties.id))
+    .where(and(
+      eq(parties.isActive, true),
+      eq(partyRoles.role, "customer"),
+      or(isNull(partyFlowRelationships.id), eq(partyFlowRelationships.isActive, true)),
+    ))
+    .orderBy(parties.name);
+  const deduped = new Map<string, FlowPartyOption>();
+  for (const row of rows as Array<{ id: string; code: string; name: string; relationship: string | null }>) {
+    const relationship = row.relationship === "vmi_customer" || row.relationship === "trading_customer"
+      ? row.relationship
+      : "customer";
+    const key = `${row.id}:${relationship}`;
+    if (!deduped.has(key)) deduped.set(key, { ...row, relationship });
+  }
+  return [...deduped.values()];
 }
 
 // ---------------------------------------------------------------------------
@@ -244,9 +299,26 @@ export async function getPartyWithRoles(
     // RBE classifications are optional for rendering the organization detail.
   }
 
+  let flowRelationshipRows: PartyFlowRelationshipRow[] = [];
+  try {
+    flowRelationshipRows = (await db
+      .select({
+        id: partyFlowRelationships.id,
+        relationship: partyFlowRelationships.relationship,
+        isActive: partyFlowRelationships.isActive,
+        createdAt: partyFlowRelationships.createdAt,
+      })
+      .from(partyFlowRelationships)
+      .where(eq(partyFlowRelationships.partyId, id))
+      .orderBy(partyFlowRelationships.relationship)) as PartyFlowRelationshipRow[];
+  } catch {
+    // Relationship data is optional during staggered deployment.
+  }
+
   return {
     ...party,
     roles: roleRows,
+    flowRelationships: flowRelationshipRows,
     rbeClassifications: rbeRows.map((row) => row.classification.toUpperCase()),
   };
 }

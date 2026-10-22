@@ -16,10 +16,16 @@ import { computeNextPartyCode } from "@/lib/db/queries/parties";
 import { PhoneInputField } from "@/components/global/PhoneInputField";
 
 const PARTY_ROLES = [
-  { value: "supplier", label: "Supplier" },
-  { value: "customer", label: "Customer" },
-  { value: "end_customer", label: "End Customer" },
-  { value: "internal_supplies", label: "Internal Supplies" },
+  { value: "supplier", label: "Supplier", description: "Trading inbound source / procurement relationship" },
+  { value: "customer", label: "Customer", description: "Direct commercial buyer (VMI or Trading)" },
+  { value: "end_customer", label: "End Customer", description: "Outbound delivery recipient" },
+  { value: "internal_supplies", label: "Internal Supplies", description: "Internal warehouse use" },
+] as const;
+
+const FLOW_RELATIONSHIPS = [
+  { value: "vmi_customer", label: "VMI Customer", description: "Customer relationship for VMI-owned inventory" },
+  { value: "trading_customer", label: "Trading Customer", description: "Direct buyer of Trading inventory" },
+  { value: "trading_supplier", label: "Trading Supplier", description: "Inbound source for Trading inventory" },
 ] as const;
 
 export const RBE_OPTIONS = [
@@ -52,6 +58,9 @@ export function PartyForm({ action, party, initialCode, existingCodes = [], canc
     }
     return [];
   });
+  const [selectedFlowRelationships, setSelectedFlowRelationships] = useState<string[]>(() =>
+    party?.flowRelationships.filter((relationship) => relationship.isActive).map((relationship) => relationship.relationship) ?? [],
+  );
 
   // Parse existing RBE and clean notes
   const initialRbe = useMemo(() => {
@@ -148,7 +157,7 @@ export function PartyForm({ action, party, initialCode, existingCodes = [], canc
               Business Roles
             </legend>
             <div className="mt-2 flex flex-wrap gap-4">
-              {PARTY_ROLES.map(({ value, label }) => (
+              {PARTY_ROLES.map(({ value, label, description }) => (
                 <label
                   key={value}
                   className="flex cursor-pointer items-center gap-2 font-body text-sm text-on-surface"
@@ -161,9 +170,46 @@ export function PartyForm({ action, party, initialCode, existingCodes = [], canc
                     onChange={(e) => handleRoleToggle(value, e.target.checked)}
                     className="h-4 w-4 rounded border-outline-variant/30 text-brand-navy focus:ring-2 focus:ring-brand-navy"
                   />
-                  <span>{label}</span>
+                  <span>
+                    <span className="block">{label}</span>
+                    <span className="block text-xs font-normal text-on-surface-variant">{description}</span>
+                  </span>
                 </label>
               ))}
+            </div>
+          </fieldset>
+        </div>
+
+        <div className="md:col-span-2 rounded-xl border border-outline-variant/30 bg-surface-light-grey/30 p-4">
+          <fieldset>
+            <legend className="font-body text-sm font-semibold text-on-surface">
+              Operational Relationships
+            </legend>
+            <p className="mt-1 font-body text-xs text-text-grey">
+              These relationships control the labels and eligible workflow dropdowns. One organization may have more than one.
+            </p>
+            <div className="mt-3 grid gap-3 md:grid-cols-3">
+              {FLOW_RELATIONSHIPS.map(({ value, label, description }) => {
+                const requiresCustomer = value === "vmi_customer" || value === "trading_customer";
+                const enabled = selectedRoles.includes(requiresCustomer ? "customer" : "supplier");
+                return (
+                  <label key={value} className={`flex gap-2 rounded-lg border p-3 font-body text-sm ${enabled ? "cursor-pointer border-outline-variant/40 bg-white" : "cursor-not-allowed border-outline-variant/20 bg-slate-50 text-slate-400"}`}>
+                    <input
+                      type="checkbox"
+                      name="flowRelationships"
+                      value={value}
+                      checked={selectedFlowRelationships.includes(value)}
+                      disabled={!enabled}
+                      onChange={(event) => setSelectedFlowRelationships((current) => event.target.checked ? [...current, value] : current.filter((item) => item !== value))}
+                      className="mt-0.5 h-4 w-4 rounded border-outline-variant/30 text-brand-navy focus:ring-2 focus:ring-brand-navy"
+                    />
+                    <span>
+                      <span className="block font-semibold">{label}</span>
+                      <span className="block text-xs text-text-grey">{description}</span>
+                    </span>
+                  </label>
+                );
+              })}
             </div>
           </fieldset>
         </div>
