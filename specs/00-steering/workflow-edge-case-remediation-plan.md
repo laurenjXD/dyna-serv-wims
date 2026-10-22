@@ -111,7 +111,7 @@ error server-side; never expose raw SQL/provider errors.
 | Concurrent duplicate role assignment | Add scoped uniqueness or transactional duplicate prevention for party roles. | Two simultaneous role-add commands. |
 | Bulk location naming collision or huge range | Validate bounded range, normalize names, preflight conflicts, and return per-row results. | Duplicate, overflow, partial-failure, and retry tests. |
 | Stale item edit | Use an explicit version/updated-at CAS and return `stale_record`; never overwrite silently. | Two-tab edit test. |
-| Supplier/owner versus customer/destination ambiguity | Keep the UI label **Organization** only where it represents the approved concept; model stock owner, lot owner, and pick-list customer as separate fields/relationships. Do not overload `default_supplier_party_id`. | Spec decision, migration review, and pick-list scope tests. |
+| Organization-role ambiguity | Keep the UI label **Organization** for the record; model Trading Supplier, Trading Customer, VMI Customer, and VMI End Customer relationships explicitly. Treat stock owner/source and destination as workflow context. Do not overload `default_supplier_party_id`. | Spec decision, migration review, and pick-list scope tests. |
 | Inactive item/location appears in a stale form | Revalidate server-side and refresh the selector after rejection. | Stale browser page test. |
 
 ### 4.2 Receiving and WRR
@@ -252,7 +252,150 @@ These are implementation tasks after the relevant specs are approved:
    `generated_documents` append-only/permanently retained according to the
    steering retention decision.
 
-## 6. Required test program
+## 6. Terminology and refactoring workstream
+
+Terminology is part of the data contract, not merely a copy change. Refactoring
+must update database comments, TypeScript types, action parameters, query
+aliases, validation errors, route names, UI labels, print templates, audit
+events, tests, and documentation together. Historical database columns may be
+retained for compatibility only when their migration/deprecation mapping is
+documented.
+
+### 6.1 Canonical vocabulary
+
+The following terms are mandatory throughout new code and user-facing text:
+
+| Canonical term | Meaning | Do not use |
+|---|---|---|
+| `organization` / `organizations` | The canonical product term for an organization or company that participates in the warehouse business. An organization may hold one or more business roles. | party, supplier, vendor, customer entity, company when referring to the domain record |
+| `item` / `items` | A catalogued material or product definition. | SKU, stock item when referring to the catalog record |
+| `location` / `locations` | A warehouse storage or operational location. | bin, warehouse section when referring to the record |
+| `inventory model` | The user-facing name for the `vmi`, `trading`, or `supplies` inventory partition. | flow type, business type |
+| `supplier` | A Trading-only organization relationship representing the source/supplying business. | vendor when referring to the role |
+| `customer` | A customer organization relationship, which must be explicitly classified as either Trading customer or VMI customer. | destination organization when referring to the relationship |
+| `end customer` | A VMI-only organization relationship representing the final recipient. | customer recipient, consignee unless a separate legal concept is intended |
+| `stock owner` / `stock source` | Workflow context describing ownership or origin of a lot/transfer; neither is an additional organization role. | silently treating stock owner/source as supplier or customer |
+| `WRR` / `wrr` | Warehouse Receiving Report and its receiving workflow. | receiving slip, goods receipt, withdrawal receipt |
+| `pick list` / `pick_list` | The outbound execution document and record. | withdrawal slip, withdrawal request |
+| `acknowledgement receipt` / `acknowledgement_receipt` | The outbound acknowledgement document and artifact. | delivery receipt, withdrawal receipt |
+| `transfer` / `transfer request` | An internal movement request and its execution lifecycle. Use “transfer request” only for the staged/approval record. | stock movement request when referring to the domain record |
+| `inspection case` | The case tracking an inspection decision. | QA ticket, damage ticket |
+| `commitment` / `inventory commitment` | The Stage 1 reservation of stock. | reservation when referring to the canonical record, allocation when referring to the reservation record |
+| `dispatch` | Stage 2 inventory deduction and outbound completion. | shipment, release, withdrawal |
+| `lot` | A received traceability batch. | vendor lot unless the source system concept is explicitly external |
+| `unit` / `inventory unit` | A physical tracked receiving/stock unit. | carton when referring to the database identity |
+| `quantity remaining` / `quantity committed` | Authoritative lot-location quantities. | available stock unless the exact derived quantity is intended |
+
+### 6.2 Organization and business-role contract
+
+The canonical product term is **Organization**. An organization or company is
+represented by one organization record. The organization-role model has exactly
+three role families:
+
+1. **Supplier** — Trading only.
+2. **Customer** — either Trading customer or VMI customer; these are distinct
+   inventory-model-specific relationships, not one interchangeable customer
+   role.
+3. **End customer** — VMI only.
+
+The same organization may hold more than one valid role when the relationships
+are explicitly recorded and do not violate inventory-model rules. Stock owner,
+stock source, and destination are workflow context, not additional roles.
+
+The current `party`/`parties` table and related identifiers are legacy
+implementation vocabulary. They may remain temporarily as a compatibility
+boundary, but they must not leak into the user-facing product or newly designed
+domain APIs. A schema rename or compatibility view requires an approved
+amendment to the owning data-model and RBAC specifications before migration.
+
+Therefore:
+
+- use `organization`/`organizations` in new TypeScript domain types, actions,
+  queries, RLS-facing APIs, audit events, and specifications;
+- use **Organization** in all user-facing screens and documents for the
+  organization/company record;
+- use only the approved role labels **Supplier**, **Customer**, and **End
+  customer**; qualify Customer as **Trading customer** or **VMI customer**
+  whenever the inventory model matters;
+- use **stock owner**, **stock source**, and **destination** only as contextual
+  workflow fields, never as organization roles;
+- never rename the general organization relationship to **Stock Source**,
+  **Supplier**, or **Customer**;
+- never infer one business role from another merely because the organization is the
+  same record;
+- model the selected role/relationship explicitly when a workflow needs it;
+- allow one organization to hold multiple roles without duplicating the
+  organization record.
+
+The item-to-organization relationship must identify the approved role and
+inventory model. A Trading supplier relationship must not be used as a VMI
+customer or end-customer relationship, and a VMI end customer must not be
+accepted as a Trading customer. If one item has multiple valid organization
+relationships, store them separately instead of overloading an
+`organization` or `default_supplier` field.
+
+This resolves the terminology clarification: **Organization is the canonical
+product and domain term; `party` is a temporary legacy/schema compatibility
+term; the only organization roles are Trading Supplier, Trading/VMI Customer,
+and VMI End Customer.**
+
+### 6.3 Refactoring sequence
+
+1. **Inventory terminology:** search routes, components, actions, queries,
+   schema, migrations, tests, specs, print templates, error strings, and
+   analytics for noncanonical terms and classify each occurrence as domain,
+   external-source text, or historical compatibility.
+2. **Publish a glossary:** add the approved vocabulary and role definitions to
+   `specs/00-steering/structure.md` and the owning feature designs. Record the
+   organization terminology decision in `revision-log.md`.
+3. **Refactor domain types and APIs:** rename TypeScript variables, action
+   parameters, query aliases, validation fields, and error codes first. Keep
+   temporary compatibility adapters only at external boundaries.
+4. **Refactor schema-facing names:** use canonical names for new tables,
+   columns, indexes, SQL functions, RLS policy names, and audit event payloads.
+   Any legacy column must have an explicit deprecation comment and migration
+   mapping.
+5. **Refactor user-facing surfaces:** update labels, headings, helper text,
+   empty states, errors, confirmation dialogs, scanner messages, print/PDF
+   fields, portal copy, and navigation. Use one term per concept.
+6. **Refactor tests and fixtures:** rename fixtures and assertions, then add a
+   terminology lint/check that fails on prohibited domain aliases outside an
+   allowlist for external documents or migration history.
+7. **Run seam review:** inspect receiving → inventory → pick list → dispatch →
+   ledger → document, and transfer → inspection → receiving, confirming that
+   the same record has the same name at every boundary.
+
+### 6.4 Required terminology acceptance checks
+
+| Check | Resolution |
+|---|---|
+| A form says “supplier” while the action parameter says `organizationId` | Replace the copy or rename the parameter after the role decision; do not leave the mismatch. |
+| A Trading supplier is selected as a VMI customer or end customer | Reject the selection and require an organization with an active VMI customer/end-customer relationship. |
+| A Trading customer is selected for a VMI flow, or a VMI customer is selected for Trading | Reject the selection unless the organization has the matching inventory-model-specific customer relationship. |
+| An organization has multiple valid roles | Represent each role relationship explicitly; do not infer one role from another. |
+| A historical document contains an old term | Preserve legally/audit-required historical text, but identify the canonical term in the current UI and template version. |
+| External CIPL/DRA uses “supplier” or “SKU” | Preserve the imported source label only in raw-source evidence; map it to `organization`/`item` in the operational model. |
+| User searches with an old term | Support a bounded compatibility alias in search if useful, but display only the canonical term. |
+| API/client sends a deprecated field | Accept only through a versioned compatibility adapter, emit a deprecation event, and remove it after the migration window. |
+| Error message uses “withdrawal slip” or “bin” | Replace it with `pick list`/`location` and add a regression assertion. |
+
+### 6.5 Refactoring definition of done
+
+- No new application code uses `party`, `supplier`, `vendor`, `SKU`, `bin`, or
+  `withdrawal slip` as an internal domain term.
+- `pick_list` and `acknowledgement_receipt` are used consistently in schema,
+  actions, routes, documents, and tests.
+- Every use of `organization`, `supplier`, `customer`, and `end customer` has
+  an explicitly documented inventory-model relationship; stock owner/source
+  and destination are documented as workflow context only.
+- The organization/business-role decision is recorded in the revision log before
+  dependent code is changed.
+- Search, typecheck, unit tests, real-Postgres/RLS tests, generated documents,
+  and Playwright assertions use the same vocabulary.
+- Compatibility aliases, if retained, are isolated, documented, tested, and
+  scheduled for removal.
+
+## 7. Required test program
 
 ### Unit tests
 
@@ -281,7 +424,7 @@ These are implementation tasks after the relevant specs are approved:
 6. Portal scope, filter, export, signed download, and multi-assignment.
 7. Billing close, missing forex, PDF failure, payment, and resend.
 
-## 7. Definition of done
+## 8. Definition of done
 
 The workflow is release-ready only when:
 
@@ -297,4 +440,3 @@ The workflow is release-ready only when:
 - Product Owner decisions for unresolved business rules are recorded in the
   owning spec and revision log;
 - feature tasks are Approved before implementation begins.
-
