@@ -195,27 +195,6 @@ export function LocationMapView({
         Empty mapped cells are <span className="font-semibold text-emerald-800">Available</span>; cells containing stock are <span className="font-semibold text-blue-800">Occupied</span>. Records outside the reference layout remain in the unmapped list below.
       </p>
 
-      <section aria-label={`${mapSummaryScope} inventory summary`} className="overflow-hidden rounded-xl border border-slate-200 bg-surface-white shadow-elevation-1">
-        <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-2.5">
-          <h3 className="font-label text-label font-bold uppercase tracking-[0.05em] text-on-surface">{mapSummaryScope} inventory</h3>
-          <span className="font-body text-xs text-text-grey">Live stock totals{rackFilter === "all" ? " across all racks" : " for selected rack"}</span>
-        </div>
-        <div className="grid grid-cols-3">
-          <div className="border-r border-slate-200">
-            <div className="flex min-h-12 items-center justify-center bg-brand-navy px-2 text-center font-label text-[11px] font-bold uppercase leading-tight tracking-wide text-white sm:text-xs">PCS ON HAND</div>
-            <p className="px-2 py-3 text-center font-mono text-lg font-bold text-on-surface sm:text-xl">{formatNumber(mapSummary.pieces, 0)}</p>
-          </div>
-          <div className="border-r border-slate-200">
-            <div className="flex min-h-12 items-center justify-center bg-brand-navy px-2 text-center font-label text-[11px] font-bold uppercase leading-tight tracking-wide text-white sm:text-xs">BOXES ON HAND</div>
-            <p className="px-2 py-3 text-center font-mono text-lg font-bold text-on-surface sm:text-xl">{formatNumber(mapSummary.boxes)}</p>
-          </div>
-          <div>
-            <div className="flex min-h-12 items-center justify-center bg-brand-navy px-2 text-center font-label text-[11px] font-bold uppercase leading-tight tracking-wide text-white sm:text-xs">CBM OCCUPIED</div>
-            <p className="px-2 py-3 text-center font-mono text-lg font-bold text-on-surface sm:text-xl">{formatNumber(mapSummary.cbm, 2)}</p>
-          </div>
-        </div>
-      </section>
-
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         <section className="min-w-0 rounded-2xl bg-surface-white p-3 shadow-elevation-1 sm:p-5" aria-label="Interactive warehouse rack map">
           <div className="mb-3 flex items-center justify-between gap-3">
@@ -334,7 +313,27 @@ export function LocationMapView({
           </div>
         </section>
 
-        <aside className="rounded-2xl bg-surface-white p-5 shadow-elevation-1" aria-live="polite">
+        <aside className="rounded-2xl bg-surface-white p-4 shadow-elevation-1 sm:p-5" aria-live="polite">
+          <section aria-label={`${mapSummaryScope} inventory summary`} className="mb-5 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+            <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-3 py-2">
+              <h3 className="truncate font-label text-[11px] font-bold uppercase tracking-[0.05em] text-on-surface">{mapSummaryScope}</h3>
+              <span className="shrink-0 font-body text-[10px] text-text-grey">Live totals</span>
+            </div>
+            <div className="grid grid-cols-3 divide-x divide-slate-200">
+              <div className="min-w-0 px-2 py-2.5 text-center">
+                <p className="font-label text-[9px] font-bold uppercase leading-tight tracking-wide text-text-grey">PCS</p>
+                <p className="mt-1 truncate font-mono text-sm font-bold text-on-surface" title={formatNumber(mapSummary.pieces, 0)}>{formatNumber(mapSummary.pieces, 0)}</p>
+              </div>
+              <div className="min-w-0 px-2 py-2.5 text-center">
+                <p className="font-label text-[9px] font-bold uppercase leading-tight tracking-wide text-text-grey">Boxes</p>
+                <p className="mt-1 truncate font-mono text-sm font-bold text-on-surface" title={formatNumber(mapSummary.boxes)}>{formatNumber(mapSummary.boxes)}</p>
+              </div>
+              <div className="min-w-0 px-2 py-2.5 text-center">
+                <p className="font-label text-[9px] font-bold uppercase leading-tight tracking-wide text-text-grey">CBM</p>
+                <p className="mt-1 truncate font-mono text-sm font-bold text-on-surface" title={formatNumber(mapSummary.cbm, 2)}>{formatNumber(mapSummary.cbm, 2)}</p>
+              </div>
+            </div>
+          </section>
           {selectedRow ? (
             <>
               <div className="flex items-start justify-between gap-3">
