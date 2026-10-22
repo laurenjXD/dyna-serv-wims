@@ -71,7 +71,7 @@ export function buildWarehouseMapCells(
     return Array.from({ length: layout.verticalPositions ? layout.positions : layout.levels }, (_, rowIndex) => {
       const rowLevel = layout.verticalPositions ? undefined : layout.levels - rowIndex;
       const rowPosition = layout.verticalPositions
-        ? (layout.reversePositions ? layout.positions - rowIndex : rowIndex + 1)
+        ? (layout.reversePositions ? rowIndex + 1 : layout.positions - rowIndex)
         : undefined;
       return Array.from({ length: layout.verticalPositions ? layout.levels : layout.positions }, (_, columnIndex) => {
         const level = layout.verticalPositions ? layout.levels - columnIndex : rowLevel!;

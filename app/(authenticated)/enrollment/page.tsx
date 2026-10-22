@@ -270,13 +270,12 @@ async function LocationsTab({
         result.kind === "authorized" ? listPartyOrganizationNames(db) : [],
       ),
     ]);
-    const rows = mapRows.filter((row) => row.isMapped);
     return (
       <div className="mt-4">
         <LocationViewSwitcher view="map" search={search} selectedLabel={selectedLabel} />
         <div className="mt-4">
           <LocationMapView
-            rows={rows}
+            rows={mapRows}
             organizationOptions={organizationNames}
             initialSelectedLabel={selectedLabel}
             initialSearch={search}

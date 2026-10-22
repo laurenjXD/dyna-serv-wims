@@ -20,6 +20,21 @@ describe("warehouse map layout", () => {
     }
   });
 
+  it("covers every canonical level-position coordinate exactly once for every rack", () => {
+    const labels = new Set(WAREHOUSE_MAP_CELLS.map((cell) => cell.label));
+
+    for (const layout of WAREHOUSE_RACK_LAYOUT) {
+      const rackCells = WAREHOUSE_MAP_CELLS.filter((cell) => cell.rack === layout.rack);
+      expect(new Set(rackCells.map((cell) => cell.label)).size).toBe(rackCells.length);
+
+      for (let level = 1; level <= layout.levels; level += 1) {
+        for (let position = 1; position <= layout.positions; position += 1) {
+          expect(labels.has(canonicalLocationLabel(layout.rack, level, position))).toBe(true);
+        }
+      }
+    }
+  });
+
   it("uses the physical column order A, F/B, G/C, D/E", () => {
     expect(WAREHOUSE_RACK_LAYOUT.map((layout) => layout.rack)).toEqual([
       "A", "F", "B", "G", "C", "D", "E",
@@ -31,8 +46,8 @@ describe("warehouse map layout", () => {
 
   it("keeps vertical display orientation linked to canonical level-position labels", () => {
     const rackA = WAREHOUSE_MAP_CELLS.filter((cell) => cell.rack === "A");
-    expect(rackA[0]).toMatchObject({ label: "A4-01", level: "4", position: "01" });
-    expect(rackA.at(-1)).toMatchObject({ label: "A1-30", level: "1", position: "30" });
+    expect(rackA[0]).toMatchObject({ label: "A4-30", level: "4", position: "30" });
+    expect(rackA.at(-1)).toMatchObject({ label: "A1-01", level: "1", position: "01" });
   });
 
   it("keeps level one at the bottom of a rack", () => {
